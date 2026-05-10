@@ -20,6 +20,9 @@ libraryDependencies ++= Seq(
   // JSON (Play's built-in)
   "com.typesafe.play" %% "play-json" % "2.10.5",
 
+  // Browser automation for scraping JS-rendered cinema pages
+  "org.seleniumhq.selenium" % "selenium-java" % "4.43.0",
+
   // Testing
   "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
   "org.mockito"            %% "mockito-scala"       % "1.17.31" % Test
