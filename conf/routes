@@ -1,0 +1,12 @@
+# ── Health ────────────────────────────────────────────────────────────────────
+GET     /health                     controllers.HealthController.check
+
+# ── Items REST API ────────────────────────────────────────────────────────────
+GET     /api/items                  controllers.ItemController.list
+POST    /api/items                  controllers.ItemController.create
+GET     /api/items/:id              controllers.ItemController.get(id: String)
+PUT     /api/items/:id              controllers.ItemController.update(id: String)
+DELETE  /api/items/:id              controllers.ItemController.delete(id: String)
+
+# ── Static assets ─────────────────────────────────────────────────────────────
+GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
