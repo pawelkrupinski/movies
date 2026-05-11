@@ -30,7 +30,7 @@ object MultikinoClient {
   private def scraperRequest(key: String): HttpRequest = {
     val encoded = URLEncoder.encode(ApiUrl, StandardCharsets.UTF_8)
     HttpRequest.newBuilder()
-      .uri(URI.create(s"$ScraperApiUrl?api_key=$key&url=$encoded"))
+      .uri(URI.create(s"$ScraperApiUrl?api_key=$key&url=$encoded&render=true&country_code=pl"))
       .header("Accept", "application/json, text/plain, */*")
       .GET()
       .build()
