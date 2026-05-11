@@ -49,7 +49,7 @@ object MultikinoClient {
 
     val body = response.statusCode() match {
       case 200 => response.body()
-      case 401 =>
+      case 401 | 403 =>
         refreshSession()
         val retryResponse = httpClient.send(apiRequest(), HttpResponse.BodyHandlers.ofString())
         if (retryResponse.statusCode() != 200)
