@@ -1,0 +1,151 @@
+@import controllers.{FilmSchedule, DateFormatter}
+@(film: FilmSchedule)
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@film.movie.title – Repertuar kinowy Poznań</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    body { background: #111; color: #eee; }
+    .navbar { background: #1a1a2e; }
+    .back-link { color: #aad4ff; text-decoration: none; font-size: .9rem; }
+    .back-link:hover { color: #fff; }
+    .poster-img {
+      width: 100%;
+      max-width: 300px;
+      border-radius: 12px;
+      display: block;
+    }
+    .no-poster {
+      width: 100%;
+      max-width: 300px;
+      aspect-ratio: 2/3;
+      background: #2a2a3e;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      color: #555;
+    }
+    .film-title { font-size: 1.6rem; font-weight: 700; margin-bottom: .5rem; }
+    .meta-label { font-size: .75rem; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .15rem; margin-top: .9rem; }
+    .meta-value { font-size: .9rem; color: #ddd; }
+    .cinema-link {
+      display: inline-block;
+      background: #3a3a6e;
+      color: #aad4ff;
+      border-radius: 8px;
+      padding: .35rem .8rem;
+      font-size: .85rem;
+      text-decoration: none;
+      margin-right: .5rem;
+      margin-top: .4rem;
+    }
+    .cinema-link:hover { background: #5a5a9e; color: #fff; }
+    .showtimes-section { margin-top: 2rem; }
+    .date-heading {
+      font-size: .8rem;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      border-bottom: 1px solid #2a2a3e;
+      padding-bottom: .3rem;
+      margin-bottom: .6rem;
+      margin-top: 1.2rem;
+    }
+    .cinema-row { margin-bottom: .6rem; }
+    .cinema-name { font-size: .72rem; color: #66aadd; margin-bottom: .2rem; }
+    .badge-time {
+      background: #3a3a6e;
+      color: #aad4ff;
+      font-size: .78rem;
+      padding: .28em .55em;
+      border-radius: 6px;
+      margin: 2px 3px 2px 0;
+      display: inline-block;
+      text-decoration: none;
+    }
+    a.badge-time:hover { background: #5a5a9e; color: #fff; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar px-4 py-3">
+  <a href="/repertuar" class="back-link">← Repertuar</a>
+</nav>
+
+<div class="container py-4" style="max-width: 860px;">
+  <div class="row g-4">
+
+    <div class="col-auto">
+      @film.posterUrl match {
+        case Some(url) => { <img src="@url" alt="@film.movie.title" class="poster-img"> }
+        case None      => { <div class="no-poster">🎬</div> }
+      }
+    </div>
+
+    <div class="col">
+      <div class="film-title">@film.movie.title</div>
+
+      @if(film.cinemaFilmUrls.nonEmpty) {
+        <div style="margin-top: .5rem;">
+          @for((cinema, url) <- film.cinemaFilmUrls) {
+            <a href="@url" target="_blank" class="cinema-link">@cinema.displayName ↗</a>
+          }
+        </div>
+      }
+
+      @film.synopsis match {
+        case Some(text) => {
+          <div class="meta-label">Opis</div>
+          <div class="meta-value">@text</div>
+        }
+        case None => {}
+      }
+
+      @film.director match {
+        case Some(text) => {
+          <div class="meta-label">Reżyseria</div>
+          <div class="meta-value">@text</div>
+        }
+        case None => {}
+      }
+
+      @film.cast match {
+        case Some(text) => {
+          <div class="meta-label">Obsada</div>
+          <div class="meta-value">@text</div>
+        }
+        case None => {}
+      }
+    </div>
+
+  </div>
+
+  <div class="showtimes-section">
+    <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0;">Seanse</h2>
+    @for((date, cinemaShowtimesList) <- film.showings) {
+      <div class="date-heading">@DateFormatter.format(date)</div>
+      @for(cinemaShowtimes <- cinemaShowtimesList) {
+        <div class="cinema-row">
+          <div class="cinema-name">@cinemaShowtimes.cinema.displayName</div>
+          <div>
+            @for(slot <- cinemaShowtimes.showtimes) {
+              @slot.bookingUrl match {
+                case Some(url) => { <a href="@url" class="badge-time" target="_blank">@{slot.dateTime.toLocalTime}</a> }
+                case None      => { <span class="badge-time">@{slot.dateTime.toLocalTime}</span> }
+              }
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+</body>
+</html>

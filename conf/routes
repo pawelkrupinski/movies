@@ -1,6 +1,6 @@
-# ── Multikino repertoire ──────────────────────────────────────────────────────
-GET     /repertuar                  controllers.MultikinoController.index
-GET     /repertuar/refresh          controllers.MultikinoController.refresh
+# ── Repertoire ────────────────────────────────────────────────────────────────
+GET     /repertuar                  controllers.MovieController.index
+GET     /film                       controllers.MovieController.film(title: String)
 
 # ── Health ────────────────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check
