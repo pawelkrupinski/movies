@@ -63,7 +63,7 @@ object MultikinoClient {
       case Some(key) =>
         val response = httpClient.send(scraperRequest(key), HttpResponse.BodyHandlers.ofString())
         if (response.statusCode() != 200)
-          throw new RuntimeException(s"ScraperAPI returned ${response.statusCode()}")
+          throw new RuntimeException(s"ScraperAPI returned ${response.statusCode()}: ${response.body().take(500)}")
         response.body()
       case None =>
         val response = httpClient.send(apiRequest(), HttpResponse.BodyHandlers.ofString())
