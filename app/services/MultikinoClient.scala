@@ -5,14 +5,19 @@ import play.api.libs.json._
 
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.net.{CookieManager, CookiePolicy, URI}
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 
 // ── Multikino client ───────────────────────────────────────────────────────
 
 object MultikinoClient {
 
-  private val HomeUrl = "https://www.multikino.pl/"
-  private val ApiUrl  = "https://www.multikino.pl/api/microservice/showings/cinemas/0011/films?minEmbargoLevel=2&includesSession=true&includeSessionAttributes=true"
+  private val HomeUrl       = "https://www.multikino.pl/"
+  private val ApiUrl        = "https://www.multikino.pl/api/microservice/showings/cinemas/0011/films?minEmbargoLevel=2&includesSession=true&includeSessionAttributes=true"
+  private val ScraperApiUrl = "https://api.scraperapi.com/"
+
+  private val scraperApiKey: Option[String] = Option(System.getenv("SCRAPERAPI_KEY")).filter(_.nonEmpty)
 
   private val cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL)
 
@@ -21,6 +26,15 @@ object MultikinoClient {
     .followRedirects(HttpClient.Redirect.NORMAL)
     .cookieHandler(cookieManager)
     .build()
+
+  private def scraperRequest(key: String): HttpRequest = {
+    val encoded = URLEncoder.encode(ApiUrl, StandardCharsets.UTF_8)
+    HttpRequest.newBuilder()
+      .uri(URI.create(s"$ScraperApiUrl?api_key=$key&url=$encoded"))
+      .header("Accept", "application/json, text/plain, */*")
+      .GET()
+      .build()
+  }
 
   private def apiRequest(): HttpRequest =
     HttpRequest.newBuilder()
@@ -45,18 +59,25 @@ object MultikinoClient {
     )
 
   def fetch(): Seq[CinemaMovie] = {
-    val response = httpClient.send(apiRequest(), HttpResponse.BodyHandlers.ofString())
-
-    val body = response.statusCode() match {
-      case 200 => response.body()
-      case 401 | 403 =>
-        refreshSession()
-        val retryResponse = httpClient.send(apiRequest(), HttpResponse.BodyHandlers.ofString())
-        if (retryResponse.statusCode() != 200)
-          throw new RuntimeException(s"API returned ${retryResponse.statusCode()} after session refresh")
-        retryResponse.body()
-      case code =>
-        throw new RuntimeException(s"API returned $code")
+    val body = scraperApiKey match {
+      case Some(key) =>
+        val response = httpClient.send(scraperRequest(key), HttpResponse.BodyHandlers.ofString())
+        if (response.statusCode() != 200)
+          throw new RuntimeException(s"ScraperAPI returned ${response.statusCode()}")
+        response.body()
+      case None =>
+        val response = httpClient.send(apiRequest(), HttpResponse.BodyHandlers.ofString())
+        response.statusCode() match {
+          case 200 => response.body()
+          case 401 | 403 =>
+            refreshSession()
+            val retryResponse = httpClient.send(apiRequest(), HttpResponse.BodyHandlers.ofString())
+            if (retryResponse.statusCode() != 200)
+              throw new RuntimeException(s"API returned ${retryResponse.statusCode()} after session refresh")
+            retryResponse.body()
+          case code =>
+            throw new RuntimeException(s"API returned $code")
+        }
     }
 
     parseJson(body)
