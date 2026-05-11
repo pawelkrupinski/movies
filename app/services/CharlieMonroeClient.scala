@@ -1,21 +1,18 @@
 package clients
 
 import models.{CharlieMonroe, CinemaMovie, Movie, Showtime}
+import org.jsoup.Jsoup
 import play.api.libs.json._
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.{LocalDateTime, ZonedDateTime}
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 object CharlieMonroeClient {
 
-  private val PageUrl       = "https://kinomalta.pl/seanse"
-  private val JsonLdRegex   = """<script[^>]+type="application/ld\+json"[^>]*>([\s\S]*?)</script>""".r
-  private val ArticleRegex  = """<article[^>]+class="movie-card"[^>]*>([\s\S]*?)</article>""".r
-  private val FilmUrlRegex  = """href="(https://kinomalta\.pl/movies/[^"]+)"""".r
-  private val TitleRegex    = """<h2[^>]*class="title"[^>]*>([\s\S]*?)</h2>""".r
-  private val SynopsisRegex = """<p[^>]*class="desc"[^>]*>([\s\S]*?)</p>""".r
+  private val PageUrl = "https://kinomalta.pl/seanse"
 
   private val httpClient = HttpClient.newBuilder()
     .version(HttpClient.Version.HTTP_1_1)
@@ -35,14 +32,25 @@ object CharlieMonroeClient {
     if (response.statusCode() != 200)
       throw new RuntimeException(s"kinomalta.pl returned ${response.statusCode()}")
 
-    val html = response.body()
+    parseHtml(response.body())
+  }
 
-    val screenings = JsonLdRegex.findAllMatchIn(html)
-      .map(_.group(1))
+  private def parseHtml(html: String): Seq[CinemaMovie] = {
+    val doc = Jsoup.parse(html)
+
+    val screenings = doc.select("script[type=application/ld+json]").asScala
+      .flatMap(el => Try(Json.parse(el.data())).toOption)
       .flatMap(parseScreeningEvent)
       .toSeq
 
-    val detailsByTitle = parseArticleDetails(html)
+    val detailsByTitle = doc.select("article.movie-card").asScala.flatMap { article =>
+      Option(article.selectFirst("h2.title")).map(_.text().trim).map { title =>
+        val filmUrl   = Option(article.selectFirst("a[href*=/movies/]")).map(_.attr("href"))
+        val synopsis  = Option(article.selectFirst("p.desc")).map(_.text().replaceAll("\\.{3,}$", "").trim).filter(_.nonEmpty)
+        val posterUrl = Option(article.selectFirst("img[data-src]")).map(_.attr("data-src"))
+        title -> ArticleDetails(filmUrl, synopsis, posterUrl)
+      }
+    }.toMap
 
     screenings
       .groupBy(_.movie.title)
@@ -63,56 +71,30 @@ object CharlieMonroeClient {
       }
   }
 
-  // ── Article HTML parsing ───────────────────────────────────────────────────
-
   private case class ArticleDetails(filmUrl: Option[String], synopsis: Option[String], posterUrl: Option[String])
 
-  private def parseArticleDetails(html: String): Map[String, ArticleDetails] =
-    ArticleRegex.findAllMatchIn(html).map(_.group(1)).flatMap { articleHtml =>
-      for {
-        titleMatch <- TitleRegex.findFirstMatchIn(articleHtml)
-      } yield {
-        val title    = stripHtml(titleMatch.group(1))
-        val filmUrl  = FilmUrlRegex.findFirstMatchIn(articleHtml).map(_.group(1))
-        val synopsis = SynopsisRegex.findFirstMatchIn(articleHtml)
-                         .map(m => stripHtml(m.group(1)).replaceAll("\\.{3,}$", "").trim)
-                         .filter(_.nonEmpty)
-        val posterUrl = """data-src="(https://[^"]+)"""".r
-                          .findFirstMatchIn(articleHtml).map(_.group(1))
-        title -> ArticleDetails(filmUrl, synopsis, posterUrl)
-      }
-    }.toMap
-
-  private def stripHtml(s: String): String =
-    s.replaceAll("<[^>]+>", "").replaceAll("\\s+", " ").trim
-
-  // ── JSON-LD parsing ────────────────────────────────────────────────────────
-
   private case class ScreeningEntry(
-    movie: Movie,
-    dateTime: LocalDateTime,
-    posterUrl: Option[String],
+    movie:      Movie,
+    dateTime:   LocalDateTime,
+    posterUrl:  Option[String],
     bookingUrl: Option[String]
   )
 
-  private def parseScreeningEvent(json: String): Option[ScreeningEntry] =
+  private def parseScreeningEvent(json: JsValue): Option[ScreeningEntry] =
     Try {
-      val node = Json.parse(json)
-      val eventType = (node \ "@type").asOpt[String]
-        .orElse((node \ "@type").asOpt[JsArray].flatMap(_.value.headOption.flatMap(_.asOpt[String])))
+      val eventType = (json \ "@type").asOpt[String]
+        .orElse((json \ "@type").asOpt[JsArray].flatMap(_.value.headOption.flatMap(_.asOpt[String])))
 
       eventType.filter(_ == "ScreeningEvent").flatMap { _ =>
         for {
-          title     <- (node \ "workPresented" \ "name").asOpt[String]
-          startDate <- (node \ "startDate").asOpt[String]
-        } yield {
-          ScreeningEntry(
-            movie      = Movie(title),
-            dateTime   = ZonedDateTime.parse(startDate).toLocalDateTime,
-            posterUrl  = (node \ "workPresented" \ "image").asOpt[String].filter(_.nonEmpty),
-            bookingUrl = (node \ "offers" \ "url").asOpt[String].filter(_.nonEmpty)
-          )
-        }
+          title     <- (json \ "workPresented" \ "name").asOpt[String]
+          startDate <- (json \ "startDate").asOpt[String]
+        } yield ScreeningEntry(
+          movie      = Movie(title),
+          dateTime   = ZonedDateTime.parse(startDate).toLocalDateTime,
+          posterUrl  = (json \ "workPresented" \ "image").asOpt[String].filter(_.nonEmpty),
+          bookingUrl = (json \ "offers" \ "url").asOpt[String].filter(_.nonEmpty)
+        )
       }
     }.toOption.flatten
 }

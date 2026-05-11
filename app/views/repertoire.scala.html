@@ -1,5 +1,4 @@
-@import controllers.{FilmSchedule, DateFormatter}
-@(films: Seq[FilmSchedule])
+@(allCinemas: Seq[String])
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -46,6 +45,8 @@
     .card-title a:hover { color: #aad4ff; }
     .date-label { font-size: .7rem; color: #888; margin-bottom: .2rem; margin-top: .5rem; }
     .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: .1rem; margin-top: .3rem; }
+    .cinema-label-link { color: #66aadd; text-decoration: none; }
+    .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
     .badge-time {
       background: #3a3a6e;
       color: #aad4ff;
@@ -85,6 +86,41 @@
       display: flex; align-items: center; justify-content: center;
     }
     .card:hover .hide-btn { opacity: 1; }
+    .dropdown-panel {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: #1e1e2e;
+      border: 1px solid #3a3a6e;
+      border-radius: 8px;
+      padding: 8px;
+      z-index: 1000;
+      box-shadow: 0 4px 16px rgba(0,0,0,.5);
+    }
+    .panel-item {
+      padding: 5px 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: .8rem;
+      color: #eee;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 280px;
+    }
+    .panel-item:hover { background: #3a3a6e; }
+    .panel-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: .8rem;
+      color: #eee;
+      border-radius: 4px;
+    }
+    .panel-label:hover { background: #3a3a6e; }
+    .panel-divider { border-top: 1px solid #3a3a6e; margin: 6px 0; padding-top: 2px; }
   </style>
 </head>
 <body>
@@ -99,63 +135,33 @@
     </select>
     <div style="position:relative">
       <button id="show-hidden-btn" onclick="toggleHiddenPanel(event)" class="btn refresh-btn btn-sm" style="display:none!important"></button>
-      <div id="hidden-panel" style="display:none; position:absolute; top:calc(100% + 6px); right:0; background:#1e1e2e; border:1px solid #3a3a6e; border-radius:8px; padding:8px; min-width:220px; z-index:1000; box-shadow:0 4px 16px rgba(0,0,0,.5)">
+      <div id="hidden-panel" class="dropdown-panel" style="display:none; min-width:220px">
         <div id="hidden-panel-list"></div>
-        <div style="border-top:1px solid #3a3a6e; margin-top:6px; padding-top:6px;">
+        <div class="panel-divider">
           <button onclick="showAllFilms()" class="btn refresh-btn btn-sm w-100">Pokaż wszystkie</button>
         </div>
+      </div>
+    </div>
+    <div style="position:relative">
+      <button id="cinema-filter-btn" onclick="toggleCinemaPanel(event)" class="btn refresh-btn btn-sm">Kina</button>
+      <div id="cinema-panel" class="dropdown-panel" style="display:none; min-width:220px" onclick="event.stopPropagation()">
+        <label class="panel-label" style="border-bottom:1px solid #3a3a6e; margin-bottom:4px; padding-bottom:8px;">
+          <input type="checkbox" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> Wszystkie kina
+        </label>
+        <div id="cinema-list"></div>
       </div>
     </div>
   </div>
 </nav>
 
 <div class="container-fluid py-4 px-4">
-
-  @if(films.isEmpty) {
-    <div class="text-center py-5 text-secondary">Brak repertuaru.</div>
-  } else {
-    <p class="text-secondary mb-4">@films.size tytuł(ów) · @{films.flatMap(_.showings.flatMap(_._2.flatMap(_.showtimes))).size} seansów</p>
-    <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6">
-      @for(film <- films) {
-        <div class="col" data-title="@film.movie.title">
-          <div class="card">
-            <div class="poster-wrap">
-              <button class="hide-btn" onclick="hideFilm(this)" title="Ukryj film">✕</button>
-              @film.posterUrl match {
-                case Some(url) => { <img src="@url" alt="@film.movie.title" loading="lazy"> }
-                case None      => { <div class="no-poster">🎬</div> }
-              }
-            </div>
-            <div class="card-body">
-              <div class="card-title">
-                <a href="/film?title=@java.net.URLEncoder.encode(film.movie.title, "UTF-8")">@film.movie.title</a>
-              </div>
-              @for((date, cinemaShowtimesList) <- film.showings) {
-                <div class="date-group" data-date="@date">
-                  <div class="date-label">@DateFormatter.format(date)</div>
-                  @for(cinemaShowtimes <- cinemaShowtimesList) {
-                    <div class="cinema-label">@cinemaShowtimes.cinema.displayName</div>
-                    <div>
-                      @for(slot <- cinemaShowtimes.showtimes) {
-                        @slot.bookingUrl match {
-                          case Some(url) => { <a href="@url" class="badge-time" target="_blank">@{slot.dateTime.toLocalTime}</a> }
-                          case None      => { <span class="badge-time">@{slot.dateTime.toLocalTime}</span> }
-                        }
-                      }
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-          </div>
-        </div>
-      }
-    </div>
-  }
-
+  <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>
+  <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
+  <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid"></div>
 </div>
+
 <script>
-  const COOKIE = 'hiddenFilms';
+  // ── Hidden-films cookie ───────────────────────────────────────────────────
 
   function getHidden() {
     const match = document.cookie.match(/(?:^|;\s*)hiddenFilms=([^;]*)/);
@@ -164,8 +170,28 @@
 
   function setHidden(titles) {
     const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-    document.cookie = COOKIE + '=' + encodeURIComponent(JSON.stringify(titles)) + '; expires=' + expires + '; path=/; SameSite=Lax';
+    document.cookie = 'hiddenFilms=' + encodeURIComponent(JSON.stringify(titles)) + '; expires=' + expires + '; path=/; SameSite=Lax';
   }
+
+  // ── Cinema-filter cookie ──────────────────────────────────────────────────
+
+  function getDisabledCinemas() {
+    const match = document.cookie.match(/(?:^|;\s*)disabledCinemas=([^;]*)/);
+    try { return match ? JSON.parse(decodeURIComponent(match[1])) : []; } catch { return []; }
+  }
+
+  function setDisabledCinemas(list) {
+    const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+    document.cookie = 'disabledCinemas=' + encodeURIComponent(JSON.stringify(list)) + '; expires=' + expires + '; path=/; SameSite=Lax';
+  }
+
+  const ALL_CINEMAS = @Html(play.api.libs.json.Json.toJson(allCinemas).toString);
+
+  function getAllCinemas() {
+    return ALL_CINEMAS;
+  }
+
+  // ── Hidden-films panel ────────────────────────────────────────────────────
 
   function updateNavbar() {
     const hidden = getHidden();
@@ -180,11 +206,9 @@
       list.innerHTML = '';
       hidden.forEach(title => {
         const item = document.createElement('div');
+        item.className = 'panel-item';
         item.textContent = title;
         item.title = title;
-        item.style.cssText = 'padding:5px 8px; cursor:pointer; border-radius:4px; font-size:.8rem; color:#eee; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:280px';
-        item.onmouseover = () => item.style.background = '#3a3a6e';
-        item.onmouseout  = () => item.style.background = '';
         item.onclick = () => restoreFilm(title);
         list.appendChild(item);
       });
@@ -198,6 +222,7 @@
     event.stopPropagation();
     const panel = document.getElementById('hidden-panel');
     panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    document.getElementById('cinema-panel').style.display = 'none';
   }
 
   function hideFilm(btn) {
@@ -221,36 +246,156 @@
     updateNavbar();
   }
 
+  // ── Cinema-filter panel ───────────────────────────────────────────────────
+
+  function buildCinemaPanel() {
+    const disabled = getDisabledCinemas();
+    const allCinemas = getAllCinemas();
+    const list = document.getElementById('cinema-list');
+    list.innerHTML = '';
+    allCinemas.forEach(cinema => {
+      const label = document.createElement('label');
+      label.className = 'panel-label';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !disabled.includes(cinema);
+      cb.onchange = () => {
+        const dis = getDisabledCinemas();
+        if (cb.checked) {
+          setDisabledCinemas(dis.filter(c => c !== cinema));
+        } else {
+          if (!dis.includes(cinema)) dis.push(cinema);
+          setDisabledCinemas(dis);
+        }
+        syncAllCheckbox();
+        updateCinemaBtn();
+        applyFilters();
+      };
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' ' + cinema));
+      list.appendChild(label);
+    });
+    syncAllCheckbox();
+    updateCinemaBtn();
+  }
+
+  function syncAllCheckbox() {
+    const disabled = getDisabledCinemas();
+    const total = getAllCinemas().length;
+    const allCb = document.getElementById('cinema-all');
+    allCb.checked = disabled.length === 0;
+    allCb.indeterminate = disabled.length > 0 && disabled.length < total;
+  }
+
+  function updateCinemaBtn() {
+    const disabled = getDisabledCinemas();
+    const total = getAllCinemas().length;
+    const btn = document.getElementById('cinema-filter-btn');
+    btn.textContent = disabled.length > 0 ? 'Kina (' + (total - disabled.length) + '/' + total + ')' : 'Kina';
+  }
+
+  function toggleAllCinemas(checked) {
+    setDisabledCinemas(checked ? [] : getAllCinemas());
+    buildCinemaPanel();
+    applyFilters();
+  }
+
+  function toggleCinemaPanel(event) {
+    event.stopPropagation();
+    const panel = document.getElementById('cinema-panel');
+    if (panel.style.display === 'none') {
+      buildCinemaPanel();
+      panel.style.display = 'block';
+    } else {
+      panel.style.display = 'none';
+    }
+    document.getElementById('hidden-panel').style.display = 'none';
+  }
+
+  // ── Master filter ─────────────────────────────────────────────────────────
+
   function applyFilters() {
-    const filter = document.getElementById('date-filter').value;
-    const hidden = getHidden();
-    const today  = new Date().toISOString().slice(0, 10);
-    const in7Days = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const filter   = document.getElementById('date-filter').value;
+    const hidden   = getHidden();
+    const disabled = getDisabledCinemas();
+    const today    = new Date().toISOString().slice(0, 10);
+    const in7Days  = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
     document.querySelectorAll('[data-title]').forEach(col => {
       if (hidden.includes(col.dataset.title)) { col.style.display = 'none'; return; }
 
-      let hasVisible = false;
+      let cardHasVisible = false;
       col.querySelectorAll('.date-group[data-date]').forEach(group => {
         const date = group.dataset.date;
-        const visible = filter === 'today'   ? date === today :
-                        filter === 'week'    ? date >= today && date <= in7Days :
-                        true;
-        group.style.display = visible ? '' : 'none';
-        if (visible) hasVisible = true;
+        const dateOk = filter === 'today' ? date === today :
+                       filter === 'week'  ? date >= today && date <= in7Days :
+                       true;
+        if (!dateOk) { group.style.display = 'none'; return; }
+
+        let groupHasVisible = false;
+        group.querySelectorAll('.cinema-group[data-cinema]').forEach(cg => {
+          const visible = !disabled.includes(cg.dataset.cinema);
+          cg.style.display = visible ? '' : 'none';
+          if (visible) groupHasVisible = true;
+        });
+
+        group.style.display = groupHasVisible ? '' : 'none';
+        if (groupHasVisible) cardHasVisible = true;
       });
 
-      col.style.display = hasVisible ? '' : 'none';
+      col.style.display = cardHasVisible ? '' : 'none';
     });
   }
 
+  // ── Global click: close panels ────────────────────────────────────────────
+
   document.addEventListener('click', () => {
     document.getElementById('hidden-panel').style.display = 'none';
+    document.getElementById('cinema-panel').style.display = 'none';
+  });
+
+  // ── SSE: progressive loading ──────────────────────────────────────────────
+
+  const grid    = document.getElementById('film-grid');
+  const counter = document.getElementById('film-counter');
+  const noFilms = document.getElementById('no-films');
+
+  function updateCounter() {
+    const films     = grid.querySelectorAll('[data-title]').length;
+    const showtimes = grid.querySelectorAll('.badge-time').length;
+    counter.textContent = films + ' tytuł(ów) · ' + showtimes + ' seansów';
+    counter.style.display = '';
+  }
+
+  function onStreamDone() {
+    if (grid.children.length === 0) noFilms.style.display = '';
+  }
+
+  const es = new EventSource('/stream');
+
+  es.addEventListener('message', function(e) {
+    try {
+      grid.innerHTML = JSON.parse(e.data);
+      updateCounter();
+      applyFilters();
+      updateNavbar();
+      updateCinemaBtn();
+    } catch(e) { console.error('SSE parse error', e); }
+  });
+
+  es.addEventListener('done', function() {
+    es.close();
+    onStreamDone();
+  });
+
+  es.addEventListener('error', function() {
+    es.close();
+    onStreamDone();
   });
 
   document.addEventListener('DOMContentLoaded', () => {
-    applyFilters();
     updateNavbar();
+    updateCinemaBtn();
   });
 </script>
 </body>

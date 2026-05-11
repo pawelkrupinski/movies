@@ -1,5 +1,6 @@
 # ── Repertoire ────────────────────────────────────────────────────────────────
-GET     /repertuar                  controllers.MovieController.index
+GET     /repertuar                  controllers.MovieController.index()
+GET     /stream                     controllers.MovieController.stream()
 GET     /film                       controllers.MovieController.film(title: String)
 
 # ── Health ────────────────────────────────────────────────────────────────────
