@@ -318,8 +318,8 @@
     const filter   = document.getElementById('date-filter').value;
     const hidden   = getHidden();
     const disabled = getDisabledCinemas();
-    const today    = new Date().toISOString().slice(0, 10);
-    const in7Days  = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const today    = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+    const in7Days  = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
 
     document.querySelectorAll('[data-title]').forEach(col => {
       if (hidden.includes(col.dataset.title)) { col.style.display = 'none'; return; }

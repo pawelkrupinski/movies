@@ -9,7 +9,7 @@ import services.ShowtimeCache
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.time.{LocalDate, LocalDateTime}
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 import javax.inject.{Inject, Singleton}
 import scala.util.Try
 
@@ -67,7 +67,7 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
       .groupBy(cm => normalizeTitle(cm.movie.title).toLowerCase)
       .toSeq
       .flatMap { case (_, entries) =>
-        val now = LocalDateTime.now()
+        val now = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
 
         // Prefer non-Bułgarska titles: that cinema uses sentence case which may differ from others.
         // Fall back to Bułgarska only if it is the sole source for this film.
