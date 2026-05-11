@@ -1,0 +1,6 @@
+target/
+.git/
+.gitignore
+.scala-build/
+logs/
+RUNNING_PID
