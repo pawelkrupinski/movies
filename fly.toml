@@ -1,5 +1,10 @@
-app = 'filmowo'
-primary_region = 'waw'
+# fly.toml app configuration file generated for kinowo on 2026-05-11T21:25:43Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'kinowo'
+primary_region = 'ams'
 
 [build]
   dockerfile = 'Dockerfile'
@@ -10,7 +15,7 @@ primary_region = 'waw'
 [http_service]
   internal_port = 9000
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
 
@@ -19,17 +24,18 @@ primary_region = 'waw'
     hard_limit = 50
     soft_limit = 25
 
+[checks]
+  [checks.health]
+    port = 9000
+    type = 'http'
+    interval = '15s'
+    timeout = '10s'
+    grace_period = '30s'
+    method = 'GET'
+    path = '/health'
+
 [[vm]]
   memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
-
-[checks]
-  [checks.health]
-    grace_period = '30s'
-    interval = '15s'
-    method = 'GET'
-    path = '/health'
-    port = 9000
-    timeout = '10s'
-    type = 'http'
+  memory_mb = 512
