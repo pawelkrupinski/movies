@@ -1,0 +1,248 @@
+@(allCinemas: Seq[String])
+<script>
+  // ── Hidden-films cookie ───────────────────────────────────────────────────
+
+  function getHidden() {
+    const match = document.cookie.match(/(?:^|;\s*)hiddenFilms=([^;]*)/);
+    try { return match ? JSON.parse(decodeURIComponent(match[1])) : []; } catch { return []; }
+  }
+
+  function setHidden(titles) {
+    const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+    document.cookie = 'hiddenFilms=' + encodeURIComponent(JSON.stringify(titles)) + '; expires=' + expires + '; path=/; SameSite=Lax';
+  }
+
+  // ── Cinema-filter cookie ──────────────────────────────────────────────────
+
+  function getDisabledCinemas() {
+    const match = document.cookie.match(/(?:^|;\s*)disabledCinemas=([^;]*)/);
+    try { return match ? JSON.parse(decodeURIComponent(match[1])) : []; } catch { return []; }
+  }
+
+  function setDisabledCinemas(list) {
+    const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+    document.cookie = 'disabledCinemas=' + encodeURIComponent(JSON.stringify(list)) + '; expires=' + expires + '; path=/; SameSite=Lax';
+  }
+
+  const ALL_CINEMAS = @Html(play.api.libs.json.Json.toJson(allCinemas).toString);
+
+  // ── Hidden-films panel ────────────────────────────────────────────────────
+
+  function updateNavbar() {
+    const hidden = getHidden();
+    const btn = document.getElementById('show-hidden-btn');
+    const panel = document.getElementById('hidden-panel');
+    if (hidden.length > 0) {
+      btn.style.setProperty('display', 'inline-flex', 'important');
+      btn.textContent = hidden.length + ' ukrytych';
+      const list = document.getElementById('hidden-panel-list');
+      list.innerHTML = '';
+      hidden.forEach(title => {
+        const item = document.createElement('div');
+        item.className = 'panel-item';
+        item.textContent = title;
+        item.title = title;
+        item.onclick = () => restoreFilm(title);
+        list.appendChild(item);
+      });
+    } else {
+      btn.style.setProperty('display', 'none', 'important');
+      panel.style.display = 'none';
+    }
+  }
+
+  function clampPanel(panel) {
+    panel.style.right = '0px';
+    const rect = panel.getBoundingClientRect();
+    if (rect.left < 8) panel.style.right = (rect.left - 8) + 'px';
+  }
+
+  function toggleHiddenPanel(event) {
+    event.stopPropagation();
+    const panel = document.getElementById('hidden-panel');
+    const opening = panel.style.display === 'none';
+    panel.style.display = opening ? 'block' : 'none';
+    if (opening) clampPanel(panel);
+    document.getElementById('cinema-panel').style.display = 'none';
+  }
+
+  function hideFilm(btn) {
+    const title = btn.closest('[data-title]').dataset.title;
+    const hidden = getHidden();
+    if (!hidden.includes(title)) { hidden.push(title); setHidden(hidden); }
+    applyFilters();
+    updateNavbar();
+  }
+
+  function restoreFilm(title) {
+    setHidden(getHidden().filter(t => t !== title));
+    applyFilters();
+    updateNavbar();
+  }
+
+  function showAllFilms() {
+    setHidden([]);
+    applyFilters();
+    updateNavbar();
+  }
+
+  // ── Cinema-filter panel ───────────────────────────────────────────────────
+
+  function buildCinemaPanel() {
+    const disabled = getDisabledCinemas();
+    const list = document.getElementById('cinema-list');
+    list.innerHTML = '';
+    ALL_CINEMAS.forEach(cinema => {
+      const label = document.createElement('label');
+      label.className = 'panel-label';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !disabled.includes(cinema);
+      cb.onchange = () => {
+        const dis = getDisabledCinemas();
+        if (cb.checked) {
+          setDisabledCinemas(dis.filter(c => c !== cinema));
+        } else {
+          if (!dis.includes(cinema)) dis.push(cinema);
+          setDisabledCinemas(dis);
+        }
+        syncAllCheckbox();
+        updateCinemaBtn();
+        applyFilters();
+      };
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' ' + cinema));
+      list.appendChild(label);
+    });
+    syncAllCheckbox();
+    updateCinemaBtn();
+  }
+
+  function syncAllCheckbox() {
+    const disabled = getDisabledCinemas();
+    const allCb = document.getElementById('cinema-all');
+    allCb.checked = disabled.length === 0;
+    allCb.indeterminate = disabled.length > 0 && disabled.length < ALL_CINEMAS.length;
+  }
+
+  function updateCinemaBtn() {
+    const disabled = getDisabledCinemas();
+    const btn = document.getElementById('cinema-filter-btn');
+    btn.textContent = disabled.length > 0
+      ? 'Kina (' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.length + ')'
+      : 'Kina';
+  }
+
+  function toggleAllCinemas(checked) {
+    setDisabledCinemas(checked ? [] : ALL_CINEMAS.slice());
+    buildCinemaPanel();
+    applyFilters();
+  }
+
+  function toggleCinemaPanel(event) {
+    event.stopPropagation();
+    const panel = document.getElementById('cinema-panel');
+    if (panel.style.display === 'none') {
+      buildCinemaPanel();
+      panel.style.display = 'block';
+      clampPanel(panel);
+    } else {
+      panel.style.display = 'none';
+    }
+    document.getElementById('hidden-panel').style.display = 'none';
+  }
+
+  // ── Keyboard navigation ───────────────────────────────────────────────────
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowLeft')  stepDate(-1);
+    if (e.key === 'ArrowRight') stepDate(1);
+  });
+
+  // ── Global click: close panels ────────────────────────────────────────────
+
+  document.addEventListener('click', () => {
+    document.getElementById('hidden-panel').style.display = 'none';
+    document.getElementById('cinema-panel').style.display = 'none';
+  });
+
+  // ── Counter ───────────────────────────────────────────────────────────────
+
+  function updateCounter(visibleCount, showtimeCount) {
+    const noFilms = document.getElementById('no-films');
+    const counter = document.getElementById('film-counter');
+    if (visibleCount === 0) {
+      noFilms.style.display = '';
+      counter.style.display = 'none';
+    } else {
+      noFilms.style.display = 'none';
+      counter.textContent = visibleCount + ' tytuł(ów) · ' + showtimeCount + ' seansów';
+      counter.style.display = '';
+    }
+  }
+
+  // ── Date helpers ──────────────────────────────────────────────────────────
+
+  function isoAddDays(isoDate, n) {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    return new Date(y, m - 1, d + n).toLocaleDateString('sv');
+  }
+
+  const DAY2   = ['Nie', 'Pon', 'Wto', 'Śro', 'Czw', 'Pią', 'Sob'];
+  const MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca',
+                  'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+
+  let _cachedDay = null, _cachedToday, _cachedTomorrow, _cachedIn7Days;
+
+  function dateBounds() {
+    const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+    if (today !== _cachedDay) {
+      _cachedDay      = today;
+      _cachedToday    = today;
+      _cachedTomorrow = isoAddDays(today, 1);
+      _cachedIn7Days  = isoAddDays(today, 6);
+    }
+    return { today: _cachedToday, tomorrow: _cachedTomorrow, in7Days: _cachedIn7Days };
+  }
+
+  function populateDayOptions() {
+    const select  = document.getElementById('date-filter');
+    const weekOpt = select.querySelector('option[value="week"]');
+    const today   = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+    for (let i = 2; i <= 6; i++) {
+      const iso = isoAddDays(today, i);
+      const [y, mo, da] = iso.split('-').map(Number);
+      const dow = new Date(y, mo - 1, da).getDay();
+      const opt = document.createElement('option');
+      opt.value = iso;
+      opt.textContent = DAY2[dow] + ' ' + da + ' ' + MONTHS[mo - 1];
+      select.insertBefore(opt, weekOpt);
+    }
+  }
+
+  function stepDate(dir) {
+    const sel  = document.getElementById('date-filter');
+    const next = sel.selectedIndex + dir;
+    if (next >= 0 && next < sel.options.length) { sel.selectedIndex = next; applyFilters(); }
+  }
+
+  function squareDateNavBtns() {
+    const h = document.getElementById('date-filter').offsetHeight;
+    document.querySelectorAll('.date-nav-btn').forEach(b => {
+      b.style.width  = h + 'px';
+      b.style.height = h + 'px';
+    });
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+
+  document.addEventListener('DOMContentLoaded', () => {
+    buildIndex();
+    populateDayOptions();
+    squareDateNavBtns();
+    updateNavbar();
+    updateCinemaBtn();
+    applyFilters();
+  });
+</script>

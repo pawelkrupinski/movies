@@ -1,0 +1,43 @@
+@(activePage: String)
+<nav class="navbar px-4 py-3 d-flex align-items-center" style="flex-wrap:wrap; gap:.4rem">
+  <div class="d-flex align-items-center gap-3" style="flex-shrink:0">
+    <span class="fw-bold fs-5">🎬<span class="navbar-title"> Repertuar kinowy Poznań</span></span>
+    <div class="d-flex gap-1">
+      <a href="/" class="nav-tab@if(activePage == "films"){ active}">Filmy</a>
+      <a href="/kina" class="nav-tab@if(activePage == "kina"){ active}">Kina</a>
+    </div>
+  </div>
+  <div class="d-flex gap-2 align-items-center navbar-cinema-controls">
+    <div style="position:relative">
+      <button id="show-hidden-btn" onclick="toggleHiddenPanel(event)" class="btn refresh-btn btn-sm" style="display:none!important"></button>
+      <div id="hidden-panel" class="dropdown-panel" style="display:none">
+        <div id="hidden-panel-list"></div>
+        <div class="panel-divider">
+          <button onclick="showAllFilms()" class="btn refresh-btn btn-sm w-100">Pokaż wszystkie</button>
+        </div>
+      </div>
+    </div>
+    <div style="position:relative">
+      <button id="cinema-filter-btn" onclick="toggleCinemaPanel(event)" class="btn refresh-btn btn-sm">Kina</button>
+      <div id="cinema-panel" class="dropdown-panel" style="display:none" onclick="event.stopPropagation()">
+        <label class="panel-label" style="border-bottom:1px solid #3a3a6e; margin-bottom:4px; padding-bottom:8px;">
+          <input type="checkbox" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> Wszystkie kina
+        </label>
+        <div id="cinema-list"></div>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex gap-2 align-items-center navbar-search-date">
+    <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFilters()">
+    <div class="d-flex align-items-stretch" style="gap:2px">
+      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
+      <select id="date-filter" class="filter-select" onchange="applyFilters()">
+        <option value="today">Dzisiaj</option>
+        <option value="tomorrow">Jutro</option>
+        <option value="week">Następne 7 dni</option>
+        <option value="anytime">Kiedykolwiek</option>
+      </select>
+      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
+    </div>
+  </div>
+</nav>
