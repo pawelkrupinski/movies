@@ -66,7 +66,7 @@ class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle, env: Environment)
   })
 
   // Blocks until at least LoadThreshold cinemas have completed their first fetch.
-  def get(disabledCinemas: Set[String] = Set.empty): Seq[CinemaMovie] = {
+  def get(): Seq[CinemaMovie] = {
     thresholdLatch.await()
     sources.flatMap { case (cinema, _) => Option(cache.getIfPresent(cinema)).getOrElse(Seq.empty) }.toSeq
   }

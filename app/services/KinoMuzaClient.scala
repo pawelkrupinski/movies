@@ -41,7 +41,7 @@ object KinoMuzaClient {
     parseHtml(response.body())
   }
 
-  private val RuntimePat = """(\d+)\s*min""".r
+  private val RuntimePat = """(\d+)'""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {

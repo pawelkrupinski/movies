@@ -6,6 +6,8 @@ import play.api.libs.json._
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.LocalDateTime
+import java.util.concurrent.Executors
+import scala.util.Try
 
 object KinoPalacoweClient {
 
@@ -17,15 +19,44 @@ object KinoPalacoweClient {
     .followRedirects(HttpClient.Redirect.NORMAL)
     .build()
 
-  def fetch(): Seq[CinemaMovie] =
-    fetchAllEntries()
+  private val RuntimePat = "(\\d+)'".r
+
+  private def fetchFilmRuntime(filmUrl: String): Option[Int] =
+    Try {
+      val req = HttpRequest.newBuilder()
+        .uri(URI.create(filmUrl))
+        .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+        .header("Accept", "text/html")
+        .GET()
+        .build()
+      val body = httpClient.send(req, HttpResponse.BodyHandlers.ofString()).body()
+      RuntimePat.findAllMatchIn(body)
+        .flatMap(m => Try(m.group(1).toInt).toOption)
+        .filter(n => n >= 30 && n <= 300)
+        .toSeq.headOption
+    }.toOption.flatten
+
+  def fetch(): Seq[CinemaMovie] = {
+    val entries = fetchAllEntries()
+
+    val pool = Executors.newFixedThreadPool(8)
+    val runtimeByUrl: Map[String, Option[Int]] =
+      try {
+        entries.flatMap(_.filmUrl).distinct
+          .map(url => url -> pool.submit[Option[Int]](() => fetchFilmRuntime(url)))
+          .map { case (url, f) => url -> f.get() }
+          .toMap
+      } finally pool.shutdown()
+
+    entries
       .groupBy(_.movieTitle)
       .toSeq
-      .map { case (title, entries) =>
-        val sorted = entries.sortBy(_.dateTime)
-        val first  = sorted.head
+      .map { case (title, group) =>
+        val sorted  = group.sortBy(_.dateTime)
+        val first   = sorted.head
+        val runtime = first.filmUrl.flatMap(runtimeByUrl.get).flatten
         CinemaMovie(
-          movie     = Movie(title, first.runtimeMinutes),
+          movie     = Movie(title, runtime),
           cinema    = KinoPalacowe,
           posterUrl = first.posterUrl,
           filmUrl   = first.filmUrl,
@@ -35,6 +66,7 @@ object KinoPalacoweClient {
           showtimes = sorted.map(entry => Showtime(entry.dateTime, entry.bookingUrl, entry.room))
         )
       }
+  }
 
   // ── Pagination ─────────────────────────────────────────────────────────────
 

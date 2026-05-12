@@ -2,51 +2,34 @@
 @(films: Seq[FilmSchedule])
 @for(film <- films) {
 <div class="col" data-title="@film.movie.title">
-  <div class="card">
-    <div class="poster-wrap">
-      <button class="hide-btn" onclick="hideFilm(this)" title="Ukryj film">✕</button>
-      <a href="/film?title=@java.net.URLEncoder.encode(film.movie.title, "UTF-8")" style="display:block;height:100%">
-        @film.posterUrl match {
-          case Some(url) => { <img src="@url" alt="@film.movie.title" loading="lazy"> }
-          case None      => { <div class="no-poster">🎬</div> }
-        }
-      </a>
-    </div>
-    <div class="card-body">
-      <div class="card-title">
-        <a href="/film?title=@java.net.URLEncoder.encode(film.movie.title, "UTF-8")">@film.movie.title</a>
-      </div>
-      @film.movie.runtimeMinutes.map { mins =>
-        <div class="runtime">@{mins / 60}h @{mins % 60}min</div>
-      }
-      @for((date, cinemaShowtimesList) <- film.showings) {
-        <div class="date-group" data-date="@date">
-          <div class="date-label">@DateFormatter.format(date)</div>
-          @for(cinemaShowtimes <- cinemaShowtimesList) {
-            <div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName">
-              <div class="cinema-label">
-                @film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {
-                  case Some((_, url)) => { <a href="@url" target="_blank" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a> }
-                  case None           => { @cinemaShowtimes.cinema.displayName }
-                }
-              </div>
-              <div>
-                @for(slot <- cinemaShowtimes.showtimes) {
-                  @defining(slot.room.map(r => Html(s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""")).getOrElse(Html(""))) { roomAttr =>
-                  @defining(slot.format.map(f => Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(f)}</span>""")).getOrElse(Html(""))) { fmtBadge =>
-                    @slot.bookingUrl match {
-                      case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</a> }
-                      case None      => { <span class="badge-time"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</span> }
-                    }
-                  }
-                  }
-                }
-              </div>
+  @_movieCard(film.movie, film.posterUrl) {
+    @for((date, cinemaShowtimesList) <- film.showings) {
+      <div class="date-group" data-date="@date">
+        <div class="date-label">@DateFormatter.format(date)</div>
+        @for(cinemaShowtimes <- cinemaShowtimesList) {
+          <div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName">
+            <div class="cinema-label">
+              @film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {
+                case Some((_, url)) => { <a href="@url" target="_blank" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a> }
+                case None           => { @cinemaShowtimes.cinema.displayName }
+              }
             </div>
-          }
-        </div>
-      }
-    </div>
-  </div>
+            <div>
+              @for(slot <- cinemaShowtimes.showtimes) {
+                @defining(slot.room.map(r => Html(s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""")).getOrElse(Html(""))) { roomAttr =>
+                @defining(slot.format.map(f => Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(f)}</span>""")).getOrElse(Html(""))) { fmtBadge =>
+                  @slot.bookingUrl match {
+                    case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</a> }
+                    case None      => { <span class="badge-time"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</span> }
+                  }
+                }
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
 </div>
 }

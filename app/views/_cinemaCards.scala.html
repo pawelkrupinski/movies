@@ -6,39 +6,25 @@
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6">
     @for(film <- cs.movies) {
     <div class="col" data-title="@film.movie.title">
-      <div class="card">
-        <div class="poster-wrap">
-          <button class="hide-btn" onclick="hideFilm(this)" title="Ukryj film">✕</button>
-          <a href="/film?title=@java.net.URLEncoder.encode(film.movie.title, "UTF-8")" style="display:block;height:100%">
-            @film.posterUrl match {
-              case Some(url) => { <img src="@url" alt="@film.movie.title" loading="lazy"> }
-              case None      => { <div class="no-poster">🎬</div> }
-            }
-          </a>
-        </div>
-        <div class="card-body">
-          <div class="card-title">
-            <a href="/film?title=@java.net.URLEncoder.encode(film.movie.title, "UTF-8")">@film.movie.title</a>
-          </div>
-          @for((date, showtimes) <- film.showings) {
-            <div class="date-group" data-date="@date">
-              <div class="date-label">@DateFormatter.format(date)</div>
-              <div>
-                @for(slot <- showtimes) {
-                  @defining(slot.room.map(r => Html(s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""")).getOrElse(Html(""))) { roomAttr =>
-                  @defining(slot.format.map(f => Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(f)}</span>""")).getOrElse(Html(""))) { fmtBadge =>
-                    @slot.bookingUrl match {
-                      case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</a> }
-                      case None      => { <span class="badge-time"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</span> }
-                    }
-                  }
+      @_movieCard(film.movie, film.posterUrl) {
+        @for((date, showtimes) <- film.showings) {
+          <div class="date-group" data-date="@date">
+            <div class="date-label">@DateFormatter.format(date)</div>
+            <div>
+              @for(slot <- showtimes) {
+                @defining(slot.room.map(r => Html(s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""")).getOrElse(Html(""))) { roomAttr =>
+                @defining(slot.format.map(f => Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(f)}</span>""")).getOrElse(Html(""))) { fmtBadge =>
+                  @slot.bookingUrl match {
+                    case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</a> }
+                    case None      => { <span class="badge-time"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</span> }
                   }
                 }
-              </div>
+                }
+              }
             </div>
-          }
-        </div>
-      </div>
+          </div>
+        }
+      }
     </div>
     }
   </div>

@@ -51,19 +51,22 @@ object KinoBulgarskaClient {
       }
     }
 
-  private def extractMeta(section: Element): (Option[String], Option[Int]) =
+  private val RuntimePat = """(\d+)\s*min""".r
+
+  private def extractMeta(section: Element): (Option[String], Option[Int], Option[Int]) =
     Option(section.selectFirst("p.movie-meta")).map { meta =>
       val text = meta.text()
-      if (!text.startsWith("reż. ")) (None, None)
+      if (!text.startsWith("reż. ")) (None, None, None)
       else {
         val afterRez = text.stripPrefix("reż. ")
         val parts    = afterRez.split(",\\s*")
         val yearIdx  = parts.indexWhere(_.matches("\\d{4} r\\."))
         val director = if (yearIdx > 1) Some(parts.take(yearIdx - 1).mkString(", ")) else None
         val year     = if (yearIdx >= 0) Try(parts(yearIdx).replaceAll("[^0-9]", "").toInt).toOption else None
-        (director, year)
+        val runtime  = RuntimePat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)
+        (director, year, runtime)
       }
-    }.getOrElse((None, None))
+    }.getOrElse((None, None, None))
 
   def fetch(): Seq[CinemaMovie] = {
     val response = httpClient.send(buildRequest(PageUrl), HttpResponse.BodyHandlers.ofString())
@@ -74,7 +77,7 @@ object KinoBulgarskaClient {
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val doc            = Jsoup.parse(html)
-    val filmByUrl      = collection.mutable.Map[String, (String, Option[String], Option[String], Option[String], Option[Int])]()
+    val filmByUrl      = collection.mutable.Map[String, (String, Option[String], Option[String], Option[String], Option[Int], Option[Int])]()
     val showtimesByUrl = collection.mutable.Map[String, collection.mutable.ListBuffer[Showtime]]()
 
     doc.select("article").asScala.foreach { article =>
@@ -101,9 +104,9 @@ object KinoBulgarskaClient {
             val posterUrl = Option(section.selectFirst("img[src]")).map { img =>
               img.attr("src").replaceAll("-\\d+x\\d+(\\.jpg)", "$1")
             }
-            val synopsis         = Option(section.selectFirst("p:not(.movie-meta)")).map(_.text()).filter(_.nonEmpty)
-            val (director, year) = extractMeta(section)
-            filmByUrl(filmUrl) = (title, posterUrl, synopsis, director, year)
+            val synopsis                    = Option(section.selectFirst("p:not(.movie-meta)")).map(_.text()).filter(_.nonEmpty)
+            val (director, year, runtime)   = extractMeta(section)
+            filmByUrl(filmUrl) = (title, posterUrl, synopsis, director, year, runtime)
           }
 
           timeOpt.foreach { dateTime =>
@@ -113,10 +116,10 @@ object KinoBulgarskaClient {
       }
     }
 
-    filmByUrl.toSeq.flatMap { case (filmUrl, (title, posterUrl, synopsis, director, year)) =>
+    filmByUrl.toSeq.flatMap { case (filmUrl, (title, posterUrl, synopsis, director, year, runtime)) =>
       showtimesByUrl.get(filmUrl).map { slots =>
         CinemaMovie(
-          movie     = Movie(title, releaseYear = year),
+          movie     = Movie(title, runtimeMinutes = runtime, releaseYear = year),
           cinema    = KinoBulgarska,
           posterUrl = posterUrl,
           filmUrl   = Some(filmUrl),

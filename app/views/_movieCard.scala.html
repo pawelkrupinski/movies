@@ -1,0 +1,21 @@
+@import models.Movie
+@(movie: Movie, posterUrl: Option[String])(showingsContent: Html)
+<div class="card">
+  <div class="poster-wrap">
+    <button class="hide-btn" onclick="hideFilm(this)" title="Ukryj film">✕</button>
+    <a href="/film?title=@java.net.URLEncoder.encode(movie.title, "UTF-8")" style="display:block;height:100%">
+      @posterUrl match {
+        case Some(url) => { <img src="@url" alt="@movie.title" loading="lazy"> }
+        case None      => { <div class="no-poster">🎬</div> }
+      }
+    </a>
+  </div>
+  <div class="card-body">
+    <div class="card-title">
+      <a href="/film?title=@java.net.URLEncoder.encode(movie.title, "UTF-8")">@movie.title</a>@movie.runtimeMinutes.filter(_ > 0).map { mins =>
+  <span class="pill runtime">@{mins / 60}h@if(mins % 60 != 0){ @{mins % 60}min}</span>
+}
+    </div>
+    @showingsContent
+  </div>
+</div>

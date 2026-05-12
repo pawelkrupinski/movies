@@ -20,6 +20,7 @@
       align-items: baseline;
     }
     .movie-title { color: #aad4ff; font-weight: bold; font-size: 13px; }
+    .movie-runtime { font-size: 10px; color: #99b; font-weight: normal; margin-left: 5px; }
     .pill {
       background: #252540;
       border: 1px solid #3a3a6e;
@@ -44,7 +45,9 @@
     .st-date { color: #666; font-size: 10px; margin-right: 1px; }
     .st-time { color: #aad4ff; }
     .st-room { color: #e8c48a; font-size: 10px; padding: 0 3px; background: #2a2010; border-radius: 2px; }
-    .st-book { color: #7c7; font-size: 9px; }
+    .st-fmt  { color: #c8a4e8; font-size: 10px; padding: 0 3px; background: #201028; border-radius: 2px; }
+    .st-book { color: #7c7; font-size: 9px; text-decoration: none; }
+    .st-book:hover { text-decoration: underline; }
     .no-data { color: #444; font-style: italic; }
     .tag { background: #1e2e1e; border: 1px solid #2a4a2a; border-radius: 3px; padding: 0 4px; font-size: 10px; color: #9c9; margin-right: 3px; }
     input[type=search] {
@@ -69,10 +72,12 @@
   @defining(group.sortBy(_.cinema.displayName)) { entries =>
   <div class="movie" data-title="@entries.head.movie.title.toLowerCase">
     <div class="movie-header">
-      <span class="movie-title">@entries.head.movie.title</span>
-      @defining(entries.flatMap(_.movie.runtimeMinutes).headOption) { rt =>
-        @rt.map { r => <span class="pill">@{r} min</span> }
-      }
+      <span class="movie-title">
+        @entries.head.movie.title
+        @defining(entries.flatMap(_.movie.runtimeMinutes).headOption) { rt =>
+          @rt.map { r => <span class="movie-runtime">@{r} min</span> }
+        }
+      </span>
       @defining(entries.flatMap(_.movie.releaseYear).headOption) { yr =>
         @yr.map { y => <span class="pill">@y</span> }
       }
@@ -98,8 +103,11 @@
       @cm.movie.premiereWorld.map { d => <span class="pill hi">World @d</span> }
 
       <div class="meta-row">
-        @cm.filmUrl.map { u => <a href="@u" target="_blank">filmUrl ↗</a> · }
-        @if(cm.posterUrl.isDefined) { <span class="tag">poster</span> } else { <span style="color:#444;font-size:10px">no poster</span> }
+        @cm.filmUrl.map { u => <a href="@u" target="_blank">filmUrl ↗</a> }
+        @cm.posterUrl match {
+          case Some(u) => { · <a href="@u" target="_blank" class="tag">poster ↗</a> }
+          case None    => { · <span style="color:#444;font-size:10px">no poster</span> }
+        }
         @cm.director.map { d => · dir: <strong>@d</strong> }
         @cm.cast.map { c => · cast: @{if(c.length > 80) c.take(80) + "…" else c} }
       </div>
@@ -111,13 +119,26 @@
       }
 
       <div class="showtimes">
-        @for(st <- cm.showtimes) {
-          <span class="st">
-            <span class="st-date">@{st.dateTime.toLocalDate}</span>
-            <span class="st-time">@{st.dateTime.toLocalTime}</span>
-            @st.room.map { r => <span class="st-room">@r</span> }
-            @st.bookingUrl.map { _ => <span class="st-book">✓</span> }
-          </span>
+        @defining(cm.showtimes.flatMap(_.format)) { allFmts =>
+        @defining(if (allFmts.isEmpty) Set.empty[String] else allFmts.map(_.split("/").toSet).reduce(_ intersect _)) { commonToks =>
+        @defining(allFmts.map(f => f.split("/").filterNot(commonToks.contains).mkString("/")).filter(_.nonEmpty).distinct.size > 1) { multiFormat =>
+          @for(st <- cm.showtimes) {
+            <span class="st">
+              <span class="st-date">@{st.dateTime.toLocalDate}</span>
+              @st.bookingUrl match {
+                case Some(url) => { <a href="@url" class="st-time st-book" target="_blank">@{st.dateTime.toLocalTime}</a> }
+                case None      => { <span class="st-time">@{st.dateTime.toLocalTime}</span> }
+              }
+              @st.room.map { r => <span class="st-room">@r</span> }
+              @if(multiFormat) {
+                @defining(st.format.map(f => f.split("/").filterNot(commonToks.contains).mkString("/")).filter(_.nonEmpty)) { stripped =>
+                  @stripped.map { f => <span class="st-fmt">@f</span> }
+                }
+              }
+            </span>
+          }
+        }
+        }
         }
         @if(cm.showtimes.isEmpty) { <span class="no-data">no showtimes</span> }
       </div>

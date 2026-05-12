@@ -37,31 +37,23 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
   extends AbstractController(cc) {
 
   def index(): Action[AnyContent] = Action { request =>
-    val disabled = disabledCinemas(request)
-    Ok(views.html.repertoire(toSchedules(cache.get(disabled)), Cinema.all.map(_.displayName)))
+    Ok(views.html.repertoire(toSchedules(cache.get()), Cinema.all.map(_.displayName)))
   }
 
   def kina(): Action[AnyContent] = Action { request =>
-    val disabled = disabledCinemas(request)
-    Ok(views.html.kina(toCinemaSchedules(cache.get(disabled)), Cinema.all.map(_.displayName)))
+    Ok(views.html.kina(toCinemaSchedules(cache.get()), Cinema.all.map(_.displayName)))
   }
 
   def debug(): Action[AnyContent] = Action {
-    Ok(views.html.debug(cache.get(Set.empty)))
+    Ok(views.html.debug(cache.get()))
   }
 
   def film(title: String): Action[AnyContent] = Action { request =>
-    val disabled = disabledCinemas(request)
-    toSchedules(cache.get(disabled)).find(_.movie.title == normalizeTitle(title)) match {
+    toSchedules(cache.get()).find(_.movie.title == normalizeTitle(title)) match {
       case Some(schedule) => Ok(views.html.film(schedule))
       case None           => NotFound(s"Film not found: $title")
     }
   }
-
-  private def disabledCinemas(request: RequestHeader): Set[String] =
-    request.cookies.get("disabledCinemas").flatMap { c =>
-      Try(Json.parse(URLDecoder.decode(c.value, StandardCharsets.UTF_8)).as[Seq[String]]).toOption
-    }.map(_.toSet).getOrElse(Set.empty)
 
   private def toSchedules(cinemaMovies: Seq[CinemaMovie]): Seq[FilmSchedule] = {
     cinemaMovies
@@ -104,8 +96,9 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
           // Multikino first so its metadata takes priority; others fill gaps
           val metaPriority = entries.sortBy(e => if (e.cinema == Multikino) 0 else 1)
 
+          val runtimeMinutes: Option[Int] = entries.flatMap(_.movie.runtimeMinutes).headOption
           Some((earliest, FilmSchedule(
-            movie = Movie(displayTitle),
+            movie = Movie(displayTitle, runtimeMinutes),
             posterUrl = metaPriority.flatMap(_.posterUrl).headOption,
             synopsis = metaPriority.flatMap(_.synopsis).headOption,
             cast = metaPriority.flatMap(_.cast).headOption,
@@ -133,7 +126,7 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
               .toSeq.sortBy(_._1)
               .map { case (date, sts) => (date, sts.sortBy(_.dateTime)) }
             Some(CinemaMovieSchedule(
-              movie     = Movie(normalizeTitle(entry.movie.title)),
+              movie     = entry.movie.copy(title = normalizeTitle(entry.movie.title)),
               posterUrl = entry.posterUrl,
               filmUrl   = entry.filmUrl,
               showings  = byDate

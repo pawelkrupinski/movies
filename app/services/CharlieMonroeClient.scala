@@ -114,7 +114,7 @@ object CharlieMonroeClient {
           title     <- (json \ "workPresented" \ "name").asOpt[String]
           startDate <- (json \ "startDate").asOpt[String]
         } yield {
-          val runtimeMinutes = (json \ "duration").asOpt[String].flatMap(parseDuration)
+          val runtimeMinutes = (json \ "workPresented" \ "duration").asOpt[String].flatMap(parseDuration)
           val releaseYear    = (json \ "workPresented" \ "dateCreated").asOpt[Int]
                                  .orElse((json \ "workPresented" \ "copyrightYear").asOpt[Int])
           ScreeningEntry(
