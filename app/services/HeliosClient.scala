@@ -5,7 +5,8 @@ import play.api.libs.json._
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
+import java.time.format.DateTimeFormatter
 import scala.collection.mutable
 import scala.util.Try
 
@@ -15,6 +16,9 @@ object HeliosClient {
   private val CinemaSourceId = "815face9-2a1d-4c62-9b2f-a361574b79a2"
   private val BaseUrl        = "https://helios.pl/poznan/kino-helios"
   private val BookingBase    = "https://bilety.helios.pl/screen"
+  private val ApiBase        = "https://restapi.helios.pl/api"
+  private val WarsawZone     = ZoneId.of("Europe/Warsaw")
+  private val OffsetDtf      = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
   private val httpClient = HttpClient.newBuilder()
     .version(HttpClient.Version.HTTP_1_1)
@@ -30,6 +34,15 @@ object HeliosClient {
       .GET()
       .build()
 
+  private def buildApiRequest(url: String): HttpRequest =
+    HttpRequest.newBuilder()
+      .uri(URI.create(url))
+      .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+      .header("Accept", "application/json, text/plain, */*")
+      .header("Origin", "https://bilety.helios.pl")
+      .GET()
+      .build()
+
   def fetch(): Seq[CinemaMovie] = {
     val repertoireResponse = httpClient.send(buildRequest(PageUrl), HttpResponse.BodyHandlers.ofString())
     if (repertoireResponse.statusCode() != 200)
@@ -42,6 +55,9 @@ object HeliosClient {
       .flatMap(_.filmUrl)
       .toSeq.distinct
       .map(url => url -> httpClient.sendAsync(buildRequest(url), HttpResponse.BodyHandlers.ofString()))
+
+    // While pages download, fetch room data from billing API (runs in this thread)
+    val timeToRoom = Try(fetchRoomMap()).getOrElse(Map.empty[LocalDateTime, String])
 
     val pageMetaByUrl: Map[String, MoviePageMeta] = pendingPages.flatMap { case (url, future) =>
       Try(parseMoviePage(future.join().body())).toOption.map(url -> _)
@@ -67,10 +83,59 @@ object HeliosClient {
           synopsis  = pageMeta.flatMap(_.synopsis),
           cast      = pageMeta.flatMap(_.cast),
           director  = pageMeta.flatMap(_.director),
-          showtimes = slots.sortBy(_._1).map { case (dateTime, bookingUrl) => Showtime(dateTime, bookingUrl) }
+          showtimes = slots.sortBy(_._1).map { case (dateTime, bookingUrl) =>
+            Showtime(dateTime, bookingUrl, timeToRoom.get(dateTime))
+          }
         )
       }
     }
+  }
+
+  // ── Room data from billing API ────────────────────────────────────────────
+  //
+  // GET /cinema/{id}/screening?dateTimeFrom=...&dateTimeTo=... returns all
+  // screenings with their screenId. GET /cinema/{id}/screen/{screenId} gives
+  // the screen name ("Sala 3", "Sala 5 - Dream", …). We then build a map of
+  // screeningTimeFrom (Warsaw local) → room name for Showtime construction.
+
+  private def fetchRoomMap(): Map[LocalDateTime, String] = {
+    val today = LocalDate.now(WarsawZone)
+    val in6   = today.plusDays(6)
+    val screeningsUrl = s"$ApiBase/cinema/$CinemaSourceId/screening" +
+      s"?dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
+
+    val screResp = httpClient.send(buildApiRequest(screeningsUrl), HttpResponse.BodyHandlers.ofString())
+    if (screResp.statusCode() != 200) return Map.empty
+
+    val screenings = Try(Json.parse(screResp.body()).as[JsArray]).getOrElse(return Map.empty).value
+
+    // Unique screenIds → fetch names concurrently
+    val screenIds = screenings.flatMap(s => (s \ "screenId").asOpt[String]).distinct
+    val pendingScreens = screenIds.map { screenId =>
+      screenId -> httpClient.sendAsync(
+        buildApiRequest(s"$ApiBase/cinema/$CinemaSourceId/screen/$screenId"),
+        HttpResponse.BodyHandlers.ofString()
+      )
+    }
+    val screenNames: Map[String, String] = pendingScreens.flatMap { case (screenId, future) =>
+      Try {
+        val r = future.join()
+        if (r.statusCode() == 200) (Json.parse(r.body()) \ "name").asOpt[String].map(screenId -> _)
+        else None
+      }.toOption.flatten
+    }.toMap
+
+    screenings.flatMap { s =>
+      for {
+        timeStr  <- (s \ "screeningTimeFrom").asOpt[String]
+        screenId <- (s \ "screenId").asOpt[String]
+        name     <- screenNames.get(screenId)
+      } yield {
+        val localTime = ZonedDateTime.parse(timeStr, OffsetDtf)
+          .withZoneSameInstant(WarsawZone).toLocalDateTime
+        localTime -> name
+      }
+    }.toMap
   }
 
   // ── Repertoire page ───────────────────────────────────────────────────────

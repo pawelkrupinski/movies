@@ -1,6 +1,7 @@
 package clients
 
 import models.{CinemaMovie, Movie, Multikino, Showtime}
+import play.api.Logging
 import play.api.libs.json._
 
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
@@ -11,13 +12,13 @@ import java.time.LocalDateTime
 
 // ── Multikino client ───────────────────────────────────────────────────────
 
-object MultikinoClient {
+object MultikinoClient extends Logging {
 
-  private val HomeUrl       = "https://www.multikino.pl/"
-  private val ApiUrl        = "https://www.multikino.pl/api/microservice/showings/cinemas/0011/films?minEmbargoLevel=2&includesSession=true&includeSessionAttributes=true"
-  private val ScraperApiUrl = "https://api.scraperapi.com/"
+  private val HomeUrl        = "https://www.multikino.pl/"
+  private val ApiUrl         = "https://www.multikino.pl/api/microservice/showings/cinemas/0011/films?minEmbargoLevel=2&includesSession=true&includeSessionAttributes=true"
+  private val ScrapingAntUrl = "https://api.scrapingant.com/v2/general"
 
-  private val scraperApiKey: Option[String] = Option(System.getenv("SCRAPERAPI_KEY")).filter(_.nonEmpty)
+  private val scrapingAntKey: Option[String] = Option(System.getenv("SCRAPINGANT_KEY")).filter(_.nonEmpty)
 
   private val cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL)
 
@@ -27,10 +28,11 @@ object MultikinoClient {
     .cookieHandler(cookieManager)
     .build()
 
-  private def scraperRequest(key: String): HttpRequest = {
+  private def scrapingAntRequest(key: String): HttpRequest = {
     val encoded = URLEncoder.encode(ApiUrl, StandardCharsets.UTF_8)
     HttpRequest.newBuilder()
-      .uri(URI.create(s"$ScraperApiUrl?api_key=$key&url=$encoded&render=true&country_code=pl"))
+      .uri(URI.create(s"$ScrapingAntUrl?url=$encoded&browser=true&proxy_country=pl&return_page_source=true"))
+      .header("x-api-key", key)
       .header("Accept", "application/json, text/plain, */*")
       .GET()
       .build()
@@ -59,11 +61,12 @@ object MultikinoClient {
     )
 
   def fetch(): Seq[CinemaMovie] = {
-    val body = scraperApiKey match {
+    val body = scrapingAntKey match {
       case Some(key) =>
-        val response = httpClient.send(scraperRequest(key), HttpResponse.BodyHandlers.ofString())
-        if (response.statusCode() != 200)
-          throw new RuntimeException(s"ScraperAPI returned ${response.statusCode()}: ${response.body().take(500)}")
+        val response = httpClient.send(scrapingAntRequest(key), HttpResponse.BodyHandlers.ofString())
+        val status   = response.statusCode()
+        if (status != 200)
+          throw new RuntimeException(s"ScrapingAnt returned $status: ${response.body().take(500)}")
         response.body()
       case None =>
         val response = httpClient.send(apiRequest(), HttpResponse.BodyHandlers.ofString())

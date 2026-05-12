@@ -3,7 +3,7 @@ package services
 import clients.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoBulgarskaClient, KinoPalacoweClient, KinoMuzaClient, MultikinoClient, RialtoClient}
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, Helios, KinoBulgarska, KinoPalacowe, KinoMuza, Multikino, Rialto}
-import play.api.Logging
+import play.api.{Environment, Logging, Mode}
 import play.api.inject.ApplicationLifecycle
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -12,7 +12,12 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 
 @Singleton
-class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle) extends Logging {
+class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle, env: Environment) extends Logging {
+
+  logger.info(s"Starting — commit ${Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")}")
+
+  if (env.mode == Mode.Prod && Option(System.getenv("SCRAPINGANT_KEY")).forall(_.isEmpty))
+    throw new RuntimeException("SCRAPINGANT_KEY must be set in production")
 
   private val cache: Cache[Cinema, Seq[CinemaMovie]] = Caffeine.newBuilder().build()
 

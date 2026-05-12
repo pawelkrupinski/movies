@@ -5,5 +5,6 @@ import java.time.LocalDateTime
 case class Showtime(
   dateTime:   LocalDateTime,
   bookingUrl: Option[String],
-  room:       Option[String] = None
+  room:       Option[String] = None,
+  format:     Option[String] = None
 )

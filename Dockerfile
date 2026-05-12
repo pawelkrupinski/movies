@@ -20,6 +20,8 @@ RUN sbt stage
 
 # ── Runtime image ─────────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre
+ARG COMMIT_SHA=unknown
+ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app
 COPY --from=build /app/target/universal/stage .
 EXPOSE 9000
