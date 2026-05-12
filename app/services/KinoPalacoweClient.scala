@@ -100,6 +100,8 @@ object KinoPalacoweClient {
     else {
       val rawTitle  = (entry \ "title").asOpt[String].getOrElse("")
       val title     = rawTitle.split(" \\| ").head.trim
+        .stripPrefix("Poranek dla dzieci: ")
+        .stripPrefix("DKF Zamek: ")
       val startDate = (entry \ "start_date").asOpt[String]
       val startTime = (entry \ "start_time").asOpt[String]
 

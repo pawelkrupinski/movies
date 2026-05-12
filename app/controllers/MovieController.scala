@@ -1,8 +1,6 @@
 package controllers
 
 import models._
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
 import play.api.libs.json.Json
 import play.api.mvc._
 import services.ShowtimeCache
@@ -25,28 +23,27 @@ case class FilmSchedule(
                          showings: Seq[(LocalDate, Seq[CinemaShowtimes])]
                        )
 
+case class CinemaMovieSchedule(
+                                movie: Movie,
+                                posterUrl: Option[String],
+                                filmUrl: Option[String],
+                                showings: Seq[(LocalDate, Seq[Showtime])]
+                              )
+
+case class CinemaSchedule(cinema: Cinema, movies: Seq[CinemaMovieSchedule])
+
 @Singleton
 class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
   extends AbstractController(cc) {
 
-  def index(): Action[AnyContent] = Action { _ =>
-    Ok(views.html.repertoire(Cinema.all.map(_.displayName)))
+  def index(): Action[AnyContent] = Action { request =>
+    val disabled = disabledCinemas(request)
+    Ok(views.html.repertoire(toSchedules(cache.get(disabled)), Cinema.all.map(_.displayName)))
   }
 
-  def stream(): Action[AnyContent] = Action { request =>
-    val disabled  = disabledCinemas(request)
-    val sseSource: Source[ByteString, _] =
-      cache.stream(disabled)
-        .scan(Seq.empty[CinemaMovie])(_ ++ _)
-        .drop(1)
-        .map { accumulated =>
-          val html = views.html._filmCards(toSchedules(accumulated)).body
-          ByteString(s"data: ${Json.toJson(html)}\n\n")
-        }
-        .concat(Source.single(ByteString("event: done\ndata: {}\n\n")))
-    Ok.chunked(sseSource)
-      .as("text/event-stream")
-      .withHeaders("Cache-Control" -> "no-cache", "X-Accel-Buffering" -> "no")
+  def kina(): Action[AnyContent] = Action { request =>
+    val disabled = disabledCinemas(request)
+    Ok(views.html.kina(toCinemaSchedules(cache.get(disabled)), Cinema.all.map(_.displayName)))
   }
 
   def film(title: String): Action[AnyContent] = Action { request =>
@@ -116,6 +113,33 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
       }
       .sortBy(_._1)
       .map(_._2)
+  }
+
+  private def toCinemaSchedules(cinemaMovies: Seq[CinemaMovie]): Seq[CinemaSchedule] = {
+    val now = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
+    Cinema.all.flatMap { cinema =>
+      val movies = cinemaMovies
+        .filter(_.cinema == cinema)
+        .flatMap { entry =>
+          val future = entry.showtimes.filter(_.dateTime.isAfter(now.minusMinutes(30)))
+          if (future.isEmpty) None
+          else {
+            val byDate = future
+              .groupBy(_.dateTime.toLocalDate)
+              .toSeq.sortBy(_._1)
+              .map { case (date, sts) => (date, sts.sortBy(_.dateTime)) }
+            Some(CinemaMovieSchedule(
+              movie     = Movie(normalizeTitle(entry.movie.title)),
+              posterUrl = entry.posterUrl,
+              filmUrl   = entry.filmUrl,
+              showings  = byDate
+            ))
+          }
+        }
+        .sortBy(_.showings.head._1)
+      if (movies.isEmpty) None
+      else Some(CinemaSchedule(cinema, movies))
+    }
   }
 
   // Replaces standalone Arabic numerals (1–20) with Roman numerals so that

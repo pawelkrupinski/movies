@@ -81,7 +81,7 @@ object CinemaCityClient {
       .flatMap { case (filmId, slots) =>
         allFilms.get(filmId).map { info =>
           CinemaMovie(
-            movie     = Movie(info.name),
+            movie     = Movie(info.name.stripPrefix("Ladies Night - ")),
             cinema    = cinema,
             posterUrl = info.posterLink,
             filmUrl   = info.filmLink,

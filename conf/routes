@@ -1,7 +1,7 @@
 # ── Repertoire ────────────────────────────────────────────────────────────────
 GET     /                           controllers.MovieController.index()
-GET     /stream                     controllers.MovieController.stream()
 GET     /film                       controllers.MovieController.film(title: String)
+GET     /kina                       controllers.MovieController.kina()
 
 # ── Health ────────────────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check

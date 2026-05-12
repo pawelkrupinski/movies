@@ -51,7 +51,11 @@ object HeliosClient {
       movieInfoMap.get(movieId).map { info =>
         val pageMeta = info.filmUrl.flatMap(pageMetaByUrl.get)
         CinemaMovie(
-          movie     = Movie(info.title),
+          movie     = Movie(info.title
+            .stripSuffix(" w Helios RePlay")
+            .stripSuffix(" w Helios Anime")
+            .stripSuffix(" w Helios na Scenie")
+            .stripSuffix(" - Salon Kultury Helios")),
           cinema    = Helios,
           posterUrl = info.posterUrl,
           filmUrl   = info.filmUrl,

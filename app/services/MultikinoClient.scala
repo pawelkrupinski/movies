@@ -89,7 +89,8 @@ object MultikinoClient {
     val films = (Json.parse(json) \ "result").as[JsArray].value
 
     films.map { film =>
-      val movie     = Movie(title = (film \ "filmTitle").as[String])
+      val rawTitle  = (film \ "filmTitle").as[String]
+      val movie     = Movie(title = rawTitle.replaceFirst("^Kino na obcasach:\\s*", ""))
       val posterUrl = (film \ "posterImageSrc").asOpt[String].filter(_.nonEmpty)
       val filmUrl   = (film \ "filmUrl").asOpt[String].filter(_.nonEmpty)
                         .map(url => if (url.startsWith("http")) url else s"https://www.multikino.pl$url")
