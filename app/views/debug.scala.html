@@ -1,0 +1,140 @@
+@import models.{CinemaMovie, Movie}
+@(movies: Seq[CinemaMovie])
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Debug – Repertuar</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font: 12px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 1rem; }
+    h1 { font-size: 14px; color: #aad4ff; margin: 0 0 .5rem; }
+    .summary { color: #666; margin-bottom: 1rem; font-size: 11px; }
+    .movie { margin: .6rem 0; border: 1px solid #2a2a3e; border-radius: 4px; overflow: hidden; }
+    .movie-header {
+      background: #1a1a2e;
+      padding: .3rem .6rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      align-items: baseline;
+    }
+    .movie-title { color: #aad4ff; font-weight: bold; font-size: 13px; }
+    .pill {
+      background: #252540;
+      border: 1px solid #3a3a6e;
+      border-radius: 3px;
+      padding: 0 5px;
+      font-size: 10px;
+      color: #99b;
+      white-space: nowrap;
+    }
+    .pill.hi { color: #fc9; border-color: #554422; background: #2a2010; }
+    .entry { padding: .3rem .6rem; border-top: 1px solid #1a1a2e; }
+    .entry:hover { background: #111120; }
+    .cinema-name { color: #7cbb7c; font-weight: bold; }
+    .ext-ids { color: #888; font-size: 10px; }
+    .meta-row { margin: .15rem 0; color: #888; font-size: 11px; }
+    .meta-row a { color: #669fcc; text-decoration: none; }
+    .meta-row a:hover { text-decoration: underline; }
+    .synopsis { color: #666; font-size: 10px; max-width: 80ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+    .synopsis:hover, .synopsis.expanded { white-space: normal; overflow: visible; }
+    .showtimes { margin-top: .2rem; }
+    .st { display: inline-flex; align-items: center; gap: 2px; margin: 1px 5px 1px 0; }
+    .st-date { color: #666; font-size: 10px; margin-right: 1px; }
+    .st-time { color: #aad4ff; }
+    .st-room { color: #e8c48a; font-size: 10px; padding: 0 3px; background: #2a2010; border-radius: 2px; }
+    .st-book { color: #7c7; font-size: 9px; }
+    .no-data { color: #444; font-style: italic; }
+    .tag { background: #1e2e1e; border: 1px solid #2a4a2a; border-radius: 3px; padding: 0 4px; font-size: 10px; color: #9c9; margin-right: 3px; }
+    input[type=search] {
+      background: #1a1a2e; border: 1px solid #3a3a6e; color: #eee;
+      padding: .2rem .5rem; border-radius: 4px; font: 12px monospace;
+      width: 300px; margin-bottom: .5rem;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<h1>Debug – Raw CinemaMovie Data</h1>
+<div class="summary">
+  @movies.size entries · @movies.map(_.cinema).distinct.size cinemas ·
+  @movies.groupBy(_.movie.title.toLowerCase.trim).size unique titles
+</div>
+
+<input type="search" id="q" placeholder="Filter by title…" oninput="filterMovies(this.value)">
+
+@for((_, group) <- movies.groupBy(cm => cm.movie.title.toLowerCase.trim).toSeq.sortBy(_._1)) {
+  @defining(group.sortBy(_.cinema.displayName)) { entries =>
+  <div class="movie" data-title="@entries.head.movie.title.toLowerCase">
+    <div class="movie-header">
+      <span class="movie-title">@entries.head.movie.title</span>
+      @defining(entries.flatMap(_.movie.runtimeMinutes).headOption) { rt =>
+        @rt.map { r => <span class="pill">@{r} min</span> }
+      }
+      @defining(entries.flatMap(_.movie.releaseYear).headOption) { yr =>
+        @yr.map { y => <span class="pill">@y</span> }
+      }
+      @defining(entries.flatMap(_.movie.premierePl).headOption) { pl =>
+        @pl.map { d => <span class="pill hi">PL @d</span> }
+      }
+      @defining(entries.flatMap(_.movie.premiereWorld).headOption) { w =>
+        @w.map { d => <span class="pill hi">World @d</span> }
+      }
+      <span class="pill">@entries.size cinema(s)</span>
+      <span class="pill">@entries.flatMap(_.showtimes).size showings</span>
+    </div>
+
+    @for(cm <- entries) {
+    <div class="entry">
+      <span class="cinema-name">@cm.cinema.displayName</span>
+      @if(cm.externalIds.nonEmpty) {
+        <span class="ext-ids">[@cm.externalIds.toSeq.sortBy(_._1).map { case (k,v) => s"$k:$v" }.mkString(" · ")]</span>
+      }
+      @cm.movie.runtimeMinutes.map { r => <span class="pill">@{r} min</span> }
+      @cm.movie.releaseYear.map { y => <span class="pill">@y</span> }
+      @cm.movie.premierePl.map { d => <span class="pill hi">PL @d</span> }
+      @cm.movie.premiereWorld.map { d => <span class="pill hi">World @d</span> }
+
+      <div class="meta-row">
+        @cm.filmUrl.map { u => <a href="@u" target="_blank">filmUrl ↗</a> · }
+        @if(cm.posterUrl.isDefined) { <span class="tag">poster</span> } else { <span style="color:#444;font-size:10px">no poster</span> }
+        @cm.director.map { d => · dir: <strong>@d</strong> }
+        @cm.cast.map { c => · cast: @{if(c.length > 80) c.take(80) + "…" else c} }
+      </div>
+
+      @cm.synopsis.map { s =>
+        <div class="synopsis" onclick="this.classList.toggle('expanded')">
+          synopsis (@{s.length}): @s
+        </div>
+      }
+
+      <div class="showtimes">
+        @for(st <- cm.showtimes) {
+          <span class="st">
+            <span class="st-date">@{st.dateTime.toLocalDate}</span>
+            <span class="st-time">@{st.dateTime.toLocalTime}</span>
+            @st.room.map { r => <span class="st-room">@r</span> }
+            @st.bookingUrl.map { _ => <span class="st-book">✓</span> }
+          </span>
+        }
+        @if(cm.showtimes.isEmpty) { <span class="no-data">no showtimes</span> }
+      </div>
+    </div>
+    }
+  </div>
+  }
+}
+
+<script>
+  function filterMovies(q) {
+    const lq = q.trim().toLowerCase();
+    document.querySelectorAll('.movie').forEach(el => {
+      el.classList.toggle('hidden', lq.length > 0 && !el.dataset.title.includes(lq));
+    });
+  }
+  document.getElementById('q').focus();
+</script>
+</body>
+</html>

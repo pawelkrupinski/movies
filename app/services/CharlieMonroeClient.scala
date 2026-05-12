@@ -43,8 +43,21 @@ object CharlieMonroeClient {
       .flatMap(parseScreeningEvent)
       .toSeq
 
+    // Build (lowercaseTitle, "DD.MM.YYYY", "HH:MM") → hall name from HTML articles
+    val roomMap = collection.mutable.Map[(String, String, String), String]()
     val detailsByTitle = doc.select("article.movie-card").asScala.flatMap { article =>
       Option(article.selectFirst("h2.title")).map(_.text().trim).map { title =>
+        article.select(".showtimes-row").asScala.foreach { row =>
+          val hall = Option(row.selectFirst(".hall-label")).map(_.text().trim).filter(_.nonEmpty)
+          hall.foreach { hallName =>
+            row.select("button.btn-showtime").asScala.foreach { btn =>
+              val time = Option(btn.selectFirst("span.time")).map(_.text().trim)
+              val date = Option(btn.selectFirst("span.price")).map(_.text().trim)
+              for (t <- time; d <- date)
+                roomMap((title.toLowerCase, d, t)) = hallName
+            }
+          }
+        }
         val filmUrl   = Option(article.selectFirst("a[href*=/movies/]")).map(_.attr("href"))
         val synopsis  = Option(article.selectFirst("p.desc")).map(_.text().replaceAll("\\.{3,}$", "").trim).filter(_.nonEmpty)
         val posterUrl = Option(article.selectFirst("img[data-src]")).map(_.attr("data-src"))
@@ -66,7 +79,12 @@ object CharlieMonroeClient {
           synopsis  = details.synopsis,
           cast      = None,
           director  = None,
-          showtimes = sorted.map(event => Showtime(event.dateTime, event.bookingUrl))
+          showtimes = sorted.map { event =>
+            val dateKey = "%02d.%02d.%d".format(event.dateTime.getDayOfMonth, event.dateTime.getMonthValue, event.dateTime.getYear)
+            val timeKey = "%02d:%02d".format(event.dateTime.getHour, event.dateTime.getMinute)
+            val room    = roomMap.get((title.toLowerCase, dateKey, timeKey))
+            Showtime(event.dateTime, event.bookingUrl, room)
+          }
         )
       }
   }
@@ -80,6 +98,12 @@ object CharlieMonroeClient {
     bookingUrl: Option[String]
   )
 
+  private def parseDuration(iso: String): Option[Int] =
+    """PT(?:(\d+)H)?(?:(\d+)M)?""".r.findFirstMatchIn(iso).map { m =>
+      Option(m.group(1)).map(_.toInt * 60).getOrElse(0) +
+      Option(m.group(2)).map(_.toInt).getOrElse(0)
+    }.filter(_ > 0)
+
   private def parseScreeningEvent(json: JsValue): Option[ScreeningEntry] =
     Try {
       val eventType = (json \ "@type").asOpt[String]
@@ -89,12 +113,17 @@ object CharlieMonroeClient {
         for {
           title     <- (json \ "workPresented" \ "name").asOpt[String]
           startDate <- (json \ "startDate").asOpt[String]
-        } yield ScreeningEntry(
-          movie      = Movie(title),
-          dateTime   = ZonedDateTime.parse(startDate).toLocalDateTime,
-          posterUrl  = (json \ "workPresented" \ "image").asOpt[String].filter(_.nonEmpty),
-          bookingUrl = (json \ "offers" \ "url").asOpt[String].filter(_.nonEmpty)
-        )
+        } yield {
+          val runtimeMinutes = (json \ "duration").asOpt[String].flatMap(parseDuration)
+          val releaseYear    = (json \ "workPresented" \ "dateCreated").asOpt[Int]
+                                 .orElse((json \ "workPresented" \ "copyrightYear").asOpt[Int])
+          ScreeningEntry(
+            movie      = Movie(title, runtimeMinutes, releaseYear),
+            dateTime   = ZonedDateTime.parse(startDate).toLocalDateTime,
+            posterUrl  = (json \ "workPresented" \ "image").asOpt[String].filter(_.nonEmpty),
+            bookingUrl = (json \ "offers" \ "url").asOpt[String].filter(_.nonEmpty)
+          )
+        }
       }
     }.toOption.flatten
 }

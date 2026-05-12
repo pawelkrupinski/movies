@@ -46,6 +46,10 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
     Ok(views.html.kina(toCinemaSchedules(cache.get(disabled)), Cinema.all.map(_.displayName)))
   }
 
+  def debug(): Action[AnyContent] = Action {
+    Ok(views.html.debug(cache.get(Set.empty)))
+  }
+
   def film(title: String): Action[AnyContent] = Action { request =>
     val disabled = disabledCinemas(request)
     toSchedules(cache.get(disabled)).find(_.movie.title == normalizeTitle(title)) match {

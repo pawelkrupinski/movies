@@ -25,14 +25,14 @@ object KinoPalacoweClient {
         val sorted = entries.sortBy(_.dateTime)
         val first  = sorted.head
         CinemaMovie(
-          movie     = Movie(title),
+          movie     = Movie(title, first.runtimeMinutes),
           cinema    = KinoPalacowe,
           posterUrl = first.posterUrl,
           filmUrl   = first.filmUrl,
           synopsis  = None,
           cast      = None,
           director  = None,
-          showtimes = sorted.map(entry => Showtime(entry.dateTime, entry.bookingUrl))
+          showtimes = sorted.map(entry => Showtime(entry.dateTime, entry.bookingUrl, entry.room))
         )
       }
 
@@ -71,11 +71,13 @@ object KinoPalacoweClient {
   // ── JSON parsing ───────────────────────────────────────────────────────────
 
   private case class ScreeningEntry(
-    movieTitle: String,
-    dateTime:   LocalDateTime,
-    posterUrl:  Option[String],
-    filmUrl:    Option[String],
-    bookingUrl: Option[String]
+    movieTitle:     String,
+    dateTime:       LocalDateTime,
+    posterUrl:      Option[String],
+    filmUrl:        Option[String],
+    bookingUrl:     Option[String],
+    room:           Option[String] = None,
+    runtimeMinutes: Option[Int]    = None
   )
 
   private def parseJson(json: String): (Seq[ScreeningEntry], Boolean) = {
@@ -114,12 +116,18 @@ object KinoPalacoweClient {
         val photoPath = (entry \ "photo" \ "sizes" \ "lg").asOpt[String]
                           .filter(_.nonEmpty)
                           .orElse((entry \ "photo" \ "image").asOpt[String].filter(_.nonEmpty))
+        val room = (entry \ "category").asOpt[String].filter(_.nonEmpty)
+        val runtime = (entry \ "duration").asOpt[Int]
+                        .orElse((entry \ "runtime").asOpt[Int])
+                        .orElse((entry \ "length").asOpt[Int])
         ScreeningEntry(
-          movieTitle = title,
-          dateTime   = dateTime,
-          posterUrl  = photoPath.map(path => if (path.startsWith("http")) path else s"$BaseUrl$path"),
-          filmUrl    = filmUrl,
-          bookingUrl = (entry \ "ticket_url").asOpt[String].filter(_.nonEmpty)
+          movieTitle     = title,
+          dateTime       = dateTime,
+          posterUrl      = photoPath.map(path => if (path.startsWith("http")) path else s"$BaseUrl$path"),
+          filmUrl        = filmUrl,
+          bookingUrl     = (entry \ "ticket_url").asOpt[String].filter(_.nonEmpty),
+          room           = room,
+          runtimeMinutes = runtime
         )
       }
     }

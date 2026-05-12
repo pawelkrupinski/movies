@@ -49,13 +49,18 @@ object HeliosClient {
 
     showtimesByMovie.toSeq.flatMap { case (movieId, slots) =>
       movieInfoMap.get(movieId).map { info =>
-        val pageMeta = info.filmUrl.flatMap(pageMetaByUrl.get)
+        val pageMeta  = info.filmUrl.flatMap(pageMetaByUrl.get)
+        val cleanTitle = info.title
+          .stripSuffix(" w Helios RePlay")
+          .stripSuffix(" w Helios Anime")
+          .stripSuffix(" w Helios na Scenie")
+          .stripSuffix(" - Salon Kultury Helios")
         CinemaMovie(
-          movie     = Movie(info.title
-            .stripSuffix(" w Helios RePlay")
-            .stripSuffix(" w Helios Anime")
-            .stripSuffix(" w Helios na Scenie")
-            .stripSuffix(" - Salon Kultury Helios")),
+          movie     = Movie(
+            title          = cleanTitle,
+            runtimeMinutes = pageMeta.flatMap(_.runtimeMinutes),
+            releaseYear    = pageMeta.flatMap(_.releaseYear)
+          ),
           cinema    = Helios,
           posterUrl = info.posterUrl,
           filmUrl   = info.filmUrl,
@@ -207,7 +212,13 @@ object HeliosClient {
   // Director and cast are literal strings in the NUXT metadata body
   // (not variable references), so no paramMap is needed there.
 
-  private case class MoviePageMeta(synopsis: Option[String], cast: Option[String], director: Option[String])
+  private case class MoviePageMeta(
+    synopsis:       Option[String],
+    cast:           Option[String],
+    director:       Option[String],
+    runtimeMinutes: Option[Int],
+    releaseYear:    Option[Int]
+  )
 
   private val LiteralFieldPat  = (field: String) => raw"""$field:"((?:[^"\\]|\\.)*)"""".r
   private val JsonLdScriptPat  = """<script[^>]+application/ld\+json[^>]*>(.*?)</script>""".r
@@ -216,12 +227,12 @@ object HeliosClient {
     val synopsis = parseJsonLdDescription(html)
 
     val nuxtIndex = html.lastIndexOf("window.__NUXT__")
-    if (nuxtIndex < 0) return MoviePageMeta(synopsis, None, None)
+    if (nuxtIndex < 0) return MoviePageMeta(synopsis, None, None, None, None)
     val nuxtScript = html.substring(nuxtIndex)
 
     val paramsEnd = nuxtScript.indexOf("){")
     val bodyEnd   = nuxtScript.indexOf("}(")
-    if (paramsEnd < 0 || bodyEnd < 0) return MoviePageMeta(synopsis, None, None)
+    if (paramsEnd < 0 || bodyEnd < 0) return MoviePageMeta(synopsis, None, None, None, None)
 
     val fullBody = nuxtScript.substring(paramsEnd + 2, bodyEnd)
     // Only search in the movie-metadata section (before screenings) to avoid
@@ -235,10 +246,18 @@ object HeliosClient {
         .map(_.group(1))
         .filter(_.nonEmpty)
 
+    def extractInt(field: String): Option[Int] =
+      raw"""$field:(\d+)""".r.findFirstMatchIn(metaBody).flatMap(m => Try(m.group(1).toInt).toOption)
+
+    val runtime = extractInt("duration").orElse(extractInt("runTime")).orElse(extractInt("filmRunTime"))
+    val year    = extractInt("year").orElse(extractInt("releaseYear"))
+
     MoviePageMeta(
-      synopsis = synopsis,
-      cast     = extract("cast"),
-      director = extract("director")
+      synopsis       = synopsis,
+      cast           = extract("cast"),
+      director       = extract("director"),
+      runtimeMinutes = runtime,
+      releaseYear    = year
     )
   }
 

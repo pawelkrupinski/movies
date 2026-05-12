@@ -42,10 +42,16 @@ object CinemaCityClient {
       date -> httpClient.sendAsync(buildRequest(url), HttpResponse.BodyHandlers.ofString())
     }
 
-    case class FilmInfo(name: String, posterLink: Option[String], filmLink: Option[String])
+    case class FilmInfo(
+      name:           String,
+      posterLink:     Option[String],
+      filmLink:       Option[String],
+      runtimeMinutes: Option[Int],
+      releaseYear:    Option[Int]
+    )
 
     val allFilms  = collection.mutable.Map[String, FilmInfo]()
-    val allEvents = collection.mutable.ListBuffer[(String, LocalDateTime, Option[String])]()
+    val allEvents = collection.mutable.ListBuffer[(String, LocalDateTime, Option[String], Option[String])]()
 
     for ((_, future) <- pendingEvents) {
       Try {
@@ -57,9 +63,11 @@ object CinemaCityClient {
           val id = (film \ "id").as[String]
           if (!allFilms.contains(id)) {
             allFilms(id) = FilmInfo(
-              name       = (film \ "name").as[String],
-              posterLink = (film \ "posterLink").asOpt[String].filter(_.nonEmpty),
-              filmLink   = (film \ "link").asOpt[String].filter(_.nonEmpty)
+              name           = (film \ "name").as[String],
+              posterLink     = (film \ "posterLink").asOpt[String].filter(_.nonEmpty),
+              filmLink       = (film \ "link").asOpt[String].filter(_.nonEmpty),
+              runtimeMinutes = (film \ "length").asOpt[Int],
+              releaseYear    = (film \ "releaseYear").asOpt[Int]
             )
           }
         }
@@ -68,8 +76,10 @@ object CinemaCityClient {
           val filmId      = (event \ "filmId").as[String]
           val dateTimeStr = (event \ "eventDateTime").as[String]
           val bookingUrl  = (event \ "bookingLink").asOpt[String].filter(_.nonEmpty)
+          val room        = (event \ "auditoriumTinyName").asOpt[String].filter(_.nonEmpty)
+                            .map(r => """^S0*(\d+)$""".r.replaceFirstIn(r, "Sala $1"))
           Try(LocalDateTime.parse(dateTimeStr)).foreach { dateTime =>
-            allEvents += ((filmId, dateTime, bookingUrl))
+            allEvents += ((filmId, dateTime, bookingUrl, room))
           }
         }
       }
@@ -81,14 +91,15 @@ object CinemaCityClient {
       .flatMap { case (filmId, slots) =>
         allFilms.get(filmId).map { info =>
           CinemaMovie(
-            movie     = Movie(info.name.stripPrefix("Ladies Night - ")),
-            cinema    = cinema,
-            posterUrl = info.posterLink,
-            filmUrl   = info.filmLink,
-            synopsis  = None,
-            cast      = None,
-            director  = None,
-            showtimes = slots.toSeq.map { case (_, dateTime, bookingUrl) => Showtime(dateTime, bookingUrl) }.sortBy(_.dateTime)
+            movie       = Movie(info.name.stripPrefix("Ladies Night - "), info.runtimeMinutes, info.releaseYear),
+            cinema      = cinema,
+            posterUrl   = info.posterLink,
+            filmUrl     = info.filmLink,
+            synopsis    = None,
+            cast        = None,
+            director    = None,
+            showtimes   = slots.toSeq.map { case (_, dateTime, bookingUrl, room) => Showtime(dateTime, bookingUrl, room) }.sortBy(_.dateTime),
+            externalIds = Map("cc" -> filmId)
           )
         }
       }

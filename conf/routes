@@ -3,6 +3,9 @@ GET     /                           controllers.MovieController.index()
 GET     /film                       controllers.MovieController.film(title: String)
 GET     /kina                       controllers.MovieController.kina()
 
+# ── Debug ─────────────────────────────────────────────────────────────────────
+GET     /debug                      controllers.MovieController.debug()
+
 # ── Health ────────────────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check
 

@@ -25,9 +25,11 @@
               <div class="date-label">@DateFormatter.format(date)</div>
               <div>
                 @for(slot <- showtimes) {
-                  @slot.bookingUrl match {
-                    case Some(url) => { <a href="@url" class="badge-time" target="_blank">@{slot.dateTime.toLocalTime}</a> }
-                    case None      => { <span class="badge-time">@{slot.dateTime.toLocalTime}</span> }
+                  @defining(slot.room.map(r => Html(s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""")).getOrElse(Html(""))) { roomAttr =>
+                    @slot.bookingUrl match {
+                      case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr>@{slot.dateTime.toLocalTime}</a> }
+                      case None      => { <span class="badge-time"@roomAttr>@{slot.dateTime.toLocalTime}</span> }
+                    }
                   }
                 }
               </div>

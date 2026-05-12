@@ -89,9 +89,15 @@ object MultikinoClient {
     val films = (Json.parse(json) \ "result").as[JsArray].value
 
     films.map { film =>
-      val rawTitle  = (film \ "filmTitle").as[String]
-      val movie     = Movie(title = rawTitle.replaceFirst("^Kino na obcasach:\\s*", ""))
-      val posterUrl = (film \ "posterImageSrc").asOpt[String].filter(_.nonEmpty)
+      val rawTitle       = (film \ "filmTitle").as[String]
+      val title          = rawTitle.replaceFirst("^Kino na obcasach:\\s*", "")
+      val runtimeMinutes = (film \ "runningTime").asOpt[Int]
+      val releaseYear    = (film \ "releaseDate").asOpt[String]
+                             .flatMap(d => scala.util.Try(java.time.LocalDate.parse(d.take(10)).getYear).toOption)
+      val multikinoId    = (film \ "filmId").asOpt[String].filter(_.nonEmpty)
+      val mxcId          = (film \ "movieXchangeCode").asOpt[String].filter(_.nonEmpty)
+      val movie          = Movie(title, runtimeMinutes, releaseYear)
+      val posterUrl      = (film \ "posterImageSrc").asOpt[String].filter(_.nonEmpty)
       val filmUrl   = (film \ "filmUrl").asOpt[String].filter(_.nonEmpty)
                         .map(url => if (url.startsWith("http")) url else s"https://www.multikino.pl$url")
       val synopsis  = (film \ "synopsisShort").asOpt[String].filter(_.nonEmpty)
@@ -104,20 +110,22 @@ object MultikinoClient {
           (session \ "startTime").asOpt[String].map { startTime =>
             val bookingUrl = (session \ "bookingUrl").asOpt[String]
                               .map(url => if (url.startsWith("http")) url else s"https://www.multikino.pl$url")
-            Showtime(dateTime = LocalDateTime.parse(startTime), bookingUrl = bookingUrl)
+            val room = (session \ "screenName").asOpt[String].filter(_.nonEmpty)
+            Showtime(dateTime = LocalDateTime.parse(startTime), bookingUrl = bookingUrl, room = room)
           }
         }
       }.toSeq
 
       CinemaMovie(
-        movie     = movie,
-        cinema    = Multikino,
-        posterUrl = posterUrl,
-        filmUrl   = filmUrl,
-        synopsis  = synopsis,
-        cast      = cast,
-        director  = director,
-        showtimes = showtimes
+        movie       = movie,
+        cinema      = Multikino,
+        posterUrl   = posterUrl,
+        filmUrl     = filmUrl,
+        synopsis    = synopsis,
+        cast        = cast,
+        director    = director,
+        showtimes   = showtimes,
+        externalIds = (multikinoId.map("mk" -> _) ++ mxcId.map("mxc" -> _)).toMap
       )
     }.toSeq
   }

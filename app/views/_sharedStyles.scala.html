@@ -48,6 +48,24 @@
     text-decoration: none;
   }
   a.badge-time:hover { background: #5a5a9e; color: #fff; }
+  .badge-time[data-room] { position: relative; }
+  .badge-time[data-room]:hover::after,
+  .badge-time[data-room].room-visible::after {
+    content: attr(data-room);
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0e0e1e;
+    color: #ccc;
+    font-size: .68rem;
+    padding: 2px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+    border: 1px solid #3a3a6e;
+    pointer-events: none;
+    z-index: 20;
+  }
   .refresh-btn { background: #3a3a6e; border: none; color: #aad4ff; white-space: nowrap; flex-shrink: 0; }
   .refresh-btn:hover { background: #5a5a9e; color: #fff; }
   .date-nav-btn { padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem; touch-action: manipulation; }

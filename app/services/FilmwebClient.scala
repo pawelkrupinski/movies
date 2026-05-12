@@ -60,13 +60,17 @@ object FilmwebClient {
         }
     }.getOrElse(Seq.empty)
 
-  private def fetchFilmInfo(filmId: Long): Option[(Long, String, Option[String])] =
+  private def fetchFilmInfo(filmId: Long): Option[(Long, Movie, Option[String])] =
     Try {
       val json      = Json.parse(get(s"$BaseUrl/api/v1/title/$filmId/info"))
       val title     = (json \ "title").as[String]
       val posterUrl = (json \ "posterPath").asOpt[String]
         .map(p => s"$CdnUrl/ppo${p.replace("$", "2")}")
-      (filmId, title, posterUrl)
+      val runtime      = (json \ "duration").asOpt[Int]
+      val year         = (json \ "year").asOpt[Int]
+      val premierePl   = (json \ "premierePoland").asOpt[String].flatMap(d => Try(LocalDate.parse(d)).toOption)
+      val premiereW    = (json \ "premiereWorld").asOpt[String].flatMap(d => Try(LocalDate.parse(d)).toOption)
+      (filmId, Movie(title, runtime, year, premierePl, premiereW), posterUrl)
     }.toOption
 
   private def parseHour(h: String): (Int, Int) = {
@@ -108,14 +112,14 @@ object FilmwebClient {
       // Fetch film info for all unique film IDs concurrently
       val uniqueFilmIds = seancesByCinemaAndFilm.keys.map(_._2).toSeq.distinct
       val infoFutures   = uniqueFilmIds.map { id =>
-        pool.submit[Option[(Long, String, Option[String])]](() => fetchFilmInfo(id))
+        pool.submit[Option[(Long, Movie, Option[String])]](() => fetchFilmInfo(id))
       }
-      val filmInfo: Map[Long, (String, Option[String])] =
-        infoFutures.flatMap(_.get()).map { case (id, title, poster) => id -> (title, poster) }.toMap
+      val filmInfo: Map[Long, (Movie, Option[String])] =
+        infoFutures.flatMap(_.get()).map { case (id, movie, poster) => id -> (movie, poster) }.toMap
 
       // Assemble CinemaMovie objects
       seancesByCinemaAndFilm.toSeq.flatMap { case ((cinema, filmId), seances) =>
-        filmInfo.get(filmId).map { case (title, posterUrl) =>
+        filmInfo.get(filmId).map { case (movie, posterUrl) =>
           val showtimes = seances.flatMap { s =>
             s.hours.map { h =>
               val (hour, min) = parseHour(h)
@@ -123,14 +127,15 @@ object FilmwebClient {
             }
           }.sortBy(_.dateTime)
           CinemaMovie(
-            movie     = Movie(title),
-            cinema    = cinema,
-            posterUrl = posterUrl,
-            filmUrl   = Some(s"$BaseUrl/film/$filmId"),
-            synopsis  = None,
-            cast      = None,
-            director  = None,
-            showtimes = showtimes
+            movie       = movie,
+            cinema      = cinema,
+            posterUrl   = posterUrl,
+            filmUrl     = Some(s"$BaseUrl/film/$filmId"),
+            synopsis    = None,
+            cast        = None,
+            director    = None,
+            showtimes   = showtimes,
+            externalIds = Map("filmweb" -> filmId.toString)
           )
         }
       }

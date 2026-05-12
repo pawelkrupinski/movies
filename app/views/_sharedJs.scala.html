@@ -152,6 +152,22 @@
     document.getElementById('hidden-panel').style.display = 'none';
   }
 
+  // ── Room tooltip (long-press on mobile) ──────────────────────────────────
+
+  let _roomTimer = null;
+
+  document.addEventListener('touchstart', e => {
+    const badge = e.target.closest('.badge-time[data-room]');
+    if (!badge) return;
+    _roomTimer = setTimeout(() => {
+      badge.classList.add('room-visible');
+      setTimeout(() => badge.classList.remove('room-visible'), 2000);
+    }, 500);
+  }, { passive: true });
+
+  document.addEventListener('touchend',  () => { clearTimeout(_roomTimer); _roomTimer = null; }, { passive: true });
+  document.addEventListener('touchmove', () => { clearTimeout(_roomTimer); _roomTimer = null; }, { passive: true });
+
   // ── Keyboard navigation ───────────────────────────────────────────────────
 
   document.addEventListener('keydown', e => {

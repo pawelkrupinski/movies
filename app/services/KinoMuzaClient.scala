@@ -41,6 +41,9 @@ object KinoMuzaClient {
     parseHtml(response.body())
   }
 
+  private val RuntimePat = """(\d+)\s*min""".r
+  private val YearPat    = """\b((?:19|20)\d{2})\b""".r
+
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val doc      = Jsoup.parse(html)
     val previews = doc.select("#movies .preview").asScala
@@ -49,10 +52,12 @@ object KinoMuzaClient {
       val title    = Option(preview.selectFirst(".preview-title")).map(_.text().trim).filter(_.nonEmpty)
       val filmUrl  = Option(preview.selectFirst("a[href*=/movie/]")).map(_.attr("href"))
       val posterUrl = Option(preview.selectFirst("img[data-src]")).map(_.attr("data-src"))
-      val director = Option(preview.selectFirst(".f1-bold p")).map(_.text())
-        .flatMap(t => t.split("reż\\.").lift(1))
+      val infoText  = Option(preview.selectFirst(".f1-bold p")).map(_.text()).getOrElse("")
+      val director  = infoText.split("reż\\.").lift(1)
         .map(_.split("[,\n]").head.trim)
         .filter(_.nonEmpty)
+      val runtimeMinutes = RuntimePat.findFirstMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption)
+      val releaseYear    = YearPat.findAllMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption
 
       title.map { t =>
         val showtimes = preview.select(".table-row").asScala.flatMap { row =>
@@ -63,11 +68,14 @@ object KinoMuzaClient {
             items.flatMap { item =>
               val timeText   = Option(item.selectFirst(".ticket-hour")).map(_.text().trim)
               val bookingUrl = Option(item.selectFirst("a.ticket-buy")).map(_.attr("href"))
+              val room       = Option(item.selectFirst("span.text-gold"))
+                                 .map(_.parent().text().trim)
+                                 .filter(_.nonEmpty)
               timeText.flatMap { t =>
                 Try {
                   val parts = t.split(":")
                   Showtime(LocalDateTime.of(date, LocalTime.of(parts(0).toInt, parts(1).toInt)),
-                           bookingUrl)
+                           bookingUrl, room)
                 }.toOption
               }
             }
@@ -75,7 +83,7 @@ object KinoMuzaClient {
         }.toSeq.distinctBy(_.dateTime)
 
         CinemaMovie(
-          movie     = Movie(t),
+          movie     = Movie(t, runtimeMinutes, releaseYear),
           cinema    = KinoMuza,
           posterUrl = posterUrl,
           filmUrl   = filmUrl,

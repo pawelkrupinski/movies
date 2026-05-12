@@ -38,12 +38,17 @@ object RialtoClient {
 
   private val DateTimePat = """- (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) -""".r
 
+  private val RuntimePat = """(\d+)\s*min""".r
+  private val YearPat    = """\b((?:19|20)\d{2})\b""".r
+
   private case class FilmEntry(
-    title:     String,
-    eventUrl:  String,
-    posterUrl: Option[String],
-    synopsis:  Option[String],
-    director:  Option[String]
+    title:          String,
+    eventUrl:       String,
+    posterUrl:      Option[String],
+    synopsis:       Option[String],
+    director:       Option[String],
+    runtimeMinutes: Option[Int]     = None,
+    releaseYear:    Option[Int]     = None
   )
 
   def fetch(): Seq[CinemaMovie] = {
@@ -69,7 +74,7 @@ object RialtoClient {
                                 .sortBy(_.dateTime)
         if (allShowtimes.isEmpty) None
         else Some(CinemaMovie(
-          movie     = Movie(primary.title),
+          movie     = Movie(primary.title, primary.runtimeMinutes, primary.releaseYear),
           cinema    = Rialto,
           posterUrl = primary.posterUrl,
           filmUrl   = Some(primary.eventUrl),
@@ -97,18 +102,21 @@ object RialtoClient {
 
         val posterUrl = Option(block.selectFirst("img[src]")).map(_.attr("src"))
 
-        val (synopsis, director) = Option(block.selectFirst("span.text")) match {
-          case None => (None, None)
+        val (synopsis, director, runtime, year) = Option(block.selectFirst("span.text")) match {
+          case None => (None, None, None, None)
           case Some(span) =>
             val lines    = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
             val dir      = lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim)
             val emptyIdx = lines.indexWhere(_.isEmpty)
             val synLines = if (emptyIdx >= 0) lines.drop(emptyIdx + 1) else Array.empty[String]
             val synText  = synLines.filter(_.nonEmpty).mkString(" ").trim
-            (Option(synText).filter(_.nonEmpty), dir)
+            val fullText = lines.mkString(" ")
+            val rt       = RuntimePat.findFirstMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption)
+            val yr       = YearPat.findAllMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption
+            (Option(synText).filter(_.nonEmpty), dir, rt, yr)
         }
 
-        FilmEntry(title, eventUrl, posterUrl, synopsis, director)
+        FilmEntry(title, eventUrl, posterUrl, synopsis, director, runtime, year)
       }
     }
 
