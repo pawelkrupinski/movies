@@ -1,16 +1,23 @@
 package clients
 
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
+import modules.CacheModule
 import org.scalatest.ParallelTestExecution
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
+import play.api.inject.guice.GuiceApplicationBuilder
 
 class ClientIntegrationSpec
   extends AnyFlatSpec
     with Matchers
     with ParallelTestExecution
     with GuiceOneAppPerSuite {
+
+  override def fakeApplication() =
+    new GuiceApplicationBuilder()
+      .disable[CacheModule]
+      .build()
 
   "MultikinoClient" should "fetch films" in {
     MultikinoClient.fetch() should not be empty

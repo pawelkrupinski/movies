@@ -6,7 +6,6 @@ import tools.{HeliosFetch, HttpFetch}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
-import scala.collection.mutable
 import scala.util.Try
 
 class HeliosClient(http: HttpFetch = HeliosFetch) {
@@ -27,98 +26,163 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
 
     val screeningsUrl = s"$ApiBase/cinema/$CinemaSourceId/screening" +
       s"?dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
-    val apiScreeningsFuture = http.getAsync(screeningsUrl)
+    val screeningsFuture = http.getAsync(screeningsUrl)
 
     val nuxtHtml = http.get(PageUrl)
-    val screeningsBody = Try(apiScreeningsFuture.join()).getOrElse("[]")
+    val screeningsBody = Try(screeningsFuture.join()).getOrElse("[]")
 
     val apiScreeningsById = parseApiScreenings(screeningsBody)
-    val uniqueMovieIds = apiScreeningsById.values.map(_.movieId).toSeq.distinct
-    val uniqueScreenIds = apiScreeningsById.values.map(_.screenId).toSeq.distinct
+    val movieBodies =
+      fetchBodies(apiScreeningsById.values.map(_.movieId).toSeq.distinct)(id => s"$ApiBase/movie/$id")
 
-    val pendingMovies = uniqueMovieIds.map(id => id -> http.getAsync(s"$ApiBase/movie/$id"))
-    val pendingScreens = uniqueScreenIds.map(id => id -> http.getAsync(s"$ApiBase/cinema/$CinemaSourceId/screen/$id"))
+    val screenBodies =
+      fetchBodies(apiScreeningsById.values.map(_.screenId).toSeq.distinct)(id =>
+        s"$ApiBase/cinema/$CinemaSourceId/screen/$id"
+      )
 
-    val movieBodies: Map[String, String] = pendingMovies.flatMap { case (id, f) =>
-      Try(id -> f.join()).toOption
-    }.toMap
-
-    val screenBodies: Map[String, String] = pendingScreens.flatMap { case (id, f) =>
-      Try(id -> f.join()).toOption
-    }.toMap
-
-    buildCinemaMovies(nuxtHtml, screeningsBody, movieBodies, screenBodies)
+    buildCinemaMovies(nuxtHtml, apiScreeningsById, movieBodies, screenBodies)
   }
+
+  private def fetchBodies(ids: Seq[String])(urlFor: String => String): Map[String, String] =
+    ids
+      .map(id => id -> http.getAsync(urlFor(id)))
+      .flatMap { case (id, future) => Try(id -> future.join()).toOption }
+      .toMap
 
   // ── Pure assembly ─────────────────────────────────────────────────────────
 
   private def buildCinemaMovies(
                                  nuxtHtml: String,
-                                 screeningsBody: String,
+                                 apiScreeningsById: Map[String, ApiScreening],
                                  movieBodies: Map[String, String],
                                  screenBodies: Map[String, String]
                                ): Seq[CinemaMovie] = {
     val (movieInfoMap, showtimesByMovie) = parseRepertoirePage(nuxtHtml)
-    val apiScreeningsById = parseApiScreenings(screeningsBody)
 
     val movieDetails: Map[String, ApiMovieInfo] = movieBodies.flatMap { case (id, body) =>
       parseApiMovieBody(body).map(id -> _)
     }
 
     val screenNames: Map[String, String] = screenBodies.flatMap { case (id, body) =>
-      Try((Json.parse(body) \ "name").asOpt[String]).toOption.flatten.map(id -> _)
+      json(body).flatMap(js => (js \ "name").asOpt[String]).map(id -> _)
     }
 
-    showtimesByMovie.toSeq.flatMap { case (nuxtMovieId, slots) =>
-      movieInfoMap.get(nuxtMovieId).map { info =>
-        val apiMovieIdFromScreening: Option[String] =
-          slots
-            .flatMap(_._2)
-            .flatMap(screeningIdFromUrl)
-            .flatMap(apiScreeningsById.get)
-            .map(_.movieId)
-            .headOption
+    val moviesWithKeys: Seq[(String, CinemaMovie)] =
+      showtimesByMovie.toSeq.flatMap { case (nuxtMovieId, slots) =>
+        movieInfoMap.get(nuxtMovieId).map { info =>
+          val apiMovieId = apiMovieIdFor(info, slots, apiScreeningsById)
+          val apiMovie   = apiMovieId.flatMap(movieDetails.get)
+          val movieKey   = apiMovieId.getOrElse(nuxtMovieId)
 
-        val apiMovie =
-          apiMovieIdFromScreening
-            .orElse(info.apiMovieId)
-            .flatMap(movieDetails.get)
+          movieKey -> toCinemaMovie(
+            info              = info,
+            apiMovie          = apiMovie,
+            slots             = slots,
+            apiScreeningsById = apiScreeningsById,
+            screenNames       = screenNames
+          )
+        }
+      }
 
-        val cleanTitle = info.title
-          .stripSuffix(" w Helios RePlay")
-          .stripSuffix(" w Helios Anime")
-          .stripSuffix(" w Helios na Scenie")
-          .stripSuffix(" - Salon Kultury Helios")
-          .stripSuffix(" - KNTJ")
-          .stripSuffix(" - KNT")
+    mergeDuplicateMovies(moviesWithKeys)
+  }
 
-        CinemaMovie(
-          movie = Movie(
-            title = cleanTitle,
-            runtimeMinutes = apiMovie.flatMap(_.duration).orElse(info.runtimeMinutes),
-            releaseYear = apiMovie.flatMap(_.year),
-            premierePl = apiMovie.flatMap(_.premierePl),
-            premiereWorld = apiMovie.flatMap(_.premiereWorld)
-          ),
-          cinema = Helios,
-          posterUrl = apiMovie.flatMap(_.posterUrl).orElse(info.posterUrl),
-          filmUrl = info.filmUrl,
-          synopsis = apiMovie.flatMap(_.description),
-          cast = apiMovie.flatMap(_.cast),
-          director = apiMovie.flatMap(_.director),
-          showtimes = slots.sortBy(_._1).map { case (dateTime, bookingUrl) =>
-            val sc = bookingUrl.flatMap(screeningIdFromUrl).flatMap(apiScreeningsById.get)
-            Showtime(
-              dateTime = dateTime,
-              bookingUrl = bookingUrl,
-              room = sc.map(_.screenId).flatMap(screenNames.get),
-              format = sc.map(_.release).filter(_.nonEmpty)
-            )
-          }
+  private def mergeDuplicateMovies(
+      moviesWithKeys: Seq[(String, CinemaMovie)]
+  ): Seq[CinemaMovie] =
+    moviesWithKeys
+      .groupMap(_._1)(_._2)
+      .values
+      .map { sameMovieRows =>
+        val first = sameMovieRows.head
+
+        first.copy(
+          posterUrl = sameMovieRows.flatMap(_.posterUrl).headOption,
+          filmUrl = sameMovieRows.flatMap(_.filmUrl).headOption,
+          synopsis = sameMovieRows.flatMap(_.synopsis).headOption,
+          cast = sameMovieRows.flatMap(_.cast).headOption,
+          director = sameMovieRows.flatMap(_.director).headOption,
+          showtimes = sameMovieRows.flatMap(_.showtimes).distinct.sortBy(_.dateTime)
         )
       }
-    }
+      .toSeq
+
+  private def apiMovieIdFor(
+      info: MovieMeta,
+      slots: Seq[(LocalDateTime, Option[String])],
+      apiScreeningsById: Map[String, ApiScreening]
+  ): Option[String] =
+    slots
+      .flatMap(_._2)
+      .flatMap(screeningIdFromUrl)
+      .flatMap(apiScreeningsById.get)
+      .map(_.movieId)
+      .headOption
+      .orElse(info.apiMovieId)
+
+  private def toCinemaMovie(
+      info: MovieMeta,
+      apiMovie: Option[ApiMovieInfo],
+      slots: Seq[(LocalDateTime, Option[String])],
+      apiScreeningsById: Map[String, ApiScreening],
+      screenNames: Map[String, String]
+  ): CinemaMovie =
+    CinemaMovie(
+      movie = Movie(
+        title          = cleanTitle(info.title),
+        runtimeMinutes = apiMovie.flatMap(_.duration).orElse(info.runtimeMinutes),
+        releaseYear    = apiMovie.flatMap(_.year),
+        premierePl     = apiMovie.flatMap(_.premierePl),
+        premiereWorld  = apiMovie.flatMap(_.premiereWorld)
+      ),
+      cinema    = Helios,
+      posterUrl = apiMovie.flatMap(_.posterUrl).orElse(info.posterUrl),
+      filmUrl   = info.filmUrl,
+      synopsis  = apiMovie.flatMap(_.description),
+      cast      = apiMovie.flatMap(_.cast),
+      director  = apiMovie.flatMap(_.director),
+      showtimes = slots.sortBy(_._1).map { case (dateTime, bookingUrl) =>
+        toShowtime(dateTime, bookingUrl, apiScreeningsById, screenNames)
+      }
+    )
+
+  private def toShowtime(
+      dateTime: LocalDateTime,
+      bookingUrl: Option[String],
+      apiScreeningsById: Map[String, ApiScreening],
+      screenNames: Map[String, String]
+  ): Showtime = {
+    val screening =
+      bookingUrl
+        .flatMap(screeningIdFromUrl)
+        .flatMap(apiScreeningsById.get)
+
+    Showtime(
+      dateTime   = dateTime,
+      bookingUrl = bookingUrl,
+      room       = screening.map(_.screenId).flatMap(screenNames.get),
+      format     = screening.map(_.release).filter(_.nonEmpty)
+    )
   }
+
+  private def cleanTitle(title: String): String =
+    Seq(
+      " w Helios RePlay",
+      " w Helios Anime",
+      " w Helios na Scenie",
+      " - Salon Kultury Helios",
+      " - KNTJ",
+      " - KNT"
+    ).foldLeft(title)((t, suffix) => t.stripSuffix(suffix))
+
+  private def json(body: String): Option[JsValue] =
+    Try(Json.parse(body)).toOption
+
+  private def parseInt(value: String): Option[Int] =
+    Try(value.trim.toInt).toOption
+
+  private def resolveInt(token: String, resolve: String => Option[String]): Option[Int] =
+    parseInt(token).orElse(resolve(token).flatMap(parseInt))
 
   // ── Billing-API types and parsers ─────────────────────────────────────────
 
@@ -157,7 +221,7 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
                                  )
 
   private def parseApiMovieBody(body: String): Option[ApiMovieInfo] =
-    Try(Json.parse(body)).toOption.map { js =>
+    json(body).map { js =>
       val premierePl = (js \ "premiereDate").asOpt[String]
         .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption)
       val premiereWorld = (js \ "worldPremiereDate").asOpt[String]
@@ -168,13 +232,13 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
         .filter(_.startsWith("http"))
       val duration =
         (js \ "duration").asOpt[Int]
-          .orElse((js \ "duration").asOpt[String].flatMap(s => Try(s.toInt).toOption))
+          .orElse((js \ "duration").asOpt[String].flatMap(parseInt))
       ApiMovieInfo(
         duration = duration,
         description = (js \ "description").asOpt[String].filter(_.nonEmpty),
         cast = (js \ "filmCast").asOpt[String].filter(_.nonEmpty),
         director = (js \ "director").asOpt[String].filter(_.nonEmpty),
-        year = (js \ "yearOfProduction").asOpt[String].flatMap(s => Try(s.take(4).toInt).toOption),
+        year = (js \ "yearOfProduction").asOpt[String].flatMap(s => parseInt(s.take(4))),
         premierePl = premierePl,
         premiereWorld = premiereWorld,
         posterUrl = poster
@@ -236,13 +300,6 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
                                           screeningsBody: String,
                                           resolve: String => Option[String]
                                         ): Map[String, MovieMeta] = {
-    val result = mutable.Map[String, MovieMeta]()
-
-    def resolveInt(token: String): Option[Int] = {
-      val t = token.trim
-      if (t.forall(_.isDigit)) Some(t.toInt)
-      else resolve(t).flatMap(s => Try(s.toInt).toOption)
-    }
 
     val eventBlockPattern =
       """(e\d+):\{screenings:\[.*?screeningMovies:\[\{.*?movie:\{(.*?)\},moviePrint:""".r
@@ -253,20 +310,20 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
     val durationPattern = """duration:([^,}]+)""".r
     val posterPattern = """posterPhoto:\{.*?url:(?:"([^"]+)"|(\w+))""".r
 
-    for (m <- eventBlockPattern.findAllMatchIn(screeningsBody)) {
+    eventBlockPattern.findAllMatchIn(screeningsBody).flatMap { m =>
       val eventId = m.group(1)
       val movie = m.group(2)
 
       val apiMovieId = sourceIdPattern.findFirstMatchIn(movie).flatMap(x => Option(x.group(1)).orElse(resolve(x.group(2))))
       val title = titlePattern.findFirstMatchIn(movie).flatMap(x => Option(x.group(1)).orElse(resolve(x.group(2))))
       val slug = slugPattern.findFirstMatchIn(movie).flatMap(x => Option(x.group(1)).orElse(resolve(x.group(2))))
-      val duration = durationPattern.findFirstMatchIn(movie).flatMap(x => resolveInt(x.group(1)))
+      val duration = durationPattern.findFirstMatchIn(movie).flatMap(x => resolveInt(x.group(1), resolve))
       val posterUrl = posterPattern.findFirstMatchIn(movie).flatMap(x => Option(x.group(1)).orElse(resolve(x.group(2)))).map(_.replace("\\u002F", "/"))
 
       for {
         titleStr <- title
         slugStr <- slug
-      } result(eventId) = MovieMeta(
+      } yield eventId -> MovieMeta(
         title = titleStr,
         slug = slugStr,
         posterUrl = posterUrl,
@@ -274,9 +331,7 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
         apiMovieId = apiMovieId,
         runtimeMinutes = duration
       )
-    }
-
-    result.toMap
+    }.toMap
   }
 
   // ── Movie metadata from repertoire NUXT ──────────────────────────────────
@@ -290,15 +345,9 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
                               )
 
   private def parseMovieInfo(movieMetaBody: String, resolve: String => Option[String]): Map[String, MovieMeta] = {
-    val result = mutable.Map[String, MovieMeta]()
-    def resolveInt(token: String): Option[Int] = {
-      val t = token.trim
-      if (t.forall(_.isDigit)) Some(t.toInt)
-      else resolve(t).flatMap(s => Try(s.toInt).toOption)
-    }
-
     val moviePattern = """,id:(\d{3,}|\w+),sourceId:(?:"([^"]+)"|(\w+)),title:(?:"([^"]+)"|(\w+)),titleOriginal:(?:"[^"]+"|(?:\w+)),slug:(?:"([^"]+)"|(\w+))""".r
-    for (movieMatch <- moviePattern.findAllMatchIn(movieMetaBody)) {
+
+    val movies = moviePattern.findAllMatchIn(movieMetaBody).flatMap { movieMatch =>
       val rawId = movieMatch.group(1)
       val numericId = if (rawId.forall(_.isDigit)) rawId
       else resolve(rawId).filter(_.forall(_.isDigit)).getOrElse("")
@@ -315,10 +364,10 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
         val duration =
           """duration:([^,}]+)""".r
             .findFirstMatchIn(nearby)
-            .flatMap(m => resolveInt(m.group(1)))
+            .flatMap(m => resolveInt(m.group(1), resolve))
 
-        title.foreach { titleStr =>
-          result(s"m$numericId") = MovieMeta(
+        title.map { titleStr =>
+          s"m$numericId" -> MovieMeta(
             title          = titleStr,
             slug           = slug,
             posterUrl      = posterUrl,
@@ -327,60 +376,60 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
             runtimeMinutes = duration
           )
         }
-      }
+      } else None
     }
 
     val eventIdPattern = """_id:"(e\d+)"""".r
-    for (eventMatch <- eventIdPattern.findAllMatchIn(movieMetaBody)) {
+
+    val events = eventIdPattern.findAllMatchIn(movieMetaBody).flatMap { eventMatch =>
       val eventId = eventMatch.group(1)
       val numericId = eventId.substring(1)
       val before = movieMetaBody.substring(math.max(0, eventMatch.start - 500), eventMatch.start)
 
-      for (nameMatch <- """,name:(\w+),slug:(\w+),""".r.findAllMatchIn(before).toSeq.lastOption) {
-        val title = resolve(nameMatch.group(1))
-        val slug = resolve(nameMatch.group(2))
-
+      """,name:(\w+),slug:(\w+),""".r.findAllMatchIn(before).toSeq.lastOption.flatMap { nameMatch =>
         for {
-          titleStr <- title
-          slugStr <- slug
-        } result(eventId) = MovieMeta(
-          title = titleStr,
-          slug = slugStr,
-          posterUrl = None,
-          filmUrl = Some(s"$BaseUrl/wydarzenie/$slugStr-$numericId"),
+          titleStr <- resolve(nameMatch.group(1))
+          slugStr  <- resolve(nameMatch.group(2))
+        } yield eventId -> MovieMeta(
+          title      = titleStr,
+          slug       = slugStr,
+          posterUrl  = None,
+          filmUrl    = Some(s"$BaseUrl/wydarzenie/$slugStr-$numericId"),
           apiMovieId = None
         )
       }
     }
 
-    result.toMap
+    (movies ++ events).toMap
   }
 
   // ── Screenings from repertoire NUXT ──────────────────────────────────────
 
   private def parseScreenings(screeningsBody: String, resolve: String => Option[String]): Seq[(String, (LocalDateTime, Option[String]))] = {
-    val result = mutable.ListBuffer[(String, (LocalDateTime, Option[String]))]()
     val dayPattern = """"(\d{4}-\d{2}-\d{2})"\s*:\s*\{""".r
     val dayMatches = dayPattern.findAllMatchIn(screeningsBody).toSeq
 
-    for ((dayMatch, dayIndex) <- dayMatches.zipWithIndex) {
+    dayMatches.zipWithIndex.flatMap { case (dayMatch, dayIndex) =>
       val dayBlockEnd = if (dayIndex + 1 < dayMatches.length) dayMatches(dayIndex + 1).start else screeningsBody.length
       val dayBlock = screeningsBody.substring(dayMatch.end, dayBlockEnd)
 
-      for (groupMatch <- """([em]\d+):\{screenings:\[""".r.findAllMatchIn(dayBlock)) {
+      """([em]\d+):\{screenings:\[""".r.findAllMatchIn(dayBlock).flatMap { groupMatch =>
         val movieId = groupMatch.group(1)
 
-        var depth = 1;
+        var depth = 1
         var pos = groupMatch.end
+
         while (pos < dayBlock.length && depth > 0) {
           if (dayBlock(pos) == '[') depth += 1
           else if (dayBlock(pos) == ']') depth -= 1
           pos += 1
         }
+
         val screeningsArray = dayBlock.substring(groupMatch.end, pos - 1)
 
         val screeningPattern = """\{timeFrom:("[\d :.-]+"|[^,{]+),saleTimeTo:[^,]+,sourceId:("[\w-]+"|\w+),""".r
-        for (screeningMatch <- screeningPattern.findAllMatchIn(screeningsArray)) {
+
+        screeningPattern.findAllMatchIn(screeningsArray).flatMap { screeningMatch =>
           val timeValue = resolve(screeningMatch.group(1))
           val rawSourceId = screeningMatch.group(2)
           val sourceId = if (rawSourceId.startsWith("\"")) Some(rawSourceId.stripPrefix("\"").stripSuffix("\""))
@@ -390,11 +439,9 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
             timeStr <- timeValue if timeStr.length == 19
             dateTime = LocalDateTime.parse(timeStr.replace(' ', 'T'))
             bookingUrl = sourceId.map(sid => s"$BookingBase/$sid?cinemaId=$CinemaSourceId")
-          } result += movieId -> (dateTime, bookingUrl)
+          } yield movieId -> (dateTime, bookingUrl)
         }
       }
     }
-
-    result.toSeq
   }
 }
