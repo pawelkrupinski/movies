@@ -71,6 +71,18 @@
       cursor: pointer;
     }
     .filter-select:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; }
+    .search-input {
+      background: #3a3a6e;
+      color: #eee;
+      border: none;
+      border-radius: 6px;
+      padding: .25rem .6rem;
+      font-size: .875rem;
+      width: 160px;
+    }
+    .search-input::placeholder { color: #778; }
+    .search-input:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; width: 220px; }
+    @@media (max-width: 575px) { .search-input, .search-input:focus { width: 100px; } }
     .hide-btn {
       position: absolute;
       top: 6px; right: 6px;
@@ -153,8 +165,10 @@
     </div>
   </div>
   <div class="d-flex gap-2 align-items-center navbar-right">
+    <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFilters()">
     <select id="date-filter" class="filter-select" onchange="applyFilters()">
       <option value="today">Dzisiaj</option>
+      <option value="tomorrow">Jutro</option>
       <option value="week">Następne 7 dni</option>
       <option value="anytime">Kiedykolwiek</option>
     </select>
@@ -352,19 +366,24 @@
 
   function applyFilters() {
     const filter   = document.getElementById('date-filter').value;
+    const query    = (document.getElementById('search-input').value || '').trim().toLowerCase();
     const hidden   = getHidden();
     const disabled = getDisabledCinemas();
     const today    = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
-    const in7Days  = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+    const tomorrow = isoAddDays(today, 1);
+    const in7Days  = isoAddDays(today, 6);
 
     document.querySelectorAll('[data-title]').forEach(col => {
       if (hidden.includes(col.dataset.title)) { col.style.display = 'none'; return; }
+      if (query && !col.dataset.title.toLowerCase().includes(query)) { col.style.display = 'none'; return; }
 
       let cardHasVisible = false;
       col.querySelectorAll('.date-group[data-date]').forEach(group => {
         const date = group.dataset.date;
-        const dateOk = filter === 'today' ? date === today :
-                       filter === 'week'  ? date >= today && date <= in7Days :
+        const dateOk = filter === 'today'    ? date === today :
+                       filter === 'tomorrow' ? date === tomorrow :
+                       filter === 'week'     ? date >= today && date <= in7Days :
+                       /^\d{4}-\d{2}-\d{2}$/.test(filter) ? date === filter :
                        true;
         if (!dateOk) { group.style.display = 'none'; return; }
 
@@ -437,7 +456,35 @@
     }
   }
 
+  // ── Date helpers ──────────────────────────────────────────────────────────
+
+  function isoAddDays(isoDate, n) {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + n);
+    return dt.toLocaleDateString('sv');
+  }
+
+  const DAY2 = ['Nie', 'Pon', 'Wto', 'Śro', 'Czw', 'Pią', 'Sob'];
+  const MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca',
+                  'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+
+  function populateDayOptions() {
+    const select = document.getElementById('date-filter');
+    const weekOpt = select.querySelector('option[value="week"]');
+    const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+    for (let i = 2; i <= 6; i++) {
+      const iso = isoAddDays(today, i);
+      const [y, mo, da] = iso.split('-').map(Number);
+      const dow = new Date(y, mo - 1, da).getDay();
+      const opt = document.createElement('option');
+      opt.value = iso;
+      opt.textContent = DAY2[dow] + ' ' + da + ' ' + MONTHS[mo - 1];
+      select.insertBefore(opt, weekOpt);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    populateDayOptions();
     updateNavbar();
     updateCinemaBtn();
     applyFilters();
