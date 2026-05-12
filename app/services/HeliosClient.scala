@@ -43,99 +43,148 @@ object HeliosClient {
       .GET()
       .build()
 
+  // ── Fetch ─────────────────────────────────────────────────────────────────
+
   def fetch(): Seq[CinemaMovie] = {
-    val repertoireResponse = httpClient.send(buildRequest(PageUrl), HttpResponse.BodyHandlers.ofString())
-    if (repertoireResponse.statusCode() != 200)
-      throw new RuntimeException(s"helios.pl returned ${repertoireResponse.statusCode()}")
+    val today = LocalDate.now(WarsawZone)
+    val in6   = today.plusDays(6)
 
-    val (movieInfoMap, showtimesByMovie) = parseRepertoirePage(repertoireResponse.body())
+    // Phase 1: NUXT page + billing-API screenings in parallel
+    val nuxtFuture = httpClient.sendAsync(buildRequest(PageUrl), HttpResponse.BodyHandlers.ofString())
+    val screeningsUrl = s"$ApiBase/cinema/$CinemaSourceId/screening" +
+      s"?dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
+    val apiScreeningsFuture = httpClient.sendAsync(buildApiRequest(screeningsUrl), HttpResponse.BodyHandlers.ofString())
 
-    // Fire all individual movie-page requests concurrently
-    val pendingPages = movieInfoMap.values
-      .flatMap(_.filmUrl)
-      .toSeq.distinct
-      .map(url => url -> httpClient.sendAsync(buildRequest(url), HttpResponse.BodyHandlers.ofString()))
+    val nuxtResp = nuxtFuture.join()
+    if (nuxtResp.statusCode() != 200)
+      throw new RuntimeException(s"helios.pl returned ${nuxtResp.statusCode()}")
+    val (movieInfoMap, showtimesByMovie) = parseRepertoirePage(nuxtResp.body())
 
-    // While pages download, fetch room data from billing API (runs in this thread)
-    val timeToRoom = Try(fetchRoomMap()).getOrElse(Map.empty[LocalDateTime, String])
+    val apiScreenings: Map[LocalDateTime, ApiScreening] = Try {
+      val r = apiScreeningsFuture.join()
+      if (r.statusCode() == 200) parseApiScreenings(r.body()) else Map.empty[LocalDateTime, ApiScreening]
+    }.getOrElse(Map.empty)
 
-    val pageMetaByUrl: Map[String, MoviePageMeta] = pendingPages.flatMap { case (url, future) =>
-      Try(parseMoviePage(future.join().body())).toOption.map(url -> _)
+    // Phase 2: movie details + screen names in parallel (all sendAsync at once)
+    val uniqueMovieIds  = apiScreenings.values.map(_.movieId).toSeq.distinct
+    val uniqueScreenIds = apiScreenings.values.map(_.screenId).toSeq.distinct
+
+    val pendingMovies = uniqueMovieIds.map { id =>
+      id -> httpClient.sendAsync(buildApiRequest(s"$ApiBase/movie/$id"), HttpResponse.BodyHandlers.ofString())
+    }
+    val pendingScreens = uniqueScreenIds.map { id =>
+      id -> httpClient.sendAsync(buildApiRequest(s"$ApiBase/cinema/$CinemaSourceId/screen/$id"), HttpResponse.BodyHandlers.ofString())
+    }
+
+    val movieDetails: Map[String, ApiMovieInfo] = pendingMovies.flatMap { case (id, f) =>
+      Try(parseApiMovie(f.join())).toOption.flatten.map(id -> _)
     }.toMap
 
-    showtimesByMovie.toSeq.flatMap { case (movieId, slots) =>
-      movieInfoMap.get(movieId).map { info =>
-        val pageMeta  = info.filmUrl.flatMap(pageMetaByUrl.get)
+    val screenNames: Map[String, String] = pendingScreens.flatMap { case (id, f) =>
+      Try {
+        val r = f.join()
+        if (r.statusCode() == 200) (Json.parse(r.body()) \ "name").asOpt[String].map(id -> _)
+        else None
+      }.toOption.flatten
+    }.toMap
+
+    // Build CinemaMovies
+    showtimesByMovie.toSeq.flatMap { case (nuxtMovieId, slots) =>
+      movieInfoMap.get(nuxtMovieId).map { info =>
+        // Find the API movieId via the first showtime that matched a billing-API screening
+        val apiMovieId = slots.sortBy(_._1).iterator
+          .flatMap { case (dt, _) => apiScreenings.get(dt) }
+          .nextOption()
+          .map(_.movieId)
+        val apiMovie = apiMovieId.flatMap(movieDetails.get)
+
         val cleanTitle = info.title
           .stripSuffix(" w Helios RePlay")
           .stripSuffix(" w Helios Anime")
           .stripSuffix(" w Helios na Scenie")
           .stripSuffix(" - Salon Kultury Helios")
+
         CinemaMovie(
-          movie     = Movie(
+          movie = Movie(
             title          = cleanTitle,
-            runtimeMinutes = pageMeta.flatMap(_.runtimeMinutes),
-            releaseYear    = pageMeta.flatMap(_.releaseYear)
+            runtimeMinutes = apiMovie.flatMap(_.duration),
+            releaseYear    = apiMovie.flatMap(_.year),
+            premierePl     = apiMovie.flatMap(_.premierePl),
+            premiereWorld  = apiMovie.flatMap(_.premiereWorld)
           ),
           cinema    = Helios,
-          posterUrl = info.posterUrl,
+          posterUrl = apiMovie.flatMap(_.posterUrl).orElse(info.posterUrl),
           filmUrl   = info.filmUrl,
-          synopsis  = pageMeta.flatMap(_.synopsis),
-          cast      = pageMeta.flatMap(_.cast),
-          director  = pageMeta.flatMap(_.director),
+          synopsis  = apiMovie.flatMap(_.description),
+          cast      = apiMovie.flatMap(_.cast),
+          director  = apiMovie.flatMap(_.director),
           showtimes = slots.sortBy(_._1).map { case (dateTime, bookingUrl) =>
-            Showtime(dateTime, bookingUrl, timeToRoom.get(dateTime))
+            val sc = apiScreenings.get(dateTime)
+            Showtime(
+              dateTime   = dateTime,
+              bookingUrl = bookingUrl,
+              room       = sc.map(_.screenId).flatMap(screenNames.get),
+              format     = sc.map(_.release).filter(_.nonEmpty)
+            )
           }
         )
       }
     }
   }
 
-  // ── Room data from billing API ────────────────────────────────────────────
-  //
-  // GET /cinema/{id}/screening?dateTimeFrom=...&dateTimeTo=... returns all
-  // screenings with their screenId. GET /cinema/{id}/screen/{screenId} gives
-  // the screen name ("Sala 3", "Sala 5 - Dream", …). We then build a map of
-  // screeningTimeFrom (Warsaw local) → room name for Showtime construction.
+  // ── Billing-API types and parsers ─────────────────────────────────────────
 
-  private def fetchRoomMap(): Map[LocalDateTime, String] = {
-    val today = LocalDate.now(WarsawZone)
-    val in6   = today.plusDays(6)
-    val screeningsUrl = s"$ApiBase/cinema/$CinemaSourceId/screening" +
-      s"?dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
+  private case class ApiScreening(movieId: String, screenId: String, release: String)
 
-    val screResp = httpClient.send(buildApiRequest(screeningsUrl), HttpResponse.BodyHandlers.ofString())
-    if (screResp.statusCode() != 200) return Map.empty
+  private def parseApiScreenings(body: String): Map[LocalDateTime, ApiScreening] =
+    Try(Json.parse(body).as[JsArray]).map { arr =>
+      arr.value.flatMap { s =>
+        for {
+          timeStr  <- (s \ "screeningTimeFrom").asOpt[String]
+          movieId  <- (s \ "movieId").asOpt[String]
+          screenId <- (s \ "screenId").asOpt[String]
+        } yield {
+          val localTime = ZonedDateTime.parse(timeStr, OffsetDtf)
+            .withZoneSameInstant(WarsawZone).toLocalDateTime
+          val release = (s \ "release").asOpt[String].getOrElse("")
+          localTime -> ApiScreening(movieId, screenId, release)
+        }
+      }.toMap
+    }.getOrElse(Map.empty)
 
-    val screenings = Try(Json.parse(screResp.body()).as[JsArray]).getOrElse(return Map.empty).value
+  private case class ApiMovieInfo(
+    duration:     Option[Int],
+    description:  Option[String],
+    cast:         Option[String],
+    director:     Option[String],
+    year:         Option[Int],
+    premierePl:   Option[java.time.LocalDate],
+    premiereWorld: Option[java.time.LocalDate],
+    posterUrl:    Option[String]
+  )
 
-    // Unique screenIds → fetch names concurrently
-    val screenIds = screenings.flatMap(s => (s \ "screenId").asOpt[String]).distinct
-    val pendingScreens = screenIds.map { screenId =>
-      screenId -> httpClient.sendAsync(
-        buildApiRequest(s"$ApiBase/cinema/$CinemaSourceId/screen/$screenId"),
-        HttpResponse.BodyHandlers.ofString()
+  private def parseApiMovie(resp: HttpResponse[String]): Option[ApiMovieInfo] = {
+    if (resp.statusCode() != 200) return None
+    Try(Json.parse(resp.body())).toOption.map { js =>
+      val premierePl = (js \ "premiereDate").asOpt[String]
+        .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption)
+      val premiereWorld = (js \ "worldPremiereDate").asOpt[String]
+        .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption)
+      val poster = (js \ "posters").asOpt[JsArray]
+        .flatMap(_.value.headOption)
+        .flatMap(_.asOpt[String])
+        .filter(_.startsWith("http"))
+      ApiMovieInfo(
+        duration     = (js \ "duration").asOpt[Int],
+        description  = (js \ "description").asOpt[String].filter(_.nonEmpty),
+        cast         = (js \ "filmCast").asOpt[String].filter(_.nonEmpty),
+        director     = (js \ "director").asOpt[String].filter(_.nonEmpty),
+        year         = (js \ "yearOfProduction").asOpt[String].flatMap(s => Try(s.take(4).toInt).toOption),
+        premierePl   = premierePl,
+        premiereWorld = premiereWorld,
+        posterUrl    = poster
       )
     }
-    val screenNames: Map[String, String] = pendingScreens.flatMap { case (screenId, future) =>
-      Try {
-        val r = future.join()
-        if (r.statusCode() == 200) (Json.parse(r.body()) \ "name").asOpt[String].map(screenId -> _)
-        else None
-      }.toOption.flatten
-    }.toMap
-
-    screenings.flatMap { s =>
-      for {
-        timeStr  <- (s \ "screeningTimeFrom").asOpt[String]
-        screenId <- (s \ "screenId").asOpt[String]
-        name     <- screenNames.get(screenId)
-      } yield {
-        val localTime = ZonedDateTime.parse(timeStr, OffsetDtf)
-          .withZoneSameInstant(WarsawZone).toLocalDateTime
-        localTime -> name
-      }
-    }.toMap
   }
 
   // ── Repertoire page ───────────────────────────────────────────────────────
@@ -270,69 +319,5 @@ object HeliosClient {
 
     result.toSeq
   }
-
-  // ── Individual movie page ─────────────────────────────────────────────────
-  //
-  // Synopsis comes from JSON-LD (always the full text, already plain).
-  // Director and cast are literal strings in the NUXT metadata body
-  // (not variable references), so no paramMap is needed there.
-
-  private case class MoviePageMeta(
-    synopsis:       Option[String],
-    cast:           Option[String],
-    director:       Option[String],
-    runtimeMinutes: Option[Int],
-    releaseYear:    Option[Int]
-  )
-
-  private val LiteralFieldPat  = (field: String) => raw"""$field:"((?:[^"\\]|\\.)*)"""".r
-  private val JsonLdScriptPat  = """<script[^>]+application/ld\+json[^>]*>(.*?)</script>""".r
-
-  private def parseMoviePage(html: String): MoviePageMeta = {
-    val synopsis = parseJsonLdDescription(html)
-
-    val nuxtIndex = html.lastIndexOf("window.__NUXT__")
-    if (nuxtIndex < 0) return MoviePageMeta(synopsis, None, None, None, None)
-    val nuxtScript = html.substring(nuxtIndex)
-
-    val paramsEnd = nuxtScript.indexOf("){")
-    val bodyEnd   = nuxtScript.indexOf("}(")
-    if (paramsEnd < 0 || bodyEnd < 0) return MoviePageMeta(synopsis, None, None, None, None)
-
-    val fullBody = nuxtScript.substring(paramsEnd + 2, bodyEnd)
-    // Only search in the movie-metadata section (before screenings) to avoid
-    // matching Helios corporate boilerplate that appears later in the page.
-    val metaBody = ScreeningsSectionPat.findFirstMatchIn(fullBody)
-      .map(m => fullBody.substring(0, m.start))
-      .getOrElse(fullBody)
-
-    def extract(field: String): Option[String] =
-      LiteralFieldPat(field).findFirstMatchIn(metaBody)
-        .map(_.group(1))
-        .filter(_.nonEmpty)
-
-    def extractInt(field: String): Option[Int] =
-      raw"""$field:(\d+)""".r.findFirstMatchIn(metaBody).flatMap(m => Try(m.group(1).toInt).toOption)
-
-    val runtime = extractInt("duration").orElse(extractInt("runTime")).orElse(extractInt("filmRunTime"))
-    val year    = extractInt("year").orElse(extractInt("releaseYear"))
-
-    MoviePageMeta(
-      synopsis       = synopsis,
-      cast           = extract("cast"),
-      director       = extract("director"),
-      runtimeMinutes = runtime,
-      releaseYear    = year
-    )
-  }
-
-  // The JSON-LD Movie object always carries the full plain-text description.
-  private def parseJsonLdDescription(html: String): Option[String] =
-    JsonLdScriptPat.findAllMatchIn(html)
-      .flatMap(m => scala.util.Try(play.api.libs.json.Json.parse(m.group(1))).toOption)
-      .collectFirst { case json if (json \ "description").isDefined =>
-        (json \ "description").as[String].trim
-      }
-      .filter(_.nonEmpty)
 
 }
