@@ -49,13 +49,13 @@ object HeliosClient {
     val today = LocalDate.now(WarsawZone)
     val in6   = today.plusDays(6)
 
-    // Phase 1: NUXT page + billing-API screenings in parallel
-    val nuxtFuture = httpClient.sendAsync(buildRequest(PageUrl), HttpResponse.BodyHandlers.ofString())
+    // Fire billing-API screenings async first so it runs while we fetch the NUXT page
     val screeningsUrl = s"$ApiBase/cinema/$CinemaSourceId/screening" +
       s"?dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
     val apiScreeningsFuture = httpClient.sendAsync(buildApiRequest(screeningsUrl), HttpResponse.BodyHandlers.ofString())
 
-    val nuxtResp = nuxtFuture.join()
+    // Fetch NUXT page synchronously (same as before — server rejects async-style requests)
+    val nuxtResp = httpClient.send(buildRequest(PageUrl), HttpResponse.BodyHandlers.ofString())
     if (nuxtResp.statusCode() != 200)
       throw new RuntimeException(s"helios.pl returned ${nuxtResp.statusCode()}")
     val (movieInfoMap, showtimesByMovie) = parseRepertoirePage(nuxtResp.body())
@@ -212,7 +212,9 @@ object HeliosClient {
     val valuesEnd  = valuesRaw.lastIndexOf("))")
 
     val paramMap: Map[String, JsValue] = Try {
-      val valuesArray = Json.parse("[" + valuesRaw.substring(0, valuesEnd) + "]").as[JsArray]
+      val raw   = valuesRaw.substring(0, valuesEnd)
+      val clean = raw.replaceAll("""Array\(\d+\)""", "null").replace("undefined", "null")
+      val valuesArray = Json.parse("[" + clean + "]").as[JsArray]
       paramNames.zip(valuesArray.value).toMap
     }.getOrElse(return (Map.empty, Map.empty))
 
