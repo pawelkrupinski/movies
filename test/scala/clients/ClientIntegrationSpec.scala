@@ -30,7 +30,10 @@ class ClientIntegrationSpec
   }
   "HeliosClient" should "fetch films" in {
     val heliosClient = app.injector.instanceOf[HeliosClient]
-    heliosClient.fetch() should not be empty
+    val result = heliosClient.fetch()
+    result should not be empty
+    result.find(_.movie.runtimeMinutes.isEmpty) shouldBe empty
+    result.flatMap(_.showtimes) should not be empty
   }
   "CinemaCityClient Kinepolis" should "fetch films" in {
     CinemaCityClient.fetch("1081", CinemaCityKinepolis) should not be empty

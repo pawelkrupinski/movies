@@ -225,7 +225,11 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
         .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption)
       val poster = (js \ "posters").asOpt[JsArray]
         .flatMap(_.value.headOption)
-        .flatMap(_.asOpt[String])
+        .flatMap {
+          case JsString(url) => Some(url)
+          case obj: JsObject => (obj \ "url").asOpt[String]
+          case _             => None
+        }
         .filter(_.startsWith("http"))
       val duration =
         (js \ "duration").asOpt[Int]
