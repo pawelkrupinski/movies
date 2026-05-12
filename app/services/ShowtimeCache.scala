@@ -6,6 +6,7 @@ import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityPoznanPlaza
 import play.api.Logging
 import play.api.inject.ApplicationLifecycle
 
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{CountDownLatch, Executors, TimeUnit}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
@@ -27,9 +28,9 @@ class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle) extends Logging {
     Rialto                -> (() => RialtoClient.fetch())
   )
 
-  // One latch per cinema, counted down after the very first fetch attempt (success or failure).
-  private val latches: Map[Cinema, CountDownLatch] =
-    sources.map { case (cinema, _) => cinema -> new CountDownLatch(1) }
+  private val LoadThreshold  = sources.size - 2   // 7 of 9
+  private val loadedCount    = new AtomicInteger(0)
+  private val thresholdLatch = new CountDownLatch(1)
 
   private val fetchExecutor = Executors.newFixedThreadPool(sources.size, { r: Runnable =>
     val t = new Thread(r, "showtime-fetch")
@@ -59,12 +60,9 @@ class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle) extends Logging {
     fetchExecutor.shutdown()
   })
 
-  // Blocks until all non-disabled cinemas have completed their first fetch.
+  // Blocks until at least LoadThreshold cinemas have completed their first fetch.
   def get(disabledCinemas: Set[String] = Set.empty): Seq[CinemaMovie] = {
-    latches.foreach { case (cinema, latch) =>
-      if (!disabledCinemas.contains(cinema.displayName))
-        latch.await()
-    }
+    thresholdLatch.await()
     sources.flatMap { case (cinema, _) => Option(cache.getIfPresent(cinema)).getOrElse(Seq.empty) }.toSeq
   }
 
@@ -80,7 +78,7 @@ class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle) extends Logging {
         val elapsed = System.currentTimeMillis() - t0
         logger.error(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms", e)
     } finally {
-      latches(cinema).countDown()
+      if (loadedCount.incrementAndGet() >= LoadThreshold) thresholdLatch.countDown()
     }
   }
 }
