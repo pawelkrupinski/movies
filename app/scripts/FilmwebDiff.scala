@@ -19,7 +19,7 @@ object FilmwebDiff extends App {
     ("Multikino",             Multikino,             submit(Try(MultikinoClient.fetch()))),
     ("Cinema City Kinepolis", CinemaCityKinepolis,   submit(Try(CinemaCityClient.fetch("1081", CinemaCityKinepolis)))),
     ("Cinema City Plaza",     CinemaCityPoznanPlaza, submit(Try(CinemaCityClient.fetch("1078", CinemaCityPoznanPlaza)))),
-    ("Helios",                Helios,                submit(Try(HeliosClient.fetch()))),
+    ("Helios",                Helios,                submit(Try(new HeliosClient().fetch()))),
     ("Kino Bułgarska",        KinoBulgarska,         submit(Try(KinoBulgarskaClient.fetch()))),
     ("Charlie Monroe",        CharlieMonroe,         submit(Try(CharlieMonroeClient.fetch()))),
     ("Kino Pałacowe",         KinoPalacowe,          submit(Try(KinoPalacoweClient.fetch()))),

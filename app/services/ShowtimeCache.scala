@@ -12,7 +12,7 @@ import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 
 @Singleton
-class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle, env: Environment) extends Logging {
+class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle, env: Environment, heliosClient: HeliosClient) extends Logging {
 
   logger.info(s"Starting — commit ${Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")}")
 
@@ -25,7 +25,7 @@ class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle, env: Environment)
     Multikino             -> (() => MultikinoClient.fetch()),
     CharlieMonroe         -> (() => CharlieMonroeClient.fetch()),
     KinoPalacowe          -> (() => KinoPalacoweClient.fetch()),
-    Helios                -> (() => HeliosClient.fetch()),
+    Helios                -> (() => heliosClient.fetch()),
     CinemaCityPoznanPlaza -> (() => CinemaCityClient.fetch("1078", CinemaCityPoznanPlaza)),
     CinemaCityKinepolis   -> (() => CinemaCityClient.fetch("1081", CinemaCityKinepolis)),
     KinoMuza              -> (() => KinoMuzaClient.fetch()),

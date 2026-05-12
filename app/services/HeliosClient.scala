@@ -2,16 +2,14 @@ package clients
 
 import models.{CinemaMovie, Helios, Movie, Showtime}
 import play.api.libs.json._
+import tools.{HeliosFetch, HttpFetch}
 
-import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
-import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import java.time.format.DateTimeFormatter
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
 import scala.collection.mutable
 import scala.util.Try
 
-object HeliosClient {
+class HeliosClient(http: HttpFetch = HeliosFetch) {
 
   private val PageUrl        = "https://helios.pl/poznan/kino-helios/repertuar"
   private val CinemaSourceId = "815face9-2a1d-4c62-9b2f-a361574b79a2"
@@ -21,77 +19,44 @@ object HeliosClient {
   private val WarsawZone     = ZoneId.of("Europe/Warsaw")
   private val OffsetDtf      = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
-  private val httpClient = HttpClient.newBuilder()
-    .version(HttpClient.Version.HTTP_1_1)
-    .followRedirects(HttpClient.Redirect.NORMAL)
-    .build()
-
-  private def buildRequest(url: String): HttpRequest =
-    HttpRequest.newBuilder()
-      .uri(URI.create(url))
-      .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-      .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-      .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
-      .GET()
-      .build()
-
-  private def buildApiRequest(url: String): HttpRequest =
-    HttpRequest.newBuilder()
-      .uri(URI.create(url))
-      .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-      .header("Accept", "application/json, text/plain, */*")
-      .header("Origin", "https://bilety.helios.pl")
-      .GET()
-      .build()
-
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
   def fetch(): Seq[CinemaMovie] = {
     val today = LocalDate.now(WarsawZone)
     val in6   = today.plusDays(6)
 
-    val screeningsUrl = s"$ApiBase/cinema/$CinemaSourceId/screening" +
+    val screeningsUrl       = s"$ApiBase/cinema/$CinemaSourceId/screening" +
       s"?dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
-    val apiScreeningsFuture = httpClient.sendAsync(buildApiRequest(screeningsUrl), HttpResponse.BodyHandlers.ofString())
+    val apiScreeningsFuture = http.getAsync(screeningsUrl)
 
-    val nuxtResp = httpClient.send(buildRequest(PageUrl), HttpResponse.BodyHandlers.ofString())
-    if (nuxtResp.statusCode() != 200)
-      throw new RuntimeException(s"helios.pl returned ${nuxtResp.statusCode()}")
-
-    val screeningsBody = Try {
-      val r = apiScreeningsFuture.join()
-      if (r.statusCode() == 200) r.body() else "[]"
-    }.getOrElse("[]")
+    val nuxtHtml      = http.get(PageUrl)
+    val screeningsBody = Try(apiScreeningsFuture.join()).getOrElse("[]")
 
     val apiScreeningsById = parseApiScreenings(screeningsBody)
     val uniqueMovieIds    = apiScreeningsById.values.map(_.movieId).toSeq.distinct
     val uniqueScreenIds   = apiScreeningsById.values.map(_.screenId).toSeq.distinct
 
-    val pendingMovies = uniqueMovieIds.map { id =>
-      id -> httpClient.sendAsync(buildApiRequest(s"$ApiBase/movie/$id"), HttpResponse.BodyHandlers.ofString())
-    }
-    val pendingScreens = uniqueScreenIds.map { id =>
-      id -> httpClient.sendAsync(buildApiRequest(s"$ApiBase/cinema/$CinemaSourceId/screen/$id"), HttpResponse.BodyHandlers.ofString())
-    }
+    val pendingMovies  = uniqueMovieIds.map(id => id -> http.getAsync(s"$ApiBase/movie/$id"))
+    val pendingScreens = uniqueScreenIds.map(id => id -> http.getAsync(s"$ApiBase/cinema/$CinemaSourceId/screen/$id"))
 
     val movieBodies: Map[String, String] = pendingMovies.flatMap { case (id, f) =>
-      Try { val r = f.join(); if (r.statusCode() == 200) Some(id -> r.body()) else None }.toOption.flatten
+      Try(id -> f.join()).toOption
     }.toMap
 
     val screenBodies: Map[String, String] = pendingScreens.flatMap { case (id, f) =>
-      Try { val r = f.join(); if (r.statusCode() == 200) Some(id -> r.body()) else None }.toOption.flatten
+      Try(id -> f.join()).toOption
     }.toMap
 
-    buildCinemaMovies(nuxtResp.body(), screeningsBody, movieBodies, screenBodies)
+    buildCinemaMovies(nuxtHtml, screeningsBody, movieBodies, screenBodies)
   }
 
-  // ── Pure assembly — testable without HTTP ─────────────────────────────────
+  // ── Pure assembly ─────────────────────────────────────────────────────────
 
-  private[clients] def buildCinemaMovies(
-    nuxtHtml:      String,
+  private def buildCinemaMovies(
+    nuxtHtml:       String,
     screeningsBody: String,
-    movieBodies:   Map[String, String],
-    screenBodies:  Map[String, String]
+    movieBodies:    Map[String, String],
+    screenBodies:   Map[String, String]
   ): Seq[CinemaMovie] = {
     val (movieInfoMap, showtimesByMovie) = parseRepertoirePage(nuxtHtml)
     val apiScreeningsById = parseApiScreenings(screeningsBody)
@@ -106,7 +71,6 @@ object HeliosClient {
 
     showtimesByMovie.toSeq.flatMap { case (nuxtMovieId, slots) =>
       movieInfoMap.get(nuxtMovieId).map { info =>
-        // NUXT movie sourceId == API movieId — direct match, no time-based guessing.
         val apiMovie = info.apiMovieId.flatMap(movieDetails.get)
 
         val cleanTitle = info.title
@@ -114,6 +78,8 @@ object HeliosClient {
           .stripSuffix(" w Helios Anime")
           .stripSuffix(" w Helios na Scenie")
           .stripSuffix(" - Salon Kultury Helios")
+          .stripSuffix(" - KNTJ")
+          .stripSuffix(" - KNT")
 
         CinemaMovie(
           movie = Movie(
@@ -130,7 +96,6 @@ object HeliosClient {
           cast      = apiMovie.flatMap(_.cast),
           director  = apiMovie.flatMap(_.director),
           showtimes = slots.sortBy(_._1).map { case (dateTime, bookingUrl) =>
-            // Booking URL embeds the API screening UUID — use it for a guaranteed 1:1 match.
             val sc = bookingUrl.flatMap(screeningIdFromUrl).flatMap(apiScreeningsById.get)
             Showtime(
               dateTime   = dateTime,
@@ -148,7 +113,6 @@ object HeliosClient {
 
   private case class ApiScreening(movieId: String, screenId: String, release: String)
 
-  // Keyed by API screening UUID (the same UUID that appears as sourceId in the NUXT page).
   private def parseApiScreenings(body: String): Map[String, ApiScreening] =
     Try(Json.parse(body).as[JsArray]).map { arr =>
       arr.value.flatMap { s =>
@@ -163,15 +127,14 @@ object HeliosClient {
       }.toMap
     }.getOrElse(Map.empty)
 
-  // Extracts the screening UUID from a booking URL of the form
-  // https://bilety.helios.pl/screen/<UUID>?cinemaId=...
+  // Extracts the screening UUID from https://bilety.helios.pl/screen/<UUID>?cinemaId=...
   private def screeningIdFromUrl(url: String): Option[String] = {
     val prefix = BookingBase + "/"
     if (url.startsWith(prefix)) Some(url.stripPrefix(prefix).takeWhile(_ != '?'))
     else None
   }
 
-  private[clients] case class ApiMovieInfo(
+  private case class ApiMovieInfo(
     duration:      Option[Int],
     description:   Option[String],
     cast:          Option[String],
@@ -182,7 +145,7 @@ object HeliosClient {
     posterUrl:     Option[String]
   )
 
-  private[clients] def parseApiMovieBody(body: String): Option[ApiMovieInfo] =
+  private def parseApiMovieBody(body: String): Option[ApiMovieInfo] =
     Try(Json.parse(body)).toOption.map { js =>
       val premierePl = (js \ "premiereDate").asOpt[String]
         .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption)
@@ -192,8 +155,9 @@ object HeliosClient {
         .flatMap(_.value.headOption)
         .flatMap(_.asOpt[String])
         .filter(_.startsWith("http"))
+      val duration = (js \ "duration").asOpt[Int]
       ApiMovieInfo(
-        duration      = (js \ "duration").asOpt[Int],
+        duration      = duration,
         description   = (js \ "description").asOpt[String].filter(_.nonEmpty),
         cast          = (js \ "filmCast").asOpt[String].filter(_.nonEmpty),
         director      = (js \ "director").asOpt[String].filter(_.nonEmpty),
@@ -205,11 +169,6 @@ object HeliosClient {
     }
 
   // ── Repertoire page ───────────────────────────────────────────────────────
-  //
-  // The page embeds all data in a server-side-rendered IIFE of the form:
-  //   window.__NUXT__=(function(a,b,...,nU){ return { ...body... } }(v0,v1,...,vN))
-  // String values are deduplicated into the argument list; the body references
-  // them by parameter name.  We build a paramMap to resolve those references.
 
   private val ScreeningsSectionPat = """screenings:\{"\d{4}-\d{2}-\d{2}"""".r
 
@@ -260,13 +219,11 @@ object HeliosClient {
 
   // ── Movie metadata from repertoire NUXT ──────────────────────────────────
 
-  // apiMovieId: the movie's sourceId from NUXT, which equals the API movieId UUID.
   private case class MovieMeta(title: String, slug: String, posterUrl: Option[String], filmUrl: Option[String], apiMovieId: Option[String])
 
   private def parseMovieInfo(movieMetaBody: String, resolve: String => Option[String]): Map[String, MovieMeta] = {
     val result = mutable.Map[String, MovieMeta]()
 
-    // Regular movies. Any of id/sourceId/slug may be literal values or NUXT param variables.
     val moviePattern = """,id:(\d{3,}|\w+),sourceId:(?:"([^"]+)"|(\w+)),title:(?:"([^"]+)"|(\w+)),titleOriginal:(?:"[^"]+"|(?:\w+)),slug:(?:"([^"]+)"|(\w+))""".r
     for (movieMatch <- moviePattern.findAllMatchIn(movieMetaBody)) {
       val rawId      = movieMatch.group(1)
@@ -287,7 +244,6 @@ object HeliosClient {
       }
     }
 
-    // Events: _id:"eNNNN" — metadata appears in the 500 chars before the id token
     val eventIdPattern = """_id:"(e\d+)"""".r
     for (eventMatch <- eventIdPattern.findAllMatchIn(movieMetaBody)) {
       val eventId   = eventMatch.group(1)
@@ -346,5 +302,4 @@ object HeliosClient {
 
     result.toSeq
   }
-
 }

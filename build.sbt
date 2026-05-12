@@ -1,24 +1,28 @@
 name := "movies"
+
 organization := "com.example"
+
 version := "1.0-SNAPSHOT"
 
-scalaVersion := "2.13.14"
+scalaVersion := "2.13.16"
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala)
+lazy val root = (project in file("."))
+  .enablePlugins(PlayScala)
+
+// ── Versions ──────────────────────────────────────────────────────────────────
+
+val playVersion        = "3.0.8"
+val mongoDriverVersion = "5.1.1"
 
 // ── Dependencies ──────────────────────────────────────────────────────────────
 
-val mongoDriverVersion = "5.1.1"
-val playVersion        = "2.9.5"
-
 libraryDependencies ++= Seq(
+
+  // Play
   guice,
 
   // MongoDB official Scala driver
   "org.mongodb.scala" %% "mongo-scala-driver" % mongoDriverVersion,
-
-  // JSON (Play's built-in)
-  "com.typesafe.play" %% "play-json" % "2.10.5",
 
   // HTML parsing
   "org.jsoup" % "jsoup" % "1.17.2",
@@ -28,8 +32,16 @@ libraryDependencies ++= Seq(
 
   // Testing
   "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
-  "org.mockito"            %% "mockito-scala"       % "1.17.31" % Test
+  "org.mockito"            %% "mockito-scala"      % "1.17.31" % Test
 )
+
+// ── Test layout ───────────────────────────────────────────────────────────────
+
+Test / scalaSource :=
+  baseDirectory.value / "test" / "scala"
+
+Test / resourceDirectory :=
+  baseDirectory.value / "test" / "resources"
 
 // ── Compiler options ──────────────────────────────────────────────────────────
 
