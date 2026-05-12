@@ -16,6 +16,9 @@
       <div class="card-title">
         <a href="/film?title=@java.net.URLEncoder.encode(film.movie.title, "UTF-8")">@film.movie.title</a>
       </div>
+      @film.movie.runtimeMinutes.map { mins =>
+        <div class="runtime">@{mins / 60}h @{mins % 60}min</div>
+      }
       @for((date, cinemaShowtimesList) <- film.showings) {
         <div class="date-group" data-date="@date">
           <div class="date-label">@DateFormatter.format(date)</div>
