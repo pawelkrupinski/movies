@@ -152,16 +152,43 @@
     document.getElementById('hidden-panel').style.display = 'none';
   }
 
-  // ── Room tooltip (long-press on mobile) ──────────────────────────────────
+  // ── Room tooltip ──────────────────────────────────────────────────────────
 
+  const _roomTooltip = document.createElement('div');
+  _roomTooltip.id = 'room-tooltip';
+  document.body.appendChild(_roomTooltip);
+
+  function showRoomTooltip(badge) {
+    _roomTooltip.textContent = badge.dataset.room;
+    _roomTooltip.style.display = 'block';
+
+    const badgeRect = badge.getBoundingClientRect();
+    const tipW      = _roomTooltip.offsetWidth;
+    const tipH      = _roomTooltip.offsetHeight;
+    const cardLeft  = (badge.closest('.card') || badge).getBoundingClientRect().left;
+
+    const left = Math.max(cardLeft, badgeRect.left + badgeRect.width / 2 - tipW / 2);
+    _roomTooltip.style.left = left + 'px';
+    _roomTooltip.style.top  = (badgeRect.top - tipH - 4) + 'px';
+  }
+
+  function hideRoomTooltip() { _roomTooltip.style.display = 'none'; }
+
+  // Desktop hover
+  document.addEventListener('mouseover', e => {
+    const b = e.target.closest('.badge-time[data-room]');
+    if (b) showRoomTooltip(b); else hideRoomTooltip();
+  });
+
+  // Mobile long-press
   let _roomTimer = null;
 
   document.addEventListener('touchstart', e => {
     const badge = e.target.closest('.badge-time[data-room]');
     if (!badge) return;
     _roomTimer = setTimeout(() => {
-      badge.classList.add('room-visible');
-      setTimeout(() => badge.classList.remove('room-visible'), 2000);
+      showRoomTooltip(badge);
+      setTimeout(hideRoomTooltip, 2000);
     }, 500);
   }, { passive: true });
 
