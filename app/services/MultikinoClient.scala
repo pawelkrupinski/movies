@@ -93,6 +93,9 @@ object MultikinoClient extends Logging {
       .cookieHandler(cookieManager)
       .build()
 
+    private def isUsable(response: HttpResponse[String]): Boolean =
+      response.statusCode() == 200 && response.body().nonEmpty
+
     private def scrapingAntRequest(url: String, key: String, extraParams: String) = {
       val encoded = URLEncoder.encode(url, StandardCharsets.UTF_8)
       HttpRequest.newBuilder()
@@ -105,20 +108,19 @@ object MultikinoClient extends Logging {
 
     override def get(url: String): String = scrapingAntKey match {
       case Some(key) =>
-        // 423 = "Our browser was detected by target site." ScrapingAnt's recommendation is to retry
-        // with different proxy settings. Falling back to a residential proxy bypasses datacenter
-        // IP blocklists (Multikino occasionally toggles those on CI runs).
+        // Retry with a residential proxy when the first attempt either gets blocked
+        // (423 "browser detected") or comes back empty (Multikino occasionally
+        // serves a zero-byte 200 to the datacenter proxy — the JSON parser then
+        // fails on empty input). Both modes are documented ScrapingAnt failure
+        // shapes and clear up on a residential retry.
         val first = httpClient.send(scrapingAntRequest(url, key, ""), HttpResponse.BodyHandlers.ofString())
-        first.statusCode() match {
-          case 200 => first.body()
-          case 423 =>
-            logger.warn("ScrapingAnt 423 on first attempt; retrying with residential proxy")
-            val retry = httpClient.send(scrapingAntRequest(url, key, "&proxy_type=residential"), HttpResponse.BodyHandlers.ofString())
-            if (retry.statusCode() != 200)
-              throw new RuntimeException(s"ScrapingAnt returned ${retry.statusCode()} after residential retry: ${retry.body().take(500)}")
-            retry.body()
-          case status =>
-            throw new RuntimeException(s"ScrapingAnt returned $status: ${first.body().take(500)}")
+        if (isUsable(first)) first.body()
+        else {
+          logger.warn(s"ScrapingAnt unusable response (status=${first.statusCode()}, body=${first.body().length}B); retrying with residential proxy")
+          val retry = httpClient.send(scrapingAntRequest(url, key, "&proxy_type=residential"), HttpResponse.BodyHandlers.ofString())
+          if (!isUsable(retry))
+            throw new RuntimeException(s"ScrapingAnt residential retry also unusable: status=${retry.statusCode()}, body=${retry.body().take(500)}")
+          retry.body()
         }
 
       case None =>
