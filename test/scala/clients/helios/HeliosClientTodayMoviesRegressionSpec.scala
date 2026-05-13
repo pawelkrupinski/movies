@@ -54,18 +54,17 @@ class HeliosClientTodayMoviesRegressionSpec extends AnyFlatSpec with Matchers {
     titles should not be empty
   }
 
-  it should "assign the film poster to the Billie Eilish in-3D event and leave the plain event without a duplicate" in {
+  it should "not assign the same poster to both Billie Eilish events" in {
     val results = client.fetch()
 
-    // Both events share the same underlying film poster URL (img.helios.pl).
-    // uniquePosterUrls awards it to whichever comes first alphabetically ("in 3D" < "w HnS"),
-    // so the plain "w HnS" variant ends up with None — correct deduplication behaviour.
+    // Both events and the base "The Tour" film entry all share the same poster URL.
+    // uniquePosterUrls awards it to "The Tour" (alphabetically first); both events end up with None.
     val billie3d = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS")
     val billieHns = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS")
 
     billie3d  shouldBe defined
     billieHns shouldBe defined
-    billie3d.get.posterUrl  shouldBe defined
+    billie3d.get.posterUrl  shouldBe None
     billieHns.get.posterUrl shouldBe None
   }
 }
