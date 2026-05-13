@@ -99,28 +99,37 @@ object MultikinoClient extends Logging {
     private def scrapingAntRequest(url: String, key: String, extraParams: String) = {
       val encoded = URLEncoder.encode(url, StandardCharsets.UTF_8)
       HttpRequest.newBuilder()
-        .uri(URI.create(s"$ScrapingAntUrl?url=$encoded&browser=true&proxy_country=pl&return_page_source=true$extraParams"))
+        .uri(URI.create(s"$ScrapingAntUrl?url=$encoded&proxy_country=pl$extraParams"))
         .header("x-api-key", key)
         .header("Accept", "application/json, text/plain, */*")
         .GET()
         .build()
     }
 
+    // Try cheapest first, escalate on each failure. The JSON API doesn't need a
+    // browser to render — `browser=true` is only the last resort because it
+    // burns the most ScrapingAnt credits and historically gets caught by
+    // anti-bot detection (423, or 200 with empty body).
+    private val ScrapingAntAttempts: Seq[(String, String)] = Seq(
+      "datacenter"           -> "",
+      "residential"          -> "&proxy_type=residential",
+      "residential + browser" -> "&proxy_type=residential&browser=true&return_page_source=true"
+    )
+
     override def get(url: String): String = scrapingAntKey match {
       case Some(key) =>
-        // Retry with a residential proxy when the first attempt either gets blocked
-        // (423 "browser detected") or comes back empty (Multikino occasionally
-        // serves a zero-byte 200 to the datacenter proxy — the JSON parser then
-        // fails on empty input). Both modes are documented ScrapingAnt failure
-        // shapes and clear up on a residential retry.
-        val first = httpClient.send(scrapingAntRequest(url, key, ""), HttpResponse.BodyHandlers.ofString())
-        if (isUsable(first)) first.body()
-        else {
-          logger.warn(s"ScrapingAnt unusable response (status=${first.statusCode()}, body=${first.body().length}B); retrying with residential proxy")
-          val retry = httpClient.send(scrapingAntRequest(url, key, "&proxy_type=residential"), HttpResponse.BodyHandlers.ofString())
-          if (!isUsable(retry))
-            throw new RuntimeException(s"ScrapingAnt residential retry also unusable: status=${retry.statusCode()}, body=${retry.body().take(500)}")
-          retry.body()
+        val attempts = ScrapingAntAttempts.iterator.map { case (label, extra) =>
+          val response = httpClient.send(scrapingAntRequest(url, key, extra), HttpResponse.BodyHandlers.ofString())
+          if (!isUsable(response))
+            logger.warn(s"ScrapingAnt $label unusable (status=${response.statusCode()}, body=${response.body().length}B)")
+          (label, response)
+        }
+        attempts.find { case (_, r) => isUsable(r) } match {
+          case Some((label, r)) =>
+            if (label != ScrapingAntAttempts.head._1) logger.info(s"ScrapingAnt succeeded via $label fallback")
+            r.body()
+          case None =>
+            throw new RuntimeException(s"ScrapingAnt exhausted all ${ScrapingAntAttempts.size} retries for $url")
         }
 
       case None =>
