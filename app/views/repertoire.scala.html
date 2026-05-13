@@ -38,16 +38,22 @@
       el:       col,
       title:    col.dataset.title.toLowerCase(),
       rawTitle: col.dataset.title,
+      visible:  true,  // remembered so we only write style.display on changes
       groups:   [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
         el:           group,
         date:         group.dataset.date,
+        visible:      true,
         cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg => ({
           el:      cg,
           cinema:  cg.dataset.cinema,
+          visible: true,
+          // Pre-parse each badge's format tokens into a Set. Re-reading
+          // dataset.format on every filter pass adds up — these never change.
           badges:  [...cg.querySelectorAll('.badge-time')].map(b => ({
-            el:   b,
-            // firstChild is the "HH:MM" text node; later span.badge-fmt holds the format tokens.
-            time: (b.firstChild ? b.firstChild.textContent : '').trim()
+            el:      b,
+            time:    (b.firstChild ? b.firstChild.textContent : '').trim(),
+            formats: new Set((b.dataset.format || '').split(' ').filter(Boolean)),
+            visible: true
           }))
         }))
       }))
@@ -56,6 +62,17 @@
 
   // ── Master filter ─────────────────────────────────────────────────────────
 
+  // Helper: only write style.display when the visibility actually changed —
+  // avoids triggering layout when nothing moved.
+  function setVisible(node, want) {
+    if (node.visible !== want) {
+      node.el.style.display = want ? '' : 'none';
+      node.visible = want;
+    }
+  }
+
+  let _prevOrderKey = '';
+
   function applyFilters() {
     if (!INDEX) return;
     const filter    = document.getElementById('date-filter').value;
@@ -63,6 +80,7 @@
     const hidden    = new Set(getHidden());
     const disabled  = new Set(getDisabledCinemas());
     const fmtTokens = getFormatFilter();
+    const hasFmt    = fmtTokens.length > 0;
     const { today, tomorrow, in7Days } = dateBounds();
 
     const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
@@ -73,56 +91,64 @@
                                            _  => true;
 
     let visibleCount = 0, showtimeCount = 0;
-    const earlyMap = [];
+    const earlyMap = new Array(INDEX.length);
 
-    for (const col of INDEX) {
+    for (let i = 0; i < INDEX.length; i++) {
+      const col = INDEX[i];
       if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))) {
-        col.el.style.display = 'none';
-        earlyMap.push(null);
+        setVisible(col, false);
+        earlyMap[i] = null;
         continue;
       }
 
       let colVisible = false, colEarliest = null;
 
       for (const group of col.groups) {
-        if (!dateOk(group.date)) { group.el.style.display = 'none'; continue; }
+        if (!dateOk(group.date)) { setVisible(group, false); continue; }
 
         let groupVisible = false;
         for (const cg of group.cinemaGroups) {
-          if (disabled.has(cg.cinema)) { cg.el.style.display = 'none'; continue; }
+          if (disabled.has(cg.cinema)) { setVisible(cg, false); continue; }
 
           let cgVisibleCount = 0, cgFirstTime = null;
-          for (const badge of cg.badges) {
-            const ok = badgeMatchesFormat(badge.el, fmtTokens);
-            badge.el.style.display = ok ? '' : 'none';
-            if (ok) {
-              cgVisibleCount++;
-              if (!cgFirstTime) cgFirstTime = group.date + 'T' + badge.time;
+          if (hasFmt) {
+            for (const badge of cg.badges) {
+              const ok = badgeFormatMatch(badge.formats, fmtTokens);
+              setVisible(badge, ok);
+              if (ok) {
+                cgVisibleCount++;
+                if (!cgFirstTime) cgFirstTime = group.date + 'T' + badge.time;
+              }
             }
+          } else {
+            // Fast-path: no format constraint, every badge in this cinema-group is on.
+            for (const badge of cg.badges) setVisible(badge, true);
+            cgVisibleCount = cg.badges.length;
+            if (cg.badges.length > 0) cgFirstTime = group.date + 'T' + cg.badges[0].time;
           }
 
           if (cgVisibleCount > 0) {
-            cg.el.style.display = '';
+            setVisible(cg, true);
             groupVisible = true;
             showtimeCount += cgVisibleCount;
             if (cgFirstTime && (!colEarliest || cgFirstTime < colEarliest))
               colEarliest = cgFirstTime;
           } else {
-            cg.el.style.display = 'none';
+            setVisible(cg, false);
           }
         }
 
-        group.el.style.display = groupVisible ? '' : 'none';
+        setVisible(group, groupVisible);
         if (groupVisible) colVisible = true;
       }
 
       if (colVisible) {
-        col.el.style.display = '';
+        setVisible(col, true);
         visibleCount++;
-        earlyMap.push(colEarliest);
+        earlyMap[i] = colEarliest;
       } else {
-        col.el.style.display = 'none';
-        earlyMap.push(null);
+        setVisible(col, false);
+        earlyMap[i] = null;
       }
     }
 
@@ -131,15 +157,26 @@
   }
 
   function sortByEarliestVisible(earlyMap) {
-    const grid  = document.getElementById('film-grid');
-    const order = INDEX.map((col, i) => ({ el: col.el, t: earlyMap[i] }));
-    order.sort((a, b) => {
-      if (!a.t && !b.t) return 0;
-      if (!a.t) return 1;
-      if (!b.t) return -1;
-      return a.t < b.t ? -1 : a.t > b.t ? 1 : 0;
+    // Build a stable, comparable signature for the desired order; if it matches
+    // the previously-applied order, skip the DOM moves entirely.
+    const indexed = earlyMap.map((t, i) => i);
+    indexed.sort((a, b) => {
+      const ta = earlyMap[a], tb = earlyMap[b];
+      if (!ta && !tb) return a - b;
+      if (!ta) return 1;
+      if (!tb) return -1;
+      return ta < tb ? -1 : ta > tb ? 1 : (a - b);
     });
-    for (const { el } of order) grid.appendChild(el);
+    const key = indexed.join(',');
+    if (key === _prevOrderKey) return;
+    _prevOrderKey = key;
+
+    // Batch the moves via a DocumentFragment — a single layout flush instead of
+    // one per appendChild.
+    const grid = document.getElementById('film-grid');
+    const frag = document.createDocumentFragment();
+    for (const i of indexed) frag.appendChild(INDEX[i].el);
+    grid.appendChild(frag);
   }
 </script>
 </body>

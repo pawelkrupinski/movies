@@ -21,15 +21,26 @@ object TitleNormalizer {
 
   // Group key for merging. Falls back to the plain Roman-numeral form when no
   // sibling title reduces to the same canonical.
-  def mergeKey(title: String, allTitles: Iterable[String]): String = {
-    val romanized = normalize(title)
-    val canon     = canonical(romanized)
-    if (canon == romanized) romanized.toLowerCase
-    else if (allTitles.exists { other =>
-      val otherRoman = normalize(other)
-      otherRoman != romanized && canonical(otherRoman) == canon
-    }) canon.toLowerCase
-    else romanized.toLowerCase
+  def mergeKey(title: String, allTitles: Iterable[String]): String =
+    mergeKeyLookup(allTitles)(title)
+
+  // Faster batch entry point: when caller has many titles to key, pre-compute
+  // the canonical→count index once (O(N)) and then look up each title in O(1).
+  // Caller iterates with `index(title)`. Equivalent semantics to `mergeKey`.
+  def mergeKeyLookup(allTitles: Iterable[String]): String => String = {
+    val romanized = allTitles.iterator.map(normalize).toSet
+    // Counts how many distinct romanized titles share each canonical form.
+    val canonicalCounts: Map[String, Int] =
+      romanized.iterator.map(canonical).toSeq.groupBy(identity).view.mapValues(_.size).toMap
+    title => {
+      val r = normalize(title)
+      val c = canonical(r)
+      if (c == r) r.toLowerCase
+      // A canonical with count > 1 means at least one *other* romanized title
+      // reduces to the same canonical, so we have a real merge — use it.
+      else if (canonicalCounts.getOrElse(c, 0) > 1) c.toLowerCase
+      else r.toLowerCase
+    }
   }
 
   // Among a group of titles that merge to one schedule, pick the display form.

@@ -32,19 +32,26 @@
 
   function buildIndex() {
     INDEX = [...document.querySelectorAll('[data-cinema]')].map(section => ({
-      el:     section,
-      cinema: section.dataset.cinema,
-      row:    section.querySelector('.row'),
-      cols:   [...section.querySelectorAll('.col[data-title]')].map(col => ({
+      el:      section,
+      cinema:  section.dataset.cinema,
+      row:     section.querySelector('.row'),
+      visible: true,
+      prevOrderKey: '',
+      cols:    [...section.querySelectorAll('.col[data-title]')].map(col => ({
         el:       col,
         title:    col.dataset.title.toLowerCase(),
         rawTitle: col.dataset.title,
+        visible:  true,
         groups:   [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
-          el:     group,
-          date:   group.dataset.date,
-          badges: [...group.querySelectorAll('.badge-time')].map(b => ({
-            el:   b,
-            time: (b.firstChild ? b.firstChild.textContent : '').trim()
+          el:      group,
+          date:    group.dataset.date,
+          visible: true,
+          // Pre-parse each badge's format Set up front; never re-read dataset on filter.
+          badges:  [...group.querySelectorAll('.badge-time')].map(b => ({
+            el:      b,
+            time:    (b.firstChild ? b.firstChild.textContent : '').trim(),
+            formats: new Set((b.dataset.format || '').split(' ').filter(Boolean)),
+            visible: true
           }))
         }))
       }))
@@ -53,6 +60,13 @@
 
   // ── Master filter ─────────────────────────────────────────────────────────
 
+  function setVisible(node, want) {
+    if (node.visible !== want) {
+      node.el.style.display = want ? '' : 'none';
+      node.visible = want;
+    }
+  }
+
   function applyFilters() {
     if (!INDEX) return;
     const filter    = document.getElementById('date-filter').value;
@@ -60,6 +74,7 @@
     const hidden    = new Set(getHidden());
     const disabled  = new Set(getDisabledCinemas());
     const fmtTokens = getFormatFilter();
+    const hasFmt    = fmtTokens.length > 0;
     const { today, tomorrow, in7Days } = dateBounds();
 
     const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
@@ -72,56 +87,64 @@
     let visibleCount = 0, showtimeCount = 0;
 
     for (const section of INDEX) {
-      if (disabled.has(section.cinema)) { section.el.style.display = 'none'; continue; }
+      if (disabled.has(section.cinema)) { setVisible(section, false); continue; }
 
       let sectionVisible = false;
-      const earlyMap = [];
+      const earlyMap = new Array(section.cols.length);
 
-      for (const col of section.cols) {
+      for (let i = 0; i < section.cols.length; i++) {
+        const col = section.cols[i];
         if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))) {
-          col.el.style.display = 'none';
-          earlyMap.push(null);
+          setVisible(col, false);
+          earlyMap[i] = null;
           continue;
         }
 
         let colVisible = false, colEarliest = null, colShowtimes = 0;
 
         for (const group of col.groups) {
-          if (!dateOk(group.date)) { group.el.style.display = 'none'; continue; }
+          if (!dateOk(group.date)) { setVisible(group, false); continue; }
 
           let groupVisibleCount = 0, groupFirstBadge = null;
-          for (const badge of group.badges) {
-            const ok = badgeMatchesFormat(badge.el, fmtTokens);
-            badge.el.style.display = ok ? '' : 'none';
-            if (ok) {
-              groupVisibleCount++;
-              if (!groupFirstBadge) groupFirstBadge = group.date + 'T' + badge.time;
+          if (hasFmt) {
+            for (const badge of group.badges) {
+              const ok = badgeFormatMatch(badge.formats, fmtTokens);
+              setVisible(badge, ok);
+              if (ok) {
+                groupVisibleCount++;
+                if (!groupFirstBadge) groupFirstBadge = group.date + 'T' + badge.time;
+              }
             }
+          } else {
+            for (const badge of group.badges) setVisible(badge, true);
+            groupVisibleCount = group.badges.length;
+            if (group.badges.length > 0) groupFirstBadge = group.date + 'T' + group.badges[0].time;
           }
 
           if (groupVisibleCount > 0) {
-            group.el.style.display = '';
+            setVisible(group, true);
             colVisible = true;
             colShowtimes += groupVisibleCount;
             if (groupFirstBadge && (!colEarliest || groupFirstBadge < colEarliest))
               colEarliest = groupFirstBadge;
           } else {
-            group.el.style.display = 'none';
+            setVisible(group, false);
           }
         }
 
-        col.el.style.display = colVisible ? '' : 'none';
         if (colVisible) {
+          setVisible(col, true);
           sectionVisible = true;
           visibleCount++;
           showtimeCount += colShowtimes;
-          earlyMap.push(colEarliest);
+          earlyMap[i] = colEarliest;
         } else {
-          earlyMap.push(null);
+          setVisible(col, false);
+          earlyMap[i] = null;
         }
       }
 
-      section.el.style.display = sectionVisible ? '' : 'none';
+      setVisible(section, sectionVisible);
       if (sectionVisible && section.row) sortSection(section, earlyMap);
     }
 
@@ -129,14 +152,20 @@
   }
 
   function sortSection(section, earlyMap) {
-    const order = section.cols.map((col, i) => ({ el: col.el, t: earlyMap[i] }));
-    order.sort((a, b) => {
-      if (!a.t && !b.t) return 0;
-      if (!a.t) return 1;
-      if (!b.t) return -1;
-      return a.t < b.t ? -1 : a.t > b.t ? 1 : 0;
+    const indexed = earlyMap.map((_, i) => i);
+    indexed.sort((a, b) => {
+      const ta = earlyMap[a], tb = earlyMap[b];
+      if (!ta && !tb) return a - b;
+      if (!ta) return 1;
+      if (!tb) return -1;
+      return ta < tb ? -1 : ta > tb ? 1 : (a - b);
     });
-    for (const { el } of order) section.row.appendChild(el);
+    const key = indexed.join(',');
+    if (key === section.prevOrderKey) return;
+    section.prevOrderKey = key;
+    const frag = document.createDocumentFragment();
+    for (const i of indexed) frag.appendChild(section.cols[i].el);
+    section.row.appendChild(frag);
   }
 </script>
 </body>

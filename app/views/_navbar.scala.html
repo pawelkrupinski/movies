@@ -46,7 +46,7 @@
     </div>
   </div>
   <div class="d-flex gap-2 align-items-center navbar-search-date">
-    <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFilters()">
+    <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()">
     <div class="d-flex align-items-stretch" style="gap:2px">
       <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
       <select id="date-filter" class="filter-select" onchange="applyFilters()">

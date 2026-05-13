@@ -56,9 +56,11 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
   }
 
   private def toSchedules(cinemaMovies: Seq[CinemaMovie]): Seq[FilmSchedule] = {
-    val allTitles = cinemaMovies.map(_.movie.title)
+    // Pre-compute canonical→merge-key lookup once (O(N)). Without this, mergeKey
+    // scans all titles on every call → O(N²) over the groupBy below.
+    val keyFor = TitleNormalizer.mergeKeyLookup(cinemaMovies.map(_.movie.title))
     cinemaMovies
-      .groupBy(cm => TitleNormalizer.mergeKey(cm.movie.title, allTitles))
+      .groupBy(cm => keyFor(cm.movie.title))
       .toSeq
       .flatMap { case (_, entries) =>
         val now = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))

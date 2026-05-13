@@ -17,10 +17,22 @@
     return new Set((badge.dataset.format || '').split(' ').filter(Boolean));
   }
 
-  function badgeMatchesFormat(badge, requiredTokens) {
-    if (requiredTokens.length === 0) return true;
-    const have = badgeFormatTokens(badge);
-    return requiredTokens.every(t => have.has(t));
+  // requiredTokens may be empty → fast-path. Otherwise checks a pre-built Set
+  // attached to each indexed badge (so we don't re-parse `dataset.format` on
+  // every filter pass).
+  function badgeFormatMatch(badgeFormatSet, requiredTokens) {
+    for (let i = 0; i < requiredTokens.length; i++) {
+      if (!badgeFormatSet.has(requiredTokens[i])) return false;
+    }
+    return true;
+  }
+
+  // Debounce wrapper for fast-firing inputs (the search box). Discrete inputs
+  // like select/radio/checkbox still call applyFilters() directly.
+  let _filterDebounce = 0;
+  function applyFiltersDebounced() {
+    clearTimeout(_filterDebounce);
+    _filterDebounce = setTimeout(applyFilters, 80);
   }
 
   function updateFormatBtn() {
