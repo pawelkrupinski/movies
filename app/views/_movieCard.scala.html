@@ -5,8 +5,11 @@
     <button class="hide-btn" onclick="hideFilm(this)" title="Ukryj film">✕</button>
     <a href="/film?title=@java.net.URLEncoder.encode(movie.title, "UTF-8")" style="display:block;height:100%">
       @posterUrl match {
-        case Some(url) => { <img src="@url" alt="@movie.title" loading="lazy"> }
-        case None      => { <div class="no-poster">🎬</div> }
+        case Some(url) => {
+          <img src="@url" alt="@movie.title" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="no-poster" style="display:none">Brak plakatu</div>
+        }
+        case None      => { <div class="no-poster">Brak plakatu</div> }
       }
     </a>
   </div>

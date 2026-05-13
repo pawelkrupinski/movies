@@ -47,7 +47,7 @@ class HeliosClientResilienceSpec extends AnyFlatSpec with Matchers {
   it should "leave all showtimes un-enriched (no room or format) when REST is unavailable" in {
     val all = results.flatMap(_.showtimes)
     all.exists(_.room.isDefined)   shouldBe false
-    all.exists(_.format.isDefined) shouldBe false
+    all.exists(_.format.nonEmpty) shouldBe false
   }
 
   it should "leave REST-derived metadata empty when REST is unavailable" in {

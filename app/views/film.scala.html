@@ -27,8 +27,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 4rem;
-      color: #555;
+      font-size: 1rem;
+      color: #99a;
+      font-style: italic;
+      letter-spacing: .03em;
     }
     .film-title { font-size: 1.6rem; font-weight: 700; margin-bottom: .5rem; }
     .meta-label { font-size: .75rem; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .15rem; margin-top: .9rem; }
@@ -83,8 +85,11 @@
 
     <div class="col-auto">
       @film.posterUrl match {
-        case Some(url) => { <img src="@url" alt="@film.movie.title" class="poster-img"> }
-        case None      => { <div class="no-poster">🎬</div> }
+        case Some(url) => {
+          <img src="@url" alt="@film.movie.title" class="poster-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="no-poster" style="display:none">Brak plakatu</div>
+        }
+        case None      => { <div class="no-poster">Brak plakatu</div> }
       }
     </div>
 

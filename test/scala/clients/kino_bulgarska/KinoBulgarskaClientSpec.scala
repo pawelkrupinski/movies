@@ -117,6 +117,21 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Wpatrując się w słońce").director       shouldBe Some("Mascha Schilinski")
   }
 
+  // ── Synopses ──────────────────────────────────────────────────────────────
+
+  it should "extract a non-empty synopsis for every movie" in {
+    results.foreach { cm =>
+      cm.synopsis should not be empty
+      cm.synopsis.get.length should be > 50
+    }
+  }
+
+  it should "extract the exact synopsis for Maryja. matka papieża" in {
+    byTitle("Maryja. matka papieża").synopsis shouldBe Some(
+      "Pierwszy film ukazujący mistyczną relację Karola Wojtyły z Matką Bożą. To Ona prowadziła Jana Pawła II przez wszystkie dni jego pontyfikatu. W filmie ukazane są uznane objawienia Maryjne, w których ważnym elementem jest aktualne zagrożenie ze strony Rosji. Od wypełnienia orędzi Matki Bożej…"
+    )
+  }
+
   // ── Showtime counts ───────────────────────────────────────────────────────
 
   it should "return correct showtime count for every movie" in {
@@ -138,8 +153,8 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     val st = byTitle("Chronologia wody").showtimes
     st.size shouldBe 2
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 13, 16, 30), None, Some("Sala Dzienniki Motocyklowe"), None),
-      Showtime(LocalDateTime.of(2026, 5, 14, 17, 50), None, Some("Sala Dzienniki Motocyklowe"), None),
+      Showtime(LocalDateTime.of(2026, 5, 13, 16, 30), None, Some("Sala Dzienniki Motocyklowe"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 14, 17, 50), None, Some("Sala Dzienniki Motocyklowe"), Nil),
     )
   }
 
@@ -147,8 +162,8 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     val st = byTitle("Ostatnia sesja w paryżu").showtimes
     st.size shouldBe 2
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 13, 18, 40), None, Some("Sala Dzienniki Motocyklowe"), None),
-      Showtime(LocalDateTime.of(2026, 5, 14, 16, 0), None, Some("Sala Dzienniki Motocyklowe"), None),
+      Showtime(LocalDateTime.of(2026, 5, 13, 18, 40), None, Some("Sala Dzienniki Motocyklowe"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 14, 16, 0), None, Some("Sala Dzienniki Motocyklowe"), Nil),
     )
   }
 }

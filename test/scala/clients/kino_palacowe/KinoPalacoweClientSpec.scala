@@ -73,6 +73,22 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Słodkie życie")               shouldBe Some("http://kinopalacowe.pl/filmy/14401-sodkie-zycie-federico-fellini-ciao-a-tutti/")
   }
 
+  // ── Synopses ──────────────────────────────────────────────────────────────
+
+  it should "extract a non-empty synopsis for every movie" in {
+    results.foreach { cm =>
+      withClue(s"${cm.movie.title}: ") {
+        cm.synopsis should not be empty
+      }
+    }
+  }
+
+  it should "extract correct synopsis for Chłopiec na krańcach świata" in {
+    byTitle("Chłopiec na krańcach świata").synopsis shouldBe Some(
+      "Czy odważyłbyś się wyruszyć tam, gdzie kończy się świat, by uratować kogoś bliskiego? Omul rozumie mowę zwierząt, ale..."
+    )
+  }
+
   // ── Showtime counts ───────────────────────────────────────────────────────
 
   it should "return correct showtime count for every movie" in {
@@ -90,8 +106,8 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
     val st = byTitle("Chłopiec na krańcach świata").showtimes
     st.size shouldBe 2
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 6, 27, 11, 0), Some("https://ckzamek.bilety24.pl/kup-bilety/?id=925494"), Some("Sala 1 - Kinowa"), None),
-      Showtime(LocalDateTime.of(2026, 6, 28, 11, 0), Some("https://ckzamek.bilety24.pl/kup-bilety/?id=925496"), Some("Sala 1 - Kinowa"), None),
+      Showtime(LocalDateTime.of(2026, 6, 27, 11, 0), Some("https://ckzamek.bilety24.pl/kup-bilety/?id=925494"), Some("Sala 1 - Kinowa"), Nil),
+      Showtime(LocalDateTime.of(2026, 6, 28, 11, 0), Some("https://ckzamek.bilety24.pl/kup-bilety/?id=925496"), Some("Sala 1 - Kinowa"), Nil),
     )
   }
 
@@ -99,7 +115,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
     val st = byTitle("Głos z księżyca").showtimes
     st.size shouldBe 1
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 7, 17, 18, 0), Some("https://ckzamek.bilety24.pl/kup-bilety/?id=924779"), Some("Sala 1 - Kinowa"), None),
+      Showtime(LocalDateTime.of(2026, 7, 17, 18, 0), Some("https://ckzamek.bilety24.pl/kup-bilety/?id=924779"), Some("Sala 1 - Kinowa"), Nil),
     )
   }
 }

@@ -201,6 +201,23 @@ class CharlieMonroeClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Ścieżki życia")                              shouldBe Some("https://kinomalta.pl/movies/sciezki-zycia")
   }
 
+  // ── Synopses ──────────────────────────────────────────────────────────────
+
+  it should "extract a non-empty synopsis for every movie" in {
+    results.foreach { cm =>
+      withClue(s"${cm.movie.title}: ") {
+        cm.synopsis should not be empty
+        cm.synopsis.get.length should be > 30
+      }
+    }
+  }
+
+  it should "extract the exact synopsis for Bałtyk" in {
+    byTitle("Bałtyk").synopsis.getOrElse("") should startWith(
+      "W samym sercu Łeby, wśród wiatru, soli i zapachu dymu, Miecia od czterech dekad prowadzi kultową wędzarnię ryb."
+    )
+  }
+
   // ── Showtime counts ───────────────────────────────────────────────────────
 
   it should "return correct showtime count for every movie" in {
@@ -250,11 +267,11 @@ class CharlieMonroeClientSpec extends AnyFlatSpec with Matchers {
     val st = byTitle("Drama").showtimes
     st.size shouldBe 5
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 13, 20, 30), Some("https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41937"), Some("Sala Marilyn"), None),
-      Showtime(LocalDateTime.of(2026, 5, 14, 20, 30), Some("https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41944"), Some("Sala Charlie"), None),
-      Showtime(LocalDateTime.of(2026, 5, 15, 20, 20), None, Some("Sala Marilyn"), None),
-      Showtime(LocalDateTime.of(2026, 5, 16, 20, 25), None, Some("Sala Marilyn"), None),
-      Showtime(LocalDateTime.of(2026, 5, 17, 20, 20), None, Some("Sala Marilyn"), None),
+      Showtime(LocalDateTime.of(2026, 5, 13, 20, 30), Some("https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41937"), Some("Sala Marilyn"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 14, 20, 30), Some("https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41944"), Some("Sala Charlie"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 15, 20, 20), None, Some("Sala Marilyn"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 16, 20, 25), None, Some("Sala Marilyn"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 17, 20, 20), None, Some("Sala Marilyn"), Nil),
     )
   }
 
@@ -262,11 +279,11 @@ class CharlieMonroeClientSpec extends AnyFlatSpec with Matchers {
     val st = byTitle("Ostatnia sesja w Paryżu").showtimes
     st.size shouldBe 5
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 13, 18, 45), Some("https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41940"), Some("Sala Audrey"), None),
-      Showtime(LocalDateTime.of(2026, 5, 14, 18, 45), Some("https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41943"), Some("Sala Charlie"), None),
-      Showtime(LocalDateTime.of(2026, 5, 15, 18, 45), None, Some("Sala Charlie"), None),
-      Showtime(LocalDateTime.of(2026, 5, 16, 18, 45), None, Some("Sala Audrey"), None),
-      Showtime(LocalDateTime.of(2026, 5, 17, 18, 45), None, Some("Sala Audrey"), None),
+      Showtime(LocalDateTime.of(2026, 5, 13, 18, 45), Some("https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41940"), Some("Sala Audrey"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 14, 18, 45), Some("https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41943"), Some("Sala Charlie"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 15, 18, 45), None, Some("Sala Charlie"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 16, 18, 45), None, Some("Sala Audrey"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 17, 18, 45), None, Some("Sala Audrey"), Nil),
     )
   }
 }

@@ -56,7 +56,7 @@ object HeliosNuxt {
               dateTime   = dateTime,
               bookingUrl = Some(s"$BookingBase/$screeningId?cinemaId=$CinemaSourceId").filter(_ => screeningId.nonEmpty),
               room       = None,
-              format     = None
+              format     = Nil
             )
           }.distinct
         )
@@ -160,12 +160,14 @@ object HeliosNuxt {
     val normal   = parseNormalNuxtMovies(ctx)
     val embedded = parseEmbeddedScreeningNuxtMovies(ctx)
     val events   = parseEventNuxtMovies(ctx)
-    // Events have a title/slug pair but no poster/runtime in the movie body;
-    // pull those from the embedded film block keyed by the same event id.
+    // When an event is tied to a parent film (e.g. "Billie Eilish - … Live in 3D"
+    // → the base Tour entry), prefer the parent film's poster/runtime. Sports
+    // and concert-only events have no embedded block, so we fall back to the
+    // poster/runtime extracted directly from the event entry.
     val enrichedEvents = events.map { case (id, ev) =>
       id -> embedded.get(id).map(em => ev.copy(
-        posterUrl      = ev.posterUrl.orElse(em.posterUrl),
-        runtimeMinutes = ev.runtimeMinutes.orElse(em.runtimeMinutes)
+        posterUrl      = em.posterUrl.orElse(ev.posterUrl),
+        runtimeMinutes = em.runtimeMinutes.orElse(ev.runtimeMinutes)
       )).getOrElse(ev)
     }
     normal ++ embedded ++ enrichedEvents
@@ -225,7 +227,18 @@ object HeliosNuxt {
         for {
           title <- ctx.resolve(nm.group(1))
           slug  <- ctx.resolve(nm.group(2))
-        } yield NuxtMovie(title, slug, posterUrl = None, filmUrl = None, runtimeMinutes = None)
+        } yield {
+          // The event entry continues from the name/slug anchor through to _id —
+          // pull poster and runtime out of that slice the same way film entries do.
+          val entryBlock = before.substring(nm.start)
+          NuxtMovie(
+            title          = title,
+            slug           = slug,
+            posterUrl      = nuxtPoster(entryBlock, ctx.resolve),
+            filmUrl        = None,
+            runtimeMinutes = nuxtRuntime(entryBlock, ctx.resolve)
+          )
+        }
       }
     }
 

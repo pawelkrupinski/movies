@@ -190,12 +190,12 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
       dateTime   = dt,
       bookingUrl = Some(s"$BookingBase/${s.id}?cinemaId=$CinemaSourceId"),
       room       = rest.screenNames.get(s.screenId),
-      format     = Some(s.release).filter(_.nonEmpty)
+      format     = s.release.split("/").toList.filter(_.nonEmpty)
     ))
 
   private def enrichShowtime(st: Showtime, rest: RestData): Showtime =
     st.bookingUrl.flatMap(extractScreeningId).flatMap(rest.screeningsById.get) match {
-      case Some(rs) => st.copy(room = rest.screenNames.get(rs.screenId), format = Some(rs.release).filter(_.nonEmpty))
+      case Some(rs) => st.copy(room = rest.screenNames.get(rs.screenId), format = rs.release.split("/").toList.filter(_.nonEmpty))
       case None     => st
     }
 

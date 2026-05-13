@@ -369,22 +369,22 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
   it should "return exact showtimes for Mortal Kombat II" in {
     val mk = byTitle("Mortal Kombat II")
     val expected = Seq(
-      Showtime(LocalDateTime.of(2026, 5, 13, 13, 30), Some("https://bilety.helios.pl/screen/78b1d860-fadf-4b3f-97f8-cef721748d19?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 8"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 13, 14, 40), Some("https://bilety.helios.pl/screen/926f7767-6e3c-4d34-ad25-ef3cc085de1b?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), Some("2D/NAP/ATMOS")),
-      Showtime(LocalDateTime.of(2026, 5, 13, 16, 10), Some("https://bilety.helios.pl/screen/b8ed5ab0-c699-4c07-9a7e-5e18867143ed?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 8"), Some("2D/DUB")),
-      Showtime(LocalDateTime.of(2026, 5, 13, 17, 15), Some("https://bilety.helios.pl/screen/12991f8e-031d-48b8-8d68-9b266f821e77?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), Some("2D/DUB")),
-      Showtime(LocalDateTime.of(2026, 5, 13, 18, 45), Some("https://bilety.helios.pl/screen/56ba0377-a410-42a1-b079-3a650889e8e8?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 8"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 13, 20,  0), Some("https://bilety.helios.pl/screen/cd5d9255-5f2f-402f-b9aa-d30aac0ef387?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), Some("2D/NAP/ATMOS")),
-      Showtime(LocalDateTime.of(2026, 5, 14, 13, 30), Some("https://bilety.helios.pl/screen/e6e7ab02-ca3b-4d64-977f-f4236613ba5b?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 14, 14, 40), Some("https://bilety.helios.pl/screen/66023493-5c12-4579-9f86-031c603e5c17?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), Some("2D/NAP/ATMOS")),
-      Showtime(LocalDateTime.of(2026, 5, 14, 16, 10), Some("https://bilety.helios.pl/screen/51d9d631-0d32-4a9f-baa7-dfe482f3b44f?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), Some("2D/DUB")),
-      Showtime(LocalDateTime.of(2026, 5, 14, 17, 15), Some("https://bilety.helios.pl/screen/e79c4edc-af31-4db9-8789-58d158db1468?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), Some("2D/DUB")),
-      Showtime(LocalDateTime.of(2026, 5, 14, 18, 45), Some("https://bilety.helios.pl/screen/c849db6e-02b6-45bc-bccd-fd761d86f0dc?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 14, 20,  0), Some("https://bilety.helios.pl/screen/8a1e1833-0bd8-4111-8f63-627926ee5b0d?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), Some("2D/NAP/ATMOS")),
-      Showtime(LocalDateTime.of(2026, 5, 15, 13, 30), Some("https://bilety.helios.pl/screen/5721ea93-8287-4f3d-bf61-372e4d9d304b?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 2"), Some("2D/DUB")),
-      Showtime(LocalDateTime.of(2026, 5, 15, 14,  0), Some("https://bilety.helios.pl/screen/6409151c-c1d7-470a-ae45-2d1a051e340b?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), Some("2D/NAP/ATMOS")),
-      Showtime(LocalDateTime.of(2026, 5, 15, 14, 40), Some("https://bilety.helios.pl/screen/a4e2c651-800e-4520-aae1-02913998c781?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 7 - Dream"), Some("2D/DUB")),
-      Showtime(LocalDateTime.of(2026, 5, 15, 16, 10), Some("https://bilety.helios.pl/screen/e1a4ebad-42ab-4dd5-bf76-1b928938c803?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 2"), Some("2D/NAP"))
+      Showtime(LocalDateTime.of(2026, 5, 13, 13, 30), Some("https://bilety.helios.pl/screen/78b1d860-fadf-4b3f-97f8-cef721748d19?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 8"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 13, 14, 40), Some("https://bilety.helios.pl/screen/926f7767-6e3c-4d34-ad25-ef3cc085de1b?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), List("2D", "NAP", "ATMOS")),
+      Showtime(LocalDateTime.of(2026, 5, 13, 16, 10), Some("https://bilety.helios.pl/screen/b8ed5ab0-c699-4c07-9a7e-5e18867143ed?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 8"), List("2D", "DUB")),
+      Showtime(LocalDateTime.of(2026, 5, 13, 17, 15), Some("https://bilety.helios.pl/screen/12991f8e-031d-48b8-8d68-9b266f821e77?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), List("2D", "DUB")),
+      Showtime(LocalDateTime.of(2026, 5, 13, 18, 45), Some("https://bilety.helios.pl/screen/56ba0377-a410-42a1-b079-3a650889e8e8?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 8"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 13, 20,  0), Some("https://bilety.helios.pl/screen/cd5d9255-5f2f-402f-b9aa-d30aac0ef387?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), List("2D", "NAP", "ATMOS")),
+      Showtime(LocalDateTime.of(2026, 5, 14, 13, 30), Some("https://bilety.helios.pl/screen/e6e7ab02-ca3b-4d64-977f-f4236613ba5b?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 14, 14, 40), Some("https://bilety.helios.pl/screen/66023493-5c12-4579-9f86-031c603e5c17?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), List("2D", "NAP", "ATMOS")),
+      Showtime(LocalDateTime.of(2026, 5, 14, 16, 10), Some("https://bilety.helios.pl/screen/51d9d631-0d32-4a9f-baa7-dfe482f3b44f?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), List("2D", "DUB")),
+      Showtime(LocalDateTime.of(2026, 5, 14, 17, 15), Some("https://bilety.helios.pl/screen/e79c4edc-af31-4db9-8789-58d158db1468?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), List("2D", "DUB")),
+      Showtime(LocalDateTime.of(2026, 5, 14, 18, 45), Some("https://bilety.helios.pl/screen/c849db6e-02b6-45bc-bccd-fd761d86f0dc?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 14, 20,  0), Some("https://bilety.helios.pl/screen/8a1e1833-0bd8-4111-8f63-627926ee5b0d?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), List("2D", "NAP", "ATMOS")),
+      Showtime(LocalDateTime.of(2026, 5, 15, 13, 30), Some("https://bilety.helios.pl/screen/5721ea93-8287-4f3d-bf61-372e4d9d304b?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 2"), List("2D", "DUB")),
+      Showtime(LocalDateTime.of(2026, 5, 15, 14,  0), Some("https://bilety.helios.pl/screen/6409151c-c1d7-470a-ae45-2d1a051e340b?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 5 - Dream"), List("2D", "NAP", "ATMOS")),
+      Showtime(LocalDateTime.of(2026, 5, 15, 14, 40), Some("https://bilety.helios.pl/screen/a4e2c651-800e-4520-aae1-02913998c781?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 7 - Dream"), List("2D", "DUB")),
+      Showtime(LocalDateTime.of(2026, 5, 15, 16, 10), Some("https://bilety.helios.pl/screen/e1a4ebad-42ab-4dd5-bf76-1b928938c803?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 2"), List("2D", "NAP"))
     )
     mk.showtimes.take(16) shouldBe expected
     mk.showtimes.size     shouldBe 48
@@ -393,15 +393,15 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
   it should "return exact showtimes for Projekt Hail Mary (fully REST-enriched)" in {
     val phm = byTitle("Projekt Hail Mary")
     phm.showtimes.filter(_.room.isDefined) shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 13, 14, 20), Some("https://bilety.helios.pl/screen/80cdabad-6d7a-433c-9b53-ab6d6108e695?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 3"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 14, 14, 10), Some("https://bilety.helios.pl/screen/a0136039-230d-4881-b21c-0cf79c383fa7?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 3"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 15, 14, 30), Some("https://bilety.helios.pl/screen/26076126-cbe2-4798-8146-9def2a97e021?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 16, 13, 20), Some("https://bilety.helios.pl/screen/1341a816-35fe-48bb-98d4-315bcbff220b?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 16, 16, 45), Some("https://bilety.helios.pl/screen/aefe9805-d2dc-4979-a114-2b690b0e486d?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 17, 13, 20), Some("https://bilety.helios.pl/screen/947a2ea8-a1bc-477f-b0de-7af45fe593b8?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 6"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 17, 19, 30), Some("https://bilety.helios.pl/screen/7e0ff70e-693a-4f84-a5e1-adf7a8dc64c2?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 6"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 18, 13, 30), Some("https://bilety.helios.pl/screen/65873bc9-eca7-4bd8-876a-88d053a4c607?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 6"), Some("2D/NAP")),
-      Showtime(LocalDateTime.of(2026, 5, 19, 13, 30), Some("https://bilety.helios.pl/screen/60fe50a6-cee8-49c4-81d3-d20553606c39?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 6"), Some("2D/NAP"))
+      Showtime(LocalDateTime.of(2026, 5, 13, 14, 20), Some("https://bilety.helios.pl/screen/80cdabad-6d7a-433c-9b53-ab6d6108e695?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 3"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 14, 14, 10), Some("https://bilety.helios.pl/screen/a0136039-230d-4881-b21c-0cf79c383fa7?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 3"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 15, 14, 30), Some("https://bilety.helios.pl/screen/26076126-cbe2-4798-8146-9def2a97e021?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 16, 13, 20), Some("https://bilety.helios.pl/screen/1341a816-35fe-48bb-98d4-315bcbff220b?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 16, 16, 45), Some("https://bilety.helios.pl/screen/aefe9805-d2dc-4979-a114-2b690b0e486d?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 4"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 17, 13, 20), Some("https://bilety.helios.pl/screen/947a2ea8-a1bc-477f-b0de-7af45fe593b8?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 6"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 17, 19, 30), Some("https://bilety.helios.pl/screen/7e0ff70e-693a-4f84-a5e1-adf7a8dc64c2?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 6"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 18, 13, 30), Some("https://bilety.helios.pl/screen/65873bc9-eca7-4bd8-876a-88d053a4c607?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 6"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 19, 13, 30), Some("https://bilety.helios.pl/screen/60fe50a6-cee8-49c4-81d3-d20553606c39?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"), Some("Sala 6"), List("2D", "NAP"))
     )
   }
 
@@ -428,58 +428,58 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       LocalDateTime.of(2026, 5, 19, 12,  0),
       LocalDateTime.of(2026, 5, 19, 15,  0)
     )
-    restSt.map(_.format).distinct shouldBe Seq(Some("2D/DUB"))
+    restSt.map(_.format).distinct shouldBe Seq(List("2D", "DUB"))
     pucio.showtimes.size shouldBe 24
   }
 
   it should "return exact showtimes for Sprawiedliwość owiec" in {
     val owiec = byTitle("Sprawiedliwość owiec")
-    owiec.showtimes.filter(_.room.isDefined).map(st => st.dateTime -> (st.room.get, st.format.get)) shouldBe Seq(
-      LocalDateTime.of(2026, 5, 13, 11, 30) -> ("Sala 7 - Dream", "2D/DUB"),
-      LocalDateTime.of(2026, 5, 13, 16, 45) -> ("Sala 4",         "2D/DUB"),
-      LocalDateTime.of(2026, 5, 13, 19, 15) -> ("Sala 4",         "2D/DUB"),
-      LocalDateTime.of(2026, 5, 14, 10,  0) -> ("Sala 4",         "2D/DUB"),
-      LocalDateTime.of(2026, 5, 14, 11, 20) -> ("Sala 7 - Dream", "2D/DUB"),
-      LocalDateTime.of(2026, 5, 14, 16, 40) -> ("Sala 8",         "2D/DUB"),
-      LocalDateTime.of(2026, 5, 14, 19, 15) -> ("Sala 8",         "2D/DUB"),
-      LocalDateTime.of(2026, 5, 15, 12,  0) -> ("Sala 4",         "2D/DUB"),
-      LocalDateTime.of(2026, 5, 15, 16, 45) -> ("Sala 5 - Dream", "2D/DUB"),
-      LocalDateTime.of(2026, 5, 16, 10, 40) -> ("Sala 4",         "2D/DUB"),
-      LocalDateTime.of(2026, 5, 16, 14, 40) -> ("Sala 7 - Dream", "2D/DUB"),
-      LocalDateTime.of(2026, 5, 17, 10, 40) -> ("Sala 6",         "2D/DUB"),
-      LocalDateTime.of(2026, 5, 17, 14, 40) -> ("Sala 7 - Dream", "2D/DUB"),
-      LocalDateTime.of(2026, 5, 18, 14, 40) -> ("Sala 7 - Dream", "2D/DUB"),
-      LocalDateTime.of(2026, 5, 18, 16, 50) -> ("Sala 6",         "2D/DUB"),
-      LocalDateTime.of(2026, 5, 19, 14, 40) -> ("Sala 7 - Dream", "2D/DUB"),
-      LocalDateTime.of(2026, 5, 19, 16, 50) -> ("Sala 6",         "2D/DUB")
+    owiec.showtimes.filter(_.room.isDefined).map(st => st.dateTime -> (st.room.get, st.format)) shouldBe Seq(
+      LocalDateTime.of(2026, 5, 13, 11, 30) -> ("Sala 7 - Dream", List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 13, 16, 45) -> ("Sala 4",         List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 13, 19, 15) -> ("Sala 4",         List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 14, 10,  0) -> ("Sala 4",         List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 14, 11, 20) -> ("Sala 7 - Dream", List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 14, 16, 40) -> ("Sala 8",         List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 14, 19, 15) -> ("Sala 8",         List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 15, 12,  0) -> ("Sala 4",         List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 15, 16, 45) -> ("Sala 5 - Dream", List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 16, 10, 40) -> ("Sala 4",         List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 16, 14, 40) -> ("Sala 7 - Dream", List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 17, 10, 40) -> ("Sala 6",         List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 17, 14, 40) -> ("Sala 7 - Dream", List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 18, 14, 40) -> ("Sala 7 - Dream", List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 18, 16, 50) -> ("Sala 6",         List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 19, 14, 40) -> ("Sala 7 - Dream", List("2D", "DUB")),
+      LocalDateTime.of(2026, 5, 19, 16, 50) -> ("Sala 6",         List("2D", "DUB"))
     )
     owiec.showtimes.size shouldBe 20
   }
 
   it should "return exact showtimes for Michael" in {
     val michael = byTitle("Michael")
-    michael.showtimes.filter(_.room.isDefined).map(st => st.dateTime -> (st.room.get, st.format.get)) shouldBe Seq(
-      LocalDateTime.of(2026, 5, 13, 14,  0) -> ("Sala 7 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 13, 17, 45) -> ("Sala 3",          "2D/NAP"),
-      LocalDateTime.of(2026, 5, 13, 20, 45) -> ("Sala 3",          "2D/NAP"),
-      LocalDateTime.of(2026, 5, 14, 14,  0) -> ("Sala 7 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 14, 17, 45) -> ("Sala 3",          "2D/NAP"),
-      LocalDateTime.of(2026, 5, 14, 20, 45) -> ("Sala 3",          "2D/NAP"),
-      LocalDateTime.of(2026, 5, 15, 11, 45) -> ("Sala 7 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 15, 19, 10) -> ("Sala 5 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 15, 20, 20) -> ("Sala 8",          "2D/NAP"),
-      LocalDateTime.of(2026, 5, 16, 11, 30) -> ("Sala 5 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 16, 17,  0) -> ("Sala 5 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 16, 20, 15) -> ("Sala 6",          "2D/NAP"),
-      LocalDateTime.of(2026, 5, 17, 11, 30) -> ("Sala 5 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 17, 17,  0) -> ("Sala 5 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 17, 21, 15) -> ("Sala 4",          "2D/NAP"),
-      LocalDateTime.of(2026, 5, 18, 11, 30) -> ("Sala 5 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 18, 17,  0) -> ("Sala 5 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 18, 20, 15) -> ("Sala 4",          "2D/NAP"),
-      LocalDateTime.of(2026, 5, 19, 11, 30) -> ("Sala 5 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 19, 17,  0) -> ("Sala 5 - Dream",  "2D/NAP/ATMOS"),
-      LocalDateTime.of(2026, 5, 19, 20, 15) -> ("Sala 4",          "2D/NAP")
+    michael.showtimes.filter(_.room.isDefined).map(st => st.dateTime -> (st.room.get, st.format)) shouldBe Seq(
+      LocalDateTime.of(2026, 5, 13, 14,  0) -> ("Sala 7 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 13, 17, 45) -> ("Sala 3",          List("2D", "NAP")),
+      LocalDateTime.of(2026, 5, 13, 20, 45) -> ("Sala 3",          List("2D", "NAP")),
+      LocalDateTime.of(2026, 5, 14, 14,  0) -> ("Sala 7 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 14, 17, 45) -> ("Sala 3",          List("2D", "NAP")),
+      LocalDateTime.of(2026, 5, 14, 20, 45) -> ("Sala 3",          List("2D", "NAP")),
+      LocalDateTime.of(2026, 5, 15, 11, 45) -> ("Sala 7 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 15, 19, 10) -> ("Sala 5 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 15, 20, 20) -> ("Sala 8",          List("2D", "NAP")),
+      LocalDateTime.of(2026, 5, 16, 11, 30) -> ("Sala 5 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 16, 17,  0) -> ("Sala 5 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 16, 20, 15) -> ("Sala 6",          List("2D", "NAP")),
+      LocalDateTime.of(2026, 5, 17, 11, 30) -> ("Sala 5 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 17, 17,  0) -> ("Sala 5 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 17, 21, 15) -> ("Sala 4",          List("2D", "NAP")),
+      LocalDateTime.of(2026, 5, 18, 11, 30) -> ("Sala 5 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 18, 17,  0) -> ("Sala 5 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 18, 20, 15) -> ("Sala 4",          List("2D", "NAP")),
+      LocalDateTime.of(2026, 5, 19, 11, 30) -> ("Sala 5 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 19, 17,  0) -> ("Sala 5 - Dream",  List("2D", "NAP", "ATMOS")),
+      LocalDateTime.of(2026, 5, 19, 20, 15) -> ("Sala 4",          List("2D", "NAP"))
     )
     michael.showtimes.size shouldBe 25
   }
@@ -499,7 +499,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       LocalDateTime.of(2026, 5, 19, 19, 30),
       LocalDateTime.of(2026, 5, 19, 21, 15)
     )
-    billie.showtimes.filter(_.room.isDefined).map(_.format).toSet shouldBe Set(Some("2D/NAP"), Some("3D/NAP"))
+    billie.showtimes.filter(_.room.isDefined).map(_.format).toSet shouldBe Set(List("2D", "NAP"), List("3D", "NAP"))
     billie.showtimes.size shouldBe 14
   }
 
@@ -561,7 +561,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     mk.showtimes.count(_.room.isEmpty)   shouldBe 10
     // NUXT-only extras also have no format
     mk.showtimes.filter(_.room.isEmpty).foreach { st =>
-      st.format shouldBe None
+      st.format shouldBe Nil
     }
   }
 
@@ -572,7 +572,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     oPsie.showtimes.size shouldBe 1
     oPsie.showtimes.head.dateTime shouldBe LocalDateTime.of(2026, 5, 14, 10, 0)
     oPsie.showtimes.head.room     shouldBe Some("Sala 2")
-    oPsie.showtimes.head.format   shouldBe Some("2D/DUB")
+    oPsie.showtimes.head.format   shouldBe List("2D", "DUB")
     oPsie.posterUrl               shouldBe Some("https://movies.helios.pl/images/opsieplakat.jpg")
   }
 

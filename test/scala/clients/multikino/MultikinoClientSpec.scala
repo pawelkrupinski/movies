@@ -114,6 +114,13 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     results.count(_.movie.title == "Drugie życie") shouldBe 2
   }
 
+  it should "have different poster URLs for the two Drugie życie entries" in {
+    results.filter(_.movie.title == "Drugie życie").flatMap(_.posterUrl).toSet shouldBe Set(
+      "https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3",
+      "https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/drugiezycie_plakat.jpg?rev=b3e62875d7b248b78e1a7d07fdf010d2",
+    )
+  }
+
   it should "have different film URLs for the two Drugie życie entries" in {
     results.filter(_.movie.title == "Drugie życie").flatMap(_.filmUrl).toSet shouldBe Set(
       "https://www.multikino.pl/filmy/kino-na-obcasach-drugie-zycie",
@@ -605,10 +612,10 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     val st = byTitle("John Williams - A Tribute").showtimes
     st.size shouldBe 4
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 6, 6,  15, 0), Some("https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002683/98855"), Some("Sala 3"), None),
-      Showtime(LocalDateTime.of(2026, 6, 16, 18, 0), Some("https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002683/93217"), Some("Sala 3"), None),
-      Showtime(LocalDateTime.of(2026, 7, 22, 18, 0), Some("https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002683/93218"), Some("Sala 3"), None),
-      Showtime(LocalDateTime.of(2026, 8, 29, 15, 0), Some("https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002683/93219"), Some("Sala 1"), None),
+      Showtime(LocalDateTime.of(2026, 6, 6,  15, 0), Some("https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002683/98855"), Some("Sala 3"), List("2D")),
+      Showtime(LocalDateTime.of(2026, 6, 16, 18, 0), Some("https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002683/93217"), Some("Sala 3"), List("2D")),
+      Showtime(LocalDateTime.of(2026, 7, 22, 18, 0), Some("https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002683/93218"), Some("Sala 3"), List("2D")),
+      Showtime(LocalDateTime.of(2026, 8, 29, 15, 0), Some("https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002683/93219"), Some("Sala 1"), List("2D")),
     )
   }
 
@@ -616,7 +623,16 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     val st = byTitle("Cirque du Soleil: Kooza").showtimes
     st.size shouldBe 1
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 7, 16, 18, 0), Some("https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002648/91260"), Some("Sala 1"), None),
+      Showtime(LocalDateTime.of(2026, 7, 16, 18, 0), Some("https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002648/91260"), Some("Sala 1"), List("2D")),
     )
+  }
+
+  // ── Format / 3D coverage ──────────────────────────────────────────────────
+
+  it should "extract 2D vs 3D format from session attributes" in {
+    val all3D = results.flatMap(_.showtimes).count(_.format.contains("3D"))
+    val all2D = results.flatMap(_.showtimes).count(_.format.contains("2D"))
+    all3D shouldBe 21
+    all2D shouldBe 646
   }
 }

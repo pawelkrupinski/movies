@@ -7,8 +7,8 @@
       film.showings.flatMap(_._2)
         .groupBy(_.cinema)
         .map { case (c, css) =>
-          val fmts = css.flatMap(_.showtimes).flatMap(_.format)
-          c -> (if (fmts.isEmpty) Set.empty[String] else fmts.map(_.split("/").toSet).reduce(_ intersect _))
+          val fmts = css.flatMap(_.showtimes).map(_.format.toSet).filter(_.nonEmpty)
+          c -> (if (fmts.isEmpty) Set.empty[String] else fmts.reduce(_ intersect _))
         }
     ) { commonToksByCinema =>
     @for((date, cinemaShowtimesList) <- film.showings) {
@@ -26,11 +26,13 @@
             <div>
               @for(slot <- cinemaShowtimes.showtimes) {
                 @defining(slot.room.map(r => Html(s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""")).getOrElse(Html(""))) { roomAttr =>
-                @defining(slot.format.map(_.split("/").filterNot(commonToks.contains).mkString("/")).filter(_.nonEmpty).map(f => Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(f)}</span>""")).getOrElse(Html(""))) { fmtBadge =>
+                @defining(slot.format.filterNot(commonToks.contains).mkString("/")) { stripped =>
+                @defining(if (stripped.isEmpty) Html("") else Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(stripped)}</span>""")) { fmtBadge =>
                   @slot.bookingUrl match {
                     case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</a> }
                     case None      => { <span class="badge-time"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</span> }
                   }
+                }
                 }
                 }
               }

@@ -42,8 +42,12 @@ class MultikinoClient(http: HttpFetch = MultikinoClient.DefaultFetch) {
           (session \ "startTime").asOpt[String].map { startTime =>
             val bookingUrl = (session \ "bookingUrl").asOpt[String]
                               .map(url => if (url.startsWith("http")) url else s"https://www.multikino.pl$url")
-            val room = (session \ "screenName").asOpt[String].filter(_.nonEmpty)
-            Showtime(dateTime = LocalDateTime.parse(startTime), bookingUrl = bookingUrl, room = room)
+            val room   = (session \ "screenName").asOpt[String].filter(_.nonEmpty)
+            val format = (session \ "attributes").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
+                          .flatMap(a => (a \ "name").asOpt[String])
+                          .find(name => name == "2D" || name == "3D")
+                          .toList
+            Showtime(dateTime = LocalDateTime.parse(startTime), bookingUrl = bookingUrl, room = room, format = format)
           }
         }
       }.toSeq

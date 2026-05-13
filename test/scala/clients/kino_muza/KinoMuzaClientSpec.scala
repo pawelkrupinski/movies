@@ -461,86 +461,86 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
   // ── Directors ─────────────────────────────────────────────────────────────
 
   it should "return correct director for every movie" in {
-    byTitle("Barbara Forever").director                                    shouldBe Some("Brydie O’Connor USA 2026 102’")
-    byTitle("Bez końca").director                                          shouldBe Some("Michał Marczak Polska")
-    byTitle("Bez znieczulenia").director                                   shouldBe Some("Andrzej Wajda Polska 1978 125’")
-    byTitle("Bibliotekarki").director                                      shouldBe Some("Kim A. Snyder USA 2025 92’")
-    byTitle("Broken English").director                                     shouldBe Some("Jane Pollard")
-    byTitle("Brzezina").director                                           shouldBe Some("Andrzej Wajda Polska 1970 99’")
-    byTitle("Był sobie śnieg").director                                    shouldBe Some("Nikolaus Geyrhalter Austria 2025 128’")
-    byTitle("Chronologia wody").director                                   shouldBe Some("Kristen Stewart Francja")
-    byTitle("Co ukrywa Elon Musk?").director                               shouldBe Some("Andreas Pichler Niemcy 2025 90’")
-    byTitle("Człowiek z marmuru").director                                 shouldBe Some("Andrzej Wajda Polska 1977 153’")
-    byTitle("Drama").director                                              shouldBe Some("Kristoffer Borgli USA 2026 105’")
-    byTitle("Dziecko z pyłu").director                                     shouldBe Some("Weronika Mliczewska Polska")
-    byTitle("Dzikie szaleństwo").director                                  shouldBe Some("Miro Remo Słowacja")
-    byTitle("Efekt architektury").director                                 shouldBe Some("Diego Breit Lira Austria 2026 106’")
-    byTitle("FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar").director shouldBe Some("Joscha Bongard Niemcy 2025 98’")
-    byTitle("Fałszerz stulecia").director                                  shouldBe Some("Jean-Paul Salomé Francja 2025 128’")
-    byTitle("Freak Show").director                                         shouldBe Some("Łukasz Ronduda")
-    byTitle("Gala Wręczenia Nagrody Wolności | Pieśni lasu").director      shouldBe Some("Vincent Munier Francja 2025 94’")
-    byTitle("Giulietta i duchy").director                                  shouldBe Some("Federico Fellini Włochy")
-    byTitle("Guru").director                                               shouldBe Some("Yann Gozlan Francja 2025 126’")
-    byTitle("Głos z księżyca").director                                    shouldBe Some("Federico Fellini Włochy 1990 121’")
-    byTitle("Habibi Hussein").director                                     shouldBe Some("Alex Bakri Palestyna")
-    byTitle("Hamnet").director                                             shouldBe Some("Chloé Zhao Wielka Brytania 2025 125’")
-    byTitle("Idź z duszą na dłoni").director                               shouldBe Some("Sepideh Farsi Francja")
-    byTitle("Istoty czujące").director                                     shouldBe Some("Tony Jones Australia 2026 106’")
-    byTitle("Jak głęboka jest twoja miłość?").director                     shouldBe Some("Eleanor Mortimer USA 2026 100’")
-    byTitle("Jak zrobić film o betonie").director                          shouldBe Some("John Wilson USA 2026 101’")
-    byTitle("Jane Elliot kontra reszta świata").director                   shouldBe Some("Judd Ehrlich USA 2026 99’")
-    byTitle("Kandydaci Śmierci").director                                  shouldBe Some("Maciej Cuske Polska 2026 95’")
-    byTitle("Krajobraz po bitwie").director                                shouldBe Some("Andrzej Wajda Polska 1970 101’")
-    byTitle("Kronika wypadków miłosnych").director                         shouldBe Some("Andrzej Wajda Polska 1985 114’")
-    byTitle("Kłopotliwy niedźwiedź").director                              shouldBe Some("Gabriela Osio Vanden")
-    byTitle("Layla").director                                              shouldBe Some("Amrou Al-Kadhi Wielka Brytania 2024 100’")
-    byTitle("Mam rzekę we krwi").director                                  shouldBe Some("Barbora Hollan Norwegia 2026 98’")
-    byTitle("Mariinka").director                                           shouldBe Some("Pieter-Jan de Pue Belgia")
-    byTitle("Mi Amor").director                                            shouldBe Some("Guillaume Nicloux Francja 2025 113’")
-    byTitle("Milcząca przyjaciółka").director                              shouldBe Some("Ildikó Enyedi Niemcy")
-    byTitle("Miłość, która zostaje").director                              shouldBe Some("Hlynur Pálmason Islandia")
-    byTitle("Moi Themersonowie").director                                  shouldBe Some("Marcin Borchardt Polska 2026 80’")
-    byTitle("Młodsza siostra").director                                    shouldBe Some("Hafsia Herzi Francja")
-    byTitle("Najstarsza osoba na świecie").director                        shouldBe Some("Sam Green USA 2025 87’")
-    byTitle("Nie oglądaj się teraz").director                              shouldBe Some("Nicolas Roeg Wielka Brytania")
-    byTitle("Niedźwiedzica").director                                      shouldBe Some("Asgeir Helgestad Norwegia")
-    byTitle("Noce Cabirii").director                                       shouldBe Some("Federico Fellini Włochy")
-    byTitle("Nomadland").director                                          shouldBe Some("Chloé Zhao USA 2020 108’")
-    byTitle("Nowa fala").director                                          shouldBe Some("Richard Linklater Francja")
-    byTitle("Nurt").director                                               shouldBe Some("Rafał Skalski Polska 2026 83’")
-    byTitle("O czasie i wodzie").director                                  shouldBe Some("Sara Dosa Islandia")
-    byTitle("Obcy").director                                               shouldBe Some("François Ozon francja 2025 122’")
-    byTitle("Orwell: 2 + 2 = 5").director                                 shouldBe Some("Raoul Peck Francja")
-    byTitle("Osiem i pół").director                                        shouldBe Some("Federico Fellini Włochy")
-    byTitle("Pan Nikt kontra Putin").director                              shouldBe Some("David Borenstein")
-    byTitle("Pieniądze to wszystko").director                              shouldBe Some("Sinéad O'Shea Irlandia")
-    byTitle("Pieśni lasu").director                                        shouldBe Some("Vincent Munier Francja 2025 94’")
-    byTitle("Poczta głosowa").director                                     shouldBe Some("Fabienne Godet Francja 2024 102’")
-    byTitle("Pomiędzy woskiem i złotem").director                          shouldBe Some("Ruth Beckermann Austria")
-    byTitle("Proszę nie siadać").director                                  shouldBe Some("Piotr Małecki Polska 2026 60’")
-    byTitle("Przeżyj to sam").director                                     shouldBe Some("Olivier Nakache")
-    byTitle("Romería").director                                            shouldBe Some("Carla Simón Hiszpania 2025 111’")
-    byTitle("Runa Simi").director                                          shouldBe Some("Augusto Zegarra Peru 2025 86’")
-    byTitle("Sny o słoniach").director                                     shouldBe Some("Werner Herzog USA 2025 99’")
-    byTitle("Sygnalista").director                                         shouldBe Some("Marc Bauder Niemcy 2026 91’")
-    byTitle("Słodkie życie").director                                      shouldBe Some("Federico Fellini Włochy")
-    byTitle("Top Gun").director                                            shouldBe Some("Tony Scott USA 1986 110’")
-    byTitle("Uciszone").director                                           shouldBe Some("Selina Miles Australia 2026 92’")
-    byTitle("Wałkonie").director                                           shouldBe Some("Federico Fellini Włochy")
-    byTitle("Wielki Łuk").director                                         shouldBe Some("Stéphane Demoustier Francja 2025 106’")
-    byTitle("Windą na szafot").director                                    shouldBe Some("Louis Malle Francja 1958 90’")
-    byTitle("Wolność po włosku").director                                  shouldBe Some("Mario Martone Francja")
-    byTitle("Wpatrując się w słońce").director                             shouldBe Some("Mascha Schilinski Niemcy 2025 155’")
-    byTitle("Wspinaczka").director                                         shouldBe Some("Jon Glassberg Austria")
-    byTitle("Wszyscy na Kenmure Street").director                          shouldBe Some("Felipe Bustos Sierra Wielka Brytania")
-    byTitle("Wszystko na sprzedaż").director                               shouldBe Some("Andrzej Wajda Polska 1968 94’")
-    byTitle("Wypadek fortepianowy").director                               shouldBe Some("Quentin Dupieux Francja 2025 88’")
-    byTitle("Yanuni").director                                             shouldBe Some("Richard Ladkani Austria")
-    byTitle("Zemsta Embriona | najlepsze z najgorszych").director          shouldBe Some("Francis Teri USA 1990 89’")
-    byTitle("Ziemia obiecana").director                                    shouldBe Some("Andrzej Wajda Polska 1974 179’")
-    byTitle("Znaki Pana Śliwki").director                                  shouldBe Some("Urszula Morga")
-    byTitle("Ślady").director                                              shouldBe Some("Alisa Kovalenko")
-    byTitle("Żądło").director                                              shouldBe Some("George Roy Hill USA 1973 129’")
+    byTitle("Barbara Forever").director shouldBe Some("Brydie O’Connor")
+    byTitle("Bez końca").director shouldBe Some("Michał Marczak")
+    byTitle("Bez znieczulenia").director shouldBe Some("Andrzej Wajda")
+    byTitle("Bibliotekarki").director shouldBe Some("Kim A. Snyder")
+    byTitle("Broken English").director shouldBe Some("Jane Pollard, Iain Forsyth")
+    byTitle("Brzezina").director shouldBe Some("Andrzej Wajda")
+    byTitle("Był sobie śnieg").director shouldBe Some("Nikolaus Geyrhalter")
+    byTitle("Chronologia wody").director shouldBe Some("Kristen Stewart")
+    byTitle("Co ukrywa Elon Musk?").director shouldBe Some("Andreas Pichler")
+    byTitle("Człowiek z marmuru").director shouldBe Some("Andrzej Wajda")
+    byTitle("Drama").director shouldBe Some("Kristoffer Borgli")
+    byTitle("Dziecko z pyłu").director shouldBe Some("Weronika Mliczewska")
+    byTitle("Dzikie szaleństwo").director shouldBe Some("Miro Remo")
+    byTitle("Efekt architektury").director shouldBe Some("Diego Breit Lira")
+    byTitle("FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar").director shouldBe Some("Joscha Bongard")
+    byTitle("Fałszerz stulecia").director shouldBe Some("Jean-Paul Salomé")
+    byTitle("Freak Show").director shouldBe Some("Łukasz Ronduda, Filip Pawlak")
+    byTitle("Gala Wręczenia Nagrody Wolności | Pieśni lasu").director shouldBe Some("Vincent Munier")
+    byTitle("Giulietta i duchy").director shouldBe Some("Federico Fellini")
+    byTitle("Guru").director shouldBe Some("Yann Gozlan")
+    byTitle("Głos z księżyca").director shouldBe Some("Federico Fellini")
+    byTitle("Habibi Hussein").director shouldBe Some("Alex Bakri")
+    byTitle("Hamnet").director shouldBe Some("Chloé Zhao")
+    byTitle("Idź z duszą na dłoni").director shouldBe Some("Sepideh Farsi")
+    byTitle("Istoty czujące").director shouldBe Some("Tony Jones")
+    byTitle("Jak głęboka jest twoja miłość?").director shouldBe Some("Eleanor Mortimer")
+    byTitle("Jak zrobić film o betonie").director shouldBe Some("John Wilson")
+    byTitle("Jane Elliot kontra reszta świata").director shouldBe Some("Judd Ehrlich")
+    byTitle("Kandydaci Śmierci").director shouldBe Some("Maciej Cuske")
+    byTitle("Krajobraz po bitwie").director shouldBe Some("Andrzej Wajda")
+    byTitle("Kronika wypadków miłosnych").director shouldBe Some("Andrzej Wajda")
+    byTitle("Kłopotliwy niedźwiedź").director shouldBe Some("Gabriela Osio Vanden, Jack Weisman")
+    byTitle("Layla").director shouldBe Some("Amrou Al-Kadhi")
+    byTitle("Mam rzekę we krwi").director shouldBe Some("Barbora Hollan")
+    byTitle("Mariinka").director shouldBe Some("Pieter-Jan de Pue")
+    byTitle("Mi Amor").director shouldBe Some("Guillaume Nicloux")
+    byTitle("Milcząca przyjaciółka").director shouldBe Some("Ildikó Enyedi")
+    byTitle("Miłość, która zostaje").director shouldBe Some("Hlynur Pálmason")
+    byTitle("Moi Themersonowie").director shouldBe Some("Marcin Borchardt")
+    byTitle("Młodsza siostra").director shouldBe Some("Hafsia Herzi")
+    byTitle("Najstarsza osoba na świecie").director shouldBe Some("Sam Green")
+    byTitle("Nie oglądaj się teraz").director shouldBe Some("Nicolas Roeg")
+    byTitle("Niedźwiedzica").director shouldBe Some("Asgeir Helgestad")
+    byTitle("Noce Cabirii").director shouldBe Some("Federico Fellini")
+    byTitle("Nomadland").director shouldBe Some("Chloé Zhao")
+    byTitle("Nowa fala").director shouldBe Some("Richard Linklater")
+    byTitle("Nurt").director shouldBe Some("Rafał Skalski")
+    byTitle("O czasie i wodzie").director shouldBe Some("Sara Dosa")
+    byTitle("Obcy").director shouldBe Some("François Ozon")
+    byTitle("Orwell: 2 + 2 = 5").director shouldBe Some("Raoul Peck")
+    byTitle("Osiem i pół").director shouldBe Some("Federico Fellini")
+    byTitle("Pan Nikt kontra Putin").director shouldBe Some("David Borenstein, Pasha Talankin")
+    byTitle("Pieniądze to wszystko").director shouldBe Some("Sinéad O'Shea")
+    byTitle("Pieśni lasu").director shouldBe Some("Vincent Munier")
+    byTitle("Poczta głosowa").director shouldBe Some("Fabienne Godet")
+    byTitle("Pomiędzy woskiem i złotem").director shouldBe Some("Ruth Beckermann")
+    byTitle("Proszę nie siadać").director shouldBe Some("Piotr Małecki")
+    byTitle("Przeżyj to sam").director shouldBe Some("Olivier Nakache, Eric Toledano")
+    byTitle("Romería").director shouldBe Some("Carla Simón")
+    byTitle("Runa Simi").director shouldBe Some("Augusto Zegarra")
+    byTitle("Sny o słoniach").director shouldBe Some("Werner Herzog")
+    byTitle("Sygnalista").director shouldBe Some("Marc Bauder")
+    byTitle("Słodkie życie").director shouldBe Some("Federico Fellini")
+    byTitle("Top Gun").director shouldBe Some("Tony Scott")
+    byTitle("Uciszone").director shouldBe Some("Selina Miles")
+    byTitle("Wałkonie").director shouldBe Some("Federico Fellini")
+    byTitle("Wielki Łuk").director shouldBe Some("Stéphane Demoustier")
+    byTitle("Windą na szafot").director shouldBe Some("Louis Malle")
+    byTitle("Wolność po włosku").director shouldBe Some("Mario Martone")
+    byTitle("Wpatrując się w słońce").director shouldBe Some("Mascha Schilinski")
+    byTitle("Wspinaczka").director shouldBe Some("Jon Glassberg")
+    byTitle("Wszyscy na Kenmure Street").director shouldBe Some("Felipe Bustos Sierra")
+    byTitle("Wszystko na sprzedaż").director shouldBe Some("Andrzej Wajda")
+    byTitle("Wypadek fortepianowy").director shouldBe Some("Quentin Dupieux")
+    byTitle("Yanuni").director shouldBe Some("Richard Ladkani")
+    byTitle("Zemsta Embriona | najlepsze z najgorszych").director shouldBe Some("Francis Teri")
+    byTitle("Ziemia obiecana").director shouldBe Some("Andrzej Wajda")
+    byTitle("Znaki Pana Śliwki").director shouldBe Some("Urszula Morga, Bartosz Mikołajczyk")
+    byTitle("Ślady").director shouldBe Some("Alisa Kovalenko, Marysia Nikitiuk")
+    byTitle("Żądło").director shouldBe Some("George Roy Hill")
   }
 
   // ── Showtime counts ───────────────────────────────────────────────────────
@@ -635,12 +635,12 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     val st = byTitle("Znaki Pana Śliwki").showtimes
     st.size shouldBe 6
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 18, 19, 15), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927847#total"), Some("Sala 3"), None),
-      Showtime(LocalDateTime.of(2026, 5, 19, 14, 15), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927860#total"), Some("Sala 1"), None),
-      Showtime(LocalDateTime.of(2026, 5, 19, 18, 0),  Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927863#total"), Some("Sala 3"), None),
-      Showtime(LocalDateTime.of(2026, 5, 20, 17, 0),  Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927876#total"), Some("Sala 3"), None),
-      Showtime(LocalDateTime.of(2026, 5, 21, 14, 45), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927968#total"), Some("Sala 1"), None),
-      Showtime(LocalDateTime.of(2026, 5, 21, 19, 45), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927979#total"), Some("Sala 2"), None),
+      Showtime(LocalDateTime.of(2026, 5, 18, 19, 15), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927847#total"), Some("Sala 3"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 19, 14, 15), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927860#total"), Some("Sala 1"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 19, 18, 0),  Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927863#total"), Some("Sala 3"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 20, 17, 0),  Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927876#total"), Some("Sala 3"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 21, 14, 45), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927968#total"), Some("Sala 1"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 21, 19, 45), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927979#total"), Some("Sala 2"), Nil),
     )
   }
 
@@ -648,11 +648,11 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     val st = byTitle("Drama").showtimes
     st.size shouldBe 5
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 18, 14, 30), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927835#total"), Some("Sala 2"), None),
-      Showtime(LocalDateTime.of(2026, 5, 18, 20, 30), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927834#total"), Some("Sala 1"), None),
-      Showtime(LocalDateTime.of(2026, 5, 19, 20, 30), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927868#total"), Some("Sala 2"), None),
-      Showtime(LocalDateTime.of(2026, 5, 20, 21, 15), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927870#total"), Some("Sala 1"), None),
-      Showtime(LocalDateTime.of(2026, 5, 21, 21, 15), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927980#total"), Some("Sala 2"), None),
+      Showtime(LocalDateTime.of(2026, 5, 18, 14, 30), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927835#total"), Some("Sala 2"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 18, 20, 30), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927834#total"), Some("Sala 1"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 19, 20, 30), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927868#total"), Some("Sala 2"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 20, 21, 15), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927870#total"), Some("Sala 1"), Nil),
+      Showtime(LocalDateTime.of(2026, 5, 21, 21, 15), Some("https://estradapoznan.bilety24.pl/kup-bilety/?id=927980#total"), Some("Sala 2"), Nil),
     )
   }
 }

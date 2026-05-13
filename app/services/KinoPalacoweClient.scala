@@ -47,7 +47,7 @@ class KinoPalacoweClient(http: HttpFetch = new RealHttpFetch()) {
           cinema    = KinoPalacowe,
           posterUrl = first.posterUrl,
           filmUrl   = first.filmUrl,
-          synopsis  = None,
+          synopsis  = first.synopsis,
           cast      = None,
           director  = None,
           showtimes = sorted.map(entry => Showtime(entry.dateTime, entry.bookingUrl, entry.room))
@@ -78,7 +78,8 @@ class KinoPalacoweClient(http: HttpFetch = new RealHttpFetch()) {
     filmUrl:        Option[String],
     bookingUrl:     Option[String],
     room:           Option[String] = None,
-    runtimeMinutes: Option[Int]    = None
+    runtimeMinutes: Option[Int]    = None,
+    synopsis:       Option[String] = None
   )
 
   private def parseJson(json: String): (Seq[ScreeningEntry], Boolean) = {
@@ -128,7 +129,8 @@ class KinoPalacoweClient(http: HttpFetch = new RealHttpFetch()) {
           filmUrl        = filmUrl,
           bookingUrl     = (entry \ "ticket_url").asOpt[String].filter(_.nonEmpty),
           room           = room,
-          runtimeMinutes = runtime
+          runtimeMinutes = runtime,
+          synopsis       = (entry \ "lead").asOpt[String].map(_.trim).filter(_.nonEmpty)
         )
       }
     }

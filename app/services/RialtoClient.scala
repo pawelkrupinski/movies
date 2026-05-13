@@ -21,6 +21,12 @@ class RialtoClient(http: HttpFetch = new RealHttpFetch()) {
     } else title
   }
 
+  // Rialto presents most titles in upper case; lower-case them so that they
+  // merge case-insensitively with the same films from other cinemas.
+  private def normalizeCase(title: String): String =
+    if (title.isEmpty) title
+    else title.head.toUpper + title.tail.toLowerCase
+
   private val DateTimePat = """- (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) -""".r
   private val RuntimePat  = """(\d+)\s*min""".r
   private val YearPat     = """\b((?:19|20)\d{2})\b""".r
@@ -76,9 +82,12 @@ class RialtoClient(http: HttpFetch = new RealHttpFetch()) {
         val eventUrl    = if (rawEventUrl.startsWith("http")) rawEventUrl else BaseUrl + rawEventUrl
 
         val rawTitle = Option(block.selectFirst("div.title")).map(_.text().trim).getOrElse("")
-        val title    = stripCyclePrefix(rawTitle)
+        val title    = normalizeCase(stripCyclePrefix(rawTitle))
 
-        val posterUrl = Option(block.selectFirst("img[src]")).map(_.attr("src"))
+        // Restrict to the actual movie image container — otherwise the first block
+        // (which still includes the page header) picks up the Facebook-login icon.
+        val posterUrl = Option(block.selectFirst(".list-item-image img[src], .image img[src]"))
+                          .map(_.attr("src"))
 
         val (synopsis, director, runtime, year) = Option(block.selectFirst("span.text")) match {
           case None => (None, None, None, None)

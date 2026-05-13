@@ -262,7 +262,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     val st = byKinepolis("Liga Mistrzów UEFA - Finał").showtimes
     st.size shouldBe 1
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 30, 17, 45), Some("https://tickets.cinema-city.pl/api/order/1326845?lang=pl"), Some("Sala6"), None),
+      Showtime(LocalDateTime.of(2026, 5, 30, 17, 45), Some("https://tickets.cinema-city.pl/api/order/1326845?lang=pl"), Some("Sala6"), List("2D")),
     )
   }
 
@@ -270,9 +270,16 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     val st = byKinepolis("La Traviata Verdiego z Arena di Verona").showtimes
     st.size shouldBe 2
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 13, 18, 0), Some("https://tickets.cinema-city.pl/api/order/1411051?lang=pl"), Some("Sala3"), None),
-      Showtime(LocalDateTime.of(2026, 6,  7, 15, 0), Some("https://tickets.cinema-city.pl/api/order/1411056?lang=pl"), Some("Sala4"), None),
+      Showtime(LocalDateTime.of(2026, 5, 13, 18, 0), Some("https://tickets.cinema-city.pl/api/order/1411051?lang=pl"), Some("Sala3"), List("2D")),
+      Showtime(LocalDateTime.of(2026, 6,  7, 15, 0), Some("https://tickets.cinema-city.pl/api/order/1411056?lang=pl"), Some("Sala4"), List("2D")),
     )
+  }
+
+  it should "extract 2D / 3D format on Kinepolis showtimes" in {
+    val all2D = kinepolis.flatMap(_.showtimes).count(_.format.contains("2D"))
+    val all3D = kinepolis.flatMap(_.showtimes).count(_.format.contains("3D"))
+    all2D shouldBe 738
+    all3D shouldBe 40
   }
 
   // ─── Plaza: totals ────────────────────────────────────────────────────────
@@ -501,7 +508,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     val st = byPlaza("Liga Mistrzów UEFA - Finał").showtimes
     st.size shouldBe 1
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 30, 17, 45), Some("https://tickets.cinema-city.pl/api/order/1326767?lang=pl"), Some("Sala 3"), None),
+      Showtime(LocalDateTime.of(2026, 5, 30, 17, 45), Some("https://tickets.cinema-city.pl/api/order/1326767?lang=pl"), Some("Sala 3"), List("2D")),
     )
   }
 
@@ -509,7 +516,15 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     val st = byPlaza("Lars jest LOL").showtimes
     st.size shouldBe 1
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 13, 10, 0), Some("https://tickets.cinema-city.pl/api/order/1437816?lang=pl"), Some("Sala 2"), None),
+      Showtime(LocalDateTime.of(2026, 5, 13, 10, 0), Some("https://tickets.cinema-city.pl/api/order/1437816?lang=pl"), Some("Sala 2"), List("2D")),
     )
+  }
+
+  it should "extract 2D / 3D / IMAX format on Plaza showtimes" in {
+    val formats = plaza.flatMap(_.showtimes).groupBy(_.format).view.mapValues(_.size).toMap
+    formats(List("2D"))           shouldBe 484
+    formats(List("3D"))           shouldBe 27
+    formats(List("IMAX", "2D"))   shouldBe 49
+    formats(List("IMAX", "3D"))   shouldBe 17
   }
 }

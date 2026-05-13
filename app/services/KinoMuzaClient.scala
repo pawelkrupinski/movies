@@ -33,9 +33,12 @@ class KinoMuzaClient(http: HttpFetch = new RealHttpFetch()) {
       val title    = Option(preview.selectFirst(".preview-title")).map(_.text().trim).filter(_.nonEmpty)
       val filmUrl  = Option(preview.selectFirst("a[href*=/movie/]")).map(_.attr("href"))
       val posterUrl = Option(preview.selectFirst("img[data-src]")).map(_.attr("data-src"))
+      val infoHtml  = Option(preview.selectFirst(".f1-bold p")).map(_.html()).getOrElse("")
       val infoText  = Option(preview.selectFirst(".f1-bold p")).map(_.text()).getOrElse("")
-      val director  = infoText.split("reż\\.").lift(1)
-        .map(_.split("[,\n]").head.trim)
+      // First HTML line (before first <br>) holds "reż. <names>"
+      val director  = infoHtml.split("(?i)<br\\s*/?>").headOption
+        .map(line => Jsoup.parse(line).text())
+        .map(_.replaceFirst("(?i)^\\s*reż\\.\\s*", "").trim)
         .filter(_.nonEmpty)
       val runtimeMinutes = RuntimePat.findFirstMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption)
       val releaseYear    = YearPat.findAllMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption

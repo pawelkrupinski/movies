@@ -34,7 +34,7 @@ class CinemaCityClient(http: HttpFetch = new RealHttpFetch()) {
     )
 
     val allFilms  = collection.mutable.Map[String, FilmInfo]()
-    val allEvents = collection.mutable.ListBuffer[(String, LocalDateTime, Option[String], Option[String])]()
+    val allEvents = collection.mutable.ListBuffer[(String, LocalDateTime, Option[String], Option[String], List[String])]()
 
     for ((_, future) <- pendingEvents) {
       Try {
@@ -61,8 +61,13 @@ class CinemaCityClient(http: HttpFetch = new RealHttpFetch()) {
           val bookingUrl  = (event \ "bookingLink").asOpt[String].filter(_.nonEmpty)
           val room        = (event \ "auditoriumTinyName").asOpt[String].filter(_.nonEmpty)
                             .map(r => """^S0*(\d+)$""".r.replaceFirstIn(r, "Sala $1"))
+          val attrs       = (event \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty).toSet
+          val format      = List(
+            if (attrs.contains("imax")) Some("IMAX") else None,
+            if (attrs.contains("3d")) Some("3D") else if (attrs.contains("2d")) Some("2D") else None
+          ).flatten
           Try(LocalDateTime.parse(dateTimeStr)).foreach { dateTime =>
-            allEvents += ((filmId, dateTime, bookingUrl, room))
+            allEvents += ((filmId, dateTime, bookingUrl, room, format))
           }
         }
       }
@@ -81,7 +86,9 @@ class CinemaCityClient(http: HttpFetch = new RealHttpFetch()) {
             synopsis    = None,
             cast        = None,
             director    = None,
-            showtimes   = slots.toSeq.map { case (_, dateTime, bookingUrl, room) => Showtime(dateTime, bookingUrl, room) }.sortBy(_.dateTime),
+            showtimes   = slots.toSeq.map { case (_, dateTime, bookingUrl, room, format) =>
+              Showtime(dateTime, bookingUrl, room, format)
+            }.sortBy(_.dateTime),
             externalIds = Map("cc" -> filmId)
           )
         }
