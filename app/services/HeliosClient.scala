@@ -6,7 +6,6 @@ import tools.{HeliosFetch, HttpFetch}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
-import scala.collection.mutable
 import scala.util.Try
 
 class HeliosClient(http: HttpFetch = HeliosFetch) {
@@ -27,23 +26,143 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
       s"$ApiBase/cinema/$CinemaSourceId/screening" +
         s"?dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
 
-    val screeningsFuture = http.getAsync(screeningsUrl)
-
-    val nuxtHtml       = http.get(PageUrl)
-    val screeningsBody = Try(screeningsFuture.join()).getOrElse("[]")
-
-    val apiScreeningsById = parseApiScreenings(screeningsBody)
+    val nuxtHtml = http.get(PageUrl)
+    val screeningsById =
+      parseApiScreenings(Try(http.getAsync(screeningsUrl).join()).getOrElse("[]"))
 
     val movieBodies =
-      fetchBodies(apiScreeningsById.values.map(_.movieId).toSeq.distinct)(id => s"$ApiBase/movie/$id")
+      fetchBodies(screeningsById.values.map(_.movieId).toSeq.distinct)(id => s"$ApiBase/movie/$id")
 
     val screenBodies =
-      fetchBodies(apiScreeningsById.values.map(_.screenId).toSeq.distinct)(id =>
+      fetchBodies(screeningsById.values.map(_.screenId).toSeq.distinct)(id =>
         s"$ApiBase/cinema/$CinemaSourceId/screen/$id"
       )
 
-    buildCinemaMovies(nuxtHtml, apiScreeningsById, movieBodies, screenBodies)
+    val restMovies = buildCinemaMovies(screeningsById, movieBodies, screenBodies)
+    val nuxtMovies = buildCinemaMoviesFromNuxt(nuxtHtml)
+
+    uniquePosterUrls(
+      mergeMoviesByTitle(
+        mergeLessSpecificSameShowtimeRows(restMovies ++ nuxtMovies)
+      )
+    )
   }
+
+  private def mergeLessSpecificSameShowtimeRows(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val enriched =
+      movies.map { movie =>
+        val title = movie.movie.title
+        val times = movie.showtimes.map(_.dateTime).toSet
+
+        val lessSpecificRows =
+          movies.filter { other =>
+            val otherTitle = other.movie.title
+
+            title != otherTitle &&
+              isLessSpecificTitle(otherTitle, title) &&
+              other.showtimes.exists(showtime => times.contains(showtime.dateTime))
+          }
+
+        if (lessSpecificRows.isEmpty) movie
+        else {
+          movie.copy(
+            movie = movie.movie.copy(
+              runtimeMinutes = movie.movie.runtimeMinutes.orElse(lessSpecificRows.flatMap(_.movie.runtimeMinutes).headOption),
+              releaseYear    = movie.movie.releaseYear.orElse(lessSpecificRows.flatMap(_.movie.releaseYear).headOption),
+              premierePl     = movie.movie.premierePl.orElse(lessSpecificRows.flatMap(_.movie.premierePl).headOption),
+              premiereWorld  = movie.movie.premiereWorld.orElse(lessSpecificRows.flatMap(_.movie.premiereWorld).headOption)
+            ),
+            posterUrl = movie.posterUrl.orElse(lessSpecificRows.flatMap(_.posterUrl).headOption),
+            filmUrl   = movie.filmUrl.orElse(lessSpecificRows.flatMap(_.filmUrl).headOption),
+            synopsis  = movie.synopsis.orElse(lessSpecificRows.flatMap(_.synopsis).headOption),
+            cast      = movie.cast.orElse(lessSpecificRows.flatMap(_.cast).headOption),
+            director  = movie.director.orElse(lessSpecificRows.flatMap(_.director).headOption)
+          )
+        }
+      }
+
+    enriched.filterNot { movie =>
+      val title = movie.movie.title
+      val times = movie.showtimes.map(_.dateTime).toSet
+
+      enriched.exists { other =>
+        val otherTitle = other.movie.title
+
+        title != otherTitle &&
+          isLessSpecificTitle(title, otherTitle) &&
+          other.showtimes.exists(showtime => times.contains(showtime.dateTime))
+      }
+    }
+  }
+
+  private def isLessSpecificTitle(title: String, otherTitle: String): Boolean =
+    normalizeTitle(otherTitle).startsWith(normalizeTitle(title) + " ")
+
+  private def normalizeTitle(title: String): String =
+    title.toLowerCase.replaceAll("\\s+", " ").trim
+
+  private def uniquePosterUrls(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val seen = scala.collection.mutable.Set.empty[String]
+
+    movies.map { movie =>
+      movie.posterUrl match {
+        case Some(url) if seen(url) =>
+          movie.copy(posterUrl = None)
+
+        case Some(url) =>
+          seen += url
+          movie
+
+        case None =>
+          movie
+      }
+    }
+  }
+
+  private def mergeMoviesByTitle(movies: Seq[CinemaMovie]): Seq[CinemaMovie] =
+    movies
+      .groupBy(_.movie.title)
+      .values
+      .map { rows =>
+        val best =
+          rows.maxBy(row =>
+            Seq(
+              row.posterUrl,
+              row.movie.runtimeMinutes,
+              row.filmUrl,
+              row.synopsis,
+              row.cast,
+              row.director
+            ).count(_.nonEmpty)
+          )
+
+        best.copy(
+          movie = best.movie.copy(
+            runtimeMinutes = rows.flatMap(_.movie.runtimeMinutes).headOption,
+            releaseYear    = rows.flatMap(_.movie.releaseYear).headOption,
+            premierePl     = rows.flatMap(_.movie.premierePl).headOption,
+            premiereWorld  = rows.flatMap(_.movie.premiereWorld).headOption
+          ),
+          posterUrl = rows.flatMap(_.posterUrl).headOption,
+          filmUrl   = rows.flatMap(_.filmUrl).headOption,
+          synopsis  = rows.flatMap(_.synopsis).headOption,
+          cast      = rows.flatMap(_.cast).headOption,
+          director  = rows.flatMap(_.director).headOption,
+          showtimes = rows
+            .flatMap(_.showtimes)
+            .groupBy(showtime => showtime.bookingUrl.getOrElse(showtime.dateTime.toString))
+            .values
+            .map { sameScreening =>
+              sameScreening.maxBy(showtime =>
+                Seq(showtime.room, showtime.format).count(_.nonEmpty)
+              )
+            }
+            .toSeq
+            .sortBy(_.dateTime)
+        )
+      }
+      .toSeq
+      .sortBy(_.movie.title)
 
   private def fetchBodies(ids: Seq[String])(urlFor: String => String): Map[String, String] =
     ids
@@ -52,116 +171,289 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
       .toMap
 
   private def buildCinemaMovies(
-                                 nuxtHtml: String,
-                                 apiScreeningsById: Map[String, ApiScreening],
+                                 screeningsById: Map[String, ApiScreening],
                                  movieBodies: Map[String, String],
                                  screenBodies: Map[String, String]
                                ): Seq[CinemaMovie] = {
-    val (movieInfoMap, showtimesByMovie) = parseRepertoirePage(nuxtHtml)
+    val movieDetails =
+      movieBodies.flatMap { case (id, body) =>
+        parseApiMovieBody(body).map(id -> _)
+      }
 
-    val movieDetails: Map[String, ApiMovieInfo] = movieBodies.flatMap { case (id, body) =>
-      parseApiMovieBody(body).map(id -> _)
-    }
+    val screenNames =
+      screenBodies.flatMap { case (id, body) =>
+        json(body).flatMap(js => firstString(js, "name")).map(id -> _)
+      }
 
-    val screenNames: Map[String, String] = screenBodies.flatMap { case (id, body) =>
-      json(body).flatMap(js => (js \ "name").asOpt[String]).map(id -> _)
-    }
+    screeningsById.values.toSeq
+      .groupBy(_.movieId)
+      .toSeq
+      .flatMap { case (movieId, screenings) =>
+        val movie =
+          movieDetails.get(movieId).orElse(screenings.flatMap(_.movie).headOption)
 
-    val moviesWithKeys: Seq[(String, CinemaMovie)] =
-      showtimesByMovie.toSeq.flatMap { case (nuxtMovieId, slots) =>
-        movieInfoMap.get(nuxtMovieId).map { info =>
-          val apiMovieId = apiMovieIdFor(info, slots, apiScreeningsById)
-          val apiMovie   = apiMovieId.flatMap(movieDetails.get)
-          val movieKey   = apiMovieId.getOrElse(nuxtMovieId)
-
-          movieKey -> toCinemaMovie(
-            info              = info,
-            apiMovie          = apiMovie,
-            slots             = slots,
-            apiScreeningsById = apiScreeningsById,
-            screenNames       = screenNames
+        movie.map { movie =>
+          CinemaMovie(
+            movie = Movie(
+              title          = cleanTitle(movie.title.getOrElse(movieId)),
+              runtimeMinutes = movie.duration,
+              releaseYear    = movie.year,
+              premierePl     = movie.premierePl,
+              premiereWorld  = movie.premiereWorld
+            ),
+            cinema    = Helios,
+            posterUrl = movie.posterUrl,
+            filmUrl   = movie.slug.map(slug => s"$BaseUrl/filmy/$slug"),
+            synopsis  = movie.description,
+            cast      = movie.cast,
+            director  = movie.director,
+            showtimes = screenings
+              .flatMap(screening => toShowtime(screening, screenNames))
+              .distinct
+              .sortBy(_.dateTime)
           )
         }
       }
-
-    mergeDuplicateMovies(moviesWithKeys)
+      .filter(_.showtimes.nonEmpty)
+      .sortBy(_.movie.title)
   }
 
-  private def mergeDuplicateMovies(moviesWithKeys: Seq[(String, CinemaMovie)]): Seq[CinemaMovie] =
-    moviesWithKeys
-      .groupMap(_._1)(_._2)
-      .values
-      .map { sameMovieRows =>
-        val first = sameMovieRows.head
-        first.copy(
-          posterUrl = sameMovieRows.flatMap(_.posterUrl).headOption,
-          filmUrl = sameMovieRows.flatMap(_.filmUrl).headOption,
-          synopsis = sameMovieRows.flatMap(_.synopsis).headOption,
-          cast = sameMovieRows.flatMap(_.cast).headOption,
-          director = sameMovieRows.flatMap(_.director).headOption,
-          showtimes = sameMovieRows.flatMap(_.showtimes).distinct.sortBy(_.dateTime)
+  private def toShowtime(screening: ApiScreening, screenNames: Map[String, String]): Option[Showtime] =
+    screening.dateTime.map { dateTime =>
+      Showtime(
+        dateTime   = dateTime,
+        bookingUrl = Some(s"$BookingBase/${screening.id}?cinemaId=$CinemaSourceId"),
+        room       = screenNames.get(screening.screenId),
+        format     = Some(screening.release).filter(_.nonEmpty)
+      )
+    }
+
+  private case class ApiScreening(
+                                   id: String,
+                                   movieId: String,
+                                   screenId: String,
+                                   release: String,
+                                   dateTime: Option[LocalDateTime],
+                                   movie: Option[ApiMovieInfo]
+                                 )
+
+  private def parseApiScreenings(body: String): Map[String, ApiScreening] =
+    json(body).map { root =>
+      jsonArray(root).flatMap { s =>
+        for {
+          id       <- firstString(s, "id", "sourceId", "screeningId")
+          movieId  <- firstString(s, "movieId", "movieSourceId").orElse(nestedString(s, "movie", "id")).orElse(nestedString(s, "movie", "sourceId"))
+          screenId <- firstString(s, "screenId", "screenSourceId").orElse(nestedString(s, "screen", "id")).orElse(nestedString(s, "screen", "sourceId"))
+        } yield {
+          val release =
+            firstString(s, "release", "moviePrint", "format").getOrElse("")
+
+          val embeddedMovie =
+            (s \ "movie").toOption.flatMap(parseApiMovieJson)
+              .orElse((s \ "screeningMovie" \ "movie").toOption.flatMap(parseApiMovieJson))
+              .orElse((s \ "screeningMovie").toOption.flatMap(parseApiMovieJson))
+              .orElse(
+                (s \ "screeningMovies").asOpt[JsArray]
+                  .flatMap(_.value.headOption)
+                  .flatMap(x => (x \ "movie").toOption)
+                  .flatMap(parseApiMovieJson)
+              )
+              .orElse(
+                (s \ "screeningMovies").asOpt[JsArray]
+                  .flatMap(_.value.headOption)
+                  .flatMap(parseApiMovieJson)
+              )
+              .orElse(parseApiMovieJson(s))
+
+          id -> ApiScreening(
+            id       = id,
+            movieId  = movieId,
+            screenId = screenId,
+            release  = release,
+            dateTime = parseAnyDateTime(s),
+            movie    = embeddedMovie
+          )
+        }
+      }.toMap
+    }.getOrElse(Map.empty)
+
+  private def jsonArray(root: JsValue): Seq[JsValue] =
+    root.asOpt[JsArray]
+      .orElse((root \ "data").asOpt[JsArray])
+      .orElse((root \ "items").asOpt[JsArray])
+      .orElse((root \ "screenings").asOpt[JsArray])
+      .orElse((root \ "result").asOpt[JsArray])
+      .map(_.value.toSeq)
+      .getOrElse(Seq.empty)
+
+  private def parseAnyDateTime(js: JsValue): Option[LocalDateTime] = {
+    val preferred =
+      Seq(
+        "screeningDateTimeFrom",
+        "dateTimeFrom",
+        "timeFrom",
+        "startTime",
+        "startsAt",
+        "dateTime",
+        "startDateTime",
+        "from"
+      ).flatMap(name => (js \ name).asOpt[String])
+
+    val allStrings =
+      collectStrings(js)
+
+    (preferred ++ allStrings)
+      .flatMap(parseApiDateTime)
+      .headOption
+  }
+
+  private def collectStrings(js: JsValue): Seq[String] =
+    js match {
+      case JsString(value) => Seq(value)
+      case JsArray(values) => values.toSeq.flatMap(collectStrings)
+      case JsObject(fields) => fields.values.toSeq.flatMap(collectStrings)
+      case _ => Seq.empty
+    }
+
+  private def parseApiDateTime(value: String): Option[LocalDateTime] = {
+    val normalized = value.trim.replace(' ', 'T')
+
+    val looksLikeDateTime =
+      normalized.matches(""".*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}.*""")
+
+    if (!looksLikeDateTime) None
+    else {
+      Try(LocalDateTime.parse(normalized)).toOption
+        .orElse(
+          Try(
+            ZonedDateTime
+              .parse(normalized, OffsetDtf)
+              .withZoneSameInstant(WarsawZone)
+              .toLocalDateTime
+          ).toOption
+        )
+    }
+  }
+
+  private case class ApiMovieInfo(
+                                   duration: Option[Int],
+                                   description: Option[String],
+                                   cast: Option[String],
+                                   director: Option[String],
+                                   year: Option[Int],
+                                   premierePl: Option[java.time.LocalDate],
+                                   premiereWorld: Option[java.time.LocalDate],
+                                   posterUrl: Option[String],
+                                   title: Option[String],
+                                   slug: Option[String]
+                                 )
+
+  private def parseApiMovieBody(body: String): Option[ApiMovieInfo] =
+    json(body).flatMap { root =>
+      parseApiMovieJson(
+        firstObject(root, "data", "item", "movie", "result").getOrElse(root)
+      )
+    }
+
+  private def parseApiMovieJson(js: JsValue): Option[ApiMovieInfo] =
+    firstString(
+      js,
+      "title",
+      "name",
+      "movieTitle",
+      "movieName",
+      "eventTitle",
+      "eventName",
+      "displayTitle",
+      "displayName"
+    )
+      .orElse(nestedString(js, "movie", "title"))
+      .orElse(nestedString(js, "movie", "name"))
+      .orElse(nestedString(js, "event", "title"))
+      .orElse(nestedString(js, "event", "name"))
+      .orElse(nestedString(js, "film", "title"))
+      .orElse(nestedString(js, "film", "name"))
+      .map { title =>
+        ApiMovieInfo(
+          duration =
+            (js \ "duration").asOpt[Int]
+              .orElse((js \ "duration").asOpt[String].flatMap(parseInt))
+              .orElse(nestedString(js, "movie", "duration").flatMap(parseInt)),
+          description =
+            firstString(js, "description").filter(_.nonEmpty),
+          cast =
+            firstString(js, "filmCast", "cast").filter(_.nonEmpty),
+          director =
+            firstString(js, "director").filter(_.nonEmpty),
+          year =
+            firstString(js, "yearOfProduction", "productionYear").flatMap(s => parseInt(s.take(4))),
+          premierePl =
+            firstString(js, "premiereDate")
+              .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption),
+          premiereWorld =
+            firstString(js, "worldPremiereDate")
+              .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption),
+          posterUrl = posterUrlFromJson(js),
+          title     = Some(title),
+          slug =
+            firstString(
+              js,
+              "slug",
+              "movieSlug",
+              "eventSlug",
+              "filmSlug"
+            )
+              .orElse(nestedString(js, "movie", "slug"))
+              .orElse(nestedString(js, "event", "slug"))
+              .orElse(nestedString(js, "film", "slug"))
         )
       }
-      .toSeq
-      .sortBy(_.movie.title)
 
-  private def apiMovieIdFor(
-                             info: MovieMeta,
-                             slots: Seq[(LocalDateTime, Option[String])],
-                             apiScreeningsById: Map[String, ApiScreening]
-                           ): Option[String] =
-    slots
-      .flatMap(_._2)
-      .flatMap(screeningIdFromUrl)
-      .flatMap(apiScreeningsById.get)
-      .map(_.movieId)
-      .headOption
-      .orElse(info.apiMovieId)
+  private def posterUrlFromJson(js: JsValue): Option[String] =
+    firstString(
+      js,
+      "poster",
+      "posterUrl",
+      "posterURL",
+      "image",
+      "imageUrl",
+      "imageURL",
+      "photo",
+      "photoUrl",
+      "cover",
+      "coverUrl"
+    )
+      .orElse(nestedString(js, "posterPhoto", "url"))
+      .orElse(nestedString(js, "poster", "url"))
+      .orElse(nestedString(js, "image", "url"))
+      .orElse(
+        (js \ "posters").asOpt[JsArray]
+          .flatMap(_.value.headOption)
+          .flatMap {
+            case JsString(url) => Some(url)
+            case obj: JsObject => firstString(obj, "url", "fileUrl", "path")
+            case _             => None
+          }
+      )
+      .filter(_.startsWith("http"))
 
-  private def toCinemaMovie(
-                             info: MovieMeta,
-                             apiMovie: Option[ApiMovieInfo],
-                             slots: Seq[(LocalDateTime, Option[String])],
-                             apiScreeningsById: Map[String, ApiScreening],
-                             screenNames: Map[String, String]
-                           ): CinemaMovie =
-    CinemaMovie(
-      movie = Movie(
-        title          = cleanTitle(info.title),
-        runtimeMinutes = apiMovie.flatMap(_.duration).orElse(info.runtimeMinutes),
-        releaseYear    = apiMovie.flatMap(_.year),
-        premierePl     = apiMovie.flatMap(_.premierePl),
-        premiereWorld  = apiMovie.flatMap(_.premiereWorld)
-      ),
-      cinema    = Helios,
-      posterUrl = apiMovie.flatMap(_.posterUrl).orElse(info.posterUrl),
-      filmUrl   = info.filmUrl,
-      synopsis  = apiMovie.flatMap(_.description),
-      cast      = apiMovie.flatMap(_.cast),
-      director  = apiMovie.flatMap(_.director),
-      showtimes = slots.sortBy(_._1).map { case (dateTime, bookingUrl) =>
-        toShowtime(dateTime, bookingUrl, apiScreeningsById, screenNames)
+  private def firstObject(root: JsValue, names: String*): Option[JsValue] =
+    names.iterator
+      .flatMap(name => (root \ name).toOption)
+      .collectFirst { case obj: JsObject => obj }
+
+  private def firstString(js: JsValue, names: String*): Option[String] =
+    names.iterator
+      .flatMap(name => (js \ name).asOpt[String])
+      .find(_.nonEmpty)
+
+  private def nestedString(js: JsValue, path: String*): Option[String] =
+    path
+      .foldLeft[Option[JsValue]](Some(js)) { case (current, field) =>
+        current.flatMap(value => (value \ field).toOption)
       }
-    )
-
-  private def toShowtime(
-                          dateTime: LocalDateTime,
-                          bookingUrl: Option[String],
-                          apiScreeningsById: Map[String, ApiScreening],
-                          screenNames: Map[String, String]
-                        ): Showtime = {
-    val screening =
-      bookingUrl
-        .flatMap(screeningIdFromUrl)
-        .flatMap(apiScreeningsById.get)
-
-    Showtime(
-      dateTime   = dateTime,
-      bookingUrl = bookingUrl,
-      room       = screening.map(_.screenId).flatMap(screenNames.get),
-      format     = screening.map(_.release).filter(_.nonEmpty)
-    )
-  }
+      .flatMap(_.asOpt[String])
+      .filter(_.nonEmpty)
 
   private def cleanTitle(title: String): String =
     Seq(
@@ -179,283 +471,588 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
   private def parseInt(value: String): Option[Int] =
     Try(value.trim.toInt).toOption
 
-  private def resolveInt(token: String, resolve: String => Option[String]): Option[Int] =
-    parseInt(token).orElse(resolve(token).flatMap(parseInt))
+  // ── NUXT fallback parser for events/RePlay rows missing from REST ─────────
 
-  private case class ApiScreening(movieId: String, screenId: String, release: String)
+  private def buildCinemaMoviesFromNuxt(html: String): Seq[CinemaMovie] = {
+    val parsed = parseNuxtPage(html)
 
-  private def parseApiScreenings(body: String): Map[String, ApiScreening] =
-    json(body).map {
-      case JsArray(values) =>
-        values.flatMap { s =>
-          for {
-            id       <- (s \ "id").asOpt[String]
-            movieId  <- (s \ "movieId").asOpt[String]
-            screenId <- (s \ "screenId").asOpt[String]
-          } yield {
-            val release = (s \ "release").asOpt[String].getOrElse("")
-            id -> ApiScreening(movieId, screenId, release)
-          }
-        }.toMap
-      case _ => Map.empty[String, ApiScreening]
-    }.getOrElse(Map.empty)
+    val nuxtRows =
+      parsed.showtimesByMovie.toSeq.flatMap { case (movieId, slots) =>
+        parsed.movies.get(movieId).map(movie => movie -> slots)
+      }
 
-  private def screeningIdFromUrl(url: String): Option[String] = {
-    val prefix = BookingBase + "/"
-    if (url.startsWith(prefix)) Some(url.stripPrefix(prefix).takeWhile(_ != '?'))
-    else None
+    val embeddedRows =
+      parsed.embeddedRows.map { row =>
+        row.movie -> Seq(row.dateTime -> row.screeningId)
+      }
+
+    (nuxtRows ++ embeddedRows ++ parseHtmlRepertoireRows(html))
+      .groupBy(_._1.title)
+      .values
+      .map { rows =>
+        val movies = rows.map(_._1)
+        val title =
+          cleanTitle(movies.head.title)
+
+        val movie =
+          movies
+            .filter(m => cleanTitle(m.title) == title)
+            .find(_.runtimeMinutes.nonEmpty)
+            .orElse(movies.find(_.runtimeMinutes.nonEmpty))
+            .getOrElse(movies.head)
+
+        val slots =
+          rows
+            .flatMap(_._2)
+            .distinct
+            .sortBy(_._1)
+
+        CinemaMovie(
+          movie = Movie(
+            title          = title,
+            runtimeMinutes = movie.runtimeMinutes,
+            releaseYear    = None,
+            premierePl     = None,
+            premiereWorld  = None
+          ),
+          cinema    = Helios,
+          posterUrl = movies.flatMap(_.posterUrl).headOption,
+          filmUrl   = movies.flatMap(_.filmUrl).headOption,
+          synopsis  = None,
+          cast      = None,
+          director  = None,
+          showtimes = slots
+            .map { case (dateTime, screeningId) =>
+              Showtime(
+                dateTime   = dateTime,
+                bookingUrl = Some(s"$BookingBase/$screeningId?cinemaId=$CinemaSourceId").filter(_ => screeningId.nonEmpty),
+                room       = None,
+                format     = None
+              )
+            }
+            .distinct
+        )
+      }
+      .filter(_.showtimes.nonEmpty)
+      .toSeq
   }
 
-  private case class ApiMovieInfo(
-                                   duration: Option[Int],
-                                   description: Option[String],
-                                   cast: Option[String],
-                                   director: Option[String],
-                                   year: Option[Int],
-                                   premierePl: Option[java.time.LocalDate],
-                                   premiereWorld: Option[java.time.LocalDate],
-                                   posterUrl: Option[String]
+  private def parseHtmlRepertoireRows(html: String): Seq[(NuxtMovie, Seq[(LocalDateTime, String)])] = {
+    val groupPattern =
+      """(?s)<div aria-labelledby="repertoire-screening-movie-\d+" role="group".*?<h2[^>]*><a href="([^"]+)">([^<]+)</a></h2>(.*?)(?=<div aria-labelledby="repertoire-screening-movie-\d+" role="group"|</section>)""".r
+
+    val showtimePattern =
+      """(?s)href="https://bilety\.helios\.pl/screen/([^"?]+)[^"]*".*?<time datetime="([^"]+)"""".r
+
+    groupPattern.findAllMatchIn(html).flatMap { m =>
+      val href  = m.group(1)
+      val title = htmlText(m.group(2))
+      val body  = m.group(3)
+
+      val slots =
+        showtimePattern.findAllMatchIn(body).flatMap { sm =>
+          parseHtmlDateTime(sm.group(2)).map(_ -> sm.group(1))
+        }.toSeq
+
+      Option.when(title.nonEmpty && slots.nonEmpty) {
+        NuxtMovie(
+          title          = title,
+          slug           = href.split("/").lastOption.getOrElse(title),
+          posterUrl      = None,
+          filmUrl        = Some(absoluteHeliosUrl(href)),
+          runtimeMinutes = None
+        ) -> slots
+      }
+    }.toSeq
+  }
+
+  private def absoluteHeliosUrl(href: String): String =
+    if (href.startsWith("http")) href
+    else "https://helios.pl" + href
+
+  private def htmlText(value: String): String =
+    value
+      .replaceAll("<[^>]+>", "\n")
+      .replace("&amp;", "&")
+      .split("\\s*\\R\\s*")
+      .filter(_.nonEmpty)
+      .lastOption
+      .getOrElse("")
+      .trim
+
+  private def parseHtmlDateTime(value: String): Option[LocalDateTime] =
+    Try(LocalDateTime.parse(value.take(19).replace(' ', 'T'))).toOption
+
+  private case class NuxtPage(
+                               movies: Map[String, NuxtMovie],
+                               showtimesByMovie: Map[String, Seq[(LocalDateTime, String)]],
+                               embeddedRows: Seq[NuxtMovieRow]
+                             )
+
+  private case class NuxtMovieRow(
+                                   movieId: String,
+                                   movie: NuxtMovie,
+                                   dateTime: LocalDateTime,
+                                   screeningId: String
                                  )
 
-  private def parseApiMovieBody(body: String): Option[ApiMovieInfo] =
-    json(body).map { js =>
-      val premierePl = (js \ "premiereDate").asOpt[String]
-        .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption)
-      val premiereWorld = (js \ "worldPremiereDate").asOpt[String]
-        .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption)
-      val poster = (js \ "posters").asOpt[JsArray]
-        .flatMap(_.value.headOption)
-        .flatMap {
-          case JsString(url) => Some(url)
-          case obj: JsObject => (obj \ "url").asOpt[String]
-          case _             => None
-        }
-        .filter(_.startsWith("http"))
-      val duration =
-        (js \ "duration").asOpt[Int]
-          .orElse((js \ "duration").asOpt[String].flatMap(parseInt))
-
-      ApiMovieInfo(
-        duration      = duration,
-        description   = (js \ "description").asOpt[String].filter(_.nonEmpty),
-        cast          = (js \ "filmCast").asOpt[String].filter(_.nonEmpty),
-        director      = (js \ "director").asOpt[String].filter(_.nonEmpty),
-        year          = (js \ "yearOfProduction").asOpt[String].flatMap(s => parseInt(s.take(4))),
-        premierePl    = premierePl,
-        premiereWorld = premiereWorld,
-        posterUrl     = poster
-      )
-    }
-
-  private val ScreeningsSectionPat = """screenings:\{"\d{4}-\d{2}-\d{2}"""".r
-
-  private def parseRepertoirePage(
-                                   html: String
-                                 ): (Map[String, MovieMeta], Map[String, Seq[(LocalDateTime, Option[String])]]) = {
-    val nuxtIndex = html.lastIndexOf("window.__NUXT__")
-    if (nuxtIndex < 0) return (Map.empty, Map.empty)
-
-    val nuxtScript = html.substring(nuxtIndex)
-    val paramsStart = nuxtScript.indexOf("(function(") + "(function(".length
-    val paramsEnd   = nuxtScript.indexOf("){", paramsStart)
-    val bodyEnd     = nuxtScript.indexOf("}(")
-    if (paramsEnd < 0 || bodyEnd < 0) return (Map.empty, Map.empty)
-
-    val paramNames = nuxtScript.substring(paramsStart, paramsEnd).split(",").toSeq
-    val valuesRaw  = nuxtScript.substring(bodyEnd + 2)
-    val valuesEnd  = valuesRaw.lastIndexOf("))")
-
-    val paramMap: Map[String, JsValue] = Try {
-      val raw   = valuesRaw.substring(0, valuesEnd)
-      val clean = raw.replaceAll("""Array\(\d+\)""", "null").replace("undefined", "null")
-      val valuesArray = Json.parse("[" + clean + "]").as[JsArray]
-      paramNames.zip(valuesArray.value).toMap
-    }.getOrElse(return (Map.empty, Map.empty))
-
-    def resolve(token: String): Option[String] = {
-      val trimmed = token.trim
-      val raw =
-        if (trimmed.startsWith("\"")) Some(trimmed.stripPrefix("\"").stripSuffix("\""))
-        else paramMap.get(trimmed).flatMap {
-          case JsString(s) => Some(s)
-          case n: JsNumber => n.value.toBigIntExact.map(_.toString)
-          case _           => None
-        }
-      raw.map(_.replace("\\u002F", "/"))
-    }
-
-    val body = nuxtScript.substring(paramsEnd + 2, bodyEnd)
-    val screeningsMatch =
-      ScreeningsSectionPat.findFirstMatchIn(body).getOrElse(return (Map.empty, Map.empty))
-
-    val movieMetaBody  = body.substring(0, screeningsMatch.start)
-    val screeningsBody = body.substring(screeningsMatch.start + "screenings:".length)
-
-    val movieInfoMap =
-      parseMovieInfo(movieMetaBody, resolve) ++ parseNestedScreeningMovies(screeningsBody, resolve)
-
-    val showtimesByMovie =
-      parseScreenings(screeningsBody, resolve).groupMap(_._1)(_._2)
-
-    (movieInfoMap, showtimesByMovie)
-  }
-
-  private case class MovieMeta(
+  private case class NuxtMovie(
                                 title: String,
                                 slug: String,
                                 posterUrl: Option[String],
                                 filmUrl: Option[String],
-                                apiMovieId: Option[String],
-                                runtimeMinutes: Option[Int] = None
+                                runtimeMinutes: Option[Int]
                               )
 
-  private def parseNestedScreeningMovies(
-                                          screeningsBody: String,
-                                          resolve: String => Option[String]
-                                        ): Map[String, MovieMeta] = {
-    val eventBlockPattern =
-      """(e\d+):\{screenings:\[.*?screeningMovies:\[\{.*?movie:\{(.*?)\},moviePrint:""".r
+  private def parseNuxtPage(html: String): NuxtPage = {
+    val nuxtIndex = html.lastIndexOf("window.__NUXT__")
+    if (nuxtIndex < 0) return NuxtPage(Map.empty, Map.empty, Seq.empty)
 
-    val sourceIdPattern = """sourceId:(?:"([^"]+)"|(\w+))""".r
-    val titlePattern    = """title:(?:"([^"]+)"|(\w+))""".r
-    val slugPattern     = """slug:(?:"([^"]+)"|(\w+))""".r
-    val durationPattern = """duration:([^,}]+)""".r
-    val posterPattern   = """posterPhoto:\{.*?url:(?:"([^"]+)"|(\w+))""".r
+    val script = html.substring(nuxtIndex)
 
-    eventBlockPattern.findAllMatchIn(screeningsBody).flatMap { m =>
-      val eventId = m.group(1)
-      val movie   = m.group(2)
+    val paramsStart = script.indexOf("(function(") + "(function(".length
+    val paramsEnd   = script.indexOf("){", paramsStart)
+    val bodyEnd     = script.indexOf("}(")
 
-      val apiMovieId = sourceIdPattern.findFirstMatchIn(movie).flatMap(x => Option(x.group(1)).orElse(resolve(x.group(2))))
-      val title      = titlePattern.findFirstMatchIn(movie).flatMap(x => Option(x.group(1)).orElse(resolve(x.group(2))))
-      val slug       = slugPattern.findFirstMatchIn(movie).flatMap(x => Option(x.group(1)).orElse(resolve(x.group(2))))
-      val duration   = durationPattern.findFirstMatchIn(movie).flatMap(x => resolveInt(x.group(1), resolve))
-      val posterUrl  = posterPattern.findFirstMatchIn(movie).flatMap(x => Option(x.group(1)).orElse(resolve(x.group(2)))).map(_.replace("\\u002F", "/"))
+    if (paramsStart < "(function(".length || paramsEnd < 0 || bodyEnd < 0)
+      return NuxtPage(Map.empty, Map.empty, Seq.empty)
 
-      for {
-        titleStr <- title
-        slugStr  <- slug
-      } yield eventId -> MovieMeta(
-        title          = titleStr,
-        slug           = slugStr,
-        posterUrl      = posterUrl,
-        filmUrl        = Some(s"$BaseUrl/filmy/$slugStr"),
-        apiMovieId     = apiMovieId,
-        runtimeMinutes = duration
-      )
+    val paramNames = script.substring(paramsStart, paramsEnd).split(",").toSeq
+    val valuesRaw  = script.substring(bodyEnd + 2)
+    val valuesEnd  = valuesRaw.lastIndexOf("))")
+
+    val paramMap: Map[String, JsValue] =
+      Try {
+        val raw = valuesRaw.substring(0, valuesEnd)
+        val clean =
+          raw
+            .replaceAll("""Array\(\d+\)""", "null")
+            .replace("undefined", "null")
+
+        val valuesArray = Json.parse("[" + clean + "]").as[JsArray]
+        paramNames.zip(valuesArray.value).toMap
+      }.getOrElse(Map.empty)
+
+    def resolve(token: String): Option[String] = {
+      val trimmed = token.trim
+
+      val value =
+        if (trimmed.startsWith("\""))
+          Some(trimmed.stripPrefix("\"").stripSuffix("\""))
+        else
+          paramMap.get(trimmed).flatMap {
+            case JsString(s) => Some(s)
+            case n: JsNumber => n.value.toBigIntExact.map(_.toString)
+            case _           => None
+          }
+
+      value.map(_.replace("\\u002F", "/"))
+    }
+
+    val body = script.substring(paramsEnd + 2, bodyEnd)
+
+    val screeningsMarker =
+      """screenings:\{"\d{4}-\d{2}-\d{2}"""".r.findFirstMatchIn(body)
+
+    screeningsMarker match {
+      case None =>
+        NuxtPage(Map.empty, Map.empty, Seq.empty)
+
+      case Some(marker) =>
+        val movieBody      = body.substring(0, marker.start)
+        val screeningsBody = body.substring(marker.start + "screenings:".length)
+
+        NuxtPage(
+          movies           = parseNuxtMovies(movieBody, screeningsBody, resolve),
+          showtimesByMovie = parseNuxtShowtimes(screeningsBody, resolve).groupMap(_._1)(_._2),
+          embeddedRows     = parseEmbeddedNuxtRows(screeningsBody, resolve)
+        )
+    }
+  }
+
+  private def parseNuxtMovies(
+                               movieBody: String,
+                               screeningsBody: String,
+                               resolve: String => Option[String]
+                             ): Map[String, NuxtMovie] = {
+    val normal =
+      parseNormalNuxtMovies(movieBody, resolve)
+
+    val embedded =
+      parseEmbeddedScreeningNuxtMovies(screeningsBody, resolve)
+
+    val events =
+      parseEventNuxtMovies(movieBody, screeningsBody, resolve)
+
+    normal ++ embedded ++ enrichEventNuxtMovies(events, embedded)
+  }
+
+  private def enrichEventNuxtMovies(
+                                     events: Map[String, NuxtMovie],
+                                     embedded: Map[String, NuxtMovie]
+                                   ): Map[String, NuxtMovie] =
+    events.map { case (id, eventMovie) =>
+      val enriched =
+        embedded.get(id).map { embeddedMovie =>
+          eventMovie.copy(
+            posterUrl      = eventMovie.posterUrl.orElse(embeddedMovie.posterUrl),
+            runtimeMinutes = eventMovie.runtimeMinutes.orElse(embeddedMovie.runtimeMinutes)
+          )
+        }.getOrElse(eventMovie)
+
+      id -> enriched
+    }
+
+  private def parseEmbeddedScreeningNuxtMovies(
+      screeningsBody: String,
+      resolve: String => Option[String]
+  ): Map[String, NuxtMovie] = {
+    val groupPattern =
+      """([em]\d+):\{screenings:\[""".r
+
+    groupPattern.findAllMatchIn(screeningsBody).flatMap { groupMatch =>
+      val movieId = groupMatch.group(1)
+      val screeningsArray =
+        bracketedArrayContent(screeningsBody, groupMatch.end)
+
+      """movie:\{(.*?)\},moviePrint:""".r
+        .findFirstMatchIn(screeningsArray)
+        .flatMap(m => parseNuxtEmbeddedMovieBlock(m.group(1), resolve).map(movieId -> _))
     }.toMap
   }
 
-  private def parseMovieInfo(movieMetaBody: String, resolve: String => Option[String]): Map[String, MovieMeta] = {
-    val moviePattern =
-      """,id:(\d{3,}|\w+),sourceId:(?:"([^"]+)"|(\w+)),title:(?:"([^"]+)"|(\w+)),titleOriginal:(?:"[^"]+"|(?:\w+)),slug:(?:"([^"]+)"|(\w+))""".r
+  private def parseNuxtEmbeddedMovieBlock(
+      movie: String,
+      resolve: String => Option[String]
+  ): Option[NuxtMovie] = {
+    val title =
+      """title:(?:"([^"]+)"|(\w+))""".r
+        .findFirstMatchIn(movie)
+        .flatMap(m => Option(m.group(1)).orElse(resolve(m.group(2))))
 
-    val movies = moviePattern.findAllMatchIn(movieMetaBody).flatMap { movieMatch =>
-      val rawId = movieMatch.group(1)
+    val slug =
+      """slug:(?:"([^"]+)"|(\w+))""".r
+        .findFirstMatchIn(movie)
+        .flatMap(m => Option(m.group(1)).orElse(resolve(m.group(2))))
+
+    val numericId =
+      """id:(\d{3,}|\w+)""".r
+        .findFirstMatchIn(movie)
+        .flatMap { m =>
+          val raw = m.group(1)
+          if (raw.forall(_.isDigit)) Some(raw)
+          else resolve(raw).filter(_.forall(_.isDigit))
+        }
+
+    val poster =
+      """posterPhoto:\{.*?url:(?:"([^"]+)"|(\w+))""".r
+        .findFirstMatchIn(movie)
+        .flatMap(m => Option(m.group(1)).orElse(resolve(m.group(2))))
+        .map(_.replace("\\u002F", "/"))
+
+    val runtime =
+      """duration:([^,}]+)""".r
+        .findFirstMatchIn(movie)
+        .flatMap(m => parseInt(m.group(1)).orElse(resolve(m.group(1)).flatMap(parseInt)))
+
+    for {
+      titleStr <- title
+      slugStr  <- slug
+    } yield NuxtMovie(
+      title          = titleStr,
+      slug           = slugStr,
+      posterUrl      = poster,
+      filmUrl        = numericId
+        .map(id => s"$BaseUrl/filmy/$slugStr-$id")
+        .orElse(Some(s"$BaseUrl/filmy/$slugStr")),
+      runtimeMinutes = runtime
+    )
+  }
+
+  private def parseNormalNuxtMovies(
+                                     movieBody: String,
+                                     resolve: String => Option[String]
+                                   ): Map[String, NuxtMovie] = {
+    val moviePattern =
+      """,id:(\d{3,}|\w+),sourceId:(?:"([^"]+)"|(\w+)),title:(?:"([^"]+)"|(\w+)),titleOriginal:(?:"[^"]*"|\w+),slug:(?:"([^"]+)"|(\w+))""".r
+
+    moviePattern.findAllMatchIn(movieBody).flatMap { m =>
+      val rawId = m.group(1)
+
       val numericId =
         if (rawId.forall(_.isDigit)) rawId
         else resolve(rawId).filter(_.forall(_.isDigit)).getOrElse("")
 
-      val apiMovieId = Option(movieMatch.group(2)).orElse(resolve(movieMatch.group(3))).getOrElse("")
-      val title      = Option(movieMatch.group(4)).orElse(resolve(movieMatch.group(5)))
-      val slug       = Option(movieMatch.group(6)).orElse(resolve(movieMatch.group(7))).getOrElse("")
+      val title = Option(m.group(4)).orElse(resolve(m.group(5)))
+      val slug  = Option(m.group(6)).orElse(resolve(m.group(7)))
 
-      if (numericId.nonEmpty && apiMovieId.nonEmpty && slug.nonEmpty) {
-        val nearby = movieMetaBody.substring(movieMatch.start, math.min(movieMatch.start + 1000, movieMetaBody.length))
+      if (numericId.isEmpty) None
+      else {
+        val nearby =
+          movieBody.substring(m.start, math.min(m.start + 1500, movieBody.length))
 
-        val posterUrl =
+        val poster =
           """posterPhoto:\{filePath:(?:"[^"]+"|[^,{]+),url:(?:"([^"]+)"|(\w+))""".r
             .findFirstMatchIn(nearby)
-            .flatMap(pm => Option(pm.group(1)).map(_.replace("\\u002F", "/")).orElse(resolve(pm.group(2))))
+            .flatMap(pm => Option(pm.group(1)).orElse(resolve(pm.group(2))))
+            .map(_.replace("\\u002F", "/"))
 
-        val duration =
+        val runtime =
           """duration:([^,}]+)""".r
             .findFirstMatchIn(nearby)
-            .flatMap(m => resolveInt(m.group(1), resolve))
+            .flatMap(m => parseInt(m.group(1)).orElse(resolve(m.group(1)).flatMap(parseInt)))
 
-        title.map { titleStr =>
-          s"m$numericId" -> MovieMeta(
-            title          = titleStr,
-            slug           = slug,
-            posterUrl      = posterUrl,
-            filmUrl        = Some(s"$BaseUrl/filmy/$slug-$numericId"),
-            apiMovieId     = Some(apiMovieId),
-            runtimeMinutes = duration
-          )
-        }
-      } else None
-    }
-
-    val eventIdPattern = """_id:"(e\d+)"""".r
-    val events = eventIdPattern.findAllMatchIn(movieMetaBody).flatMap { eventMatch =>
-      val eventId   = eventMatch.group(1)
-      val numericId = eventId.substring(1)
-      val before    = movieMetaBody.substring(math.max(0, eventMatch.start - 500), eventMatch.start)
-
-      """,name:(\w+),slug:(\w+),""".r.findAllMatchIn(before).toSeq.lastOption.flatMap { nameMatch =>
         for {
-          titleStr <- resolve(nameMatch.group(1))
-          slugStr  <- resolve(nameMatch.group(2))
-        } yield eventId -> MovieMeta(
-          title      = titleStr,
-          slug       = slugStr,
-          posterUrl  = None,
-          filmUrl    = Some(s"$BaseUrl/wydarzenie/$slugStr-$numericId"),
-          apiMovieId = None
+          titleStr <- title
+          slugStr  <- slug
+        } yield s"m$numericId" -> NuxtMovie(
+          title          = titleStr,
+          slug           = slugStr,
+          posterUrl      = poster,
+          filmUrl        = Some(s"$BaseUrl/filmy/$slugStr-$numericId"),
+          runtimeMinutes = runtime
         )
       }
-    }
-
-    (movies ++ events).toMap
+    }.toMap
   }
 
-  private def parseScreenings(
-                               screeningsBody: String,
-                               resolve: String => Option[String]
-                             ): Seq[(String, (LocalDateTime, Option[String]))] = {
-    val result     = mutable.ListBuffer[(String, (LocalDateTime, Option[String]))]()
-    val dayPattern = """"(\d{4}-\d{2}-\d{2})"\s*:\s*\{""".r
+  private def parseEventNuxtMovies(
+                                    movieBody: String,
+                                    screeningsBody: String,
+                                    resolve: String => Option[String]
+                                  ): Map[String, NuxtMovie] = {
+    val eventIds =
+      """([e]\d+):\{screenings:\[""".r
+        .findAllMatchIn(screeningsBody)
+        .map(_.group(1))
+        .toSet
+
+    eventIds.flatMap { eventId =>
+      val numericId = eventId.stripPrefix("e")
+
+      val eventMeta =
+        findEventMetaInMovieBody(eventId, movieBody, resolve)
+          .orElse(findEventMetaInScreeningsBody(eventId, screeningsBody, resolve))
+
+      eventMeta.map { movie =>
+        eventId -> movie.copy(
+          filmUrl = movie.filmUrl.orElse(Some(s"$BaseUrl/wydarzenie/${movie.slug}-$numericId"))
+        )
+      }
+    }.toMap
+  }
+
+  private def parseEmbeddedNuxtRows(
+                                     screeningsBody: String,
+                                     resolve: String => Option[String]
+                                   ): Seq[NuxtMovieRow] = {
+    val dayPattern   = """"(\d{4}-\d{2}-\d{2})"\s*:\s*\{""".r
+    val groupPattern = """([em]\d+):\{screenings:\[""".r
+    val timePattern  = """timeFrom:("[\d :.-]+"|[^,{]+)""".r
+    val sourcePattern = """sourceId:("[\w-]+"|\w+)""".r
+    val moviePattern = """movie:\{(.*?)\},moviePrint:""".r
+
     val dayMatches = dayPattern.findAllMatchIn(screeningsBody).toSeq
 
-    for ((dayMatch, dayIndex) <- dayMatches.zipWithIndex) {
+    dayMatches.zipWithIndex.flatMap { case (dayMatch, dayIndex) =>
       val dayBlockEnd =
         if (dayIndex + 1 < dayMatches.length) dayMatches(dayIndex + 1).start
         else screeningsBody.length
 
-      val dayBlock = screeningsBody.substring(dayMatch.end, dayBlockEnd)
+      val dayBlock =
+        screeningsBody.substring(dayMatch.end, dayBlockEnd)
 
-      for (groupMatch <- """([em]\d+):\{screenings:\[""".r.findAllMatchIn(dayBlock)) {
+      groupPattern.findAllMatchIn(dayBlock).flatMap { groupMatch =>
         val movieId = groupMatch.group(1)
+        val screeningsArray =
+          bracketedArrayContent(dayBlock, groupMatch.end)
 
-        var depth = 1
-        var pos   = groupMatch.end
+        splitNuxtScreeningObjects(screeningsArray).flatMap { screening =>
+          val time =
+            timePattern
+              .findFirstMatchIn(screening)
+              .flatMap(m => resolve(m.group(1)))
 
-        while (pos < dayBlock.length && depth > 0) {
-          if (dayBlock(pos) == '[') depth += 1
-          else if (dayBlock(pos) == ']') depth -= 1
-          pos += 1
-        }
-
-        val screeningsArray = dayBlock.substring(groupMatch.end, pos - 1)
-        val screeningPattern =
-          """\{timeFrom:("[\d :.-]+"|[^,{]+),saleTimeTo:[^,]+,sourceId:("[\w-]+"|\w+),""".r
-
-        for (screeningMatch <- screeningPattern.findAllMatchIn(screeningsArray)) {
-          val timeValue   = resolve(screeningMatch.group(1))
-          val rawSourceId = screeningMatch.group(2)
           val sourceId =
-            if (rawSourceId.startsWith("\"")) Some(rawSourceId.stripPrefix("\"").stripSuffix("\""))
-            else resolve(rawSourceId)
+            sourcePattern.findFirstMatchIn(screening).flatMap { m =>
+              val raw = m.group(1)
+              if (raw.startsWith("\"")) Some(raw.stripPrefix("\"").stripSuffix("\""))
+              else resolve(raw)
+            }
+
+          val movie =
+            moviePattern
+              .findFirstMatchIn(screening)
+              .flatMap(m => parseNuxtEmbeddedMovieBlock(m.group(1), resolve))
 
           for {
-            timeStr <- timeValue if timeStr.length == 19
-            dateTime = LocalDateTime.parse(timeStr.replace(' ', 'T'))
-            bookingUrl = sourceId.map(sid => s"$BookingBase/$sid?cinemaId=$CinemaSourceId")
-          } result += movieId -> (dateTime, bookingUrl)
+            timeStr <- time if timeStr.length == 19
+            sid     <- sourceId
+            m       <- movie
+          } yield NuxtMovieRow(
+            movieId     = movieId,
+            movie       = m,
+            dateTime    = LocalDateTime.parse(timeStr.replace(' ', 'T')),
+            screeningId = sid
+          )
         }
       }
     }
+  }
 
-    result.toSeq
+  private def findEventMetaInMovieBody(
+                                        eventId: String,
+                                        movieBody: String,
+                                        resolve: String => Option[String]
+                                      ): Option[NuxtMovie] = {
+    val eventIdPattern = s"""_id:"$eventId"""".r
+
+    eventIdPattern.findFirstMatchIn(movieBody).flatMap { m =>
+      val before =
+        movieBody.substring(math.max(0, m.start - 1000), m.start)
+
+      """,name:(\w+),slug:(\w+),""".r
+        .findAllMatchIn(before)
+        .toSeq
+        .lastOption
+        .flatMap { nameMatch =>
+          for {
+            title <- resolve(nameMatch.group(1))
+            slug  <- resolve(nameMatch.group(2))
+          } yield NuxtMovie(
+            title          = title,
+            slug           = slug,
+            posterUrl      = None,
+            filmUrl        = None,
+            runtimeMinutes = None
+          )
+        }
+    }
+  }
+
+  private def findEventMetaInScreeningsBody(
+                                             eventId: String,
+                                             screeningsBody: String,
+                                             resolve: String => Option[String]
+                                           ): Option[NuxtMovie] = {
+    val eventStart = screeningsBody.indexOf(s"$eventId:{")
+    if (eventStart < 0) return None
+
+    val eventBlock =
+      screeningsBody.substring(eventStart, math.min(eventStart + 4000, screeningsBody.length))
+
+    val movieBlock =
+      """screeningMovies:\[\{.*?movie:\{(.*?)\},moviePrint:""".r
+        .findFirstMatchIn(eventBlock)
+        .map(_.group(1))
+
+    movieBlock.flatMap { movie =>
+      val title =
+        """title:(?:"([^"]+)"|(\w+))""".r
+          .findFirstMatchIn(movie)
+          .flatMap(m => Option(m.group(1)).orElse(resolve(m.group(2))))
+
+      val slug =
+        """slug:(?:"([^"]+)"|(\w+))""".r
+          .findFirstMatchIn(movie)
+          .flatMap(m => Option(m.group(1)).orElse(resolve(m.group(2))))
+
+      val poster =
+        """posterPhoto:\{.*?url:(?:"([^"]+)"|(\w+))""".r
+          .findFirstMatchIn(movie)
+          .flatMap(m => Option(m.group(1)).orElse(resolve(m.group(2))))
+          .map(_.replace("\\u002F", "/"))
+
+      val runtime =
+        """duration:([^,}]+)""".r
+          .findFirstMatchIn(movie)
+          .flatMap(m => parseInt(m.group(1)).orElse(resolve(m.group(1)).flatMap(parseInt)))
+
+      for {
+        titleStr <- title
+        slugStr  <- slug
+      } yield NuxtMovie(
+        title          = titleStr,
+        slug           = slugStr,
+        posterUrl      = poster,
+        filmUrl        = Some(s"$BaseUrl/filmy/$slugStr"),
+        runtimeMinutes = runtime
+      )
+    }
+  }
+
+  private def parseNuxtShowtimes(
+                                  screeningsBody: String,
+                                  resolve: String => Option[String]
+                                ): Seq[(String, (LocalDateTime, String))] = {
+    val dayPattern       = """"(\d{4}-\d{2}-\d{2})"\s*:\s*\{""".r
+    val groupPattern     = """([em]\d+):\{screenings:\[""".r
+    val screeningPattern = """\{timeFrom:("[\d :.-]+"|[^,{]+),saleTimeTo:[^,]+,sourceId:("[\w-]+"|\w+),""".r
+
+    val dayMatches = dayPattern.findAllMatchIn(screeningsBody).toSeq
+
+    dayMatches.zipWithIndex.flatMap { case (dayMatch, dayIndex) =>
+      val dayBlockEnd =
+        if (dayIndex + 1 < dayMatches.length) dayMatches(dayIndex + 1).start
+        else screeningsBody.length
+
+      val dayBlock =
+        screeningsBody.substring(dayMatch.end, dayBlockEnd)
+
+      groupPattern.findAllMatchIn(dayBlock).flatMap { groupMatch =>
+        val movieId = groupMatch.group(1)
+
+        val screeningsArray =
+          bracketedArrayContent(dayBlock, groupMatch.end)
+
+        screeningPattern.findAllMatchIn(screeningsArray).flatMap { screeningMatch =>
+          val time =
+            resolve(screeningMatch.group(1))
+
+          val rawSourceId =
+            screeningMatch.group(2)
+
+          val sourceId =
+            if (rawSourceId.startsWith("\""))
+              Some(rawSourceId.stripPrefix("\"").stripSuffix("\""))
+            else
+              resolve(rawSourceId)
+
+          for {
+            timeStr <- time if timeStr.length == 19
+            sid     <- sourceId
+          } yield movieId -> (LocalDateTime.parse(timeStr.replace(' ', 'T')), sid)
+        }
+      }
+    }
+  }
+
+  private def splitNuxtScreeningObjects(screeningsArray: String): Seq[String] = {
+    val starts =
+      """\{timeFrom:""".r
+        .findAllMatchIn(screeningsArray)
+        .map(_.start)
+        .toSeq
+
+    starts.zipWithIndex.map { case (start, index) =>
+      val end =
+        if (index + 1 < starts.length) starts(index + 1)
+        else screeningsArray.length
+
+      screeningsArray.substring(start, end)
+    }
+  }
+
+  private def bracketedArrayContent(text: String, arrayStart: Int): String = {
+    var depth = 1
+    var pos   = arrayStart
+
+    while (pos < text.length && depth > 0) {
+      if (text(pos) == '[') depth += 1
+      else if (text(pos) == ']') depth -= 1
+      pos += 1
+    }
+
+    text.substring(arrayStart, math.max(arrayStart, pos - 1))
   }
 }

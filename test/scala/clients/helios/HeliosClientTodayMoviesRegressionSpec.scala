@@ -1,0 +1,71 @@
+package clients.helios
+
+import clients.HeliosClient
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+import java.time.{LocalDate, ZoneId}
+
+class HeliosClientTodayMoviesRegressionSpec extends AnyFlatSpec with Matchers {
+
+  private val client =
+    new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"))
+
+  private val today =
+    LocalDate.now(ZoneId.of("Europe/Warsaw"))
+
+  private def fetchTodayTitles(): Seq[String] =
+    client
+      .fetch()
+      .filter(_.showtimes.exists(_.dateTime.toLocalDate == today))
+      .map(_.movie.title)
+
+    "HeliosClient.fetch" should "return the exact expected movie titles for today from the recorded fixture" in {
+
+      fetchTodayTitles().toSet shouldBe Set(
+        "Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS",
+        "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS",
+        "Diabeł ubiera się u Prady 2",
+        "Drama",
+        "Michael",
+        "Mortal Kombat II",
+        "Mumia: Film Lee Cronina",
+        "Nawet myszy idą do nieba",
+        "Odrodzony jako galareta. Film: Łzy Morza Lazurowego",
+        "Projekt Hail Mary",
+        "Pucio",
+        "Sprawiedliwość owiec",
+        "Super Mario Galaxy Film",
+        "Top Gun 40. Rocznica",
+        "Top Gun: Maverick"
+      )
+    }
+
+  it should "include all expected movies for today from the recorded Helios fixture" in {
+    val titles = fetchTodayTitles().toSet
+
+    titles should contain ("Top Gun 40. Rocznica")
+  }
+
+  it should "not return an empty today repertoire" in {
+    val titles = fetchTodayTitles()
+
+    titles should not be empty
+  }
+
+  it should "assign the film poster to the Billie Eilish in-3D event and leave the plain event without a duplicate" in {
+    val results = client.fetch()
+
+    // Both events share the same underlying film poster URL (img.helios.pl).
+    // uniquePosterUrls awards it to whichever comes first alphabetically ("in 3D" < "w HnS"),
+    // so the plain "w HnS" variant ends up with None — correct deduplication behaviour.
+    val billie3d = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS")
+    val billieHns = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS")
+
+    billie3d  shouldBe defined
+    billieHns shouldBe defined
+    billie3d.get.posterUrl  shouldBe defined
+    billieHns.get.posterUrl shouldBe None
+  }
+}

@@ -37,6 +37,7 @@ class HeliosClientPosterRegressionsSpec extends AnyFlatSpec with Matchers {
   it should "assign the correct poster to a movie whose only screening shares a timeslot with another movie" in {
     val oPsie = fetch().find(_.movie.title.startsWith("O psie"))
     oPsie                    shouldBe defined
+    println(oPsie.get.showtimes)
     oPsie.get.showtimes.size shouldBe 1
     oPsie.get.posterUrl      shouldBe Some("https://movies.helios.pl/images/opsieplakat.jpg")
   }
