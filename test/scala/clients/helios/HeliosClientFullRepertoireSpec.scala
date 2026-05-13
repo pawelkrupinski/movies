@@ -29,8 +29,8 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
   it should "return exactly the expected set of movie titles" in {
     results.map(_.movie.title).toSet shouldBe Set(
       "Billie Eilish - Hit Me Hard and Soft: The Tour",
-      "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS",
-      "Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS",
+      "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D",
+      "Billie Eilish - Hit Me Hard and Soft: The Tour Live",
       "Cirque du Soleil: Kooza",
       "Diabeł ubiera się u Prady 2",
       "Drama",
@@ -86,8 +86,8 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
   it should "return correct runtime for every movie" in {
     val runtimes = results.map(cm => cm.movie.title -> cm.movie.runtimeMinutes).toMap
     runtimes("Billie Eilish - Hit Me Hard and Soft: The Tour")              shouldBe Some(114)
-    runtimes("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS") shouldBe Some(114)
-    runtimes("Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS")   shouldBe Some(114)
+    runtimes("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D") shouldBe Some(114)
+    runtimes("Billie Eilish - Hit Me Hard and Soft: The Tour Live")   shouldBe Some(114)
     runtimes("Cirque du Soleil: Kooza")                                     shouldBe Some(90)
     runtimes("Diabeł ubiera się u Prady 2")                                 shouldBe Some(120)
     runtimes("Drama")                                                       shouldBe Some(106)
@@ -271,9 +271,9 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     posters("ДИЯВОЛ НОСИТЬ ПРАДА 2")          shouldBe Some("https://img.helios.pl/pliki/film/dyyavol-nosyt-prada-2-ua/dyyavol-nosyt-prada-2-ua-plakat-161.jpg")
     posters("МОРТАЛ КОМБАТ ІІ")               shouldBe Some("https://img.helios.pl/pliki/film/mortal-kombat-ii-ua/mortal-kombat-ii-ua-plakat-996.jpg")
     // Event variants legitimately share the parent film's poster
-    posters("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS") shouldBe
+    posters("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D") shouldBe
       Some("https://img.helios.pl/pliki/film/billie-eilish-hit-me-hard-and-soft-the-tour/billie-eilish-hit-me-hard-and-soft-the-tour-plakat-28207.png")
-    posters("Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS") shouldBe
+    posters("Billie Eilish - Hit Me Hard and Soft: The Tour Live") shouldBe
       Some("https://img.helios.pl/pliki/film/billie-eilish-hit-me-hard-and-soft-the-tour/billie-eilish-hit-me-hard-and-soft-the-tour-plakat-28207.png")
     posters("Drugie życie - Kino Kobiet")     shouldBe Some("https://img.helios.pl/pliki/film/drugie-zycie/drugie-zycie-plakat-293.jpg")
     posters("Mandalorian & Grogu - seanse z konkursami HDD") shouldBe
@@ -287,8 +287,8 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
   it should "return correct film/event URLs" in {
     val urls = results.map(cm => cm.movie.title -> cm.filmUrl).toMap
     urls("Billie Eilish - Hit Me Hard and Soft: The Tour")              shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/billie-eilish-hit-me-hard-and-soft-the-tour-4346")
-    urls("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS") shouldBe Some("https://helios.pl/poznan/kino-helios/wydarzenie/billie-eilish-hit-me-hard-and-soft-the-tour-live-in-3d-w-hns-2550")
-    urls("Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS")   shouldBe Some("https://helios.pl/poznan/kino-helios/wydarzenie/billie-eilish-hit-me-hard-and-soft-the-tour-live-w-hns-2548")
+    urls("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D") shouldBe Some("https://helios.pl/poznan/kino-helios/wydarzenie/billie-eilish-hit-me-hard-and-soft-the-tour-live-in-3d-w-hns-2550")
+    urls("Billie Eilish - Hit Me Hard and Soft: The Tour Live")   shouldBe Some("https://helios.pl/poznan/kino-helios/wydarzenie/billie-eilish-hit-me-hard-and-soft-the-tour-live-w-hns-2548")
     urls("Diabeł ubiera się u Prady 2")                                 shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/diabel-ubiera-sie-u-prady-2-4401")
     urls("Drama")                                                       shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/drama-4408")
     urls("Michael")                                                     shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/michael-4308")
@@ -312,8 +312,8 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
   it should "return correct showtime counts per movie" in {
     val counts = results.map(cm => cm.movie.title -> cm.showtimes.size).toMap
     counts("Billie Eilish - Hit Me Hard and Soft: The Tour")              shouldBe 14
-    counts("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS") shouldBe 4
-    counts("Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS")   shouldBe 2
+    counts("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D") shouldBe 4
+    counts("Billie Eilish - Hit Me Hard and Soft: The Tour Live")   shouldBe 2
     counts("Cirque du Soleil: Kooza")                                     shouldBe 1
     counts("Diabeł ubiera się u Prady 2")                                 shouldBe 56
     counts("Drama")                                                       shouldBe 2
@@ -506,8 +506,8 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
   // ── NUXT-only event showtimes ─────────────────────────────────────────────
 
   it should "return correct showtimes for both Billie Eilish events (NUXT-only)" in {
-    val in3d = byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS")
-    val wHnS = byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS")
+    val in3d = byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D")
+    val wHnS = byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour Live")
 
     in3d.showtimes.map(_.dateTime) shouldBe Seq(
       LocalDateTime.of(2026, 5, 13, 19, 40),
@@ -525,7 +525,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return booking URLs for NUXT events" in {
-    val in3d = byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS")
+    val in3d = byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D")
     in3d.showtimes.flatMap(_.bookingUrl).size shouldBe 4
     in3d.showtimes.head.bookingUrl shouldBe
       Some("https://bilety.helios.pl/screen/512ebbda-4422-4219-aceb-4002b5588a84?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2")

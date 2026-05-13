@@ -24,8 +24,8 @@ class HeliosClientTodayMoviesRegressionSpec extends AnyFlatSpec with Matchers {
     "HeliosClient.fetch" should "return the exact expected movie titles for today from the recorded fixture" in {
 
       fetchTodayTitles().toSet shouldBe Set(
-        "Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS",
-        "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS",
+        "Billie Eilish - Hit Me Hard and Soft: The Tour Live",
+        "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D",
         "Diabeł ubiera się u Prady 2",
         "Drama",
         "Michael",
@@ -58,8 +58,8 @@ class HeliosClientTodayMoviesRegressionSpec extends AnyFlatSpec with Matchers {
     val results = client.fetch()
 
     // Mirror helios.pl/.../repertuar: variants of the same film share the parent poster.
-    val billie3d  = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS")
-    val billieHns = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS")
+    val billie3d  = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D")
+    val billieHns = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour Live")
     val tour      = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour")
 
     val expected = Some("https://img.helios.pl/pliki/film/billie-eilish-hit-me-hard-and-soft-the-tour/billie-eilish-hit-me-hard-and-soft-the-tour-plakat-28207.png")
