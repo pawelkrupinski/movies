@@ -5,8 +5,8 @@
     </encoder>
   </appender>
 
-  <logger name="services.ShowtimeCache" level="INFO"/>
-  <logger name="clients.MultikinoClient" level="INFO"/>
+  <logger name="services" level="INFO"/>
+  <logger name="clients" level="INFO"/>
 
   <root level="WARN">
     <appender-ref ref="STDOUT"/>
