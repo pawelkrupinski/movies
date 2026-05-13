@@ -73,6 +73,20 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Wpatrując się w słońce").movie.releaseYear       shouldBe Some(2025)
   }
 
+  // ── Production country ───────────────────────────────────────────────────
+
+  it should "return correct production country for every movie" in {
+    byTitle("Chronologia wody").movie.country             shouldBe Some("USA")
+    byTitle("Father mother sister brother").movie.country shouldBe Some("USA")
+    byTitle("La grazia").movie.country                    shouldBe Some("Włochy")
+    byTitle("Maryja. matka papieża").movie.country        shouldBe Some("Polska")
+    byTitle("Miłość w czasach apokalipsy").movie.country  shouldBe Some("Kanada")
+    byTitle("Na rauszu").movie.country                    shouldBe Some("Dania")
+    byTitle("Ostatnia sesja w paryżu").movie.country      shouldBe Some("Francja")
+    byTitle("Sirât").movie.country                        shouldBe Some("Hiszpania, Francja")
+    byTitle("Wpatrując się w słońce").movie.country       shouldBe Some("Niemcy")
+  }
+
   // ── Poster URLs ───────────────────────────────────────────────────────────
 
   it should "return correct poster URL for every movie" in {
@@ -113,7 +127,7 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Miłość w czasach apokalipsy").director  shouldBe Some("Anne Émond")
     byTitle("Na rauszu").director                    shouldBe Some("Thomas Vinterberg")
     byTitle("Ostatnia sesja w paryżu").director      shouldBe Some("Rebecca Zlotowski")
-    byTitle("Sirât").director                        shouldBe Some("Oliver Laxe, Hiszpania")
+    byTitle("Sirât").director                        shouldBe Some("Oliver Laxe")
     byTitle("Wpatrując się w słońce").director       shouldBe Some("Mascha Schilinski")
   }
 

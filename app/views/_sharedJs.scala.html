@@ -34,14 +34,21 @@
     applyFilters();
   }
 
+  // Hide every navbar dropdown except (optionally) one — used by each toggle handler
+  // so opening any panel closes all the others.
+  function closeOtherPanels(except) {
+    document.querySelectorAll('.dropdown-panel').forEach(p => {
+      if (p !== except) p.style.display = 'none';
+    });
+  }
+
   function toggleFormatPanel(event) {
     event.stopPropagation();
     const panel = document.getElementById('format-panel');
     const opening = panel.style.display === 'none';
+    closeOtherPanels(opening ? panel : null);
     panel.style.display = opening ? 'block' : 'none';
     if (opening) clampPanel(panel);
-    document.getElementById('hidden-panel').style.display = 'none';
-    document.getElementById('cinema-panel').style.display = 'none';
   }
 
   function resetFormatFilter() {
@@ -113,9 +120,9 @@
     event.stopPropagation();
     const panel = document.getElementById('hidden-panel');
     const opening = panel.style.display === 'none';
+    closeOtherPanels(opening ? panel : null);
     panel.style.display = opening ? 'block' : 'none';
     if (opening) clampPanel(panel);
-    document.getElementById('cinema-panel').style.display = 'none';
   }
 
   function hideFilm(btn) {
@@ -194,14 +201,15 @@
   function toggleCinemaPanel(event) {
     event.stopPropagation();
     const panel = document.getElementById('cinema-panel');
-    if (panel.style.display === 'none') {
+    const opening = panel.style.display === 'none';
+    closeOtherPanels(opening ? panel : null);
+    if (opening) {
       buildCinemaPanel();
       panel.style.display = 'block';
       clampPanel(panel);
     } else {
       panel.style.display = 'none';
     }
-    document.getElementById('hidden-panel').style.display = 'none';
   }
 
   // ── Room tooltip ──────────────────────────────────────────────────────────

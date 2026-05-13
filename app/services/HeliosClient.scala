@@ -86,7 +86,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
     premierePl:    Option[java.time.LocalDate],
     premiereWorld: Option[java.time.LocalDate],
     posterUrl:     Option[String],
-    slug:          Option[String]
+    slug:          Option[String],
+    country:       Option[String]
   )
 
   private def parseApiMovieBody(body: String): Option[ApiMovieInfo] =
@@ -107,7 +108,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
                             .flatMap(_.value.headOption)
                             .flatMap(_.asOpt[String])
                             .filter(_.startsWith("http")),
-          slug          = (js \ "slug").asOpt[String].filter(_.nonEmpty)
+          slug          = (js \ "slug").asOpt[String].filter(_.nonEmpty),
+          country       = (js \ "country").asOpt[String].map(_.trim).filter(_.nonEmpty)
         )
       }
     }
@@ -144,7 +146,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
           runtimeMinutes = cm.movie.runtimeMinutes.orElse(restInfo.flatMap(_.duration)),
           releaseYear    = restInfo.flatMap(_.year),
           premierePl     = restInfo.flatMap(_.premierePl),
-          premiereWorld  = restInfo.flatMap(_.premiereWorld)
+          premiereWorld  = restInfo.flatMap(_.premiereWorld),
+          country        = restInfo.flatMap(_.country)
         ),
         posterUrl = restInfo.flatMap(_.posterUrl).orElse(cm.posterUrl),
         synopsis  = restInfo.flatMap(_.description),
@@ -171,7 +174,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
               runtimeMinutes = info.duration,
               releaseYear    = info.year,
               premierePl     = info.premierePl,
-              premiereWorld  = info.premiereWorld
+              premiereWorld  = info.premiereWorld,
+              country        = info.country
             ),
             cinema    = Helios,
             posterUrl = info.posterUrl,

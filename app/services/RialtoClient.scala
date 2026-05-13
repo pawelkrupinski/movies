@@ -38,7 +38,8 @@ class RialtoClient(http: HttpFetch = new RealHttpFetch()) {
     synopsis:       Option[String],
     director:       Option[String],
     runtimeMinutes: Option[Int]     = None,
-    releaseYear:    Option[Int]     = None
+    releaseYear:    Option[Int]     = None,
+    country:        Option[String]  = None
   )
 
   def fetch(): Seq[CinemaMovie] = {
@@ -60,7 +61,7 @@ class RialtoClient(http: HttpFetch = new RealHttpFetch()) {
                                 .sortBy(_.dateTime)
         if (allShowtimes.isEmpty) None
         else Some(CinemaMovie(
-          movie     = Movie(primary.title, primary.runtimeMinutes, primary.releaseYear),
+          movie     = Movie(primary.title, primary.runtimeMinutes, primary.releaseYear, country = primary.country),
           cinema    = Rialto,
           posterUrl = primary.posterUrl,
           filmUrl   = Some(primary.eventUrl),
@@ -89,8 +90,8 @@ class RialtoClient(http: HttpFetch = new RealHttpFetch()) {
         val posterUrl = Option(block.selectFirst(".list-item-image img[src], .image img[src]"))
                           .map(_.attr("src"))
 
-        val (synopsis, director, runtime, year) = Option(block.selectFirst("span.text")) match {
-          case None => (None, None, None, None)
+        val (synopsis, director, runtime, year, country) = Option(block.selectFirst("span.text")) match {
+          case None => (None, None, None, None, None)
           case Some(span) =>
             val lines    = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
             val dir      = lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim)
@@ -100,10 +101,21 @@ class RialtoClient(http: HttpFetch = new RealHttpFetch()) {
             val fullText = lines.mkString(" ")
             val rt       = RuntimePat.findFirstMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption)
             val yr       = YearPat.findAllMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption
-            (Option(synText).filter(_.nonEmpty), dir, rt, yr)
+            // The metadata line on Rialto looks like "Ukraina 2026, 90 minut" or
+            // "Polska, Niemcy, 2026, 124 min" — everything before the first
+            // 4-digit year is the production country (or comma-separated
+            // countries). Strip the optional trailing comma left from the
+            // "..Niemcy, 2026" form.
+            val countryPat = """(?s)^(.+?)\s*,?\s+(?:19|20)\d{2}\b""".r
+            val ctry = lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase.startsWith("reż"))
+              .flatMap(l => countryPat.findFirstMatchIn(l).map(_.group(1).trim))
+              .map(_.stripSuffix(","))
+              .map(_.trim)
+              .filter(_.nonEmpty)
+            (Option(synText).filter(_.nonEmpty), dir, rt, yr, ctry)
         }
 
-        FilmEntry(title, eventUrl, posterUrl, synopsis, director, runtime, year)
+        FilmEntry(title, eventUrl, posterUrl, synopsis, director, runtime, year, country)
       }
     }
 

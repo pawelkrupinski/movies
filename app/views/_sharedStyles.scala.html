@@ -171,10 +171,17 @@
   .nav-tab.active { background: #3a3a6e; color: #fff; }
   .navbar-search-date { margin-left: auto; order: 2; }
   .navbar-cinema-controls { order: 3; }
+  /* Desktop: Filtry follows Kina (cinema-controls) at the far right. */
+  .navbar-filtry { order: 4; }
   @@media (max-width: 575px) {
     .navbar { padding: .5rem .75rem !important; gap: .4rem; }
     .navbar-title { display: none; }
     .navbar-cinema-controls { margin-left: auto; order: 2; }
-    .navbar-search-date { order: 3; flex-basis: 100%; margin-left: 0; justify-content: space-between; }
+    /* Mobile: Filtry always sits to the right of the day selector. If row 2
+       has room it shares the row with search/date; if the long
+       "Filtry (2D NAP IMAX)" label can't fit, flex-wrap pushes it onto its
+       own row and margin-left:auto keeps it stuck to the right edge. */
+    .navbar-search-date { order: 3; flex-basis: 0; flex-grow: 1; margin-left: 0; justify-content: space-between; }
+    .navbar-filtry { order: 4; margin-left: auto; }
   }
 </style>

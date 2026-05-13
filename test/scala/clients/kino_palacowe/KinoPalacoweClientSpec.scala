@@ -45,10 +45,41 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   it should "return correct runtime for every movie" in {
     val runtimes = results.map(m => m.movie.title -> m.movie.runtimeMinutes).toMap
     runtimes("Chłopiec na krańcach świata") shouldBe Some(88)
-    runtimes("Giulietta i duchy")           shouldBe Some(43)
+    runtimes("Giulietta i duchy")           shouldBe Some(139)
     runtimes("Głos z księżyca")             shouldBe Some(121)
     runtimes("Osiem i pół")                 shouldBe Some(138)
     runtimes("Słodkie życie")               shouldBe Some(176)
+  }
+
+  // ── Director / country / year (parsed from "reż. … COUNTRY YEAR, NN'" meta line) ──
+
+  it should "extract director from each film page's meta line" in {
+    val directors = results.map(m => m.movie.title -> m.director).toMap
+    // Multiple co-directors before the country are captured together.
+    directors("Chłopiec na krańcach świata") shouldBe Some("Grzegorz Wacławek, Marta Szymańska")
+    directors("Giulietta i duchy")           shouldBe Some("Federico Fellini")
+    directors("Głos z księżyca")             shouldBe Some("Federico Fellini")
+    directors("Osiem i pół")                 shouldBe Some("Federico Fellini")
+    directors("Słodkie życie")               shouldBe Some("Federico Fellini")
+  }
+
+  it should "extract country (one or many) from each film page" in {
+    val countries = results.map(m => m.movie.title -> m.movie.country).toMap
+    countries("Chłopiec na krańcach świata") shouldBe Some("Polska")
+    // Multi-country co-productions are joined with ", ".
+    countries("Giulietta i duchy")           shouldBe Some("Włochy, Francja")
+    countries("Głos z księżyca")             shouldBe Some("Włochy")
+    countries("Osiem i pół")                 shouldBe Some("Włochy, Francja")
+    countries("Słodkie życie")               shouldBe Some("Włochy, Francja")
+  }
+
+  it should "extract release year from each film page" in {
+    val years = results.map(m => m.movie.title -> m.movie.releaseYear).toMap
+    years("Chłopiec na krańcach świata") shouldBe Some(2025)
+    years("Giulietta i duchy")           shouldBe Some(1965)
+    years("Głos z księżyca")             shouldBe Some(1990)
+    years("Osiem i pół")                 shouldBe Some(1963)
+    years("Słodkie życie")               shouldBe Some(1960)
   }
 
   // ── Poster URLs ───────────────────────────────────────────────────────────

@@ -178,6 +178,30 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     byTitle("Michael").movie.premierePl                                         shouldBe Some(LocalDate.of(2026, 4, 22))
   }
 
+  it should "return correct production country for REST-enriched movies" in {
+    byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour").movie.country shouldBe Some("USA")
+    byTitle("Diabeł ubiera się u Prady 2").movie.country                    shouldBe Some("USA")
+    byTitle("Drama").movie.country                                          shouldBe Some("USA")
+    byTitle("Drzewo magii").movie.country                                   shouldBe Some("Wielka Brytania")
+    byTitle("Dyyavol Nosyt' Prada 2 - UA ").movie.country                  shouldBe Some("USA")
+    byTitle("Kurozając i Świątynia Świstaka").movie.country                 shouldBe Some("Francja")
+    byTitle("Michael").movie.country                                        shouldBe Some("Wielka Brytania, USA")
+    byTitle("Mortal Kombat II").movie.country                               shouldBe Some("USA")
+    byTitle("Mortal Kombat II - UA").movie.country                          shouldBe Some("USA")
+    byTitle("Mumia: Film Lee Cronina").movie.country                        shouldBe Some("Irlandia, USA")
+    byTitle("Nawet myszy idą do nieba").movie.country                       shouldBe Some("Republika Czeska, Francja, Inne, Polska")
+    byTitle("O psie, który jeździł koleją ").movie.country                  shouldBe Some("Polska")
+    byTitle("Obsesja").movie.country                                        shouldBe Some("USA")
+    byTitle("Projekt Hail Mary").movie.country                              shouldBe Some("USA")
+    byTitle("Pucio").movie.country                                          shouldBe Some("Polska")
+    byTitle("Sprawiedliwość owiec").movie.country                           shouldBe Some("Niemcy, Wielka Brytania, Irlandia, USA")
+    byTitle("Super Mario Galaxy Film").movie.country                        shouldBe Some("USA, Japonia")
+    byTitle("Za duży na bajki 3").movie.country                             shouldBe Some("Polska")
+    // Pure-NUXT entries (event variants without a matching REST movie body) have no REST country.
+    byTitle("Cirque du Soleil: Kooza").movie.country                        shouldBe None
+    byTitle("Mandalorian & Grogu").movie.country                            shouldBe None
+  }
+
   it should "return correct directors for REST-enriched movies" in {
     byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour").director shouldBe Some("James Cameron, Billie Eilish")
     byTitle("Diabeł ubiera się u Prady 2").director                    shouldBe Some("David Frankel")

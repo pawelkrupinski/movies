@@ -25,3 +25,6 @@ project/plugins/project/
 .idea
 **/.DS_Store
 .bsp
+
+# Local env vars (e.g. SCRAPINGANT_KEY) loaded by tools.Env
+.env.local

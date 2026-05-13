@@ -3,7 +3,7 @@ package clients
 import models.{CinemaMovie, Movie, Multikino, Showtime}
 import play.api.Logging
 import play.api.libs.json._
-import tools.{HttpFetch, RealHttpFetch}
+import tools.{Env, HttpFetch}
 
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.net.{CookieManager, CookiePolicy, URI}
@@ -83,7 +83,7 @@ object MultikinoClient extends Logging {
   private val ScrapingAntUrl = "https://api.scrapingant.com/v2/general"
 
   object DefaultFetch extends HttpFetch {
-    private val scrapingAntKey: Option[String] = Option(System.getenv("SCRAPINGANT_KEY")).filter(_.nonEmpty)
+    private val scrapingAntKey: Option[String] = Env.get("SCRAPINGANT_KEY")
 
     private val cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL)
 
@@ -93,20 +93,33 @@ object MultikinoClient extends Logging {
       .cookieHandler(cookieManager)
       .build()
 
+    private def scrapingAntRequest(url: String, key: String, extraParams: String) = {
+      val encoded = URLEncoder.encode(url, StandardCharsets.UTF_8)
+      HttpRequest.newBuilder()
+        .uri(URI.create(s"$ScrapingAntUrl?url=$encoded&browser=true&proxy_country=pl&return_page_source=true$extraParams"))
+        .header("x-api-key", key)
+        .header("Accept", "application/json, text/plain, */*")
+        .GET()
+        .build()
+    }
+
     override def get(url: String): String = scrapingAntKey match {
       case Some(key) =>
-        val encoded  = URLEncoder.encode(url, StandardCharsets.UTF_8)
-        val request  = HttpRequest.newBuilder()
-          .uri(URI.create(s"$ScrapingAntUrl?url=$encoded&browser=true&proxy_country=pl&return_page_source=true"))
-          .header("x-api-key", key)
-          .header("Accept", "application/json, text/plain, */*")
-          .GET()
-          .build()
-        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-        val status   = response.statusCode()
-        if (status != 200)
-          throw new RuntimeException(s"ScrapingAnt returned $status: ${response.body().take(500)}")
-        response.body()
+        // 423 = "Our browser was detected by target site." ScrapingAnt's recommendation is to retry
+        // with different proxy settings. Falling back to a residential proxy bypasses datacenter
+        // IP blocklists (Multikino occasionally toggles those on CI runs).
+        val first = httpClient.send(scrapingAntRequest(url, key, ""), HttpResponse.BodyHandlers.ofString())
+        first.statusCode() match {
+          case 200 => first.body()
+          case 423 =>
+            logger.warn("ScrapingAnt 423 on first attempt; retrying with residential proxy")
+            val retry = httpClient.send(scrapingAntRequest(url, key, "&proxy_type=residential"), HttpResponse.BodyHandlers.ofString())
+            if (retry.statusCode() != 200)
+              throw new RuntimeException(s"ScrapingAnt returned ${retry.statusCode()} after residential retry: ${retry.body().take(500)}")
+            retry.body()
+          case status =>
+            throw new RuntimeException(s"ScrapingAnt returned $status: ${first.body().take(500)}")
+        }
 
       case None =>
         def apiRequest() = HttpRequest.newBuilder()

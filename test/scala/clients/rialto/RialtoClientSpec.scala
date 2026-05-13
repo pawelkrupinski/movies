@@ -88,6 +88,25 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Znaki pana śliwki").movie.releaseYear                                    shouldBe Some(2025)
   }
 
+  // ── Production country ────────────────────────────────────────────────────
+
+  it should "return correct production country for every movie" in {
+    byTitle("Ale mam | ну мам | wersja ukraińska z ang. napisami").movie.country shouldBe Some("Ukraina")
+    byTitle("Człowiek z marmuru").movie.country shouldBe Some("Polska")
+    byTitle("Diabeł ubiera się u prady 2").movie.country shouldBe Some("USA")
+    byTitle("Filmowe spotkania z psychoanalizą: dobry chłopiec").movie.country shouldBe Some("Polska, Wielka Brytania")
+    byTitle("Mavka. prawdziwy mit").movie.country shouldBe Some("Ukraina")
+    byTitle("Modigliani: portret odarty z legendy").movie.country shouldBe Some("Włochy")
+    byTitle("Munch: miłość, duchy i wampirzyce").movie.country shouldBe Some("Wielka Brytania, Włochy")
+    byTitle("Młode matki").movie.country shouldBe Some("Belgia, Francja")
+    byTitle("Niesamowite przygody skarpetek 3. ale kosmos!").movie.country shouldBe Some("Polska, Portugalia")
+    byTitle("Sprawiedliwość owiec").movie.country shouldBe Some("Irlandia, Niemcy, USA, Wielka Brytania")
+    byTitle("Szepty lasu").movie.country shouldBe Some("Polska")
+    byTitle("Top gun | 40 rocznica").movie.country shouldBe Some("USA")
+    byTitle("Van gogh. pola zbóż i zachmurzone niebiosa").movie.country shouldBe Some("Włochy")
+    byTitle("Znaki pana śliwki").movie.country shouldBe Some("Polska")
+  }
+
   // ── Poster URLs ───────────────────────────────────────────────────────────
 
   it should "return correct poster URL for every movie" in {

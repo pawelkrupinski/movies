@@ -1,8 +1,8 @@
 package services
 
-import clients.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoBulgarskaClient, KinoPalacoweClient, KinoMuzaClient, MultikinoClient, RialtoClient}
+import clients.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoApolloClient, KinoBulgarskaClient, KinoPalacoweClient, KinoMuzaClient, MultikinoClient, RialtoClient}
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
-import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, Helios, KinoBulgarska, KinoPalacowe, KinoMuza, Multikino, Rialto}
+import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, Helios, KinoApollo, KinoBulgarska, KinoPalacowe, KinoMuza, Multikino, Rialto}
 import play.api.{Environment, Logging, Mode}
 import play.api.inject.ApplicationLifecycle
 
@@ -30,10 +30,11 @@ class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle, env: Environment,
     CinemaCityKinepolis   -> (() => CinemaCityClient.fetch("1081", CinemaCityKinepolis)),
     KinoMuza              -> (() => KinoMuzaClient.fetch()),
     KinoBulgarska         -> (() => KinoBulgarskaClient.fetch()),
+    KinoApollo            -> (() => KinoApolloClient.fetch()),
     Rialto                -> (() => RialtoClient.fetch())
   )
 
-  private val LoadThreshold  = sources.size - 2   // 7 of 9
+  private val LoadThreshold  = sources.size - 2   // 8 of 10
   private val loadedCount    = new AtomicInteger(0)
   private val thresholdLatch = new CountDownLatch(1)
 
