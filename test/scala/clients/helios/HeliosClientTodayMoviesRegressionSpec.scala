@@ -54,17 +54,17 @@ class HeliosClientTodayMoviesRegressionSpec extends AnyFlatSpec with Matchers {
     titles should not be empty
   }
 
-  it should "not assign the same poster to both Billie Eilish events" in {
+  it should "assign the same poster to both Billie Eilish events and the base Tour entry" in {
     val results = client.fetch()
 
-    // Both events and the base "The Tour" film entry all share the same poster URL.
-    // uniquePosterUrls awards it to "The Tour" (alphabetically first); both events end up with None.
-    val billie3d = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS")
+    // Mirror helios.pl/.../repertuar: variants of the same film share the parent poster.
+    val billie3d  = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS")
     val billieHns = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS")
+    val tour      = results.find(_.movie.title == "Billie Eilish - Hit Me Hard and Soft: The Tour")
 
-    billie3d  shouldBe defined
-    billieHns shouldBe defined
-    billie3d.get.posterUrl  shouldBe None
-    billieHns.get.posterUrl shouldBe None
+    val expected = Some("https://img.helios.pl/pliki/film/billie-eilish-hit-me-hard-and-soft-the-tour/billie-eilish-hit-me-hard-and-soft-the-tour-plakat-28207.png")
+    billie3d.get.posterUrl  shouldBe expected
+    billieHns.get.posterUrl shouldBe expected
+    tour.get.posterUrl      shouldBe expected
   }
 }

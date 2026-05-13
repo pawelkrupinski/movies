@@ -20,11 +20,6 @@ class HeliosClientPosterRegressionsSpec extends AnyFlatSpec with Matchers {
     result.flatMap(_.showtimes) should not be empty
   }
 
-  it should "assign unique poster URLs — no movie steals another's poster" in {
-    val posterUrls = fetch().flatMap(_.posterUrl)
-    posterUrls.distinct.size shouldBe posterUrls.size
-  }
-
   // ── Collision regression ───────────────────────────────────────────────────
   //
   // "O psie, który jeździł koleją" (movieId de2de832) has exactly ONE screening

@@ -7,13 +7,15 @@
     @for(film <- cs.movies) {
     <div class="col" data-title="@film.movie.title">
       @_movieCard(film.movie, film.posterUrl) {
+        @defining(film.showings.flatMap(_._2.flatMap(_.format))) { allFmts =>
+        @defining(if (allFmts.isEmpty) Set.empty[String] else allFmts.map(_.split("/").toSet).reduce(_ intersect _)) { commonToks =>
         @for((date, showtimes) <- film.showings) {
           <div class="date-group" data-date="@date">
             <div class="date-label">@DateFormatter.format(date)</div>
             <div>
               @for(slot <- showtimes) {
                 @defining(slot.room.map(r => Html(s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""")).getOrElse(Html(""))) { roomAttr =>
-                @defining(slot.format.map(f => Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(f)}</span>""")).getOrElse(Html(""))) { fmtBadge =>
+                @defining(slot.format.map(_.split("/").filterNot(commonToks.contains).mkString("/")).filter(_.nonEmpty).map(f => Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(f)}</span>""")).getOrElse(Html(""))) { fmtBadge =>
                   @slot.bookingUrl match {
                     case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</a> }
                     case None      => { <span class="badge-time"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</span> }
@@ -23,6 +25,8 @@
               }
             </div>
           </div>
+        }
+        }
         }
       }
     </div>

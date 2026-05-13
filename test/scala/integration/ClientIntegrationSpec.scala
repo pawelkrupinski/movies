@@ -1,5 +1,6 @@
-package clients
+package integration
 
+import clients._
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
 import modules.CacheModule
 import org.scalatest.ParallelTestExecution

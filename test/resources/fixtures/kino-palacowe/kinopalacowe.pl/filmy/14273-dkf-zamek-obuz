@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+
+<html lang="pl" dir="ltr">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>DKF Zamek: Łobuz - Centrum Kultury Zamek w Poznaniu</title>
+
+    <script>
+        window['ga-disable-UA-90312029-2'] = true;
+        window['ga-disable-UA-90312029-6'] = true;
+        window['ga-disable-UA-90312029-5'] = true;
+        window['ga-disable-UA-90312029-3'] = true;
+        window['ga-disable-UA-90312029-4'] = true;
+    </script>
+
+    
+    <script>
+     (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+     (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+     m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+     })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+     ga('create', 'UA-90312029-2', 'auto');
+     ga('set', 'anonymizeIp', true);
+     ga('send', 'pageview');
+
+    </script>
+    
+
+    <!-- Global site tag (gtag.js) - Google Ads -->
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('consent', 'default', {
+            'ad_storage': 'denied',
+            'analytics_storage': 'denied',
+            'functionality_storage': 'denied',
+            'personalization_storage': 'denied',
+            'security_storage': 'denied'
+        });
+        </script>
+
+        <script async src="https://www.googletagmanager.com/gtag/js?id=AW-740093578">
+        </script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'AW-740093578', { 'anonymize_ip': true});
+        </script>
+    <!-- End of Global site tag (gtag.js) - Google Ads -->
+
+    <!-- Grant access to GA & gtag when user accepts analytics cookies  -->
+    <script>
+        window.addEventListener('AnalitycsCookieConsentUpdated', function () {
+            gtag('consent', 'update', {
+                'ad_storage': 'granted',
+                'analytics_storage': 'granted',
+                'functionality_storage': 'granted',
+                'personalization_storage': 'granted',
+                'security_storage': 'granted'
+              });
+
+            window['ga-disable-UA-90312029-2'] = false;
+            window['ga-disable-UA-90312029-6'] = false;
+            window['ga-disable-UA-90312029-5'] = false;
+            window['ga-disable-UA-90312029-3'] = false;
+            window['ga-disable-UA-90312029-4'] = false;
+
+            var head = document.getElementsByTagName('head')[0];
+            var script = document.createElement("script");
+            script.src = '/static/scripts/hotjar.js'
+            head.appendChild(script);
+        }, false)
+    </script>
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.2.0/assets/owl.carousel.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/magnific-popup.min.css">
+	<link href="https://fonts.googleapis.com/css?family=Lato:300,400,400i,700,900&amp;subset=latin-ext" rel="stylesheet">
+
+    <link rel="apple-touch-icon" sizes="57x57" href="/static/img/favicon/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/static/img/favicon/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/static/img/favicon/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/static/img/favicon/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/static/img/favicon/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/static/img/favicon/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/static/img/favicon/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/static/img/favicon/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/img/favicon/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="/static/img/favicon/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/static/img/favicon/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/img/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/static/img/favicon/manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/static/img/favicon/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+
+	
+    
+    <meta property="og:title" content="DKF Zamek: Łobuz - Centrum Kultury Zamek w Poznaniu" />
+    <meta property="og:description" content="Przyjęty burzą braw na festiwalu w Cannes, prezentowany w sekcji Un Certain Regard debiut reżyserski aktora Harrisa..." />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://kinopalacowe.pl/filmy/14273-dkf-zamek-obuz/" />
+    <meta property="og:image" content="https://kinopalacowe.pl//media/gallery/md/obuz_plakat.jpg" />
+    <meta property="og:image:width" content="960" />
+    <meta property="og:image:height" content="540" />
+
+
+    <link href="/static/css/ckzamek.css?v=00/00/26/09/2019" rel="stylesheet">
+    <meta name="deklaracja-dostępności" content="https://ckzamek.pl/deklaracja-dostepnosci">
+</head>
+<body class="body body--loading">
+	<div class="preloader">
+	<div class="preloader__shapes">
+		<svg version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+			x="0px" y="0px" viewBox="0 0 240.861 26.118" xml:space="preserve" fill="url(#preloader-pattern)">
+			<path d="M103.361,26.118c-2.137,0-3.872-1.734-3.872-3.871c0-2.145,1.734-3.885,3.872-3.885c2.144,0,3.886,1.74,3.886,3.885
+			C107.247,24.383,105.505,26.118,103.361,26.118z"/>
+			<path d="M88.883,26.118c-2.141,0-3.882-1.734-3.882-3.871c0-2.145,1.741-3.885,3.882-3.885c2.144,0,3.892,1.74,3.892,3.885
+			C92.775,24.383,91.027,26.118,88.883,26.118z"/>
+			<path d="M74.401,26.118c-2.144,0-3.885-1.734-3.885-3.871c0-2.145,1.741-3.885,3.885-3.885c2.137,0,3.886,1.74,3.886,3.885
+			C78.287,24.383,76.538,26.118,74.401,26.118z"/>
+			<rect x="204.619" y="20.125" width="36.242" height="5.992"/>
+			<path d="M175.972,26.118h-6.15c0-7.732-6.287-14.011-14.023-14.011c-7.729,0-14.004,6.278-14.004,14.011h-6.146
+			c0-11.117,9.041-20.154,20.15-20.154C166.916,5.964,175.972,15,175.972,26.118z"/>
+			<polygon points="21.946,8.323 39.746,26.118 43.903,21.956 21.946,0 0,21.956 4.161,26.118"/>
+
+			<pattern width="100%" height="10" id="preloader-pattern" patternUnits="userSpaceOnUse" >
+				<rect x="-100%" y="0" width="100%" height="10" fill="black"/>
+				<rect x="0%" y="0" width="20%" height="10" fill="#00ffc6"/>
+				<rect x="20%" y="0" width="100%" height="10" fill="black"/>
+			</pattern>
+		</svg>
+	</div>
+</div>
+    <div class="newsletter-popup popup">
+    <div class="popup__container popup__container--newsletter">
+        <button class="popup__button popup__button--close" tabindex="-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26">
+                <path fill="#fff" fill-rule="evenodd" d="M4.157 25.934L0 21.843 8.909 13 0 4.091 4.157 0 13 8.909 21.909 0 26 4.091 17.091 13 26 21.843l-4.091 4.091L13 17.091z"/>
+            </svg>
+            <span class="sr-only">Zamknij popup</span>
+        </button>
+
+        <div class="popup__content popup__content--main">
+            <header class="popup__header">
+                <h2 class="popup__title">Dołącz do newslettera</h2>
+
+                <p class="popup__subtitle">Potwierdź adres email</p>
+            </header>
+
+            <form class="popup__form form">
+                <input type='hidden' name='csrfmiddlewaretoken' value='j7fnGGGe2llxNpiYyctYHs8JaA529kVSEBMrsaV7tjRlsjvJImOIWdKFAhzJAX42' />
+                    <input
+                            type="email"
+                            id="newsletter_email"
+                            name="email"
+                            class="form__input"
+                            placeholder="wpisz swojego maila"
+                            required="required"
+                            tabindex="-1"
+                    />
+
+                    <div class="form__agreements">
+                        <label for="checkbox--marketing" id="label--marketing" class="form__agreement">
+                            <input
+                                    id="checkbox--marketing"
+                                    type="checkbox"
+                                    class="form__checkbox checkbox checkbox--marketing"
+                                    tabindex="-1"
+                            />
+
+                            <div id="box--marketing" class="form__box">
+                                <svg class="form__x-mark form__x-mark--marketing" xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 9 9">
+                                    <path fill="#fff" fill-rule="evenodd" d="M1.44 8.977L0 7.561 3.084 4.5 0 1.416 1.44 0 4.5 3.084 7.584 0 9 1.416 5.916 4.5 9 7.56 7.584 8.978 4.5 5.917z"/>
+                                </svg>
+                            </div>
+
+                            <span class="form__span">
+                                Wyrażam zgodę na przetwarzanie danych osobowych w&nbsp;celu skorzystania z&nbsp;usługi newsletter. Administratorem danych osobowych jest Centrum Kultury ZAMEK z&nbsp;siedzibą w&nbsp;Poznaniu. Zapoznałem/am się z&nbsp;informacjami dotyczącymi przetwarzania danych osobowych, które są zawarte
+                                w&nbsp;<a tabindex="-1" href="/media/files/POLITYKA_PRYWATNOSCI_2019.pdf" class="form__span form__link">Polityce prywatności</a>.
+                            </span>
+                        </label>
+
+<!--                        <label for="checkbox&#45;&#45;rules" id="label&#45;&#45;rules" class="form__agreement">
+                            <input
+                                    id="checkbox&#45;&#45;rules"
+                                    type="checkbox"
+                                    class="form__checkbox checkbox checkbox&#45;&#45;marketing"
+                            />
+
+                            <div id="box&#45;&#45;rules" class="form__box">
+                                <svg class="form__x-mark form__x-mark&#45;&#45;rules" xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 9 9">
+                                    <path fill="#fff" fill-rule="evenodd" d="M1.44 8.977L0 7.561 3.084 4.5 0 1.416 1.44 0 4.5 3.084 7.584 0 9 1.416 5.916 4.5 9 7.56 7.584 8.978 4.5 5.917z"/>
+                                </svg>
+                            </div>
+
+                            <span class="form__span">
+                                Zapoznałam/em się i&nbsp;akceptuję regulamin, w&nbsp;tym zapisy informujące o&nbsp;fakcie i&nbsp;zakresie przetwarzania danych osobowych przez CK ZAMEK z&nbsp;siedzibą w&nbsp;Poznaniu
+                            </span>
+                        </label>-->
+                    </div>
+
+                    <button
+                            class="form__button"
+                            type="submit"
+                            tabindex="-1"
+                    >
+                        Wyślij
+                    </button>
+            </form>
+
+            <div class="popup__errors"></div>
+        </div>
+
+        <!-- success -->
+        <div class="popup__content popup__content--success">
+            <h2 class="popup__title">
+                Dziękujemy za zapisanie się do newslettera.
+            </h2>
+
+            <p class="popup__subtitle">
+                Na podany adres wysłaliśmy wiadomość z linkiem, <br>dzięki któremu możesz potwierdzić subskrypcję.
+            </p>
+        </div>
+        <!-- e/o success -->
+
+        <div class="popup__circles">
+            <div class="circle circle--1"></div>
+            <div class="circle circle--2"></div>
+            <div class="circle circle--3"></div>
+        </div>
+    </div>
+</div>
+
+	
+
+<nav class="nav__up nav-up nav__up--second-logo">
+	<!--skip-links-->
+	
+	<a href="#main" class="nav--skip-link">Przejdź do głównej treści</a>
+	<!--	e/o skip-links-->
+
+	<span class="sr-only">Nawigacja</span>
+	<ul class="nav-up__list">
+		<li class="nav-up__item nav-up__item--square nav-up__item--black">
+			<a class="nav-up__link nav-up__link--square" href="#" id="mainSearch" title="Szukaj artykułów, podstron, wydarzeń, ludzi, partnerów">
+				<span class="sr-only">Szukaj artykułów, podstron, wydarzeń, ludzi, partnerów</span>
+				<svg class="nav-up__img" id="mainSearchIcon" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+					 x="0px" y="0px" width="50px" height="50px" viewBox="0 0 50 50" xml:space="preserve">
+						<rect x="27.113" y="31.199" transform="matrix(0.707 0.7073 -0.7073 0.707 32.8899 -13.6176)" width="11.53" height="3.364"/>
+						<path d="M31.18,31.183l-2.441-2.444c3.07-3.072,3.066-8.063-0.007-11.135c-3.07-3.071-8.057-3.072-11.13,0l-2.439-2.441 c4.414-4.416,11.596-4.415,16.01-0.001C35.588,19.578,35.596,26.766,31.18,31.183z"/>
+						<path d="M15.162,15.163l2.442,2.444c-3.073,3.072-3.069,8.062,0.005,11.135c3.07,3.071,8.059,3.071,11.13-0.001l2.44,2.441 c-4.414,4.415-11.597,4.414-16.01,0C10.753,26.767,10.745,19.579,15.162,15.163z"/>
+				</svg>
+			</a>
+		</li>
+		<li class="nav-up__item nav-up__item--square nav-up__item--black">
+			<a class="nav-up__link nav-up__link--square" href="#" id="nav-calendar-icon" title="Przescrolluj do sekcji kalendarza wydarzeń">
+				<span class="sr-only">Przescrolluj do sekcji kalendarza wydarzeń</span>
+				<svg class="nav-up__img" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="50px" height="50px" viewBox="0 0 50 50" xml:space="preserve">
+					<rect x="16.535" y="33.872" width="13.574" height="2.244"/>
+					<polygon points="31.903,15.007 12.537,15.006 12.537,12.803 34.107,12.803 34.105,40.456 31.9,40.456 "/>
+					<polygon points="14.741,38.25 32.628,38.252 32.627,40.456 12.537,40.456 12.539,12.803 14.744,12.803"/>
+					<polygon id="calendarPolygon" points="35.259,11.749 15.893,11.748 15.893,9.545 37.463,9.545 37.461,37.198 35.256,37.198"/>
+					<rect x="12.537" y="12.803" width="21.568" height="18.54"/>
+				</svg>
+				<div class="nav-up__calendar-icon nav-calendar-count" aria-hidden="true"></div>
+			</a>
+		</li>
+
+        <li class="nav-up__item nav-up__item--square nav-up__item--black">
+			<a class="nav-up__link nav-up__link--square nav-up__img--ticket" href="https://ckzamek.bilety24.pl/kino-palacowe/" id="nav-ticket-icon" title="Otwórz stronę z kupnem biletów w nowej karcie" target="_blank">
+				<span class="sr-only">Otwórz stronę z kupnem biletów w nowej karcie</span>
+				<svg class="nav-up__img" width="13.574" height="2.244" viewBox="0 0 50 50" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:1.41421;" tabindex="-1">
+                    <g tabindex="-1">
+                    <g><path d="M18.98,27.62c0.985,0 1.783,0.798 1.783,1.782c0,0.987 -0.798,1.789 -1.783,1.789c-0.986,0 -1.788,-0.802 -1.788,-1.789c0,-0.984 0.802,-1.782 1.788,-1.782Z" style="fill-rule:nonzero;"></path><path d="M25.002,27.62c0.987,0 1.789,0.798 1.789,1.782c0,0.987 -0.802,1.789 -1.789,1.789c-0.986,0 -1.793,-0.802 -1.793,-1.789c0,-0.984 0.807,-1.782 1.793,-1.782Z" style="fill-rule:nonzero;"></path><path d="M31.021,27.62c0.987,0 1.789,0.798 1.789,1.782c0,0.987 -0.802,1.789 -1.789,1.789c-0.982,0 -1.788,-0.802 -1.788,-1.789c0,-0.984 0.806,-1.782 1.788,-1.782Z" style="fill-rule:nonzero;"></path><path d="M37.043,27.62c0.988,0 1.79,0.798 1.79,1.782c0,0.987 -0.802,1.789 -1.79,1.789c-0.982,0 -1.787,-0.802 -1.787,-1.789c0,-0.984 0.805,-1.782 1.787,-1.782Z" style="fill-rule:nonzero;"></path><path d="M12.955,27.62c0.987,0 1.789,0.798 1.789,1.782c0,0.987 -0.802,1.789 -1.789,1.789c-0.982,0 -1.788,-0.802 -1.788,-1.789c0,-0.984 0.806,-1.782 1.788,-1.782Z" style="fill-rule:nonzero;"></path></g><path d="M38.422,11.829l0,2.759l-26.844,0l0,-2.759" style="fill-rule:nonzero;"></path><rect x="10.198" y="11.829" width="2.758" height="31.806"></rect><rect x="37.044" y="11.829" width="2.758" height="31.806"></rect><rect x="32.449" y="40.876" width="6.966" height="2.759"></rect><rect x="10.198" y="40.876" width="6.968" height="2.759"></rect><path d="M34.285,43.635l-2.833,0c0,-3.562 -2.894,-6.452 -6.457,-6.452c-3.56,0 -6.45,2.89 -6.45,6.452l-2.83,0c0,-5.119 4.162,-9.281 9.28,-9.281c5.119,0 9.29,4.163 9.29,9.281Z" style="fill-rule:nonzero;"></path></g>
+                    <g tabindex="-1"><rect x="6.577" y="6.364" width="36.846" height="2.759"></rect><rect x="5.198" y="6.365" width="2.758" height="8.225"></rect><rect x="42.044" y="6.365" width="2.758" height="8.225"></rect></g>
+                </svg>
+				<div class="nav-up__calendar-icon nav-calendar-count" aria-hidden="true"></div>
+			</a>
+		</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="/podstrony/371-repertuar/">Repertuar</a>
+						
+					
+					
+					
+					
+				</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="/podstrony/12934-karta-kinomana/">Karta Kinomana</a>
+						
+					
+					
+					
+					
+				</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="/podstrony/376-premiery/">Premiery</a>
+						
+					
+					
+					
+					
+				</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="/podstrony/107-wydarzenia/">Wydarzenia</a>
+						
+					
+					
+					
+					
+				</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="https://kinopalacowe.pl/podstrony/8487-kino-bez-barier/">Kino Bez Barier</a>
+						
+					
+					
+					
+					
+				</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="/podstrony/171-cykle-kino/">Cykle</a>
+						
+					
+					
+					
+					
+					
+						<ul class="nav-up__submenu submenu">
+					
+					
+						<li class="submenu__item">
+							
+								<a class="submenu__link" href="http://kinopalacowe.pl/artykuly/114-dyskusyjny-klub-filmowy-zamek/">DKF Zamek</a>
+							
+						</li>
+					
+					
+					
+					
+					
+						<li class="submenu__item">
+							
+								<a class="submenu__link" href="https://kinopalacowe.pl/wydarzenia/13057-19-festiwal-filmow-azjatyckich-piec-smakow/">Festiwal Pięć Smaków</a>
+							
+						</li>
+					
+					
+					
+					
+					
+						<li class="submenu__item">
+							
+								<a class="submenu__link" href="https://kinopalacowe.pl/podstrony/13137-klasyka-kina/">Klasyka Kina</a>
+							
+						</li>
+					
+					
+					
+					
+					
+						<li class="submenu__item">
+							
+								<a class="submenu__link" href="http://kinopalacowe.pl/artykuly/115-the-metropolitan-opera-live-in-hd/">MET Opera Live</a>
+							
+						</li>
+					
+					
+					
+					
+					
+						<li class="submenu__item">
+							
+								<a class="submenu__link" href="/podstrony/8237-nt-live/">National Theatre Live</a>
+							
+						</li>
+					
+					
+					
+					
+					
+						<li class="submenu__item">
+							
+								<a class="submenu__link" href="http://kinopalacowe.pl/artykuly/118-poranki-dla-dzieci/">Poranki dla dzieci</a>
+							
+						</li>
+					
+					
+					
+					
+					
+						<li class="submenu__item">
+							
+								<a class="submenu__link" href="/podstrony/9509-wystawa-na-ekranie/">Wystawa na ekranie</a>
+							
+						</li>
+					
+					
+						</ul>
+					
+					
+				</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="/podstrony/850-edukacja/">Edukacja</a>
+						
+					
+					
+					
+					
+					
+						<ul class="nav-up__submenu submenu">
+					
+					
+						<li class="submenu__item">
+							
+								<a class="submenu__link" href="https://kinopalacowe.pl/artykuly/852-kinoszkoa/">Kinoszkoła</a>
+							
+						</li>
+					
+					
+					
+					
+					
+						<li class="submenu__item">
+							
+								<a class="submenu__link" href="https://kinopalacowe.pl/artykuly/3555-pracownie/">Pracownie filmowe</a>
+							
+						</li>
+					
+					
+					
+					
+					
+						<li class="submenu__item">
+							
+								<a class="submenu__link" href="https://kinopalacowe.pl/podstrony/13395-wykady-akademickie/">Wykłady akademickie</a>
+							
+						</li>
+					
+					
+						</ul>
+					
+					
+				</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="https://mediateka.ckzamek.pl/collection/kino-palacowe/">O kinie</a>
+						
+					
+					
+					
+					
+				</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="/podstrony/110-cennik/">Cennik</a>
+						
+					
+					
+					
+					
+				</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="/podstrony/7781-wynajem-kina/">Wynajem</a>
+						
+					
+					
+					
+					
+				</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="/podstrony/111-kontakt-kino-paacowe/">Kontakt</a>
+						
+					
+					
+					
+					
+				</li>
+		
+		<li class="nav-up__item nav-up__item--desktop">
+			
+					
+						
+							<a class="nav-up__link" href="https://mojeekino.pl/pokaz/kino-palacowe-poznan">MojeEkino</a>
+						
+					
+					
+					
+					
+				</li>
+		
+	</ul>
+
+	<ul class="nav-up__list nav-up__list--right">
+		<li class="nav-up__item nav-up__item--square">
+            <form class="nav-up__link" action="/i18n/setlang/" id="setLanguageForm" method="post" >
+                <input type='hidden' name='csrfmiddlewaretoken' value='j7fnGGGe2llxNpiYyctYHs8JaA529kVSEBMrsaV7tjRlsjvJImOIWdKFAhzJAX42' />
+                <input name="next" type="hidden" value="" />
+                <input name="language" type="hidden" value="en" />
+                <button class="nav-up__link nav-up__link--square nav-up__link--lang" type="submit">
+                    <span class="sr-only">English version</span>
+                    <span aria-hidden="true">EN</span>
+                    <span class="nav-up__item-info"><span>Change to english</span></span>
+                    
+                </button>
+            </form>
+
+		</li>
+		<li class="nav-up__item nav-up__item--square">
+			<a class="nav-up__link nav-up__link--square" href="/podstrony/170-dostepnosc/">
+				<span class="sr-only">Zamek dla niepełnosprawnych</span>
+				<svg class="nav-up__img" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="50px" height="50px" viewBox="0 0 50 50" xml:space="preserve">
+					<polygon points="34.916,26.673 26.029,26.671 26.03,23.697 30.724,23.697 30.724,20.359 26.032,20.359 26.033,17.815 22.728,17.816 22.724,29.978 31.579,29.979 31.579,35.054 34.916,35.054 34.916,26.69 34.916,26.69 "/>
+					<path d="M24.429,16.5c1.203,0,2.176-0.973,2.176-2.173c0-1.206-0.973-2.184-2.176-2.184s-2.182,0.978-2.182,2.184C22.247,15.527,23.226,16.5,24.429,16.5z"/>
+					<path d="M17.932,28.506c0-2.348,1.253-4.401,3.124-5.542v-3.161c-3.488,1.355-5.972,4.741-5.972,8.702 c0,5.153,4.189,9.352,9.343,9.352l-0.002-2.85C20.843,35.006,17.932,32.092,17.932,28.506z"/>
+					<path d="M24.426,35.009l0.001,2.848c2.051,0,3.942-0.671,5.484-1.795V31.98C28.76,33.798,26.735,35.009,24.426,35.009z"/>
+				</svg>
+				<div class="nav-up__item-info">Dostępność</div>
+			</a>
+		</li>
+		<li class="nav-up__item nav-up__item--square">
+			<a class="nav-up__link nav-up__link--square" href="https://ckzamek.pl/podstrony/6833-tumacz-pjm-online/">
+			<span class="sr-only">TŁUMACZ PJM ONLINE</span>
+				<svg version="1.1" class="nav-up__img" id="Warstwa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0" y="0" viewBox="0 0 427.4 427.4" xml:space="preserve"><style>.st2{fill:none;stroke:#000;stroke-width:.216;stroke-miterlimit:22.9256}</style><defs><path id="SVGID_1_" d="M.1 2.1h425.2v425.2H.1z"/></defs><clipPath id="SVGID_2_"><use xlink:href="#SVGID_1_" overflow="visible"/></clipPath><path d="M32.5 188.9zm0 0zm0 0zm0 0zm121.6-86.1c.1-.1.1-.1 0 0zm32.8-11.2s.1-.1 0 0zm0 0zm3.9 69.7c-3.7-3.9-4.4-6.1-8.7-10-2.9-3.2-6.7-7-9.8-7-.3 0-.4 0-.7-.1-.6-.1-3.1-.4-6.2-.8-3.5-.4-7.6-.8-11-1.2-2.6-.3-5.4-.5-8.1-.8-1.8-.2-3.2-.3-3.7-.3-3.6 0-5.6-3-3.8-6.2l.6-1.1c1.3-1.3 3.1-3.1 5-5.1 4.6-4.7 10.1-10.3 13.5-12.8 5.1-3.8 13.4-7.1 21.7-10.4 0 0 .1-.1.1 0 4.1-1.6 8.2-3.2 11.8-4.9 3.2-1.5 6-2.9 8.1-4.4V96c0-.3 0-.6-.1-.9 0-.3-.1-.7-.3-1.1-.1-.4-.3-.8-.5-1.2-.2-.4-.4-.7-.6-1-.4-.6-1-1-1.6-1.4-.5-.3-1.2-.5-1.9-.5l-.8.1c-.8.1-1.6.2-2.3.3-.8.1-1.8.3-2.8.5-.8.2-1.4.3-1.6.3h-.1c-.1 0 0 0 0 0h-.1c-.1 0 0 0 0 0h-.1c-6.6 2.7-20.3 7.3-28.3 10l-4.4 1.5c-.3.1-.2-.2-.1-.3v-.1l-.1.1c-.1.1-.6.5-1.4 1l-2.1 1.5c1.3-.9-2.1 1.5 0 0l-3.4 2.4c-.7.5-.7.2-.9.5-1.6 1.8-16.3 11.7-25.2 17.7-2.7 1.8-4.9 3.3-5.8 3.9-1.8 1.4-3.1 1.2-4.9.4-2.1-.9-1.9-3.9-1.5-5.3 1.6-4.6 2.8-7.9 3.6-10.5 1.6-4.6 2.3-6.8 3.4-8.9 1-2 2.2-3.8 4.5-7.1 1.4-2.1 3.3-4.8 6.2-9.1l.2-.3c1.1-1.4 2.4-3 3.7-4.6 1.8-2.3 2.5-3.1 3.2-3.9 2.2-2.7 4-4.9 5.5-7 1.5-2.1 2.9-4.2 4.1-6.6.3-.6.6-1.2.8-1.8.2-.5.4-1 .5-1.5.1-.5.2-.9.1-1.2 0-.2 0-.5-.1-.6-.1-.1-.2-.3-.3-.4-.2-.2-.5-.4-.9-.6-.2-.1-.6-.3-1-.4-.4-.1-.9-.3-1.4-.4-2.1-.5-4 .3-5.6 1.6-2.1 1.7-4.1 4.3-6 6.7-1 1.3-1.9 2.5-2.7 3.4l-.1.1c-8.2 9.1-13.5 14.2-17.3 18h-.1c-4.4 4.3-6.9 6.7-9.4 10.9-2.7 4.4-5.1 7.1-10.9 20-9.3 5.5-8.5-8-11.5-19.3l-1.3-5.4c-.2-1.3-.5-2.9-.6-4.3-.1-1.2-.1-2.7-.1-4.2-.1-3.9-.2-8.1-1.2-10.9-.6-1.7-1.6-2.9-3.6-3h-.2c-.4 0-.8.2-1.1.4-.6.4-1.1 1-1.6 1.7-.4.6-.8 1.3-1 1.9-.2.5-.3.8-.3.8.3 12.9-.6 27.6-1.5 41.8-.5 7.9-1 15.6-1.2 22.5v1.2l-4.7 6.9c-4.3 6.2-11 16-16.7 24.4-5.4 7.9-9.6 13.3-9.7 13.8 0 .1 0 0 0 0 0 .1-.1 1.8-.1 2v22.3c0 7.6-2 49.7-.2 50.8 2.1 1.3 6.1-3.1 9-6 3.6-3.6 7-8.1 10.3-12.4 2.9-3.8 5.6-7.3 8.3-10.1 3.2-3.3 6.4-5.6 9.8-6.1.3 0 .7-.1 1-.1l46.9 14.1c9.4-2 18.7-3.9 28.1-5.9 3.9-.8 5.9-1 6.3-1.2 1.9-1 4-1.9 6.3-2.8 2-.8 4.4-1.6 6.8-2.4 2.5-.8 5.1-1.7 7.8-2.8 2.3-.9 4.5-1.9 6.1-3 1.7-1.2 3-2.4 3.3-3.8.3-1.6-.3-3.7-2.2-6.6-.7-1.1-3.1-1-6-.5-4.1.7-8.8 2.5-12.5 3.9-2.7 1-4.9 1.8-6.5 2.1-1.6.3-4.9-.4-8.6-1.9-2.8-1.1-6.1-2.7-9.5-4.6-2.6-1.5-5.2-3.3-7.4-5.1-2.1-1.7-3.9-3.6-5.3-5.6-.7-1.1-1.5-3.9-2.2-7-.4-1.9-.9-4.1-1.2-6l-1-5.4c0-1 .1-1.9.1-2.7.1-.9.2-1.8.4-2.7.8-3.7 2.3-7.1 4.4-10 2.1-3 4.9-5.6 8.3-7.7 3.3-2.1 7.1-3.7 11.4-4.8 4-1 9.4-2.3 14.2-2.2 4.2 0 7.6 1.2 11.7 2.1 2.3.5 11.6 11.3 13.9 14.4l2.6 17.9c1.1 7.8.2 15.8 7 13.6 2.7-.6 1.6-11.9 1.2-15.9-1.7-13.1-2.8-17.6-4.1-25.1zM24.1 188.5v-1.1l.1-.3c.2-.8 5.1-8.1 11-16.8 5.7-8.3 12.4-18.1 16.7-24.4l3.3-4.9c.3-7 .7-14.2 1.2-21.5.9-14.2 1.8-28.8 1.5-41.2v-.2c0-1 .3-2.5 1-3.9.5-1.1 1.1-2.3 1.9-3.5 1-1.5 2.3-2.9 3.9-3.9 1.5-1 3.2-1.7 5.2-1.8h1c6.5.1 9.8 3.7 11.5 8.7 1.3 4 1.5 8.8 1.6 13.4 0 1.3.1 2.6.1 4 .1 1.2.2 2.3.3 3.3l2 13.7c2.6-5.5 4.5-9.2 6.3-12.1 3.1-5.1 5.8-7.7 10.7-12.5h.1c3.8-3.7 9.1-8.9 16.9-17.6l2.4-3c2.1-2.8 4.5-5.8 7.5-8.2 3.5-2.7 7.6-4.3 12.6-3.2.9.2 1.6.4 2.4.7.7.3 1.5.6 2.2.9 1.2.6 2.2 1.4 3.1 2.2.9 1 1.6 2.1 2.1 3.3.4 1.1.6 2.2.7 3.4 0 1.1-.1 2.3-.3 3.4-.2.9-.5 1.8-.8 2.7-.3.8-.7 1.8-1.3 2.7-1.5 2.9-3.1 5.3-4.8 7.7-1.8 2.4-3.6 4.7-5.8 7.4-1.3 1.6-2.7 3.3-3.1 3.8-.9 1.2-2.1 2.6-3.5 4.5-2.6 3.9-4.6 6.8-6.2 9-2.1 3-3.1 4.5-3.9 6.1-.7 1.5-1.4 3.2-2.4 6.4 8.2-5.5 18.2-12.2 18.7-12.9.3-.4 1.3-1.1 2.6-2 2-1.4 2.8-1.9 3.4-2.4 3.2-2.2-2.6 1.9 2.1-1.4.4-.3.5-.3.5-.4.5-.5 1.6-.9 3.2-1.5l4.4-1.5c8.1-2.7 22-7.4 27.9-9.9.1 0 0 0 .3-.1l.3-.1.3-.1.2-.1c.6-.2 1.4-.3 2.3-.5.8-.2 1.9-.3 3.1-.5 1.1-.2 2.1-.3 2.7-.4.8-.1 1.5-.1 2-.1 2.1.1 4 .6 5.6 1.4 1.8.9 3.3 2.3 4.4 3.8.6.7 1 1.5 1.4 2.2.4.8.7 1.6 1 2.4l.6 2.4c.1.8.2 1.6.2 2.4 0 1.2-.2 2.2-.6 3.2-.5 1.2-1.2 2.3-2.2 3.1-2.6 2-6.2 3.9-10.2 5.8-3.8 1.7-8.1 3.4-12.3 5.1 0 0-.1.1-.1 0-7.8 3.1-15.5 6.2-19.7 9.3-2.6 1.9-7 6.4-11.1 10.5l3.4.3c4.1.4 8.1.8 11.1 1.2 3.1.4 5.6.6 6.5.8 3.1.4 8.3 3.2 11.5 6.4 7.1 7 14.5 15 15.3 19.8 1 6.8 2.1 18.8 3.2 29.1 1.3 12.2-1.9 16.3-7.2 18.5-1.3-.4-14.4 6.3-16.5-15.3l-2.3-17.9c-2.5-3.1-7.4-9.7-9.5-11.5-2.5-1.1-5-1.9-5.4-2-6.9.2-13.6 1.5-16.1 2.1-3.4.8-6.1 2.4-8.6 4-2.4 1.5-4.4 3.4-5.9 5.5-1.5 2-2.5 4.3-3 6.8l-.3 1.8c0 .5-.1.9-.1 1.3l.1.4.3 1.8c.4 2 1 5 1.6 7.8.5 2.3.8 3.9.8 4 .9 1.3 2.2 2.7 3.8 4 1.9 1.6 4.1 3 6.2 4.3 2.8 1.7 5.8 3 8.3 4 2.3.9 3.9 1.5 4 1.4.9-.2 2.8-.9 5.1-1.7 4.1-1.5 9.2-3.4 14-4.3 6-1 11.4-.4 14.5 4.2 3.3 5 4.2 9.3 3.4 13-.8 3.9-3.4 6.8-6.9 9.1-2.3 1.5-4.9 2.7-7.6 3.8-2.4.9-5.3 1.9-8.3 2.9-2.1.7-4.2 1.4-6.5 2.3-2 .7-3.8 1.5-5.3 2.3l-.1.1c-.4.2-3.8 1-8.3 1.9l-24.5 5.1c-2.4.5-4.1.9-4.5 1l-1.1.3-47.5-14c-1.2.5-2.6 1.7-4.2 3.3-2.4 2.5-5 5.9-7.7 9.4-3.4 4.5-7.1 9.3-11.1 13.3-4.3 4.3-9 7.6-14.3 8.7l-.2.1h-.5c-.9 0-1.9-.2-2.8-.6-.6-.2-1.1-.2-1.8-.7-2.8-1.7-3.2-3.2-3.8-6.7 0-.7-.1-1.7 0-2.4.6-21.9.1-52.2.6-74.9v1z" clip-path="url(#SVGID_2_)"/><path d="M32.5 188.9h0zm0 0s0 0 0 0zm0 0s0 0 0 0zm0 0h0zm121.6-86.1c.1-.1.1-.1 0 0h0zm32.8-11.2s.1-.1 0 0h0zm0 0s0 0 0 0zm3.9 69.7c-3.7-3.9-4.4-6.1-8.7-10-2.9-3.2-6.7-7-9.8-7-.3 0-.4 0-.7-.1-.6-.1-3.1-.4-6.2-.8-3.5-.4-7.6-.8-11-1.2-2.6-.3-5.4-.5-8.1-.8-1.8-.2-3.2-.3-3.7-.3-3.6 0-5.6-3-3.8-6.2l.6-1.1c1.3-1.3 3.1-3.1 5-5.1 4.6-4.7 10.1-10.3 13.5-12.8h0c5.1-3.8 13.4-7.1 21.7-10.4 0 0 .1-.1.1 0 4.1-1.6 8.2-3.2 11.8-4.9 3.2-1.5 6-2.9 8.1-4.4V96c0-.3 0-.6-.1-.9 0-.3-.1-.7-.3-1.1-.1-.4-.3-.8-.5-1.2-.2-.4-.4-.7-.6-1-.4-.6-1-1-1.6-1.4-.5-.3-1.2-.5-1.9-.5l-.8.1c-.8.1-1.6.2-2.3.3-.8.1-1.8.3-2.8.5-.8.2-1.4.3-1.6.3h0-.1c-.1 0 0 0 0 0h0-.1c-.1 0 0 0 0 0h0-.1c-6.6 2.7-20.3 7.3-28.3 10h0l-4.4 1.5c-.3.1-.2-.2-.1-.3v-.1l-.1.1c-.1.1-.6.5-1.4 1l-2.1 1.5h0c1.3-.9-2.1 1.5 0 0h0l-3.4 2.4c-.7.5-.7.2-.9.5h0c-1.6 1.8-16.3 11.7-25.2 17.7-2.7 1.8-4.9 3.3-5.8 3.9-1.8 1.4-3.1 1.2-4.9.4-2.1-.9-1.9-3.9-1.5-5.3 1.6-4.6 2.8-7.9 3.6-10.5 1.6-4.6 2.3-6.8 3.4-8.9 1-2 2.2-3.8 4.5-7.1 1.4-2.1 3.3-4.8 6.2-9.1l.2-.3c1.1-1.4 2.4-3 3.7-4.6 1.8-2.3 2.5-3.1 3.2-3.9 2.2-2.7 4-4.9 5.5-7 1.5-2.1 2.9-4.2 4.1-6.6.3-.6.6-1.2.8-1.8.2-.5.4-1 .5-1.5.1-.5.2-.9.1-1.2 0-.2 0-.5-.1-.6-.1-.1-.2-.3-.3-.4-.2-.2-.5-.4-.9-.6-.2-.1-.6-.3-1-.4-.4-.1-.9-.3-1.4-.4-2.1-.5-4 .3-5.6 1.6-2.1 1.7-4.1 4.3-6 6.7h0c-1 1.3-1.9 2.5-2.7 3.4l-.1.1c-8.2 9.1-13.5 14.2-17.3 18h0-.1c-4.4 4.3-6.9 6.7-9.4 10.9-2.7 4.4-5.1 7.1-10.9 20-9.3 5.5-8.5-8-11.5-19.3l-1.3-5.4c-.2-1.3-.5-2.9-.6-4.3-.1-1.2-.1-2.7-.1-4.2-.1-3.9-.2-8.1-1.2-10.9-.6-1.7-1.6-2.9-3.6-3h-.2c-.4 0-.8.2-1.1.4-.6.4-1.1 1-1.6 1.7-.4.6-.8 1.3-1 1.9-.2.5-.3.8-.3.8.3 12.9-.6 27.6-1.5 41.8-.5 7.9-1 15.6-1.2 22.5v1.2l-4.7 6.9c-4.3 6.2-11 16-16.7 24.4-5.4 7.9-9.6 13.3-9.7 13.8h0s0 0 0 0c0 .1 0 0 0 0 0 .1-.1 1.8-.1 2v22.3c0 7.6-2 49.7-.2 50.8 2.1 1.3 6.1-3.1 9-6 3.6-3.6 7-8.1 10.3-12.4 2.9-3.8 5.6-7.3 8.3-10.1 3.2-3.3 6.4-5.6 9.8-6.1.3 0 .7-.1 1-.1l46.9 14.1c9.4-2 18.7-3.9 28.1-5.9 3.9-.8 5.9-1 6.3-1.2h0c1.9-1 4-1.9 6.3-2.8 2-.8 4.4-1.6 6.8-2.4 2.5-.8 5.1-1.7 7.8-2.8 2.3-.9 4.5-1.9 6.1-3 1.7-1.2 3-2.4 3.3-3.8.3-1.6-.3-3.7-2.2-6.6-.7-1.1-3.1-1-6-.5-4.1.7-8.8 2.5-12.5 3.9h0c-2.7 1-4.9 1.8-6.5 2.1-1.6.3-4.9-.4-8.6-1.9-2.8-1.1-6.1-2.7-9.5-4.6-2.6-1.5-5.2-3.3-7.4-5.1-2.1-1.7-3.9-3.6-5.3-5.6h0c-.7-1.1-1.5-3.9-2.2-7-.4-1.9-.9-4.1-1.2-6l-1-5.4c0-1 .1-1.9.1-2.7.1-.9.2-1.8.4-2.7.8-3.7 2.3-7.1 4.4-10 2.1-3 4.9-5.6 8.3-7.7 3.3-2.1 7.1-3.7 11.4-4.8 4-1 9.4-2.3 14.2-2.2 4.2 0 7.6 1.2 11.7 2.1 2.3.5 11.6 11.3 13.9 14.4l2.6 17.9c1.1 7.8.2 15.8 7 13.6 2.7-.6 1.6-11.9 1.2-15.9-1.7-13.1-2.8-17.6-4.1-25.1zM24.1 188.5v-1.1l.1-.3c.2-.8 5.1-8.1 11-16.8 5.7-8.3 12.4-18.1 16.7-24.4l3.3-4.9c.3-7 .7-14.2 1.2-21.5.9-14.2 1.8-28.8 1.5-41.2v-.2c0-1 .3-2.5 1-3.9.5-1.1 1.1-2.3 1.9-3.5 1-1.5 2.3-2.9 3.9-3.9 1.5-1 3.2-1.7 5.2-1.8h1c6.5.1 9.8 3.7 11.5 8.7 1.3 4 1.5 8.8 1.6 13.4 0 1.3.1 2.6.1 4 .1 1.2.2 2.3.3 3.3h0l2 13.7c2.6-5.5 4.5-9.2 6.3-12.1 3.1-5.1 5.8-7.7 10.7-12.5h.1c3.8-3.7 9.1-8.9 16.9-17.6h0l2.4-3h0c2.1-2.8 4.5-5.8 7.5-8.2 3.5-2.7 7.6-4.3 12.6-3.2.9.2 1.6.4 2.4.7.7.3 1.5.6 2.2.9 1.2.6 2.2 1.4 3.1 2.2.9 1 1.6 2.1 2.1 3.3.4 1.1.6 2.2.7 3.4 0 1.1-.1 2.3-.3 3.4-.2.9-.5 1.8-.8 2.7-.3.8-.7 1.8-1.3 2.7-1.5 2.9-3.1 5.3-4.8 7.7-1.8 2.4-3.6 4.7-5.8 7.4-1.3 1.6-2.7 3.3-3.1 3.8-.9 1.2-2.1 2.6-3.5 4.5-2.6 3.9-4.6 6.8-6.2 9-2.1 3-3.1 4.5-3.9 6.1-.7 1.5-1.4 3.2-2.4 6.4 8.2-5.5 18.2-12.2 18.7-12.9h0c.3-.4 1.3-1.1 2.6-2 2-1.4 2.8-1.9 3.4-2.4 3.2-2.2-2.6 1.9 2.1-1.4.4-.3.5-.3.5-.4.5-.5 1.6-.9 3.2-1.5l4.4-1.5h0c8.1-2.7 22-7.4 27.9-9.9h0c.1 0 0 0 .3-.1h0l.3-.1.3-.1h0l.2-.1h0c.6-.2 1.4-.3 2.3-.5.8-.2 1.9-.3 3.1-.5 1.1-.2 2.1-.3 2.7-.4.8-.1 1.5-.1 2-.1 2.1.1 4 .6 5.6 1.4 1.8.9 3.3 2.3 4.4 3.8.6.7 1 1.5 1.4 2.2.4.8.7 1.6 1 2.4l.6 2.4c.1.8.2 1.6.2 2.4 0 1.2-.2 2.2-.6 3.2h0c-.5 1.2-1.2 2.3-2.2 3.1-2.6 2-6.2 3.9-10.2 5.8-3.8 1.7-8.1 3.4-12.3 5.1 0 0-.1.1-.1 0-7.8 3.1-15.5 6.2-19.7 9.3h0c-2.6 1.9-7 6.4-11.1 10.5l3.4.3c4.1.4 8.1.8 11.1 1.2 3.1.4 5.6.6 6.5.8 3.1.4 8.3 3.2 11.5 6.4 7.1 7 14.5 15 15.3 19.8 1 6.8 2.1 18.8 3.2 29.1 1.3 12.2-1.9 16.3-7.2 18.5-1.3-.4-14.4 6.3-16.5-15.3l-2.3-17.9c-2.5-3.1-7.4-9.7-9.5-11.5-2.5-1.1-5-1.9-5.4-2-6.9.2-13.6 1.5-16.1 2.1-3.4.8-6.1 2.4-8.6 4-2.4 1.5-4.4 3.4-5.9 5.5-1.5 2-2.5 4.3-3 6.8l-.3 1.8c0 .5-.1.9-.1 1.3l.1.4.3 1.8c.4 2 1 5 1.6 7.8.5 2.3.8 3.9.8 4h0c.9 1.3 2.2 2.7 3.8 4 1.9 1.6 4.1 3 6.2 4.3 2.8 1.7 5.8 3 8.3 4 2.3.9 3.9 1.5 4 1.4.9-.2 2.8-.9 5.1-1.7h0c4.1-1.5 9.2-3.4 14-4.3 6-1 11.4-.4 14.5 4.2 3.3 5 4.2 9.3 3.4 13-.8 3.9-3.4 6.8-6.9 9.1-2.3 1.5-4.9 2.7-7.6 3.8-2.4.9-5.3 1.9-8.3 2.9-2.1.7-4.2 1.4-6.5 2.3-2 .7-3.8 1.5-5.3 2.3l-.1.1c-.4.2-3.8 1-8.3 1.9l-24.5 5.1c-2.4.5-4.1.9-4.5 1l-1.1.3-47.5-14c-1.2.5-2.6 1.7-4.2 3.3-2.4 2.5-5 5.9-7.7 9.4-3.4 4.5-7.1 9.3-11.1 13.3-4.3 4.3-9 7.6-14.3 8.7l-.2.1h-.5c-.9 0-1.9-.2-2.8-.6-.6-.2-1.1-.2-1.8-.7-2.8-1.7-3.2-3.2-3.8-6.7 0-.7-.1-1.7 0-2.4.6-21.9.1-52.2.6-74.9v1z" clip-path="url(#SVGID_2_)" fill="none" stroke="#000" stroke-width=".216" stroke-miterlimit="22.926"/><path class="st2" d="M.1 2.1h425.2v425.2H.1z"/><path d="M389.3 233.3zm0 0zm0 0zm0 .1zm-121.6 86c0 .1-.1.1 0 0zm-32.8 11.2s-.1.1 0 0zm0 0zM231 261c3.7 3.9 4.4 6.1 8.7 10 2.9 3.2 6.7 7 9.8 7 .3 0 .4 0 .7.1.6.1 3.1.4 6.2.8 3.5.4 7.6.8 11 1.2 2.6.3 5.4.5 8.1.8 1.8.2 3.2.3 3.7.3 3.6 0 5.6 3 3.8 6.2l-.6 1.1c-1.3 1.3-3.1 3.1-5 5.1-4.6 4.7-10.1 10.3-13.5 12.8-5.1 3.8-13.4 7.1-21.7 10.4 0 0-.1.1-.1 0-4.1 1.6-8.2 3.2-11.8 4.9-3.2 1.5-6 2.9-8.1 4.4v.2c0 .3 0 .6.1.9 0 .3.1.7.3 1.1.1.4.3.8.5 1.2.2.4.4.7.6 1 .4.6 1 1 1.6 1.4.5.3 1.2.5 1.9.5l.8-.1c.8-.1 1.6-.2 2.3-.3.8-.1 1.8-.3 2.8-.5.8-.2 1.4-.3 1.6-.3h.1c.1 0 0 0 0 0h.1c.1 0 0 0 0 0h.1c6.6-2.7 20.3-7.3 28.3-10l4.4-1.5c.3-.1.2.2.1.3v.1l.1-.1c.1-.1.6-.5 1.4-1l2.1-1.5c-1.3.9 2.1-1.5 0 0l3.4-2.4c.7-.5.7-.2.9-.5 1.6-1.8 16.3-11.7 25.2-17.7 2.7-1.8 4.9-3.3 5.8-3.9 1.8-1.4 3.1-1.2 4.9-.4 2.1.9 1.9 3.9 1.5 5.3-1.6 4.6-2.8 7.9-3.6 10.5-1.6 4.6-2.3 6.8-3.4 8.9-1 2-2.2 3.8-4.5 7.1-1.4 2.1-3.3 4.8-6.2 9.1l-.2.3c-1.1 1.4-2.4 3-3.7 4.6-1.8 2.3-2.5 3.1-3.2 3.9-2.2 2.7-4 4.9-5.5 7-1.5 2.1-2.9 4.2-4.1 6.6-.3.6-.6 1.2-.8 1.8-.2.5-.4 1-.5 1.5-.1.5-.2.9-.1 1.2 0 .2 0 .5.1.6.1.1.2.3.3.4.2.2.5.4.9.6.2.1.6.3 1 .4.4.1.9.3 1.4.4 2.1.5 4-.3 5.6-1.6 2.1-1.7 4.1-4.3 6-6.7 1-1.3 1.9-2.5 2.7-3.4l.1-.1c8.2-9.1 13.5-14.2 17.3-18h.1c4.4-4.3 6.9-6.7 9.4-10.9 2.7-4.4 5.1-7.1 10.9-20 9.3-5.5 8.5 8 11.5 19.3l1.3 5.4c.2 1.3.5 2.9.6 4.3.1 1.2.1 2.7.1 4.2.1 3.9.2 8.1 1.2 10.9.6 1.7 1.6 2.9 3.6 3h.2c.4 0 .8-.2 1.1-.4.6-.4 1.1-1 1.6-1.7.4-.6.8-1.3 1-1.9.2-.5.3-.8.3-.8-.3-12.9.6-27.6 1.5-41.8.5-7.9 1-15.6 1.2-22.5v-1.2l4.7-6.9c4.3-6.2 11-16 16.7-24.4 5.4-7.9 9.6-13.3 9.7-13.8 0-.1 0 0 0 0 0-.1.1-1.8.1-2v-22.3c0-7.6 2-49.7.2-50.8-2.1-1.3-6.1 3.1-9 6-3.6 3.6-7 8.1-10.3 12.4-2.9 3.8-5.6 7.3-8.3 10.1-3.2 3.3-6.4 5.6-9.8 6.1-.3 0-.7.1-1 .1l-46.9-14.1c-9.4 2-18.7 3.9-28.1 5.9-3.9.8-5.9 1-6.3 1.2-1.9 1-4 1.9-6.3 2.8-2 .8-4.4 1.6-6.8 2.4-2.5.8-5.1 1.7-7.8 2.8-2.3.9-4.5 1.9-6.1 3-1.7 1.2-3 2.4-3.3 3.8-.3 1.6.3 3.7 2.2 6.6.7 1.1 3.1 1 6 .5 4.1-.7 8.8-2.5 12.5-3.9 2.7-1 4.9-1.8 6.5-2.1 1.6-.3 4.9.4 8.6 1.9 2.8 1.1 6.1 2.7 9.5 4.6 2.6 1.5 5.2 3.3 7.4 5.1 2.1 1.7 3.9 3.6 5.3 5.6.7 1.1 1.5 3.9 2.2 7 .4 1.9.9 4.1 1.2 6l1 5.4c0 1-.1 1.9-.1 2.7-.1.9-.2 1.8-.4 2.7-.8 3.7-2.3 7.1-4.4 10-2.1 3-4.9 5.6-8.3 7.7-3.3 2.1-7.1 3.7-11.4 4.8-4 1-9.4 2.3-14.2 2.2-4.2 0-7.6-1.2-11.7-2.1-2.3-.5-11.6-11.3-13.9-14.4l-2.6-17.9c-1.1-7.8-.2-15.8-7-13.6-2.7.6-1.6 11.9-1.2 15.9 1.7 13 2.8 17.5 4.1 25.1zm166.8-27.3v1.1l-.1.3c-.2.8-5.1 8.1-11 16.8-5.7 8.3-12.4 18.1-16.7 24.4l-3.3 4.9c-.3 7-.7 14.2-1.2 21.5-.9 14.2-1.8 28.8-1.5 41.2v.2c0 1-.3 2.5-1 3.9-.5 1.1-1.1 2.3-1.9 3.5-1 1.5-2.3 2.9-3.9 3.9-1.5 1-3.2 1.7-5.2 1.8h-1c-6.5-.1-9.8-3.7-11.5-8.7-1.3-4-1.5-8.8-1.6-13.4 0-1.3-.1-2.6-.1-4-.1-1.2-.2-2.3-.3-3.3l-2-13.7c-2.6 5.5-4.5 9.2-6.3 12.1-3.1 5.1-5.8 7.7-10.7 12.5h-.1c-3.8 3.7-9.1 8.9-16.9 17.6l-2.4 3c-2.1 2.8-4.5 5.8-7.5 8.2-3.5 2.7-7.6 4.3-12.6 3.2-.9-.2-1.6-.4-2.4-.7-.7-.3-1.5-.6-2.2-.9-1.2-.6-2.2-1.4-3.1-2.2-.9-1-1.6-2.1-2.1-3.3-.4-1.1-.6-2.2-.7-3.4 0-1.1.1-2.3.3-3.4.2-.9.5-1.8.8-2.7.3-.8.7-1.8 1.3-2.7 1.5-2.9 3.1-5.3 4.8-7.7 1.8-2.4 3.6-4.7 5.8-7.4 1.3-1.6 2.7-3.3 3.1-3.8.9-1.2 2.1-2.6 3.5-4.5 2.6-3.9 4.6-6.8 6.2-9 2.1-3 3.1-4.5 3.9-6.1.7-1.5 1.4-3.2 2.4-6.4-8.2 5.5-18.2 12.2-18.7 12.9-.3.4-1.3 1.1-2.6 2-2 1.4-2.8 1.9-3.4 2.4-3.2 2.2 2.6-1.9-2.1 1.4-.4.3-.5.3-.5.4-.5.5-1.6.9-3.2 1.5l-4.4 1.5c-8.1 2.7-22 7.4-27.9 9.9-.1 0 0 0-.3.1l-.3.1-.3.1-.2.1c-.6.2-1.4.3-2.3.5-.8.2-1.9.3-3.1.5-1.1.2-2.1.3-2.7.4-.8.1-1.5.1-2 .1-2.1-.1-4-.6-5.6-1.4-1.8-.9-3.3-2.3-4.4-3.8-.6-.7-1-1.5-1.4-2.2-.4-.8-.7-1.6-1-2.4l-.6-2.4c-.1-.8-.2-1.6-.2-2.4 0-1.2.2-2.2.6-3.2.5-1.2 1.2-2.3 2.2-3.1 2.6-2 6.2-3.9 10.2-5.8 3.8-1.7 8.1-3.4 12.3-5.1 0 0 .1-.1.1 0 7.8-3.1 15.5-6.2 19.7-9.3 2.6-1.9 7-6.4 11.1-10.5l-3.4-.3c-4.1-.4-8.1-.8-11.1-1.2-3.1-.4-5.6-.6-6.5-.8-3.1-.4-8.3-3.2-11.5-6.4-7.1-7-14.5-15-15.3-19.8-1-6.8-2.1-18.8-3.2-29.1-1.3-12.2 1.9-16.3 7.2-18.5 1.3.4 14.4-6.3 16.5 15.3l2.3 17.9c2.5 3.1 7.4 9.7 9.5 11.5 2.5 1.1 5 1.9 5.4 2 6.9-.2 13.6-1.5 16.1-2.1 3.4-.8 6.1-2.4 8.6-4 2.4-1.5 4.4-3.4 5.9-5.5 1.5-2 2.5-4.3 3-6.8l.3-1.8c0-.5.1-.9.1-1.3l-.1-.4-.3-1.8c-.4-2-1-5-1.6-7.8-.5-2.3-.8-3.9-.8-4-.9-1.3-2.2-2.7-3.8-4-1.9-1.6-4.1-3-6.2-4.3-2.8-1.7-5.8-3-8.3-4-2.3-.9-3.9-1.5-4-1.4-.9.2-2.8.9-5.1 1.7-4.1 1.5-9.2 3.4-14 4.3-6 1-11.4.4-14.5-4.2-3.3-5-4.2-9.3-3.4-13 .8-3.9 3.4-6.8 6.9-9.1 2.3-1.5 4.9-2.7 7.6-3.8 2.4-.9 5.3-1.9 8.3-2.9 2.1-.7 4.2-1.4 6.5-2.3 2-.7 3.8-1.5 5.3-2.3l.1-.1c.4-.2 3.8-1 8.3-1.9l24.5-5.1c2.4-.5 4.1-.9 4.5-1l1.1-.3 47.1 14.2c1.2-.5 2.6-1.7 4.2-3.3 2.4-2.5 5-5.9 7.7-9.4 3.4-4.5 7.1-9.3 11.1-13.3 4.3-4.3 9-7.6 14.3-8.7l.2-.1h.5c.9 0 1.9.2 2.8.6.6.2 1.1.2 1.8.7 2.8 1.7 3.2 3.2 3.8 6.7 0 .7.1 1.7 0 2.4-.6 21.9-.1 52.2-.6 74.9l.4-1.2z"/><path class="st2" d="M389.3 233.3zm0 0zm0 0zm0 .1zm-121.6 86c0 .1-.1.1 0 0zm-32.8 11.2s-.1.1 0 0zm0 0zM231 261c3.7 3.9 4.4 6.1 8.7 10 2.9 3.2 6.7 7 9.8 7 .3 0 .4 0 .7.1.6.1 3.1.4 6.2.8 3.5.4 7.6.8 11 1.2 2.6.3 5.4.5 8.1.8 1.8.2 3.2.3 3.7.3 3.6 0 5.6 3 3.8 6.2l-.6 1.1c-1.3 1.3-3.1 3.1-5 5.1-4.6 4.7-10.1 10.3-13.5 12.8-5.1 3.8-13.4 7.1-21.7 10.4 0 0-.1.1-.1 0-4.1 1.6-8.2 3.2-11.8 4.9-3.2 1.5-6 2.9-8.1 4.4v.2c0 .3 0 .6.1.9 0 .3.1.7.3 1.1.1.4.3.8.5 1.2.2.4.4.7.6 1 .4.6 1 1 1.6 1.4.5.3 1.2.5 1.9.5l.8-.1c.8-.1 1.6-.2 2.3-.3.8-.1 1.8-.3 2.8-.5.8-.2 1.4-.3 1.6-.3h.1c.1 0 0 0 0 0h.1c.1 0 0 0 0 0h.1c6.6-2.7 20.3-7.3 28.3-10l4.4-1.5c.3-.1.2.2.1.3v.1l.1-.1c.1-.1.6-.5 1.4-1l2.1-1.5c-1.3.9 2.1-1.5 0 0l3.4-2.4c.7-.5.7-.2.9-.5 1.6-1.8 16.3-11.7 25.2-17.7 2.7-1.8 4.9-3.3 5.8-3.9 1.8-1.4 3.1-1.2 4.9-.4 2.1.9 1.9 3.9 1.5 5.3-1.6 4.6-2.8 7.9-3.6 10.5-1.6 4.6-2.3 6.8-3.4 8.9-1 2-2.2 3.8-4.5 7.1-1.4 2.1-3.3 4.8-6.2 9.1l-.2.3c-1.1 1.4-2.4 3-3.7 4.6-1.8 2.3-2.5 3.1-3.2 3.9-2.2 2.7-4 4.9-5.5 7-1.5 2.1-2.9 4.2-4.1 6.6-.3.6-.6 1.2-.8 1.8-.2.5-.4 1-.5 1.5-.1.5-.2.9-.1 1.2 0 .2 0 .5.1.6.1.1.2.3.3.4.2.2.5.4.9.6.2.1.6.3 1 .4.4.1.9.3 1.4.4 2.1.5 4-.3 5.6-1.6 2.1-1.7 4.1-4.3 6-6.7 1-1.3 1.9-2.5 2.7-3.4l.1-.1c8.2-9.1 13.5-14.2 17.3-18h.1c4.4-4.3 6.9-6.7 9.4-10.9 2.7-4.4 5.1-7.1 10.9-20 9.3-5.5 8.5 8 11.5 19.3l1.3 5.4c.2 1.3.5 2.9.6 4.3.1 1.2.1 2.7.1 4.2.1 3.9.2 8.1 1.2 10.9.6 1.7 1.6 2.9 3.6 3h.2c.4 0 .8-.2 1.1-.4.6-.4 1.1-1 1.6-1.7.4-.6.8-1.3 1-1.9.2-.5.3-.8.3-.8-.3-12.9.6-27.6 1.5-41.8.5-7.9 1-15.6 1.2-22.5v-1.2l4.7-6.9c4.3-6.2 11-16 16.7-24.4 5.4-7.9 9.6-13.3 9.7-13.8 0-.1 0 0 0 0 0-.1.1-1.8.1-2v-22.3c0-7.6 2-49.7.2-50.8-2.1-1.3-6.1 3.1-9 6-3.6 3.6-7 8.1-10.3 12.4-2.9 3.8-5.6 7.3-8.3 10.1-3.2 3.3-6.4 5.6-9.8 6.1-.3 0-.7.1-1 .1l-46.9-14.1c-9.4 2-18.7 3.9-28.1 5.9-3.9.8-5.9 1-6.3 1.2-1.9 1-4 1.9-6.3 2.8-2 .8-4.4 1.6-6.8 2.4-2.5.8-5.1 1.7-7.8 2.8-2.3.9-4.5 1.9-6.1 3-1.7 1.2-3 2.4-3.3 3.8-.3 1.6.3 3.7 2.2 6.6.7 1.1 3.1 1 6 .5 4.1-.7 8.8-2.5 12.5-3.9 2.7-1 4.9-1.8 6.5-2.1 1.6-.3 4.9.4 8.6 1.9 2.8 1.1 6.1 2.7 9.5 4.6 2.6 1.5 5.2 3.3 7.4 5.1 2.1 1.7 3.9 3.6 5.3 5.6.7 1.1 1.5 3.9 2.2 7 .4 1.9.9 4.1 1.2 6l1 5.4c0 1-.1 1.9-.1 2.7-.1.9-.2 1.8-.4 2.7-.8 3.7-2.3 7.1-4.4 10-2.1 3-4.9 5.6-8.3 7.7-3.3 2.1-7.1 3.7-11.4 4.8-4 1-9.4 2.3-14.2 2.2-4.2 0-7.6-1.2-11.7-2.1-2.3-.5-11.6-11.3-13.9-14.4l-2.6-17.9c-1.1-7.8-.2-15.8-7-13.6-2.7.6-1.6 11.9-1.2 15.9 1.7 13 2.8 17.5 4.1 25.1zm166.8-27.3v1.1l-.1.3c-.2.8-5.1 8.1-11 16.8-5.7 8.3-12.4 18.1-16.7 24.4l-3.3 4.9c-.3 7-.7 14.2-1.2 21.5-.9 14.2-1.8 28.8-1.5 41.2v.2c0 1-.3 2.5-1 3.9-.5 1.1-1.1 2.3-1.9 3.5-1 1.5-2.3 2.9-3.9 3.9-1.5 1-3.2 1.7-5.2 1.8h-1c-6.5-.1-9.8-3.7-11.5-8.7-1.3-4-1.5-8.8-1.6-13.4 0-1.3-.1-2.6-.1-4-.1-1.2-.2-2.3-.3-3.3l-2-13.7c-2.6 5.5-4.5 9.2-6.3 12.1-3.1 5.1-5.8 7.7-10.7 12.5h-.1c-3.8 3.7-9.1 8.9-16.9 17.6l-2.4 3c-2.1 2.8-4.5 5.8-7.5 8.2-3.5 2.7-7.6 4.3-12.6 3.2-.9-.2-1.6-.4-2.4-.7-.7-.3-1.5-.6-2.2-.9-1.2-.6-2.2-1.4-3.1-2.2-.9-1-1.6-2.1-2.1-3.3-.4-1.1-.6-2.2-.7-3.4 0-1.1.1-2.3.3-3.4.2-.9.5-1.8.8-2.7.3-.8.7-1.8 1.3-2.7 1.5-2.9 3.1-5.3 4.8-7.7 1.8-2.4 3.6-4.7 5.8-7.4 1.3-1.6 2.7-3.3 3.1-3.8.9-1.2 2.1-2.6 3.5-4.5 2.6-3.9 4.6-6.8 6.2-9 2.1-3 3.1-4.5 3.9-6.1.7-1.5 1.4-3.2 2.4-6.4-8.2 5.5-18.2 12.2-18.7 12.9-.3.4-1.3 1.1-2.6 2-2 1.4-2.8 1.9-3.4 2.4-3.2 2.2 2.6-1.9-2.1 1.4-.4.3-.5.3-.5.4-.5.5-1.6.9-3.2 1.5l-4.4 1.5c-8.1 2.7-22 7.4-27.9 9.9-.1 0 0 0-.3.1l-.3.1-.3.1-.2.1c-.6.2-1.4.3-2.3.5-.8.2-1.9.3-3.1.5-1.1.2-2.1.3-2.7.4-.8.1-1.5.1-2 .1-2.1-.1-4-.6-5.6-1.4-1.8-.9-3.3-2.3-4.4-3.8-.6-.7-1-1.5-1.4-2.2-.4-.8-.7-1.6-1-2.4l-.6-2.4c-.1-.8-.2-1.6-.2-2.4 0-1.2.2-2.2.6-3.2.5-1.2 1.2-2.3 2.2-3.1 2.6-2 6.2-3.9 10.2-5.8 3.8-1.7 8.1-3.4 12.3-5.1 0 0 .1-.1.1 0 7.8-3.1 15.5-6.2 19.7-9.3 2.6-1.9 7-6.4 11.1-10.5l-3.4-.3c-4.1-.4-8.1-.8-11.1-1.2-3.1-.4-5.6-.6-6.5-.8-3.1-.4-8.3-3.2-11.5-6.4-7.1-7-14.5-15-15.3-19.8-1-6.8-2.1-18.8-3.2-29.1-1.3-12.2 1.9-16.3 7.2-18.5 1.3.4 14.4-6.3 16.5 15.3l2.3 17.9c2.5 3.1 7.4 9.7 9.5 11.5 2.5 1.1 5 1.9 5.4 2 6.9-.2 13.6-1.5 16.1-2.1 3.4-.8 6.1-2.4 8.6-4 2.4-1.5 4.4-3.4 5.9-5.5 1.5-2 2.5-4.3 3-6.8l.3-1.8c0-.5.1-.9.1-1.3l-.1-.4-.3-1.8c-.4-2-1-5-1.6-7.8-.5-2.3-.8-3.9-.8-4-.9-1.3-2.2-2.7-3.8-4-1.9-1.6-4.1-3-6.2-4.3-2.8-1.7-5.8-3-8.3-4-2.3-.9-3.9-1.5-4-1.4-.9.2-2.8.9-5.1 1.7-4.1 1.5-9.2 3.4-14 4.3-6 1-11.4.4-14.5-4.2-3.3-5-4.2-9.3-3.4-13 .8-3.9 3.4-6.8 6.9-9.1 2.3-1.5 4.9-2.7 7.6-3.8 2.4-.9 5.3-1.9 8.3-2.9 2.1-.7 4.2-1.4 6.5-2.3 2-.7 3.8-1.5 5.3-2.3l.1-.1c.4-.2 3.8-1 8.3-1.9l24.5-5.1c2.4-.5 4.1-.9 4.5-1l1.1-.3 47.1 14.2c1.2-.5 2.6-1.7 4.2-3.3 2.4-2.5 5-5.9 7.7-9.4 3.4-4.5 7.1-9.3 11.1-13.3 4.3-4.3 9-7.6 14.3-8.7l.2-.1h.5c.9 0 1.9.2 2.8.6.6.2 1.1.2 1.8.7 2.8 1.7 3.2 3.2 3.8 6.7 0 .7.1 1.7 0 2.4-.6 21.9-.1 52.2-.6 74.9l.4-1.2zM295.4 153.9"/></svg>
+			<div class="nav-up__item-info">TŁUMACZ PJM ONLINE</div>
+			</a>
+		</li>
+
+		<li class="nav-up__item nav-up__item--square nav-up__item--desktop">
+			<a class="nav-up__link nav-up__link--square" href="https://www.facebook.com/kinopalacowe/">
+				<span class="sr-only">Zobacz nasz profil na Facebooku!</span>
+				<svg class="nav-up__img" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="50px" height="50px" viewBox="0 0 50 50" xml:space="preserve">
+					<path id="f" d="M26.854,36.983V26.051h3.67l0.549-4.261h-4.219v-2.72c0-1.233,0.344-2.074,2.113-2.074l2.256-0.001v-3.811 c-0.391-0.051-1.73-0.167-3.289-0.167c-3.252,0-5.479,1.985-5.479,5.632v3.142h-3.68v4.261h3.68v10.932H26.854z"/>
+				</svg>
+			</a>
+		</li>
+
+		<li class="nav-up__item nav-up__item--square nav-up__item--desktop">
+			<a class="nav-up__link nav-up__link--square" href="https://www.youtube.com/channel/UCYVlPVZXna-F0EMWXl4hLWQ">
+				<span class="sr-only">Zobacz nasz profil na Youtube!</span>
+				<svg class="nav-up__img" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 50 50" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:1.41421;">
+					<path d="M28.887,13.057c3.828,0 9.051,-0.227 10.906,0.992c2.4,1.576 2.313,6.292 2.313,10.741c0,3.966 0.189,9.109 -1.982,10.908c-1.41,1.168 -4.74,1.077 -7.105,1.156c-5.43,0.183 -10.645,0.085 -16.197,0c-2.582,-0.039 -5.623,-0.183 -6.939,-1.321c-1.971,-1.706 -1.982,-6.336 -1.982,-10.412c0,-3.388 -0.176,-8.59 1.816,-10.577c0.289,-0.286 1.188,-1.183 2.52,-1.284c2.876,-0.219 12.21,-0.203 16.65,-0.203Zm-7.274,16.692l9.09,-4.792l-9.09,-4.627l0,9.419Z"/>
+				</svg>
+			</a>
+		</li>
+
+		<li class="nav-up__item nav-up__item--square nav-up__item--desktop">
+			<a class="nav-up__link nav-up__link--square" href="https://www.instagram.com/kinopalacowe/">
+				<span class="sr-only">Zobacz nasz profil na Instagramie!</span>
+				<svg class="nav-up__img" width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M24.999 15.505C28.093 15.505 28.459 15.517 29.68 15.572C30.809 15.624 31.423 15.812 31.83 15.97C32.371 16.181 32.757 16.43 33.163 16.836C33.567 17.242 33.818 17.628 34.027 18.169C34.186 18.576 34.376 19.19 34.426 20.318C34.482 21.54 34.493 21.906 34.493 24.998C34.493 28.091 34.481 28.457 34.426 29.678C34.375 30.808 34.186 31.421 34.027 31.829C33.818 32.37 33.567 32.755 33.163 33.162C32.757 33.567 32.371 33.817 31.83 34.028C31.423 34.187 30.809 34.375 29.68 34.426C28.459 34.482 28.093 34.494 24.999 34.494C21.907 34.494 21.541 34.482 20.32 34.426C19.191 34.375 18.577 34.186 18.17 34.028C17.629 33.818 17.243 33.567 16.838 33.162C16.433 32.755 16.182 32.37 15.972 31.829C15.814 31.421 15.624 30.808 15.574 29.678C15.518 28.458 15.507 28.092 15.507 24.998C15.507 21.906 15.519 21.54 15.574 20.318C15.625 19.19 15.814 18.576 15.972 18.169C16.182 17.628 16.433 17.242 16.838 16.836C17.243 16.43 17.629 16.181 18.17 15.97C18.577 15.812 19.191 15.623 20.32 15.572C21.541 15.517 21.907 15.505 24.999 15.505M24.999 13.418C21.853 13.418 21.46 13.431 20.225 13.487C18.993 13.544 18.15 13.739 17.413 14.025C16.652 14.322 16.007 14.718 15.362 15.361C14.718 16.005 14.323 16.65 14.027 17.412C13.741 18.149 13.545 18.992 13.488 20.224C13.431 21.459 13.419 21.854 13.419 24.999C13.419 28.145 13.432 28.54 13.488 29.775C13.545 31.007 13.741 31.849 14.027 32.586C14.323 33.348 14.718 33.994 15.362 34.637C16.007 35.28 16.652 35.677 17.413 35.973C18.149 36.26 18.992 36.455 20.225 36.511C21.46 36.568 21.854 36.581 24.999 36.581C28.145 36.581 28.54 36.568 29.775 36.511C31.007 36.455 31.849 36.26 32.587 35.973C33.348 35.677 33.993 35.28 34.637 34.637C35.282 33.993 35.677 33.347 35.973 32.586C36.259 31.849 36.455 31.007 36.512 29.775C36.569 28.54 36.581 28.145 36.581 24.999C36.581 21.854 36.568 21.459 36.512 20.224C36.455 18.992 36.259 18.15 35.973 17.412C35.677 16.65 35.282 16.005 34.637 15.361C33.993 14.718 33.348 14.321 32.587 14.025C31.85 13.739 31.008 13.544 29.775 13.487C28.54 13.432 28.146 13.418 24.999 13.418V13.418Z" fill="black"/>
+					<path d="M24.999 19.053C21.715 19.053 19.053 21.716 19.053 25C19.053 28.285 21.715 30.947 24.999 30.947C28.284 30.947 30.947 28.285 30.947 25C30.947 21.716 28.284 19.053 24.999 19.053V19.053ZM24.999 28.86C22.868 28.86 21.139 27.132 21.139 25C21.139 22.869 22.868 21.14 24.999 21.14C27.132 21.14 28.86 22.869 28.86 25C28.86 27.132 27.132 28.86 24.999 28.86Z" fill="black"/>
+					<path d="M31.182 20.207C31.9497 20.207 32.572 19.5847 32.572 18.817C32.572 18.0493 31.9497 17.427 31.182 17.427C30.4143 17.427 29.792 18.0493 29.792 18.817C29.792 19.5847 30.4143 20.207 31.182 20.207Z" fill="black"/>
+					</svg>
+			</a>
+		</li>
+		
+		<li class="nav-up__item nav-up__item--square nav-up__item--desktop">
+			<a class="nav-up__link nav-up__link--square" href="">
+				<span class="sr-only">Zobacz nasz profil na Tiktoku!</span>
+				<svg class="nav-up__img" width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path fill-rule="evenodd" clip-rule="evenodd" d="M30.4459 13C30.9071 16.4015 33.1209 18.4294 36.97 18.6451V22.4709C34.7394 22.6578 32.7855 22.0322 30.5129 20.8528V28.0081C30.5129 37.0978 18.9573 39.9384 14.3116 33.4231C11.3263 29.2306 13.1544 21.874 22.7309 21.5791V25.6134C22.0014 25.7141 21.2215 25.8723 20.5087 26.0809C18.3787 26.6993 17.1712 27.8571 17.5066 29.8994C18.1523 33.8114 26.5213 34.9692 25.8253 27.3249V13.0072H30.4459V13Z" fill="black"/>
+				</svg>
+			</a>
+		</li>
+	</ul>
+
+	<button class="nav-up__mobile-menu-button nav-up__mobile-menu-button--open">
+		<span class="sr-only">Otwórz, zamknij menu</span>
+		<svg version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40" height="40" viewBox="0 0 50 50" xml:space="preserve">
+			<path d="M37.328,28.301c-1.822,0-3.296-1.475-3.296-3.293c0-1.826,1.474-3.309,3.296-3.309s3.305,1.482,3.305,3.309 C40.633,26.826,39.15,28.301,37.328,28.301z"/>
+			<path d="M25.003,28.301c-1.825,0-3.308-1.475-3.308-3.293c0-1.826,1.482-3.309,3.308-3.309c1.822,0,3.313,1.482,3.313,3.309 C28.316,26.826,26.825,28.301,25.003,28.301z"/>
+			<path d="M12.675,28.301c-1.825,0-3.308-1.475-3.308-3.293c0-1.826,1.482-3.309,3.308-3.309c1.816,0,3.305,1.482,3.305,3.309 C15.979,26.826,14.491,28.301,12.675,28.301z"/>
+			<rect x="9.569" y="37.974" width="30.853" height="5.101"/>
+			<rect x="9.569" y="6.926" width="30.853" height="5.101"/>
+		</svg>
+	</button>
+
+	<ul class="nav--mobile">
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="/podstrony/371-repertuar/">Repertuar</a>
+				
+					
+						
+						
+					
+				</li>
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="/podstrony/12934-karta-kinomana/">Karta Kinomana</a>
+				
+					
+						
+						
+					
+				</li>
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="/podstrony/376-premiery/">Premiery</a>
+				
+					
+						
+						
+					
+				</li>
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="/podstrony/107-wydarzenia/">Wydarzenia</a>
+				
+					
+						
+						
+					
+				</li>
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="https://kinopalacowe.pl/podstrony/8487-kino-bez-barier/">Kino Bez Barier</a>
+					
+					
+						
+						
+					
+				</li>
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="/podstrony/171-cykle-kino/">Cykle</a>
+				
+					
+						
+						
+					
+					
+					<ul class="nav--mobile__submenu">
+						
+						
+						<li class="nav--mobile__submenu-item">
+							
+							<a class="nav--mobile__submenu-link" href="http://kinopalacowe.pl/artykuly/114-dyskusyjny-klub-filmowy-zamek/">DKF Zamek</a>
+							
+						</li>
+						
+						
+					
+					
+						
+						<li class="nav--mobile__submenu-item">
+							
+							<a class="nav--mobile__submenu-link" href="https://kinopalacowe.pl/wydarzenia/13057-19-festiwal-filmow-azjatyckich-piec-smakow/">Festiwal Pięć Smaków</a>
+							
+						</li>
+						
+						
+					
+					
+						
+						<li class="nav--mobile__submenu-item">
+							
+							<a class="nav--mobile__submenu-link" href="https://kinopalacowe.pl/podstrony/13137-klasyka-kina/">Klasyka Kina</a>
+							
+						</li>
+						
+						
+					
+					
+						
+						<li class="nav--mobile__submenu-item">
+							
+							<a class="nav--mobile__submenu-link" href="http://kinopalacowe.pl/artykuly/115-the-metropolitan-opera-live-in-hd/">MET Opera Live</a>
+							
+						</li>
+						
+						
+					
+					
+						
+						<li class="nav--mobile__submenu-item">
+							
+							<a class="nav--mobile__submenu-link" href="/podstrony/8237-nt-live/">National Theatre Live</a>
+							
+						</li>
+						
+						
+					
+					
+						
+						<li class="nav--mobile__submenu-item">
+							
+							<a class="nav--mobile__submenu-link" href="http://kinopalacowe.pl/artykuly/118-poranki-dla-dzieci/">Poranki dla dzieci</a>
+							
+						</li>
+						
+						
+					
+					
+						
+						<li class="nav--mobile__submenu-item">
+							
+							<a class="nav--mobile__submenu-link" href="/podstrony/9509-wystawa-na-ekranie/">Wystawa na ekranie</a>
+							
+						</li>
+						
+						
+					</ul>
+					
+					
+				</li>
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="/podstrony/850-edukacja/">Edukacja</a>
+				
+					
+						
+						
+					
+					
+					<ul class="nav--mobile__submenu">
+						
+						
+						<li class="nav--mobile__submenu-item">
+							
+							<a class="nav--mobile__submenu-link" href="https://kinopalacowe.pl/artykuly/852-kinoszkoa/">Kinoszkoła</a>
+							
+						</li>
+						
+						
+					
+					
+						
+						<li class="nav--mobile__submenu-item">
+							
+							<a class="nav--mobile__submenu-link" href="https://kinopalacowe.pl/artykuly/3555-pracownie/">Pracownie filmowe</a>
+							
+						</li>
+						
+						
+					
+					
+						
+						<li class="nav--mobile__submenu-item">
+							
+							<a class="nav--mobile__submenu-link" href="https://kinopalacowe.pl/podstrony/13395-wykady-akademickie/">Wykłady akademickie</a>
+							
+						</li>
+						
+						
+					</ul>
+					
+					
+				</li>
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="https://mediateka.ckzamek.pl/collection/kino-palacowe/">O kinie</a>
+					
+					
+						
+						
+					
+				</li>
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="/podstrony/110-cennik/">Cennik</a>
+				
+					
+						
+						
+					
+				</li>
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="/podstrony/7781-wynajem-kina/">Wynajem</a>
+				
+					
+						
+						
+					
+				</li>
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="/podstrony/111-kontakt-kino-paacowe/">Kontakt</a>
+				
+					
+						
+						
+					
+				</li>
+		
+		<li class="nav--mobile__item" >
+			
+					
+					
+					<a class="nav--mobile__link" href="https://mojeekino.pl/pokaz/kino-palacowe-poznan">MojeEkino</a>
+					
+					
+						
+						
+					
+				</li>
+		
+	</ul>
+
+	<button class="nav-up__mobile-menu-button nav-up__mobile-menu-button--close">
+		<span class="sr-only">Otwórz, zamknij menu</span>
+		<svg version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40" height="40" viewBox="0 0 50 50" xml:space="preserve">
+			<path d="M37.328,28.301c-1.822,0-3.296-1.475-3.296-3.293c0-1.826,1.474-3.309,3.296-3.309s3.305,1.482,3.305,3.309 C40.633,26.826,39.15,28.301,37.328,28.301z"/>
+			<path d="M25.003,28.301c-1.825,0-3.308-1.475-3.308-3.293c0-1.826,1.482-3.309,3.308-3.309c1.822,0,3.313,1.482,3.313,3.309 C28.316,26.826,26.825,28.301,25.003,28.301z"/>
+			<path d="M12.675,28.301c-1.825,0-3.308-1.475-3.308-3.293c0-1.826,1.482-3.309,3.308-3.309c1.816,0,3.305,1.482,3.305,3.309 C15.979,26.826,14.491,28.301,12.675,28.301z"/>
+			<rect x="9.569" y="37.974" width="30.853" height="5.101"/>
+			<rect x="9.569" y="6.926" width="30.853" height="5.101"/>
+		</svg>
+	</button>
+	
+<div class="searchBox" id="mainSearchBox">
+	<div class="searchBox__container">
+		<form class="searchBox__form" id="searchBox__form">
+			<label for="searchBox__input" class="searchBox__label" tabindex="1">Wpisz frazę i wyszukaj ją na stronie:</label>
+			<input type="text" placeholder="szukaj" class="searchBox__input" name="searchBox__input" id="searchBox__input" tabindex="1">
+			<button class="searchBox__button" title="Pokaż wszystkie wyniki" tabindex="1"><span class="sr-only">Pokaż wszystkie wyniki</span>
+				<svg class="searchBox__icon" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="50px" height="50px" viewBox="0 0 50 50" xml:space="preserve">
+					<rect x="27.113" y="31.199" transform="matrix(0.707 0.7073 -0.7073 0.707 32.8899 -13.6176)" width="11.53" height="3.364" />
+					<path d="M31.18,31.183l-2.441-2.444c3.07-3.072,3.066-8.063-0.007-11.135c-3.07-3.071-8.057-3.072-11.13,0l-2.439-2.441 c4.414-4.416,11.596-4.415,16.01-0.001C35.588,19.578,35.596,26.766,31.18,31.183z" />
+					<path d="M15.162,15.163l2.442,2.444c-3.073,3.072-3.069,8.062,0.005,11.135c3.07,3.071,8.059,3.071,11.13-0.001l2.44,2.441 c-4.414,4.415-11.597,4.414-16.01,0C10.753,26.767,10.745,19.579,15.162,15.163z" />
+				</svg>
+			</button>
+			<div class="filters-box-wrapper searchBox__filterBox">
+				<button class="nav__down-link search-nav__filter-button">
+					<span class="search-nav__filter-button-text"> filtry <span class="search-nav__filter-button-number-of-filters"></span>
+					</span>
+					<svg class="search-nav__filter-button-svg" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40" height="40" viewBox="0 0 50 50" xml:space="preserve" fill="white">
+						<polygon points="25.003,27.662 15.002,17.662 12.667,20.002 25.003,32.338 37.333,20.002 34.996,17.662 "/>
+					</svg>
+				</button>
+				
+
+<div class="filters-box ">
+	<div class="filters-box__column filters-box__column--date">
+		<div class="filters-box__title">Data</div>
+
+		<label class="filters-box__date-label">
+			<span class="filters-box__date-label-text">Od</span>
+			<input class="filters-box__input filters-box__input-from datepicker-search-nav" type="text">
+			<svg class="filters-box__date-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve" fill="black">
+				<polygon class="filters-box__date-icon--open" points="25.003,27.662 15.002,17.662 12.667,20.002 25.003,32.338 37.333,20.002 34.996,17.662 "/>
+				<polygon class="filters-box__date-icon--close" points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+			</svg>
+		</label>
+
+		<label class="filters-box__date-label">
+			<span class="filters-box__date-label-text">Do</span>
+			<input class="filters-box__input filters-box__input-to datepicker-search-nav" type="text">
+			<svg class="filters-box__date-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve" fill="black">
+				<polygon class="filters-box__date-icon--open" points="25.003,27.662 15.002,17.662 12.667,20.002 25.003,32.338 37.333,20.002 34.996,17.662 "/>
+				<polygon class="filters-box__date-icon--close" points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+			</svg>
+		</label>
+	</div>
+
+	<div class="filters-box__column filters-box__column--types">
+		<div class="filters-box__title">Kategorie</div>
+		<ul class="filters-box__list">
+            
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="51" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Programy Społeczne</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="36" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Muzyka</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="37" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Literatura</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="38" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Sztuki wizualne</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="39" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Teatr / taniec</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="40" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Historia i zwiedzanie</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="41" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Rezydencje artystyczne</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="42" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Przestrzeń miasta</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="45" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Edukacja</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="47" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Kino Pałacowe</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+		</ul>
+	</div>
+
+	<div class="filters-box__column filters-box__column--target">
+		<div class="filters-box__title">Uczestnicy</div>
+		<ul class="filters-box__list filters-box__list--target">
+            
+                <li class="filters-box__list-item">
+                    <label class="filters-box__checkbox-label">
+                        <input class="filters-box__checkbox" data-age-category-id="1" type="checkbox">
+                        <span class="filters-box__checkbox-label-text">dzieci</span>
+                        <svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+                            <polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+                            <polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+                        </svg>
+                    </label>
+                </li>
+            
+                <li class="filters-box__list-item">
+                    <label class="filters-box__checkbox-label">
+                        <input class="filters-box__checkbox" data-age-category-id="2" type="checkbox">
+                        <span class="filters-box__checkbox-label-text">młodzież</span>
+                        <svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+                            <polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+                            <polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+                        </svg>
+                    </label>
+                </li>
+            
+                <li class="filters-box__list-item">
+                    <label class="filters-box__checkbox-label">
+                        <input class="filters-box__checkbox" data-age-category-id="3" type="checkbox">
+                        <span class="filters-box__checkbox-label-text">dorośli</span>
+                        <svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+                            <polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+                            <polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+                        </svg>
+                    </label>
+                </li>
+            
+		</ul>
+	</div>
+
+	<button class="filters-box__button">Filtruj</button>
+</div>
+
+			</div>
+		</form>
+	</div>
+	<div id="searchBox__results" class="searchBox__results">
+			<div class="loader" id="searchLoader"></div>
+	</div>
+</div>
+<div class="searchBox__overlay" aria-hidden="true"></div>
+
+</nav>
+
+<nav id="page-navigation" class="nav__down nav-down nav__down--second-logo">
+	<span class="sr-only">Nawigacja dla danej podstrony</span>
+	<ul class="nav-down__list">
+        
+	</ul>
+</nav>
+
+<h1 class="logo">
+	<a class="logo__link" href="https://ckzamek.pl">
+		<span class="sr-only">Centrum Kultury Zamek</span>
+		<svg class="logo__img" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+			 x="0px" y="0px" viewBox="0 0 100 100" xml:space="preserve">
+			<circle cx="77.737" cy="36.714" r="2.201"/>
+			<ellipse cx="69.52" cy="36.714" rx="2.207" ry="2.2"/>
+			<ellipse cx="61.3" cy="36.714" rx="2.205" ry="2.2"/>
+			<rect x="59.23" y="72.509" width="20.568" height="3.399"/>
+			<path d="M43.962,75.912h-3.49c0-4.389-3.567-7.95-7.958-7.95c-4.387,0-7.948,3.562-7.948,7.95h-3.487 c0-6.308,5.13-11.437,11.436-11.437C38.822,64.476,43.962,69.604,43.962,75.912z"/>
+			<polygon points="32.517,28.81 42.618,38.909 44.978,36.547 32.517,24.087 20.061,36.547 22.423,38.909 "/>
+		</svg>
+	</a>
+</h1>
+
+
+
+	<a href="/" class="logo--second" style="background-image: url(/static/img/logo_kino1.svg)">
+		<span class="sr-only"> - strona główna</span>
+	</a>
+
+
+<div class="logo__hover" aria-hidden="true">
+	<p class="logo__hover--text" id="logoHoverText" aria-hidden="true"></p>
+</div>
+
+
+    <main id="main">
+        
+    
+    
+    
+        <section class="photoAndText entry">
+            <div class="photoAndText__photoWrapper photoAndText--mobile">
+                
+                    <img class="photoAndText__photo" src="/media/gallery/md/obuz_plakat.jpg" alt="">
+					      
+            </div>
+
+            <div class="photoAndText__photoWrapper photoAndText--desktop">
+                <div class="photoAndText__photo"
+                     style="background-image: url('/media/gallery/md/obuz_plakat.jpg');
+						
+						 	background-position:
+								
+								
+									bottom
+								
+						"
+                     ></div>
+            </div>
+
+            <div class="photoAndText__textContainer entry__textContainer">
+
+                <h2 class="photoAndText__heading entry__heading">DKF Zamek: Łobuz</h2>
+
+                <ul class="entry__linksList">
+                    
+                        <li><a href="https://ckzamek.bilety24.pl/wydarzenie/?id=152779" class="entry__link"><img src="/static/img/ticket.svg" alt="" title="Kup bilet"/></a></li>
+                    
+                    
+                        
+                    
+                        
+                    
+                        
+                    
+                    
+                        <li><a href="https://www.youtube.com/watch?v=QCQvuBNfjYo" class="gallery__movie entry__link"><img
+                                src="/static/img/playBtn.svg" alt="" title="Zobacz film"/></a></li>
+                </ul>
+                <div class="entry__info">
+                    <ul class="tile__list">
+                        
+                            <li class="tile__listItem">
+                                <img class="tile__listItem-img" src="/static/img/type.svg" alt="" title="Typ">
+                                <span class="sr-only">Typ</span>Sala 1 - Kinowa
+                            </li>
+                        
+                        
+                        
+                            <li class="tile__listItem tile__listItem--time tile__listItem--moreLineHeight">
+                                <img class="tile__listItem-img" src="/static/img/time.svg" alt="" title="Godzina">
+                                <span class="sr-only">Godzina</span>
+                                
+                                <div>
+                                    
+                                    
+                                    
+                                    <a href="https://ckzamek.bilety24.pl/kup-bilety/?id=909406">
+                                        <span class="tile__entryDetail">13.05</span>
+                                        <span> |
+                                            g. 19.30 |
+                                        </span>
+                                    </a>
+                                    
+                                    
+                                </div>
+                                
+                           </li>
+                        
+                        
+                        
+
+                        
+                    </ul>
+                </div>
+                
+                    <div class="photoAndText__text text" data-text>
+                        <p>Przyjęty burzą braw na festiwalu w Cannes, prezentowany w sekcji Un Certain Regard debiut reżyserski aktora Harrisa Dickinsona („Babygirl", „W trójkącie", „Georgie ma się dobrze") z Lazurowego Wybrzeża wyjechał z nagrodą FIPRESCI. Tytułowy <strong>„Łobuz"</strong>, brawurowo zagrany przez Franka Dillane’a, to młody londyńczyk, który żyje na ulicy, zmaga się z uzależnieniem i codzienną walką o przetrwanie. Spędza dni, prosząc o drobne, a jednocześnie szuka kawałka dachu nad głową, miejsca, w którym mógłby ukryć swój nędzny dobytek. Kiedy nieznajomy mężczyzna chce zapłacić za jego posiłek, Mike postanawia skorzystać z okazji. <br><br><strong>ŁOBUZ</strong>, reż. Harris Dickinson, Wielka Brytania 2025, 99'<br><span style="">Język: angielski z polskimi napisami</span></p><div>--</div><div><div><p>Dla kogo: młodzież, dorośli</p><p>Miejsce wydarzenia: <a href="https://ckzamek.pl/artykuly/4751-sala-kinowa/" style="font-weight: bold;">Sala 1 - Kinowa </a><br></p><p>bilety: 16 zł</p><p>--</p><p>[Kolorowy plakat. Rozmazane zdjęcie chłopaka tańczącego.]</p></div></div>
+                    </div>
+                
+            </div>
+
+            
+            <div class="entry__buttonContainer">
+                <a href="https://ckzamek.bilety24.pl/wydarzenie/?id=152779" class="loadMore loadMore--ticket">
+                    <span class="sr-only">Kup bilet</span>
+                    <span>BILET</span>
+                    <svg
+                        class="loadMore__ticketIcon"
+                        width="100%"
+                        height="100%"
+                        viewBox="0 0 50 50"
+                        version="1.1"
+                        xmlns="http://www.w3.org/2000/svg"
+                        xmlns:xlink="http://www.w3.org/1999/xlink"
+                        xml:space="preserve"
+                        style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:1.41421;">
+                        <g>
+                            <g><path d="M18.98,27.62c0.985,0 1.783,0.798 1.783,1.782c0,0.987 -0.798,1.789 -1.783,1.789c-0.986,0 -1.788,-0.802 -1.788,-1.789c0,-0.984 0.802,-1.782 1.788,-1.782Z" style="fill-rule:nonzero;"/><path d="M25.002,27.62c0.987,0 1.789,0.798 1.789,1.782c0,0.987 -0.802,1.789 -1.789,1.789c-0.986,0 -1.793,-0.802 -1.793,-1.789c0,-0.984 0.807,-1.782 1.793,-1.782Z" style="fill-rule:nonzero;"/><path d="M31.021,27.62c0.987,0 1.789,0.798 1.789,1.782c0,0.987 -0.802,1.789 -1.789,1.789c-0.982,0 -1.788,-0.802 -1.788,-1.789c0,-0.984 0.806,-1.782 1.788,-1.782Z" style="fill-rule:nonzero;"/><path d="M37.043,27.62c0.988,0 1.79,0.798 1.79,1.782c0,0.987 -0.802,1.789 -1.79,1.789c-0.982,0 -1.787,-0.802 -1.787,-1.789c0,-0.984 0.805,-1.782 1.787,-1.782Z" style="fill-rule:nonzero;"/><path d="M12.955,27.62c0.987,0 1.789,0.798 1.789,1.782c0,0.987 -0.802,1.789 -1.789,1.789c-0.982,0 -1.788,-0.802 -1.788,-1.789c0,-0.984 0.806,-1.782 1.788,-1.782Z" style="fill-rule:nonzero;"/></g><path d="M38.422,11.829l0,2.759l-26.844,0l0,-2.759" style="fill-rule:nonzero;"/><rect x="10.198" y="11.829" width="2.758" height="31.806"/><rect x="37.044" y="11.829" width="2.758" height="31.806"/><rect x="32.449" y="40.876" width="6.966" height="2.759"/><rect x="10.198" y="40.876" width="6.968" height="2.759"/><path d="M34.285,43.635l-2.833,0c0,-3.562 -2.894,-6.452 -6.457,-6.452c-3.56,0 -6.45,2.89 -6.45,6.452l-2.83,0c0,-5.119 4.162,-9.281 9.28,-9.281c5.119,0 9.29,4.163 9.29,9.281Z" style="fill-rule:nonzero;"/></g>
+                        <g><rect x="6.577" y="6.364" width="36.846" height="2.759"/><rect x="5.198" y="6.365" width="2.758" height="8.225"/><rect x="42.044" y="6.365" width="2.758" height="8.225"/></g>
+                    </svg>
+                </a>
+            </div>
+            
+
+        </section>
+    
+
+    
+
+        
+            
+<section class="photoAndText" id="widget_60337">
+    <h2 class="photoAndText__heading"></h2>
+    <div class="photoAndText__photoWrapper">
+        <div class="photoAndText__photo"
+             style="background-image: url('/media/gallery/lg/LOBUZ_04.jpg')"
+             tabindex="0" >
+            <span class="sr-only"></span>
+        </div>
+    </div>
+    <div class="photoAndText__textContainer">
+        <div class="photoAndText__text text" data-text>
+            Bohater Dickinsona bywa niewinny jak sierotka z bajki, pełen uroku, z jakim kojarzymy chłopięcą niedojrzałość, by w jednej sekundzie zmienić się w drapieżnika i manipulatora. W drobnym, szczupłym Mike’u aktor pomieścił jeszcze dziecięcą złość, młodzieńczą beztroskę, olbrzymi głód bliskości, ale i agresję wybuchającą w nieoczekiwanych momentach. <strong>„Łobuz"</strong> jest hołdem dla kina Mike’a Leigh, dla czułości i humoru idących w parze z czujną obserwacją i ostrą krytyką relacji społecznych. Przywołujący atmosferę tamtych opowieści film Dickinsona jest zarazem na wskroś współczesny. Powstał bowiem w czasie, gdy kryzys bezdomności w Londynie osiągnął zatrważające rozmiary.
+        </div>
+        
+    </div>
+</section>
+
+        
+            
+<h2 class="articlesList__heading gallery__heading">ZWIASTUN</h2>
+<div class="largeTextMediaSmallText" id="widget_62556">
+	<div class="largeTextMediaSmallText__leftContainer">
+		<div class="largeTextMediaSmallText__largeTextContainer">
+			<div class="largeTextMediaSmallText__largeText"></div>
+		</div>
+        
+            <a class="gallery__movie largeTextMediaSmallText__media" href="https://www.youtube.com/watch?v=QCQvuBNfjYo" style="background-image:url('https://img.youtube.com/vi/QCQvuBNfjYo/hqdefault.jpg')">
+                <svg class="gallery__movieBtn" width="100%" height="100%" viewBox="0 0 50 50" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:1.41421;">
+                    <path d="M20.435,34.604l11.607,-9.606l-11.607,-9.602l0,19.208Z" style="fill-rule:nonzero;" />
+                    <path d="M25.252,5.502l0.25,0.004l0.25,0.008l0.25,0.011l0.248,0.015l0.248,0.017l0.247,0.02l0.246,0.024l0.245,0.026l0.245,0.03l0.243,0.032l0.243,0.036l0.241,0.038l0.241,0.042l0.239,0.044l0.239,0.047l0.237,0.051l0.237,0.053l0.235,0.056l0.234,0.058l0.234,0.062l0.232,0.064l0.23,0.068l0.23,0.07l0.229,0.072l0.227,0.076l0.226,0.078l0.224,0.081l0.224,0.083l0.222,0.086l0.221,0.089l0.219,0.091l0.218,0.094l0.217,0.096l0.215,0.099l0.214,0.102l0.213,0.104l0.211,0.106l0.209,0.109l0.208,0.112l0.207,0.114l0.205,0.116l0.203,0.119l0.202,0.121l0.2,0.123l0.199,0.126l0.197,0.128l0.195,0.13l0.194,0.133l0.192,0.134l0.19,0.138l0.188,0.139l0.187,0.141l0.185,0.144l0.183,0.146l0.182,0.148l0.179,0.15l0.178,0.152l0.176,0.154l0.174,0.156l0.172,0.159l0.17,0.16l0.169,0.163l0.166,0.164l0.164,0.166l0.163,0.169l0.16,0.17l0.159,0.172l0.156,0.174l0.154,0.176l0.152,0.178l0.15,0.179l0.148,0.182l0.146,0.183l0.144,0.185l0.141,0.187l0.14,0.188l0.137,0.19l0.134,0.192l0.133,0.194l0.13,0.195l0.128,0.197l0.126,0.199l0.123,0.2l0.121,0.202l0.119,0.203l0.116,0.205l0.114,0.207l0.112,0.208l0.109,0.209l0.106,0.211l0.104,0.213l0.102,0.214l0.099,0.215l0.096,0.217l0.094,0.218l0.091,0.219l0.089,0.221l0.086,0.222l0.083,0.224l0.081,0.224l0.078,0.226l0.076,0.227l0.072,0.229l0.07,0.23l0.068,0.23l0.064,0.232l0.062,0.234l0.058,0.234l0.056,0.235l0.053,0.237l0.051,0.237l0.047,0.239l0.044,0.239l0.042,0.241l0.038,0.241l0.036,0.243l0.032,0.243l0.03,0.245l0.026,0.245l0.024,0.246l0.02,0.247l0.017,0.248l0.015,0.248l0.011,0.25l0.008,0.25l0.004,0.25l0.002,0.252l-0.002,0.252l-0.004,0.25l-0.008,0.25l-0.011,0.25l-0.015,0.248l-0.017,0.248l-0.02,0.247l-0.024,0.246l-0.026,0.245l-0.03,0.245l-0.032,0.243l-0.036,0.243l-0.038,0.241l-0.042,0.241l-0.044,0.239l-0.047,0.239l-0.051,0.237l-0.053,0.237l-0.056,0.235l-0.058,0.234l-0.062,0.234l-0.064,0.232l-0.068,0.23l-0.07,0.23l-0.072,0.229l-0.076,0.227l-0.078,0.226l-0.081,0.224l-0.083,0.224l-0.086,0.222l-0.089,0.221l-0.091,0.219l-0.094,0.218l-0.096,0.217l-0.099,0.215l-0.102,0.214l-0.104,0.213l-0.106,0.211l-0.109,0.209l-0.112,0.208l-0.114,0.207l-0.116,0.205l-0.119,0.203l-0.121,0.202l-0.123,0.2l-0.126,0.199l-0.128,0.197l-0.13,0.195l-0.133,0.194l-0.134,0.192l-0.137,0.19l-0.14,0.188l-0.141,0.187l-0.144,0.185l-0.146,0.183l-0.148,0.182l-0.15,0.179l-0.152,0.178l-0.154,0.176l-0.156,0.174l-0.159,0.172l-0.16,0.17l-0.163,0.169l-0.164,0.166l-0.166,0.164l-0.169,0.163l-0.17,0.16l-0.172,0.159l-0.174,0.156l-0.176,0.154l-0.178,0.152l-0.179,0.15l-0.182,0.148l-0.183,0.146l-0.185,0.144l-0.187,0.141l-0.188,0.14l-0.19,0.137l-0.192,0.134l-0.194,0.133l-0.195,0.13l-0.197,0.128l-0.199,0.126l-0.2,0.123l-0.202,0.121l-0.203,0.119l-0.205,0.116l-0.207,0.114l-0.208,0.112l-0.209,0.109l-0.211,0.106l-0.213,0.104l-0.214,0.102l-0.215,0.099l-0.217,0.096l-0.218,0.094l-0.219,0.091l-0.221,0.089l-0.222,0.086l-0.224,0.083l-0.224,0.081l-0.226,0.078l-0.227,0.076l-0.229,0.072l-0.23,0.07l-0.23,0.068l-0.232,0.064l-0.234,0.062l-0.234,0.058l-0.235,0.056l-0.237,0.053l-0.237,0.051l-0.239,0.047l-0.239,0.044l-0.241,0.042l-0.241,0.038l-0.243,0.036l-0.243,0.032l-0.245,0.03l-0.245,0.026l-0.246,0.024l-0.247,0.02l-0.248,0.017l-0.248,0.015l-0.25,0.011l-0.25,0.008l-0.25,0.004l-0.252,0.002l-0.252,-0.002l-0.25,-0.004l-0.25,-0.008l-0.25,-0.011l-0.248,-0.015l-0.248,-0.017l-0.247,-0.02l-0.246,-0.024l-0.245,-0.026l-0.245,-0.03l-0.243,-0.032l-0.243,-0.036l-0.241,-0.038l-0.241,-0.042l-0.239,-0.044l-0.239,-0.047l-0.237,-0.051l-0.237,-0.053l-0.235,-0.056l-0.234,-0.058l-0.234,-0.062l-0.232,-0.064l-0.23,-0.068l-0.23,-0.07l-0.229,-0.072l-0.227,-0.076l-0.226,-0.078l-0.224,-0.081l-0.224,-0.083l-0.222,-0.086l-0.221,-0.089l-0.219,-0.091l-0.218,-0.094l-0.217,-0.096l-0.215,-0.099l-0.214,-0.102l-0.213,-0.104l-0.211,-0.106l-0.209,-0.109l-0.208,-0.112l-0.207,-0.114l-0.205,-0.116l-0.203,-0.119l-0.202,-0.121l-0.2,-0.123l-0.199,-0.126l-0.197,-0.128l-0.195,-0.13l-0.194,-0.133l-0.192,-0.134l-0.19,-0.137l-0.188,-0.14l-0.187,-0.141l-0.185,-0.144l-0.183,-0.146l-0.182,-0.148l-0.179,-0.15l-0.178,-0.152l-0.176,-0.154l-0.174,-0.156l-0.172,-0.159l-0.17,-0.16l-0.169,-0.163l-0.166,-0.164l-0.164,-0.166l-0.163,-0.169l-0.16,-0.17l-0.159,-0.172l-0.156,-0.174l-0.154,-0.176l-0.152,-0.178l-0.15,-0.179l-0.148,-0.182l-0.146,-0.183l-0.144,-0.185l-0.141,-0.187l-0.139,-0.188l-0.138,-0.19l-0.134,-0.192l-0.133,-0.194l-0.13,-0.195l-0.128,-0.197l-0.126,-0.199l-0.123,-0.2l-0.121,-0.202l-0.119,-0.203l-0.116,-0.205l-0.114,-0.207l-0.112,-0.208l-0.109,-0.209l-0.106,-0.211l-0.104,-0.213l-0.102,-0.214l-0.099,-0.215l-0.096,-0.217l-0.094,-0.218l-0.091,-0.219l-0.089,-0.221l-0.086,-0.222l-0.083,-0.224l-0.081,-0.224l-0.078,-0.226l-0.076,-0.227l-0.072,-0.229l-0.07,-0.23l-0.068,-0.23l-0.064,-0.232l-0.062,-0.234l-0.058,-0.234l-0.056,-0.235l-0.053,-0.237l-0.051,-0.237l-0.047,-0.239l-0.044,-0.239l-0.042,-0.241l-0.038,-0.241l-0.036,-0.243l-0.032,-0.243l-0.03,-0.245l-0.026,-0.245l-0.024,-0.246l-0.02,-0.247l-0.017,-0.248l-0.015,-0.248l-0.011,-0.25l-0.008,-0.25l-0.004,-0.25l-0.002,-0.252l0.002,-0.252l0.004,-0.25l0.008,-0.25l0.011,-0.25l0.015,-0.248l0.017,-0.248l0.02,-0.247l0.024,-0.246l0.026,-0.245l0.03,-0.245l0.032,-0.243l0.036,-0.243l0.038,-0.241l0.042,-0.241l0.044,-0.239l0.047,-0.239l0.051,-0.237l0.053,-0.237l0.056,-0.235l0.058,-0.234l0.062,-0.234l0.064,-0.232l0.068,-0.23l0.07,-0.23l0.072,-0.229l0.076,-0.227l0.078,-0.226l0.081,-0.224l0.083,-0.224l0.086,-0.222l0.089,-0.221l0.091,-0.219l0.094,-0.218l0.096,-0.217l0.099,-0.215l0.102,-0.214l0.104,-0.213l0.106,-0.211l0.109,-0.209l0.112,-0.208l0.114,-0.207l0.116,-0.205l0.119,-0.203l0.121,-0.202l0.123,-0.2l0.126,-0.199l0.128,-0.197l0.13,-0.195l0.133,-0.194l0.134,-0.192l0.138,-0.19l0.139,-0.188l0.141,-0.187l0.144,-0.185l0.146,-0.183l0.148,-0.182l0.15,-0.179l0.152,-0.178l0.154,-0.176l0.156,-0.174l0.159,-0.172l0.16,-0.17l0.163,-0.169l0.164,-0.166l0.166,-0.164l0.169,-0.163l0.17,-0.16l0.172,-0.159l0.174,-0.156l0.176,-0.154l0.178,-0.152l0.179,-0.15l0.182,-0.148l0.183,-0.146l0.185,-0.144l0.187,-0.141l0.188,-0.139l0.19,-0.138l0.192,-0.134l0.194,-0.133l0.195,-0.13l0.197,-0.128l0.199,-0.126l0.2,-0.123l0.202,-0.121l0.203,-0.119l0.205,-0.116l0.207,-0.114l0.208,-0.112l0.209,-0.109l0.211,-0.106l0.213,-0.104l0.214,-0.102l0.215,-0.099l0.217,-0.096l0.218,-0.094l0.219,-0.091l0.221,-0.089l0.222,-0.086l0.224,-0.083l0.224,-0.081l0.226,-0.078l0.227,-0.076l0.229,-0.072l0.23,-0.07l0.23,-0.068l0.232,-0.064l0.234,-0.062l0.234,-0.058l0.235,-0.056l0.237,-0.053l0.237,-0.051l0.239,-0.047l0.239,-0.044l0.241,-0.042l0.241,-0.038l0.243,-0.036l0.243,-0.032l0.245,-0.03l0.245,-0.026l0.246,-0.024l0.247,-0.02l0.248,-0.017l0.248,-0.015l0.25,-0.011l0.25,-0.008l0.25,-0.004l0.252,-0.002l0.252,0.002Zm-0.465,2.999l-0.213,0.004l-0.212,0.007l-0.212,0.01l-0.21,0.012l-0.21,0.014l-0.209,0.017l-0.209,0.02l-0.207,0.023l-0.207,0.025l-0.206,0.027l-0.205,0.03l-0.204,0.033l-0.204,0.035l-0.202,0.037l-0.202,0.04l-0.2,0.043l-0.2,0.045l-0.199,0.047l-0.198,0.05l-0.197,0.052l-0.196,0.054l-0.195,0.057l-0.194,0.059l-0.193,0.061l-0.192,0.064l-0.191,0.066l-0.19,0.068l-0.189,0.071l-0.188,0.073l-0.186,0.075l-0.186,0.077l-0.184,0.079l-0.183,0.082l-0.183,0.083l-0.18,0.086l-0.18,0.088l-0.178,0.09l-0.178,0.093l-0.176,0.094l-0.174,0.096l-0.174,0.098l-0.172,0.101l-0.171,0.102l-0.169,0.105l-0.168,0.106l-0.167,0.108l-0.165,0.111l-0.164,0.112l-0.163,0.114l-0.161,0.116l-0.159,0.118l-0.158,0.12l-0.157,0.122l-0.155,0.123l-0.154,0.125l-0.152,0.127l-0.151,0.129l-0.149,0.131l-0.147,0.132l-0.146,0.135l-0.144,0.135l-0.143,0.138l-0.141,0.139l-0.139,0.141l-0.138,0.143l-0.135,0.144l-0.135,0.146l-0.132,0.147l-0.131,0.149l-0.129,0.151l-0.127,0.152l-0.125,0.154l-0.123,0.155l-0.122,0.157l-0.12,0.158l-0.118,0.159l-0.116,0.161l-0.114,0.163l-0.112,0.164l-0.111,0.165l-0.108,0.167l-0.106,0.168l-0.105,0.169l-0.102,0.171l-0.101,0.172l-0.098,0.174l-0.096,0.174l-0.094,0.176l-0.093,0.178l-0.09,0.178l-0.088,0.18l-0.086,0.18l-0.083,0.183l-0.082,0.183l-0.079,0.184l-0.077,0.186l-0.075,0.186l-0.073,0.188l-0.071,0.189l-0.068,0.19l-0.066,0.191l-0.064,0.192l-0.061,0.193l-0.059,0.194l-0.057,0.195l-0.054,0.196l-0.052,0.197l-0.05,0.198l-0.047,0.199l-0.045,0.2l-0.043,0.2l-0.04,0.202l-0.037,0.202l-0.035,0.204l-0.033,0.204l-0.03,0.205l-0.027,0.206l-0.025,0.207l-0.023,0.207l-0.02,0.209l-0.017,0.209l-0.014,0.21l-0.012,0.21l-0.01,0.212l-0.007,0.212l-0.004,0.213l-0.001,0.213l0.001,0.213l0.004,0.213l0.007,0.212l0.01,0.212l0.012,0.21l0.014,0.21l0.017,0.209l0.02,0.209l0.023,0.207l0.025,0.207l0.027,0.206l0.03,0.205l0.033,0.204l0.035,0.204l0.037,0.202l0.04,0.202l0.043,0.2l0.045,0.2l0.047,0.199l0.05,0.198l0.052,0.197l0.054,0.196l0.057,0.195l0.059,0.194l0.061,0.193l0.064,0.192l0.066,0.191l0.068,0.19l0.071,0.189l0.073,0.188l0.075,0.186l0.077,0.186l0.079,0.184l0.082,0.183l0.083,0.183l0.086,0.18l0.088,0.18l0.09,0.178l0.093,0.178l0.094,0.176l0.096,0.174l0.098,0.174l0.101,0.172l0.102,0.171l0.105,0.169l0.106,0.168l0.108,0.167l0.111,0.165l0.112,0.164l0.114,0.163l0.116,0.161l0.118,0.159l0.12,0.158l0.122,0.157l0.123,0.155l0.125,0.154l0.127,0.152l0.129,0.151l0.131,0.149l0.132,0.147l0.135,0.146l0.135,0.144l0.138,0.143l0.139,0.141l0.141,0.139l0.143,0.138l0.144,0.135l0.146,0.135l0.147,0.132l0.149,0.131l0.151,0.129l0.152,0.127l0.154,0.125l0.155,0.123l0.157,0.122l0.158,0.12l0.159,0.118l0.161,0.116l0.163,0.114l0.164,0.112l0.165,0.111l0.167,0.108l0.168,0.106l0.169,0.105l0.171,0.102l0.172,0.101l0.174,0.098l0.174,0.096l0.176,0.094l0.178,0.093l0.178,0.09l0.18,0.088l0.18,0.086l0.183,0.083l0.183,0.082l0.184,0.079l0.186,0.077l0.186,0.075l0.188,0.073l0.189,0.071l0.19,0.068l0.191,0.066l0.192,0.064l0.193,0.061l0.194,0.059l0.195,0.057l0.196,0.054l0.197,0.052l0.198,0.05l0.199,0.047l0.2,0.045l0.2,0.043l0.202,0.04l0.202,0.037l0.204,0.035l0.204,0.033l0.205,0.03l0.206,0.027l0.207,0.025l0.207,0.023l0.209,0.02l0.209,0.017l0.21,0.014l0.21,0.012l0.212,0.01l0.212,0.007l0.213,0.004l0.213,0.001l0.213,-0.001l0.213,-0.004l0.212,-0.007l0.212,-0.01l0.21,-0.012l0.21,-0.014l0.209,-0.017l0.209,-0.02l0.207,-0.023l0.207,-0.025l0.206,-0.027l0.205,-0.03l0.204,-0.033l0.204,-0.035l0.202,-0.037l0.202,-0.04l0.2,-0.043l0.2,-0.045l0.199,-0.047l0.198,-0.05l0.197,-0.052l0.196,-0.054l0.195,-0.057l0.194,-0.059l0.193,-0.061l0.192,-0.064l0.191,-0.066l0.19,-0.068l0.189,-0.071l0.188,-0.073l0.186,-0.075l0.186,-0.077l0.184,-0.079l0.183,-0.082l0.183,-0.083l0.18,-0.086l0.18,-0.088l0.178,-0.09l0.178,-0.093l0.176,-0.094l0.174,-0.096l0.174,-0.098l0.172,-0.101l0.171,-0.102l0.169,-0.105l0.168,-0.106l0.167,-0.108l0.165,-0.111l0.164,-0.112l0.163,-0.114l0.161,-0.116l0.159,-0.118l0.158,-0.12l0.157,-0.122l0.155,-0.123l0.154,-0.125l0.152,-0.127l0.151,-0.129l0.149,-0.131l0.147,-0.132l0.146,-0.135l0.144,-0.135l0.143,-0.138l0.141,-0.139l0.139,-0.141l0.138,-0.143l0.135,-0.144l0.135,-0.146l0.132,-0.147l0.131,-0.149l0.129,-0.151l0.127,-0.152l0.125,-0.154l0.123,-0.155l0.122,-0.157l0.12,-0.158l0.118,-0.159l0.116,-0.161l0.114,-0.163l0.112,-0.164l0.111,-0.165l0.108,-0.167l0.106,-0.168l0.105,-0.169l0.102,-0.171l0.101,-0.172l0.098,-0.174l0.096,-0.174l0.094,-0.176l0.093,-0.178l0.09,-0.178l0.088,-0.18l0.086,-0.18l0.083,-0.183l0.082,-0.183l0.079,-0.184l0.077,-0.186l0.075,-0.186l0.073,-0.188l0.071,-0.189l0.068,-0.19l0.066,-0.191l0.064,-0.192l0.061,-0.193l0.059,-0.194l0.057,-0.195l0.054,-0.196l0.052,-0.197l0.05,-0.198l0.047,-0.199l0.045,-0.2l0.043,-0.2l0.04,-0.202l0.037,-0.202l0.035,-0.204l0.033,-0.204l0.03,-0.205l0.027,-0.206l0.025,-0.207l0.023,-0.207l0.02,-0.209l0.017,-0.209l0.014,-0.21l0.012,-0.21l0.01,-0.212l0.007,-0.212l0.004,-0.213l0.001,-0.213l-0.001,-0.213l-0.004,-0.213l-0.007,-0.212l-0.01,-0.212l-0.012,-0.21l-0.014,-0.21l-0.017,-0.209l-0.02,-0.209l-0.023,-0.207l-0.025,-0.207l-0.027,-0.206l-0.03,-0.205l-0.033,-0.204l-0.035,-0.204l-0.037,-0.202l-0.04,-0.202l-0.043,-0.2l-0.045,-0.2l-0.047,-0.199l-0.05,-0.198l-0.052,-0.197l-0.054,-0.196l-0.057,-0.195l-0.059,-0.194l-0.061,-0.193l-0.064,-0.192l-0.066,-0.191l-0.068,-0.19l-0.071,-0.189l-0.073,-0.188l-0.075,-0.186l-0.077,-0.186l-0.079,-0.184l-0.082,-0.183l-0.083,-0.183l-0.086,-0.18l-0.088,-0.18l-0.09,-0.178l-0.093,-0.178l-0.094,-0.176l-0.096,-0.174l-0.098,-0.174l-0.101,-0.172l-0.102,-0.171l-0.105,-0.169l-0.106,-0.168l-0.108,-0.167l-0.111,-0.165l-0.112,-0.164l-0.114,-0.163l-0.116,-0.161l-0.118,-0.159l-0.12,-0.158l-0.122,-0.157l-0.123,-0.155l-0.125,-0.154l-0.127,-0.152l-0.129,-0.151l-0.131,-0.149l-0.132,-0.147l-0.135,-0.146l-0.135,-0.144l-0.138,-0.143l-0.139,-0.141l-0.141,-0.139l-0.143,-0.138l-0.144,-0.135l-0.146,-0.135l-0.147,-0.132l-0.149,-0.131l-0.151,-0.129l-0.152,-0.127l-0.154,-0.125l-0.155,-0.123l-0.157,-0.122l-0.158,-0.12l-0.159,-0.118l-0.161,-0.116l-0.163,-0.114l-0.164,-0.112l-0.165,-0.111l-0.167,-0.108l-0.168,-0.106l-0.169,-0.105l-0.171,-0.102l-0.172,-0.101l-0.174,-0.098l-0.174,-0.096l-0.176,-0.094l-0.178,-0.093l-0.178,-0.09l-0.18,-0.088l-0.18,-0.086l-0.183,-0.083l-0.183,-0.082l-0.184,-0.079l-0.186,-0.077l-0.186,-0.075l-0.188,-0.073l-0.189,-0.071l-0.19,-0.068l-0.191,-0.066l-0.192,-0.064l-0.193,-0.061l-0.194,-0.059l-0.195,-0.057l-0.196,-0.054l-0.197,-0.052l-0.198,-0.05l-0.199,-0.047l-0.2,-0.045l-0.2,-0.043l-0.202,-0.04l-0.202,-0.037l-0.204,-0.035l-0.204,-0.033l-0.205,-0.03l-0.206,-0.027l-0.207,-0.025l-0.207,-0.023l-0.209,-0.02l-0.209,-0.017l-0.21,-0.014l-0.21,-0.012l-0.212,-0.01l-0.212,-0.007l-0.213,-0.004l-0.213,-0.001l-0.213,0.001Z"
+                    />
+                </svg>
+            </a>
+        
+	</div>
+
+	<div class="largeTextMediaSmallText__rightContainer">
+		<div class="largeTextMediaSmallText__text text" data-text></div>
+	</div>
+</div>
+
+        
+            
+<div id="kalendarz" aria-hidden="true"></div>
+<h2 class="articlesList__heading">POZOSTAŁE SEANSE DKF</h2>
+<section class="calendar-widget  calendar-widget--hide-filter" id="widget_64452">
+
+    
+
+<div class="search-nav ">
+    <label for="search-nav-input" class="search-nav__label">Szukaj wydarzeń:</label>
+    <input id="search-nav-input" class="search-nav__input" type="text" placeholder="Fraza w wydarzeniu">
+    <button class="search-nav__search-button" title="Wciśnij, by wyszukać">
+        <span class="sr-only">Wciśnij, by wyszukać</span>
+        <svg class="search-nav__search-icon" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40" height="40" viewBox="0 0 50 50" xml:space="preserve" fill="white">
+            <rect x="27.113" y="31.199" transform="matrix(0.707 0.7073 -0.7073 0.707 32.8899 -13.6176)" width="11.53" height="3.364"/>
+            <path d="M31.18,31.183l-2.441-2.444c3.07-3.072,3.066-8.063-0.007-11.135c-3.07-3.071-8.057-3.072-11.13,0l-2.439-2.441 c4.414-4.416,11.596-4.415,16.01-0.001C35.588,19.578,35.596,26.766,31.18,31.183z"/>
+            <path d="M15.162,15.163l2.442,2.444c-3.073,3.072-3.069,8.062,0.005,11.135c3.07,3.071,8.059,3.071,11.13-0.001l2.44,2.441 c-4.414,4.415-11.597,4.414-16.01,0C10.753,26.767,10.745,19.579,15.162,15.163z"/>
+        </svg>
+    </button>
+
+    <div class="filters-box-wrapper">
+        <button class="nav__down-link search-nav__filter-button">
+            <span style="display: block" class="search-nav__filter-button-text">
+                filtry
+                <span class="search-nav__filter-button-number-of-filters"></span>
+            </span>
+            <svg class="search-nav__filter-button-svg" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="40" height="40" viewBox="0 0 50 50" xml:space="preserve" fill="white">
+                <polygon points="25.003,27.662 15.002,17.662 12.667,20.002 25.003,32.338 37.333,20.002 34.996,17.662 "/>
+            </svg>
+        </button>
+        
+
+<div class="filters-box ">
+	<div class="filters-box__column filters-box__column--date">
+		<div class="filters-box__title">Data</div>
+
+		<label class="filters-box__date-label">
+			<span class="filters-box__date-label-text">Od</span>
+			<input class="filters-box__input filters-box__input-from datepicker-search-nav" type="text">
+			<svg class="filters-box__date-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve" fill="black">
+				<polygon class="filters-box__date-icon--open" points="25.003,27.662 15.002,17.662 12.667,20.002 25.003,32.338 37.333,20.002 34.996,17.662 "/>
+				<polygon class="filters-box__date-icon--close" points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+			</svg>
+		</label>
+
+		<label class="filters-box__date-label">
+			<span class="filters-box__date-label-text">Do</span>
+			<input class="filters-box__input filters-box__input-to datepicker-search-nav" type="text">
+			<svg class="filters-box__date-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve" fill="black">
+				<polygon class="filters-box__date-icon--open" points="25.003,27.662 15.002,17.662 12.667,20.002 25.003,32.338 37.333,20.002 34.996,17.662 "/>
+				<polygon class="filters-box__date-icon--close" points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+			</svg>
+		</label>
+	</div>
+
+	<div class="filters-box__column filters-box__column--types">
+		<div class="filters-box__title">Kategorie</div>
+		<ul class="filters-box__list">
+            
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="54" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Sala 2 - Audiowizualna</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="55" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Sala 1 - Kinowa</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+			<li class="filters-box__list-item">
+				<label class="filters-box__checkbox-label">
+					<input class="filters-box__checkbox" data-category-id="43" type="checkbox">
+					<span class="filters-box__checkbox-label-text">Kino Pałacowe</span>
+					<svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+						<polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+						<polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+					</svg>
+				</label>
+			</li>
+            
+		</ul>
+	</div>
+
+	<div class="filters-box__column filters-box__column--target">
+		<div class="filters-box__title">Uczestnicy</div>
+		<ul class="filters-box__list filters-box__list--target">
+            
+                <li class="filters-box__list-item">
+                    <label class="filters-box__checkbox-label">
+                        <input class="filters-box__checkbox" data-age-category-id="1" type="checkbox">
+                        <span class="filters-box__checkbox-label-text">dzieci</span>
+                        <svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+                            <polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+                            <polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+                        </svg>
+                    </label>
+                </li>
+            
+                <li class="filters-box__list-item">
+                    <label class="filters-box__checkbox-label">
+                        <input class="filters-box__checkbox" data-age-category-id="2" type="checkbox">
+                        <span class="filters-box__checkbox-label-text">młodzież</span>
+                        <svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+                            <polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+                            <polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+                        </svg>
+                    </label>
+                </li>
+            
+                <li class="filters-box__list-item">
+                    <label class="filters-box__checkbox-label">
+                        <input class="filters-box__checkbox" data-age-category-id="3" type="checkbox">
+                        <span class="filters-box__checkbox-label-text">dorośli</span>
+                        <svg class="filters-box__checkbox-label-icon" version="1.1" baseProfile="tiny" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="25" height="25" viewBox="0 0 50 50" xml:space="preserve">
+                            <polygon points="25.003,22.674 15.002,12.678 12.667,15.016 25.003,27.351 37.334,15.016 34.995,12.678 "/>
+                            <polygon points="24.998,27.323 34.999,37.322 37.335,34.983 24.998,22.647 12.667,34.983 15.005,37.322 "/>
+                        </svg>
+                    </label>
+                </li>
+            
+		</ul>
+	</div>
+
+	<button class="filters-box__button">Filtruj</button>
+</div>
+
+    </div>
+</div>
+
+    <div class="calendar-body"></div>
+	<div class="calendar-loading"><img width="200" src="/static/img/ckzamek_preloader_slow.gif" alt="Ładowanie" title="Ładowanie"></div>
+
+</section>
+
+        
+
+    
+
+
+
+    </main>
+
+	
+
+<footer class="footer">
+	<div class="projects">
+		<a href="https://kinopalacowe.pl"  class="projects__item projects__item--kino">
+			<img tabindex="0" class="projects__img" src="/static/img/logo_kino1.svg" alt="Logo Kino pałacowe">
+		</a>
+		<a href="https://ethnoport.pl" class="projects__item projects__item--ethno">
+			<img tabindex="0" class="projects__img projects__img--ethno" src="/static/img/ethno3.svg" alt="Logo Ethnoport">
+		</a>
+		<a href="https://poznanpoezji.pl" class="projects__item projects__item--poznanPoetow">
+			<img tabindex="0" class="projects__img" src="/static/img/poznanpoetow2.svg" alt="Logo Poznań Poezji">
+		</a>
+		<a href="https://festiwalfabuly.pl" class="projects__item projects__item--festFabuly">
+			<img tabindex="0" class="projects__img" src="/static/img/ffabuly2.svg" alt="Logo Festiwal Fabuły">
+		</a>
+	</div>
+	<div class="footer__content">
+		<div class="footer__horizontalBar">
+			<button class="footer__newsletter-btn">
+				Zapisz się do newslettera kinowego
+			</button>
+
+			<div class="footer__socialIcon-container">
+				<a href="https://www.facebook.com/kinopalacowe/" class="footer__socialIcon footer__socialIcon--facebook" target="_blank" rel="noopener" title="Odwiedź nas na facebooku - otwórz w nowej karcie">
+					<span class="sr-only">Odwiedź nas na facebooku</span>
+				</a>
+				<a href="https://www.instagram.com/kinopalacowe/" class="footer__socialIcon footer__socialIcon--instagram" target="_blank" rel="noopener" title="Odwiedź nas na instagramie - otwórz w nowej karcie">
+					<span class="sr-only">Odwiedź nas na instagramie</span>
+				</a>
+				<a href="https://www.youtube.com/channel/UCYVlPVZXna-F0EMWXl4hLWQ" class="footer__socialIcon footer__socialIcon--youtube" target="_blank" rel="noopener" title="Odwiedź nas na youtube - otwórz w nowej karcie">
+					<span class="sr-only">Odwiedź nas na youtube</span>
+				</a>
+				<a href="" class="footer__socialIcon footer__socialIcon--tiktok" target="_blank" rel="noopener" title="Odwiedź nas na tiktoku - otwórz w nowej karcie">
+					<span class="sr-only">Odwiedź nas na tiktoku</span>
+				</a>
+			</div>
+			<button class="footer__reveal footer__reveal--up footer__reveal--down" id="footer__reveal"></button>
+		</div>
+		<div class="footer__animationContainer">
+			<div class="footer__listContainer">
+				<ul class="footer__list footer__list--links">
+					<li><a href="/podstrony/2-o-nas" aria-label="o nas" title="Przejdź do strony: o nas">o nas</a></li>
+					<li><a href="/podstrony/1-ludzie" aria-label="zespół" title="Przejdź do strony: zespół">zespół</a></li>
+					<li><a href="/podstrony/3-siedziba" aria-label="siedziba" title="Przejdź do strony: siedziba">siedziba</a></li>
+					<li><a href="/podstrony/5-multimedia" aria-label="multimedia" title="Przejdź do strony: multimedia">multimedia</a></li>
+					<li><a href="/podstrony/90-zamowienia" aria-label="zamówienia" title="Przejdź do strony: zamówienia">zamówienia</a></li>
+					<li><a href="/podstrony/20-edukacja" aria-label="edukacja" title="Przejdź do strony: edukacja">edukacja</a></li>
+					<li><a href="/podstrony/42-pracownie" aria-label="pracownie" title="Przejdź do strony: pracownie">pracownie</a></li>
+					<li><a href="https://ps.ckzamek.pl/" aria-label="programy społeczne" title="Przejdź do strony: programy społeczne">programy społeczne</a></li>
+				</ul>
+				<ul class="footer__list footer__list--links">
+					<li><a href="/podstrony/7-sztuki-wizualne" aria-label="sztuki wizualne" title="Przejdź do strony: sztuki wizualne">sztuki wizualne</a></li>
+					<li><a href="/podstrony/6-muzyka" aria-label="muzyka" title="Przejdź do strony: muzyka">muzyka</a></li>
+					<li><a href="/podstrony/8-teatr-taniec" aria-label="teatr / taniec" title="teatr / taniec">teatr / taniec</a></li>
+					<li><a href="/podstrony/9-literatura" aria-label="literatura" title="Przejdź do strony: literatura">literatura</a></li>
+					<li><a href="/podstrony/63-historia" aria-label="historia i zwiedzanie" title="Przejdź do strony: historia i zwiedzanie">historia i zwiedzanie</a></li>
+					<li><a href="/podstrony/11-rezydencje" aria-label="rezydencje artystyczne" title="Przejdź do strony: rezydencje artystyczne">rezydencje artystyczne</a></li>
+					<li><a href="/podstrony/12-przestrzen" aria-label="przestrzeń miasta" title="Przejdź do strony: przestrzeń miasta">przestrzeń miasta</a></li>
+					<li><a href="/podstrony/71-imieniny-ulicy" aria-label="imieniny ulicy" title="Przejdź do strony: imieniny ulicy">imieniny ulicy</a></li>
+				</ul>
+				<ul class="footer__list footer__list--links">
+					<li><a href="https://ckzamek.pl/podstrony/13-festiwale/" aria-label="festiwale" title="Przejdź do strony: festiwale">festiwale</a></li>
+					<li><a href="//kinopalacowe.pl" aria-label="kino pałacowe" title="Przejdź do strony: kino pałacowe">kino pałacowe</a></li>
+					<li><a href="/podstrony/16-kontakt" aria-label="kontakt" title="Przejdź do strony: kontakt">kontakt</a></li>
+					<li><a href="/podstrony/56-pressroom" aria-label="pressroom" title="Przejdź do strony: pressroom">pressroom</a></li>
+					<li><a href="/podstrony/57-pracuj-z-nami" aria-label="pracuj z nami" title="Przejdź do strony: pracuj z nami">pracuj z nami</a></li>
+					<li><a href="/podstrony/49-wynajem" aria-label="wynajem" title="Przejdź do strony: wynajem">wynajem</a></li>
+					<li><a href="/podstrony/289-archiwum/" aria-label="archiwum" title="Przejdź do strony: archiwum">archiwum</a></li>
+				</ul>
+                
+				    
+                
+				<ul class="footer__list footer__list--links">
+					<li><a class="footer__link--widget" href="/podstrony/241-mapa" aria-label="pokaż na mapie" title="Przejdź do strony: pokaż na mapie">pokaż na mapie</a></li>
+					<li><a class="footer__link--widget" href="/podstrony/2-o-nas/#widget_18412" aria-label="regulaminy" title="Przejdź do strony: regulaminy">regulaminy</a></li>
+					<li><a class="footer__link--widget" href="/podstrony/2-o-nas/#widget_52345" aria-label="nota prawna" title="Przejdź do strony: nota prawna">nota prawna</a></li>
+					<li><a class="footer__link--widget" href="/podstrony/2-o-nas/#widget_52345" aria-label="polityka prywatności" title="Przejdź do strony: polityka prywatności">polityka prywatności</a></li>
+					
+						<li><a class="footer__link--widget" href="/deklaracja-dostepnosci" aria-label="deklaracja dostępności" title="Przejdź do strony: deklaracja dostępności">deklaracja dostępności</a></li>
+						<li><a class="footer__link--widget" href="/podstrony/12023-standardy-ochrony-maoletnich/ " aria-label="standardy ochrony małoletnich" title="Przejdź do strony: standardy ochrony małoletnich">standardy ochrony małoletnich</a></li>
+						<li><a class="footer__link--widget" href="/podstrony/12022-procedura-zgoszen-wewnetrznych/" aria-label="zgłoszenia sygnalistów" title="Przejdź do strony: zgłoszenia sygnalistów">zgłoszenia sygnalistów</a></li>
+					
+				</ul>
+				<div class="footer__externalLinks">
+					<a class="footer__link--poznan" href="//www.poznan.pl"><span class="sr-only">www.poznan.pl</span></a>
+					<a class="footer__link--bip" href="https://bip.poznan.pl/bip/centrum-kultury-zamek,1674/"><span class="sr-only">https://bip.poznan.pl/bip/centrum-kultury-zamek,1674/</span></a>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="footer__bottomBar">
+		<button class="footer__goToTop" title="Przejdź na górę strony">
+			<span class="sr-only">Przejdź na górę strony</span>
+		</button>
+		<div class="footer__madeByContainer">
+			<span class="footer__madeBy"><span class="footer__madeBy--title">zaprojektowane przez</span>
+				<a href="//spacemonkeys.pl/" title="Otwórz stronę studia graficznego 'space monkeys'">
+					space monkeys
+				</a>
+			</span>
+			<span class="footer__madeBy"><span class="footer__madeBy--title">wdrożone przez</span>
+				<a href="//panowie-programisci.pl/" title="Otwórz stronę studia developerskiego 'panowie programiści'">panowie programiści</a>
+			</span>
+		</div>
+	</div>
+
+</footer>
+<div class="footer__logoContainer" id="logoContainer">
+	<a href="//spacemonkeys.pl/" class="footer__logo footer__logo--monkeys"><img src="/static/img/monkeys.png" alt="Logo Space Monkeys"></a>
+	<a href="//panowie-programisci.pl/" class="footer__logo"><img src="/static/img/pp.svg" alt="Logo Panowie Programiści"></a>
+</div>
+
+	
+<div class="cookies-wrapper">
+  <div class="cookies-inner">
+    <button class="close-btn">
+      <img
+        width="22"
+        height="22"
+        src="/static/img/delete.svg"
+        alt=""
+        title="close cookies"
+      />
+    </button>
+    <h3 class="title">Ta strona korzysta z plików cookie</h3>
+    <p class="description">
+      Aby pozostawić tylko niezbędne cookie lub dostosować zgody na cookie analityczne lub marketingowe (które nie są niezbędne), dokonaj wyboru poniżej i kliknij "Zezwól na wybrane" Sprawdź
+      <a href="#" class="link"> Politykę prywatności </a>aby uzyskać więcej informacji.
+    </p>
+    <ul class="list">
+      <li class="cookie-wrapper">
+        <div class="cookie-item">
+          <button class="cookie-toggle" id="required-cookie-btn">
+            <img
+              class="chevron-icon"
+              width="16"
+              height="16"
+              src="/static/img/chevron-down.svg"
+              alt=""
+              title="toggle cookie content"
+            />
+            Niezbędne cookies
+          </button>
+          <label class="switch">
+            <input type="checkbox" checked disabled />
+            <span class="slider required"></span>
+          </label>
+        </div>
+        <div class="cookie-content" id="required-cookie-content">
+          Niezbędne pliki cookie przyczyniają się do użyteczności strony poprzez umożliwianie podstawowych funkcji takich jak nawigacja na stronie i dostęp do bezpiecznych obszarów strony internetowej. Strona internetowa nie może funkcjonować poprawnie bez tych ciasteczek.
+        </div>
+      </li>
+      <li class="cookie-wrapper">
+        <div class="cookie-item">
+          <button class="cookie-toggle" id="analytics-cookie-btn">
+            <img
+              class="chevron-icon"
+              width="16"
+              height="16"
+              src="/static/img/chevron-down.svg"
+              alt=""
+              title="toggle cookie content"
+            />
+            Analityczne cookies
+          </button>
+          <label class="switch">
+            <input type="checkbox" id="analytics-cookie-input" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="cookie-content" id="analytics-cookie-content">
+          Analityczne pliki cookie są stosowane w celu gromadzenia informacji o zachowaniu użytkowników na stronie internetowej. Informacje są przekazywane w formie anonimowej. Docelowo pomagają właścicielom strony internetowej dostosować stronę do potrzeb użytkowników.<br /><br />
+          <bold>GA</bold> – dostawca Google, rejestruje unikalny identyfikator, który jest wykorzystywany do generowania danych statystycznych na temat sposobu korzystania z witryny przed odwiedzającego, okres ważności 2 lata <br /><br />
+          <bold>Gtag</bold>
+          - służy do odróżniania unikalnych użytkowników, unikalnych sesji poszczególnych użytkowników oraz zbierania informacji o tym, w jaki sposób użytkują oni stronę.
+          <br /><br />
+          <bold>Hotjar</bold>
+          - wykorzystuje pliki cookie do zbierania danych o zachowaniu użytkowników na stronie, np. ile czasu na spędzają na poszczególnych podstronach, w które linki klikają, w jaki sposób nawigują kursorem po stronie itp.), a także urządzeń z których korzystają (np. typ czy rozmiar urządzenia).
+        </div>
+      </li>
+      <li class="cookie-wrapper">
+        <div class="cookie-item">
+          <button class="cookie-toggle" id="marketing-cookie-btn">
+            <img
+              class="chevron-icon"
+              width="16"
+              height="16"
+              src="/static/img/chevron-down.svg"
+              alt=""
+              title="toggle cookie content"
+            />
+            Marketingowe cookies
+          </button>
+          <label class="switch">
+            <input type="checkbox" id="marketing-cookie-input" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="cookie-content" id="marketing-cookie-content">
+          Marketingowe pliki cookie są stosowane w celu śledzenia użytkowników, oferowania użytkownikom reklam, które będą interesujące dla danego użytkownika, na podstawie zebranych wcześniej informacji na temat preferencji użytkowników. Pliki te pozwalają reklamodawcy na skuteczniejsze dotarcie do odbiorców.
+        </div>
+      </li>
+    </ul>
+
+    <div class="consent-wrapper">
+      <button class="consent consent--white" id="selected-cookies">
+        Zezwól na wybrane
+      </button>
+      <button class="consent consent--green" id="allow-all-cookies">
+        Zezwól na wszystkie
+      </button>
+    </div>
+  </div>
+</div>
+
+
+    
+
+  
+
+    <!-- Facebook Pixel Code -->
+    <script>
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window,document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('consent', 'revoke');
+        fbq('init', '308017743454266');
+        fbq('init', '590438661479564');
+        fbq('track', 'PageView');
+    </script>
+
+  
+
+    <script>
+        window.addEventListener('MarketingCookieConsentUpdated', function () {
+            fbq('consent', 'grant')
+        }, false)
+    </script>
+    <!-- End Facebook Pixel Code -->
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.19.0/TweenMax.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.19.0/jquery.gsap.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.19.0/plugins/ScrollToPlugin.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/ScrollMagic/2.0.5/ScrollMagic.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/ScrollMagic/2.0.5/plugins/animation.gsap.min.js"></script>
+	<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.2.0/owl.carousel.min.js"></script>-->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.3/jquery.easing.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/jquery.magnific-popup.min.js"></script>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/ScrollMagic/2.0.5/plugins/debug.addIndicators.min.js"></script>
+
+	
+	<script src="/static/js/ckzamek.js?v=00/00/26/09/2019"></script>
+    
+</body>
+</html>

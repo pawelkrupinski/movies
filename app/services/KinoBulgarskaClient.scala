@@ -3,29 +3,15 @@ package clients
 import models.{CinemaMovie, KinoBulgarska, Movie, Showtime}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import tools.{HttpFetch, RealHttpFetch}
 
-import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-object KinoBulgarskaClient {
+class KinoBulgarskaClient(http: HttpFetch = new RealHttpFetch()) {
 
   private val PageUrl = "http://kinobulgarska19.pl/repertuar"
-
-  private val httpClient = HttpClient.newBuilder()
-    .version(HttpClient.Version.HTTP_1_1)
-    .followRedirects(HttpClient.Redirect.NORMAL)
-    .build()
-
-  private def buildRequest(url: String): HttpRequest =
-    HttpRequest.newBuilder()
-      .uri(URI.create(url))
-      .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-      .header("Accept", "text/html")
-      .GET()
-      .build()
 
   private val PolishMonths = Map(
     "stycznia" -> 1, "lutego" -> 2, "marca" -> 3, "kwietnia" -> 4,
@@ -68,12 +54,7 @@ object KinoBulgarskaClient {
       }
     }.getOrElse((None, None, None))
 
-  def fetch(): Seq[CinemaMovie] = {
-    val response = httpClient.send(buildRequest(PageUrl), HttpResponse.BodyHandlers.ofString())
-    if (response.statusCode() != 200)
-      throw new RuntimeException(s"kinobulgarska19.pl returned ${response.statusCode()}")
-    parseHtml(response.body())
-  }
+  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val doc            = Jsoup.parse(html)
@@ -131,4 +112,8 @@ object KinoBulgarskaClient {
       }
     }
   }
+}
+
+object KinoBulgarskaClient {
+  def fetch(): Seq[CinemaMovie] = new KinoBulgarskaClient().fetch()
 }

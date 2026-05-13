@@ -2,35 +2,22 @@ package clients
 
 import models.{CinemaMovie, KinoPalacowe, Movie, Showtime}
 import play.api.libs.json._
+import tools.{HttpFetch, RealHttpFetch}
 
-import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.LocalDateTime
 import java.util.concurrent.Executors
 import scala.util.Try
 
-object KinoPalacoweClient {
+class KinoPalacoweClient(http: HttpFetch = new RealHttpFetch()) {
 
-  private val BaseUrl  = "https://kinopalacowe.pl"
-  private val ApiBase  = s"$BaseUrl/public/api/calendar/?widgetHash=widget_17943"
-
-  private val httpClient = HttpClient.newBuilder()
-    .version(HttpClient.Version.HTTP_1_1)
-    .followRedirects(HttpClient.Redirect.NORMAL)
-    .build()
+  private val BaseUrl = "https://kinopalacowe.pl"
+  private val ApiBase = s"$BaseUrl/public/api/calendar/?widgetHash=widget_17943"
 
   private val RuntimePat = "(\\d+)'".r
 
   private def fetchFilmRuntime(filmUrl: String): Option[Int] =
     Try {
-      val req = HttpRequest.newBuilder()
-        .uri(URI.create(filmUrl))
-        .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-        .header("Accept", "text/html")
-        .GET()
-        .build()
-      val body = httpClient.send(req, HttpResponse.BodyHandlers.ofString()).body()
-      RuntimePat.findAllMatchIn(body)
+      RuntimePat.findAllMatchIn(http.get(filmUrl))
         .flatMap(m => Try(m.group(1).toInt).toOption)
         .filter(n => n >= 30 && n <= 300)
         .toSeq.headOption
@@ -68,8 +55,6 @@ object KinoPalacoweClient {
       }
   }
 
-  // ── Pagination ─────────────────────────────────────────────────────────────
-
   private def fetchAllEntries(): Seq[ScreeningEntry] = {
     var entries = Seq.empty[ScreeningEntry]
     var page    = 1
@@ -83,24 +68,8 @@ object KinoPalacoweClient {
     entries
   }
 
-  private def fetchPage(page: Int): (Seq[ScreeningEntry], Boolean) = {
-    val request = HttpRequest.newBuilder()
-      .uri(URI.create(s"$ApiBase&page=$page"))
-      .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-      .header("Accept", "application/json, text/plain, */*")
-      .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
-      .header("Referer", s"$BaseUrl/podstrony/371-repertuar/")
-      .GET()
-      .build()
-
-    val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-    if (response.statusCode() != 200)
-      throw new RuntimeException(s"kinopalacowe.pl returned ${response.statusCode()}")
-
-    parseJson(response.body())
-  }
-
-  // ── JSON parsing ───────────────────────────────────────────────────────────
+  private def fetchPage(page: Int): (Seq[ScreeningEntry], Boolean) =
+    parseJson(http.get(s"$ApiBase&page=$page"))
 
   private case class ScreeningEntry(
     movieTitle:     String,
@@ -164,4 +133,8 @@ object KinoPalacoweClient {
       }
     }
   }
+}
+
+object KinoPalacoweClient {
+  def fetch(): Seq[CinemaMovie] = new KinoPalacoweClient().fetch()
 }

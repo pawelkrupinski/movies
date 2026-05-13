@@ -2,32 +2,17 @@ package clients
 
 import models.{CinemaMovie, Movie, Rialto, Showtime}
 import org.jsoup.Jsoup
+import tools.{HttpFetch, RealHttpFetch}
 
-import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-object RialtoClient {
+class RialtoClient(http: HttpFetch = new RealHttpFetch()) {
 
   private val RepertoireUrl = "https://www.kinorialto.poznan.pl/repertuar/"
   private val BaseUrl       = "https://www.kinorialto.poznan.pl"
 
-  private val httpClient = HttpClient.newBuilder()
-    .version(HttpClient.Version.HTTP_1_1)
-    .followRedirects(HttpClient.Redirect.NORMAL)
-    .build()
-
-  private def buildRequest(url: String): HttpRequest =
-    HttpRequest.newBuilder()
-      .uri(URI.create(url))
-      .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-      .header("Accept", "text/html")
-      .GET()
-      .build()
-
-  // "DKF Absolwent: FILM TITLE" → "FILM TITLE"  (prefix identified by containing lowercase letters)
   private def stripCyclePrefix(title: String): String = {
     val colonIdx = title.indexOf(": ")
     if (colonIdx > 0 && colonIdx < 30) {
@@ -37,9 +22,8 @@ object RialtoClient {
   }
 
   private val DateTimePat = """- (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) -""".r
-
-  private val RuntimePat = """(\d+)\s*min""".r
-  private val YearPat    = """\b((?:19|20)\d{2})\b""".r
+  private val RuntimePat  = """(\d+)\s*min""".r
+  private val YearPat     = """\b((?:19|20)\d{2})\b""".r
 
   private case class FilmEntry(
     title:          String,
@@ -52,17 +36,13 @@ object RialtoClient {
   )
 
   def fetch(): Seq[CinemaMovie] = {
-    val response = httpClient.send(buildRequest(RepertoireUrl), HttpResponse.BodyHandlers.ofString())
-    if (response.statusCode() != 200)
-      throw new RuntimeException(s"kinorialto.poznan.pl returned ${response.statusCode()}")
-
-    val filmEntries = parseRepertoire(response.body())
+    val filmEntries = parseRepertoire(http.get(RepertoireUrl))
 
     val pendingPages = filmEntries.map { entry =>
-      entry -> httpClient.sendAsync(buildRequest(entry.eventUrl), HttpResponse.BodyHandlers.ofString())
+      entry -> http.getAsync(entry.eventUrl)
     }
     val showtimesByUrl: Map[String, Seq[Showtime]] = pendingPages.flatMap { case (entry, future) =>
-      Try(parseEventPage(future.join().body())).toOption.map(entry.eventUrl -> _)
+      Try(parseEventPage(future.join())).toOption.map(entry.eventUrl -> _)
     }.toMap
 
     filmEntries
@@ -88,11 +68,9 @@ object RialtoClient {
   }
 
   private def parseRepertoire(html: String): Seq[FilmEntry] =
-    // Split by the hr separator, then parse each block with jsoup
     html.split("""<hr class="table-seperator"/>""").toSeq.flatMap { blockHtml =>
       val block = Jsoup.parseBodyFragment(blockHtml)
 
-      // Only film blocks have a link with title starting with "Film:"
       Option(block.selectFirst("""a[title^="Film:"]""")).map { link =>
         val rawEventUrl = link.attr("href")
         val eventUrl    = if (rawEventUrl.startsWith("http")) rawEventUrl else BaseUrl + rawEventUrl
@@ -132,4 +110,8 @@ object RialtoClient {
       }
     }.toSeq.distinctBy(_.dateTime)
   }
+}
+
+object RialtoClient {
+  def fetch(): Seq[CinemaMovie] = new RialtoClient().fetch()
 }

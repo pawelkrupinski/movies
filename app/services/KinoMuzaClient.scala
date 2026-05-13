@@ -2,29 +2,15 @@ package clients
 
 import models.{CinemaMovie, KinoMuza, Movie, Showtime}
 import org.jsoup.Jsoup
+import tools.{HttpFetch, RealHttpFetch}
 
-import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-object KinoMuzaClient {
+class KinoMuzaClient(http: HttpFetch = new RealHttpFetch()) {
 
   private val RepertoireUrl = "https://www.kinomuza.pl/repertuar/"
-
-  private val httpClient = HttpClient.newBuilder()
-    .version(HttpClient.Version.HTTP_1_1)
-    .followRedirects(HttpClient.Redirect.NORMAL)
-    .build()
-
-  private def buildRequest(url: String): HttpRequest =
-    HttpRequest.newBuilder()
-      .uri(URI.create(url))
-      .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-      .header("Accept", "text/html")
-      .GET()
-      .build()
 
   private def parseDate(ddMM: String): Option[LocalDate] =
     Try {
@@ -34,14 +20,9 @@ object KinoMuzaClient {
       if (candidate.isBefore(today.minusDays(1))) candidate.plusYears(1) else candidate
     }.toOption
 
-  def fetch(): Seq[CinemaMovie] = {
-    val response = httpClient.send(buildRequest(RepertoireUrl), HttpResponse.BodyHandlers.ofString())
-    if (response.statusCode() != 200)
-      throw new RuntimeException(s"kinomuza.pl returned ${response.statusCode()}")
-    parseHtml(response.body())
-  }
+  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl))
 
-  private val RuntimePat = """(\d+)'""".r
+  private val RuntimePat = """(\d+)’""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
@@ -95,4 +76,8 @@ object KinoMuzaClient {
       }
     }.toSeq.filter(_.showtimes.nonEmpty)
   }
+}
+
+object KinoMuzaClient {
+  def fetch(): Seq[CinemaMovie] = new KinoMuzaClient().fetch()
 }

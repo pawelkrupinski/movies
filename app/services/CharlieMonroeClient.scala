@@ -3,37 +3,17 @@ package clients
 import models.{CharlieMonroe, CinemaMovie, Movie, Showtime}
 import org.jsoup.Jsoup
 import play.api.libs.json._
+import tools.{HttpFetch, RealHttpFetch}
 
-import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.{LocalDateTime, ZonedDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-object CharlieMonroeClient {
+class CharlieMonroeClient(http: HttpFetch = new RealHttpFetch()) {
 
   private val PageUrl = "https://kinomalta.pl/seanse"
 
-  private val httpClient = HttpClient.newBuilder()
-    .version(HttpClient.Version.HTTP_1_1)
-    .followRedirects(HttpClient.Redirect.NORMAL)
-    .build()
-
-  def fetch(): Seq[CinemaMovie] = {
-    val request = HttpRequest.newBuilder()
-      .uri(URI.create(PageUrl))
-      .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-      .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-      .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
-      .GET()
-      .build()
-
-    val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-    if (response.statusCode() != 200)
-      throw new RuntimeException(s"kinomalta.pl returned ${response.statusCode()}")
-
-    parseHtml(response.body())
-  }
+  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(html)
@@ -43,7 +23,6 @@ object CharlieMonroeClient {
       .flatMap(parseScreeningEvent)
       .toSeq
 
-    // Build (lowercaseTitle, "DD.MM.YYYY", "HH:MM") → hall name from HTML articles
     val roomMap = collection.mutable.Map[(String, String, String), String]()
     val detailsByTitle = doc.select("article.movie-card").asScala.flatMap { article =>
       Option(article.selectFirst("h2.title")).map(_.text().trim).map { title =>
@@ -126,4 +105,8 @@ object CharlieMonroeClient {
         }
       }
     }.toOption.flatten
+}
+
+object CharlieMonroeClient {
+  def fetch(): Seq[CinemaMovie] = new CharlieMonroeClient().fetch()
 }

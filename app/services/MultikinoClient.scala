@@ -3,6 +3,7 @@ package clients
 import models.{CinemaMovie, Movie, Multikino, Showtime}
 import play.api.Logging
 import play.api.libs.json._
+import tools.{HttpFetch, RealHttpFetch}
 
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.net.{CookieManager, CookiePolicy, URI}
@@ -10,83 +11,11 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 
-// ── Multikino client ───────────────────────────────────────────────────────
+class MultikinoClient(http: HttpFetch = MultikinoClient.DefaultFetch) {
 
-object MultikinoClient extends Logging {
+  import MultikinoClient.ApiUrl
 
-  private val HomeUrl        = "https://www.multikino.pl/"
-  private val ApiUrl         = "https://www.multikino.pl/api/microservice/showings/cinemas/0011/films?minEmbargoLevel=2&includesSession=true&includeSessionAttributes=true"
-  private val ScrapingAntUrl = "https://api.scrapingant.com/v2/general"
-
-  private val scrapingAntKey: Option[String] = Option(System.getenv("SCRAPINGANT_KEY")).filter(_.nonEmpty)
-
-  private val cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL)
-
-  private val httpClient = HttpClient.newBuilder()
-    .version(HttpClient.Version.HTTP_1_1)
-    .followRedirects(HttpClient.Redirect.NORMAL)
-    .cookieHandler(cookieManager)
-    .build()
-
-  private def scrapingAntRequest(key: String): HttpRequest = {
-    val encoded = URLEncoder.encode(ApiUrl, StandardCharsets.UTF_8)
-    HttpRequest.newBuilder()
-      .uri(URI.create(s"$ScrapingAntUrl?url=$encoded&browser=true&proxy_country=pl&return_page_source=true"))
-      .header("x-api-key", key)
-      .header("Accept", "application/json, text/plain, */*")
-      .GET()
-      .build()
-  }
-
-  private def apiRequest(): HttpRequest =
-    HttpRequest.newBuilder()
-      .uri(URI.create(ApiUrl))
-      .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-      .header("Accept", "application/json, text/plain, */*")
-      .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
-      .header("Referer", "https://www.multikino.pl/repertuar/poznan-stary-browar/teraz-gramy")
-      .GET()
-      .build()
-
-  private def refreshSession(): Unit =
-    httpClient.send(
-      HttpRequest.newBuilder()
-        .uri(URI.create(HomeUrl))
-        .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-        .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
-        .GET()
-        .build(),
-      HttpResponse.BodyHandlers.discarding()
-    )
-
-  def fetch(): Seq[CinemaMovie] = {
-    val body = scrapingAntKey match {
-      case Some(key) =>
-        val response = httpClient.send(scrapingAntRequest(key), HttpResponse.BodyHandlers.ofString())
-        val status   = response.statusCode()
-        if (status != 200)
-          throw new RuntimeException(s"ScrapingAnt returned $status: ${response.body().take(500)}")
-        response.body()
-      case None =>
-        val response = httpClient.send(apiRequest(), HttpResponse.BodyHandlers.ofString())
-        response.statusCode() match {
-          case 200 => response.body()
-          case 401 | 403 =>
-            refreshSession()
-            val retryResponse = httpClient.send(apiRequest(), HttpResponse.BodyHandlers.ofString())
-            if (retryResponse.statusCode() != 200)
-              throw new RuntimeException(s"API returned ${retryResponse.statusCode()} after session refresh")
-            retryResponse.body()
-          case code =>
-            throw new RuntimeException(s"API returned $code")
-        }
-    }
-
-    parseJson(body)
-  }
-
-  // ── JSON parsing ───────────────────────────────────────────────────────────
+  def fetch(): Seq[CinemaMovie] = parseJson(http.get(ApiUrl))
 
   private def parseJson(json: String): Seq[CinemaMovie] = {
     val films = (Json.parse(json) \ "result").as[JsArray].value
@@ -132,4 +61,74 @@ object MultikinoClient extends Logging {
       )
     }.toSeq
   }
+}
+
+object MultikinoClient extends Logging {
+
+  val ApiUrl = "https://www.multikino.pl/api/microservice/showings/cinemas/0011/films?minEmbargoLevel=2&includesSession=true&includeSessionAttributes=true"
+
+  private val HomeUrl        = "https://www.multikino.pl/"
+  private val ScrapingAntUrl = "https://api.scrapingant.com/v2/general"
+
+  object DefaultFetch extends HttpFetch {
+    private val scrapingAntKey: Option[String] = Option(System.getenv("SCRAPINGANT_KEY")).filter(_.nonEmpty)
+
+    private val cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL)
+
+    private val httpClient = HttpClient.newBuilder()
+      .version(HttpClient.Version.HTTP_1_1)
+      .followRedirects(HttpClient.Redirect.NORMAL)
+      .cookieHandler(cookieManager)
+      .build()
+
+    override def get(url: String): String = scrapingAntKey match {
+      case Some(key) =>
+        val encoded  = URLEncoder.encode(url, StandardCharsets.UTF_8)
+        val request  = HttpRequest.newBuilder()
+          .uri(URI.create(s"$ScrapingAntUrl?url=$encoded&browser=true&proxy_country=pl&return_page_source=true"))
+          .header("x-api-key", key)
+          .header("Accept", "application/json, text/plain, */*")
+          .GET()
+          .build()
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+        val status   = response.statusCode()
+        if (status != 200)
+          throw new RuntimeException(s"ScrapingAnt returned $status: ${response.body().take(500)}")
+        response.body()
+
+      case None =>
+        def apiRequest() = HttpRequest.newBuilder()
+          .uri(URI.create(url))
+          .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+          .header("Accept", "application/json, text/plain, */*")
+          .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
+          .header("Referer", "https://www.multikino.pl/repertuar/poznan-stary-browar/teraz-gramy")
+          .GET()
+          .build()
+
+        val response = httpClient.send(apiRequest(), HttpResponse.BodyHandlers.ofString())
+        response.statusCode() match {
+          case 200 => response.body()
+          case 401 | 403 =>
+            httpClient.send(
+              HttpRequest.newBuilder()
+                .uri(URI.create(HomeUrl))
+                .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
+                .GET()
+                .build(),
+              HttpResponse.BodyHandlers.discarding()
+            )
+            val retryResponse = httpClient.send(apiRequest(), HttpResponse.BodyHandlers.ofString())
+            if (retryResponse.statusCode() != 200)
+              throw new RuntimeException(s"API returned ${retryResponse.statusCode()} after session refresh")
+            retryResponse.body()
+          case code =>
+            throw new RuntimeException(s"API returned $code")
+        }
+    }
+  }
+
+  def fetch(): Seq[CinemaMovie] = new MultikinoClient().fetch()
 }

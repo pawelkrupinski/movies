@@ -2,7 +2,7 @@ package clients.helios
 
 import clients.HeliosClient
 import clients.tools.FakeHttpFetch
-import models.Showtime
+import models.{Helios, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -143,6 +143,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour").movie.releaseYear shouldBe Some(2026)
     byTitle("Diabeł ubiera się u Prady 2").movie.releaseYear                    shouldBe Some(2026)
     byTitle("Drama").movie.releaseYear                                          shouldBe Some(2026)
+    byTitle("Drzewo magii").movie.releaseYear                                   shouldBe Some(2026)
     byTitle("Dyyavol Nosyt' Prada 2 - UA ").movie.releaseYear                  shouldBe Some(2026)
     byTitle("Kurozając i Świątynia Świstaka").movie.releaseYear                 shouldBe Some(2025)
     byTitle("Michael").movie.releaseYear                                        shouldBe Some(2026)
@@ -177,6 +178,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     byTitle("Super Mario Galaxy Film").movie.premierePl                         shouldBe Some(LocalDate.of(2026, 4, 10))
     byTitle("Za duży na bajki 3").movie.premierePl                              shouldBe Some(LocalDate.of(2026, 3, 6))
     byTitle("Drama").movie.premierePl                                           shouldBe Some(LocalDate.of(2026, 4, 10))
+    byTitle("Drzewo magii").movie.premierePl                                    shouldBe Some(LocalDate.of(2026, 5, 29))
     byTitle("Michael").movie.premierePl                                         shouldBe Some(LocalDate.of(2026, 4, 22))
   }
 
@@ -184,6 +186,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour").director shouldBe Some("James Cameron, Billie Eilish")
     byTitle("Diabeł ubiera się u Prady 2").director                    shouldBe Some("David Frankel")
     byTitle("Drama").director                                          shouldBe Some("Kristoffer Borgli")
+    byTitle("Drzewo magii").director                                   shouldBe Some("Ben Gregor")
     byTitle("Dyyavol Nosyt' Prada 2 - UA ").director                  shouldBe Some("Девід Франкель")
     byTitle("Kurozając i Świątynia Świstaka").director                 shouldBe Some("Benjamin Mousquet")
     byTitle("Michael").director                                        shouldBe Some("Antoine Fuqua")
@@ -198,6 +201,13 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     byTitle("Sprawiedliwość owiec").director                           shouldBe Some("Kyle Balda")
     byTitle("Super Mario Galaxy Film").director                        shouldBe Some("Aaron Horvath, Michael Jelenic")
     byTitle("Za duży na bajki 3").director                             shouldBe Some("Kristoffer Rus")
+  }
+
+  it should "return REST-enriched synopsis and cast for a covered movie" in {
+    // Mortal Kombat II is fully REST-enriched. Lock in that synopsis and cast both flow through.
+    val mk = byTitle("Mortal Kombat II")
+    mk.cast     shouldBe Some("Hiroyuki Sanada, Karl Urban, Tadanobu Asano")
+    mk.synopsis.map(_.take(80)) shouldBe Some("Oczekiwanie prawie dobiega końca! Mortal Kombat II w kinach od 8 maja. New Line ")
   }
 
   // ── Poster URLs ───────────────────────────────────────────────────────────
@@ -260,17 +270,16 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       Some("https://img.helios.pl/pliki/film/yu-gi-oh-the-dark-side-of-dimensions/yu-gi-oh-the-dark-side-of-dimensions-plakat-81113.jpg")
     posters("ДИЯВОЛ НОСИТЬ ПРАДА 2")          shouldBe Some("https://img.helios.pl/pliki/film/dyyavol-nosyt-prada-2-ua/dyyavol-nosyt-prada-2-ua-plakat-161.jpg")
     posters("МОРТАЛ КОМБАТ ІІ")               shouldBe Some("https://img.helios.pl/pliki/film/mortal-kombat-ii-ua/mortal-kombat-ii-ua-plakat-996.jpg")
-    // poster deduplication: shared URL goes to alphabetically first holder
-    posters("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS") shouldBe None
-    posters("Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS")       shouldBe None
+    // Event variants legitimately share the parent film's poster
+    posters("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS") shouldBe
+      Some("https://img.helios.pl/pliki/film/billie-eilish-hit-me-hard-and-soft-the-tour/billie-eilish-hit-me-hard-and-soft-the-tour-plakat-28207.png")
+    posters("Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS") shouldBe
+      Some("https://img.helios.pl/pliki/film/billie-eilish-hit-me-hard-and-soft-the-tour/billie-eilish-hit-me-hard-and-soft-the-tour-plakat-28207.png")
     posters("Drugie życie - Kino Kobiet")     shouldBe Some("https://img.helios.pl/pliki/film/drugie-zycie/drugie-zycie-plakat-293.jpg")
-    posters("Mandalorian & Grogu - seanse z konkursami HDD") shouldBe None
-    posters("The Amazing Digital Circus: The Last Act - napisy - Event projekt") shouldBe None
-  }
-
-  it should "not assign duplicate poster URLs across any two movies" in {
-    val urls = results.flatMap(_.posterUrl)
-    urls.distinct.size shouldBe urls.size
+    posters("Mandalorian & Grogu - seanse z konkursami HDD") shouldBe
+      Some("https://img.helios.pl/pliki/film/mandalorian-grogu/mandalorian-grogu-plakat-224.jpg")
+    posters("The Amazing Digital Circus: The Last Act - napisy - Event projekt") shouldBe
+      Some("https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg")
   }
 
   // ── Film URLs ─────────────────────────────────────────────────────────────
@@ -280,7 +289,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     urls("Billie Eilish - Hit Me Hard and Soft: The Tour")              shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/billie-eilish-hit-me-hard-and-soft-the-tour-4346")
     urls("Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS") shouldBe Some("https://helios.pl/poznan/kino-helios/wydarzenie/billie-eilish-hit-me-hard-and-soft-the-tour-live-in-3d-w-hns-2550")
     urls("Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS")   shouldBe Some("https://helios.pl/poznan/kino-helios/wydarzenie/billie-eilish-hit-me-hard-and-soft-the-tour-live-w-hns-2548")
-    urls("Diabeł ubiera się u Prady 2")                                 shouldBe Some("https://helios.pl/poznan/kino-helios/wydarzenie/diabel-ubiera-sie-u-prady-2-knt-2584")
+    urls("Diabeł ubiera się u Prady 2")                                 shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/diabel-ubiera-sie-u-prady-2-4401")
     urls("Drama")                                                       shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/drama-4408")
     urls("Michael")                                                     shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/michael-4308")
     urls("Mortal Kombat II")                                            shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/mortal-kombat-2-4118")
@@ -291,7 +300,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     urls("Projekt Hail Mary")                                           shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/projekt-hail-mary-4316")
     urls("Pucio")                                                       shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/pucio-2026-4292")
     urls("Sprawiedliwość owiec")                                        shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/sprawiedliwosc-owiec-4466")
-    urls("Super Mario Galaxy Film")                                     shouldBe Some("https://helios.pl/poznan/kino-helios/wydarzenie/super-mario-galaxy-film-kntj-2509")
+    urls("Super Mario Galaxy Film")                                     shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/super-mario-galaxy-film-4310")
     urls("Za duży na bajki 3")                                          shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/za-duzy-na-bajki-3-4291")
     // no REST film URL for UA screenings
     urls("Dyyavol Nosyt' Prada 2 - UA ")                               shouldBe None
@@ -522,6 +531,40 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       Some("https://bilety.helios.pl/screen/512ebbda-4422-4219-aceb-4002b5588a84?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2")
   }
 
+  // ── NUXT-only movie properties ────────────────────────────────────────────
+
+  it should "return correct data for NUXT-only movies (not in REST API)" in {
+    // Mandalorian & Grogu is a regular NUXT-only film (no REST screening entry)
+    val mando = byTitle("Mandalorian & Grogu")
+    mando.posterUrl shouldBe Some("https://img.helios.pl/pliki/film/mandalorian-grogu/mandalorian-grogu-plakat-224.jpg")
+    mando.filmUrl   shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347")
+    mando.synopsis  shouldBe None
+    mando.cast      shouldBe None
+    mando.director  shouldBe None
+    mando.movie.releaseYear shouldBe None
+
+    // Iron Maiden is a NUXT-only event
+    val ironMaiden = byTitle("Iron Maiden: Burning Ambition")
+    ironMaiden.posterUrl shouldBe Some("https://img.helios.pl/pliki/film/iron-maiden-burning-ambition/iron-maiden-burning-ambition-plakat-67489.jpg")
+    ironMaiden.filmUrl   shouldBe Some("https://helios.pl/poznan/kino-helios/wydarzenie/iron-maiden-burning-ambition-w-helios-na-scenie-2503")
+    ironMaiden.synopsis  shouldBe None
+    ironMaiden.cast      shouldBe None
+    ironMaiden.director  shouldBe None
+  }
+
+  // ── REST vs NUXT showtime enrichment ──────────────────────────────────────
+
+  it should "enrich only the REST-covered showtimes with room and format for a mixed movie" in {
+    // Mortal Kombat II: 38 screenings from REST (have room+format), 10 extra from NUXT (no room/format)
+    val mk = byTitle("Mortal Kombat II")
+    mk.showtimes.count(_.room.isDefined) shouldBe 38
+    mk.showtimes.count(_.room.isEmpty)   shouldBe 10
+    // NUXT-only extras also have no format
+    mk.showtimes.filter(_.room.isEmpty).foreach { st =>
+      st.format shouldBe None
+    }
+  }
+
   // ── O psie — the single-screening regression ──────────────────────────────
 
   it should "assign exactly one showtime to O psie który jeździł koleją" in {
@@ -531,5 +574,64 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     oPsie.showtimes.head.room     shouldBe Some("Sala 2")
     oPsie.showtimes.head.format   shouldBe Some("2D/DUB")
     oPsie.posterUrl               shouldBe Some("https://movies.helios.pl/images/opsieplakat.jpg")
+  }
+
+  // ── removeLessSpecificOverlaps regression ─────────────────────────────────
+
+  it should "drop the generic title when a more-specific variant shares a screening time" in {
+    // "Tom i Jerry: Przygoda w muzeum - seanse z konkursami HDD" lists the same
+    // physical screenings as the plain "Tom i Jerry: Przygoda w muzeum" NUXT entry.
+    // The generic entry must be removed to avoid showing each screening twice.
+    results.map(_.movie.title) should not contain "Tom i Jerry: Przygoda w muzeum"
+    results.map(_.movie.title) should contain ("Tom i Jerry: Przygoda w muzeum - seanse z konkursami HDD")
+  }
+
+  it should "keep both the generic and a more-specific variant when their screenings do not overlap" in {
+    // "Drzewo magii" plays at its own times; the "HDD" variant has its own slots. Both must remain.
+    byTitle("Drzewo magii").showtimes.size                          shouldBe 6
+    byTitle("Drzewo magii - seanse z konkursami HDD").showtimes.size shouldBe 4
+  }
+
+  // ── REST/NUXT split for Latin-vs-Cyrillic UA titles ───────────────────────
+
+  it should "keep Latin and Cyrillic UA titles as separate entries with separate metadata" in {
+    // Latin "Dyyavol Nosyt' Prada 2 - UA " comes from REST only; the Cyrillic title is in NUXT.
+    // They share underlying screening UUIDs but appear in their own sources under distinct titles.
+    val latin    = byTitle("Dyyavol Nosyt' Prada 2 - UA ")
+    val cyrillic = byTitle("ДИЯВОЛ НОСИТЬ ПРАДА 2")
+    latin.director    shouldBe Some("Девід Франкель")
+    cyrillic.director shouldBe None
+    latin.posterUrl    shouldBe Some("https://movies.helios.pl/images/Diabelubierasieuprady2UA.jpg")
+    cyrillic.posterUrl shouldBe Some("https://img.helios.pl/pliki/film/dyyavol-nosyt-prada-2-ua/dyyavol-nosyt-prada-2-ua-plakat-161.jpg")
+  }
+
+  // ── Output shape invariants ───────────────────────────────────────────────
+
+  it should "label every returned movie with cinema = Helios" in {
+    results.map(_.cinema).toSet shouldBe Set(Helios)
+  }
+
+  it should "return showtimes sorted by dateTime and unique by booking URL within each movie" in {
+    results.foreach { cm =>
+      cm.showtimes.map(_.dateTime) shouldBe cm.showtimes.map(_.dateTime).sorted
+      val bookings = cm.showtimes.flatMap(_.bookingUrl)
+      withClue(s"duplicate bookingUrl in '${cm.movie.title}': ") {
+        bookings.distinct.size shouldBe bookings.size
+      }
+    }
+  }
+
+  it should "return results sorted alphabetically by title" in {
+    results.map(_.movie.title) shouldBe results.map(_.movie.title).sorted
+  }
+
+  // ── REST timestamp time-zone conversion ───────────────────────────────────
+
+  it should "convert REST screening timestamps to Europe/Warsaw local time" in {
+    // The REST screening fixture records the first Mortal Kombat II screening as
+    // "2026-05-13T13:30:00+02:00". After conversion to Europe/Warsaw (+02:00 DST),
+    // that is 13:30 local — not 11:30 UTC and not 15:30 CET shifted twice.
+    val first = byTitle("Mortal Kombat II").showtimes.head
+    first.dateTime shouldBe LocalDateTime.of(2026, 5, 13, 13, 30)
   }
 }
