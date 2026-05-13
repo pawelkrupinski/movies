@@ -62,9 +62,16 @@ class CinemaCityClient(http: HttpFetch = new RealHttpFetch()) {
           val room        = (event \ "auditoriumTinyName").asOpt[String].filter(_.nonEmpty)
                             .map(r => """^S0*(\d+)$""".r.replaceFirstIn(r, "Sala $1"))
           val attrs       = (event \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty).toSet
+          // attrs comes in as a kitchen-sink list (genre, 2d/3d, dubbed/subbed/original-lang-*, IMAX,
+          // seating type, age rating…). Pick out the screen-feature tokens we want to display.
           val format      = List(
-            if (attrs.contains("imax")) Some("IMAX") else None,
-            if (attrs.contains("3d")) Some("3D") else if (attrs.contains("2d")) Some("2D") else None
+            if (attrs.contains("imax"))  Some("IMAX") else None,
+            if (attrs.contains("3d"))    Some("3D")
+            else if (attrs.contains("2d")) Some("2D")
+            else None,
+            if (attrs.contains("dubbed")) Some("DUB")
+            else if (attrs.contains("subbed")) Some("NAP")
+            else None
           ).flatten
           Try(LocalDateTime.parse(dateTimeStr)).foreach { dateTime =>
             allEvents += ((filmId, dateTime, bookingUrl, room, format))

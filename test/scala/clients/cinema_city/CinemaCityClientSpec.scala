@@ -270,16 +270,29 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     val st = byKinepolis("La Traviata Verdiego z Arena di Verona").showtimes
     st.size shouldBe 2
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 13, 18, 0), Some("https://tickets.cinema-city.pl/api/order/1411051?lang=pl"), Some("Sala3"), List("2D")),
-      Showtime(LocalDateTime.of(2026, 6,  7, 15, 0), Some("https://tickets.cinema-city.pl/api/order/1411056?lang=pl"), Some("Sala4"), List("2D")),
+      Showtime(LocalDateTime.of(2026, 5, 13, 18, 0), Some("https://tickets.cinema-city.pl/api/order/1411051?lang=pl"), Some("Sala3"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 6,  7, 15, 0), Some("https://tickets.cinema-city.pl/api/order/1411056?lang=pl"), Some("Sala4"), List("2D", "NAP")),
     )
   }
 
-  it should "extract 2D / 3D format on Kinepolis showtimes" in {
-    val all2D = kinepolis.flatMap(_.showtimes).count(_.format.contains("2D"))
-    val all3D = kinepolis.flatMap(_.showtimes).count(_.format.contains("3D"))
-    all2D shouldBe 738
-    all3D shouldBe 40
+  it should "extract 2D / 3D / DUB / NAP format tokens on Kinepolis showtimes" in {
+    val showtimes = kinepolis.flatMap(_.showtimes)
+    showtimes.count(_.format.contains("2D"))  shouldBe 738
+    showtimes.count(_.format.contains("3D"))  shouldBe 40
+    showtimes.count(_.format.contains("DUB")) shouldBe 166
+    showtimes.count(_.format.contains("NAP")) shouldBe 582
+  }
+
+  it should "tag Mandalorian i Grogu dubbed and subbed screenings on Kinepolis with DUB / NAP" in {
+    // Direct mapping of the cinema-city.pl "FILM Z DUBBINGIEM / FILM Z NAPISAMI" labels:
+    // the Mandalorian event has dubbed-lang-pl variants (DUB) and first-subbed-lang-pl variants (NAP).
+    val mando = byKinepolis("Gwiezdne Wojny: Mandalorian i Grogu").showtimes
+    mando.exists(_.format == List("2D", "DUB")) shouldBe true
+    mando.exists(_.format == List("2D", "NAP")) shouldBe true
+    mando.exists(_.format == List("3D", "DUB")) shouldBe true
+    mando.exists(_.format == List("3D", "NAP")) shouldBe true
+    // Every screening carries one of DUB/NAP — Mandalorian is never shown without a language track tag.
+    mando.forall(s => s.format.contains("DUB") || s.format.contains("NAP")) shouldBe true
   }
 
   // ─── Plaza: totals ────────────────────────────────────────────────────────
@@ -516,15 +529,19 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     val st = byPlaza("Lars jest LOL").showtimes
     st.size shouldBe 1
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 13, 10, 0), Some("https://tickets.cinema-city.pl/api/order/1437816?lang=pl"), Some("Sala 2"), List("2D")),
+      Showtime(LocalDateTime.of(2026, 5, 13, 10, 0), Some("https://tickets.cinema-city.pl/api/order/1437816?lang=pl"), Some("Sala 2"), List("2D", "DUB")),
     )
   }
 
-  it should "extract 2D / 3D / IMAX format on Plaza showtimes" in {
+  it should "extract 2D / 3D / IMAX / DUB / NAP format combinations on Plaza showtimes" in {
     val formats = plaza.flatMap(_.showtimes).groupBy(_.format).view.mapValues(_.size).toMap
-    formats(List("2D"))           shouldBe 484
-    formats(List("3D"))           shouldBe 27
-    formats(List("IMAX", "2D"))   shouldBe 49
-    formats(List("IMAX", "3D"))   shouldBe 17
+    formats(List("2D", "NAP"))         shouldBe 304
+    formats(List("2D", "DUB"))         shouldBe 170
+    formats(List("IMAX", "2D", "NAP")) shouldBe 49
+    formats(List("3D", "NAP"))         shouldBe 24
+    formats(List("IMAX", "3D", "NAP")) shouldBe 11
+    formats(List("2D"))                shouldBe 10  // original-lang-pl: no DUB/NAP tag
+    formats(List("IMAX", "3D", "DUB")) shouldBe 6
+    formats(List("3D", "DUB"))         shouldBe 3
   }
 }

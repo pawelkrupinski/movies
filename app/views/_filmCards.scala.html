@@ -1,48 +1,9 @@
-@import controllers.{FilmSchedule, DateFormatter}
+@import controllers.FilmSchedule
 @(films: Seq[FilmSchedule])
 @for(film <- films) {
 <div class="col" data-title="@film.movie.title">
   @_movieCard(film.movie, film.posterUrl) {
-    @defining(
-      film.showings.flatMap(_._2)
-        .groupBy(_.cinema)
-        .map { case (c, css) =>
-          val fmts = css.flatMap(_.showtimes).map(_.format.toSet).filter(_.nonEmpty)
-          c -> (if (fmts.isEmpty) Set.empty[String] else fmts.reduce(_ intersect _))
-        }
-    ) { commonToksByCinema =>
-    @for((date, cinemaShowtimesList) <- film.showings) {
-      <div class="date-group" data-date="@date">
-        <div class="date-label">@DateFormatter.format(date)</div>
-        @for(cinemaShowtimes <- cinemaShowtimesList) {
-          @defining(commonToksByCinema.getOrElse(cinemaShowtimes.cinema, Set.empty[String])) { commonToks =>
-          <div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName">
-            <div class="cinema-label">
-              @film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {
-                case Some((_, url)) => { <a href="@url" target="_blank" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a> }
-                case None           => { @cinemaShowtimes.cinema.displayName }
-              }
-            </div>
-            <div>
-              @for(slot <- cinemaShowtimes.showtimes) {
-                @defining(slot.room.map(r => Html(s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""")).getOrElse(Html(""))) { roomAttr =>
-                @defining(slot.format.filterNot(commonToks.contains).mkString("/")) { stripped =>
-                @defining(if (stripped.isEmpty) Html("") else Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(stripped)}</span>""")) { fmtBadge =>
-                  @slot.bookingUrl match {
-                    case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</a> }
-                    case None      => { <span class="badge-time"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</span> }
-                  }
-                }
-                }
-                }
-              }
-            </div>
-          </div>
-          }
-        }
-      </div>
-    }
-    }
+    @_filmShowings(film)
   }
 </div>
 }

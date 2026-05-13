@@ -16,12 +16,12 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
 
   // ── Totals ────────────────────────────────────────────────────────────────
 
-  "HeliosClient.fetch" should "return exactly 50 movies from the full fixture" in {
-    results.size shouldBe 50
+  "HeliosClient.fetch" should "return exactly 48 movies from the full fixture" in {
+    results.size shouldBe 48
   }
 
-  it should "return 417 showtimes in total" in {
-    results.flatMap(_.showtimes).size shouldBe 417
+  it should "return 421 showtimes in total" in {
+    results.flatMap(_.showtimes).size shouldBe 421
   }
 
   // ── Complete title set ────────────────────────────────────────────────────
@@ -36,7 +36,6 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       "Drama",
       "Drugie życie - Kino Kobiet",
       "Drzewo magii",
-      "Drzewo magii - seanse z konkursami HDD",
       "Dyyavol Nosyt' Prada 2 - UA ",
       "Hopnięci",
       "Iron Maiden: Burning Ambition",
@@ -44,7 +43,6 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       "Kurozając i Świątynia Świstaka",
       "Liga Mistrzów UEFA - Finał",
       "Mandalorian & Grogu",
-      "Mandalorian & Grogu - seanse z konkursami HDD",
       "Michael",
       "Mortal Kombat II",
       "Mortal Kombat II - UA",
@@ -52,7 +50,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       "NT Live: Playboy zachodniego świata",
       "NT Live: Wszyscy moi synowie",
       "Nawet myszy idą do nieba",
-      "Niesamowite przygody skarpetek 3. Ale kosmos! - seanse z konkursami HDD",
+      "Niesamowite przygody skarpetek 3. Ale kosmos!",
       "O dziewczynie skaczącej przez czas",
       "O psie, który jeździł koleją ",
       "Obsesja",
@@ -68,7 +66,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       "Super Mario Galaxy Film",
       "The Amazing Digital Circus: The Last Act - dubbing - Event projekt",
       "The Amazing Digital Circus: The Last Act - napisy - Event projekt",
-      "Tom i Jerry: Przygoda w muzeum - seanse z konkursami HDD",
+      "Tom i Jerry: Przygoda w muzeum",
       "Top Gun 40. Rocznica",
       "Top Gun: Maverick",
       "Wartość sentymentalna",
@@ -93,7 +91,6 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     runtimes("Drama")                                                       shouldBe Some(106)
     runtimes("Drugie życie - Kino Kobiet")                                  shouldBe Some(116)
     runtimes("Drzewo magii")                                                shouldBe Some(110)
-    runtimes("Drzewo magii - seanse z konkursami HDD")                      shouldBe Some(110)
     runtimes("Dyyavol Nosyt' Prada 2 - UA ")                               shouldBe Some(125)
     runtimes("Hopnięci")                                                    shouldBe Some(106)
     runtimes("Iron Maiden: Burning Ambition")                               shouldBe Some(106)
@@ -101,7 +98,6 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     runtimes("Kurozając i Świątynia Świstaka")                              shouldBe Some(88)
     runtimes("Liga Mistrzów UEFA - Finał")                                  shouldBe Some(180)
     runtimes("Mandalorian & Grogu")                                         shouldBe Some(132)
-    runtimes("Mandalorian & Grogu - seanse z konkursami HDD")               shouldBe Some(132)
     runtimes("Michael")                                                     shouldBe Some(128)
     runtimes("Mortal Kombat II")                                            shouldBe Some(116)
     runtimes("Mortal Kombat II - UA")                                       shouldBe Some(116)
@@ -109,7 +105,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     runtimes("NT Live: Playboy zachodniego świata")                         shouldBe Some(150)
     runtimes("NT Live: Wszyscy moi synowie")                                shouldBe Some(151)
     runtimes("Nawet myszy idą do nieba")                                    shouldBe Some(87)
-    runtimes("Niesamowite przygody skarpetek 3. Ale kosmos! - seanse z konkursami HDD") shouldBe Some(55)
+    runtimes("Niesamowite przygody skarpetek 3. Ale kosmos!") shouldBe Some(55)
     runtimes("O dziewczynie skaczącej przez czas")                          shouldBe Some(98)
     runtimes("O psie, który jeździł koleją ")                               shouldBe Some(99)
     runtimes("Obsesja")                                                     shouldBe Some(109)
@@ -125,7 +121,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     runtimes("Super Mario Galaxy Film")                                     shouldBe Some(100)
     runtimes("The Amazing Digital Circus: The Last Act - dubbing - Event projekt") shouldBe Some(93)
     runtimes("The Amazing Digital Circus: The Last Act - napisy - Event projekt")  shouldBe Some(93)
-    runtimes("Tom i Jerry: Przygoda w muzeum - seanse z konkursami HDD")    shouldBe Some(140)
+    runtimes("Tom i Jerry: Przygoda w muzeum")                              shouldBe Some(140)
     runtimes("Top Gun 40. Rocznica")                                        shouldBe Some(110)
     runtimes("Top Gun: Maverick")                                           shouldBe Some(130)
     runtimes("Wartość sentymentalna")                                       shouldBe Some(135)
@@ -235,8 +231,6 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     // NUXT-sourced posters (img.helios.pl)
     posters("Cirque du Soleil: Kooza")        shouldBe Some("https://img.helios.pl/pliki/film/cirque-du-soleil-kooza/cirque-du-soleil-kooza-plakat-57003.jpg")
     posters("Drzewo magii")                   shouldBe Some("https://movies.helios.pl/images/DRZEWOMAGIIPLAKAT.jpg")
-    posters("Drzewo magii - seanse z konkursami HDD") shouldBe
-      Some("https://img.helios.pl/pliki/film/drzewo-magii/drzewo-magii-plakat-968.jpg")
     posters("Hopnięci")                       shouldBe Some("https://img.helios.pl/pliki/film/hopnieci/hopnieci-plakat-424.jpg")
     posters("Iron Maiden: Burning Ambition")  shouldBe Some("https://img.helios.pl/pliki/film/iron-maiden-burning-ambition/iron-maiden-burning-ambition-plakat-67489.jpg")
     posters("Kosmiczny mecz. 30. Rocznica")   shouldBe Some("https://img.helios.pl/pliki/film/kosmiczny-mecz-30-rocznica/kosmiczny-mecz-30-rocznica-plakat-58235.jpg")
@@ -246,7 +240,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       Some("https://img.helios.pl/pliki/film/nt-live-playboy-zachodniego-swiata/nt-live-playboy-zachodniego-swiata-plakat-21911.jpg")
     posters("NT Live: Wszyscy moi synowie")   shouldBe
       Some("https://img.helios.pl/pliki/film/nt-live-wszyscy-moi-synowie/nt-live-wszyscy-moi-synowie-plakat-77160.jpg")
-    posters("Niesamowite przygody skarpetek 3. Ale kosmos! - seanse z konkursami HDD") shouldBe
+    posters("Niesamowite przygody skarpetek 3. Ale kosmos!") shouldBe
       Some("https://img.helios.pl/pliki/film/niesamowite-przygody-skarpetek-3/niesamowite-przygody-skarpetek-3-plakat-34127.png")
     posters("O dziewczynie skaczącej przez czas") shouldBe
       Some("https://img.helios.pl/pliki/film/o-dziewczynie-skaczacej-przez-czas/o-dziewczynie-skaczacej-przez-czas-plakat-7957.jpg")
@@ -259,7 +253,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     posters("Straszny film ")                 shouldBe Some("https://img.helios.pl/pliki/film/straszny-film-6/straszny-film-6-plakat-66159.jpg")
     posters("The Amazing Digital Circus: The Last Act - dubbing - Event projekt") shouldBe
       Some("https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg")
-    posters("Tom i Jerry: Przygoda w muzeum - seanse z konkursami HDD") shouldBe
+    posters("Tom i Jerry: Przygoda w muzeum") shouldBe
       Some("https://img.helios.pl/pliki/film/tom-i-jerry-przygoda-w-muzeum/tom-i-jerry-przygoda-w-muzeum-plakat-650.jpg")
     posters("Top Gun 40. Rocznica")           shouldBe Some("https://img.helios.pl/pliki/film/top-gun-40-rocznica/top-gun-40-rocznica-plakat-48731.jpg")
     posters("Top Gun: Maverick")              shouldBe Some("https://img.helios.pl/pliki/film/top-gun-maverick/top-gun-maverick-plakat.jpg")
@@ -276,8 +270,6 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     posters("Billie Eilish - Hit Me Hard and Soft: The Tour Live") shouldBe
       Some("https://img.helios.pl/pliki/film/billie-eilish-hit-me-hard-and-soft-the-tour/billie-eilish-hit-me-hard-and-soft-the-tour-plakat-28207.png")
     posters("Drugie życie - Kino Kobiet")     shouldBe Some("https://img.helios.pl/pliki/film/drugie-zycie/drugie-zycie-plakat-293.jpg")
-    posters("Mandalorian & Grogu - seanse z konkursami HDD") shouldBe
-      Some("https://img.helios.pl/pliki/film/mandalorian-grogu/mandalorian-grogu-plakat-224.jpg")
     posters("The Amazing Digital Circus: The Last Act - napisy - Event projekt") shouldBe
       Some("https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg")
   }
@@ -318,16 +310,14 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     counts("Diabeł ubiera się u Prady 2")                                 shouldBe 56
     counts("Drama")                                                       shouldBe 2
     counts("Drugie życie - Kino Kobiet")                                  shouldBe 1
-    counts("Drzewo magii")                                                shouldBe 6
-    counts("Drzewo magii - seanse z konkursami HDD")                      shouldBe 4
+    counts("Drzewo magii")                                                shouldBe 10
     counts("Dyyavol Nosyt' Prada 2 - UA ")                               shouldBe 1
     counts("Hopnięci")                                                    shouldBe 1
     counts("Iron Maiden: Burning Ambition")                               shouldBe 10
     counts("Kosmiczny mecz. 30. Rocznica")                                shouldBe 2
     counts("Kurozając i Świątynia Świstaka")                              shouldBe 23
     counts("Liga Mistrzów UEFA - Finał")                                  shouldBe 1
-    counts("Mandalorian & Grogu")                                         shouldBe 22
-    counts("Mandalorian & Grogu - seanse z konkursami HDD")               shouldBe 3
+    counts("Mandalorian & Grogu")                                         shouldBe 25
     counts("Michael")                                                     shouldBe 25
     counts("Mortal Kombat II")                                            shouldBe 48
     counts("Mortal Kombat II - UA")                                       shouldBe 1
@@ -335,7 +325,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     counts("NT Live: Playboy zachodniego świata")                         shouldBe 1
     counts("NT Live: Wszyscy moi synowie")                                shouldBe 1
     counts("Nawet myszy idą do nieba")                                    shouldBe 1
-    counts("Niesamowite przygody skarpetek 3. Ale kosmos! - seanse z konkursami HDD") shouldBe 7
+    counts("Niesamowite przygody skarpetek 3. Ale kosmos!") shouldBe 7
     counts("O dziewczynie skaczącej przez czas")                          shouldBe 1
     counts("O psie, który jeździł koleją ")                               shouldBe 1
     counts("Obsesja")                                                     shouldBe 28
@@ -351,7 +341,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     counts("Super Mario Galaxy Film")                                     shouldBe 27
     counts("The Amazing Digital Circus: The Last Act - dubbing - Event projekt") shouldBe 4
     counts("The Amazing Digital Circus: The Last Act - napisy - Event projekt")  shouldBe 4
-    counts("Tom i Jerry: Przygoda w muzeum - seanse z konkursami HDD")    shouldBe 5
+    counts("Tom i Jerry: Przygoda w muzeum")                              shouldBe 9
     counts("Top Gun 40. Rocznica")                                        shouldBe 7
     counts("Top Gun: Maverick")                                           shouldBe 4
     counts("Wartość sentymentalna")                                       shouldBe 1
@@ -519,9 +509,12 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       LocalDateTime.of(2026, 5, 13, 15, 10),
       LocalDateTime.of(2026, 5, 14, 15, 40)
     )
-    // NUXT-only events have no room or format
-    in3d.showtimes.forall(st => st.room.isEmpty && st.format.isEmpty) shouldBe true
-    wHnS.showtimes.forall(st => st.room.isEmpty && st.format.isEmpty) shouldBe true
+    // NUXT events have no room (Helios doesn't expose hall info in NUXT) but format
+    // is extracted from each entry's printRelease.
+    in3d.showtimes.forall(_.room.isEmpty)   shouldBe true
+    wHnS.showtimes.forall(_.room.isEmpty)   shouldBe true
+    in3d.showtimes.forall(_.format.nonEmpty) shouldBe true
+    wHnS.showtimes.forall(_.format.nonEmpty) shouldBe true
   }
 
   it should "return booking URLs for NUXT events" in {
@@ -554,15 +547,13 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
 
   // ── REST vs NUXT showtime enrichment ──────────────────────────────────────
 
-  it should "enrich only the REST-covered showtimes with room and format for a mixed movie" in {
-    // Mortal Kombat II: 38 screenings from REST (have room+format), 10 extra from NUXT (no room/format)
+  it should "enrich only the REST-covered showtimes with room (but format comes from both sources)" in {
+    // Mortal Kombat II: 38 REST screenings (room+format from REST), 10 NUXT-only screenings
+    // (no room — Helios doesn't expose hall info in NUXT — but format is parsed from NUXT printRelease).
     val mk = byTitle("Mortal Kombat II")
-    mk.showtimes.count(_.room.isDefined) shouldBe 38
-    mk.showtimes.count(_.room.isEmpty)   shouldBe 10
-    // NUXT-only extras also have no format
-    mk.showtimes.filter(_.room.isEmpty).foreach { st =>
-      st.format shouldBe Nil
-    }
+    mk.showtimes.count(_.room.isDefined)   shouldBe 38
+    mk.showtimes.count(_.room.isEmpty)     shouldBe 10
+    mk.showtimes.count(_.format.nonEmpty)  shouldBe 48
   }
 
   // ── O psie — the single-screening regression ──────────────────────────────
@@ -576,20 +567,34 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     oPsie.posterUrl               shouldBe Some("https://movies.helios.pl/images/opsieplakat.jpg")
   }
 
-  // ── removeLessSpecificOverlaps regression ─────────────────────────────────
+  // ── NUXT-sourced format regression ────────────────────────────────────────
 
-  it should "drop the generic title when a more-specific variant shares a screening time" in {
-    // "Tom i Jerry: Przygoda w muzeum - seanse z konkursami HDD" lists the same
-    // physical screenings as the plain "Tom i Jerry: Przygoda w muzeum" NUXT entry.
-    // The generic entry must be removed to avoid showing each screening twice.
-    results.map(_.movie.title) should not contain "Tom i Jerry: Przygoda w muzeum"
-    results.map(_.movie.title) should contain ("Tom i Jerry: Przygoda w muzeum - seanse z konkursami HDD")
+  it should "extract format from the NUXT printRelease field for NUXT-only films" in {
+    // Mandalorian & Grogu has no REST entry; every showtime is NUXT-sourced.
+    // Each NUXT screening carries `moviePrint:{...,printRelease:"3D/DUB",...}` which
+    // must surface on the Showtime so the listing/film pages can show 2D vs 3D.
+    val mando = byTitle("Mandalorian & Grogu")
+    val withFormat = mando.showtimes.filter(_.format.nonEmpty)
+    withFormat                              should not be empty
+    withFormat.size                         shouldBe mando.showtimes.size  // every screening has a printRelease
+    mando.showtimes.map(_.format).toSet     should contain allOf (List("3D", "DUB"), List("2D", "DUB"))
   }
 
-  it should "keep both the generic and a more-specific variant when their screenings do not overlap" in {
-    // "Drzewo magii" plays at its own times; the "HDD" variant has its own slots. Both must remain.
-    byTitle("Drzewo magii").showtimes.size                          shouldBe 6
-    byTitle("Drzewo magii - seanse z konkursami HDD").showtimes.size shouldBe 4
+  // ── removeLessSpecificOverlaps regression ─────────────────────────────────
+
+  it should "strip the ' - seanse z konkursami HDD' suffix and merge with the plain title" in {
+    val titles = results.map(_.movie.title).toSet
+    // Suffix must never appear in any title.
+    titles.foreach(t => t should not include " - seanse z konkursami HDD")
+    // Drzewo magii has two underlying NUXT entries (plain + HDD) with disjoint times — merged.
+    titles                                                             should contain ("Drzewo magii")
+    byTitle("Drzewo magii").showtimes.size                             shouldBe 10
+    // Mandalorian & Grogu likewise has plain + HDD entries that combine.
+    byTitle("Mandalorian & Grogu").showtimes.size                      shouldBe 25
+    // Skarpetek had only a "- HDD" NUXT entry; after stripping it surfaces under the plain title.
+    titles                                                             should contain ("Niesamowite przygody skarpetek 3. Ale kosmos!")
+    // Tom i Jerry had a plain entry and an HDD entry sharing screenings — distinct'd to 9 slots.
+    byTitle("Tom i Jerry: Przygoda w muzeum").showtimes.size           shouldBe 9
   }
 
   // ── REST/NUXT split for Latin-vs-Cyrillic UA titles ───────────────────────

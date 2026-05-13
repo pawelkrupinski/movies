@@ -121,7 +121,7 @@
       <div class="showtimes">
         @defining(cm.showtimes.map(_.format.toSet).filter(_.nonEmpty)) { allFmts =>
         @defining(if (allFmts.isEmpty) Set.empty[String] else allFmts.reduce(_ intersect _)) { commonToks =>
-        @defining(cm.showtimes.map(_.format.filterNot(commonToks.contains).mkString("/")).filter(_.nonEmpty).distinct.size > 1) { multiFormat =>
+        @defining(cm.showtimes.map(_.format.filterNot(commonToks.contains).mkString(" ")).filter(_.nonEmpty).distinct.size > 1) { multiFormat =>
           @for(st <- cm.showtimes) {
             <span class="st">
               <span class="st-date">@{st.dateTime.toLocalDate}</span>
@@ -131,7 +131,7 @@
               }
               @st.room.map { r => <span class="st-room">@r</span> }
               @if(multiFormat) {
-                @defining(st.format.filterNot(commonToks.contains).mkString("/")) { stripped =>
+                @defining(st.format.filterNot(commonToks.contains).mkString(" ")) { stripped =>
                   @if(stripped.nonEmpty) { <span class="st-fmt">@stripped</span> }
                 }
               }

@@ -1,5 +1,57 @@
 @(allCinemas: Seq[String])
 <script>
+  // ── Format-filter dropdown ────────────────────────────────────────────────
+
+  // Three axes live inside one panel: Wymiar (radio, 2D/3D), Wersja (radio,
+  // NAP/DUB), IMAX (checkbox). Each visible badge must carry every selected
+  // token on its data-format attribute. Empty selection on an axis = no
+  // constraint for that axis.
+  function getFormatFilter() {
+    const dim  = (document.querySelector('input[name="format-dim"]:checked')  || {}).value || '';
+    const lang = (document.querySelector('input[name="format-lang"]:checked') || {}).value || '';
+    const imax = document.getElementById('format-imax').checked ? 'IMAX' : '';
+    return [dim, lang, imax].filter(Boolean);
+  }
+
+  function badgeFormatTokens(badge) {
+    return new Set((badge.dataset.format || '').split(' ').filter(Boolean));
+  }
+
+  function badgeMatchesFormat(badge, requiredTokens) {
+    if (requiredTokens.length === 0) return true;
+    const have = badgeFormatTokens(badge);
+    return requiredTokens.every(t => have.has(t));
+  }
+
+  function updateFormatBtn() {
+    const tokens = getFormatFilter();
+    const btn = document.getElementById('format-filter-btn');
+    btn.textContent = tokens.length === 0 ? 'Filtry' : 'Filtry (' + tokens.join(' ') + ')';
+  }
+
+  function onFormatChange() {
+    updateFormatBtn();
+    applyFilters();
+  }
+
+  function toggleFormatPanel(event) {
+    event.stopPropagation();
+    const panel = document.getElementById('format-panel');
+    const opening = panel.style.display === 'none';
+    panel.style.display = opening ? 'block' : 'none';
+    if (opening) clampPanel(panel);
+    document.getElementById('hidden-panel').style.display = 'none';
+    document.getElementById('cinema-panel').style.display = 'none';
+  }
+
+  function resetFormatFilter() {
+    document.querySelector('input[name="format-dim"][value=""]').checked  = true;
+    document.querySelector('input[name="format-lang"][value=""]').checked = true;
+    document.getElementById('format-imax').checked = false;
+    document.getElementById('format-panel').style.display = 'none';
+    onFormatChange();
+  }
+
   // ── Hidden-films cookie ───────────────────────────────────────────────────
 
   function getHidden() {
@@ -208,6 +260,7 @@
   document.addEventListener('click', () => {
     document.getElementById('hidden-panel').style.display = 'none';
     document.getElementById('cinema-panel').style.display = 'none';
+    document.getElementById('format-panel').style.display = 'none';
   });
 
   // ── Counter ───────────────────────────────────────────────────────────────
@@ -286,6 +339,7 @@
     squareDateNavBtns();
     updateNavbar();
     updateCinemaBtn();
+    updateFormatBtn();
     applyFilters();
   });
 </script>

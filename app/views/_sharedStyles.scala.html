@@ -1,5 +1,10 @@
 @()
 <style>
+  /* touch-action: manipulation suppresses iOS Safari's double-tap-to-zoom on
+     every tap target on the page (rapid presses on time badges, date arrows,
+     the Filtry reset, etc. register as separate clicks) while leaving
+     pinch-zoom intact. */
+  html { touch-action: manipulation; }
   body { background: #111; color: #eee; overflow-x: hidden; }
   .navbar { background: #1a1a2e; flex-wrap: wrap; }
   .card {
@@ -148,6 +153,13 @@
   }
   .panel-label:hover { background: #3a3a6e; }
   .panel-divider { border-top: 1px solid #3a3a6e; margin: 6px 0; padding-top: 2px; }
+  .panel-section-label {
+    font-size: .65rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 4px 8px 2px;
+  }
   .nav-tab {
     color: #aad4ff;
     text-decoration: none;

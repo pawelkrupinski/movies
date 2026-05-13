@@ -43,10 +43,18 @@ class MultikinoClient(http: HttpFetch = MultikinoClient.DefaultFetch) {
             val bookingUrl = (session \ "bookingUrl").asOpt[String]
                               .map(url => if (url.startsWith("http")) url else s"https://www.multikino.pl$url")
             val room   = (session \ "screenName").asOpt[String].filter(_.nonEmpty)
-            val format = (session \ "attributes").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
+            val attrs  = (session \ "attributes").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
                           .flatMap(a => (a \ "name").asOpt[String])
-                          .find(name => name == "2D" || name == "3D")
-                          .toList
+                          .toSet
+            // Multikino tags Language attributes as DUBBING / NAPISY / JĘZYK ORYGINALNY.
+            // Normalise to the same DUB/NAP tokens other clients use; original-language
+            // screenings get no token (matches Cinema City's behaviour).
+            val format = List(
+              attrs.find(n => n == "2D" || n == "3D"),
+              if (attrs.contains("DUBBING"))     Some("DUB")
+              else if (attrs.contains("NAPISY")) Some("NAP")
+              else None
+            ).flatten
             Showtime(dateTime = LocalDateTime.parse(startTime), bookingUrl = bookingUrl, room = room, format = format)
           }
         }

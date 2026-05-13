@@ -44,10 +44,10 @@ class HeliosClientResilienceSpec extends AnyFlatSpec with Matchers {
     titles should contain ("ДИЯВОЛ НОСИТЬ ПРАДА 2")
   }
 
-  it should "leave all showtimes un-enriched (no room or format) when REST is unavailable" in {
+  it should "leave room un-enriched when REST is unavailable (format still comes from NUXT printRelease)" in {
     val all = results.flatMap(_.showtimes)
-    all.exists(_.room.isDefined)   shouldBe false
-    all.exists(_.format.nonEmpty) shouldBe false
+    all.exists(_.room.isDefined) shouldBe false
+    all.exists(_.format.nonEmpty) shouldBe true
   }
 
   it should "leave REST-derived metadata empty when REST is unavailable" in {

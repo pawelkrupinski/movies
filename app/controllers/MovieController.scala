@@ -56,8 +56,9 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
   }
 
   private def toSchedules(cinemaMovies: Seq[CinemaMovie]): Seq[FilmSchedule] = {
+    val allTitles = cinemaMovies.map(_.movie.title)
     cinemaMovies
-      .groupBy(cm => normalizeTitle(cm.movie.title).toLowerCase)
+      .groupBy(cm => TitleNormalizer.mergeKey(cm.movie.title, allTitles))
       .toSeq
       .flatMap { case (_, entries) =>
         val now = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
@@ -67,9 +68,10 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
         val nonBulgarska   = entries.filter(_.cinema != KinoBulgarska)
         val titleSource    = if (nonBulgarska.isEmpty) entries else nonBulgarska
         // Normalise to Roman numerals before deduplicating so "II" and "2" collapse to one title.
-        val distinctTitles = titleSource.map(e => normalizeTitle(e.movie.title)).toSet
-        val displayTitle   = if (distinctTitles.size == 1) distinctTitles.head
-                             else normalizeTitle(titleSource.head.movie.title)
+        // preferredDisplay picks the " i " spelling over " & " when both occur.
+        val distinctTitles = titleSource.map(e => normalizeTitle(e.movie.title)).distinct
+        val displayTitle   = TitleNormalizer.preferredDisplay(distinctTitles)
+                              .getOrElse(normalizeTitle(titleSource.head.movie.title))
 
         val allShowtimes = entries.flatMap(entry => entry.showtimes.map(st => (entry.cinema, st)))
           .filter(_._2.dateTime.isAfter(now.minusMinutes(30)))
@@ -139,15 +141,5 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
     }
   }
 
-  // Replaces standalone Arabic numerals (1–20) with Roman numerals so that
-  // e.g. "Mortal Kombat 2" and "Mortal Kombat II" group as the same film.
-  private val ArabicToRoman = Map(
-    "1" -> "I", "2" -> "II", "3" -> "III", "4" -> "IV", "5" -> "V",
-    "6" -> "VI", "7" -> "VII", "8" -> "VIII", "9" -> "IX", "10" -> "X",
-    "11" -> "XI", "12" -> "XII", "13" -> "XIII", "14" -> "XIV", "15" -> "XV",
-    "16" -> "XVI", "17" -> "XVII", "18" -> "XVIII", "19" -> "XIX", "20" -> "XX"
-  )
-
-  private def normalizeTitle(title: String): String =
-    title.split(" ").map(word => ArabicToRoman.getOrElse(word, word)).mkString(" ")
+  private def normalizeTitle(title: String): String = TitleNormalizer.normalize(title)
 }

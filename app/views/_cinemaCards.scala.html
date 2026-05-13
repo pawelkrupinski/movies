@@ -15,12 +15,14 @@
             <div>
               @for(slot <- showtimes) {
                 @defining(slot.room.map(r => Html(s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""")).getOrElse(Html(""))) { roomAttr =>
-                @defining(slot.format.filterNot(commonToks.contains).mkString("/")) { stripped =>
+                @defining(slot.format.filterNot(commonToks.contains).mkString(" ")) { stripped =>
                 @defining(if (stripped.isEmpty) Html("") else Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(stripped)}</span>""")) { fmtBadge =>
+                @defining(slot.format.mkString(" ")) { fmtAttr =>
                   @slot.bookingUrl match {
-                    case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</a> }
-                    case None      => { <span class="badge-time"@roomAttr>@{slot.dateTime.toLocalTime}@fmtBadge</span> }
+                    case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr data-format="@fmtAttr">@{slot.dateTime.toLocalTime}@fmtBadge</a> }
+                    case None      => { <span class="badge-time"@roomAttr data-format="@fmtAttr">@{slot.dateTime.toLocalTime}@fmtBadge</span> }
                   }
+                }
                 }
                 }
                 }

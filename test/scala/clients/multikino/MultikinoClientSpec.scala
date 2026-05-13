@@ -629,10 +629,21 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
 
   // ── Format / 3D coverage ──────────────────────────────────────────────────
 
-  it should "extract 2D vs 3D format from session attributes" in {
-    val all3D = results.flatMap(_.showtimes).count(_.format.contains("3D"))
-    val all2D = results.flatMap(_.showtimes).count(_.format.contains("2D"))
-    all3D shouldBe 21
-    all2D shouldBe 646
+  it should "extract 2D / 3D / DUB / NAP format tokens from session attributes" in {
+    val showtimes = results.flatMap(_.showtimes)
+    showtimes.count(_.format.contains("2D"))  shouldBe 646
+    showtimes.count(_.format.contains("3D"))  shouldBe 21
+    showtimes.count(_.format.contains("DUB")) shouldBe 247
+    showtimes.count(_.format.contains("NAP")) shouldBe 402
+  }
+
+  it should "tag Mortal Kombat 2 dubbed and subbed screenings with DUB / NAP" in {
+    // Mortal Kombat 2 has both DUBBING and NAPISY sessions in Multikino's data —
+    // every screening should carry one or the other.
+    val mk2 = byTitle("Mortal Kombat 2").showtimes
+    mk2                                                                shouldNot be (empty)
+    mk2.exists(_.format == List("2D", "DUB"))                          shouldBe true
+    mk2.exists(_.format == List("2D", "NAP"))                          shouldBe true
+    mk2.forall(s => s.format.contains("DUB") || s.format.contains("NAP")) shouldBe true
   }
 }

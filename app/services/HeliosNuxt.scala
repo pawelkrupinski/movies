@@ -23,7 +23,7 @@ object HeliosNuxt {
   // collapses to the canonical "Diabeł ubiera się u Prady 2".
   def cleanTitle(title: String): String =
     Seq(" w Helios RePlay", " w Helios Anime", " w Helios na Scenie", " w HnS",
-        " - Salon Kultury Helios", " - KNTJ", " - KNT")
+        " - Salon Kultury Helios", " - KNTJ", " - KNT", " - seanse z konkursami HDD")
       .foldLeft(title)((t, suffix) => t.stripSuffix(suffix))
 
   def buildMovies(html: String): Seq[CinemaMovie] = {
@@ -51,12 +51,12 @@ object HeliosNuxt {
           synopsis  = None,
           cast      = None,
           director  = None,
-          showtimes = slots.map { case (dateTime, screeningId) =>
+          showtimes = slots.map { case (dateTime, screeningId, format) =>
             Showtime(
               dateTime   = dateTime,
               bookingUrl = Some(s"$BookingBase/$screeningId?cinemaId=$CinemaSourceId").filter(_ => screeningId.nonEmpty),
               room       = None,
-              format     = Nil
+              format     = format
             )
           }.distinct
         )
@@ -68,7 +68,7 @@ object HeliosNuxt {
 
   private case class NuxtPage(
     movies:           Map[String, NuxtMovie],
-    showtimesByMovie: Map[String, Seq[(LocalDateTime, String)]]
+    showtimesByMovie: Map[String, Seq[(LocalDateTime, String, List[String])]]
   )
 
   private case class NuxtMovie(
@@ -95,6 +95,7 @@ object HeliosNuxt {
   private val EmbeddedMovieBlk  = """movie:\{(.*?)\},moviePrint:""".r
   private val EventEntryAnchor  = """,name:([\w$]+),slug:([\w$]+),""".r
   private val ScreeningEntry    = """\{timeFrom:("[\d :.-]+"|[^,{]+),saleTimeTo:[^,]+,sourceId:("[\w-]+"|\w+),""".r
+  private val PrintRelease      = """printRelease:([^,}]+)""".r
   // Top-level film: ,id:N,sourceId:X,title:Y,titleOriginal:Z,slug:W in order.
   private val TopLevelMovie     = """,id:(\d{3,}|[\w$]+),sourceId:(?:"[^"]+"|[\w$]+),title:(?:"([^"]+)"|([\w$]+)),titleOriginal:(?:"[^"]*"|[\w$]+),slug:(?:"([^"]+)"|([\w$]+))""".r
 
@@ -242,7 +243,7 @@ object HeliosNuxt {
       }
     }
 
-  private def parseNuxtShowtimes(ctx: NuxtCtx): Seq[(String, (LocalDateTime, String))] =
+  private def parseNuxtShowtimes(ctx: NuxtCtx): Seq[(String, (LocalDateTime, String, List[String]))] =
     dayBlocks(ctx.screeningsBody).flatMap { dayBlock =>
       MovieGroupStart.findAllMatchIn(dayBlock).flatMap { gm =>
         val movieId = gm.group(1)
@@ -251,7 +252,19 @@ object HeliosNuxt {
           for {
             timeStr <- ctx.resolve(sm.group(1)) if timeStr.length == 19
             sid     <- resolveSourceId(sm.group(2), ctx.resolve)
-          } yield movieId -> (LocalDateTime.parse(timeStr.replace(' ', 'T')), sid)
+          } yield {
+            // printRelease lives inside `moviePrint:{…}`. For regular film entries it's
+            // a few fields after sourceId; for event entries it's deeper because of the
+            // embedded `event:{…}` and `screeningMovies:[{…}]` blocks. Every Helios entry
+            // we've seen carries one, so the first match in a generous lookahead window
+            // is always the current entry's release.
+            val tail   = arr.substring(sm.end, math.min(sm.end + 2000, arr.length))
+            val format = PrintRelease.findFirstMatchIn(tail)
+              .flatMap(m => ctx.resolve(m.group(1)))
+              .map(_.split("/").toList.filter(_.nonEmpty))
+              .getOrElse(Nil)
+            movieId -> (LocalDateTime.parse(timeStr.replace(' ', 'T')), sid, format)
+          }
         }
       }
     }

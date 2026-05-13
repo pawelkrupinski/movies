@@ -1,4 +1,4 @@
-@import controllers.{FilmSchedule, DateFormatter}
+@import controllers.FilmSchedule
 @(film: FilmSchedule)
 <!DOCTYPE html>
 <html lang="pl">
@@ -48,7 +48,8 @@
     }
     .cinema-link:hover { background: #5a5a9e; color: #fff; }
     .showtimes-section { margin-top: 2rem; }
-    .date-heading {
+    /* Sizes scaled up vs the listing-page card variant of these classes. */
+    .date-group .date-label {
       font-size: .8rem;
       font-weight: 600;
       color: #888;
@@ -59,8 +60,10 @@
       margin-bottom: .6rem;
       margin-top: 1.2rem;
     }
-    .cinema-row { margin-bottom: .6rem; }
-    .cinema-name { font-size: .72rem; color: #66aadd; margin-bottom: .2rem; }
+    .cinema-group { margin-bottom: .6rem; }
+    .cinema-label { font-size: .8rem; color: #66aadd; margin-bottom: .25rem; }
+    .cinema-label-link { color: #66aadd; text-decoration: none; }
+    .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
     .badge-time {
       background: #3a3a6e;
       color: #aad4ff;
@@ -72,6 +75,7 @@
       text-decoration: none;
     }
     a.badge-time:hover { background: #5a5a9e; color: #fff; }
+    .badge-fmt { font-size: .62rem; opacity: .7; margin-left: 3px; }
   </style>
 </head>
 <body>
@@ -133,22 +137,7 @@
 
   <div class="showtimes-section">
     <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0;">Seanse</h2>
-    @for((date, cinemaShowtimesList) <- film.showings) {
-      <div class="date-heading">@DateFormatter.format(date)</div>
-      @for(cinemaShowtimes <- cinemaShowtimesList) {
-        <div class="cinema-row">
-          <div class="cinema-name">@cinemaShowtimes.cinema.displayName</div>
-          <div>
-            @for(slot <- cinemaShowtimes.showtimes) {
-              @slot.bookingUrl match {
-                case Some(url) => { <a href="@url" class="badge-time" target="_blank">@{slot.dateTime.toLocalTime}</a> }
-                case None      => { <span class="badge-time">@{slot.dateTime.toLocalTime}</span> }
-              }
-            }
-          </div>
-        </div>
-      }
-    }
+    @_filmShowings(film)
   </div>
 </div>
 

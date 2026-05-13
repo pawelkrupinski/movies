@@ -40,13 +40,12 @@
         title:    col.dataset.title.toLowerCase(),
         rawTitle: col.dataset.title,
         groups:   [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
-          el:         group,
-          date:       group.dataset.date,
-          badgeCount: group.querySelectorAll('.badge-time').length,
-          firstBadge: (() => {
-            const b = group.querySelector('.badge-time');
-            return b ? group.dataset.date + 'T' + b.textContent.trim() : null;
-          })()
+          el:     group,
+          date:   group.dataset.date,
+          badges: [...group.querySelectorAll('.badge-time')].map(b => ({
+            el:   b,
+            time: (b.firstChild ? b.firstChild.textContent : '').trim()
+          }))
         }))
       }))
     }));
@@ -56,10 +55,11 @@
 
   function applyFilters() {
     if (!INDEX) return;
-    const filter   = document.getElementById('date-filter').value;
-    const query    = (document.getElementById('search-input').value || '').trim().toLowerCase();
-    const hidden   = new Set(getHidden());
-    const disabled = new Set(getDisabledCinemas());
+    const filter    = document.getElementById('date-filter').value;
+    const query     = (document.getElementById('search-input').value || '').trim().toLowerCase();
+    const hidden    = new Set(getHidden());
+    const disabled  = new Set(getDisabledCinemas());
+    const fmtTokens = getFormatFilter();
     const { today, tomorrow, in7Days } = dateBounds();
 
     const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
@@ -88,11 +88,26 @@
 
         for (const group of col.groups) {
           if (!dateOk(group.date)) { group.el.style.display = 'none'; continue; }
-          group.el.style.display = '';
-          colVisible = true;
-          colShowtimes += group.badgeCount;
-          if (group.firstBadge && (!colEarliest || group.firstBadge < colEarliest))
-            colEarliest = group.firstBadge;
+
+          let groupVisibleCount = 0, groupFirstBadge = null;
+          for (const badge of group.badges) {
+            const ok = badgeMatchesFormat(badge.el, fmtTokens);
+            badge.el.style.display = ok ? '' : 'none';
+            if (ok) {
+              groupVisibleCount++;
+              if (!groupFirstBadge) groupFirstBadge = group.date + 'T' + badge.time;
+            }
+          }
+
+          if (groupVisibleCount > 0) {
+            group.el.style.display = '';
+            colVisible = true;
+            colShowtimes += groupVisibleCount;
+            if (groupFirstBadge && (!colEarliest || groupFirstBadge < colEarliest))
+              colEarliest = groupFirstBadge;
+          } else {
+            group.el.style.display = 'none';
+          }
         }
 
         col.el.style.display = colVisible ? '' : 'none';

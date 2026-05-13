@@ -42,13 +42,13 @@
         el:           group,
         date:         group.dataset.date,
         cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg => ({
-          el:         cg,
-          cinema:     cg.dataset.cinema,
-          badgeCount: cg.querySelectorAll('.badge-time').length,
-          firstTime:  (() => {
-            const b = cg.querySelector('.badge-time');
-            return b ? group.dataset.date + 'T' + b.textContent.trim() : null;
-          })()
+          el:      cg,
+          cinema:  cg.dataset.cinema,
+          badges:  [...cg.querySelectorAll('.badge-time')].map(b => ({
+            el:   b,
+            // firstChild is the "HH:MM" text node; later span.badge-fmt holds the format tokens.
+            time: (b.firstChild ? b.firstChild.textContent : '').trim()
+          }))
         }))
       }))
     }));
@@ -58,10 +58,11 @@
 
   function applyFilters() {
     if (!INDEX) return;
-    const filter   = document.getElementById('date-filter').value;
-    const query    = (document.getElementById('search-input').value || '').trim().toLowerCase();
-    const hidden   = new Set(getHidden());
-    const disabled = new Set(getDisabledCinemas());
+    const filter    = document.getElementById('date-filter').value;
+    const query     = (document.getElementById('search-input').value || '').trim().toLowerCase();
+    const hidden    = new Set(getHidden());
+    const disabled  = new Set(getDisabledCinemas());
+    const fmtTokens = getFormatFilter();
     const { today, tomorrow, in7Days } = dateBounds();
 
     const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
@@ -88,14 +89,26 @@
 
         let groupVisible = false;
         for (const cg of group.cinemaGroups) {
-          if (disabled.has(cg.cinema)) {
-            cg.el.style.display = 'none';
-          } else {
+          if (disabled.has(cg.cinema)) { cg.el.style.display = 'none'; continue; }
+
+          let cgVisibleCount = 0, cgFirstTime = null;
+          for (const badge of cg.badges) {
+            const ok = badgeMatchesFormat(badge.el, fmtTokens);
+            badge.el.style.display = ok ? '' : 'none';
+            if (ok) {
+              cgVisibleCount++;
+              if (!cgFirstTime) cgFirstTime = group.date + 'T' + badge.time;
+            }
+          }
+
+          if (cgVisibleCount > 0) {
             cg.el.style.display = '';
             groupVisible = true;
-            showtimeCount += cg.badgeCount;
-            if (cg.firstTime && (!colEarliest || cg.firstTime < colEarliest))
-              colEarliest = cg.firstTime;
+            showtimeCount += cgVisibleCount;
+            if (cgFirstTime && (!colEarliest || cgFirstTime < colEarliest))
+              colEarliest = cgFirstTime;
+          } else {
+            cg.el.style.display = 'none';
           }
         }
 
