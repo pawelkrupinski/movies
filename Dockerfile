@@ -27,6 +27,8 @@ COPY --from=build /app/target/universal/stage .
 EXPOSE 9000
 CMD exec bin/movies \
     -Dplay.http.secret.key="${APPLICATION_SECRET}" \
+    -Dplay.server.http.address=0.0.0.0 \
+    -Dhttp.address=0.0.0.0 \
     -Dpidfile.path=/dev/null \
     -J-Xmx400m \
     -J-Xms128m
