@@ -10,6 +10,7 @@ import java.net.{CookieManager, CookiePolicy, URI}
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
+import scala.jdk.CollectionConverters._
 
 class MultikinoClient(http: HttpFetch = MultikinoClient.DefaultFetch) {
 
@@ -93,44 +94,45 @@ object MultikinoClient extends Logging {
       .cookieHandler(cookieManager)
       .build()
 
-    private def isUsable(response: HttpResponse[String]): Boolean =
-      response.statusCode() == 200 && response.body().nonEmpty
+    // Multikino's API responds 401 without a `microservicesToken` JWT cookie set
+    // by the homepage. So we two-step: first ScrapingAnt → homepage to capture
+    // every set-cookie the target hands out, then ScrapingAnt → API with those
+    // cookies forwarded via the `cookies` URL parameter. `browser=false` keeps
+    // the response raw (otherwise the headless browser wraps JSON in <pre>).
+    private def isUsable(response: HttpResponse[String]): Boolean = {
+      val body = response.body()
+      response.statusCode() == 200 && body.nonEmpty && body.dropWhile(_.isWhitespace).startsWith("{")
+    }
 
     private def scrapingAntRequest(url: String, key: String, extraParams: String) = {
       val encoded = URLEncoder.encode(url, StandardCharsets.UTF_8)
       HttpRequest.newBuilder()
-        .uri(URI.create(s"$ScrapingAntUrl?url=$encoded&proxy_country=pl$extraParams"))
+        .uri(URI.create(s"$ScrapingAntUrl?url=$encoded&proxy_country=pl&browser=false$extraParams"))
         .header("x-api-key", key)
         .header("Accept", "application/json, text/plain, */*")
         .GET()
         .build()
     }
 
-    // Try cheapest first, escalate on each failure. The JSON API doesn't need a
-    // browser to render — `browser=true` is only the last resort because it
-    // burns the most ScrapingAnt credits and historically gets caught by
-    // anti-bot detection (423, or 200 with empty body).
-    private val ScrapingAntAttempts: Seq[(String, String)] = Seq(
-      "datacenter"           -> "",
-      "residential"          -> "&proxy_type=residential",
-      "residential + browser" -> "&proxy_type=residential&browser=true&return_page_source=true"
-    )
+    private def fetchHomepageCookies(key: String): String = {
+      val response = httpClient.send(scrapingAntRequest(HomeUrl, key, ""), HttpResponse.BodyHandlers.discarding())
+      response.headers().allValues("set-cookie").asScala
+        .map(_.split(";", 2)(0))
+        .filter(_.nonEmpty)
+        .mkString(";")
+    }
 
     override def get(url: String): String = scrapingAntKey match {
       case Some(key) =>
-        val attempts = ScrapingAntAttempts.iterator.map { case (label, extra) =>
-          val response = httpClient.send(scrapingAntRequest(url, key, extra), HttpResponse.BodyHandlers.ofString())
-          if (!isUsable(response))
-            logger.warn(s"ScrapingAnt $label unusable (status=${response.statusCode()}, body=${response.body().length}B)")
-          (label, response)
-        }
-        attempts.find { case (_, r) => isUsable(r) } match {
-          case Some((label, r)) =>
-            if (label != ScrapingAntAttempts.head._1) logger.info(s"ScrapingAnt succeeded via $label fallback")
-            r.body()
-          case None =>
-            throw new RuntimeException(s"ScrapingAnt exhausted all ${ScrapingAntAttempts.size} retries for $url")
-        }
+        val cookies        = fetchHomepageCookies(key)
+        val cookiesParam   = s"&cookies=${URLEncoder.encode(cookies, StandardCharsets.UTF_8)}"
+        val response       = httpClient.send(scrapingAntRequest(url, key, cookiesParam), HttpResponse.BodyHandlers.ofString())
+        if (!isUsable(response))
+          throw new RuntimeException(
+            s"ScrapingAnt API response unusable: status=${response.statusCode()}, " +
+            s"body=${response.body().length}B, head='${response.body().take(120).replace('\n', ' ')}'"
+          )
+        response.body()
 
       case None =>
         def apiRequest() = HttpRequest.newBuilder()
