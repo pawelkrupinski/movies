@@ -3,6 +3,7 @@ package scripts
 import clients.TmdbClient
 import models.Enrichment
 import services.enrichment._
+import services.events.EventBus
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -35,9 +36,14 @@ object EnrichmentBackfill {
       sys.exit(1)
     }
 
+    // Bus isn't wired to anything in the script — reEnrichSync runs both
+    // stages synchronously, so the script gets a single-shot answer without
+    // needing the listener chain.
+    val cache       = new EnrichmentCache(repo)
+    val imdbRatings = new ImdbRatings(cache, new ImdbClient())
     val service = new EnrichmentService(
-      new EnrichmentCache(repo),
-      new TmdbClient(), new FilmwebClient(), new ImdbClient(),
+      cache, new EventBus(), imdbRatings,
+      new TmdbClient(), new FilmwebClient(),
       new MetacriticClient(), new RottenTomatoesClient()
     )
 
@@ -47,10 +53,11 @@ object EnrichmentBackfill {
 
     val pool = Executors.newFixedThreadPool(Workers)
     implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
-    val done    = new AtomicInteger(0)
+    val done           = new AtomicInteger(0)
     val refreshedShown = new AtomicInteger(0)
-    val total   = rows.size
+    val total          = rows.size
     val RefreshedSampleSize = 10
+    val startedAtMs    = System.currentTimeMillis()
 
     val tasks = rows.map { case (title, year, before) =>
       Future {
@@ -105,11 +112,15 @@ object EnrichmentBackfill {
     if (refreshed.size > RefreshedSampleSize)
       println(s"  (+ ${refreshed.size - RefreshedSampleSize} more refreshed rows — same imdbId, ratings/URLs updated)")
 
+    val elapsedSec = (System.currentTimeMillis() - startedAtMs) / 1000.0
+    val rps        = if (elapsedSec > 0) f"${total / elapsedSec}%.1f" else "—"
+
     println()
     println(s"════ Summary ════")
     println(s"  Changed (imdbId shift): ${changed.size}")
     println(s"  Refreshed (same imdbId): ${refreshed.size}")
     println(s"  Failed   (TMDB no match): ${failed.size}")
+    println(f"  Done in $elapsedSec%.1fs, ~$rps rows/s across $Workers workers.")
 
     if (changed.nonEmpty) {
       println()

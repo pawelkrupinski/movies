@@ -5,14 +5,15 @@ package models
  * Looked up by (cleaned title + year) once and then shared across every
  * cinema-screening of that same film.
  *
- * `metacriticUrl` / `rottenTomatoesUrl` are populated by MetacriticClient /
- * RottenTomatoesClient at enrichment time. Each tries to resolve the canonical
- * movie page; if the canonical 404s, it stores the on-site search URL instead.
- * Pre-feature records may have None for these — `metacriticHref` /
- * `rottenTomatoesHref` fall back to generating a search URL on the fly.
+ * `imdbId` is optional because TMDB sometimes returns a hit for which it has
+ * no IMDb cross-reference yet (very recent releases, niche films). The
+ * Enrichment is still useful — TMDB id + Filmweb / Metacritic / RT URLs all
+ * work without an IMDb id; only the IMDb rating + IMDb link are unavailable.
+ * The daily TMDB-retry tick re-checks rows with imdbId=None so they get
+ * filled when IMDb eventually indexes the film.
  */
 case class Enrichment(
-  imdbId:            String,
+  imdbId:            Option[String],
   imdbRating:        Option[Double],
   metascore:         Option[Int],
   originalTitle:     Option[String],
@@ -23,7 +24,7 @@ case class Enrichment(
   metacriticUrl:     Option[String] = None,
   rottenTomatoesUrl: Option[String] = None
 ) {
-  def imdbUrl: String = s"https://www.imdb.com/title/$imdbId/"
+  def imdbUrl: Option[String] = imdbId.map(id => s"https://www.imdb.com/title/$id/")
   def tmdbUrl: Option[String] = tmdbId.map(id => s"https://www.themoviedb.org/movie/$id")
 
   /** Display-time URL: validated stored URL if we have one, else an on-the-fly

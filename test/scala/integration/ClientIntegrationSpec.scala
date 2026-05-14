@@ -14,12 +14,15 @@ class ClientIntegrationSpec
   "MultikinoClient" should "fetch films" in {
     assertAllHaveRuntime(MultikinoClient.fetch())
   }
+
   "CharlieMonroeClient" should "fetch films" in {
     assertAllHaveRuntime(CharlieMonroeClient.fetch())
   }
+
   "KinoPalacoweClient" should "fetch films" in {
     assertAllHaveRuntime(KinoPalacoweClient.fetch())
   }
+
   "HeliosClient" should "fetch films" in {
     assertAllHaveRuntime(new HeliosClient().fetch())
   }

@@ -52,7 +52,7 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
       val metacrUrl   = scala.util.Try(metacritic.urlFor(linkTitle)).toOption.flatten
       val rtomatoeUrl = scala.util.Try(rt.urlFor(linkTitle)).toOption.flatten
       Enrichment(
-        imdbId            = imdbId,
+        imdbId            = Some(imdbId),
         imdbRating        = imdbRating,
         metascore         = None,
         originalTitle     = originalTit,
@@ -102,14 +102,14 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
     // MC / RT URL validators return None for any probe — `urlFor` never
     // returns a search URL now, so the resulting fields stay None.
     val metacritic = new MetacriticClient(http = new StubFetch(Map.empty)) {
-      override def urlFor(title: String, fallback: Option[String]): Option[String] = None
+      override def urlFor(title: String, fallback: Option[String], year: Option[Int]): Option[String] = None
     }
     val rt = new RottenTomatoesClient(http = new StubFetch(Map.empty)) {
-      override def urlFor(title: String): Option[String] = None
+      override def urlFor(title: String, fallback: Option[String], year: Option[Int]): Option[String] = None
     }
 
     val e = run(tmdb, filmweb, imdb, metacritic, rt, "Mortal Kombat II", Some(2026)).get
-    e.imdbId            shouldBe "tt17490712"
+    e.imdbId            shouldBe Some("tt17490712")
     e.imdbRating        shouldBe Some(7.0)        // IMDb GraphQL scrape
     e.metascore         shouldBe None             // not sourced anymore
     e.rottenTomatoes    shouldBe None             // not sourced anymore
@@ -153,14 +153,14 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
 
     val e = resolved.map { case (hit, imdbId) =>
       Enrichment(
-        imdbId        = imdbId,
+        imdbId        = Some(imdbId),
         imdbRating    = scala.util.Try(imdb.lookup(imdbId)).toOption.flatten,
         metascore     = None,
         originalTitle = hit.originalTitle,
         tmdbId        = Some(hit.id)
       )
     }
-    e.map(_.imdbId)            shouldBe Some("tt36437006")
+    e.flatMap(_.imdbId)        shouldBe Some("tt36437006")
     e.flatMap(_.imdbRating)    shouldBe Some(7.2)
     e.flatMap(_.tmdbId)        shouldBe Some(1461058)
     e.flatMap(_.originalTitle) shouldBe Some("Girl Climber")

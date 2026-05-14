@@ -126,7 +126,7 @@ class EnrichmentRepo extends Logging {
       "_id"          -> BsonString(id),
       "title"        -> BsonString(title),
       "year"         -> year.map(y => org.mongodb.scala.bson.BsonInt32(y)).getOrElse(BsonNull()),
-      "imdbId"       -> BsonString(e.imdbId),
+      "imdbId"       -> e.imdbId.map(BsonString(_)).getOrElse(BsonNull()),
       "imdbRating"   -> e.imdbRating.map(org.mongodb.scala.bson.BsonDouble(_)).getOrElse(BsonNull()),
       "metascore"    -> e.metascore.map(org.mongodb.scala.bson.BsonInt32(_)).getOrElse(BsonNull()),
       "originalTitle"-> e.originalTitle.map(BsonString(_)).getOrElse(BsonNull()),
@@ -141,13 +141,15 @@ class EnrichmentRepo extends Logging {
 
   private def decode(d: Document): Option[(String, Option[Int], Enrichment)] =
     for {
-      title  <- d.get("title").flatMap(v => Try(v.asString().getValue).toOption)
-      imdbId <- d.get("imdbId").flatMap(v => Try(v.asString().getValue).toOption)
+      // `imdbId` is optional now (TMDB hits without an IMDb cross-reference
+      // still produce a row), but the row must at least have a `title` to be
+      // usable as a cache key. Anything else missing is treated as None.
+      title <- d.get("title").flatMap(v => Try(v.asString().getValue).toOption)
     } yield (
       title,
       d.get("year").flatMap(v => Try(v.asInt32().getValue).toOption),
       Enrichment(
-        imdbId        = imdbId,
+        imdbId        = d.get("imdbId").flatMap(v => Try(v.asString().getValue).toOption),
         imdbRating    = d.get("imdbRating").flatMap(v => Try(v.asDouble().getValue).toOption),
         metascore     = d.get("metascore").flatMap(v => Try(v.asInt32().getValue).toOption),
         originalTitle = d.get("originalTitle").flatMap(v => Try(v.asString().getValue).toOption),

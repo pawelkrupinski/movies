@@ -120,3 +120,119 @@ def onShowtimeEvent(e: CacheEvent): Unit = e match {
   case _                            => ()  // silently eats every new event
 }
 ```
+
+## Backfill stored data when ingestion or maintenance logic changes
+
+Whenever you change how a field is ingested, parsed, normalised, scraped, or
+otherwise maintained — in a way that would produce a different value for
+records already persisted — you MUST also backfill the existing rows in
+Mongo. The new logic only applies to records touched after the change;
+without a backfill, the DB is left in a mixed state where old rows still
+carry the pre-change value and look "correct" until something re-enriches
+them, which may be never.
+
+Examples that require a backfill:
+
+- Changing how a URL is canonicalised, slugified, or validated (e.g. the
+  Metacritic/RT search-URL rule above — every previously-stored bad URL stays
+  bad until re-enriched).
+- Changing the parsing of a scraped field (rating scale, date format, title
+  normalisation) so the same source data now maps to a different stored
+  value.
+- Adding/removing/renaming a field, or changing which source wins when
+  multiple are available.
+- Tightening validation so values that were previously accepted should now
+  be `None`/dropped.
+- Fixing a bug in an enrichment client where the buggy output is already in
+  the DB.
+
+What "backfill" means concretely: write an ad-hoc script (under
+`test/scala/scripts/` or similar) that re-runs the affected logic against
+every stored row and updates Mongo in place. Follow the script conventions
+above (print BEFORE → AFTER, parallelise within rate limits, print
+throughput). Don't rely on natural re-enrichment cycles to "eventually"
+heal the data — call it out and run the backfill as part of the same
+change.
+
+If a backfill is impractical (e.g. the source data is no longer available),
+say so explicitly and propose an alternative (invalidate the field, mark
+rows stale, schedule a re-enrichment) rather than silently leaving the
+DB inconsistent.
+
+## Always add tests for new or changed functionality
+
+Every piece of new or modified behaviour MUST come with a test that exercises
+it. This is non-negotiable for bug fixes (the test must fail before the fix
+and pass after), new methods or branches, parsing/normalisation changes,
+and any logic that decides what to persist or display. "I ran it once and
+it looked right" is not a substitute — the test is what prevents the next
+change from silently breaking this one.
+
+**Default to writing the failing test first.** Whenever it is feasible —
+bug fixes, new features, investigations into "why is this value wrong",
+parser/normaliser changes, anything where you can express the desired
+behaviour as an assertion — write the test before the production change
+and watch it fail for the right reason. Then make it pass. This is the
+strongest evidence that:
+
+1. The test actually exercises the new code path (a green-from-the-start
+   test often turns out to assert nothing useful).
+2. The bug or missing feature is real and reproducible, not a
+   misunderstanding.
+3. The fix addresses the root cause, not a symptom that happened to
+   disappear.
+
+For investigations specifically: if you suspect a parser/enrichment/data
+bug, the fastest way to confirm it is to write a test that feeds the
+suspect input through the real code and asserts the expected output. If
+it fails the way you predicted, you have both the diagnosis and the
+regression test in one step.
+
+Skip the test-first step only when it is genuinely impractical — e.g.
+exploratory spikes you'll throw away, or behaviour that can only be
+observed via a running server/browser. In those cases, still add a test
+after the fact before considering the work done.
+
+If the existing test for a neighbouring behaviour is the closest match,
+extend it or copy its structure rather than inventing a new style.
+
+For pure logic (parsers, formatters, normalisers, decision functions), unit
+tests against in-memory inputs are enough. For services that compose other
+services, prefer the existing spec patterns in `test/scala/services/...`
+that wire fakes/in-memory implementations.
+
+### Record fixtures for external-service clients
+
+For clients that hit a real external API (TMDB, IMDb, Cinemeta, OMDb,
+Filmweb, Metacritic, RT, scraped cinema sites), strongly consider capturing
+a real response as a fixture on disk and writing a test that replays it
+through the client. Live HTTP in tests is flaky and slow; hand-written
+mock JSON drifts from reality and hides parser bugs the real payload
+would catch.
+
+When to record a fixture:
+
+- You're adding a new client, or a new endpoint on an existing client.
+- You're changing how a response is parsed (new field, changed shape,
+  tightened validation).
+- You hit a real-world payload that exposed a parser bug — capture that
+  exact payload so the bug can't regress.
+
+How to do it:
+
+- Save the raw response under `test/resources/fixtures/<service>/<case>.<ext>`
+  (json, html, xml — whatever the service returns). Trim noise (huge image
+  arrays, tracking ids) only if it doesn't affect parsing.
+- Write the test to load the fixture from disk and feed it to the client's
+  parser/decoder directly, OR stub the HTTP layer to return the fixture
+  bytes. The test must not make a network call.
+- Name the fixture after the scenario (`tmdb_movie_with_no_release_date.json`,
+  `rt_404_page.html`), not the date or a ticket number — the scenario is
+  what future-you will search for.
+- If the fixture is large, leave a one-line comment in the test pointing to
+  the URL or query that produced it, so it can be refreshed later.
+
+If recording a fixture doesn't make sense (the response is trivial, or the
+client is a thin pass-through with no parsing), say so and write a smaller
+unit test instead. Don't skip testing the client entirely just because
+fixtures feel heavy.

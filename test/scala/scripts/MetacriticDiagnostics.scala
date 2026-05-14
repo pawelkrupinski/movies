@@ -68,9 +68,12 @@ object MetacriticDiagnostics {
 
     println(s"${rows.size} rows in Mongo · ${missing.size} missing Metacritic URL · probing variants…\n")
 
-    val pool = Executors.newFixedThreadPool(4)
+    val Workers = 4
+    val pool = Executors.newFixedThreadPool(Workers)
     implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
-    val done = new AtomicInteger(0)
+    val done        = new AtomicInteger(0)
+    val httpProbes  = new AtomicInteger(0)
+    val startedAtMs = System.currentTimeMillis()
 
     val tasks = missing.map { case (title, year, e) =>
       Future {
@@ -101,7 +104,10 @@ object MetacriticDiagnostics {
         val seen = mutable.LinkedHashMap.empty[String, String]
         withDeArt.foreach { case (label, slug) => if (!seen.contains(slug)) seen.put(slug, label) }
 
-        val probes = seen.iterator.map { case (slug, label) => probe(label, slug) }.toList
+        val probes = seen.iterator.map { case (slug, label) =>
+          httpProbes.incrementAndGet()
+          probe(label, slug)
+        }.toList
 
         val finishedIdx = done.incrementAndGet()
         if (finishedIdx % 20 == 0) println(s"  … $finishedIdx/${missing.size}")
@@ -143,6 +149,10 @@ object MetacriticDiagnostics {
       val origStr = o.fold("")(s => s" [orig=$s]")
       println(s"  $t (${y.getOrElse("?")})$origStr")
     }
+
+    val elapsedSec = (System.currentTimeMillis() - startedAtMs) / 1000.0
+    val rps        = if (elapsedSec > 0) f"${httpProbes.get() / elapsedSec}%.1f" else "—"
+    println(f"\nDone in $elapsedSec%.1fs · ${httpProbes.get()} MC probes total · ~$rps req/s across $Workers workers.")
 
     repo.close()
   }

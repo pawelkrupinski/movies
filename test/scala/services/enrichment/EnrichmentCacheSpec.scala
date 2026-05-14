@@ -31,7 +31,7 @@ class EnrichmentCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   private def mkEnrichment(imdbId: String, rating: Option[Double] = None): Enrichment =
-    Enrichment(imdbId = imdbId, imdbRating = rating, metascore = None, originalTitle = None)
+    Enrichment(imdbId = Some(imdbId), imdbRating = rating, metascore = None, originalTitle = None)
 
   "EnrichmentCache" should "hydrate from the repo on construction" in {
     val seed = Seq(("Drzewo Magii", Some(2024), mkEnrichment("tt1")))

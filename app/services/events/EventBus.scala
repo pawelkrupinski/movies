@@ -19,6 +19,12 @@ sealed trait DomainEvent
  *  subscribers are responsible for dedup. */
 case class MovieAdded(title: String, year: Option[Int]) extends DomainEvent
 
+/** TMDB resolved a `(title, year)` to a film and an IMDb id. The enrichment
+ *  pipeline publishes this after its TMDB stage writes the row to the cache;
+ *  the IMDb stage subscribes and fetches the rating asynchronously, so the
+ *  TMDB lookup doesn't block on IMDb's GraphQL CDN. */
+case class TmdbResolved(title: String, year: Option[Int], imdbId: String) extends DomainEvent
+
 class EventBus extends Logging {
   // CopyOnWriteArrayList: writes (subscribe) are rare and happen at startup;
   // reads (publish) are hot and want a stable snapshot without locking.

@@ -49,7 +49,7 @@ class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val sentinelTitle = "__integration-test-sentinel__"
     val sentinelYear  = Some(1900)
     val toStore = Enrichment(
-      imdbId         = "tt0000001",
+      imdbId         = Some("tt0000001"),
       imdbRating     = Some(7.5),
       metascore      = Some(80),
       originalTitle  = Some("Integration Test"),
@@ -67,7 +67,7 @@ class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val found = all.find { case (t, y, _) => t == sentinelTitle && y == sentinelYear }
     found should not be empty
     val (_, _, e) = found.get
-    e.imdbId         shouldBe "tt0000001"
+    e.imdbId         shouldBe Some("tt0000001")
     e.imdbRating     shouldBe Some(7.5)
     e.metascore      shouldBe Some(80)
     e.originalTitle  shouldBe Some("Integration Test")
@@ -82,7 +82,7 @@ class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   it should "handle Enrichments with all-None optional fields" in {
     val title = "__integration-test-sparse__"
     val toStore = Enrichment(
-      imdbId         = "tt0000002",
+      imdbId         = Some("tt0000002"),
       imdbRating     = None,
       metascore      = None,
       originalTitle  = None,
@@ -94,7 +94,7 @@ class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val found = repo.findAll().find { case (t, y, _) => t == title && y.isEmpty }
     found should not be empty
     val (_, _, e) = found.get
-    e.imdbId         shouldBe "tt0000002"
+    e.imdbId         shouldBe Some("tt0000002")
     e.imdbRating     shouldBe None
     e.metascore      shouldBe None
     e.originalTitle  shouldBe None
@@ -116,7 +116,7 @@ class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val titleCaps = "__integration-test-CASEDEDUPE__"
     val titleLow  = "__integration-test-casededupe__"
     val withUrls = Enrichment(
-      imdbId            = "tt0000010",
+      imdbId            = Some("tt0000010"),
       imdbRating        = Some(7.5),
       metascore         = Some(80),
       originalTitle     = Some("Case Dedupe Test"),
@@ -133,7 +133,7 @@ class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     repo.upsert(titleCaps, Some(2025), withUrls)
     repo.upsert(titleLow,  Some(2025), withoutUrls)
 
-    val rows = repo.findAll().filter(_._3.imdbId == "tt0000010")
+    val rows = repo.findAll().filter(_._3.imdbId.contains("tt0000010"))
     rows                                  should have size 1
     // Second upsert wins: URLs nulled, which is exactly what made the
     // production case observable.

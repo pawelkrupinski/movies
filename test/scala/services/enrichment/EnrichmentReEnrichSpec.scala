@@ -4,6 +4,7 @@ import clients.TmdbClient
 import models.Enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.events.EventBus
 import tools.HttpFetch
 
 import scala.collection.mutable
@@ -57,7 +58,7 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
   private def deadRt()         = new RottenTomatoesClient(http = deadFetch)
 
   private def mkEnrichment(imdbId: String, orig: Option[String] = None): Enrichment =
-    Enrichment(imdbId = imdbId, imdbRating = None, metascore = None,
+    Enrichment(imdbId = Some(imdbId), imdbRating = None, metascore = None,
                originalTitle = orig, tmdbId = Some(42))
 
   // ── Setup: TMDB index where the Polish title "Powrót do przyszłości"
@@ -94,12 +95,12 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
       ("Powrót do przyszłości", Some(2026), mkEnrichment("tt-old-wrong-id"))
     ))
     val cache = new EnrichmentCache(repo)
-    val svc   = new EnrichmentService(cache, tmdb, deadFilmweb(), deadImdb(), deadMetacritic(), deadRt())
+    val svc   = new EnrichmentService(cache, new EventBus(), new ImdbRatings(cache, deadImdb()), tmdb, deadFilmweb(), deadMetacritic(), deadRt())
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 
     // The new TMDB hit replaces the stale id.
-    result.map(_.imdbId) shouldBe Some("tt0088763")
+    result.flatMap(_.imdbId) shouldBe Some("tt0088763")
     // And we proved it by hitting `/search/movie`. `findByImdbId` (`/find/...`)
     // is never called.
     tmdbHttp.requested.exists(_.contains("/search/movie"))    shouldBe true
@@ -115,11 +116,11 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repo     = new FakeRepo()
     val cache    = new EnrichmentCache(repo)
-    val svc      = new EnrichmentService(cache, tmdb, deadFilmweb(), deadImdb(), deadMetacritic(), deadRt())
+    val svc      = new EnrichmentService(cache, new EventBus(), new ImdbRatings(cache, deadImdb()), tmdb, deadFilmweb(), deadMetacritic(), deadRt())
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 
-    result.map(_.imdbId)            shouldBe Some("tt0088763")
+    result.flatMap(_.imdbId)        shouldBe Some("tt0088763")
     result.flatMap(_.originalTitle) shouldBe Some("Back to the Future")
     // Two search calls expected — year-scoped (empty), then year-less.
     tmdbHttp.requested.count(_.contains("/search/movie")) shouldBe 2
@@ -134,7 +135,7 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
     val original = mkEnrichment("tt-original", orig = Some("Keep me"))
     val repo     = new FakeRepo(Seq(("Title", Some(2024), original)))
     val cache    = new EnrichmentCache(repo)
-    val svc      = new EnrichmentService(cache, tmdb, deadFilmweb(), deadImdb(), deadMetacritic(), deadRt())
+    val svc      = new EnrichmentService(cache, new EventBus(), new ImdbRatings(cache, deadImdb()), tmdb, deadFilmweb(), deadMetacritic(), deadRt())
 
     val result = svc.reEnrichSync("Title", Some(2024))
 
@@ -150,10 +151,10 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repo     = new FakeRepo()  // empty
     val cache    = new EnrichmentCache(repo)
-    val svc      = new EnrichmentService(cache, tmdb, deadFilmweb(), deadImdb(), deadMetacritic(), deadRt())
+    val svc      = new EnrichmentService(cache, new EventBus(), new ImdbRatings(cache, deadImdb()), tmdb, deadFilmweb(), deadMetacritic(), deadRt())
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 
-    result.map(_.imdbId) shouldBe Some("tt0088763")
+    result.flatMap(_.imdbId) shouldBe Some("tt0088763")
   }
 }
