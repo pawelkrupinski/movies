@@ -89,8 +89,15 @@ class MovieController(
 
   def film(title: String): Action[AnyContent] = Action { request =>
     toSchedules(cache.get()).find(_.movie.title == normalizeTitle(title)) match {
-      case Some(schedule) => Ok(views.html.film(schedule))
-      case None           => NotFound(s"Film not found: $title")
+      case Some(schedule) =>
+        // Build absolute URL for og:url. Trust the proxy: Fly terminates TLS
+        // and forwards X-Forwarded-Proto, so request.secure is correct in
+        // production. URL-encode the title so unusual characters round-trip.
+        val proto        = if (request.secure) "https" else "http"
+        val encodedTitle = java.net.URLEncoder.encode(schedule.movie.title, "UTF-8")
+        val canonicalUrl = s"$proto://${request.host}/film?title=$encodedTitle"
+        Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule)))
+      case None => NotFound(s"Film not found: $title")
     }
   }
 
@@ -205,4 +212,29 @@ class MovieController(
   }
 
   private def normalizeTitle(title: String): String = TitleNormalizer.normalize(title)
+}
+
+object MovieController {
+  /** Build the `og:description` / `twitter:description` text for the film
+   *  page. Format: rating summary ("IMDb 8.7 · RT 86% · Metacritic 79 ·
+   *  Filmweb 7.5") prefixed to the synopsis, truncated to keep WhatsApp /
+   *  Messenger / Telegram previews readable. Skips ratings that aren't set;
+   *  the whole string may be empty for films with no enrichment + no
+   *  synopsis. */
+  private[controllers] def previewDescription(film: FilmSchedule): String = {
+    val ratings = Seq(
+      film.enrichment.flatMap(_.imdbRating).map(r => f"IMDb $r%.1f"),
+      film.enrichment.flatMap(_.rottenTomatoes).map(s => s"RT $s%"),
+      film.enrichment.flatMap(_.metascore).map(s => s"Metacritic $s"),
+      film.enrichment.flatMap(_.filmwebRating).map(r => f"Filmweb $r%.1f")
+    ).flatten.mkString(" · ")
+    val synopsis = film.synopsis.getOrElse("").trim
+    val joined =
+      if (ratings.nonEmpty && synopsis.nonEmpty) ratings + " — " + synopsis
+      else if (ratings.nonEmpty)                 ratings
+      else                                       synopsis
+    // 300 chars is the practical cap most preview UIs render before
+    // truncating; we add an ellipsis to make truncation visible.
+    if (joined.length > 300) joined.take(297) + "…" else joined
+  }
 }
