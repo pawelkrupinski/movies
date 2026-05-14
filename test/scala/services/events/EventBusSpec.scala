@@ -38,7 +38,7 @@ class EventBusSpec extends AnyFlatSpec with Matchers {
     val bus  = new EventBus
     val seen = mutable.ListBuffer.empty[MovieAdded]
     // Subscriber only cares about events whose title starts with "Keep:".
-    bus.subscribe { case e @ MovieAdded(t, _, _) if t.startsWith("Keep:") => seen.append(e) }
+    bus.subscribe { case e @ MovieAdded(t, _, _, _) if t.startsWith("Keep:") => seen.append(e) }
 
     bus.publish(MovieAdded("Skip me", None))
     bus.publish(MovieAdded("Keep: this one", Some(2025)))
@@ -50,8 +50,8 @@ class EventBusSpec extends AnyFlatSpec with Matchers {
   it should "isolate handler exceptions so one bad subscriber can't break the bus" in {
     val bus  = new EventBus
     val seen = mutable.ListBuffer.empty[String]
-    bus.subscribe { case MovieAdded(t, _, _) => throw new RuntimeException(s"boom on $t") }
-    bus.subscribe { case MovieAdded(t, _, _) => seen.append(t) }
+    bus.subscribe { case MovieAdded(t, _, _, _) => throw new RuntimeException(s"boom on $t") }
+    bus.subscribe { case MovieAdded(t, _, _, _) => seen.append(t) }
 
     bus.publish(MovieAdded("First", None))
     bus.publish(MovieAdded("Second", None))
@@ -65,10 +65,10 @@ class EventBusSpec extends AnyFlatSpec with Matchers {
     val bus  = new EventBus
     val seen = mutable.ListBuffer.empty[String]
     val handleWithYear: PartialFunction[DomainEvent, Unit] = {
-      case MovieAdded(t, Some(y), _) => seen.append(s"with-year:$t/$y")
+      case MovieAdded(t, Some(y), _, _) => seen.append(s"with-year:$t/$y")
     }
     val handleNoYear: PartialFunction[DomainEvent, Unit] = {
-      case MovieAdded(t, None, _) => seen.append(s"no-year:$t")
+      case MovieAdded(t, None, _, _) => seen.append(s"no-year:$t")
     }
     bus.subscribe(handleWithYear orElse handleNoYear)
 

@@ -145,6 +145,59 @@ class TmdbClient(http: HttpFetch = new RealHttpFetch(), apiKey: => Option[String
       }
   }
 
+  /** Director name(s) credited on a TMDB movie. Empty when TMDB has no
+   *  credits or the call fails. Used to verify a title-search candidate
+   *  against the cinema-reported director — when a film's title and a
+   *  cinema's title happen to collide (Polish "Niedźwiedzica" matches both
+   *  Grizzly Falls 1999 and the 2026 Helgestad doc) the directors disagree. */
+  def directorsFor(tmdbId: Int): Set[String] = apiKey.map { key =>
+    Try {
+      val body = http.get(s"$ApiBase/movie/$tmdbId/credits?api_key=$key")
+      (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+        .filter(c => (c \ "job").asOpt[String].contains("Director"))
+        .flatMap(c => (c \ "name").asOpt[String])
+        .filter(_.nonEmpty)
+        .toSet
+    }.getOrElse(Set.empty)
+  }.getOrElse(Set.empty)
+
+  /** TMDB person id for a name search, or None when the search returns no
+   *  Directing-known hit. Picks the highest-popularity match whose
+   *  `known_for_department` is "Directing" — keeps us from matching an actor
+   *  who happens to share a name with a director. */
+  def findPerson(name: String): Option[Int] = apiKey.flatMap { key =>
+    Try {
+      val body = http.get(s"$ApiBase/search/person?api_key=$key&query=${urlEncode(name)}")
+      val rows = (Json.parse(body) \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+      rows.find(r => (r \ "known_for_department").asOpt[String].contains("Directing"))
+        .orElse(rows.headOption)
+        .flatMap(r => (r \ "id").asOpt[Int])
+    }.toOption.flatten
+  }
+
+  /** A person's movies as a director — the films they're credited for in the
+   *  Directing department. Returns the same `SearchResult` shape so the
+   *  caller can reuse picking / sorting logic. */
+  def personDirectorCredits(personId: Int): Seq[TmdbClient.SearchResult] = apiKey.map { key =>
+    Try {
+      val body = http.get(s"$ApiBase/person/$personId/movie_credits?api_key=$key&language=pl-PL")
+      (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+        .filter(c => (c \ "department").asOpt[String].contains("Directing"))
+        .flatMap { js =>
+          for {
+            id <- (js \ "id").asOpt[Int]
+          } yield TmdbClient.SearchResult(
+            id            = id,
+            title         = (js \ "title").asOpt[String].getOrElse(""),
+            originalTitle = (js \ "original_title").asOpt[String],
+            releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
+            popularity    = (js \ "popularity").asOpt[Double].getOrElse(0.0)
+          )
+        }
+        .distinctBy(_.id)
+    }.toOption.getOrElse(Seq.empty)
+  }.getOrElse(Seq.empty)
+
   private[clients] def parseSearchResults(body: String): Seq[TmdbClient.SearchResult] =
     decodeMovieArray((Json.parse(body) \ "results").as[JsArray])
 

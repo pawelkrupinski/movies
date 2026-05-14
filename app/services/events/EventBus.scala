@@ -22,8 +22,23 @@ sealed trait DomainEvent
  *  film when its API exposes one (Multikino does for ~5% of films — Cirque du
  *  Soleil, opera/concert docs, English-language imports). Used by the TMDB
  *  stage as a secondary search title when the Polish title doesn't resolve.
- *  Default None keeps existing tests and cinemas without the field unchanged. */
-case class MovieAdded(title: String, year: Option[Int], originalTitle: Option[String] = None) extends DomainEvent
+ *
+ *  `director` carries the cinema-reported director name(s) (possibly comma-
+ *  separated for co-directors). Used by the TMDB stage to *verify* a title-
+ *  search candidate — when the candidate's credits don't include the
+ *  reported director, the resolver walks the director's TMDB filmography
+ *  instead. Solves the same-title-different-film class of mis-resolution
+ *  (e.g. Niedźwiedzica → Grizzly Falls 1999 vs Frost Without Snow and Ice
+ *  2026).
+ *
+ *  Both optional fields default to None so existing tests and cinemas
+ *  without the field stay unchanged. */
+case class MovieAdded(
+  title:         String,
+  year:          Option[Int],
+  originalTitle: Option[String] = None,
+  director:      Option[String] = None
+) extends DomainEvent
 
 /** TMDB resolved a `(title, year)` to a film and an IMDb id. The enrichment
  *  pipeline publishes this after its TMDB stage writes the row to the cache;

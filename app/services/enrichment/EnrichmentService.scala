@@ -109,8 +109,8 @@ class EnrichmentService(
    *  Captures the cinema-provided `originalTitle` (when present) as a hint
    *  the TMDB stage can use as a secondary search title — see `resolveTmdb`. */
   val onMovieAdded: PartialFunction[DomainEvent, Unit] = {
-    case MovieAdded(title, year, originalTitle) =>
-      scheduleTmdbStage(cache.keyOf(title, year), originalTitle)
+    case MovieAdded(title, year, originalTitle, director) =>
+      scheduleTmdbStage(cache.keyOf(title, year), originalTitle, director)
   }
 
   // ── Public read + manual re-enrich ────────────────────────────────────────
@@ -139,15 +139,32 @@ class EnrichmentService(
   /** Snapshot of every cached enrichment — for debug tooling. */
   def snapshot(): Seq[(String, Option[Int], Enrichment)] = cache.snapshot()
 
-  /** Manual re-enrich (debug page). Runs the TMDB stage on the worker pool;
-   *  the bus listener picks up `TmdbResolved` and chains the IMDb stage.
+  /** Manual re-enrich (debug page). Wipes the cached row, then runs the TMDB
+   *  stage on the worker pool — the bus listener picks up `TmdbResolved` and
+   *  chains the IMDb stage; the *Ratings refreshes will re-derive MC / RT /
+   *  Filmweb URLs from the new TMDB id on their next tick.
+   *
+   *  `originalTitle` and `director` are cinema-side hints (sourced from the
+   *  current `ShowtimeCache` by the controller) that feed the same
+   *  director-verification + director-walk path `MovieAdded` uses. Without
+   *  them, the TMDB title search alone can lock in a same-title-different-
+   *  film result, undoing whatever the bus-driven path already corrected.
    *
    *  Returns immediately. Tests that want synchronous results call
-   *  `reEnrichSync` instead.
-   */
-  def reEnrich(title: String, year: Option[Int]): Unit = {
+   *  `reEnrichSync` instead. */
+  def reEnrich(
+    title:         String,
+    year:          Option[Int],
+    originalTitle: Option[String] = None,
+    director:      Option[String] = None
+  ): Unit = {
     val key = cache.keyOf(title, year)
-    worker.execute(() => runTmdbStage(key))
+    // Wipe first — runTmdbStageSync would otherwise preserve the existing
+    // row's MC / RT / Filmweb URLs (derived from whichever wrong film TMDB
+    // last landed on). A fresh row writes those as None and lets the
+    // dedicated ratings classes rediscover them.
+    cache.invalidate(key)
+    worker.execute(() => runTmdbStage(key, originalTitle, director))
   }
 
   /** Same as `reEnrich` but blocks the calling thread and returns the row TMDB
@@ -161,11 +178,15 @@ class EnrichmentService(
 
   // ── TMDB stage ─────────────────────────────────────────────────────────────
 
-  private def scheduleTmdbStage(key: CacheKey, originalTitle: Option[String] = None): Unit = {
+  private def scheduleTmdbStage(
+    key:           CacheKey,
+    originalTitle: Option[String] = None,
+    director:      Option[String] = None
+  ): Unit = {
     if (cache.get(key).exists(_.tmdbId.isDefined)) return  // already resolved
     if (cache.isNegative(key)) return                       // known miss, retry after TTL
     if (pending.add(key))
-      worker.execute(() => try runTmdbStage(key, originalTitle) finally pending.remove(key))
+      worker.execute(() => try runTmdbStage(key, originalTitle, director) finally pending.remove(key))
   }
 
   // Async wrapper around runTmdbStageSync: handles retry policy + event publish.
@@ -176,8 +197,12 @@ class EnrichmentService(
   //                       reference — `ImdbRatings` falls back to IMDb's
   //                       suggestion endpoint to find the id (e.g. very recent
   //                       theatrical releases TMDB hasn't been told about yet).
-  private def runTmdbStage(key: CacheKey, originalTitleHint: Option[String] = None): Unit =
-    Try(runTmdbStageSync(key, originalTitleHint)) match {
+  private def runTmdbStage(
+    key:               CacheKey,
+    originalTitleHint: Option[String] = None,
+    directorHint:      Option[String] = None
+  ): Unit =
+    Try(runTmdbStageSync(key, originalTitleHint, directorHint)) match {
       case Success(Some(e)) =>
         retryAttempts.remove(key)
         e.imdbId match {
@@ -208,8 +233,12 @@ class EnrichmentService(
   // doesn't blank them while the listeners catch up. Returns the new
   // Enrichment, or None when TMDB has no match. Does NOT publish events —
   // callers decide.
-  private def runTmdbStageSync(key: CacheKey, originalTitleHint: Option[String] = None): Option[Enrichment] =
-    resolveTmdb(key.cleanTitle, key.year, originalTitleHint).map { case (hit, imdbId) =>
+  private def runTmdbStageSync(
+    key:               CacheKey,
+    originalTitleHint: Option[String] = None,
+    directorHint:      Option[String] = None
+  ): Option[Enrichment] =
+    resolveTmdb(key.cleanTitle, key.year, originalTitleHint, directorHint).map { case (hit, imdbId) =>
       val existing = cache.get(key)
       // Preserve the previously-known `imdbId` when TMDB resolved the same
       // film (same `tmdbId`) but momentarily dropped the cross-reference —
@@ -289,15 +318,19 @@ class EnrichmentService(
 
   // Resolution order:
   //   1. Sister-row alias match — when another cache row sharing any title
-  //      alias has already been TMDB-resolved (typically because it reported
-  //      a year and we didn't here, or its TMDB-resolved originalTitle is the
-  //      English name we're looking up), inherit that resolution. Avoids
-  //      year-less search collisions (Bez końca 1985 vs 2026, Belle 2013 vs
-  //      Hosoda anime, etc.).
-  //   2. Polish-localised TMDB title search.
-  //   3. Same search by the cinema's `originalTitle` when present and
-  //      different from the primary title (Multikino exposes one for
-  //      Cirque du Soleil / opera / English-language imports).
+  //      alias (cleanTitle or `originalTitle` hint) has already been
+  //      TMDB-resolved, inherit that resolution. Avoids year-less search
+  //      collisions (Bez końca 1985 vs 2026, Belle 2013 vs Hosoda anime,
+  //      etc.). This is where the `originalTitle` hint pulls its weight.
+  //   2. Polish-localised TMDB title search, verified by director when the
+  //      cinema reported one (rejects same-title-different-film hits).
+  //   3. Director-page walk — when the cinema reports a director and the
+  //      title path either missed or returned a candidate with a different
+  //      director, search TMDB for the director by name and pick their
+  //      filmography entry whose year matches the cinema's. Solves the
+  //      Niedźwiedzica class of mis-resolution: Polish title "Niedźwiedzica"
+  //      maps to Grizzly Falls 1999 on TMDB, but the cinema's reported
+  //      director "Asgeir Helgestad" leads us to his 2026 film instead.
   //
   // The IMDb id is OPTIONAL: TMDB doesn't always have a cross-reference yet
   // (very recent releases — e.g. "Za duży na bajki 3" tmdbid 1484486 has no
@@ -305,19 +338,75 @@ class EnrichmentService(
   // still store the row (Filmweb / MC / RT all key off the title, not the
   // IMDb id); `ImdbIdMissing` fires from the async TMDB stage so
   // `ImdbRatings` can recover the id via IMDb's suggestion endpoint.
+  //
+  // A `tmdb.search(originalTitle, year)` fallback was previously inserted
+  // between (2) and (3). Audit on 356 films across 9 cinemas found 0 films
+  // with `originalTitle` set but no `director` — i.e. every film the
+  // fallback could uniquely help was also reachable via director-walk.
+  // Dropped to keep the chain minimal.
   private def resolveTmdb(
     title:         String,
     year:          Option[Int],
-    originalTitle: Option[String] = None
-  ): Option[(TmdbClient.SearchResult, Option[String])] =
+    originalTitle: Option[String] = None,
+    director:      Option[String] = None
+  ): Option[(TmdbClient.SearchResult, Option[String])] = {
+    // Sister-row inherits the cached imdbId (no fresh TMDB call needed); the
+    // other branches fetch /external_ids per resolved hit.
+    def viaTmdb(hit: TmdbClient.SearchResult): (TmdbClient.SearchResult, Option[String]) =
+      hit -> tmdb.imdbId(hit.id)
+
     sisterRowMatch(title, year, originalTitle)
-      .orElse(tmdb.search(title, year).map(hit => hit -> tmdb.imdbId(hit.id)))
-      .orElse {
-        originalTitle
-          .filterNot(_.equalsIgnoreCase(title))
-          .flatMap(t => tmdb.search(t, year))
-          .map(hit => hit -> tmdb.imdbId(hit.id))
+      .orElse(verifyByDirector(tmdb.search(title, year), director).map(viaTmdb))
+      .orElse(directorWalk(director, year).map(viaTmdb))
+  }
+
+  /** When the cinema reports a director, drop title-search candidates whose
+   *  TMDB credits don't include that director — they're probably a same-
+   *  title-different-film hit. When no director is reported, pass the
+   *  candidate through unchanged.
+   *
+   *  Director-name comparison is normalize-then-substring: cinemas often
+   *  comma-list a single name ("Asgeir Helgestad") while some films have
+   *  multiple credited directors, so any TMDB director containing the
+   *  cinema's name (or vice versa) counts as a match. */
+  private def verifyByDirector(
+    candidate: Option[TmdbClient.SearchResult],
+    director:  Option[String]
+  ): Option[TmdbClient.SearchResult] =
+    candidate.flatMap { hit =>
+      director match {
+        case None => Some(hit)   // no hint → can't verify, accept
+        case Some(dir) =>
+          val cinemaNames = dir.split(",").iterator.map(_.trim).filter(_.nonEmpty)
+            .map(EnrichmentService.normalize).toSet
+          if (cinemaNames.isEmpty) Some(hit)
+          else {
+            val tmdbNames = tmdb.directorsFor(hit.id).map(EnrichmentService.normalize)
+            val matches = tmdbNames.exists(t => cinemaNames.exists(c => t.contains(c) || c.contains(t)))
+            if (matches) Some(hit) else None
+          }
       }
+    }
+
+  /** Walk a cinema-reported director's TMDB filmography and pick the entry
+   *  whose release year matches the cinema's reported year. Needed when the
+   *  title search lands on the wrong film (different decade, different
+   *  language, popularity tie-break gone wrong). Year is required — without
+   *  it we can't reliably disambiguate among the director's films. */
+  private def directorWalk(
+    director: Option[String],
+    year:     Option[Int]
+  ): Option[TmdbClient.SearchResult] = {
+    for {
+      dir      <- director
+      y        <- year
+      personId <- tmdb.findPerson(dir.split(",").head.trim)
+      film     <- tmdb.personDirectorCredits(personId).find(_.releaseYear.contains(y))
+    } yield {
+      logger.info(s"Director-walk: '$dir' year=$y → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
+      film
+    }
+  }
 
   /** Walk the cache for already-resolved rows sharing any title alias with
    *  this one (cleanTitle + cinema-provided originalTitle on the self side;

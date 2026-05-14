@@ -112,10 +112,27 @@ class MovieController(
 
   /** Drop a single row from cache + Mongo and re-fetch every upstream source
    *  (TMDB, IMDb rating, Filmweb, Metacritic, Rotten Tomatoes). Writes happen
-   *  incrementally on the worker pool — the request returns immediately. */
+   *  incrementally on the worker pool — the request returns immediately.
+   *
+   *  Looks up cinema-side hints (`director`, `originalTitle`) from the live
+   *  showtime cache so the re-resolve uses the same signals the bus-driven
+   *  `MovieAdded` path uses. Without these, a TMDB title search alone can
+   *  re-elect a same-title-different-film hit and silently undo earlier
+   *  corrections (e.g. Rialto's "On drive" resolving back to the LEGO F1
+   *  doc instead of the Ukrainian war drama whose director the cinema does
+   *  report). */
   def reEnrich(title: String, year: Option[Int]): Action[AnyContent] = Action {
     devOnly {
-      enrichmentService.reEnrich(title, year)
+      val normalizedTarget = normalizeTitle(title)
+      val hint = cache.get().find { cm =>
+        normalizeTitle(cm.movie.title) == normalizedTarget && cm.movie.releaseYear == year
+      }
+      enrichmentService.reEnrich(
+        title,
+        year,
+        hint.flatMap(_.movie.originalTitle),
+        hint.flatMap(_.director)
+      )
       NoContent
     }
   }

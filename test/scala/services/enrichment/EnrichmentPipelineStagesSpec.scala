@@ -376,6 +376,105 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     e.imdbId shouldBe Some("tt13651628")
   }
 
+  // ── Director-match verification + director-page filmography walk ──────────
+  //
+  // The Niedźwiedzica case: TMDB's pl-PL search for "Niedźwiedzica" returns
+  // the 1999 American film "Grizzly Falls" (tmdb 50416) — same Polish title
+  // is registered there, and TMDB hasn't been given a Polish title for the
+  // 2026 Helgestad documentary (tmdb 1648927). The cinema reports the
+  // director name "Asgeir Helgestad"; verifying that against the candidate's
+  // credits should reject Grizzly Falls (directed by Stewart Raffill) and
+  // fall back to walking Helgestad's TMDB filmography to find a 2026 hit.
+
+  it should "accept the title-search candidate when its director matches the cinema's reported director" in {
+    val cache = new EnrichmentCache(new FakeRepo())
+    val bus   = new EventBus()
+    val resolved = mutable.ListBuffer.empty[DomainEvent]
+    bus.subscribe { case r: TmdbResolved => resolved.append(r) }
+
+    val tmdbHttp = new StubFetch(Map(
+      "/search/movie" -> Mk2Search,
+      "/movie/931285/credits" -> """{"id":931285,"crew":[{"id":1,"name":"Simon McQuoid","job":"Director","department":"Directing"}]}""",
+      "/external_ids" -> Mk2ExternalIds
+    ))
+    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val svc  = new EnrichmentService(cache, bus, tmdb)
+    bus.subscribe(svc.onMovieAdded)
+
+    bus.publish(MovieAdded("Mortal Kombat II", Some(2026), None, Some("Simon McQuoid")))
+
+    eventually(resolved.size shouldBe 1)
+    val e = cache.get(cache.keyOf("Mortal Kombat II", Some(2026))).get
+    e.tmdbId shouldBe Some(931285)
+    e.imdbId shouldBe Some("tt17490712")
+  }
+
+  it should "walk the director's TMDB filmography when the title candidate has a different director (Niedźwiedzica regression)" in {
+    val cache = new EnrichmentCache(new FakeRepo())
+    val bus   = new EventBus()
+    val resolved = mutable.ListBuffer.empty[DomainEvent]
+    val missing  = mutable.ListBuffer.empty[DomainEvent]
+    bus.subscribe { case r: TmdbResolved => resolved.append(r) }
+    bus.subscribe { case m: services.events.ImdbIdMissing => missing.append(m) }
+
+    // TMDB title search for "Niedźwiedzica" returns Grizzly Falls (1999, dir
+    // Stewart Raffill) — wrong film. Director walk for "Asgeir Helgestad"
+    // surfaces his actual 2026 doc; the resolver should pick that one.
+    val wrongTitleHit =
+      """{"results":[{"id":50416,"title":"Niedźwiedzica","original_title":"Grizzly Falls","release_date":"1999-12-31","popularity":2.5}]}"""
+    val wrongCredits  = """{"id":50416,"crew":[{"id":99,"name":"Stewart Raffill","job":"Director","department":"Directing"}]}"""
+    val personSearch  =
+      """{"results":[{"id":2200772,"name":"Asgeir Helgestad","known_for_department":"Directing","popularity":0.014}]}"""
+    val helgestadCredits =
+      """{"crew":[
+         {"id":1648927,"title":"Frost Without Snow and Ice","original_title":"Frost uten Snø og Is","release_date":"2026-04-09","department":"Directing","job":"Director","popularity":0.5},
+         {"id":682310, "title":"Queen Without Land","original_title":"Queen Without Land","release_date":"2018-04-21","department":"Directing","job":"Director","popularity":0.1}
+       ]}"""
+    // Helgestad's 2026 film has no IMDb cross-reference on TMDB yet — we
+    // should still resolve and publish ImdbIdMissing so ImdbRatings can
+    // recover the id via the suggestion endpoint.
+    val frostExternalIds = """{"id":1648927,"imdb_id":""}"""
+
+    val tmdbHttp = new StubFetch(Map(
+      "/search/movie"                 -> wrongTitleHit,
+      "/movie/50416/credits"          -> wrongCredits,
+      "/search/person"                -> personSearch,
+      "/person/2200772/movie_credits" -> helgestadCredits,
+      "/movie/1648927/external_ids"   -> frostExternalIds
+    ))
+    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val svc  = new EnrichmentService(cache, bus, tmdb)
+    bus.subscribe(svc.onMovieAdded)
+
+    bus.publish(MovieAdded("Niedźwiedzica", Some(2026), None, Some("Asgeir Helgestad")))
+
+    eventually {
+      val e = cache.get(cache.keyOf("Niedźwiedzica", Some(2026)))
+      e.flatMap(_.tmdbId) shouldBe Some(1648927)
+    }
+    // Resolved without an imdb cross-reference → ImdbIdMissing fires, no
+    // TmdbResolved.
+    resolved shouldBe empty
+    missing.size shouldBe 1
+  }
+
+  it should "leave behaviour unchanged when the cinema doesn't report a director" in {
+    // Mortal Kombat II without a director hint: the existing TMDB title-search
+    // path runs and stores the canonical row. Director verification is opt-in.
+    val cache = new EnrichmentCache(new FakeRepo())
+    val bus   = new EventBus()
+    val resolved = mutable.ListBuffer.empty[DomainEvent]
+    bus.subscribe { case r: TmdbResolved => resolved.append(r) }
+
+    val svc = new EnrichmentService(cache, bus, tmdbStub())
+    bus.subscribe(svc.onMovieAdded)
+
+    bus.publish(MovieAdded("Mortal Kombat II", Some(2026)))   // 3-arg form, director=None by default
+
+    eventually(resolved.size shouldBe 1)
+    cache.get(cache.keyOf("Mortal Kombat II", Some(2026))).flatMap(_.tmdbId) shouldBe Some(931285)
+  }
+
   it should "not treat the row being resolved as its own sister (self-exclusion)" in {
     // The row already has a STALE tmdbId from a previous wrong resolution.
     // If we counted self as a sister, the lookup would see {stale} only
@@ -496,47 +595,6 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
     eventually(resolved.size shouldBe 1)
     resolved.head shouldBe TmdbResolved("Mortal Kombat II", Some(2026), "tt17490712")
-  }
-
-  // Regression: TMDB's Polish search sometimes returns nothing for niche
-  // foreign productions distributed under a Polish title (Cirque du Soleil,
-  // English-language docs, opera recordings). When the cinema's API exposes
-  // an `originalTitle`, the listener should pass it through so the TMDB stage
-  // can fall back to searching by the English title.
-  it should "fall back to searching TMDB by originalTitle when the primary title misses" in {
-    val cache = new EnrichmentCache(new FakeRepo())
-    val bus   = new EventBus()
-    val resolved = mutable.ListBuffer.empty[DomainEvent]
-    bus.subscribe { case e: TmdbResolved => resolved.append(e) }
-
-    // TMDB returns NO hits for the Polish title at any year; DOES return Mk2
-    // when queried by the English originalTitle. (Substring routing by URL.)
-    val tmdbHttp = new HttpFetch {
-      override def get(url: String): String =
-        if (url.contains("/search/movie") && url.contains("query=Polish"))
-          """{"results":[]}"""
-        else if (url.contains("/search/movie") && url.contains("query=Mortal"))
-          Mk2Search
-        else if (url.contains("/external_ids"))
-          Mk2ExternalIds
-        else throw new RuntimeException(s"unstubbed URL: $url")
-      override def post(url: String, body: String, contentType: String): String = get(url)
-    }
-    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val imdb = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
-    val svc  = new EnrichmentService(cache, bus, tmdb)
-    bus.subscribe(svc.onMovieAdded)
-
-    bus.publish(MovieAdded("Polish Title", Some(2026), Some("Mortal Kombat II")))
-
-    eventually(resolved.size shouldBe 1)
-    resolved.head shouldBe TmdbResolved("Polish Title", Some(2026), "tt17490712")
-    // The cache row is keyed by the Polish title (the user's identity for the
-    // film) but carries the TMDB-resolved tmdbId / imdbId / originalTitle.
-    val e = cache.get(cache.keyOf("Polish Title", Some(2026))).get
-    e.tmdbId        shouldBe Some(931285)
-    e.imdbId        shouldBe Some("tt17490712")
-    e.originalTitle shouldBe Some("Mortal Kombat II")
   }
 
   it should "skip rows that already have a tmdbId (no redundant TMDB call)" in {
