@@ -45,6 +45,15 @@ class MovieController(
     Ok(views.html.repertoire(toSchedules(cache.get()), Cinema.all.map(_.displayName), devMode))
   }
 
+  // Permissive robots.txt — link-preview scrapers (Facebook's
+  // `facebookexternalhit` in particular) treat a 404 here as "site not
+  // crawlable" and surface that as a generic 403 to the debugger UI. Serving
+  // an explicit allow-all unblocks their preview fetch. No private endpoints
+  // to gate.
+  def robotsTxt: Action[AnyContent] = Action {
+    Ok("User-agent: *\nAllow: /\n").as("text/plain; charset=utf-8")
+  }
+
   def kina(): Action[AnyContent] = Action { request =>
     Ok(views.html.kina(toCinemaSchedules(cache.get()), Cinema.all.map(_.displayName), devMode))
   }

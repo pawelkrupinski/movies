@@ -15,5 +15,12 @@ POST    /debug/enrichment/reenrich          controllers.MovieController.reEnrich
 # ── Health ────────────────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check
 
+# ── robots.txt ────────────────────────────────────────────────────────────────
+# Returning a 404 on /robots.txt confused Facebook's link-preview scraper
+# (`facebookexternalhit`) — its debugger reported "403 due to robots.txt
+# block" against the film page. Serving a permissive robots.txt explicitly
+# allowlists every crawler and matches Facebook's stated requirement.
+GET     /robots.txt                 controllers.MovieController.robotsTxt
+
 # ── Static assets ─────────────────────────────────────────────────────────────
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
