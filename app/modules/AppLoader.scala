@@ -13,7 +13,7 @@ import play.filters.cors.CORSComponents
 import services.cinemas.HeliosClient
 import services.enrichment.{EnrichmentCache, EnrichmentRepo, EnrichmentService, FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
 import services.events.EventBus
-import services.{Keepalive, ShowtimeCache}
+import services.ShowtimeCache
 
 /**
  * Compile-time DI entry point. Replaces Guice + the three `play.modules.enabled`
@@ -23,14 +23,18 @@ import services.{Keepalive, ShowtimeCache}
  */
 class AppLoader extends ApplicationLoader {
   override def load(context: Context): Application = {
-    // Default to Mode.Dev so a forgotten env var doesn't silently expose debug
-    // routes / disable the Keepalive in production. The deployment is expected
-    // to set APP_MODE=prod explicitly.
+    // APP_MODE is an *override*; when unset we trust the mode Play already
+    // baked into the Context. That works out to:
+    //   - `sbt run`                          → Mode.Dev  (debug routes on)
+    //   - production launcher (Docker/fly.io)→ Mode.Prod (debug routes 404)
+    //   - tests                              → Mode.Test
+    // Forcing Dev when APP_MODE is unset was leaking debug pages on fly because
+    // we had no APP_MODE configured there — Play's own Prod was being overridden.
     val mode = sys.env.get("APP_MODE").map(_.toLowerCase) match {
       case Some("prod" | "production") => Mode.Prod
       case Some("test")                => Mode.Test
       case Some("dev" | "development") => Mode.Dev
-      case None                        => Mode.Dev
+      case None                        => context.environment.mode
       case Some(other)                 =>
         throw new IllegalArgumentException(s"Unknown APP_MODE: $other (expected dev|test|prod)")
     }
@@ -44,9 +48,8 @@ class AppLoader extends ApplicationLoader {
 /**
  * Single wiring class. Every dependency the app needs is constructed here as a
  * `lazy val` (so the order in the file doesn't matter — references resolve on
- * first use) and side-effecting components (`ShowtimeCache`, `Keepalive`,
- * event subscriptions) are forced at the bottom in the order they need to
- * fire.
+ * first use) and side-effecting components (`ShowtimeCache`, event
+ * subscriptions) are forced at the bottom in the order they need to fire.
  */
 class AppComponents(context: Context)
     extends BuiltInComponentsFromContext(context)
@@ -78,9 +81,8 @@ class AppComponents(context: Context)
   lazy val filmwebRatings        = new FilmwebRatings(enrichmentCache, filmwebClient)
   lazy val enrichmentService     = new EnrichmentService(enrichmentCache, eventBus, tmdbClient)
 
-  // ── Showtime aggregation + Fly keepalive ──────────────────────────────────
+  // ── Showtime aggregation ──────────────────────────────────────────────────
   lazy val showtimeCache = new ShowtimeCache(heliosClient, eventBus)
-  lazy val keepalive     = new Keepalive()
 
   // ── Controllers ───────────────────────────────────────────────────────────
   lazy val movieController  = new MovieController(controllerComponents, showtimeCache, enrichmentService, environment)
@@ -121,10 +123,8 @@ class AppComponents(context: Context)
   metascoreRatings.start()
   filmwebRatings.start()
   showtimeCache.start()
-  if (environment.mode == Mode.Prod) keepalive.start()
 
   applicationLifecycle.addStopHook(() => Future.successful {
-    if (environment.mode == Mode.Prod) keepalive.stop()
     showtimeCache.stop()
     enrichmentService.stop()
     imdbRatings.stop()

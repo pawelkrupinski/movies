@@ -10,9 +10,11 @@ primary_region = 'waw'
 [http_service]
   internal_port = 9000
   force_https = true
-  auto_stop_machines = true
+  # Keep at least one machine running so users never pay a cold-start hit;
+  # auto_stop disabled so Fly doesn't try to scale to zero on idle.
+  auto_stop_machines = false
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
 
   [http_service.concurrency]
     type = 'requests'
