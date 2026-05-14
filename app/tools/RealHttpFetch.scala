@@ -24,6 +24,19 @@ class RealHttpFetch extends HttpFetch {
         else throw new RuntimeException(s"HTTP ${response.statusCode()} for $url")
       }
 
+  override def post(url: String, body: String, contentType: String = "application/json"): String = {
+    val req = HttpRequest.newBuilder()
+      .uri(URI.create(url))
+      .header("Content-Type", contentType)
+      .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+      .POST(HttpRequest.BodyPublishers.ofString(body))
+      .build()
+    val resp = underlying.send(req, HttpResponse.BodyHandlers.ofString())
+    if (resp.statusCode() != 200)
+      throw new RuntimeException(s"HTTP ${resp.statusCode()} for POST $url")
+    resp.body()
+  }
+
   private def buildRequest(url: String): HttpRequest = {
     val builder = HttpRequest.newBuilder()
       .uri(URI.create(url))

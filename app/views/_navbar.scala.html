@@ -1,10 +1,13 @@
-@(activePage: String)
+@(activePage: String, devMode: Boolean)
 <nav class="navbar px-4 py-3 d-flex align-items-center" style="flex-wrap:wrap; gap:.4rem">
   <div class="d-flex align-items-center gap-3" style="flex-shrink:0">
     <span class="fw-bold fs-5">🎬<span class="navbar-title"> Repertuar kinowy Poznań</span></span>
     <div class="d-flex gap-1">
       <a href="/" class="nav-tab@if(activePage == "films"){ active}">Filmy</a>
       <a href="/kina" class="nav-tab@if(activePage == "kina"){ active}">Kina</a>
+      @if(devMode) {
+        <a href="/debug" class="nav-tab">Debug</a>
+      }
     </div>
   </div>
   <div class="d-flex gap-2 align-items-center navbar-cinema-controls">

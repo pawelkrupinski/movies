@@ -1,6 +1,6 @@
 package clients.tools
 
-import clients.RialtoClient
+import services.cinemas.RialtoClient
 import tools.RealHttpFetch
 
 object WriteRialto extends App {

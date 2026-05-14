@@ -1,5 +1,5 @@
-@import models.{CinemaMovie, Movie}
-@(movies: Seq[CinemaMovie])
+@import models.{CinemaMovie, Enrichment, Movie}
+@(movies: Seq[CinemaMovie], enrichmentByTitle: Map[String, Option[Enrichment]])
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -50,6 +50,11 @@
     .st-book:hover { text-decoration: underline; }
     .no-data { color: #444; font-style: italic; }
     .tag { background: #1e2e1e; border: 1px solid #2a4a2a; border-radius: 3px; padding: 0 4px; font-size: 10px; color: #9c9; margin-right: 3px; }
+    .enrich { font-size: 10px; color: #888; padding: .25rem .6rem; border-top: 1px solid #1a1a2e; background: #0e0e1e; display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+    .enrich-original { color: #ccc; font-style: italic; }
+    .enrich-pending { color: #444; font-style: italic; }
+    /* Tighten the shared .ratings layout for this devtools-style page. */
+    .enrich .ratings { margin: 0; }
     input[type=search] {
       background: #1a1a2e; border: 1px solid #3a3a6e; color: #eee;
       padding: .2rem .5rem; border-radius: 4px; font: 12px monospace;
@@ -57,9 +62,11 @@
     }
     .hidden { display: none !important; }
   </style>
+  @_ratingStyles()
 </head>
 <body>
 
+@_debugNavbar("movies")
 <h1>Debug – Raw CinemaMovie Data</h1>
 <div class="summary">
   @movies.size entries · @movies.map(_.cinema).distinct.size cinemas ·
@@ -90,6 +97,19 @@
       <span class="pill">@entries.size cinema(s)</span>
       <span class="pill">@entries.flatMap(_.showtimes).size showings</span>
     </div>
+
+    @defining(enrichmentByTitle.getOrElse(entries.head.movie.title.toLowerCase.trim, None)) { enrich =>
+      <div class="enrich">
+        @_ratingBadges(enrich, entries.head.movie.title)
+        @enrich match {
+          case Some(e) => {
+            <span class="enrich-original">@e.imdbId</span>
+            @e.originalTitle.map { t => <span class="enrich-original">orig: @t</span> }
+          }
+          case None    => { <span class="enrich-pending">no enrichment (cache miss or pending lookup)</span> }
+        }
+      </div>
+    }
 
     @for(cm <- entries) {
     <div class="entry">

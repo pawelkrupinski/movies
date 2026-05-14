@@ -77,6 +77,7 @@
     a.badge-time:hover { background: #5a5a9e; color: #fff; }
     .badge-fmt { font-size: .62rem; opacity: .7; margin-left: 3px; }
   </style>
+  @_ratingStyles()
 </head>
 <body>
 
@@ -99,6 +100,8 @@
 
     <div class="col">
       <div class="film-title">@film.movie.title</div>
+
+      @_ratingBadges(film.enrichment, film.movie.title)
 
       @if(film.cinemaFilmUrls.nonEmpty) {
         <div style="margin-top: .5rem;">

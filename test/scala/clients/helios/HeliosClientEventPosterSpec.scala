@@ -1,9 +1,9 @@
 package clients.helios
 
-import clients.HeliosClient
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.HeliosClient
 
 // Events listed under /wydarzenie/... carry their own posterPhoto in the NUXT
 // repertoire payload — independent of any parent /filmy/ entry. The Radomiak –

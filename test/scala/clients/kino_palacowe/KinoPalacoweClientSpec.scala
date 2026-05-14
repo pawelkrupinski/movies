@@ -1,10 +1,10 @@
 package clients.kino_palacowe
 
-import clients.KinoPalacoweClient
 import clients.tools.FakeHttpFetch
 import models.{KinoPalacowe, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.KinoPalacoweClient
 
 import java.time.LocalDateTime
 

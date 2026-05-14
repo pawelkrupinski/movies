@@ -1,6 +1,6 @@
-package clients
+package services.cinemas
 
-import clients.HeliosNuxt.{BookingBase, CinemaSourceId, BaseUrl, cleanTitle}
+import services.cinemas.HeliosNuxt.{BaseUrl, BookingBase, CinemaSourceId, cleanTitle}
 import models.{CinemaMovie, Helios, Movie, Showtime}
 import play.api.libs.json._
 import tools.{HeliosFetch, HttpFetch}

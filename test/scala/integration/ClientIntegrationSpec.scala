@@ -1,24 +1,15 @@
 package integration
 
-import clients._
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie}
-import modules.CacheModule
 import org.scalatest.ParallelTestExecution
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatestplus.play.guice.GuiceOneAppPerSuite
-import play.api.inject.guice.GuiceApplicationBuilder
+import services.cinemas.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoBulgarskaClient, KinoMuzaClient, KinoPalacoweClient, MultikinoClient, RialtoClient}
 
 class ClientIntegrationSpec
   extends AnyFlatSpec
     with Matchers
-    with ParallelTestExecution
-    with GuiceOneAppPerSuite {
-
-  override def fakeApplication() =
-    new GuiceApplicationBuilder()
-      .disable[CacheModule]
-      .build()
+    with ParallelTestExecution {
 
   "MultikinoClient" should "fetch films" in {
     assertAllHaveRuntime(MultikinoClient.fetch())
@@ -30,8 +21,7 @@ class ClientIntegrationSpec
     assertAllHaveRuntime(KinoPalacoweClient.fetch())
   }
   "HeliosClient" should "fetch films" in {
-    val heliosClient = app.injector.instanceOf[HeliosClient]
-    assertAllHaveRuntime(heliosClient.fetch())
+    assertAllHaveRuntime(new HeliosClient().fetch())
   }
 
   // Cinema City lists upcoming films before their duration is published — e.g.
@@ -52,7 +42,10 @@ class ClientIntegrationSpec
   }
 
   "KinoBulgarskaClient" should "fetch films" in {
-    assertAllHaveRuntime(KinoBulgarskaClient.fetch())
+    // Most films have a runtime, but the cinema occasionally lists
+    // preview-screening events ("pokazy przedpremierowe") that don't include
+    // one. Don't drop them — they're still real screenings.
+    assertMostHaveRuntime(KinoBulgarskaClient.fetch())
   }
 
   "RialtoClient" should "fetch films" in {

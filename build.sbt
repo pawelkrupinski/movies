@@ -18,9 +18,6 @@ val mongoDriverVersion = "5.1.1"
 
 libraryDependencies ++= Seq(
 
-  // Play
-  guice,
-
   // MongoDB official Scala driver
   "org.mongodb.scala" %% "mongo-scala-driver" % mongoDriverVersion,
 

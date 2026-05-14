@@ -54,6 +54,31 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
   // ── Pre-existing Arabic→Roman behaviour still applies ─────────────────────
 
+  // The decoration patterns now live in TitleNormalizer (formerly only in
+  // EnrichmentService.searchTitle) and feed into `canonical`, so anniversary
+  // and wersja variants collapse with their base film for merging.
+
+  it should "merge 'Top Gun 40th Anniversary' with 'Top Gun' via the decoration-stripped canonical" in {
+    val titles = Seq("Top Gun 40th Anniversary", "Top Gun")
+    mergeKey("Top Gun 40th Anniversary", titles) shouldBe mergeKey("Top Gun", titles)
+  }
+
+  it should "merge a Polish 'Rocznica' variant with the base film" in {
+    val titles = Seq("Top gun | 40 rocznica", "Top Gun")
+    mergeKey("Top gun | 40 rocznica", titles) shouldBe mergeKey("Top Gun", titles)
+  }
+
+  it should "merge 'Wersja zremasterowana' with the base film" in {
+    val titles = Seq("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana",
+                     "Żywot Briana Grupy Monty Pythona")
+    mergeKey(titles.head, titles) shouldBe mergeKey(titles.last, titles)
+  }
+
+  it should "leave the anniversary title untouched when no base film is in the corpus" in {
+    val titles = Seq("Top Gun 40th Anniversary")
+    mergeKey("Top Gun 40th Anniversary", titles) shouldBe "top gun 40th anniversary"
+  }
+
   it should "still collapse 'Mortal Kombat 2' and 'Mortal Kombat II' via Roman normalisation" in {
     val titles = Seq("Mortal Kombat 2", "Mortal Kombat II")
     mergeKey("Mortal Kombat 2", titles) shouldBe mergeKey("Mortal Kombat II", titles)

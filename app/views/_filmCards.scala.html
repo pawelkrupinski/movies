@@ -2,7 +2,7 @@
 @(films: Seq[FilmSchedule])
 @for(film <- films) {
 <div class="col" data-title="@film.movie.title">
-  @_movieCard(film.movie, film.posterUrl) {
+  @_movieCard(film.movie, film.posterUrl, film.enrichment) {
     @_filmShowings(film)
   }
 </div>

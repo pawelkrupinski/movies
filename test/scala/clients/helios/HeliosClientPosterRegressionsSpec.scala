@@ -1,9 +1,9 @@
 package clients.helios
 
-import clients.HeliosClient
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.HeliosClient
 
 class HeliosClientPosterRegressionsSpec extends AnyFlatSpec with Matchers {
   private val fakeHttp = new FakeHttpFetch("helios/posters")

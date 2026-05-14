@@ -1,10 +1,10 @@
 package clients.multikino
 
-import clients.MultikinoClient
 import clients.tools.FakeHttpFetch
 import models.{Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.MultikinoClient
 
 import java.time.LocalDateTime
 
@@ -646,4 +646,5 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     mk2.exists(_.format == List("2D", "NAP"))                          shouldBe true
     mk2.forall(s => s.format.contains("DUB") || s.format.contains("NAP")) shouldBe true
   }
+
 }

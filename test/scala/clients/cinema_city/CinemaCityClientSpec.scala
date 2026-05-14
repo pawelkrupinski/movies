@@ -1,10 +1,10 @@
 package clients.cinema_city
 
-import clients.CinemaCityClient
 import clients.tools.FakeHttpFetch
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.CinemaCityClient
 
 import java.time.LocalDateTime
 

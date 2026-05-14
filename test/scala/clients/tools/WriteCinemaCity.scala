@@ -1,7 +1,7 @@
 package clients.tools
 
-import clients.CinemaCityClient
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
+import services.cinemas.CinemaCityClient
 import tools.RealHttpFetch
 
 object WriteCinemaCity extends App {

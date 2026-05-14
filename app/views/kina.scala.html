@@ -1,5 +1,5 @@
 @import controllers.CinemaSchedule
-@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String])
+@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String], devMode: Boolean)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -14,7 +14,7 @@
 </head>
 <body>
 
-@_navbar("kina")
+@_navbar("kina", devMode)
 
 <div class="container-fluid py-4 px-4">
   <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>

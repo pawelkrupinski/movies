@@ -1,10 +1,10 @@
 package clients.rialto
 
-import clients.RialtoClient
 import clients.tools.FakeHttpFetch
 import models.{Rialto, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.RialtoClient
 
 import java.time.LocalDateTime
 

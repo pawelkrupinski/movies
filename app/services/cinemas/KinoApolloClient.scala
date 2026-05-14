@@ -1,4 +1,4 @@
-package clients
+package services.cinemas
 
 import models.{CinemaMovie, KinoApollo, Movie, Showtime}
 import tools.{HttpFetch, RealHttpFetch}
@@ -45,7 +45,7 @@ class KinoApolloClient(http: HttpFetch = new RealHttpFetch()) {
 
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
 
-  private[clients] def parseHtml(html: String): Seq[CinemaMovie] = {
+  def parseHtml(html: String): Seq[CinemaMovie] = {
     val links  = EventLinkPat.findAllMatchIn(html)
       .map(m => LinkOccurrence(m.start, m.group(1), m.group(2))).toList
     val titles = TitlePat.findAllMatchIn(html).map(m => (m.start, m.group(1).trim)).toList
@@ -91,7 +91,7 @@ class KinoApolloClient(http: HttpFetch = new RealHttpFetch()) {
 
   // Strip event/promo suffixes so the same film with a "seans przedpremierowy"
   // (pre-premiere) screening collapses into the same Movie as the regular run.
-  private[clients] def cleanTitle(title: String): String =
+  def cleanTitle(title: String): String =
     Seq(" - seans przedpremierowy").foldLeft(title)((t, suffix) => t.stripSuffix(suffix))
 
   // WordPress generates many size variants for each poster (e.g.

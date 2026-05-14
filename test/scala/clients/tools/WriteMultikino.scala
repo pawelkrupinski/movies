@@ -1,7 +1,6 @@
 package clients.tools
 
-import clients.MultikinoClient
-
+import services.cinemas.MultikinoClient
 import java.nio.file.{Files, Paths}
 
 object WriteMultikino extends App {

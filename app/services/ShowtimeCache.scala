@@ -1,23 +1,20 @@
 package services
 
-import clients.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoApolloClient, KinoBulgarskaClient, KinoPalacoweClient, KinoMuzaClient, MultikinoClient, RialtoClient}
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
-import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, Helios, KinoApollo, KinoBulgarska, KinoPalacowe, KinoMuza, Multikino, Rialto}
-import play.api.{Environment, Logging, Mode}
-import play.api.inject.ApplicationLifecycle
+import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, Helios, KinoApollo, KinoBulgarska, KinoMuza, KinoPalacowe, Multikino, Rialto}
+import play.api.Logging
+import services.cinemas.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoApolloClient, KinoBulgarskaClient, KinoMuzaClient, KinoPalacoweClient, MultikinoClient, RialtoClient}
+import services.events.{EventBus, MovieAdded}
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{CountDownLatch, Executors, TimeUnit}
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.Future
 
-@Singleton
-class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle, env: Environment, heliosClient: HeliosClient) extends Logging {
+class ShowtimeCache(
+  heliosClient: HeliosClient,
+  bus:          EventBus
+) extends Logging {
 
   logger.info(s"Starting — commit ${Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")}")
-
-  if (env.mode == Mode.Prod && Option(System.getenv("SCRAPINGANT_KEY")).forall(_.isEmpty))
-    throw new RuntimeException("SCRAPINGANT_KEY must be set in production")
 
   private val cache: Cache[Cinema, Seq[CinemaMovie]] = Caffeine.newBuilder().build()
 
@@ -50,21 +47,23 @@ class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle, env: Environment,
     t
   }
 
-  // Fire immediately at startup, then every 5 minutes
-  scheduler.scheduleAtFixedRate(
-    () => {
-      val futures = sources.map { case (cinema, fetch) =>
+  /** Schedule the periodic refresh. Fires immediately on the first tick so the
+   *  cache starts warming as soon as the app is up; then every 5 minutes.
+   *  Each cinema fetch publishes its own `MovieAdded` events as soon as it
+   *  completes, so enrichment starts work without waiting for the 10-cinema
+   *  barrier. */
+  def start(): Unit =
+    scheduler.scheduleAtFixedRate(
+      () => sources.foreach { case (cinema, fetch) =>
         fetchExecutor.submit(new Runnable { def run(): Unit = refreshOne(cinema, fetch) })
-      }
-      futures.foreach(f => try f.get() catch { case _: Exception => () })
-    },
-    0L, 5L, TimeUnit.MINUTES
-  )
+      },
+      0L, 5L, TimeUnit.MINUTES
+    )
 
-  lifecycle.addStopHook(() => Future.successful {
+  def stop(): Unit = {
     scheduler.shutdown()
     fetchExecutor.shutdown()
-  })
+  }
 
   // Blocks until at least LoadThreshold cinemas have completed their first fetch.
   def get(): Seq[CinemaMovie] = {
@@ -79,6 +78,7 @@ class ShowtimeCache @Inject()(lifecycle: ApplicationLifecycle, env: Environment,
       val elapsed = System.currentTimeMillis() - t0
       cache.put(cinema, movies)
       logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms")
+      movies.foreach(cm => bus.publish(MovieAdded(cm.movie.title, cm.movie.releaseYear)))
     } catch {
       case e: Exception =>
         val elapsed = System.currentTimeMillis() - t0

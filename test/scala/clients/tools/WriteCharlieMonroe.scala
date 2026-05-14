@@ -1,6 +1,6 @@
 package clients.tools
 
-import clients.CharlieMonroeClient
+import services.cinemas.CharlieMonroeClient
 import tools.RealHttpFetch
 
 object WriteCharlieMonroe extends App {

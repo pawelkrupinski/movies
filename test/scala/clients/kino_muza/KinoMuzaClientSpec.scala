@@ -1,10 +1,10 @@
 package clients.kino_muza
 
-import clients.KinoMuzaClient
 import clients.tools.FakeHttpFetch
 import models.{KinoMuza, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.KinoMuzaClient
 
 import java.time.LocalDateTime
 

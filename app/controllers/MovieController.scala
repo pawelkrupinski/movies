@@ -1,14 +1,14 @@
 package controllers
 
 import models._
-import play.api.libs.json.Json
 import play.api.mvc._
+import play.api.{Environment, Mode}
 import services.ShowtimeCache
+import services.enrichment.EnrichmentService
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, LocalDateTime, ZoneId}
-import javax.inject.{Inject, Singleton}
 import scala.util.Try
 
 case class CinemaShowtimes(cinema: Cinema, showtimes: Seq[Showtime])
@@ -20,32 +20,71 @@ case class FilmSchedule(
                          cast: Option[String],
                          director: Option[String],
                          cinemaFilmUrls: Seq[(Cinema, String)],
-                         showings: Seq[(LocalDate, Seq[CinemaShowtimes])]
+                         showings: Seq[(LocalDate, Seq[CinemaShowtimes])],
+                         enrichment: Option[Enrichment] = None
                        )
 
 case class CinemaMovieSchedule(
                                 movie: Movie,
                                 posterUrl: Option[String],
                                 filmUrl: Option[String],
-                                showings: Seq[(LocalDate, Seq[Showtime])]
+                                showings: Seq[(LocalDate, Seq[Showtime])],
+                                enrichment: Option[Enrichment] = None
                               )
 
 case class CinemaSchedule(cinema: Cinema, movies: Seq[CinemaMovieSchedule])
 
-@Singleton
-class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
-  extends AbstractController(cc) {
+class MovieController(
+  cc:                ControllerComponents,
+  cache:             ShowtimeCache,
+  enrichmentService: EnrichmentService,
+  env:               Environment
+) extends AbstractController(cc) {
 
   def index(): Action[AnyContent] = Action { request =>
-    Ok(views.html.repertoire(toSchedules(cache.get()), Cinema.all.map(_.displayName)))
+    Ok(views.html.repertoire(toSchedules(cache.get()), Cinema.all.map(_.displayName), devMode))
   }
 
   def kina(): Action[AnyContent] = Action { request =>
-    Ok(views.html.kina(toCinemaSchedules(cache.get()), Cinema.all.map(_.displayName)))
+    Ok(views.html.kina(toCinemaSchedules(cache.get()), Cinema.all.map(_.displayName), devMode))
   }
 
   def debug(): Action[AnyContent] = Action {
-    Ok(views.html.debug(cache.get()))
+    devOnly {
+      val movies = cache.get()
+      // One enrichment lookup per unique title (same grouping key the debug
+      // view uses) — schedule the same year as toSchedules: first non-empty
+      // year seen.
+      val enrichmentByTitle: Map[String, Option[Enrichment]] =
+        movies.groupBy(cm => cm.movie.title.toLowerCase.trim).map { case (k, group) =>
+          val title = group.head.movie.title
+          val year  = group.flatMap(_.movie.releaseYear).headOption
+          k -> enrichmentService.get(title, year)
+        }
+      Ok(views.html.debug(movies, enrichmentByTitle))
+    }
+  }
+
+  def debugEnrichment(): Action[AnyContent] = Action {
+    devOnly {
+      // Existing rows from the enrichment cache.
+      val enriched: Seq[(String, Option[Int], Option[Enrichment])] =
+        enrichmentService.snapshot().map { case (t, y, e) => (t, y, Some(e)) }
+      val enrichedKeys: Set[(String, Option[Int])] = enriched.map { case (t, y, _) => (t, y) }.toSet
+
+      // Showtime titles currently in the cache, normalised to the same key the
+      // enrichment cache uses (searchTitle strips decoration like anniversary
+      // suffixes). Anything not yet enriched gets a row with no Enrichment.
+      val pending: Seq[(String, Option[Int], Option[Enrichment])] =
+        cache.get()
+          .map(cm => (services.enrichment.EnrichmentService.searchTitle(cm.movie.title), cm.movie.releaseYear))
+          .distinct
+          .filterNot(enrichedKeys.contains)
+          .map { case (t, y) => (t, y, None) }
+
+      val rows = (enriched ++ pending).sortBy { case (t, _, _) => t.toLowerCase }
+      Ok(views.html.debugEnrichment(rows))
+    }
   }
 
   def film(title: String): Action[AnyContent] = Action { request =>
@@ -54,6 +93,25 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
       case None           => NotFound(s"Film not found: $title")
     }
   }
+
+  /** Drop a single row from cache + Mongo and re-fetch every upstream source
+   *  (TMDB, IMDb rating, Filmweb, Metacritic, Rotten Tomatoes). Writes happen
+   *  incrementally on the worker pool — the request returns immediately. */
+  def reEnrich(title: String, year: Option[Int]): Action[AnyContent] = Action {
+    devOnly {
+      enrichmentService.reEnrich(title, year)
+      NoContent
+    }
+  }
+
+  // All /debug/* endpoints return 404 in production so the cache contents and
+  // the re-enrichment trigger aren't exposed on a deployed instance. Mode
+  // defaults to Dev in `AppLoader` unless APP_MODE=prod is set explicitly.
+  private def devOnly(result: => play.api.mvc.Result): play.api.mvc.Result =
+    if (env.mode == Mode.Prod) NotFound("dev-only endpoint") else result
+
+  // Same flag the regular navbar uses to gate the Debug tab.
+  private def devMode: Boolean = env.mode != Mode.Prod
 
   private def toSchedules(cinemaMovies: Seq[CinemaMovie]): Seq[FilmSchedule] = {
     // Pre-compute canonical→merge-key lookup once (O(N)). Without this, mergeKey
@@ -101,14 +159,16 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
           val metaPriority = entries.sortBy(e => if (e.cinema == Multikino) 0 else 1)
 
           val runtimeMinutes: Option[Int] = entries.flatMap(_.movie.runtimeMinutes).headOption
+          val releaseYear:    Option[Int] = entries.flatMap(_.movie.releaseYear).headOption
           Some((earliest, FilmSchedule(
-            movie = Movie(displayTitle, runtimeMinutes),
+            movie = Movie(displayTitle, runtimeMinutes, releaseYear),
             posterUrl = metaPriority.flatMap(_.posterUrl).headOption,
             synopsis = metaPriority.flatMap(_.synopsis).headOption,
             cast = metaPriority.flatMap(_.cast).headOption,
             director = metaPriority.flatMap(_.director).headOption,
             cinemaFilmUrls = entries.flatMap(entry => entry.filmUrl.map(url => (entry.cinema, url))),
-            showings = byDate
+            showings = byDate,
+            enrichment = enrichmentService.get(displayTitle, releaseYear)
           )))
         }
       }
@@ -130,10 +190,11 @@ class MovieController @Inject()(cc: ControllerComponents, cache: ShowtimeCache)
               .toSeq.sortBy(_._1)
               .map { case (date, sts) => (date, sts.sortBy(_.dateTime)) }
             Some(CinemaMovieSchedule(
-              movie     = entry.movie.copy(title = normalizeTitle(entry.movie.title)),
-              posterUrl = entry.posterUrl,
-              filmUrl   = entry.filmUrl,
-              showings  = byDate
+              movie      = entry.movie.copy(title = normalizeTitle(entry.movie.title)),
+              posterUrl  = entry.posterUrl,
+              filmUrl    = entry.filmUrl,
+              showings   = byDate,
+              enrichment = enrichmentService.get(normalizeTitle(entry.movie.title), entry.movie.releaseYear)
             ))
           }
         }

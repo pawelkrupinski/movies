@@ -1,6 +1,6 @@
 package clients.tools
 
-import clients.KinoMuzaClient
+import services.cinemas.KinoMuzaClient
 import tools.RealHttpFetch
 
 object WriteKinoMuza extends App {

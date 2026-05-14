@@ -1,19 +1,21 @@
 package clients.helios
 
-import clients.HeliosClient
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.HeliosClient
 
-import java.time.{LocalDate, ZoneId}
+import java.time.LocalDate
 
 class HeliosClientTodayMoviesRegressionSpec extends AnyFlatSpec with Matchers {
 
   private val client =
     new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"))
 
-  private val today =
-    LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  // The fixture was captured on 2026-05-13 — pin "today" to that so the
+  // assertions stay deterministic. Using `LocalDate.now()` against a recorded
+  // fixture causes the expected set to drift every day.
+  private val today = LocalDate.of(2026, 5, 13)
 
   private def fetchTodayTitles(): Seq[String] =
     client

@@ -1,10 +1,10 @@
 package clients.charlie_monroe
 
-import clients.CharlieMonroeClient
 import clients.tools.FakeHttpFetch
 import models.{CharlieMonroe, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.CharlieMonroeClient
 
 import java.time.LocalDateTime
 

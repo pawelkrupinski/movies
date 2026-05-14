@@ -4,6 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoBulgarskaClient, KinoMuzaClient, KinoPalacoweClient, MultikinoClient, RialtoClient}
 
 // Showtime.format is a List of individual tokens. Cinemas use different
 // separators in their raw payloads ("/", " "), so we strip them at parse time

@@ -1,0 +1,22 @@
+@(active: String)
+<nav class="debug-nav">
+  <a href="/debug"            class="@if(active == "movies") {active}">Movies</a>
+  <a href="/debug/enrichment" class="@if(active == "enrichment") {active}">Enrichment</a>
+  <span class="debug-nav-sep">·</span>
+  <a href="/"     class="debug-nav-out">Filmy ↗</a>
+  <a href="/kina" class="debug-nav-out">Kina ↗</a>
+</nav>
+<style>
+  .debug-nav { display: flex; gap: .3rem; margin-bottom: .6rem; font: 12px monospace; align-items: center; }
+  .debug-nav a {
+    color: #99b; background: #1a1a2e; border: 1px solid #2a2a3e;
+    padding: .25rem .7rem; border-radius: 3px; text-decoration: none;
+  }
+  .debug-nav a:hover { background: #252540; color: #ccc; }
+  .debug-nav a.active {
+    background: #2a2a55; color: #aad4ff; border-color: #3a3a6e;
+  }
+  .debug-nav-sep { color: #444; padding: 0 .2rem; }
+  .debug-nav a.debug-nav-out { color: #66aadd; }
+  .debug-nav a.debug-nav-out:hover { color: #aad4ff; }
+</style>

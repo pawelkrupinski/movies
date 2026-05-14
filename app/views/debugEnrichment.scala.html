@@ -1,0 +1,196 @@
+@import models.Enrichment
+@(rows: Seq[(String, Option[Int], Option[Enrichment])])
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Debug – Enrichment</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font: 12px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 1rem; margin: 0; }
+    h1 { font-size: 14px; color: #aad4ff; margin: 0 0 .5rem; }
+    .summary { color: #666; margin-bottom: .5rem; font-size: 11px; }
+    input[type=search] {
+      background: #1a1a2e; border: 1px solid #3a3a6e; color: #eee;
+      padding: .2rem .5rem; border-radius: 4px; font: 12px monospace;
+      width: 300px; margin-bottom: .5rem;
+    }
+    table { border-collapse: collapse; width: 100%; font-size: 11px; }
+    th, td { padding: .35rem .5rem; border-bottom: 1px solid #1a1a2e; vertical-align: middle; text-align: left; white-space: nowrap; }
+    thead th {
+      background: #1a1a2e; color: #aad4ff; cursor: pointer; user-select: none;
+      position: sticky; top: 0; z-index: 1;
+    }
+    thead th:hover { background: #252540; }
+    thead th .arrow { color: #666; font-size: 9px; margin-left: 3px; }
+    tbody tr:hover { background: #111120; }
+    .title { max-width: 32ch; overflow: hidden; text-overflow: ellipsis; }
+    .title a { color: #ccc; }
+    .title a:hover { color: #aad4ff; }
+    .orig  { color: #99b; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
+    .year  { color: #888; text-align: right; font-variant-numeric: tabular-nums; }
+    .id    { color: #669fcc; font-size: 10px; }
+    .miss  { color: #444; }
+    a { color: #669fcc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .url-cell a {
+      display: inline-block;
+      color: #888; font-size: 10px;
+      padding: 0 5px; margin-right: 2px;
+      background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 3px;
+    }
+    .url-cell a:hover { background: #252540; color: #ccc; text-decoration: none; }
+    .reenrich-btn {
+      background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 3px;
+      color: #888; font: 12px monospace; padding: 0 6px; cursor: pointer;
+    }
+    .reenrich-btn:hover { background: #252540; color: #ccc; }
+    .reenrich-btn:disabled { opacity: .4; cursor: default; }
+    tr.reenriching td { opacity: .5; }
+    tr.pending td { color: #555; }
+    tr.pending td.title { color: #aab; }
+    /* Tighten the shared .ratings layout for the table — same pills as main page. */
+    .ratings { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
+    .hidden { display: none !important; }
+  </style>
+  @_ratingStyles()
+</head>
+<body>
+
+@_debugNavbar("enrichment")
+<h1>Debug – Enrichment Data</h1>
+<div class="summary">@rows.size total · @rows.count(_._3.isDefined) enriched · @rows.count(_._3.isEmpty) pending · click headers to sort · filter is case-insensitive</div>
+
+<input type="search" id="q" placeholder="Filter by title, original, IMDb id…" oninput="filterRows(this.value)">
+
+<table id="t">
+  <thead>
+    <tr>
+      <th data-key="title" data-type="str">Title <span class="arrow">▲</span></th>
+      <th data-key="orig"  data-type="str">Original</th>
+      <th data-key="year"  data-type="num">Year</th>
+      <th data-key="imdb"  data-type="str">IMDb id</th>
+      <th data-key="tmdb"  data-type="num">TMDB id</th>
+      <th data-key="imdbR" data-type="num">Ratings</th>
+      <th data-key="urls"  data-type="str">Stored URLs</th>
+      <th>↻</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for((title, year, enrich) <- rows) {
+      @defining(enrich.map(_.originalTitle.getOrElse("")).getOrElse("")) { orig =>
+      @defining(enrich.map(_.imdbId).getOrElse("")) { imdbId =>
+      <tr data-haystack="@{(title + " " + orig + " " + imdbId).toLowerCase}"
+          data-title="@title"
+          data-orig="@orig"
+          data-year="@year.map(_.toString).getOrElse("")"
+          data-imdb="@imdbId"
+          data-tmdb="@enrich.flatMap(_.tmdbId).map(_.toString).getOrElse("")"
+          data-imdbR="@enrich.flatMap(_.imdbRating).map(_.toString).getOrElse("")"
+          data-urls="@{enrich.toSeq.flatMap(e => Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten).mkString(" ")}"
+          class="@if(enrich.isEmpty) {pending}">
+        <td class="title"><a href="@{s"/film?title=${java.net.URLEncoder.encode(title, "UTF-8")}"}">@title</a></td>
+        <td class="orig">@if(orig.nonEmpty) { @orig } else { <span class="miss">—</span> }</td>
+        <td class="year">@year.map(_.toString).getOrElse("—")</td>
+        <td class="id">
+          @enrich match {
+            case Some(e) => { <a href="@e.imdbUrl" target="_blank" rel="noopener">@e.imdbId</a> }
+            case None    => { <span class="miss">pending</span> }
+          }
+        </td>
+        <td class="id">
+          @enrich.flatMap(_.tmdbId) match {
+            case Some(id) => { <a href="@{s"https://www.themoviedb.org/movie/$id"}" target="_blank" rel="noopener">@id</a> }
+            case None     => { <span class="miss">—</span> }
+          }
+        </td>
+        <td>
+          @enrich match {
+            case Some(e) => { @_ratingBadges(Some(e), title) }
+            case None    => { <span class="miss">—</span> }
+          }
+        </td>
+        <td class="url-cell">
+          @enrich.flatMap(_.metacriticUrl).map { u => <a href="@u" target="_blank" rel="noopener" title="@u">MC</a> }
+          @enrich.flatMap(_.rottenTomatoesUrl).map { u => <a href="@u" target="_blank" rel="noopener" title="@u">RT</a> }
+          @enrich.flatMap(_.filmwebUrl).map { u => <a href="@u" target="_blank" rel="noopener" title="@u">FW</a> }
+        </td>
+        <td>
+          <button class="reenrich-btn" type="button" title="Drop and re-fetch all upstream data">↻</button>
+        </td>
+      </tr>
+      }
+      }
+    }
+  </tbody>
+</table>
+
+<script>
+  function filterRows(q) {
+    const lq = q.trim().toLowerCase();
+    document.querySelectorAll('#t tbody tr').forEach(tr => {
+      tr.classList.toggle('hidden', lq.length > 0 && !tr.dataset.haystack.includes(lq));
+    });
+  }
+
+  // Sort by header click; stable across clicks via data on <table>.
+  const table = document.getElementById('t');
+  table.querySelectorAll('thead th').forEach(th => {
+    th.addEventListener('click', () => sortBy(th.dataset.key, th.dataset.type, th));
+  });
+
+  function sortBy(key, type, th) {
+    const tbody = table.tBodies[0];
+    const rows = Array.from(tbody.rows);
+    const prevKey = table.dataset.sortKey;
+    const prevDir = table.dataset.sortDir || 'asc';
+    const dir = (prevKey === key && prevDir === 'asc') ? 'desc' : 'asc';
+
+    rows.sort((a, b) => {
+      const av = a.dataset[key] || '';
+      const bv = b.dataset[key] || '';
+      if (type === 'num') {
+        const an = av === '' ? -Infinity : parseFloat(av);
+        const bn = bv === '' ? -Infinity : parseFloat(bv);
+        return dir === 'asc' ? an - bn : bn - an;
+      }
+      return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+    rows.forEach(r => tbody.appendChild(r));
+
+    table.dataset.sortKey = key;
+    table.dataset.sortDir = dir;
+    table.querySelectorAll('thead th .arrow').forEach(a => a.remove());
+    const arrow = document.createElement('span');
+    arrow.className = 'arrow';
+    arrow.textContent = dir === 'asc' ? '▲' : '▼';
+    th.appendChild(arrow);
+  }
+
+  document.getElementById('q').focus();
+
+  // Re-enrich: drop the row server-side and re-fetch every upstream. Each
+  // stage writes to cache + Mongo as it completes; reload once after a short
+  // delay so the partial / final state surfaces. F5 again if you want to
+  // watch later stages land.
+  document.querySelectorAll('.reenrich-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const tr = btn.closest('tr');
+      const params = new URLSearchParams();
+      params.set('title', tr.dataset.title);
+      if (tr.dataset.year) params.set('year', tr.dataset.year);
+      btn.disabled = true;
+      tr.classList.add('reenriching');
+      const res = await fetch('/debug/enrichment/reenrich?' + params.toString(), { method: 'POST' });
+      if (!res.ok) {
+        btn.disabled = false;
+        tr.classList.remove('reenriching');
+        alert('Re-enrich failed: HTTP ' + res.status);
+        return;
+      }
+      setTimeout(() => location.reload(), 1500);
+    });
+  });
+</script>
+</body>
+</html>

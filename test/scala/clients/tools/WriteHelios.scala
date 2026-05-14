@@ -1,6 +1,6 @@
 package clients.tools
 
-import clients.HeliosClient
+import services.cinemas.HeliosClient
 import tools.HeliosFetch
 
 object WriteHelios extends App {

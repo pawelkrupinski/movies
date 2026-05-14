@@ -13,11 +13,47 @@ object TitleNormalizer {
   def normalize(title: String): String =
     title.split(" ").map(word => ArabicToRoman.getOrElse(word, word)).mkString(" ")
 
-  // Conditional cleanups, applied only when another title in `allTitles` would
-  // reduce to the same canonical form. Keeps lone "Gwiezdne Wojny: A New Hope"
-  // or "Pizza & Pasta" intact when there's no merge partner.
+  // ── Cinema-decoration stripping ────────────────────────────────────────────
+  //
+  // Single set of patterns reused by:
+  //   - mergeKey / preferredDisplay  — so "Top Gun 40th Anniversary" and a
+  //     plain "Top Gun" listing collapse into one card.
+  //   - EnrichmentService.searchTitle — so the TMDB/OMDb query is "Top Gun",
+  //     not "Top Gun 40th Anniversary" (the latter doesn't match anything).
+  //
+  // Patterns target decoration that cinemas apply to a base film title —
+  // anniversary rereleases, remasters, cycle screenings, bilingual postfixes.
+  // Each is anchored so that a sequel ("Top Gun: Maverick", "Mortal Kombat II"),
+  // a real-titled film ("Rocznica"), or a synopsis-style line can't be hit.
+  private val CyklPrefix        = """^Cykl\s+[„"][^„""]*[„""]?\s+[-–—]\s+""".r
+  private val SlashSuffix       = """\s+/\s+.+$""".r
+  // Require the suffix to start with a letter so that mathematical titles
+  // like "Orwell: 2 + 2 = 5" aren't truncated to "Orwell: 2".
+  private val PlusSuffix        = """\s+\+\s+\p{L}.+$""".r
+  private val AnniversarySuffix = """(?i)\s*[-–—|.]?\s*\d+(?:st|nd|rd|th)?\.?\s*(?:anniversary|rocznica)\s*$""".r
+  private val RestoredSuffix    = """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""".r
+  private val WersjaSuffix      = """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""".r
+
+  /** Strip cinema decoration (anniversary, restored, Cykl prefix, bilingual
+   *  postfix, remaster suffix). Display titles intentionally keep these — only
+   *  used for grouping and external-API lookups.
+   */
+  def searchTitle(display: String): String = {
+    val a = CyklPrefix.replaceFirstIn(display, "")
+    val b = SlashSuffix.replaceFirstIn(a, "")
+    val c = PlusSuffix.replaceFirstIn(b, "")
+    val d = AnniversarySuffix.replaceFirstIn(c, "")
+    val e = RestoredSuffix.replaceFirstIn(d, "")
+    WersjaSuffix.replaceFirstIn(e, "").trim
+  }
+
+  // Conditional cleanups for merging — applied only when another title in
+  // `allTitles` reduces to the same canonical form. Builds on `searchTitle` so
+  // anniversary/wersja variants merge with their base film, then adds the
+  // cross-cinema spelling unifications (Gwiezdne Wojny prefix, " & " → " i ")
+  // that aren't needed for enrichment lookups.
   private def canonical(t: String): String =
-    t.stripPrefix("Gwiezdne Wojny: ").replace(" & ", " i ")
+    searchTitle(t).stripPrefix("Gwiezdne Wojny: ").replace(" & ", " i ")
 
   // Group key for merging. Falls back to the plain Roman-numeral form when no
   // sibling title reduces to the same canonical.
@@ -27,19 +63,25 @@ object TitleNormalizer {
   // Faster batch entry point: when caller has many titles to key, pre-compute
   // the canonical→count index once (O(N)) and then look up each title in O(1).
   // Caller iterates with `index(title)`. Equivalent semantics to `mergeKey`.
+  //
+  // Counts are keyed by *lower-cased* canonical so cross-cinema casing diffs
+  // (e.g. Rialto's sentence-case "Top gun | 40 rocznica" alongside Helios's
+  // "Top Gun 40th Anniversary") don't prevent a merge.
   def mergeKeyLookup(allTitles: Iterable[String]): String => String = {
     val romanized = allTitles.iterator.map(normalize).toSet
-    // Counts how many distinct romanized titles share each canonical form.
     val canonicalCounts: Map[String, Int] =
-      romanized.iterator.map(canonical).toSeq.groupBy(identity).view.mapValues(_.size).toMap
+      romanized.iterator.map(t => canonical(t).toLowerCase).toSeq
+        .groupBy(identity).view.mapValues(_.size).toMap
     title => {
-      val r = normalize(title)
-      val c = canonical(r)
-      if (c == r) r.toLowerCase
+      val r       = normalize(title)
+      val c       = canonical(r)
+      val cLower  = c.toLowerCase
+      val rLower  = r.toLowerCase
+      if (cLower == rLower) rLower
       // A canonical with count > 1 means at least one *other* romanized title
       // reduces to the same canonical, so we have a real merge — use it.
-      else if (canonicalCounts.getOrElse(c, 0) > 1) c.toLowerCase
-      else r.toLowerCase
+      else if (canonicalCounts.getOrElse(cLower, 0) > 1) cLower
+      else rLower
     }
   }
 

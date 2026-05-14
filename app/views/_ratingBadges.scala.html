@@ -1,0 +1,24 @@
+@import models.Enrichment
+@(enrichment: Option[Enrichment], fallbackTitle: String)
+@enrichment.map { e =>
+  <div class="ratings">
+    @e.imdbRating.map { r =>
+      <a href="@e.imdbUrl" target="_blank" rel="noopener" class="rating-imdb" title="IMDb">
+        <span class="rating-imdb-label">IMDb</span><span class="rating-imdb-value">@{f"$r%.1f"}</span>
+      </a>
+    }
+    @e.metascore.map { m =>
+      <a href="@e.metacriticHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-meta" title="Metacritic">@m</a>
+    }
+    @e.rottenTomatoes.map { rt =>
+      <a href="@e.rottenTomatoesHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-rt @if(rt >= 60) {fresh} else {rotten}" title="Rotten Tomatoes">
+        <span class="rating-rt-label">RT</span><span class="rating-rt-value">@rt%</span>
+      </a>
+    }
+    @e.filmwebUrl.map { url =>
+      <a href="@url" target="_blank" rel="noopener" class="rating-fw" title="Filmweb">
+        <span class="rating-fw-label">FW</span>@e.filmwebRating.map { r => <span class="rating-fw-value">@{f"$r%.1f"}</span> }
+      </a>
+    }
+  </div>
+}

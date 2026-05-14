@@ -1,6 +1,6 @@
 package clients.tools
 
-import clients.KinoBulgarskaClient
+import services.cinemas.KinoBulgarskaClient
 import tools.RealHttpFetch
 
 object WriteKinoBulgarska extends App {

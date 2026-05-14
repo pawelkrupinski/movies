@@ -6,7 +6,7 @@
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6">
     @for(film <- cs.movies) {
     <div class="col" data-title="@film.movie.title">
-      @_movieCard(film.movie, film.posterUrl) {
+      @_movieCard(film.movie, film.posterUrl, film.enrichment) {
         @defining(film.showings.flatMap(_._2.map(_.format.toSet)).filter(_.nonEmpty)) { allFmts =>
         @defining(if (allFmts.isEmpty) Set.empty[String] else allFmts.reduce(_ intersect _)) { commonToks =>
         @for((date, showtimes) <- film.showings) {

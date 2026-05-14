@@ -1,14 +1,11 @@
 package services
 
-import play.api.{Environment, Logging, Mode}
-import play.api.inject.ApplicationLifecycle
+import play.api.Logging
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.Duration
 import java.util.concurrent.{Executors, TimeUnit}
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.Future
 
 /**
  * Periodic self-ping that keeps the Fly.io machine awake.
@@ -18,11 +15,11 @@ import scala.concurrent.Future
  * noticeable for users hitting the site directly. A 60s heartbeat is well below
  * the suspension threshold and adds negligible egress.
  *
- * Disabled outside production so dev runs (and tests) don't make network calls
- * on boot.
+ * Lifecycle: caller invokes `start()` to schedule the heartbeat and `stop()`
+ * to shut down the scheduler. The class itself doesn't decide when to run or
+ * register itself anywhere — see `AppLoader` for the wiring.
  */
-@Singleton
-class Keepalive @Inject()(lifecycle: ApplicationLifecycle, env: Environment) extends Logging {
+class Keepalive extends Logging {
 
   private val Url = "https://kinowo.fly.dev/"
 
@@ -37,14 +34,15 @@ class Keepalive @Inject()(lifecycle: ApplicationLifecycle, env: Environment) ext
     t
   }
 
-  if (env.mode == Mode.Prod) {
-    // 30s initial delay so the first ping doesn't race the cache warm-up; then
-    // every 60s thereafter.
+  /** Schedule the heartbeat. 30s initial delay so the first ping doesn't race
+   *  the cache warm-up; then every 60s thereafter. Idempotent in spirit but
+   *  not designed to be called twice. */
+  def start(): Unit = {
     scheduler.scheduleAtFixedRate(() => ping(), 30L, 60L, TimeUnit.SECONDS)
     logger.info(s"Keepalive enabled — pinging $Url every 60s")
   }
 
-  lifecycle.addStopHook(() => Future.successful(scheduler.shutdown()))
+  def stop(): Unit = scheduler.shutdown()
 
   private def ping(): Unit = {
     val t0 = System.currentTimeMillis()

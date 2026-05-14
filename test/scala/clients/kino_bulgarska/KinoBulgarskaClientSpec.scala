@@ -1,10 +1,10 @@
 package clients.kino_bulgarska
 
-import clients.KinoBulgarskaClient
 import clients.tools.FakeHttpFetch
 import models.{KinoBulgarska, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.KinoBulgarskaClient
 
 import java.time.LocalDateTime
 

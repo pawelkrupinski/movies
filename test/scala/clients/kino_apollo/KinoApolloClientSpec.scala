@@ -1,10 +1,10 @@
 package clients.kino_apollo
 
-import clients.KinoApolloClient
 import clients.tools.FakeHttpFetch
 import models.{KinoApollo, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.KinoApolloClient
 
 import java.time.LocalDateTime
 

@@ -1,4 +1,4 @@
-package clients
+package services.cinemas
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._

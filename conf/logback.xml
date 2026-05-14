@@ -7,6 +7,10 @@
 
   <logger name="services" level="INFO"/>
   <logger name="clients" level="INFO"/>
+  <!-- DEBUG surfaces per-entry rating changes from the hourly Cinemeta refresh
+       (look for "Cinemeta refresh:" lines). The tick-start / tick-end summary
+       and "first run in 10s" line are INFO and always visible. -->
+  <logger name="services.enrichment.EnrichmentService" level="DEBUG"/>
 
   <root level="WARN">
     <appender-ref ref="STDOUT"/>

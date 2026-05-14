@@ -1,5 +1,5 @@
-@import models.Movie
-@(movie: Movie, posterUrl: Option[String])(showingsContent: Html)
+@import models.{Enrichment, Movie}
+@(movie: Movie, posterUrl: Option[String], enrichment: Option[Enrichment] = None)(showingsContent: Html)
 <div class="card">
   <div class="poster-wrap">
     <button class="hide-btn" onclick="hideFilm(this)" title="Ukryj film">✕</button>
@@ -19,6 +19,7 @@
   <span class="pill runtime">@{mins / 60}h@if(mins % 60 != 0){ @{mins % 60}min}</span>
 }
     </div>
+    @_ratingBadges(enrichment, movie.title)
     @showingsContent
   </div>
 </div>

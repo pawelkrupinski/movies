@@ -1,4 +1,4 @@
-package clients
+package services.cinemas
 
 import models.{CinemaMovie, Movie, Rialto, Showtime}
 import org.jsoup.Jsoup
