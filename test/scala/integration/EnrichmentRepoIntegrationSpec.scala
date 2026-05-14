@@ -11,13 +11,11 @@ import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Live test of EnrichmentRepo against real MongoDB Atlas. Requires MONGODB_URI
- * to be set (in `.env.local` or the environment) AND the cluster to be
- * reachable. Skips otherwise so CI doesn't fail without secrets and so
- * intermittent Atlas TLS / network issues don't fail the suite.
+ * to be set (in `.env.local` or the environment). Skips otherwise so CI doesn't
+ * fail without secrets.
  *
  * Writes a sentinel record under a deterministic id, reads it back, and cleans
  * up. Run-isolated so it won't interfere with the production collection of
@@ -25,44 +23,29 @@ import scala.util.Try
  */
 class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  private val repo = new EnrichmentRepo()
+  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
-  // Class-level `assume(...)` aborts the suite (sbt counts that as a failure).
-  // Per-test `cancel(...)` marks individual tests as skipped instead — which is
-  // what we want when MONGODB_URI is unset (CI without secrets) or the cluster
-  // is unreachable (TLS handshake refused / allowlist miss / Atlas blip).
-  private def requireMongo(): Unit = {
-    if (Env.get("MONGODB_URI").isEmpty) cancel("MONGODB_URI not set")
-    if (!repo.enabled) cancel("MongoDB Atlas not reachable (init timed out or refused)")
-  }
+  private val repo = new EnrichmentRepo()
 
   // Tidy sentinel rows so they don't leak into the production positive cache
   // at the next app startup (the service hydrates *everything* from Mongo).
-  // Best-effort: if the cluster has gone away between the test and teardown,
-  // log and move on instead of blocking the suite for 10s on the timeout.
   override protected def afterAll(): Unit = try {
-    Try {
-      val client = MongoClient(Env.get("MONGODB_URI").get)
-      val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
-        .getCollection("enrichments")
-      Await.ready(
-        coll.deleteMany(Filters.regex("_id", "^__integration-test-")).toFuture(),
-        10.seconds
-      )
-      client.close()
-    }.recover { case ex =>
-      info(s"afterAll cleanup skipped — Mongo unreachable: ${ex.getMessage}")
-    }
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+      .getCollection("enrichments")
+    Await.ready(
+      coll.deleteMany(Filters.regex("_id", "^__integration-test-")).toFuture(),
+      10.seconds
+    )
+    client.close()
     repo.close()
   } finally super.afterAll()
 
   "EnrichmentRepo" should "be enabled when MONGODB_URI is set" in {
-    requireMongo()
     repo.enabled shouldBe true
   }
 
   it should "round-trip an Enrichment: upsert → findAll → match" in {
-    requireMongo()
     val sentinelTitle = "__integration-test-sentinel__"
     val sentinelYear  = Some(1900)
     val toStore = Enrichment(
@@ -97,7 +80,6 @@ class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   }
 
   it should "handle Enrichments with all-None optional fields" in {
-    requireMongo()
     val title = "__integration-test-sparse__"
     val toStore = Enrichment(
       imdbId         = "tt0000002",
@@ -131,7 +113,6 @@ class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // upserted — including with metacriticUrl/rottenTomatoesUrl set to None for
   // records created before that feature shipped.
   it should "collapse case-variant cleanTitle upserts into a single Mongo row" in {
-    requireMongo()
     val titleCaps = "__integration-test-CASEDEDUPE__"
     val titleLow  = "__integration-test-casededupe__"
     val withUrls = Enrichment(
