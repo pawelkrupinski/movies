@@ -55,6 +55,18 @@ object TitleNormalizer {
   private def canonical(t: String): String =
     searchTitle(t).stripPrefix("Gwiezdne Wojny: ").replace(" & ", " i ")
 
+  // Last-resort collapse for titles that share words + order but differ only
+  // in punctuation/whitespace ("Top Gun Maverick" vs "Top Gun: Maverick").
+  // Lowercased, accents stripped, every non-alphanumeric char dropped. Used
+  // by `mergeKeyLookup` ONLY when at least two distinct corpus titles reduce
+  // to the same form — so it never collapses a standalone film into siblings
+  // that merely share a prefix.
+  private def stripPunct(t: String): String =
+    java.text.Normalizer.normalize(t, java.text.Normalizer.Form.NFD)
+      .replaceAll("\\p{M}", "")
+      .toLowerCase
+      .replaceAll("[^a-z0-9]+", "")
+
   // Group key for merging. Falls back to the plain Roman-numeral form when no
   // sibling title reduces to the same canonical.
   def mergeKey(title: String, allTitles: Iterable[String]): String =
@@ -72,15 +84,23 @@ object TitleNormalizer {
     val canonicalCounts: Map[String, Int] =
       romanized.iterator.map(t => canonical(t).toLowerCase).toSeq
         .groupBy(identity).view.mapValues(_.size).toMap
+    // Punctuation-stripped counts — for cases where two titles share words +
+    // word order but differ only in : / - / whitespace. Built on top of
+    // canonical so this also catches "Mandalorian & Grogu" ≡ "Mandalorian i
+    // Grogu" when they additionally lose their colon.
+    val puncStripCounts: Map[String, Int] =
+      romanized.iterator.map(t => stripPunct(canonical(t))).toSeq
+        .groupBy(identity).view.mapValues(_.size).toMap
     title => {
       val r       = normalize(title)
-      val c       = canonical(r)
-      val cLower  = c.toLowerCase
+      val cLower  = canonical(r).toLowerCase
       val rLower  = r.toLowerCase
-      if (cLower == rLower) rLower
-      // A canonical with count > 1 means at least one *other* romanized title
-      // reduces to the same canonical, so we have a real merge — use it.
-      else if (canonicalCounts.getOrElse(cLower, 0) > 1) cLower
+      val p       = stripPunct(cLower)
+      // Punctuation-strip is the widest collapse — check first. Only fires
+      // when ≥2 distinct corpus titles reduce to the same form, so a lone
+      // film never gets a key derived from punctuation it didn't share.
+      if (p.nonEmpty && puncStripCounts.getOrElse(p, 0) > 1) p
+      else if (cLower != rLower && canonicalCounts.getOrElse(cLower, 0) > 1) cLower
       else rLower
     }
   }
@@ -98,6 +118,21 @@ object TitleNormalizer {
   def preferredDisplay(titles: Iterable[String]): Option[String] = {
     val seq = titles.iterator.toSeq.distinct
     if (seq.size <= 1) seq.headOption
-    else Some(canonical(seq.head))
+    else {
+      // After canonical (decoration stripping, & → i, Gwiezdne Wojny: removed),
+      // a merged group typically reduces to a single canonical form — return
+      // it. If canonicals still differ (the punctuation-only-merge case:
+      // "Top Gun Maverick" vs "Top Gun: Maverick"), pick the one with the
+      // richest punctuation, then most upper-case letters, then earliest in
+      // the input. That gives "Top Gun: Maverick" over "Top Gun Maverick"
+      // and proper-cased over a Rialto-style sentence-cased duplicate.
+      val canonicals = seq.map(canonical).distinct
+      if (canonicals.size == 1) canonicals.headOption
+      else canonicals.zipWithIndex.maxByOption { case (c, i) =>
+        val punct = c.count(ch => !ch.isLetterOrDigit && !ch.isWhitespace)
+        val upper = c.count(_.isUpper)
+        (punct, upper, -i)
+      }.map(_._1)
+    }
   }
 }

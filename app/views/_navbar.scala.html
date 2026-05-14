@@ -45,6 +45,21 @@
       <div class="panel-divider"></div>
       <label class="panel-label"><input type="checkbox" id="format-imax"           onchange="onFormatChange()"> Tylko IMAX</label>
       <div class="panel-divider"></div>
+      <div class="panel-section-label">Od godziny</div>
+      <div class="d-flex gap-1 align-items-center" style="margin-bottom:.4rem">
+        <select id="from-hour" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
+          <option value="">Dowolna</option>
+          @for(h <- 0 to 23) { <option value="@h">@{f"$h%02d"}</option> }
+        </select>
+        <span>:</span>
+        <select id="from-minute" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
+          <option value="0">00</option>
+          <option value="15">15</option>
+          <option value="30">30</option>
+          <option value="45">45</option>
+        </select>
+      </div>
+      <div class="panel-divider"></div>
       <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100">Wyczyść</button>
     </div>
   </div>

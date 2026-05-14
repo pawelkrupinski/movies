@@ -46,13 +46,22 @@
           el:      group,
           date:    group.dataset.date,
           visible: true,
-          // Pre-parse each badge's format Set up front; never re-read dataset on filter.
-          badges:  [...group.querySelectorAll('.badge-time')].map(b => ({
-            el:      b,
-            time:    (b.firstChild ? b.firstChild.textContent : '').trim(),
-            formats: new Set((b.dataset.format || '').split(' ').filter(Boolean)),
-            visible: true
-          }))
+          // Pre-parse each badge's format Set + numeric minutes-since-midnight
+          // for the from-hour filter; never re-read dataset on filter.
+          badges:  [...group.querySelectorAll('.badge-time')].map(b => {
+            const t = (b.firstChild ? b.firstChild.textContent : '').trim();
+            const colon = t.indexOf(':');
+            const timeMin = colon > 0
+              ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10)
+              : -1;
+            return {
+              el:      b,
+              time:    t,
+              timeMin: timeMin,
+              formats: new Set((b.dataset.format || '').split(' ').filter(Boolean)),
+              visible: true
+            };
+          })
         }))
       }))
     }));
@@ -75,6 +84,8 @@
     const disabled  = new Set(getDisabledCinemas());
     const fmtTokens = getFormatFilter();
     const hasFmt    = fmtTokens.length > 0;
+    const fromMin   = getFromMinutes();
+    const hasFrom   = fromMin !== null;
     const { today, tomorrow, in7Days } = dateBounds();
 
     const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
@@ -106,9 +117,11 @@
           if (!dateOk(group.date)) { setVisible(group, false); continue; }
 
           let groupVisibleCount = 0, groupFirstBadge = null;
-          if (hasFmt) {
+          if (hasFmt || hasFrom) {
             for (const badge of group.badges) {
-              const ok = badgeFormatMatch(badge.formats, fmtTokens);
+              const fmtOk  = !hasFmt  || badgeFormatMatch(badge.formats, fmtTokens);
+              const timeOk = !hasFrom || badge.timeMin < 0 || badge.timeMin >= fromMin;
+              const ok = fmtOk && timeOk;
               setVisible(badge, ok);
               if (ok) {
                 groupVisibleCount++;

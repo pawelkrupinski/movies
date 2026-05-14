@@ -17,6 +17,17 @@
     return new Set((badge.dataset.format || '').split(' ').filter(Boolean));
   }
 
+  // From-hour filter: returns the lower-bound time as minutes-since-midnight
+  // (e.g. 18:30 → 1110), or null when the hour dropdown is set to "Dowolna"
+  // (any). Both dropdowns are read together; the minute default is 00.
+  function getFromMinutes() {
+    const hStr = (document.getElementById('from-hour') || {}).value;
+    if (hStr == null || hStr === '') return null;
+    const h = parseInt(hStr, 10);
+    const m = parseInt((document.getElementById('from-minute') || {}).value, 10) || 0;
+    return h * 60 + m;
+  }
+
   // requiredTokens may be empty → fast-path. Otherwise checks a pre-built Set
   // attached to each indexed badge (so we don't re-parse `dataset.format` on
   // every filter pass).
@@ -36,9 +47,14 @@
   }
 
   function updateFormatBtn() {
-    const tokens = getFormatFilter();
+    const parts = [...getFormatFilter()];
+    const fromMin = getFromMinutes();
+    if (fromMin !== null) {
+      const h = Math.floor(fromMin / 60), m = fromMin % 60;
+      parts.push('od ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
+    }
     const btn = document.getElementById('format-filter-btn');
-    btn.textContent = tokens.length === 0 ? 'Filtry' : 'Filtry (' + tokens.join(' ') + ')';
+    btn.textContent = parts.length === 0 ? 'Filtry' : 'Filtry (' + parts.join(', ') + ')';
   }
 
   function onFormatChange() {
@@ -66,7 +82,9 @@
   function resetFormatFilter() {
     document.querySelector('input[name="format-dim"][value=""]').checked  = true;
     document.querySelector('input[name="format-lang"][value=""]').checked = true;
-    document.getElementById('format-imax').checked = false;
+    document.getElementById('format-imax').checked   = false;
+    document.getElementById('from-hour').value       = '';
+    document.getElementById('from-minute').value     = '0';
     document.getElementById('format-panel').style.display = 'none';
     onFormatChange();
   }

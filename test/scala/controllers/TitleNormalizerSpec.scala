@@ -84,6 +84,33 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     mergeKey("Mortal Kombat 2", titles) shouldBe mergeKey("Mortal Kombat II", titles)
   }
 
+  // ── Punctuation-only duplicates ───────────────────────────────────────────
+  //
+  // Different cinemas format the same title differently — same words and
+  // word order, only punctuation/whitespace differs (one omits a colon,
+  // another uses a dash, etc.). Merge them.
+
+  it should "collapse 'Top Gun Maverick' and 'Top Gun: Maverick' (punctuation-only diff)" in {
+    val titles = Seq("Top Gun Maverick", "Top Gun: Maverick")
+    mergeKey("Top Gun Maverick", titles) shouldBe mergeKey("Top Gun: Maverick", titles)
+  }
+
+  it should "leave 'Top Gun: Maverick' intact when no punctuation-stripped sibling exists" in {
+    val titles = Seq("Top Gun: Maverick", "Top Gun")
+    // No sibling reduces to "topgunmaverick", so the key stays the romanized
+    // lower-case form of the input (no spurious cross-film merge with Top Gun).
+    mergeKey("Top Gun: Maverick", titles) shouldBe "top gun: maverick"
+  }
+
+  it should "not merge films that differ in actual words, only matching siblings" in {
+    val titles = Seq("Mortal Kombat II", "Mortal Kombat 2", "Mortal Kombat")
+    // II ≡ 2 still collapses (Roman normalisation already handled this).
+    // "Mortal Kombat" stays separate — its punctuation-strip "mortalkombat"
+    // has no sibling, only "mortalkombatii" does.
+    mergeKey("Mortal Kombat II", titles) shouldBe mergeKey("Mortal Kombat 2", titles)
+    mergeKey("Mortal Kombat", titles)    should not be mergeKey("Mortal Kombat II", titles)
+  }
+
   // ── No interaction between unrelated films ───────────────────────────────
 
   it should "give different keys to unrelated films sharing the corpus" in {
@@ -167,5 +194,15 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
   it should "leave a standalone '&' title untouched (no merge → no transformation)" in {
     preferredDisplay(Seq("Pizza & Pasta")) shouldBe Some("Pizza & Pasta")
+  }
+
+  // ── preferredDisplay for punctuation-only duplicates ──────────────────────
+
+  it should "prefer the colon variant when both 'Top Gun Maverick' and 'Top Gun: Maverick' are present" in {
+    preferredDisplay(Seq("Top Gun Maverick", "Top Gun: Maverick")) shouldBe Some("Top Gun: Maverick")
+  }
+
+  it should "prefer 'Top Gun: Maverick' regardless of input order" in {
+    preferredDisplay(Seq("Top Gun: Maverick", "Top Gun Maverick")) shouldBe Some("Top Gun: Maverick")
   }
 }
