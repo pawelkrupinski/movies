@@ -27,6 +27,72 @@ class EnrichmentServiceSpec extends AnyFlatSpec with Matchers {
     EnrichmentService.normalize("ДИЯВОЛ НОСИТЬ ПРАДА 2") shouldBe "диявол носить прада 2"
   }
 
+  // ── getForMerge: variant-tolerant lookup ──────────────────────────────────
+  //
+  // Regression: cinemas report "Diabeł ubiera się u Prady 2" with an Arabic
+  // numeral, the enrichment row is stored under that exact docId, but the
+  // merged card's displayTitle goes through TitleNormalizer.normalize which
+  // converts Arabic→Roman → "Diabeł ubiera się u Prady II". The plain
+  // `get(displayTitle, year)` lookup misses; `getForMerge` falls back to the
+  // raw cinema titles that fed the merge so the row gets found.
+
+  import services.enrichment.{EnrichmentCache, EnrichmentRepo}
+  import services.events.EventBus
+  import clients.TmdbClient
+  import models.Enrichment
+  import scala.collection.mutable
+
+  private class InMemRepo(seed: Seq[(String, Option[Int], Enrichment)] = Seq.empty) extends EnrichmentRepo {
+    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), Enrichment]
+    seed.foreach { case (t, y, e) => store.put((t, y), e) }
+    override def enabled: Boolean = true
+    override def findAll(): Seq[(String, Option[Int], Enrichment)] =
+      store.iterator.map { case ((t, y), e) => (t, y, e) }.toSeq
+    override def upsert(t: String, y: Option[Int], e: Enrichment): Unit = { store.put((t, y), e); () }
+    override def delete(t: String, y: Option[Int]): Unit = { store.remove((t, y)); () }
+  }
+
+  private def svc(seed: (String, Option[Int], Enrichment)*): EnrichmentService = {
+    val cache = new EnrichmentCache(new InMemRepo(seed))
+    new EnrichmentService(cache, new EventBus(), new TmdbClient(apiKey = None))
+  }
+
+  private val pradyEnrichment = Enrichment(
+    imdbId        = Some("tt33612209"),
+    imdbRating    = Some(6.7),
+    metascore     = Some(62),
+    originalTitle = Some("The Devil Wears Prada 2"),
+    tmdbId        = Some(1314481)
+  )
+
+  "getForMerge" should "find a row stored under 'Prady 2' when the merged displayTitle is 'Prady II'" in {
+    val s = svc(("Diabeł ubiera się u Prady 2", Some(2026), pradyEnrichment))
+    s.getForMerge(
+      displayTitle    = "Diabeł ubiera się u Prady II",
+      candidateTitles = Seq("Diabeł ubiera się u Prady 2"),
+      year            = Some(2026)
+    ).flatMap(_.imdbId) shouldBe Some("tt33612209")
+  }
+
+  it should "prefer the displayTitle hit when it exists (don't shadow with a candidate)" in {
+    val s = svc(
+      ("Mortal Kombat II", Some(2026), pradyEnrichment.copy(imdbId = Some("tt-roman"))),
+      ("Mortal Kombat 2",  Some(2026), pradyEnrichment.copy(imdbId = Some("tt-arabic")))
+    )
+    // displayTitle matches the Roman row directly — that wins; the Arabic
+    // candidate is a fallback only.
+    s.getForMerge(
+      displayTitle    = "Mortal Kombat II",
+      candidateTitles = Seq("Mortal Kombat 2"),
+      year            = Some(2026)
+    ).flatMap(_.imdbId) shouldBe Some("tt-roman")
+  }
+
+  it should "return None when neither displayTitle nor any candidate has a row" in {
+    val s = svc()
+    s.getForMerge("Anything", Seq("Anything else"), Some(2026)) shouldBe None
+  }
+
   "searchTitle" should "strip a Kino Apollo Cykl prefix with straight quotes" in {
     EnrichmentService.searchTitle("""Cykl "Kultowa klasyka" - Zawieście czerwone latarnie""") shouldBe
       "Zawieście czerwone latarnie"

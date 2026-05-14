@@ -184,7 +184,11 @@ class MovieController(
             director = metaPriority.flatMap(_.director).headOption,
             cinemaFilmUrls = entries.flatMap(entry => entry.filmUrl.map(url => (entry.cinema, url))),
             showings = byDate,
-            enrichment = enrichmentService.get(displayTitle, releaseYear)
+            // Fall back to the raw cinema-reported titles in case displayTitle
+            // diverges from storage — e.g. all cinemas write "Diabeł …
+            // u Prady 2" with Arabic, but TitleNormalizer.normalize promotes
+            // the merged title to "Prady II".
+            enrichment = enrichmentService.getForMerge(displayTitle, entries.map(_.movie.title), releaseYear)
           )))
         }
       }
@@ -210,7 +214,10 @@ class MovieController(
               posterUrl  = entry.posterUrl,
               filmUrl    = entry.filmUrl,
               showings   = byDate,
-              enrichment = enrichmentService.get(normalizeTitle(entry.movie.title), entry.movie.releaseYear)
+              // Same Arabic→Roman miss applies on the per-cinema view: fall
+              // back to the raw cinema title if the normalised one doesn't hit.
+              enrichment = enrichmentService.getForMerge(
+                normalizeTitle(entry.movie.title), Seq(entry.movie.title), entry.movie.releaseYear)
             ))
           }
         }

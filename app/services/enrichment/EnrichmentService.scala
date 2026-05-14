@@ -120,6 +120,22 @@ class EnrichmentService(
   def get(title: String, year: Option[Int]): Option[Enrichment] =
     cache.get(cache.keyOf(title, year))
 
+  /** Variant-tolerant lookup for the merged-card view. The display title
+   *  comes from `TitleNormalizer.normalize` which applies Arabic→Roman
+   *  ("Diabeł ubiera się u Prady 2" → "… II"), but the enrichment row was
+   *  written under whatever the cinema reported (the Arabic form). Try the
+   *  display title first; on miss, fall through to the raw cinema titles
+   *  that fed the merge. Returns the first hit, or None if nothing matches.
+   *
+   *  Lookup-only fallback — no schema change, no per-film overrides; works
+   *  for any case where the merge layer produces a title that diverges from
+   *  the storage layer (matches the project's "merge at display time, not in
+   *  enrichment" stance). */
+  def getForMerge(displayTitle: String, candidateTitles: Iterable[String], year: Option[Int]): Option[Enrichment] =
+    get(displayTitle, year).orElse(
+      candidateTitles.iterator.flatMap(t => get(t, year)).nextOption()
+    )
+
   /** Snapshot of every cached enrichment — for debug tooling. */
   def snapshot(): Seq[(String, Option[Int], Enrichment)] = cache.snapshot()
 
