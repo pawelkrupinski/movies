@@ -237,6 +237,172 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     e.flatMap(_.imdbRating) shouldBe Some(7.2)   // unchanged
   }
 
+  // ── Cross-cinema sister-row lookup ─────────────────────────────────────────
+  //
+  // When the same cleanTitle appears in the cache with one row resolved (e.g.
+  // cinema B reported year=2026 and TMDB found the right film) and another
+  // unresolved (cinema A reported year=None, TMDB year-less search picks the
+  // wrong popular film with the same title), the new row should inherit the
+  // sister row's resolution rather than ask TMDB again. Solves the Bez końca
+  // class of problem (title collision with an older/more-popular same-name
+  // film, where one cinema disambiguates with a year and the other doesn't).
+
+  "the TMDB stage" should "reuse a resolved sister row's tmdbId/imdbId when the cleanTitle matches" in {
+    // Sister row: "Bez końca" (year=2026) already resolved to the correct
+    // 2026 Polish film (tmdbId=1596319, imdbId=tt39075417).
+    val sister = Enrichment(
+      imdbId        = Some("tt39075417"),
+      imdbRating    = None, metascore = None,
+      originalTitle = Some("Bez końca"),
+      tmdbId        = Some(1596319)
+    )
+    val cache = new EnrichmentCache(new FakeRepo(Seq(
+      ("Bez końca", Some(2026), sister)
+    )))
+    // TMDB stub: if anyone calls /search/movie, return the wrong (Kieślowski)
+    // film — the test asserts this code path is NEVER hit.
+    val kieslowski = """{"results":[{"id":124,"title":"Bez końca","original_title":"Bez końca","release_date":"1985-06-17","popularity":12.0}]}"""
+    val tmdb = new TmdbClient(
+      http = new StubFetch(Map("/search/movie" -> kieslowski, "/external_ids" -> """{"id":124,"imdb_id":"tt0086961"}""")),
+      apiKey = Some("stub")
+    )
+    val svc = new EnrichmentService(cache, new EventBus(), tmdb)
+
+    val e = svc.reEnrichSync("Bez końca", None)
+
+    // Inherits the sister row's resolution.
+    e.flatMap(_.tmdbId) shouldBe Some(1596319)
+    e.flatMap(_.imdbId) shouldBe Some("tt39075417")
+  }
+
+  it should "fall through to TMDB when two sister rows disagree on tmdbId (re-release ambiguity)" in {
+    // Two resolved sisters with DIFFERENT tmdbIds — a classic re-release
+    // collision (Bez końca 1985 + 2026 both exist as cache rows). The
+    // sister-row shortcut must not pick one arbitrarily; defer to TMDB.
+    val newFilm = Enrichment(
+      imdbId = Some("tt39075417"), imdbRating = None, metascore = None,
+      originalTitle = Some("Bez końca"), tmdbId = Some(1596319)
+    )
+    val oldFilm = Enrichment(
+      imdbId = Some("tt0086961"),  imdbRating = None, metascore = None,
+      originalTitle = Some("Bez końca"), tmdbId = Some(124)
+    )
+    val cache = new EnrichmentCache(new FakeRepo(Seq(
+      ("Bez końca", Some(2026), newFilm),
+      ("Bez końca", Some(1985), oldFilm)
+    )))
+    // TMDB stub returns the Kieślowski film (popularity wins year-less search).
+    val tmdbHttp = new StubFetch(Map(
+      "/search/movie" -> """{"results":[{"id":124,"title":"Bez końca","original_title":"Bez końca","release_date":"1985-06-17","popularity":12.0}]}""",
+      "/external_ids" -> """{"id":124,"imdb_id":"tt0086961"}"""
+    ))
+    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val svc  = new EnrichmentService(cache, new EventBus(), tmdb)
+
+    val e = svc.reEnrichSync("Bez końca", None)
+
+    // Ambiguous sisters → TMDB picked, which returned the Kieślowski. The
+    // assertion isn't about "right answer" but about "fell through to TMDB
+    // rather than silently picking one of the two sisters".
+    e.flatMap(_.tmdbId) shouldBe Some(124)
+  }
+
+  // ── originalTitle-based matching ───────────────────────────────────────────
+  //
+  // The Belle anime case: TMDB's Polish-localised search for "Belle" picks
+  // the 2013 film over Mamoru Hosoda's 2021 anime. If another cache row
+  // disambiguates (e.g. its cleanTitle is "Belle: smok i piegowata
+  // księżniczka" and its TMDB-resolved originalTitle is "Belle"), we want
+  // the year=None plain-"Belle" row to inherit that resolution via the
+  // originalTitle alias.
+
+  it should "match a donor whose Enrichment.originalTitle aligns with self's cleanTitle (different cleanTitles)" in {
+    // Donor's cleanTitle is a long Polish-localised title; its TMDB-resolved
+    // Enrichment.originalTitle is the short English name — and that English
+    // name is what the second cinema reports as its own (short) cleanTitle.
+    val donor = Enrichment(
+      imdbId        = Some("tt0000123"),
+      imdbRating    = None, metascore = None,
+      originalTitle = Some("Stub Original"),
+      tmdbId        = Some(424242)
+    )
+    val cache = new EnrichmentCache(new FakeRepo(Seq(
+      ("Stub Original: długa polska wersja", Some(2026), donor)
+    )))
+    // TMDB stub returns a different film if asked — assertion is we don't ask.
+    val wrong = """{"results":[{"id":999,"title":"Wrong","original_title":"Wrong","release_date":"2010-01-01","popularity":15.0}]}"""
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie" -> wrong,
+      "/external_ids" -> """{"id":999,"imdb_id":"tt9999999"}"""
+    )), apiKey = Some("stub"))
+    val svc = new EnrichmentService(cache, new EventBus(), tmdb)
+
+    val e = svc.reEnrichSync("Stub Original", None)
+
+    e.flatMap(_.tmdbId) shouldBe Some(424242)
+    e.flatMap(_.imdbId) shouldBe Some("tt0000123")
+  }
+
+  it should "match a donor whose cleanTitle aligns with self's MovieAdded.originalTitle hint" in {
+    // Donor's cleanTitle is "Belle"; self comes through the MovieAdded event
+    // with a Polish title that doesn't match, but with `originalTitle="Belle"`
+    // from the cinema's API.
+    val donor = Enrichment(
+      imdbId = Some("tt13651628"), imdbRating = None, metascore = None,
+      originalTitle = None,
+      tmdbId = Some(776305)
+    )
+    val cache = new EnrichmentCache(new FakeRepo(Seq(
+      ("Belle", Some(2021), donor)
+    )))
+    val bus = new EventBus()
+    val resolved = mutable.ListBuffer.empty[DomainEvent]
+    bus.subscribe { case r: TmdbResolved => resolved.append(r) }
+    // TMDB stub returns the wrong film if asked — the assertion is that we
+    // don't ask, because the sister-row hit short-circuits.
+    val wrong = """{"results":[{"id":99999,"title":"Wrong","original_title":"Wrong","release_date":"2019-01-01","popularity":15.0}]}"""
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie" -> wrong,
+      "/external_ids" -> """{"id":99999,"imdb_id":"tt9999999"}"""
+    )), apiKey = Some("stub"))
+    val svc = new EnrichmentService(cache, bus, tmdb)
+    bus.subscribe(svc.onMovieAdded)
+
+    bus.publish(MovieAdded("Polski Tytuł", None, Some("Belle")))
+
+    eventually(resolved.size shouldBe 1)
+    val e = cache.get(cache.keyOf("Polski Tytuł", None)).get
+    e.tmdbId shouldBe Some(776305)
+    e.imdbId shouldBe Some("tt13651628")
+  }
+
+  it should "not treat the row being resolved as its own sister (self-exclusion)" in {
+    // The row already has a STALE tmdbId from a previous wrong resolution.
+    // If we counted self as a sister, the lookup would see {stale} only
+    // (1 unanimous tmdbId) and reinforce the stale answer. With self-
+    // exclusion, the lookup sees zero sisters and falls through to TMDB,
+    // which corrects the row.
+    val stale = Enrichment(
+      imdbId = Some("tt0086961"), imdbRating = None, metascore = None,
+      originalTitle = Some("Bez końca"), tmdbId = Some(124)   // wrong, stale
+    )
+    val cache = new EnrichmentCache(new FakeRepo(Seq(
+      ("Bez końca", None, stale)
+    )))
+    val tmdbHttp = new StubFetch(Map(
+      "/search/movie" -> """{"results":[{"id":1596319,"title":"Bez końca","original_title":"Bez końca","release_date":"2026-01-01","popularity":2.0}]}""",
+      "/external_ids" -> """{"id":1596319,"imdb_id":"tt39075417"}"""
+    ))
+    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    val svc  = new EnrichmentService(cache, new EventBus(), tmdb)
+
+    val e = svc.reEnrichSync("Bez końca", None)
+
+    // TMDB result wins, not the stale self-row.
+    e.flatMap(_.tmdbId) shouldBe Some(1596319)
+    e.flatMap(_.imdbId) shouldBe Some("tt39075417")
+  }
+
   // ── Daily TMDB retry ──────────────────────────────────────────────────────
 
   "retryUnresolvedTmdb" should "clear the negative cache so previously-failed lookups get another shot" in {
@@ -253,11 +419,14 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     cache.isNegative(key) shouldBe false
   }
 
-  it should "also re-run the TMDB stage for rows missing MC or RT URLs (bypasses the 'already-resolved' short-circuit)" in {
-    // Regression: the hourly IMDb refresh used to also re-probe MC/RT URLs.
-    // After splitting into stages, rows with tmdbId set but no MC/RT URL got
-    // stuck (scheduleTmdbStage skips them, hourly loop doesn't touch them).
-    // The daily retry must pick them up too.
+  it should "NOT re-run the TMDB stage for rows missing MC or RT URLs (those are recovered by *Ratings.refreshAll)" in {
+    // Once a row has a tmdbId, we trust it. Re-running the TMDB stage purely
+    // to discover missing MC/RT URLs would risk flipping the row to a
+    // different film (TMDB's title search lands on whichever same-title hit
+    // is most popular at the moment — that's how Belle / Bez końca / On
+    // drive / Wspinaczka got mis-resolved). URL discovery is the rating
+    // services' job: each *Ratings.refreshAll walk probes for missing URLs
+    // without ever touching tmdbId / imdbId.
     val incomplete = Enrichment(
       imdbId            = Some("tt17490712"),
       imdbRating        = Some(7.0),
@@ -273,15 +442,15 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => resolved.append(e) }
 
-    val imdb = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
-    val svc  = new EnrichmentService(cache, bus, tmdbStub())
+    // TMDB stub throws on any call — we assert the retry never reaches it.
+    val deadTmdb = new TmdbClient(http = deadFetch, apiKey = Some("stub"))
+    val svc      = new EnrichmentService(cache, bus, deadTmdb)
 
-    svc.retryUnresolvedTmdb()
+    noException should be thrownBy svc.retryUnresolvedTmdb()
 
-    // TMDB stage runs, re-publishes the event, the (still empty) MC/RT URL
-    // probes run via the deadMetacritic/deadRt stubs and stay None — but the
-    // important thing is the row got REVISITED.
-    eventually(resolved.size shouldBe 1)
+    // Give the worker pool a beat — nothing should fire.
+    Thread.sleep(200)
+    resolved shouldBe empty
   }
 
   it should "schedule the TMDB stage for cached rows whose tmdbId is empty (legacy data)" in {

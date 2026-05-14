@@ -4,7 +4,6 @@ import clients.TmdbClient
 import models.Enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.TitleOverrides
 import services.enrichment.{FilmwebClient, ImdbClient, MetacriticClient, RottenTomatoesClient}
 import tools.HttpFetch
 
@@ -16,8 +15,6 @@ import tools.HttpFetch
  * Regression coverage:
  *   - Mortal Kombat II (tt17490712): just-released, IMDb has aggregated a
  *     rating before Cinemeta did — pipeline reads it from IMDb's GraphQL CDN.
- *   - "Wspinaczka": TMDB has no Polish title for tt36437006, so TitleOverrides
- *     pins the IMDb id and we use TMDB's /find endpoint for canonical metadata.
  */
 class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
 
@@ -119,50 +116,4 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
     e.rottenTomatoesUrl shouldBe None
   }
 
-  // Mirrors EnrichmentService.resolveTmdb: TitleOverrides comes first, falls
-  // back to TMDB search. Override path uses /find for canonical TMDB metadata.
-  private def resolveTmdb(tmdb: TmdbClient, title: String, year: Option[Int]):
-      Option[(TmdbClient.SearchResult, String)] =
-    TitleOverrides.lookup(title, year)
-      .flatMap(id => tmdb.findByImdbId(id).map(_ -> id))
-      .orElse(tmdb.search(title, year).flatMap(hit => tmdb.imdbId(hit.id).map(hit -> _)))
-
-  // Regression: TMDB has no Polish title for tt36437006 (Girl Climber), so
-  // searching "Wspinaczka" surfaces the wrong film (e.g. Skyscraper Live).
-  // The override pins the right IMDb id and /find returns the canonical TMDB
-  // record so the rest of the pipeline runs unchanged.
-  it should "use TitleOverrides + /find when the Polish search can't resolve the title (Wspinaczka)" in {
-    val findBody =
-      """{"movie_results":[
-        |  {"id":1461058,"title":"Girl Climber","original_title":"Girl Climber",
-        |   "release_date":"2025-08-24","popularity":0.42,
-        |   "vote_average":7.0,"vote_count":3}
-        |]}""".stripMargin
-    val imdbGraphqlBody =
-      """{"data":{"title":{"ratingsSummary":{"aggregateRating":7.2,"voteCount":300}}}}"""
-
-    val tmdb = new TmdbClient(
-      http = new StubFetch(Map("/find/tt36437006" -> findBody)),
-      apiKey = Some("stub")
-    )
-    val imdb = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> imdbGraphqlBody)))
-
-    val resolved = resolveTmdb(tmdb, "Wspinaczka", Some(2025))
-    resolved.map(_._1.id) shouldBe Some(1461058)
-    resolved.map(_._2)    shouldBe Some("tt36437006")
-
-    val e = resolved.map { case (hit, imdbId) =>
-      Enrichment(
-        imdbId        = Some(imdbId),
-        imdbRating    = scala.util.Try(imdb.lookup(imdbId)).toOption.flatten,
-        metascore     = None,
-        originalTitle = hit.originalTitle,
-        tmdbId        = Some(hit.id)
-      )
-    }
-    e.flatMap(_.imdbId)        shouldBe Some("tt36437006")
-    e.flatMap(_.imdbRating)    shouldBe Some(7.2)
-    e.flatMap(_.tmdbId)        shouldBe Some(1461058)
-    e.flatMap(_.originalTitle) shouldBe Some("Girl Climber")
-  }
 }

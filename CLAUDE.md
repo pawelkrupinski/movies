@@ -121,6 +121,42 @@ def onShowtimeEvent(e: CacheEvent): Unit = e match {
 }
 ```
 
+## Never hardcode overrides keyed by movie identity
+
+Do not add code that pins a film's data or behaviour by its title, IMDb id,
+TMDB id, year, or any other per-film identifier. That means no
+`Map("tt0241527" -> "harry-potter-and-the-sorcerers-stone")` slug overrides,
+no `if (title == "Belle") ...` branches, no `imdbId match { case "tt..." => }`
+special cases, no year-keyed exception lists, no per-film constants embedded
+in clients or services. The existing `TitleOverrides` exists ONLY as the
+narrow exception that proves the rule — it covers cases where TMDB's
+Polish-locale search literally cannot surface the right film — and it is
+maintained by me, not extended by you.
+
+Why: per-film overrides paper over upstream data problems instead of fixing
+them, they scale linearly with edge cases the codebase will never finish
+collecting, they go stale silently when the upstream source corrects itself,
+they hide the real bug from whoever reads the code next, and they make the
+pipeline's behaviour for any given film depend on whether someone happened
+to notice it and add an entry.
+
+When you hit a film that resolves wrong (wrong MC slug, wrong IMDb id,
+missing rating, etc.) the fix MUST be one of:
+
+- A general data-driven path that handles this class of problem
+  automatically — e.g. consulting TMDB's `/alternative_titles` to find the
+  US release title rather than pinning HP1's slug; tightening the search-
+  scrape's acceptance rule rather than blocking a specific bad slug.
+- A change to how the data is parsed/normalised/cleaned at the source.
+- Accepting that for this row the value will stay `None` (and letting the
+  view layer fall back to a synthesised search link, a placeholder, etc.).
+
+If after honestly looking you genuinely cannot find a non-identity-keyed
+solution, STOP and ask me — describe the case, the upstream data, and what
+the smallest-possible override would look like. I will almost always tell
+you to drop it; the few times I won't, I'll be the one to add it. Do NOT
+ship the override and ask forgiveness.
+
 ## Backfill stored data when ingestion or maintenance logic changes
 
 Whenever you change how a field is ingested, parsed, normalised, scraped, or

@@ -2,7 +2,7 @@ package services.enrichment
 
 import clients.TmdbClient
 import play.api.Logging
-import services.events.{DomainEvent, TmdbResolved}
+import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -54,6 +54,15 @@ class RottenTomatoesRatings(
     case TmdbResolved(title, year, _) => schedule(cache.keyOf(title, year))
   }
 
+  /** Sibling listener: fire on `ImdbIdMissing` too. The TMDB stage publishes
+   *  this when TMDB resolved the film but had no IMDb cross-reference yet
+   *  (common for very recent Polish releases). The RT URL + score don't
+   *  depend on the IMDb id, so we want to refresh on either signal.
+   */
+  val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
+    case ImdbIdMissing(title, year, _) => schedule(cache.keyOf(title, year))
+  }
+
   // ── Per-row refresh ────────────────────────────────────────────────────────
 
   /** Dispatch a single-row refresh on the worker pool. */
@@ -87,12 +96,20 @@ class RottenTomatoesRatings(
       val year       = details.flatMap(_.releaseYear)
 
       val primary = Try(rt.urlFor(linkTitle, rtFallback, year)).toOption.flatten
-      val resolved = primary.orElse {
-        val englishTitle = details.flatMap(_.englishTitle)
-          .filterNot(_.equalsIgnoreCase(linkTitle))
-          .filterNot(t => rtFallback.exists(_.equalsIgnoreCase(t)))
-        englishTitle.flatMap(t => Try(rt.urlFor(t, None, year)).toOption.flatten)
-      }
+      // englishTitle fallback for non-English films (TMDB's en-US `title`).
+      // usTitle fallback for UK/US release-title divergence (HP1 etc.) — TMDB
+      // keeps the British title in the en-US locale, but the US alternative
+      // title from /alternative_titles is the one RT indexes under.
+      val englishTitle = details.flatMap(_.englishTitle)
+        .filterNot(_.equalsIgnoreCase(linkTitle))
+        .filterNot(t => rtFallback.exists(_.equalsIgnoreCase(t)))
+      val usTitle = details.flatMap(_.usTitle)
+        .filterNot(_.equalsIgnoreCase(linkTitle))
+        .filterNot(t => rtFallback.exists(_.equalsIgnoreCase(t)))
+        .filterNot(t => englishTitle.exists(_.equalsIgnoreCase(t)))
+      val resolved = primary
+        .orElse(englishTitle.flatMap(t => Try(rt.urlFor(t, None, year)).toOption.flatten))
+        .orElse(usTitle.flatMap(t => Try(rt.urlFor(t, None, year)).toOption.flatten))
 
       resolved.foreach { url =>
         logger.debug(s"RT: ${key.cleanTitle} discovered $url")

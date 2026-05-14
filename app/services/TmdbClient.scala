@@ -113,19 +113,36 @@ class TmdbClient(http: HttpFetch = new RealHttpFetch(), apiKey: => Option[String
    */
   def englishTitle(tmdbId: Int): Option[String] = details(tmdbId).flatMap(_.englishTitle)
 
-  /** One TMDB `/movie/{id}?language=en-US` call returning everything the
-   *  ratings classes need to do URL resolution: the English release title
-   *  (for MC/RT slug fallback on non-English films) and the production
-   *  release year (for RT's year-suffix disambiguation, MC's search-scrape
-   *  year tie-break). Single HTTP for both fields. */
+  /** One TMDB `/movie/{id}?language=en-US&append_to_response=alternative_titles`
+   *  call returning everything the ratings classes need to do URL resolution:
+   *    - `englishTitle`: en-US localized `title` (MC/RT slug fallback for
+   *      non-English films).
+   *    - `releaseYear`: production release year (RT's year-suffix
+   *      disambiguation, MC's search-scrape year tie-break).
+   *    - `usTitle`: the US entry from `/alternative_titles` (MC/RT slug
+   *      fallback for UK/US release-title divergence — e.g. HP1's
+   *      "Philosopher's" → "Sorcerer's" Stone, where TMDB keeps the British
+   *      title in `title` even for en-US).
+   *  Single HTTP for all three fields via `append_to_response`. */
   def details(tmdbId: Int): Option[TmdbClient.Details] = apiKey.flatMap { key =>
-    Try(http.get(s"$ApiBase/movie/$tmdbId?api_key=$key&language=en-US")).toOption.map { body =>
-      val js = Json.parse(body)
-      TmdbClient.Details(
-        englishTitle = (js \ "title").asOpt[String].filter(_.nonEmpty),
-        releaseYear  = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption)
-      )
-    }
+    Try(http.get(s"$ApiBase/movie/$tmdbId?api_key=$key&language=en-US&append_to_response=alternative_titles"))
+      .toOption.map { body =>
+        val js = Json.parse(body)
+        // Prefer the "untyped" US alt-title (an actual release title) over
+        // ones tagged as "alternative spelling" / "working title" / "informal".
+        val usAltTitles = (js \ "alternative_titles" \ "titles").asOpt[JsArray]
+          .map(_.value.toSeq).getOrElse(Seq.empty)
+          .filter(t => (t \ "iso_3166_1").asOpt[String].contains("US"))
+        val usTitle = usAltTitles
+          .find(t => (t \ "type").asOpt[String].forall(_.isEmpty))
+          .orElse(usAltTitles.headOption)
+          .flatMap(t => (t \ "title").asOpt[String].filter(_.nonEmpty))
+        TmdbClient.Details(
+          englishTitle = (js \ "title").asOpt[String].filter(_.nonEmpty),
+          releaseYear  = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
+          usTitle      = usTitle
+        )
+      }
   }
 
   private[clients] def parseSearchResults(body: String): Seq[TmdbClient.SearchResult] =
@@ -164,8 +181,16 @@ object TmdbClient {
   )
 
   /** Slim shape returned by `details(tmdbId)` — just the fields the ratings
-   *  classes need for MC/RT URL resolution. */
-  case class Details(englishTitle: Option[String], releaseYear: Option[Int])
+   *  classes need for MC/RT URL resolution.
+   *
+   *  `usTitle` is TMDB's US-localised alternative title, used when the
+   *  en-US `title` field is actually the British release title (HP series
+   *  is the canonical case). None when TMDB has no US-tagged alternative. */
+  case class Details(
+    englishTitle: Option[String],
+    releaseYear:  Option[Int],
+    usTitle:      Option[String] = None
+  )
 
   private[clients] def urlEncode(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
 }

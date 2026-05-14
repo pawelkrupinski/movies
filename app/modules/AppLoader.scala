@@ -101,18 +101,32 @@ class AppComponents(context: Context)
   // Subscribe BEFORE ShowtimeCache.start() so the bus's first MovieAdded
   // events reach the enrichment handlers. Bus uses PartialFunction.applyOrElse,
   // so each listener only sees events it pattern-matches.
+  //
+  // Non-IMDb listeners (Filmweb / MC / RT) subscribe to BOTH `TmdbResolved`
+  // and `ImdbIdMissing` — neither service needs an IMDb id, and the latter
+  // event is the only signal we get for TMDB hits without an IMDb cross-
+  // reference (very recent Polish indies, e.g. "Chłopiec na krańcach świata"
+  // tmdbId=1277047, imdb_id=null). Without subscribing to `ImdbIdMissing`,
+  // those rows had to wait an hour for the next periodic walk to pick them up.
+  //
   //   MovieAdded    → enrichmentService.onMovieAdded         (runs TMDB stage)
   //   TmdbResolved  → imdbRatings.onTmdbResolved             (runs IMDb stage)
   //   TmdbResolved  → rottenTomatoesRatings.onTmdbResolved   (runs RT stage)
   //   TmdbResolved  → metascoreRatings.onTmdbResolved        (runs Metascore stage)
   //   TmdbResolved  → filmwebRatings.onTmdbResolved          (runs Filmweb stage)
   //   ImdbIdMissing → imdbRatings.onImdbIdMissing            (IMDb-search fallback)
+  //   ImdbIdMissing → rottenTomatoesRatings.onImdbIdMissing  (RT stage on TMDB-only hits)
+  //   ImdbIdMissing → metascoreRatings.onImdbIdMissing       (Metascore stage on TMDB-only hits)
+  //   ImdbIdMissing → filmwebRatings.onImdbIdMissing         (Filmweb stage on TMDB-only hits)
   eventBus.subscribe(enrichmentService.onMovieAdded)
   eventBus.subscribe(imdbRatings.onTmdbResolved)
   eventBus.subscribe(imdbRatings.onImdbIdMissing)
   eventBus.subscribe(rottenTomatoesRatings.onTmdbResolved)
+  eventBus.subscribe(rottenTomatoesRatings.onImdbIdMissing)
   eventBus.subscribe(metascoreRatings.onTmdbResolved)
+  eventBus.subscribe(metascoreRatings.onImdbIdMissing)
   eventBus.subscribe(filmwebRatings.onTmdbResolved)
+  eventBus.subscribe(filmwebRatings.onImdbIdMissing)
 
   // Start background work and register shutdown hooks. Order matters on stop:
   // every ratings service's stop() must drain its worker pool before the

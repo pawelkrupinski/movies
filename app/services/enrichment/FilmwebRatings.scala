@@ -1,7 +1,7 @@
 package services.enrichment
 
 import play.api.Logging
-import services.events.{DomainEvent, TmdbResolved}
+import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -51,6 +51,16 @@ class FilmwebRatings(cache: EnrichmentCache, filmweb: FilmwebClient) extends Log
    *  `TmdbResolved` for this `(title, year)`. */
   val onTmdbResolved: PartialFunction[DomainEvent, Unit] = {
     case TmdbResolved(title, year, _) => schedule(cache.keyOf(title, year))
+  }
+
+  /** Sibling listener: fire on `ImdbIdMissing` too. TMDB resolves some recent
+   *  Polish films without an IMDb cross-reference yet (`imdb_id: null`); the
+   *  TMDB stage publishes `ImdbIdMissing` for those instead of `TmdbResolved`.
+   *  Filmweb data doesn't depend on the IMDb id — we look up the film by
+   *  title/year — so we want to refresh on either event.
+   */
+  val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
+    case ImdbIdMissing(title, year, _) => schedule(cache.keyOf(title, year))
   }
 
   // ── Per-row refresh ────────────────────────────────────────────────────────

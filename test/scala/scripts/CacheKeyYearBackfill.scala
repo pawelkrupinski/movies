@@ -67,11 +67,22 @@ object CacheKeyYearBackfill {
     val tasks: Seq[Future[Outcome]] = rows.map { case (title, year, e) =>
       Future {
         val idx = done.incrementAndGet()
-        e.imdbId match {
-          case None =>
-            Unchanged(title, year, "no imdbId — can't compare")
-          case Some(id) =>
-            val tmdbYear = Try(tmdb.findByImdbId(id)).toOption.flatten.flatMap(_.releaseYear)
+        // Pick the anchor TMDB lookup. imdbId is preferred (it cross-checks
+        // against TMDB's `/find` mapping); fall back to tmdbId so rows TMDB
+        // resolved without an IMDb cross-reference (very recent Polish
+        // indies — e.g. "Chłopiec na krańcach świata", tmdbId=1277047,
+        // imdbId=None) still get re-keyed by their TMDB release year.
+        val tmdbYear: Option[Int] = e.imdbId match {
+          case Some(id) => Try(tmdb.findByImdbId(id)).toOption.flatten.flatMap(_.releaseYear)
+          case None     => e.tmdbId.flatMap(id => Try(tmdb.details(id)).toOption.flatten.flatMap(_.releaseYear))
+        }
+        val anchor: Option[String] = e.imdbId.orElse(e.tmdbId.map(id => s"tmdb:$id"))
+        (tmdbYear, anchor) match {
+          case (_, None) =>
+            Unchanged(title, year, "no imdbId or tmdbId — can't compare")
+          case (None, _) =>
+            Unchanged(title, year, "TMDB lookup returned no release year")
+          case (Some(_), Some(id)) =>
             if (tmdbYear == year) {
               Unchanged(title, year, "matches TMDB")
             } else {

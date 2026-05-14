@@ -184,10 +184,10 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
 
   // ── findByImdbId / /find/{external_id} parsing ────────────────────────────
   //
-  // For films TMDB's Polish search can't resolve (no translation registered —
-  // e.g. "Wspinaczka" → Girl Climber tt36437006), we pin the IMDb id via
-  // TitleOverrides and reverse-look up the TMDB record via /find. The response
-  // shape is identical to /search/movie except the array key is "movie_results".
+  // Reverse-look up a TMDB record by IMDb id. Same response shape as
+  // /search/movie except the array key is "movie_results". Used today by
+  // sister-row reconstruction paths and by scripts that have an IMDb id in
+  // hand and need TMDB's canonical metadata.
 
   it should "parse a TMDB /find response into a SearchResult (Girl Climber)" in {
     val findBody =
@@ -209,6 +209,45 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   it should "return None for a /find response with no movie_results" in {
     val client = fakeClient(Map("/find/tt00000000" -> """{"movie_results":[]}"""))
     client.findByImdbId("tt00000000") shouldBe None
+  }
+
+  // Regression: HP1's UK/US title divergence. TMDB returns "Philosopher's
+  // Stone" as both original_title and en-US title — MC/RT actually index the
+  // film under the US release title from /alternative_titles. `details`
+  // fetches alt-titles via append_to_response and exposes the US entry.
+  "details" should "expose the US alternative title from /alternative_titles" in {
+    val body =
+      """{
+        |  "id":671,"title":"Harry Potter and the Philosopher's Stone","release_date":"2001-11-16",
+        |  "alternative_titles":{"titles":[
+        |    {"iso_3166_1":"GB","title":"Harry Potter and the Philosopher's Stone","type":""},
+        |    {"iso_3166_1":"US","title":"Harry Potter and the Sorcerer's Stone","type":""}
+        |  ]}
+        |}""".stripMargin
+    val client = fakeClient(Map("/movie/671?" -> body))
+    val d = client.details(671).get
+    d.englishTitle shouldBe Some("Harry Potter and the Philosopher's Stone")
+    d.usTitle      shouldBe Some("Harry Potter and the Sorcerer's Stone")
+    d.releaseYear  shouldBe Some(2001)
+  }
+
+  it should "return usTitle=None when the response has no US alternative title" in {
+    val body =
+      """{"id":1,"title":"Foo","release_date":"2020-01-01",
+        |"alternative_titles":{"titles":[{"iso_3166_1":"FR","title":"Le Foo","type":""}]}}""".stripMargin
+    val client = fakeClient(Map("/movie/1?" -> body))
+    client.details(1).flatMap(_.usTitle) shouldBe None
+  }
+
+  it should "skip 'alternative spelling' / 'working title' US entries and prefer the untyped one" in {
+    val body =
+      """{"id":2,"title":"X","release_date":"2020-01-01",
+        |"alternative_titles":{"titles":[
+        |  {"iso_3166_1":"US","title":"X (Working Title)","type":"working title"},
+        |  {"iso_3166_1":"US","title":"X — The Real US Release","type":""}
+        |]}}""".stripMargin
+    val client = fakeClient(Map("/movie/2?" -> body))
+    client.details(2).flatMap(_.usTitle) shouldBe Some("X — The Real US Release")
   }
 
   it should "apply exact-title preference inside a year-restricted result set too" in {

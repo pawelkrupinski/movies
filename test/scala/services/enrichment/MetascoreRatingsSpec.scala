@@ -162,6 +162,60 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("D", None)).flatMap(_.metascore) shouldBe None
   }
 
+  // ── URL discovery via TMDB usTitle fallback ─────────────────────────────────
+
+  // Regression: HP1's UK/US title divergence. TMDB returns "Philosopher's
+  // Stone" for both original_title and the en-US `title`; the slug derived
+  // from either 404s. MC indexes the film at
+  // `/movie/harry-potter-and-the-sorcerers-stone`, which slugifies from
+  // TMDB's US alternative title ("Harry Potter and the Sorcerer's Stone").
+  // The TMDB `details` call fetches alternative_titles via append_to_response.
+  "resolveAndPersistUrl via TMDB usTitle fallback" should
+    "use the US alternative title when the linkTitle + englishTitle slugs 404" in {
+    val sorcerers    = "https://www.metacritic.com/movie/harry-potter-and-the-sorcerers-stone"
+    val philosophers = "https://www.metacritic.com/movie/harry-potter-and-the-philosophers-stone"
+    val tmdbBody = """{
+      "id":671,"title":"Harry Potter and the Philosopher's Stone","release_date":"2001-11-16",
+      "alternative_titles":{"titles":[
+        {"iso_3166_1":"US","title":"Harry Potter and the Sorcerer's Stone","type":""}
+      ]}
+    }"""
+    val tmdb = new TmdbClient(http = new HttpFetch {
+      def get(url: String): String =
+        if (url.contains("/movie/671?")) tmdbBody
+        else throw new RuntimeException(s"unstubbed TMDB url: $url")
+    }, apiKey = Some("stub"))
+
+    val repo = new FakeRepo(Seq(
+      ("Harry Potter i Kamień filozoficzny", Some(2001), Enrichment(
+        imdbId        = Some("tt0241527"),
+        imdbRating    = None,
+        metascore     = None,
+        originalTitle = Some("Harry Potter and the Philosopher's Stone"),
+        tmdbId        = Some(671),
+        metacriticUrl = None
+      ))
+    ))
+    val cache = new EnrichmentCache(repo)
+    // MC stub: 404 for both philosophers slug variants, 200 + JSON-LD for sorcerers.
+    val mc = new MetacriticClient(new HttpFetch {
+      def get(url: String): String =
+        if (url == sorcerers)
+          """<html><head><script type="application/ld+json">
+            |{"@type":"Movie","aggregateRating":{"@type":"AggregateRating","ratingValue":64,"bestRating":100,"worstRating":0,"reviewCount":10}}
+            |</script></head><body></body></html>""".stripMargin
+        else if (url == philosophers || url.contains("/search/") || url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        else throw new RuntimeException(s"unstubbed MC url: $url")
+    })
+    val rates = new MetascoreRatings(cache, tmdb, mc)
+
+    rates.refreshOneSync(cache.keyOf("Harry Potter i Kamień filozoficzny", Some(2001)))
+
+    val row = cache.get(cache.keyOf("Harry Potter i Kamień filozoficzny", Some(2001))).get
+    row.metacriticUrl shouldBe Some(sorcerers)
+    row.metascore     shouldBe Some(64)
+  }
+
   // ── Event listener ──────────────────────────────────────────────────────────
 
   "onTmdbResolved" should "trigger a metascore refresh for the resolved row when subscribed on the bus" in {

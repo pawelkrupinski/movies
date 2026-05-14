@@ -2,7 +2,6 @@ package services.enrichment
 
 import clients.TmdbClient
 import play.api.Logging
-import services.TitleOverrides
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieAdded, TmdbResolved}
 
 import java.text.Normalizer
@@ -247,34 +246,23 @@ class EnrichmentService(
   // ── Scheduled loop ────────────────────────────────────────────────────────
   // The hourly IMDb refresh lives in `ImdbRatings.refreshAll`.
 
-  /** Walk every *incomplete* cached row — `tmdbId` missing, MC URL missing,
-   *  or RT URL missing — and re-run the TMDB stage. Bypasses
-   *  `scheduleTmdbStage`'s "skip when tmdbId.isDefined" short-circuit so rows
-   *  that have TMDB resolved but didn't get MC/RT URLs at first lookup get
-   *  another shot (the upstream slug strategy keeps improving — new search-
-   *  scrape fallback in `MetacriticClient`, future RT improvements, etc.).
-   *  Also clears the entire negative cache so previously-failed `(title,
-   *  year)` lookups get one fresh shot via the next ShowtimeCache refresh.
-   *  Fires once every `TmdbRetryHours`. */
+  /** Walk every cached row with no `tmdbId` yet and re-run the TMDB stage on
+   *  it. Rows that DO have a `tmdbId` are intentionally left alone — once a
+   *  row is TMDB-resolved (whether via title search, sister-row inheritance,
+   *  or a manual override), we trust that resolution. Re-resolving could
+   *  flip the row to a different film when TMDB's title search lands on a
+   *  more popular same-title hit, undoing earlier corrections (override or
+   *  sister-row donation). Missing MC / RT / Filmweb URLs are recovered by
+   *  the respective `*Ratings.refreshAll` hourly walks, which do their own
+   *  URL discovery; missing IMDb ids are recovered by the `ImdbIdMissing`
+   *  event fired from the TMDB stage at first resolution. Fires once every
+   *  `TmdbRetryHours`; also clears the negative cache so previously-failed
+   *  `(title, year)` lookups get one fresh shot via the next ShowtimeCache
+   *  refresh. */
   private[enrichment] def retryUnresolvedTmdb(): Unit = {
     cache.clearNegatives()
-    val targets = cache.entries.collect {
-      case (k, e) if e.tmdbId.isEmpty
-                  || e.imdbId.isEmpty
-                  || e.metacriticUrl.isEmpty
-                  || e.rottenTomatoesUrl.isEmpty => k
-    }
-    val missingTmdb = targets.count(k => cache.get(k).exists(_.tmdbId.isEmpty))
-    val missingImdb = targets.count(k => cache.get(k).exists(e => e.tmdbId.isDefined && e.imdbId.isEmpty))
-    val missingUrls = targets.size - missingTmdb - missingImdb
-    logger.info(
-      s"TMDB retry: cleared negatives + re-scheduling ${targets.size} incomplete row(s) " +
-      s"($missingTmdb missing tmdbId, $missingImdb missing imdbId, $missingUrls missing MC/RT URL)."
-    )
-    // Bypass scheduleTmdbStage — it would skip rows where tmdbId is already
-    // set. We deliberately want to re-run the TMDB stage on those rows so the
-    // MC/RT URL probes get another shot AND TMDB's external_ids may have
-    // gained an imdbId since the last attempt.
+    val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty => k }
+    logger.info(s"TMDB retry: cleared negatives + re-scheduling ${targets.size} row(s) with missing tmdbId.")
     targets.foreach { k =>
       if (pending.add(k))
         worker.execute(() => try runTmdbStage(k) finally pending.remove(k))
@@ -283,29 +271,30 @@ class EnrichmentService(
 
   // ── TMDB resolution ────────────────────────────────────────────────────────
 
-  // Manual-override path first — `TitleOverrides` pins (title, year) → imdbId
-  // for films TMDB's Polish search can't find (e.g. "Wspinaczka" → tt36437006
-  // "Girl Climber" — TMDB has no Polish translation). Falls back to the normal
-  // title-search resolution.
-  //
-  // When the Polish title doesn't match anything in TMDB but the cinema's API
-  // provided an `originalTitle` (Multikino does for Cirque du Soleil / opera
-  // / English-language imports), try a second search by that English title.
-  // We skip the fallback when it equals the primary (no point) and when the
-  // primary already resolved (the first match wins).
+  // Resolution order:
+  //   1. Sister-row alias match — when another cache row sharing any title
+  //      alias has already been TMDB-resolved (typically because it reported
+  //      a year and we didn't here, or its TMDB-resolved originalTitle is the
+  //      English name we're looking up), inherit that resolution. Avoids
+  //      year-less search collisions (Bez końca 1985 vs 2026, Belle 2013 vs
+  //      Hosoda anime, etc.).
+  //   2. Polish-localised TMDB title search.
+  //   3. Same search by the cinema's `originalTitle` when present and
+  //      different from the primary title (Multikino exposes one for
+  //      Cirque du Soleil / opera / English-language imports).
   //
   // The IMDb id is OPTIONAL: TMDB doesn't always have a cross-reference yet
   // (very recent releases — e.g. "Za duży na bajki 3" tmdbid 1484486 has no
   // imdb_id at TMDB at the time of writing). When we have only a TMDB hit, we
   // still store the row (Filmweb / MC / RT all key off the title, not the
-  // IMDb id) and the daily retry tick re-checks for the IMDb id later.
+  // IMDb id); `ImdbIdMissing` fires from the async TMDB stage so
+  // `ImdbRatings` can recover the id via IMDb's suggestion endpoint.
   private def resolveTmdb(
     title:         String,
     year:          Option[Int],
     originalTitle: Option[String] = None
   ): Option[(TmdbClient.SearchResult, Option[String])] =
-    TitleOverrides.lookup(title, year)
-      .flatMap(id => tmdb.findByImdbId(id).map(_ -> Some(id)))
+    sisterRowMatch(title, year, originalTitle)
       .orElse(tmdb.search(title, year).map(hit => hit -> tmdb.imdbId(hit.id)))
       .orElse {
         originalTitle
@@ -313,6 +302,68 @@ class EnrichmentService(
           .flatMap(t => tmdb.search(t, year))
           .map(hit => hit -> tmdb.imdbId(hit.id))
       }
+
+  /** Walk the cache for already-resolved rows sharing any title alias with
+   *  this one (cleanTitle + cinema-provided originalTitle on the self side;
+   *  cleanTitle + TMDB-resolved originalTitle on the donor side). Excludes
+   *  the row being resolved (a stale self must not reinforce its own wrong
+   *  answer). Requires a unanimous `tmdbId` across all matching sister rows
+   *  — when two cached sisters disagree (e.g. cinema A is screening the
+   *  1985 cut and cinema B the 2026 remake of the same title), the ambiguity
+   *  defers to TMDB rather than picking blindly.
+   *
+   *  Matching aliases — not just `cleanTitle == cleanTitle` — picks up cases
+   *  where a long Polish-localised title carries the English original as its
+   *  `originalTitle` field. Example: cache row
+   *  `("Belle: smok i piegowata księżniczka", 2021, originalTitle="Belle")`
+   *  donates to a plain-`"Belle"` lookup. */
+  private def sisterRowMatch(
+    title:         String,
+    year:          Option[Int],
+    originalTitle: Option[String]
+  ): Option[(TmdbClient.SearchResult, Option[String])] = {
+    val selfKey     = cache.keyOf(title, year)
+    val selfAliases = titleAliases(selfKey.cleanTitle, originalTitle)
+    if (selfAliases.isEmpty) return None
+
+    val resolved = cache.entries.flatMap { case (k, e) =>
+      if (k == selfKey || e.tmdbId.isEmpty) None
+      else {
+        val donorAliases = titleAliases(k.cleanTitle, e.originalTitle)
+        if (selfAliases.exists(donorAliases.contains))
+          Some((e.tmdbId.get, e.imdbId, e.originalTitle))
+        else None
+      }
+    }
+    val tmdbIds = resolved.map(_._1).distinct
+    if (tmdbIds.size != 1) None
+    else {
+      val (tmdbId, imdbId, origTitle) = resolved.head
+      val hit = TmdbClient.SearchResult(
+        id            = tmdbId,
+        title         = origTitle.getOrElse(title),
+        originalTitle = origTitle,
+        releaseYear   = None,   // unused by runTmdbStageSync
+        popularity    = 0.0
+      )
+      logger.debug(s"Sister-row match: ${selfKey.cleanTitle} (${year.getOrElse("?")}) → tmdbId=$tmdbId imdbId=${imdbId.getOrElse("—")} via aliases=${selfAliases.mkString(",")}")
+      Some(hit -> imdbId)
+    }
+  }
+
+  /** Normalized alias set for a (cleanTitle, originalTitle) pair. Empty
+   *  components and duplicates collapse; both sides go through
+   *  `EnrichmentService.normalize` so accent/case differences fold to the
+   *  same key. */
+  private def titleAliases(cleanTitle: String, originalTitle: Option[String]): Set[String] = {
+    val parts = Iterator(Option(cleanTitle), originalTitle)
+      .flatten
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .map(EnrichmentService.normalize)
+      .filter(_.nonEmpty)
+    parts.toSet
+  }
 }
 
 object EnrichmentService {
