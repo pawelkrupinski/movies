@@ -21,6 +21,9 @@ jobs:
             - run: sbt test
               env:
                   SCRAPINGANT_KEY: ${{ secrets.SCRAPINGANT_KEY }}
+                  TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
+                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
+                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
     deploy:
         needs: test
