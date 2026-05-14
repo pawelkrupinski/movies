@@ -6,6 +6,7 @@ import java.net.URI
 import java.net.URLEncoder
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.nio.charset.StandardCharsets
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /**
@@ -29,14 +30,16 @@ class ScrapingAntClient(httpClient: HttpClient, key: String) {
 
   /** GET `targetUrl` via ScrapingAnt, carrying cookies harvested from a first
    *  GET against `cookieSourceUrl`. Retries up to `maxAttempts` times while
-   *  the proxy returns an unusable response. Throws after the last attempt.
+   *  the proxy returns an unusable response, with exponential backoff between
+   *  attempts. Throws after the last attempt.
    */
   def getWithCookies(
     targetUrl:       String,
     cookieSourceUrl: String,
-    maxAttempts:     Int = DefaultMaxAttempts
+    maxAttempts:     Int            = DefaultMaxAttempts,
+    initialBackoff:  FiniteDuration = DefaultInitialBackoff
   ): String =
-    retryWhileUnusable(maxAttempts, "ScrapingAnt") {
+    retryWhileUnusable(maxAttempts, "ScrapingAnt", initialBackoff) {
       val cookies = readSetCookieHeaders(httpClient.send(
         request(cookieSourceUrl, ""),
         HttpResponse.BodyHandlers.discarding()
@@ -66,12 +69,18 @@ class ScrapingAntClient(httpClient: HttpClient, key: String) {
 }
 
 object ScrapingAntClient extends Logging {
-  private val Endpoint           = "https://api.scrapingant.com/v2/general"
-  private val DefaultMaxAttempts = 3
+  private val Endpoint              = "https://api.scrapingant.com/v2/general"
+  // Total worst-case wait with 5 attempts × 2s exponential backoff:
+  //   2s + 4s + 8s + 16s = 30s of sleeping across 5 calls.
+  // Long enough to let the free-tier concurrency counter (HTTP 409) flush
+  // between attempts, short enough that an integration test doesn't time out.
+  private val DefaultMaxAttempts    = 5
+  private val DefaultInitialBackoff = 2.seconds
 
   /** Captured response from one ScrapingAnt attempt. A response is usable when
    *  it's 200, non-empty, and JSON-shaped (the APIs we route through here only
-   *  return JSON; HTML bodies are anti-bot interstitials).
+   *  return JSON; HTML bodies are anti-bot interstitials, 409/429/503 are
+   *  proxy-side rate limits).
    */
   case class FetchResult(status: Int, body: String) {
     def isUsable: Boolean =
@@ -81,11 +90,18 @@ object ScrapingAntClient extends Logging {
   }
 
   /** Invoke `attempt` up to `maxAttempts` times, returning the first usable
-   *  response. Logs each unusable attempt and throws after the last one fails.
-   *  Pure function of its arguments — exposed for tests.
+   *  response. Logs each unusable attempt and exponentially backs off between
+   *  retries (doubling) — important for free-tier concurrency limits (HTTP 409
+   *  "Free user concurrency limit reached") where immediate retries land in
+   *  the same metering window. Throws after the last attempt.
+   *
+   *  Tests pass `initialBackoff = Duration.Zero` to skip sleeping.
    */
-  def retryWhileUnusable(maxAttempts: Int, label: String)
-                        (attempt: => FetchResult): FetchResult = {
+  def retryWhileUnusable(
+    maxAttempts:    Int,
+    label:          String,
+    initialBackoff: FiniteDuration = DefaultInitialBackoff
+  )(attempt: => FetchResult): FetchResult = {
     var last: Option[FetchResult] = None
     var i = 1
     while (i <= maxAttempts) {
@@ -93,6 +109,11 @@ object ScrapingAntClient extends Logging {
       if (r.isUsable) return r
       last = Some(r)
       logger.warn(s"$label attempt $i/$maxAttempts unusable: ${r.describe}")
+      if (i < maxAttempts && initialBackoff > Duration.Zero) {
+        val wait = initialBackoff * (1L << (i - 1))   // 1×, 2×, 4×, 8×, …
+        logger.info(s"$label backing off ${wait.toMillis}ms before attempt ${i + 1}")
+        Thread.sleep(wait.toMillis)
+      }
       i += 1
     }
     throw new RuntimeException(
