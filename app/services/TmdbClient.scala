@@ -5,6 +5,7 @@ import tools.{Env, HttpFetch, RealHttpFetch}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import scala.util.Try
 
 /**
  * Bridges Polish film titles to IMDB ids via The Movie DB.
@@ -103,6 +104,30 @@ class TmdbClient(http: HttpFetch = new RealHttpFetch(), apiKey: => Option[String
     (Json.parse(body) \ "original_title").asOpt[String].filter(_.nonEmpty)
   }
 
+  /** TMDB's English release title for a movie. `/movie/{id}?language=en-US`
+   *  returns the localized `title` for the requested language, which for
+   *  non-English films is the English release title (e.g. tmdbid 1290432
+   *  returns "A Private Life" in en-US, "Vie privée" as original_title).
+   *  Used as a fallback for MC/RT URL probes because both sites index foreign
+   *  films under their English release title, not the production-language one.
+   */
+  def englishTitle(tmdbId: Int): Option[String] = details(tmdbId).flatMap(_.englishTitle)
+
+  /** One TMDB `/movie/{id}?language=en-US` call returning everything the
+   *  ratings classes need to do URL resolution: the English release title
+   *  (for MC/RT slug fallback on non-English films) and the production
+   *  release year (for RT's year-suffix disambiguation, MC's search-scrape
+   *  year tie-break). Single HTTP for both fields. */
+  def details(tmdbId: Int): Option[TmdbClient.Details] = apiKey.flatMap { key =>
+    Try(http.get(s"$ApiBase/movie/$tmdbId?api_key=$key&language=en-US")).toOption.map { body =>
+      val js = Json.parse(body)
+      TmdbClient.Details(
+        englishTitle = (js \ "title").asOpt[String].filter(_.nonEmpty),
+        releaseYear  = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption)
+      )
+    }
+  }
+
   private[clients] def parseSearchResults(body: String): Seq[TmdbClient.SearchResult] =
     decodeMovieArray((Json.parse(body) \ "results").as[JsArray])
 
@@ -137,6 +162,10 @@ object TmdbClient {
     releaseYear:   Option[Int],
     popularity:    Double
   )
+
+  /** Slim shape returned by `details(tmdbId)` — just the fields the ratings
+   *  classes need for MC/RT URL resolution. */
+  case class Details(englishTitle: Option[String], releaseYear: Option[Int])
 
   private[clients] def urlEncode(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
 }

@@ -3,7 +3,7 @@ package services.enrichment
 import clients.TmdbClient
 import play.api.Logging
 import services.TitleOverrides
-import services.events.{DomainEvent, EventBus, MovieAdded, TmdbResolved}
+import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieAdded, TmdbResolved}
 
 import java.text.Normalizer
 import java.util.concurrent.{ConcurrentHashMap, Executors, TimeUnit}
@@ -31,13 +31,9 @@ import scala.util.{Failure, Success, Try}
  * publishers are never blocked on network round-trips.
  */
 class EnrichmentService(
-  cache:       EnrichmentCache,
-  bus:         EventBus,
-  imdbRatings: ImdbRatings,
-  tmdb:        TmdbClient,
-  filmweb:     FilmwebClient,
-  metacritic:  MetacriticClient,
-  rt:          RottenTomatoesClient
+  cache: EnrichmentCache,
+  bus:   EventBus,
+  tmdb:  TmdbClient
 ) extends Logging {
 
   // Active or queued TMDB-stage lookups, so we don't dispatch the same key
@@ -109,9 +105,13 @@ class EnrichmentService(
 
   /** Subscribe on the `EventBus` to schedule the TMDB stage when a new title
    *  shows up in the cinema schedule. No-op for rows already resolved or
-   *  negative-cached. */
+   *  negative-cached.
+   *
+   *  Captures the cinema-provided `originalTitle` (when present) as a hint
+   *  the TMDB stage can use as a secondary search title — see `resolveTmdb`. */
   val onMovieAdded: PartialFunction[DomainEvent, Unit] = {
-    case MovieAdded(title, year) => scheduleTmdbStage(cache.keyOf(title, year))
+    case MovieAdded(title, year, originalTitle) =>
+      scheduleTmdbStage(cache.keyOf(title, year), originalTitle)
   }
 
   // ── Public read + manual re-enrich ────────────────────────────────────────
@@ -135,34 +135,34 @@ class EnrichmentService(
     worker.execute(() => runTmdbStage(key))
   }
 
-  /** Same as `reEnrich` but blocks the calling thread and returns the final
-   *  enrichment (or None if TMDB has no hit). Runs both stages synchronously
-   *  — useful for scripts that need a single-shot answer. */
-  def reEnrichSync(title: String, year: Option[Int]): Option[Enrichment] = {
-    val key = cache.keyOf(title, year)
-    runTmdbStageSync(key).map { _ =>
-      imdbRatings.refreshOneSync(key)
-      cache.get(key).getOrElse(throw new IllegalStateException(
-        s"TMDB stage stored a row for ${key.cleanTitle} but it's gone — concurrent invalidate?"
-      ))
-    }
-  }
+  /** Same as `reEnrich` but blocks the calling thread and returns the row TMDB
+   *  resolved (or None if TMDB has no hit). Runs the TMDB stage only — callers
+   *  that also want fresh IMDb / Filmweb / Metacritic / Rotten Tomatoes data
+   *  should chain the corresponding `*Ratings.refreshOneSync(title, year)`
+   *  call themselves (see `scripts/EnrichmentBackfill` for the pattern). Does
+   *  NOT publish bus events, so concurrent listeners don't double-fetch. */
+  def reEnrichSync(title: String, year: Option[Int]): Option[Enrichment] =
+    runTmdbStageSync(cache.keyOf(title, year))
 
   // ── TMDB stage ─────────────────────────────────────────────────────────────
 
-  private def scheduleTmdbStage(key: CacheKey): Unit = {
+  private def scheduleTmdbStage(key: CacheKey, originalTitle: Option[String] = None): Unit = {
     if (cache.get(key).exists(_.tmdbId.isDefined)) return  // already resolved
     if (cache.isNegative(key)) return                       // known miss, retry after TTL
     if (pending.add(key))
-      worker.execute(() => try runTmdbStage(key) finally pending.remove(key))
+      worker.execute(() => try runTmdbStage(key, originalTitle) finally pending.remove(key))
   }
 
   // Async wrapper around runTmdbStageSync: handles retry policy + event publish.
-  // The event is only published when an IMDb id is present — otherwise there's
-  // nothing for the IMDb listener to look up. Rows resolved without an IMDb
-  // id still get re-checked by the daily TMDB retry tick.
-  private def runTmdbStage(key: CacheKey): Unit =
-    Try(runTmdbStageSync(key)) match {
+  // Two events:
+  //   - `TmdbResolved`    when TMDB had an IMDb id — drives the IMDb rating
+  //                       and RT score listeners.
+  //   - `ImdbIdMissing`   when TMDB resolved the film but had no IMDb cross-
+  //                       reference — `ImdbRatings` falls back to IMDb's
+  //                       suggestion endpoint to find the id (e.g. very recent
+  //                       theatrical releases TMDB hasn't been told about yet).
+  private def runTmdbStage(key: CacheKey, originalTitleHint: Option[String] = None): Unit =
+    Try(runTmdbStageSync(key, originalTitleHint)) match {
       case Success(Some(e)) =>
         retryAttempts.remove(key)
         e.imdbId match {
@@ -170,7 +170,9 @@ class EnrichmentService(
             bus.publish(TmdbResolved(key.cleanTitle, key.year, id))
             logger.debug(s"TMDB stage: ${key.cleanTitle} (${key.year.getOrElse("?")}) → $id")
           case None =>
-            logger.debug(s"TMDB stage: ${key.cleanTitle} (${key.year.getOrElse("?")}) → tmdbId=${e.tmdbId.getOrElse("—")} (no IMDb cross-reference yet)")
+            val searchTitle = e.originalTitle.getOrElse(key.cleanTitle)
+            logger.debug(s"TMDB stage: ${key.cleanTitle} (${key.year.getOrElse("?")}) → tmdbId=${e.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
+            bus.publish(ImdbIdMissing(key.cleanTitle, key.year, searchTitle))
         }
       case Success(None)    =>
         cache.markMissing(key)
@@ -182,45 +184,48 @@ class EnrichmentService(
         scheduleTmdbRetry(key, ex)
     }
 
-  // Synchronous core. Resolves TMDB; on a hit, also fetches Filmweb / MC URL /
-  // RT URL (all derived from TMDB's `originalTitle`) and writes the new row
-  // through to the cache. Returns the new Enrichment, or None when TMDB has
-  // no match. Does NOT publish events — callers decide.
-  private def runTmdbStageSync(key: CacheKey): Option[Enrichment] =
-    resolveTmdb(key.cleanTitle, key.year).map { case (hit, imdbId) =>
-      val linkTitle  = hit.originalTitle.getOrElse(key.cleanTitle)
-      val mcFallback = if (linkTitle != key.cleanTitle) Some(key.cleanTitle) else None
-
-      val fw    = Try(filmweb.lookup(key.cleanTitle, key.year)).toOption.flatten
-      // Pass TMDB's release year (not the cinema's year, which is unreliable —
-      // anniversary screenings report the *screening* year, not the film's).
-      val mc    = Try(metacritic.urlFor(linkTitle, mcFallback, hit.releaseYear)).toOption.flatten
-      val rtUrl = Try(rt.urlFor(linkTitle, mcFallback, hit.releaseYear)).toOption.flatten
-
-      // Preserve any existing ratings — `ImdbRatings` and `RottenTomatoesRatings`
-      // refresh them on `TmdbResolved` and on their own hourly cycles. The
-      // TMDB stage owns URLs only.
+  // Synchronous core. Resolves TMDB; on a hit, writes a row carrying ONLY the
+  // TMDB-side fields (tmdbId, imdbId, originalTitle). All score/URL fields
+  // (IMDb rating, Metacritic URL+score, RT URL+score, Filmweb URL+rating)
+  // are owned by the dedicated *Ratings classes — each subscribes to
+  // `TmdbResolved` on the bus and runs its own discovery/refresh. The TMDB
+  // stage preserves any existing values for those fields so a re-resolve
+  // doesn't blank them while the listeners catch up. Returns the new
+  // Enrichment, or None when TMDB has no match. Does NOT publish events —
+  // callers decide.
+  private def runTmdbStageSync(key: CacheKey, originalTitleHint: Option[String] = None): Option[Enrichment] =
+    resolveTmdb(key.cleanTitle, key.year, originalTitleHint).map { case (hit, imdbId) =>
       val existing = cache.get(key)
+      // Preserve the previously-known `imdbId` when TMDB resolved the same
+      // film (same `tmdbId`) but momentarily dropped the cross-reference —
+      // happens for very recent releases and occasional TMDB data hiccups.
+      // When TMDB resolves to a DIFFERENT `tmdbId` we accept the new film's
+      // imdbId (even if None) so a stale id can't leak across a correction.
+      val preserveImdbId = existing.exists(_.tmdbId.contains(hit.id))
+      val resolvedImdbId = imdbId.orElse(if (preserveImdbId) existing.flatMap(_.imdbId) else None)
       val enr = Enrichment(
-        imdbId            = imdbId,
+        imdbId            = resolvedImdbId,
         imdbRating        = existing.flatMap(_.imdbRating),
-        metascore         = None,
+        metascore         = existing.flatMap(_.metascore),
         originalTitle     = hit.originalTitle,
-        filmwebUrl        = fw.map(_.url),
-        filmwebRating     = fw.flatMap(_.rating),
+        filmwebUrl        = existing.flatMap(_.filmwebUrl),
+        filmwebRating     = existing.flatMap(_.filmwebRating),
         rottenTomatoes    = existing.flatMap(_.rottenTomatoes),
         tmdbId            = Some(hit.id),
-        metacriticUrl     = mc,
-        rottenTomatoesUrl = rtUrl
+        metacriticUrl     = existing.flatMap(_.metacriticUrl),
+        rottenTomatoesUrl = existing.flatMap(_.rottenTomatoesUrl)
       )
       cache.put(key, enr)
       enr
     }
 
-  // The IMDb-side stage logic (schedule, sync refresh, periodic walk) lives in
-  // `ImdbRatings`. `AppLoader` subscribes `imdbRatings.onTmdbResolved` on the
-  // same bus that publishes `TmdbResolved` above; `reEnrichSync` calls
-  // `imdbRatings.refreshOneSync` directly to avoid the worker pool.
+  // IMDb / Filmweb / Metacritic / Rotten Tomatoes refresh logic lives in the
+  // dedicated *Ratings classes. `AppLoader` subscribes each one's
+  // `onTmdbResolved` on the same bus that publishes `TmdbResolved` above, so
+  // they react automatically to async re-enrichment. The sync path
+  // (`reEnrichSync`) is TMDB-only on purpose — callers that need the score
+  // fields chain `*Ratings.refreshOneSync(title, year)` themselves so the
+  // worker pool stays uninvolved (see `scripts/EnrichmentBackfill`).
 
   // ── Retry policy for TMDB transient failures ──────────────────────────────
 
@@ -283,15 +288,31 @@ class EnrichmentService(
   // "Girl Climber" — TMDB has no Polish translation). Falls back to the normal
   // title-search resolution.
   //
+  // When the Polish title doesn't match anything in TMDB but the cinema's API
+  // provided an `originalTitle` (Multikino does for Cirque du Soleil / opera
+  // / English-language imports), try a second search by that English title.
+  // We skip the fallback when it equals the primary (no point) and when the
+  // primary already resolved (the first match wins).
+  //
   // The IMDb id is OPTIONAL: TMDB doesn't always have a cross-reference yet
   // (very recent releases — e.g. "Za duży na bajki 3" tmdbid 1484486 has no
   // imdb_id at TMDB at the time of writing). When we have only a TMDB hit, we
   // still store the row (Filmweb / MC / RT all key off the title, not the
   // IMDb id) and the daily retry tick re-checks for the IMDb id later.
-  private def resolveTmdb(title: String, year: Option[Int]): Option[(TmdbClient.SearchResult, Option[String])] =
+  private def resolveTmdb(
+    title:         String,
+    year:          Option[Int],
+    originalTitle: Option[String] = None
+  ): Option[(TmdbClient.SearchResult, Option[String])] =
     TitleOverrides.lookup(title, year)
       .flatMap(id => tmdb.findByImdbId(id).map(_ -> Some(id)))
       .orElse(tmdb.search(title, year).map(hit => hit -> tmdb.imdbId(hit.id)))
+      .orElse {
+        originalTitle
+          .filterNot(_.equalsIgnoreCase(title))
+          .flatMap(t => tmdb.search(t, year))
+          .map(hit => hit -> tmdb.imdbId(hit.id))
+      }
 }
 
 object EnrichmentService {

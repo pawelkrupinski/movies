@@ -95,7 +95,7 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
       ("Powrót do przyszłości", Some(2026), mkEnrichment("tt-old-wrong-id"))
     ))
     val cache = new EnrichmentCache(repo)
-    val svc   = new EnrichmentService(cache, new EventBus(), new ImdbRatings(cache, deadImdb()), tmdb, deadFilmweb(), deadMetacritic(), deadRt())
+    val svc   = new EnrichmentService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 
@@ -116,7 +116,7 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repo     = new FakeRepo()
     val cache    = new EnrichmentCache(repo)
-    val svc      = new EnrichmentService(cache, new EventBus(), new ImdbRatings(cache, deadImdb()), tmdb, deadFilmweb(), deadMetacritic(), deadRt())
+    val svc      = new EnrichmentService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 
@@ -135,7 +135,7 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
     val original = mkEnrichment("tt-original", orig = Some("Keep me"))
     val repo     = new FakeRepo(Seq(("Title", Some(2024), original)))
     val cache    = new EnrichmentCache(repo)
-    val svc      = new EnrichmentService(cache, new EventBus(), new ImdbRatings(cache, deadImdb()), tmdb, deadFilmweb(), deadMetacritic(), deadRt())
+    val svc      = new EnrichmentService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Title", Some(2024))
 
@@ -151,7 +151,7 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repo     = new FakeRepo()  // empty
     val cache    = new EnrichmentCache(repo)
-    val svc      = new EnrichmentService(cache, new EventBus(), new ImdbRatings(cache, deadImdb()), tmdb, deadFilmweb(), deadMetacritic(), deadRt())
+    val svc      = new EnrichmentService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 

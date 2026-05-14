@@ -63,6 +63,31 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     c.urlFor("Viridiana") shouldBe Some("https://www.rottentomatoes.com/m/viridiana")
   }
 
+  // Regression: "Ostatnia sesja w Paryżu" (A Private Life, 2025). RT has both
+  // /m/a_private_life (a stub page, 200 but no aggregateRating) and
+  // /m/a_private_life_2025 (the real film page with the Tomatometer). Without
+  // year-suffix preference, our `canonicalUrl` returned the stub and the score
+  // never resolved. With year provided, we try `slug_year` FIRST.
+  it should "prefer the year-suffixed slug when year is provided (RT's disambiguation convention)" in {
+    val c = new RottenTomatoesClient(stub(Set.empty))  // both 200
+    c.urlFor("A Private Life", None, Some(2025)) shouldBe
+      Some("https://www.rottentomatoes.com/m/a_private_life_2025")
+  }
+
+  it should "fall back to the unsuffixed slug when the year-suffixed one 404s" in {
+    // Year provided, but /m/title_year doesn't exist → plain /m/title still wins.
+    val c = new RottenTomatoesClient(stub(Set("_2025")))
+    c.urlFor("A Private Life", None, Some(2025)) shouldBe
+      Some("https://www.rottentomatoes.com/m/a_private_life")
+  }
+
+  it should "not append a year suffix when no year is given (existing callers unchanged)" in {
+    val c = new RottenTomatoesClient(stub(Set("/m/inception_2010")))
+    // Without year, only plain /m/inception is probed — the _year variant
+    // isn't tried.
+    c.urlFor("Inception") shouldBe Some("https://www.rottentomatoes.com/m/inception")
+  }
+
   // Regression: same empty-slug class of bug as MC — slugify of a CJK-only
   // title returns "". `/m/` (RT's movie landing page) returns 200, so without
   // a guard `canonicalUrl` would silently store a bogus URL.

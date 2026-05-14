@@ -49,8 +49,8 @@ class RottenTomatoesClient(http: HttpFetch = new RealHttpFetch()) {
     year:     Option[Int]    = None
   ): Option[String] = {
     val effectiveFallback = fallback.filterNot(_.equalsIgnoreCase(title))
-    canonicalUrl(title)
-      .orElse(effectiveFallback.flatMap(canonicalUrl))
+    canonicalUrl(title, year)
+      .orElse(effectiveFallback.flatMap(canonicalUrl(_, year)))
       .orElse(searchAndPickBest(title, year))
       .orElse(effectiveFallback.flatMap(t => searchAndPickBest(t, year)))
   }
@@ -59,18 +59,33 @@ class RottenTomatoesClient(http: HttpFetch = new RealHttpFetch()) {
    *  frequently drops the leading "the"/"a"/"an" article (e.g. The Sting is
    *  at /m/sting, not /m/the_sting), so we try the de-articled variant as a
    *  second probe before giving up.
+   *
+   *  When `year` is provided we try the `slug_year` variant BEFORE the plain
+   *  slug. RT uses year-suffix disambiguation aggressively: for newer films,
+   *  /m/<slug> often points to a stub or older film while /m/<slug>_<year>
+   *  carries the actual Tomatometer (regression: "A Private Life" 2025 —
+   *  /m/a_private_life is a stub, /m/a_private_life_2025 is the real page).
    */
-  def canonicalUrl(title: String): Option[String] =
-    candidateSlugs(title).iterator
+  def canonicalUrl(title: String, year: Option[Int] = None): Option[String] =
+    candidateSlugs(title, year).iterator
       .map(s => s"$Site/m/$s")
       .find(url => Try(http.get(url)).isSuccess)
 
-  def candidateSlugs(title: String): Seq[String] = {
+  def candidateSlugs(title: String, year: Option[Int] = None): Seq[String] = {
     val primary = RottenTomatoesClient.slugify(title)
     // Empty slug (CJK / Cyrillic / etc.) would probe `/m/` which on RT is the
     // movies landing page — a 200 that would corrupt the stored URL.
     if (primary.isEmpty) Seq.empty
-    else primary +: MetacriticClient.dropLeadingArticle(primary, '_').toSeq
+    else {
+      val deArticled = MetacriticClient.dropLeadingArticle(primary, '_')
+      // Order: year-suffixed first (when year given), then plain, then
+      // year-suffixed de-articled, then plain de-articled.
+      val baseSlugs = primary +: deArticled.toSeq
+      year match {
+        case Some(y) => baseSlugs.flatMap(s => Seq(s"${s}_$y", s)).distinct
+        case None    => baseSlugs
+      }
+    }
   }
 
   /** Scrape RT's HTML search page and pick the best `/m/{slug}` link by

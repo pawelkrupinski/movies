@@ -16,14 +16,31 @@ sealed trait DomainEvent
 
 /** A title was observed in a cinema's refreshed schedule. May fire repeatedly
  *  for the same film as long as it remains in any cinema's listing —
- *  subscribers are responsible for dedup. */
-case class MovieAdded(title: String, year: Option[Int]) extends DomainEvent
+ *  subscribers are responsible for dedup.
+ *
+ *  `originalTitle` carries the cinema's English/international title for the
+ *  film when its API exposes one (Multikino does for ~5% of films — Cirque du
+ *  Soleil, opera/concert docs, English-language imports). Used by the TMDB
+ *  stage as a secondary search title when the Polish title doesn't resolve.
+ *  Default None keeps existing tests and cinemas without the field unchanged. */
+case class MovieAdded(title: String, year: Option[Int], originalTitle: Option[String] = None) extends DomainEvent
 
 /** TMDB resolved a `(title, year)` to a film and an IMDb id. The enrichment
  *  pipeline publishes this after its TMDB stage writes the row to the cache;
  *  the IMDb stage subscribes and fetches the rating asynchronously, so the
  *  TMDB lookup doesn't block on IMDb's GraphQL CDN. */
 case class TmdbResolved(title: String, year: Option[Int], imdbId: String) extends DomainEvent
+
+/** TMDB resolved a `(title, year)` to a film but TMDB had no IMDb cross-
+ *  reference for it (common for very recent films and festival items, e.g.
+ *  "Mortal Kombat II" 2026). `searchTitle` is the title we want to search
+ *  IMDb's suggestion endpoint with — typically TMDB's `originalTitle` or
+ *  English release title, whichever is more likely to match IMDb's primary.
+ *
+ *  `ImdbRatings` subscribes to this event, calls `ImdbClient.findId(...)`
+ *  to recover the id, writes it back to the cache, and proceeds with the
+ *  normal rating refresh. */
+case class ImdbIdMissing(title: String, year: Option[Int], searchTitle: String) extends DomainEvent
 
 class EventBus extends Logging {
   // CopyOnWriteArrayList: writes (subscribe) are rare and happen at startup;

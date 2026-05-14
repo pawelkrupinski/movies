@@ -1,7 +1,7 @@
 package services.enrichment
 
 import play.api.Logging
-import services.events.{DomainEvent, TmdbResolved}
+import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -51,6 +51,40 @@ class ImdbRatings(cache: EnrichmentCache, imdb: ImdbClient) extends Logging {
     case TmdbResolved(title, year, _) => schedule(cache.keyOf(title, year))
   }
 
+  /** Bus listener: when the TMDB stage resolved a film but TMDB has no IMDb
+   *  cross-reference for it, recover the id via IMDb's suggestion endpoint
+   *  (`ImdbClient.findId`), write it back to the cached row, then refresh
+   *  the rating in the same scheduled task. Async — the publisher (the TMDB
+   *  stage worker) is not blocked on IMDb.
+   *
+   *  No-op when the row already carries an imdbId (a stale event raced with
+   *  another resolver) or when the search returns nothing — we'd rather leave
+   *  the row imdbId-less than guess a wrong id. */
+  val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
+    case ImdbIdMissing(title, year, searchTitle) =>
+      worker.execute(() => resolveAndRefresh(cache.keyOf(title, year), searchTitle, year))
+  }
+
+  /** Find the IMDb id by title, write it to the cached row, then refresh the
+   *  rating in the same call. Public for tests; production goes through the
+   *  `onImdbIdMissing` listener. */
+  private[enrichment] def resolveAndRefresh(key: CacheKey, searchTitle: String, year: Option[Int]): Unit =
+    cache.get(key).foreach { row =>
+      if (row.imdbId.isDefined) {
+        // Stale event — another resolver beat us to it.
+        return
+      }
+      Try(imdb.findId(searchTitle, year)).toOption.flatten match {
+        case Some(id) =>
+          logger.info(s"IMDb id resolved via search: ${key.cleanTitle} (${key.year.getOrElse("?")}) → $id")
+          cache.put(key, row.copy(imdbId = Some(id)))
+          // Chain the normal rating refresh now that we have an id.
+          refreshOne(key)
+        case None =>
+          logger.debug(s"IMDb search returned no match for ${key.cleanTitle} (${key.year.getOrElse("?")}) [search='$searchTitle']")
+      }
+    }
+
   // ── Per-row refresh ────────────────────────────────────────────────────────
 
   /** Dispatch a single-row refresh on the worker pool. No-op when the row no
@@ -58,9 +92,16 @@ class ImdbRatings(cache: EnrichmentCache, imdb: ImdbClient) extends Logging {
   private[enrichment] def schedule(key: CacheKey): Unit =
     worker.execute(() => refreshOne(key))
 
-  /** Synchronous version of `schedule` — used by `EnrichmentService.reEnrichSync`
-   *  to drive both stages on the calling thread without juggling executors. */
+  /** Synchronous per-row refresh by `CacheKey` — internal callers that
+   *  already have the key in hand. */
   private[enrichment] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
+
+  /** Synchronous per-row refresh by `(title, year)` — public so scripts and
+   *  tests can drive a single row's IMDb refresh on the calling thread,
+   *  mirroring the same overload on `MetascoreRatings` / `RottenTomatoesRatings`
+   *  / `FilmwebRatings`. */
+  def refreshOneSync(title: String, year: Option[Int]): Unit =
+    refreshOne(cache.keyOf(title, year))
 
   // Look up the row, fetch the rating, write back if it changed. Skips rows
   // without an `imdbId` (TMDB-only — IMDb hasn't cross-referenced the film

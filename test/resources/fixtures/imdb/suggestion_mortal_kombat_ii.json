@@ -1,0 +1,65 @@
+{
+  "d": [
+    {
+      "id": "/imdbpicks/summer-watch-guide/",
+      "l": "Summer Watch Guide"
+    },
+    {
+      "id": "tt17490712",
+      "l": "Mortal Kombat II",
+      "q": "feature",
+      "qid": "movie",
+      "rank": 3,
+      "y": 2026
+    },
+    {
+      "id": "tt38649690",
+      "l": "Mortal Kombat III",
+      "q": "feature",
+      "qid": "movie",
+      "rank": 8111
+    },
+    {
+      "id": "tt0119707",
+      "l": "Mortal Kombat: Annihilation",
+      "q": "feature",
+      "qid": "movie",
+      "rank": 698,
+      "y": 1997
+    },
+    {
+      "id": "tt0203703",
+      "l": "Mortal Kombat II",
+      "q": "video game",
+      "qid": "videoGame",
+      "rank": 21499,
+      "y": 1993
+    },
+    {
+      "id": "tt17061680",
+      "l": "Mortal Kombat & Mortal Kombat II",
+      "q": "video game",
+      "qid": "videoGame",
+      "rank": 190931,
+      "y": 1997
+    },
+    {
+      "id": "tt8682000",
+      "l": "Mortal Kombat Sega Genesis Commercial 2",
+      "q": "video",
+      "qid": "video",
+      "rank": 229357,
+      "y": 1992
+    },
+    {
+      "id": "tt39068878",
+      "l": "Mortal Kombat II",
+      "q": "video game",
+      "qid": "videoGame",
+      "rank": 555476,
+      "y": 1994
+    }
+  ],
+  "q": "mortal%20kombat%20ii",
+  "v": 1
+}

@@ -11,7 +11,7 @@ import scala.concurrent.Future
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import services.cinemas.HeliosClient
-import services.enrichment.{EnrichmentCache, EnrichmentRepo, EnrichmentService, FilmwebClient, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
+import services.enrichment.{EnrichmentCache, EnrichmentRepo, EnrichmentService, FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
 import services.events.EventBus
 import services.{Keepalive, ShowtimeCache}
 
@@ -73,12 +73,10 @@ class AppComponents(context: Context)
   // EnrichmentService so each external service has its own tempo and the TMDB
   // stage doesn't block on IMDb's GraphQL CDN or RT's HTML render.
   lazy val imdbRatings           = new ImdbRatings(enrichmentCache, imdbClient)
-  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(enrichmentCache, rottenTomatoesClient)
-  lazy val metascoreRatings      = new MetascoreRatings(enrichmentCache, metacriticClient)
-  lazy val enrichmentService = new EnrichmentService(
-    enrichmentCache, eventBus, imdbRatings,
-    tmdbClient, filmwebClient, metacriticClient, rottenTomatoesClient
-  )
+  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(enrichmentCache, tmdbClient, rottenTomatoesClient)
+  lazy val metascoreRatings      = new MetascoreRatings(enrichmentCache, tmdbClient, metacriticClient)
+  lazy val filmwebRatings        = new FilmwebRatings(enrichmentCache, filmwebClient)
+  lazy val enrichmentService     = new EnrichmentService(enrichmentCache, eventBus, tmdbClient)
 
   // ── Showtime aggregation + Fly keepalive ──────────────────────────────────
   lazy val showtimeCache = new ShowtimeCache(heliosClient, eventBus)
@@ -101,14 +99,18 @@ class AppComponents(context: Context)
   // Subscribe BEFORE ShowtimeCache.start() so the bus's first MovieAdded
   // events reach the enrichment handlers. Bus uses PartialFunction.applyOrElse,
   // so each listener only sees events it pattern-matches.
-  //   MovieAdded   → enrichmentService.onMovieAdded         (runs TMDB stage)
-  //   TmdbResolved → imdbRatings.onTmdbResolved             (runs IMDb stage)
-  //   TmdbResolved → rottenTomatoesRatings.onTmdbResolved   (runs RT stage)
-  //   TmdbResolved → metascoreRatings.onTmdbResolved        (runs Metascore stage)
+  //   MovieAdded    → enrichmentService.onMovieAdded         (runs TMDB stage)
+  //   TmdbResolved  → imdbRatings.onTmdbResolved             (runs IMDb stage)
+  //   TmdbResolved  → rottenTomatoesRatings.onTmdbResolved   (runs RT stage)
+  //   TmdbResolved  → metascoreRatings.onTmdbResolved        (runs Metascore stage)
+  //   TmdbResolved  → filmwebRatings.onTmdbResolved          (runs Filmweb stage)
+  //   ImdbIdMissing → imdbRatings.onImdbIdMissing            (IMDb-search fallback)
   eventBus.subscribe(enrichmentService.onMovieAdded)
   eventBus.subscribe(imdbRatings.onTmdbResolved)
+  eventBus.subscribe(imdbRatings.onImdbIdMissing)
   eventBus.subscribe(rottenTomatoesRatings.onTmdbResolved)
   eventBus.subscribe(metascoreRatings.onTmdbResolved)
+  eventBus.subscribe(filmwebRatings.onTmdbResolved)
 
   // Start background work and register shutdown hooks. Order matters on stop:
   // every ratings service's stop() must drain its worker pool before the
@@ -117,6 +119,7 @@ class AppComponents(context: Context)
   imdbRatings.start()
   rottenTomatoesRatings.start()
   metascoreRatings.start()
+  filmwebRatings.start()
   showtimeCache.start()
   if (environment.mode == Mode.Prod) keepalive.start()
 
@@ -127,6 +130,7 @@ class AppComponents(context: Context)
     imdbRatings.stop()
     rottenTomatoesRatings.stop()
     metascoreRatings.stop()
+    filmwebRatings.stop()
     enrichmentRepo.close()
   })
 }

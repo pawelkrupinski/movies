@@ -1,5 +1,6 @@
 package services.enrichment
 
+import clients.TmdbClient
 import play.api.Logging
 import services.events.{DomainEvent, TmdbResolved}
 
@@ -8,30 +9,29 @@ import java.util.concurrent.{Executors, TimeUnit}
 import scala.util.{Failure, Success, Try}
 
 /**
- * Rotten Tomatoes score maintenance — the RT counterpart of `ImdbRatings`.
+ * Rotten Tomatoes side of enrichment — owns BOTH:
+ *   - `rottenTomatoesUrl` discovery (slug probe with year-suffix preference,
+ *     cleanTitle fallback, lazy `englishTitle` fallback for non-English films).
+ *   - `rottenTomatoes` (Tomatometer percentage) scrape from the resolved URL.
  *
- * Two responsibilities:
- *   1. **Per-row refresh**: when the TMDB stage publishes `TmdbResolved`,
- *      fetch the current Tomatometer score off the row's stored
- *      `rottenTomatoesUrl` and write it back. Subscribe `onTmdbResolved`
- *      on the bus from `AppLoader`.
- *   2. **Periodic walk**: refresh every cached row with an RT URL hourly,
- *      so the score stays close to the live site. Driven by `start()`.
+ * Mirrors `FilmwebRatings` / `MetascoreRatings`: per-row refresh on
+ * `TmdbResolved`, plus a periodic hourly walk that discovers missing URLs and
+ * refreshes existing scores. Lifecycle owned by `AppLoader`; the class never
+ * self-subscribes or self-schedules (CLAUDE.md).
  *
- * Lifecycle is owned by the caller (`AppLoader` calls `start()` and registers
- * `stop()` as a shutdown hook). The class never self-subscribes or
- * self-schedules — see CLAUDE.md.
- *
- * Note: `TmdbResolved` only fires when the TMDB stage produced an `imdbId`.
- * Rows where TMDB resolved without an IMDb cross-reference are picked up by
- * the next hourly walk instead.
+ * URL resolution needs TMDB data (release year, English title) that the
+ * Enrichment row alone doesn't carry — we hit `tmdb.details(tmdbId)` lazily
+ * only when a row needs URL discovery.
  */
-class RottenTomatoesRatings(cache: EnrichmentCache, rt: RottenTomatoesClient) extends Logging {
+class RottenTomatoesRatings(
+  cache: EnrichmentCache,
+  tmdb:  TmdbClient,
+  rt:    RottenTomatoesClient
+) extends Logging {
 
   // 5 workers comfortably under CLAUDE.md's "5–10" band for undocumented
-  // services. Each refresh is a single GET to a /m/ page; the bottleneck is
-  // RT's response time, not us. Smaller than the TMDB stage's pool so an RT
-  // slowdown can't starve more important fetches.
+  // services. Each refresh is a single GET to a /m/ page; smaller than the
+  // TMDB stage's pool so an RT slowdown can't starve more important fetches.
   private val Workers       = 5
   private val workerCounter = new AtomicInteger(0)
   private val worker = Executors.newFixedThreadPool(Workers, { r: Runnable =>
@@ -42,16 +42,14 @@ class RottenTomatoesRatings(cache: EnrichmentCache, rt: RottenTomatoesClient) ex
   private val refreshScheduler = Executors.newSingleThreadScheduledExecutor { r =>
     val t = new Thread(r, "rt-refresh"); t.setDaemon(true); t
   }
-  // First run fires shortly after startup so Mongo hydration has time to
-  // populate the cache before the walk reads from it.
-  private val StartupDelaySeconds = 10L
+  // Stagger startup against IMDb (10s) so first-tick bursts don't pile up.
+  private val StartupDelaySeconds = 15L
   private val RefreshHours        = 1L
 
   // ── Event listener ─────────────────────────────────────────────────────────
 
-  /** Bus listener: fetch the RT score as soon as the TMDB stage publishes a
-   *  `TmdbResolved` for this `(title, year)`. Async — the publisher (the
-   *  TMDB stage worker) is not blocked on RT. */
+  /** Bus listener: discover the RT URL (if missing) and refresh the Tomatometer
+   *  as soon as the TMDB stage produces a row. */
   val onTmdbResolved: PartialFunction[DomainEvent, Unit] = {
     case TmdbResolved(title, year, _) => schedule(cache.keyOf(title, year))
   }
@@ -62,39 +60,73 @@ class RottenTomatoesRatings(cache: EnrichmentCache, rt: RottenTomatoesClient) ex
   private[enrichment] def schedule(key: CacheKey): Unit =
     worker.execute(() => refreshOne(key))
 
-  /** Synchronous version of `schedule` — handy for scripts and tests that
-   *  want to drive a refresh on the calling thread. */
+  /** Synchronous version of `schedule` — handy for scripts and tests. */
   private[enrichment] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
 
-  // Look up the row, fetch the score, write back if it changed. Skips rows
-  // without a `rottenTomatoesUrl` (RT didn't know the film, or hasn't been
-  // resolved yet). Per-row failures are swallowed (network blip, Cloudflare
-  // challenge); the next periodic tick tries again.
+  /** Synchronous refresh by `(title, year)` — public entry point for scripts. */
+  def refreshOneSync(title: String, year: Option[Int]): Unit =
+    refreshOne(cache.keyOf(title, year))
+
+  // Two paths, mirroring FilmwebRatings / MetascoreRatings:
+  //   - URL already known → cheap: scrape Tomatometer, write back if changed.
+  //   - URL missing       → expensive: probe RT slug variants (with year-
+  //     suffix preference + English-title fallback for non-English films),
+  //     write the URL, then scrape the score.
+  // Per-row failures are swallowed; the next periodic tick tries again.
   private def refreshOne(key: CacheKey): Unit =
-    cache.get(key).flatMap(e => e.rottenTomatoesUrl.map(url => (e, url))).foreach { case (e, url) =>
-      Try(rt.scoreFor(url)).toOption.flatten match {
-        case Some(score) if !e.rottenTomatoes.contains(score) =>
-          logger.debug(s"RT: ${key.cleanTitle} $url ${e.rottenTomatoes.getOrElse("—")} → $score")
-          cache.put(key, e.copy(rottenTomatoes = Some(score)))
-        case _ => ()
+    cache.get(key).foreach { e =>
+      val urlOpt = e.rottenTomatoesUrl.orElse(resolveAndPersistUrl(key, e))
+      urlOpt.foreach(url => refreshScoreFromUrl(key, e, url))
+    }
+
+  private def resolveAndPersistUrl(key: CacheKey, e: models.Enrichment): Option[String] =
+    e.tmdbId.flatMap { tmdbId =>
+      val linkTitle  = e.originalTitle.getOrElse(key.cleanTitle)
+      val rtFallback = if (linkTitle != key.cleanTitle) Some(key.cleanTitle) else None
+      val details    = tmdb.details(tmdbId)
+      val year       = details.flatMap(_.releaseYear)
+
+      val primary = Try(rt.urlFor(linkTitle, rtFallback, year)).toOption.flatten
+      val resolved = primary.orElse {
+        val englishTitle = details.flatMap(_.englishTitle)
+          .filterNot(_.equalsIgnoreCase(linkTitle))
+          .filterNot(t => rtFallback.exists(_.equalsIgnoreCase(t)))
+        englishTitle.flatMap(t => Try(rt.urlFor(t, None, year)).toOption.flatten)
       }
+
+      resolved.foreach { url =>
+        logger.debug(s"RT: ${key.cleanTitle} discovered $url")
+        cache.put(key, e.copy(rottenTomatoesUrl = Some(url)))
+      }
+      resolved
+    }
+
+  private def refreshScoreFromUrl(key: CacheKey, e: models.Enrichment, url: String): Unit =
+    Try(rt.scoreFor(url)).toOption.flatten match {
+      case Some(score) if !e.rottenTomatoes.contains(score) =>
+        val current = cache.get(key).getOrElse(e)
+        logger.debug(s"RT: ${key.cleanTitle} $url ${current.rottenTomatoes.getOrElse("—")} → $score")
+        cache.put(key, current.copy(rottenTomatoes = Some(score)))
+      case _ => ()
     }
 
   // ── Periodic walk ──────────────────────────────────────────────────────────
 
-  /** Walk every cached row with a `rottenTomatoesUrl`, refreshing its score.
-   *  Skips rows without an RT URL (the next TMDB-retry tick may produce one).
-   *  Runs on the dedicated `rt-refresh` thread one entry at a time. */
+  /** Walk every cached row. Rows with a `rottenTomatoesUrl` get a cheap
+   *  Tomatometer refresh; rows without one get the full URL-discovery probe
+   *  (and a score refresh if discovery succeeds). */
   private[enrichment] def refreshAll(): Unit = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
-    val withUrl   = snapshot.collect { case (k, e) if e.rottenTomatoesUrl.isDefined => (k, e, e.rottenTomatoesUrl.get) }
-    val skipped   = snapshot.size - withUrl.size
-    logger.info(s"RT refresh: starting tick over ${withUrl.size} cached row(s) with RT URL" +
-                (if (skipped > 0) s" (skipping $skipped without RT URL)." else "."))
-    var changed = 0
-    var failed  = 0
-    withUrl.foreach { case (key, enrichment, url) =>
+    val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.rottenTomatoesUrl.isDefined }
+    logger.info(s"RT refresh: starting tick over ${snapshot.size} cached row(s) " +
+                s"(${withUrl.size} with URL → score-only, ${missingUrl.size} without → URL discovery).")
+    var changed       = 0
+    var failed        = 0
+    var urlDiscovered = 0
+
+    withUrl.foreach { case (key, enrichment) =>
+      val url = enrichment.rottenTomatoesUrl.get
       Try(rt.scoreFor(url)) match {
         case Success(fresh) if fresh != enrichment.rottenTomatoes =>
           logger.debug(s"RT refresh: ${key.cleanTitle} $url ${enrichment.rottenTomatoes.getOrElse("—")} → ${fresh.getOrElse("—")}")
@@ -106,15 +138,22 @@ class RottenTomatoesRatings(cache: EnrichmentCache, rt: RottenTomatoesClient) ex
           logger.debug(s"RT refresh: $url lookup failed: ${ex.getMessage}")
       }
     }
+
+    missingUrl.foreach { case (key, enrichment) =>
+      resolveAndPersistUrl(key, enrichment).foreach { url =>
+        urlDiscovered += 1
+        cache.get(key).foreach(refreshScoreFromUrl(key, _, url))
+      }
+    }
+
     val took = System.currentTimeMillis() - startedAt
-    logger.info(s"RT refresh: tick done in ${took}ms — $changed changed, $failed failed, ${withUrl.size - changed - failed} unchanged.")
+    logger.info(s"RT refresh: tick done in ${took}ms — $changed score(s) changed, " +
+                s"$urlDiscovered URL(s) newly discovered, $failed failed.")
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
-  /** Schedule the periodic hourly refresh. Called from `AppLoader` — the
-   *  class is otherwise lifecycle-agnostic so tests can construct it freely
-   *  without a background thread firing on `new`. */
+  /** Schedule the periodic hourly refresh. Called from `AppLoader`. */
   def start(): Unit = {
     logger.info(s"RT refresh scheduled every ${RefreshHours}h (first run in ${StartupDelaySeconds}s).")
     refreshScheduler.scheduleAtFixedRate(
@@ -126,8 +165,7 @@ class RottenTomatoesRatings(cache: EnrichmentCache, rt: RottenTomatoesClient) ex
   }
 
   /** Drain the worker pool so in-flight upserts hit Mongo before
-   *  `EnrichmentRepo` closes its client. `AppLoader` must register this so
-   *  the repo's close hook runs strictly after this returns. */
+   *  `EnrichmentRepo` closes its client. */
   def stop(): Unit = {
     worker.shutdown()
     refreshScheduler.shutdown()

@@ -78,7 +78,7 @@ class ShowtimeCache(
       val elapsed = System.currentTimeMillis() - t0
       cache.put(cinema, movies)
       logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms")
-      movies.foreach(cm => bus.publish(MovieAdded(cm.movie.title, cm.movie.releaseYear)))
+      movies.foreach(cm => bus.publish(MovieAdded(cm.movie.title, cm.movie.releaseYear, cm.movie.originalTitle)))
     } catch {
       case e: Exception =>
         val elapsed = System.currentTimeMillis() - t0

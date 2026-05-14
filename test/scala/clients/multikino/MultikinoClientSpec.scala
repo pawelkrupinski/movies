@@ -208,83 +208,55 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana")            shouldBe Some(94)
   }
 
-  // ── Release years ─────────────────────────────────────────────────────────
+  // ── Release year ──────────────────────────────────────────────────────────
+  //
+  // Multikino's API only exposes `releaseDate`, which is the Polish theatrical
+  // (or re-release) date — NOT the film's production year. Using it as the
+  // film year was poisoning TMDB resolution downstream: anniversary screenings
+  // came back tagged with the cinema's scheduling year, year-scoped TMDB
+  // searches excluded the actual film, and the year-less fallback often
+  // surfaced an unrelated film sharing the Polish title (e.g. "Zawieście
+  // czerwone latarnie" 2026 → year=None lets TMDB find the 1991 Zhang Yimou
+  // original on title alone). With no production-year field in the API we
+  // leave `releaseYear = None` and let TMDB rank by title.
 
-  it should "return correct release year for every movie" in {
-    byTitle("90. urodziny Pavarottiego").movie.releaseYear                                          shouldBe Some(2026)
-    byTitle("Art Beats: Lotto i Berenson - splecione losy. Śladami renesansowego mistrza").movie.releaseYear shouldBe Some(2026)
-    byTitle("Art Beats: Muzeum Prado - kolekcja cudów").movie.releaseYear                           shouldBe Some(2026)
-    byTitle("Art Beats: Nenufary Moneta - cuda z wody i światła").movie.releaseYear                 shouldBe Some(2026)
-    byTitle("Art Beats: Rafael. Młody geniusz").movie.releaseYear                                   shouldBe Some(2026)
-    byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour").movie.releaseYear                     shouldBe Some(2026)
-    byTitle("Bluey w kinie: Kolekcja Zabawy z przyjaciółmi").movie.releaseYear                      shouldBe Some(2026)
-    byTitle("Caravaggio. Arcydzieła niepokornego geniusza").movie.releaseYear                       shouldBe Some(2026)
-    byTitle("Cirque du Soleil: Kooza").movie.releaseYear                                            shouldBe Some(2026)
-    byTitle("Cirque du Soleil: Kurios - Gabinet osobliwości").movie.releaseYear                     shouldBe Some(2026)
-    byTitle("Diabeł ubiera się u Prady 2").movie.releaseYear                                        shouldBe Some(2026)
-    byTitle("Drama").movie.releaseYear                                                              shouldBe Some(2026)
-    byTitle("Drugie życie").movie.releaseYear                                                       shouldBe Some(2026)
-    byTitle("Drzewo magii").movie.releaseYear                                                       shouldBe Some(2026)
-    byTitle("Erupcja").movie.releaseYear                                                            shouldBe Some(2026)
-    byTitle("FANTASTYCZNE ZWIERZĘTA I JAK JE ZNALEŹĆ").movie.releaseYear                            shouldBe Some(2026)
-    byTitle("FANTASTYCZNE ZWIERZĘTA: ZBRODNIE GRINDELWALDA").movie.releaseYear                      shouldBe Some(2026)
-    byTitle("Fantastyczne zwierzęta: Tajemnice Dumbledorea").movie.releaseYear                      shouldBe Some(2026)
-    byTitle("Harry Potter i Czara ognia").movie.releaseYear                                         shouldBe Some(2024)
-    byTitle("Harry Potter i Insygnia Śmierci cz. 1").movie.releaseYear                              shouldBe Some(2024)
-    byTitle("Harry Potter i Insygnia Śmierci cz. 2").movie.releaseYear                              shouldBe Some(2024)
-    byTitle("Harry Potter i Kamień filozoficzny").movie.releaseYear                                 shouldBe Some(2024)
-    byTitle("Harry Potter i Komnata Tajemnic").movie.releaseYear                                    shouldBe Some(2024)
-    byTitle("Harry Potter i Książę Półkrwi").movie.releaseYear                                      shouldBe Some(2024)
-    byTitle("Harry Potter i Więzień Azkabanu").movie.releaseYear                                    shouldBe Some(2024)
-    byTitle("Harry Potter i Zakon Feniksa").movie.releaseYear                                       shouldBe Some(2024)
-    byTitle("Hopnięci").movie.releaseYear                                                           shouldBe Some(2026)
-    byTitle("Iron Maiden: Burning Ambition").movie.releaseYear                                      shouldBe Some(2026)
-    byTitle("John Williams - A Tribute").movie.releaseYear                                          shouldBe Some(2026)
-    byTitle("Klątwa doliny węży -  z autorską narracją Łony").movie.releaseYear                     shouldBe Some(2026)
-    byTitle("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas").movie.releaseYear         shouldBe Some(2026)
-    byTitle("Kosmiczny mecz").movie.releaseYear                                                     shouldBe Some(2026)
-    byTitle("Kurozając i Świątynia Świstaka").movie.releaseYear                                     shouldBe Some(2026)
-    byTitle("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC").movie.releaseYear  shouldBe Some(2026)
-    byTitle("La Traviata Verdiego z Arena di Verona").movie.releaseYear                             shouldBe Some(2026)
-    byTitle("Mandalorian i Grogu").movie.releaseYear                                                shouldBe Some(2026)
-    byTitle("Maraton: Powrót do przyszłości").movie.releaseYear                                     shouldBe Some(2026)
-    byTitle("Merrily We Roll Along").movie.releaseYear                                              shouldBe Some(2026)
-    byTitle("Michael").movie.releaseYear                                                            shouldBe Some(2026)
-    byTitle("Milczenie owiec").movie.releaseYear                                                    shouldBe Some(2026)
-    byTitle("Milcząca przyjaciółka").movie.releaseYear                                              shouldBe Some(2026)
-    byTitle("Mortal Kombat 2").movie.releaseYear                                                    shouldBe Some(2026)
-    byTitle("Moulin Rouge! – wersja oryginalna").movie.releaseYear                                  shouldBe Some(2026)
-    byTitle("Mumia: Film Lee Cronina").movie.releaseYear                                            shouldBe Some(2026)
-    byTitle("NT Live: Audiencja").movie.releaseYear                                                 shouldBe Some(2026)
-    byTitle("NT Live: Niebezpieczne związki").movie.releaseYear                                     shouldBe Some(2026)
-    byTitle("NT Live: Playboy zachodniego świata").movie.releaseYear                                shouldBe Some(2026)
-    byTitle("NT Live: Wszyscy moi synowie").movie.releaseYear                                       shouldBe Some(2026)
-    byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").movie.releaseYear                      shouldBe Some(2026)
-    byTitle("Obsesja").movie.releaseYear                                                            shouldBe Some(2026)
-    byTitle("Odlot").movie.releaseYear                                                              shouldBe Some(2026)
-    byTitle("Odrodzony jako galareta. Film: Łzy Morza Lazurowego").movie.releaseYear                shouldBe Some(2026)
-    byTitle("Piep*zyć Mickiewicza 3").movie.releaseYear                                             shouldBe Some(2026)
-    byTitle("Podziemny krąg").movie.releaseYear                                                     shouldBe Some(2026)
-    byTitle("Powrót do przyszłości").movie.releaseYear                                              shouldBe Some(2026)
-    byTitle("Powrót do przyszłości II").movie.releaseYear                                           shouldBe Some(2026)
-    byTitle("Powrót do przyszłości III").movie.releaseYear                                          shouldBe Some(2026)
-    byTitle("Projekt Hail Mary").movie.releaseYear                                                  shouldBe Some(2026)
-    byTitle("Pucio").movie.releaseYear                                                              shouldBe Some(2026)
-    byTitle("Rambo: Pierwsza krew").movie.releaseYear                                               shouldBe Some(2026)
-    byTitle("Romeo i Julia – wersja oryginalna").movie.releaseYear                                  shouldBe Some(2026)
-    byTitle("Sprawiedliwość owiec").movie.releaseYear                                               shouldBe Some(2026)
-    byTitle("Straszny film").movie.releaseYear                                                      shouldBe Some(2026)
-    byTitle("Super Mario Galaxy Film").movie.releaseYear                                            shouldBe Some(2026)
-    byTitle("The Amazing Digital Circus: Ostatni Akt").movie.releaseYear                            shouldBe Some(2026)
-    byTitle("Top Gun").movie.releaseYear                                                            shouldBe Some(2026)
-    byTitle("Top Gun: Maverick").movie.releaseYear                                                  shouldBe Some(2022)
-    byTitle("Werdykt").movie.releaseYear                                                            shouldBe Some(2026)
-    byTitle("Wolność po włosku").movie.releaseYear                                                  shouldBe Some(2026)
-    byTitle("Za duży na bajki 3").movie.releaseYear                                                 shouldBe Some(2026)
-    byTitle("Zaplątani").movie.releaseYear                                                          shouldBe Some(2026)
-    byTitle("Zaproszenie").movie.releaseYear                                                        shouldBe Some(2026)
-    byTitle("Zawieście czerwone latarnie").movie.releaseYear                                        shouldBe Some(2026)
-    byTitle("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana").movie.releaseYear            shouldBe Some(2026)
+  it should "leave releaseYear unset on every film (no production-year field in the API)" in {
+    results.foreach { cm =>
+      withClue(s"${cm.movie.title}: ") {
+        cm.movie.releaseYear shouldBe None
+      }
+    }
+  }
+
+  // Regression test for the user-reported case: Multikino's `releaseDate` for
+  // a 1991 film is "2026-06-18" (the Polish theatrical re-release). The
+  // parser must not derive a year from that.
+  it should "leave releaseYear None for re-released classics whose releaseDate is the Polish theatrical date (Zawieście czerwone latarnie / Raise the Red Lantern, 1991)" in {
+    byTitle("Zawieście czerwone latarnie").movie.releaseYear shouldBe None
+  }
+
+  // ── Original title ────────────────────────────────────────────────────────
+  //
+  // Multikino's `originalTitle` is mostly empty (Polish releases just use the
+  // Polish title) but is populated for international productions Multikino
+  // distributes in Poland — typically Cirque du Soleil shows, opera /
+  // concert recordings, and English-language docs. When present, it's the
+  // film's English-language title and a strong TMDB-search fallback for
+  // niche titles whose Polish translation doesn't index well.
+
+  it should "populate originalTitle when the API provides one (English release title for international shows)" in {
+    byTitle("90. urodziny Pavarottiego").movie.originalTitle shouldBe
+      Some("Pavarotti 90 - The Man Who Moved the World")
+    byTitle("Cirque du Soleil: Kooza").movie.originalTitle shouldBe
+      Some("Cirque du Soleil: Kooza")
+    byTitle("Cirque du Soleil: Kurios - Gabinet osobliwości").movie.originalTitle shouldBe
+      Some("Cirque du Soleil: KURIOS – Cabinet of Curiosities")
+  }
+
+  it should "leave originalTitle None when the API field is empty (Polish releases without an English title)" in {
+    byTitle("Diabeł ubiera się u Prady 2").movie.originalTitle shouldBe None
+    byTitle("Top Gun").movie.originalTitle                     shouldBe None
+    byTitle("Zawieście czerwone latarnie").movie.originalTitle shouldBe None
   }
 
   // ── Poster URLs ───────────────────────────────────────────────────────────

@@ -28,7 +28,22 @@ object MultikinoParser {
       movie       = Movie(
         title          = title,
         runtimeMinutes = (film \ "runningTime").asOpt[Int],
-        releaseYear    = (film \ "releaseDate").asOpt[String].flatMap(parseYear)
+        // `releaseDate` from Multikino's API is the Polish theatrical (re-)
+        // release date, not the film's production year — e.g. "Zawieście
+        // czerwone latarnie" (Raise the Red Lantern, 1991) comes back with
+        // releaseDate=2026-06-18. Using that for `releaseYear` poisons TMDB
+        // resolution: year-scoped search excludes the actual film, and the
+        // year-less fallback picks whatever now shares the Polish title
+        // (often a famous English-language film with the same translation).
+        // We have no production-year field in this API, so leave it None
+        // and let TMDB rank by title alone.
+        releaseYear    = None,
+        // English/international release title — non-empty on ~5% of films
+        // (Cirque du Soleil, opera/concert docs, English-language imports
+        // distributed under a Polish title). Empty on Polish releases and
+        // most blockbusters where the Polish title IS the only known
+        // identifier. Useful as a TMDB-search fallback for niche titles.
+        originalTitle  = (film \ "originalTitle").asOpt[String].filter(_.nonEmpty)
       ),
       cinema      = Multikino,
       posterUrl   = (film \ "posterImageSrc").asOpt[String].filter(_.nonEmpty),
@@ -65,7 +80,4 @@ object MultikinoParser {
 
   private def absoluteUrl(url: Option[String]): Option[String] =
     url.filter(_.nonEmpty).map(u => if (u.startsWith("http")) u else BaseUrl + u)
-
-  private def parseYear(date: String): Option[Int] =
-    Try(java.time.LocalDate.parse(date.take(10)).getYear).toOption
 }

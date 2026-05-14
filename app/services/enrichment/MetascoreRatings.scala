@@ -1,5 +1,6 @@
 package services.enrichment
 
+import clients.TmdbClient
 import play.api.Logging
 import services.events.{DomainEvent, TmdbResolved}
 
@@ -8,28 +9,30 @@ import java.util.concurrent.{Executors, TimeUnit}
 import scala.util.{Failure, Success, Try}
 
 /**
- * Metascore (Metacritic critic aggregate, 0–100) maintenance — same shape as
- * `ImdbRatings`. Reads the row's stored `metacriticUrl` and asks
- * `MetacriticClient.metascoreFor` for the current score; writes back when it
- * changes.
+ * Metacritic side of enrichment — owns BOTH:
+ *   - `metacriticUrl` discovery (slug probe + cleanTitle fallback + lazy
+ *     `englishTitle` fallback for non-English films).
+ *   - `metascore` scrape from the resolved URL.
  *
- * Two responsibilities:
- *   1. **Per-row refresh**: when the TMDB stage publishes `TmdbResolved`,
- *      refresh the score for that row. Subscribe `onTmdbResolved` on the bus
- *      from `AppLoader`.
- *   2. **Periodic walk**: refresh every cached row hourly so the scores stay
- *      close to metacritic.com. Driven by `start()`.
+ * Mirrors `FilmwebRatings`'s shape: per-row refresh on `TmdbResolved`, plus a
+ * periodic hourly walk that discovers missing URLs and refreshes existing
+ * scores. Lifecycle owned by `AppLoader`; the class never self-subscribes or
+ * self-schedules (CLAUDE.md).
  *
- * Skips rows without a `metacriticUrl` — there's nothing to scrape. Skips
- * (silently) when MC's JSON-LD has no `aggregateRating` (typical for films
- * MC hasn't aggregated yet). Lifecycle owned by the caller; the class doesn't
- * self-subscribe or self-schedule (CLAUDE.md).
+ * URL resolution needs TMDB data (release year, English title) that the
+ * Enrichment row alone doesn't carry — we hit `tmdb.details(tmdbId)` lazily
+ * for rows that need URL discovery, and never for rows that already have a
+ * canonical URL.
  */
-class MetascoreRatings(cache: EnrichmentCache, metacritic: MetacriticClient) extends Logging {
+class MetascoreRatings(
+  cache:      EnrichmentCache,
+  tmdb:       TmdbClient,
+  metacritic: MetacriticClient
+) extends Logging {
 
-  // MC's pages are heavier than IMDb's GraphQL endpoint and the hourly walk
-  // makes hundreds of requests. 3 workers keeps us comfortably under MC's
-  // tolerated rate while still parallelising the I/O wait.
+  // 3 workers — MC pages are heavier than IMDb's GraphQL endpoint, and the
+  // hourly walk makes hundreds of requests. 3 keeps us under MC's tolerated
+  // rate while still parallelising the I/O wait.
   private val Workers       = 3
   private val workerCounter = new AtomicInteger(0)
   private val worker = Executors.newFixedThreadPool(Workers, { r: Runnable =>
@@ -40,16 +43,15 @@ class MetascoreRatings(cache: EnrichmentCache, metacritic: MetacriticClient) ext
   private val refreshScheduler = Executors.newSingleThreadScheduledExecutor { r =>
     val t = new Thread(r, "metascore-refresh"); t.setDaemon(true); t
   }
-  // Stagger the startup tick so we don't race the IMDb refresh — both walk
-  // the same cache, and serialising the bursts avoids fan-in on Mongo
-  // upserts.
+  // Stagger the startup tick so we don't race the IMDb / RT refreshes — they
+  // all walk the same cache and serialising the bursts avoids Mongo fan-in.
   private val StartupDelaySeconds = 30L
   private val RefreshHours        = 1L
 
   // ── Event listener ─────────────────────────────────────────────────────────
 
-  /** Bus listener: fetch the Metascore as soon as the TMDB stage produces an
-   *  imdbId (and, by extension, a `metacriticUrl` if MC has the film). */
+  /** Bus listener: discover the MC URL (if missing) and refresh the metascore
+   *  as soon as the TMDB stage produces a row. */
   val onTmdbResolved: PartialFunction[DomainEvent, Unit] = {
     case TmdbResolved(title, year, _) => schedule(cache.keyOf(title, year))
   }
@@ -57,43 +59,86 @@ class MetascoreRatings(cache: EnrichmentCache, metacritic: MetacriticClient) ext
   // ── Per-row refresh ────────────────────────────────────────────────────────
 
   /** Dispatch a single-row refresh on the worker pool. No-op when the row no
-   *  longer exists or has no `metacriticUrl`. */
+   *  longer exists or can't be resolved. */
   private[enrichment] def schedule(key: CacheKey): Unit =
     worker.execute(() => refreshOne(key))
 
-  /** Synchronous version of `schedule` — used by callers that want a
-   *  single-shot answer (e.g. backfill scripts). */
+  /** Synchronous version of `schedule` — used by backfill scripts and tests. */
   private[enrichment] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
 
-  // Look up the row, scrape the score from MC, write back if it changed.
-  // Skips rows without a `metacriticUrl` (MC doesn't index every film).
-  // Per-row failures are swallowed (network blip, Cloudflare challenge) —
-  // the periodic tick tries again.
+  /** Synchronous refresh by `(title, year)` — public entry point for scripts.
+   *  Looks up the row's cache key the same way the rest of the pipeline does. */
+  def refreshOneSync(title: String, year: Option[Int]): Unit =
+    refreshOne(cache.keyOf(title, year))
+
+  // Two paths, mirroring FilmwebRatings:
+  //   - URL already known → cheap: scrape metascore, write back if changed.
+  //   - URL missing       → expensive: probe MC slug variants (with TMDB
+  //     details for English title + year disambiguation), write the URL,
+  //     then scrape the metascore.
+  // Per-row failures are swallowed; the next periodic tick tries again.
   private def refreshOne(key: CacheKey): Unit =
-    cache.get(key).flatMap(e => e.metacriticUrl.map(url => (e, url))).foreach { case (e, url) =>
-      Try(metacritic.metascoreFor(url)).toOption.flatten match {
-        case Some(score) if !e.metascore.contains(score) =>
-          logger.debug(s"Metascore: ${key.cleanTitle} $url ${e.metascore.getOrElse("—")} → $score")
-          cache.put(key, e.copy(metascore = Some(score)))
-        case _ => ()
+    cache.get(key).foreach { e =>
+      val urlOpt = e.metacriticUrl.orElse(resolveAndPersistUrl(key, e))
+      urlOpt.foreach(url => refreshScoreFromUrl(key, e, url))
+    }
+
+  // Probe MC for a canonical /movie/ URL using TMDB's title data; write it
+  // back to the cache when found. Returns the new URL (or None if MC didn't
+  // index the film).
+  private def resolveAndPersistUrl(key: CacheKey, e: models.Enrichment): Option[String] =
+    e.tmdbId.flatMap { tmdbId =>
+      val linkTitle  = e.originalTitle.getOrElse(key.cleanTitle)
+      val mcFallback = if (linkTitle != key.cleanTitle) Some(key.cleanTitle) else None
+      val details    = tmdb.details(tmdbId)
+      val year       = details.flatMap(_.releaseYear)
+
+      val primary = Try(metacritic.urlFor(linkTitle, mcFallback, year)).toOption.flatten
+      val resolved = primary.orElse {
+        // English-title fallback for non-English films — only consult when
+        // primary + cleanTitle both miss.
+        val englishTitle = details.flatMap(_.englishTitle)
+          .filterNot(_.equalsIgnoreCase(linkTitle))
+          .filterNot(t => mcFallback.exists(_.equalsIgnoreCase(t)))
+        englishTitle.flatMap(t => Try(metacritic.urlFor(t, None, year)).toOption.flatten)
       }
+
+      resolved.foreach { url =>
+        logger.debug(s"Metascore: ${key.cleanTitle} discovered $url")
+        cache.put(key, e.copy(metacriticUrl = Some(url)))
+      }
+      resolved
+    }
+
+  private def refreshScoreFromUrl(key: CacheKey, e: models.Enrichment, url: String): Unit =
+    Try(metacritic.metascoreFor(url)).toOption.flatten match {
+      case Some(score) if !e.metascore.contains(score) =>
+        // Re-read the cached row in case `resolveAndPersistUrl` just wrote
+        // the URL — we want to merge our score onto the freshest version.
+        val current = cache.get(key).getOrElse(e)
+        logger.debug(s"Metascore: ${key.cleanTitle} $url ${current.metascore.getOrElse("—")} → $score")
+        cache.put(key, current.copy(metascore = Some(score)))
+      case _ => ()
     }
 
   // ── Periodic walk ──────────────────────────────────────────────────────────
 
-  /** Walk every cached row with a `metacriticUrl`, refreshing its Metascore.
-   *  Runs on the dedicated `metascore-refresh` thread one entry at a time —
-   *  MC pages are heavy enough that parallelism risks rate-limit pushback. */
+  /** Walk every cached row. Rows with a `metacriticUrl` get a cheap score
+   *  refresh; rows without one get the full URL-discovery probe (and then a
+   *  score refresh if discovery succeeds). Per-row failures are logged at
+   *  debug — one bad row can't poison the whole tick. */
   private[enrichment] def refreshAll(): Unit = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
-    val withUrl   = snapshot.collect { case (k, e) if e.metacriticUrl.isDefined => (k, e, e.metacriticUrl.get) }
-    val skipped   = snapshot.size - withUrl.size
-    logger.info(s"Metascore refresh: starting tick over ${withUrl.size} cached row(s) with MC URL" +
-                (if (skipped > 0) s" (skipping $skipped without MC URL)." else "."))
-    var changed = 0
-    var failed  = 0
-    withUrl.foreach { case (key, enrichment, url) =>
+    val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.metacriticUrl.isDefined }
+    logger.info(s"Metascore refresh: starting tick over ${snapshot.size} cached row(s) " +
+                s"(${withUrl.size} with URL → score-only, ${missingUrl.size} without → URL discovery).")
+    var changed       = 0
+    var failed        = 0
+    var urlDiscovered = 0
+
+    withUrl.foreach { case (key, enrichment) =>
+      val url = enrichment.metacriticUrl.get
       Try(metacritic.metascoreFor(url)) match {
         case Success(fresh) if fresh != enrichment.metascore =>
           logger.debug(s"Metascore refresh: ${key.cleanTitle} $url ${enrichment.metascore.getOrElse("—")} → ${fresh.getOrElse("—")}")
@@ -105,8 +150,18 @@ class MetascoreRatings(cache: EnrichmentCache, metacritic: MetacriticClient) ext
           logger.debug(s"Metascore refresh: $url lookup failed: ${ex.getMessage}")
       }
     }
+
+    missingUrl.foreach { case (key, enrichment) =>
+      resolveAndPersistUrl(key, enrichment).foreach { url =>
+        urlDiscovered += 1
+        // Use the post-write row so the score copy doesn't clobber the URL.
+        cache.get(key).foreach(refreshScoreFromUrl(key, _, url))
+      }
+    }
+
     val took = System.currentTimeMillis() - startedAt
-    logger.info(s"Metascore refresh: tick done in ${took}ms — $changed changed, $failed failed, ${withUrl.size - changed - failed} unchanged.")
+    logger.info(s"Metascore refresh: tick done in ${took}ms — $changed score(s) changed, " +
+                s"$urlDiscovered URL(s) newly discovered, $failed failed.")
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────

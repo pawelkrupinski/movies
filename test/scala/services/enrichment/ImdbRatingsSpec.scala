@@ -3,7 +3,7 @@ package services.enrichment
 import models.Enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{EventBus, MovieAdded, TmdbResolved}
+import services.events.{EventBus, ImdbIdMissing, MovieAdded, TmdbResolved}
 import tools.HttpFetch
 
 import scala.collection.mutable
@@ -43,6 +43,31 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
         }.getOrElse(throw new RuntimeException(s"no stubbed rating for body: $body"))
       }
     })
+  }
+
+  /** Same as `imdbStub` but also serves the IMDb suggestion endpoint (GET) so
+   *  `findId` can resolve a title → tt-id. `suggestions` keys are the query
+   *  strings the URL is expected to contain (case-insensitive substring); the
+   *  value is the JSON body to return. */
+  private def imdbStub(suggestions: Map[String, String], ratings: Map[String, Double]): ImdbClient = {
+    new ImdbClient(http = new HttpFetch {
+      def get(url: String): String =
+        suggestions.collectFirst { case (q, body) if url.toLowerCase.contains(q.toLowerCase) => body }
+          .getOrElse(throw new RuntimeException(s"no stubbed suggestion for $url"))
+      override def post(url: String, body: String, contentType: String): String = {
+        ratings.collectFirst {
+          case (id, rating) if body.contains(id) =>
+            s"""{"data":{"title":{"ratingsSummary":{"aggregateRating":$rating,"voteCount":1234}}}}"""
+        }.getOrElse(throw new RuntimeException(s"no stubbed rating for body: $body"))
+      }
+    })
+  }
+
+  private def loadFixture(path: String): String = {
+    val stream = getClass.getResourceAsStream(path)
+    require(stream != null, s"fixture not found: $path")
+    try scala.io.Source.fromInputStream(stream, "UTF-8").mkString
+    finally stream.close()
   }
 
   private def mkEnrichment(imdbId: String, rating: Option[Double] = None): Enrichment =
@@ -159,6 +184,77 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     bus.subscribe(ratings.onTmdbResolved)
 
     noException should be thrownBy bus.publish(MovieAdded("Anything", None))
+  }
+
+  // ── onImdbIdMissing — IMDb-search fallback for TMDB hits without imdbId ────
+
+  "onImdbIdMissing" should "find the IMDb id via the suggestion endpoint, write it back, then refresh the rating" in {
+    val bus = new EventBus()
+    // Simulates "Mortal Kombat II" — TMDB knows the film but has no IMDb
+    // cross-reference. Cinema lists it under a Polish title; TMDB returns
+    // "Mortal Kombat II" as the originalTitle and that's what we IMDb-search by.
+    val tmdbOnly = Enrichment(
+      imdbId        = None,
+      imdbRating    = None,
+      metascore     = None,
+      originalTitle = Some("Mortal Kombat II"),
+      tmdbId        = Some(1024)
+    )
+    val repo  = new FakeRepo(Seq(("Mortal Kombat 2", Some(2026), tmdbOnly)))
+    val cache = new EnrichmentCache(repo)
+    val ratings = new ImdbRatings(cache, imdbStub(
+      suggestions = Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")),
+      ratings     = Map("tt17490712" -> 7.5)
+    ))
+    bus.subscribe(ratings.onImdbIdMissing)
+
+    bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
+
+    eventually {
+      val e = cache.get(cache.keyOf("Mortal Kombat 2", Some(2026))).get
+      e.imdbId     shouldBe Some("tt17490712")
+      e.imdbRating shouldBe Some(7.5)
+    }
+  }
+
+  it should "no-op when the suggestion endpoint returns nothing usable" in {
+    val bus = new EventBus()
+    val tmdbOnly = Enrichment(imdbId = None, imdbRating = None, metascore = None,
+                               originalTitle = Some("Imaginary Film"), tmdbId = Some(1))
+    val repo  = new FakeRepo(Seq(("Imaginary Film", None, tmdbOnly)))
+    val cache = new EnrichmentCache(repo)
+    repo.upserts.clear()
+    val ratings = new ImdbRatings(cache, imdbStub(
+      suggestions = Map("suggestion" -> """{"d":[]}"""),
+      ratings     = Map.empty
+    ))
+    bus.subscribe(ratings.onImdbIdMissing)
+
+    noException should be thrownBy bus.publish(ImdbIdMissing("Imaginary Film", None, "Imaginary Film"))
+    // Give the worker a beat — nothing should write back.
+    Thread.sleep(100)
+    repo.upserts shouldBe empty
+  }
+
+  it should "be a no-op when the row already has an imdbId (stale event raced with another resolver)" in {
+    val bus = new EventBus()
+    // Row already has an imdbId — the event is stale. Listener must NOT
+    // overwrite with a fresh search result.
+    val resolved = Enrichment(imdbId = Some("tt9999"), imdbRating = Some(8.0), metascore = None,
+                               originalTitle = Some("Foo"), tmdbId = Some(1))
+    val repo  = new FakeRepo(Seq(("Foo", None, resolved)))
+    val cache = new EnrichmentCache(repo)
+    repo.upserts.clear()
+    val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = throw new RuntimeException("findId should not be called")
+      override def post(url: String, body: String, contentType: String): String =
+        throw new RuntimeException("lookup should not be called")
+    }))
+    bus.subscribe(ratings.onImdbIdMissing)
+
+    noException should be thrownBy bus.publish(ImdbIdMissing("Foo", None, "Foo"))
+    Thread.sleep(100)
+    repo.upserts shouldBe empty
   }
 
   // Tiny polling helper — refreshOneSync runs sync but `onTmdbResolved`

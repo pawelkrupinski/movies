@@ -51,6 +51,17 @@ class FilmwebClient(http: HttpFetch = new RealHttpFetch()) {
   def rating(id: Int): Option[Double] =
     Try(parseRating(http.get(s"$ApiBase/film/$id/rating"))).toOption.flatten
 
+  /** Refresh just the rating for a stored canonical Filmweb URL. The URL ends
+   *  in `-{id}` (or `-{id}/`); we parse the trailing id and hit only the
+   *  rating endpoint — no search + info round-trips. Used by the hourly
+   *  `FilmwebRatings` refresh, which has already paid for the URL discovery
+   *  on first enrichment. Returns None when the URL doesn't look like a
+   *  Filmweb canonical or the rating fetch fails. */
+  def ratingFor(url: String): Option[Double] =
+    FilmwebClient.IdFromUrl.findFirstMatchIn(url)
+      .flatMap(m => Try(m.group(1).toInt).toOption)
+      .flatMap(rating)
+
   def parseSearch(body: String): Seq[Int] =
     (Json.parse(body) \ "searchHits").asOpt[JsArray].map(_.value).getOrElse(Nil).flatMap { js =>
       val isFilm = (js \ "type").asOpt[String].contains("film")
@@ -75,6 +86,10 @@ class FilmwebClient(http: HttpFetch = new RealHttpFetch()) {
 object FilmwebClient {
   private val ApiBase        = "https://www.filmweb.pl/api/v1"
   private val MaxCandidates  = 3
+  // Canonical Filmweb URLs end in `-{id}` (optionally trailing slash):
+  //   https://www.filmweb.pl/film/Title+Words-2024-12345
+  //   https://www.filmweb.pl/film/Title-12345/
+  private val IdFromUrl      = "-(\\d+)/?$".r
 
   case class FilmInfo(title: String, year: Option[Int])
 

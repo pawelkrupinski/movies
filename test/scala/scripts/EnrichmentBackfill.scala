@@ -36,16 +36,17 @@ object EnrichmentBackfill {
       sys.exit(1)
     }
 
-    // Bus isn't wired to anything in the script — reEnrichSync runs both
-    // stages synchronously, so the script gets a single-shot answer without
-    // needing the listener chain.
+    // Bus isn't wired to anything in the script — reEnrichSync runs the TMDB
+    // and IMDb stages synchronously. MC / RT URL discovery + score scrape
+    // now live in their dedicated ratings classes; the script invokes them
+    // directly per row so a single backfill pass covers everything.
     val cache       = new EnrichmentCache(repo)
+    val tmdb        = new TmdbClient()
     val imdbRatings = new ImdbRatings(cache, new ImdbClient())
-    val service = new EnrichmentService(
-      cache, new EventBus(), imdbRatings,
-      new TmdbClient(), new FilmwebClient(),
-      new MetacriticClient(), new RottenTomatoesClient()
-    )
+    val mcRatings   = new MetascoreRatings(cache, tmdb, new MetacriticClient())
+    val rtRatings   = new RottenTomatoesRatings(cache, tmdb, new RottenTomatoesClient())
+    val fwRatings   = new FilmwebRatings(cache, new FilmwebClient())
+    val service = new EnrichmentService(cache, new EventBus(), tmdb)
 
     val rows = repo.findAll().sortBy { case (t, y, _) => (t.toLowerCase, y) }
     val Workers = 5
@@ -61,7 +62,16 @@ object EnrichmentBackfill {
 
     val tasks = rows.map { case (title, year, before) =>
       Future {
-        val after = service.reEnrichSync(title, year)
+        service.reEnrichSync(title, year)
+        // Drive the per-row work for the ratings classes directly so a single
+        // pass over Mongo covers TMDB + IMDb + MC + RT + Filmweb. Each
+        // *Ratings.refreshOneSync handles its own URL discovery (where needed)
+        // and score scrape; the order doesn't matter (they're independent).
+        imdbRatings.refreshOneSync(title, year)
+        mcRatings.refreshOneSync(title, year)
+        rtRatings.refreshOneSync(title, year)
+        fwRatings.refreshOneSync(title, year)
+        val after = service.get(title, year)
         val idx   = done.incrementAndGet()
         val outcome: Outcome = after match {
           case Some(e) if e.imdbId != before.imdbId =>

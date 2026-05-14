@@ -22,10 +22,41 @@ class RialtoClient(http: HttpFetch = new RealHttpFetch()) {
   }
 
   // Rialto presents most titles in upper case; lower-case them so that they
-  // merge case-insensitively with the same films from other cinemas.
-  private def normalizeCase(title: String): String =
-    if (title.isEmpty) title
-    else title.head.toUpper + title.tail.toLowerCase
+  // merge case-insensitively with the same films from other cinemas. Sentence-
+  // case rather than just-first-letter so multi-sentence titles read naturally
+  // ("Mavka. Prawdziwy mit", not "Mavka. prawdziwy mit").
+  //
+  // After `. ` (period + space) we capitalize the next letter only when the
+  // preceding token looks like a sentence-ending word — a 4+ letter run, or a
+  // digit. That keeps "Mavka. Prawdziwy" and "skarpetek 3. Ale kosmos" right
+  // while leaving Polish abbreviations untouched ("ang. napisami", "reż.
+  // Jana", "ul. Świętego Marcina") — those abbreviations are 2–3 letters.
+  private def normalizeCase(title: String): String = {
+    if (title.isEmpty) return title
+    val chars = title.toLowerCase.toCharArray
+    chars(0) = chars(0).toUpper
+    var i = 0
+    while (i + 2 < chars.length) {
+      if (chars(i) == '.' && chars(i + 1) == ' ' && precedingTokenEndsSentence(chars, i))
+        chars(i + 2) = chars(i + 2).toUpper
+      i += 1
+    }
+    new String(chars)
+  }
+
+  /** True if the character run ending at index `dotIdx - 1` looks like a
+   *  sentence-ending token: a digit (sequel/chapter number) or a 4+ letter
+   *  word. Counts contiguous letters/digits backwards from `dotIdx - 1`. */
+  private def precedingTokenEndsSentence(chars: Array[Char], dotIdx: Int): Boolean = {
+    if (dotIdx == 0) return false
+    val prev = chars(dotIdx - 1)
+    if (prev.isDigit) return true
+    if (!prev.isLetter) return false
+    var letters = 0
+    var j = dotIdx - 1
+    while (j >= 0 && chars(j).isLetter) { letters += 1; j -= 1 }
+    letters >= 4
+  }
 
   private val DateTimePat = """- (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) -""".r
   private val RuntimePat  = """(\d+)\s*min""".r

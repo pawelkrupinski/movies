@@ -1,5 +1,6 @@
 package services.enrichment
 
+import clients.TmdbClient
 import models.Enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -68,7 +69,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     ))
     val cache  = new EnrichmentCache(repo)
     val mc     = mcStub(Map(Url -> Some(85)))
-    val rates  = new MetascoreRatings(cache, mc)
+    val rates  = new MetascoreRatings(cache, new TmdbClient(apiKey = None), mc)
 
     rates.refreshOneSync(cache.keyOf("The Dark Knight", Some(2008)))
 
@@ -81,7 +82,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     ))
     val cache = new EnrichmentCache(repo)
     repo.upserts.clear()
-    val rates = new MetascoreRatings(cache, mcStub(Map(Url -> Some(85))))
+    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), mcStub(Map(Url -> Some(85))))
 
     rates.refreshOneSync(cache.keyOf("The Dark Knight", Some(2008)))
 
@@ -93,7 +94,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
       ("Indie Film", Some(2025), mkEnrichment("tt9", mcUrl = Some(Url), metascore = Some(70)))
     ))
     val cache = new EnrichmentCache(repo)
-    val rates = new MetascoreRatings(cache, mcStub(Map(Url -> None)))
+    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), mcStub(Map(Url -> None)))
 
     rates.refreshOneSync(cache.keyOf("Indie Film", Some(2025)))
 
@@ -109,7 +110,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val brokenMc = new MetacriticClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("boom")
     })
-    val rates = new MetascoreRatings(cache, brokenMc)
+    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), brokenMc)
 
     noException should be thrownBy rates.refreshOneSync(cache.keyOf("X", None))
     cache.get(cache.keyOf("X", None)).flatMap(_.metascore) shouldBe Some(70)
@@ -119,7 +120,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val repo  = new FakeRepo(Seq(("X", None, mkEnrichment("tt9", mcUrl = None, metascore = None))))
     val cache = new EnrichmentCache(repo)
     // MC stub throws on any call — proving we never tried to fetch.
-    val rates = new MetascoreRatings(cache, new MetacriticClient(new HttpFetch {
+    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))
 
@@ -128,7 +129,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when the cache has no entry for the key" in {
     val cache = new EnrichmentCache(new FakeRepo())
-    val rates = new MetascoreRatings(cache, new MetacriticClient(new HttpFetch {
+    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))
 
@@ -147,7 +148,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
       ("D", None, mkEnrichment("tt4", mcUrl = None,       metascore = None))   // skipped: no URL
     ))
     val cache = new EnrichmentCache(repo)
-    val rates = new MetascoreRatings(cache, mcStub(Map(
+    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), mcStub(Map(
       Url  -> Some(85),    // changed
       url2 -> Some(74),    // unchanged
       url3 -> Some(100)    // unchanged
@@ -169,7 +170,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
       ("Foo", Some(2024), mkEnrichment("tt1", mcUrl = Some(Url), metascore = None))
     ))
     val cache = new EnrichmentCache(repo)
-    val rates = new MetascoreRatings(cache, mcStub(Map(Url -> Some(85))))
+    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), mcStub(Map(Url -> Some(85))))
     bus.subscribe(rates.onTmdbResolved)
 
     bus.publish(TmdbResolved("Foo", Some(2024), "tt1"))
@@ -180,7 +181,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
     val bus   = new EventBus()
     val cache = new EnrichmentCache(new FakeRepo())
-    val rates = new MetascoreRatings(cache, new MetacriticClient(new HttpFetch {
+    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))
     bus.subscribe(rates.onTmdbResolved)
