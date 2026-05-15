@@ -52,10 +52,15 @@ case class TmdbResolved(title: String, year: Option[Int], imdbId: String) extend
  *  IMDb's suggestion endpoint with — typically TMDB's `originalTitle` or
  *  English release title, whichever is more likely to match IMDb's primary.
  *
- *  `ImdbRatings` subscribes to this event, calls `ImdbClient.findId(...)`
- *  to recover the id, writes it back to the cache, and proceeds with the
- *  normal rating refresh. */
+ *  `ImdbIdResolver` subscribes to this event, calls `ImdbClient.findId(...)`
+ *  to recover the id, writes it back to the cache, then publishes
+ *  `ImdbIdResolved` so the rating + score services can chain off the new id. */
 case class ImdbIdMissing(title: String, year: Option[Int], searchTitle: String) extends DomainEvent
+
+/** `ImdbIdResolver` recovered the IMDb id for a row that TMDB couldn't
+ *  cross-reference. Listeners (rating fetchers) chain off this to drive
+ *  the per-row refresh once the id is finally known. */
+case class ImdbIdResolved(title: String, year: Option[Int], imdbId: String) extends DomainEvent
 
 class EventBus extends Logging {
   // CopyOnWriteArrayList: writes (subscribe) are rare and happen at startup;

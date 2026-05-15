@@ -11,7 +11,7 @@ import scala.concurrent.Future
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import services.cinemas.HeliosClient
-import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
+import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbIdResolver, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
 import services.movies.{IdentityMerger, MovieCache, MovieRepo, MovieService}
 import services.events.EventBus
 import services.ShowtimeCache
@@ -77,6 +77,10 @@ class AppComponents(context: Context)
   // MovieService so each external service has its own tempo and the TMDB
   // stage doesn't block on IMDb's GraphQL CDN or RT's HTML render.
   lazy val imdbRatings           = new ImdbRatings(movieCache, imdbClient)
+  // Split out of ImdbRatings: handles `ImdbIdMissing` events by hitting IMDb's
+  // suggestion endpoint, writes the resolved id back, then publishes
+  // `ImdbIdResolved` so the rating fetchers chain on.
+  lazy val imdbIdResolver        = new ImdbIdResolver(movieCache, imdbClient, eventBus)
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient)
   lazy val metascoreRatings      = new MetascoreRatings(movieCache, tmdbClient, metacriticClient)
   lazy val filmwebRatings        = new FilmwebRatings(movieCache, filmwebClient)
@@ -114,23 +118,25 @@ class AppComponents(context: Context)
   // tmdbId=1277047, imdb_id=null). Without subscribing to `ImdbIdMissing`,
   // those rows had to wait an hour for the next periodic walk to pick them up.
   //
-  //   MovieRecordCreated    → movieService.onMovieRecordCreated         (runs TMDB stage)
-  //   TmdbResolved  → imdbRatings.onTmdbResolved             (runs IMDb stage)
-  //   TmdbResolved  → rottenTomatoesRatings.onTmdbResolved   (runs RT stage)
-  //   TmdbResolved  → metascoreRatings.onTmdbResolved        (runs Metascore stage)
-  //   TmdbResolved  → filmwebRatings.onTmdbResolved          (runs Filmweb stage)
-  //   ImdbIdMissing → imdbRatings.onImdbIdMissing            (IMDb-search fallback)
-  //   ImdbIdMissing → rottenTomatoesRatings.onImdbIdMissing  (RT stage on TMDB-only hits)
-  //   ImdbIdMissing → metascoreRatings.onImdbIdMissing       (Metascore stage on TMDB-only hits)
-  //   ImdbIdMissing → filmwebRatings.onImdbIdMissing         (Filmweb stage on TMDB-only hits)
+  //   MovieRecordCreated → movieService.onMovieRecordCreated         (runs TMDB stage)
+  //   TmdbResolved       → imdbRatings.onTmdbResolved                (runs IMDb stage)
+  //   TmdbResolved       → rottenTomatoesRatings.onTmdbResolved      (runs RT stage)
+  //   TmdbResolved       → metascoreRatings.onTmdbResolved           (runs Metascore stage)
+  //   TmdbResolved       → filmwebRatings.onTmdbResolved             (runs Filmweb stage)
+  //   ImdbIdMissing      → imdbIdResolver.onImdbIdMissing            (IMDb-search fallback → publishes ImdbIdResolved)
+  //   ImdbIdMissing      → rottenTomatoesRatings.onImdbIdMissing     (RT stage on TMDB-only hits)
+  //   ImdbIdMissing      → metascoreRatings.onImdbIdMissing          (Metascore stage on TMDB-only hits)
+  //   ImdbIdMissing      → filmwebRatings.onImdbIdMissing            (Filmweb stage on TMDB-only hits)
+  //   ImdbIdResolved     → imdbRatings.onImdbIdResolved              (rating fetch once id is known)
   eventBus.subscribe(movieService.onMovieRecordCreated)
   // IdentityMerger runs async on its own worker pool — safe to subscribe
   // in any order vs the rating listeners because they use `cache.putIfPresent`,
   // so a rating write to a key the merger just deleted can't resurrect it.
   eventBus.subscribe(identityMerger.onTmdbResolved)
   eventBus.subscribe(identityMerger.onImdbIdMissing)
+  eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   eventBus.subscribe(imdbRatings.onTmdbResolved)
-  eventBus.subscribe(imdbRatings.onImdbIdMissing)
+  eventBus.subscribe(imdbRatings.onImdbIdResolved)
   eventBus.subscribe(rottenTomatoesRatings.onTmdbResolved)
   eventBus.subscribe(rottenTomatoesRatings.onImdbIdMissing)
   eventBus.subscribe(metascoreRatings.onTmdbResolved)
@@ -157,6 +163,7 @@ class AppComponents(context: Context)
   applicationLifecycle.addStopHook(() => Future.successful {
     showtimeCache.stop()
     movieService.stop()
+    imdbIdResolver.stop()
     imdbRatings.stop()
     rottenTomatoesRatings.stop()
     metascoreRatings.stop()

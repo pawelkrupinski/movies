@@ -3,7 +3,7 @@ package services.enrichment
 import services.movies.{CacheKey, MovieCache}
 
 import play.api.Logging
-import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
+import services.events.{DomainEvent, ImdbIdResolved, TmdbResolved}
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -45,7 +45,7 @@ class ImdbRatings(cache: MovieCache, imdb: ImdbClient) extends Logging {
   private val StartupDelaySeconds = 10L
   private val RefreshHours        = 1L
 
-  // ── Event listener ─────────────────────────────────────────────────────────
+  // ── Event listeners ────────────────────────────────────────────────────────
 
   /** Bus listener: fetch the IMDb rating as soon as the TMDB stage produces an
    *  `imdbId`. Async — the publisher (the TMDB stage worker) is not blocked. */
@@ -53,41 +53,11 @@ class ImdbRatings(cache: MovieCache, imdb: ImdbClient) extends Logging {
     case TmdbResolved(title, year, _) => schedule(cache.keyOf(title, year))
   }
 
-  /** Bus listener: when the TMDB stage resolved a film but TMDB has no IMDb
-   *  cross-reference for it, recover the id via IMDb's suggestion endpoint
-   *  (`ImdbClient.findId`), write it back to the cached row, then refresh
-   *  the rating in the same scheduled task. Async — the publisher (the TMDB
-   *  stage worker) is not blocked on IMDb.
-   *
-   *  No-op when the row already carries an imdbId (a stale event raced with
-   *  another resolver) or when the search returns nothing — we'd rather leave
-   *  the row imdbId-less than guess a wrong id. */
-  val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
-    case ImdbIdMissing(title, year, searchTitle) =>
-      worker.execute(() => resolveAndRefresh(cache.keyOf(title, year), searchTitle, year))
+  /** Bus listener: `ImdbIdResolver` recovered the id for a TMDB-only row;
+   *  fetch the rating now that we have it. */
+  val onImdbIdResolved: PartialFunction[DomainEvent, Unit] = {
+    case ImdbIdResolved(title, year, _) => schedule(cache.keyOf(title, year))
   }
-
-  /** Find the IMDb id by title, write it to the cached row, then refresh the
-   *  rating in the same call. Public for tests; production goes through the
-   *  `onImdbIdMissing` listener. */
-  private[services] def resolveAndRefresh(key: CacheKey, searchTitle: String, year: Option[Int]): Unit =
-    cache.get(key).foreach { row =>
-      if (row.imdbId.isDefined) {
-        // Stale event — another resolver beat us to it.
-        return
-      }
-      Try(imdb.findId(searchTitle, year)).toOption.flatten match {
-        case Some(id) =>
-          logger.info(s"IMDb id resolved via search: ${key.cleanTitle} (${key.year.getOrElse("?")}) → $id")
-          // putIfPresent so an `IdentityMerger` delete that happened between
-          // event publish and id resolution doesn't get resurrected here.
-          cache.putIfPresent(key, _.copy(imdbId = Some(id)))
-          // Chain the normal rating refresh now that we have an id.
-          refreshOne(key)
-        case None =>
-          logger.debug(s"IMDb search returned no match for ${key.cleanTitle} (${key.year.getOrElse("?")}) [search='$searchTitle']")
-      }
-    }
 
   // ── Per-row refresh ────────────────────────────────────────────────────────
 
