@@ -171,15 +171,12 @@ class MovieRepo extends Logging {
       "tmdbId"       -> e.tmdbId.map(org.mongodb.scala.bson.BsonInt32(_)).getOrElse(BsonNull()),
       "metacriticUrl"-> e.metacriticUrl.map(BsonString(_)).getOrElse(BsonNull()),
       "rottenTomatoesUrl" -> e.rottenTomatoesUrl.map(BsonString(_)).getOrElse(BsonNull()),
-      // cinemaTitles: every raw cinema-reported title that has mapped here.
-      // BsonArray of BsonString; empty array (not null) when the set is empty
-      // so decoding never has to disambiguate "missing field" from "no
-      // variants yet" — both legitimately read back as `Set.empty`.
-      "cinemaTitles" -> BsonArray.fromIterable(e.cinemaTitles.toSeq.sorted.map(BsonString(_))),
       // cinemaScrapes: per-(cinema, title, year) provenance the cache uses to
       // suppress redundant MovieRecordCreated events for tuples it has
-      // already seen. BsonArray of sub-documents. Sorted for stable Mongo
-      // diffs; same "empty array, not null" rule as cinemaTitles.
+      // already seen, and the source of the derived `cinemaTitles` view.
+      // BsonArray of sub-documents. Sorted for stable Mongo diffs; empty
+      // array (not null) when the set is empty so decoding never has to
+      // disambiguate "missing field" from "no variants yet".
       "cinemaScrapes" -> BsonArray.fromIterable(
         e.cinemaScrapes.toSeq
           .sortBy(s => (s.cinema.displayName, s.title, s.year.getOrElse(Int.MinValue)))
@@ -256,15 +253,11 @@ class MovieRepo extends Logging {
         tmdbId         = d.get("tmdbId").flatMap(v => Try(v.asInt32().getValue).toOption),
         metacriticUrl  = d.get("metacriticUrl").flatMap(v => Try(v.asString().getValue).toOption),
         rottenTomatoesUrl = d.get("rottenTomatoesUrl").flatMap(v => Try(v.asString().getValue).toOption),
-        // Old rows pre-dating phase 1 don't have `cinemaTitles`; treat the
-        // missing field as `Set.empty` and let the next write (or the phase-1
-        // backfill) populate it.
-        cinemaTitles   = d.get("cinemaTitles").flatMap(v => Try {
-          v.asArray().getValues.toArray.collect { case s: BsonString => s.getValue }.toSet
-        }.toOption).getOrElse(Set.empty),
         // Missing for rows that pre-date the provenance field; treat as
         // Set.empty so the very next scrape tick re-publishes once and
-        // populates the set.
+        // populates the set. The legacy `cinemaTitles` field, if present
+        // in Mongo, is ignored — `cinemaTitles` is now derived from
+        // `cinemaScrapes`, and the next write drops it from the doc.
         cinemaScrapes  = d.get("cinemaScrapes").flatMap(v => Try(decodeCinemaScrapes(v.asArray())).toOption).getOrElse(Set.empty),
         cinemaShowings = d.get("cinemaShowings").flatMap(v => Try(decodeCinemaShowings(v.asDocument())).toOption).getOrElse(Map.empty)
       )

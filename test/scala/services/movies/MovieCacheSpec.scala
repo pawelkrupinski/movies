@@ -46,11 +46,9 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val cache = new MovieCache(new FakeRepo())
     cache.put(cache.keyOf("Drzewo Magii", Some(2024)), mkEnrichment("tt9"))
 
-    // Different spellings should collapse to the same row. Compare ignoring
-    // cinemaTitles since `put` folds the original cleanTitle into it.
     val expected = mkEnrichment("tt9")
-    cache.get(cache.keyOf("drzewo magii",   Some(2024))).map(_.copy(cinemaTitles = Set.empty)) shouldBe Some(expected)
-    cache.get(cache.keyOf("DRZEWO   MAGII", Some(2024))).map(_.copy(cinemaTitles = Set.empty)) shouldBe Some(expected)
+    cache.get(cache.keyOf("drzewo magii",   Some(2024))) shouldBe Some(expected)
+    cache.get(cache.keyOf("DRZEWO   MAGII", Some(2024))) shouldBe Some(expected)
     // Different year is a different row.
     cache.get(cache.keyOf("Drzewo Magii",   Some(2025))) shouldBe None
   }
@@ -60,46 +58,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val cache = new MovieCache(repo)
     cache.put(cache.keyOf("X", Some(2024)), mkEnrichment("tt1"))
 
-    // The written enrichment matches the input on every field except
-    // `cinemaTitles`, which `put` folds the row's cleanTitle into.
-    repo.upserts.toList.map { case (t, y, e) => (t, y, e.copy(cinemaTitles = Set.empty)) } shouldBe
-      List(("X", Some(2024), mkEnrichment("tt1")))
-  }
-
-  // Phase-1 plumbing for the MovieCache transition. `cache.put` folds the
-  // row's current cleanTitle into `cinemaTitles` so every raw cinema-reported
-  // title that has ever resolved here ends up tracked. Used in phase 2 as the
-  // corpus anchor for the new merge-key docId.
-  "put" should "fold the row's cleanTitle into cinemaTitles" in {
-    val repo  = new FakeRepo()
-    val cache = new MovieCache(repo)
-    cache.put(cache.keyOf("Top Gun: Maverick", Some(2022)), mkEnrichment("tt1745960"))
-
-    cache.get(cache.keyOf("Top Gun: Maverick", Some(2022))).get.cinemaTitles shouldBe Set("Top Gun: Maverick")
-    repo.upserts.toList.head._3.cinemaTitles shouldBe Set("Top Gun: Maverick")
-  }
-
-  it should "accumulate distinct cleanTitles across writes under the same docId (different casing → same key)" in {
-    val repo  = new FakeRepo()
-    val cache = new MovieCache(repo)
-    // Two writes under keys that MovieService.normalize collapses to the
-    // same docId (case + whitespace differences only) — the underlying row
-    // accumulates both raw forms.
-    cache.put(cache.keyOf("Drzewo Magii",   Some(2024)), mkEnrichment("tt9"))
-    cache.put(cache.keyOf("drzewo  magii",  Some(2024)), mkEnrichment("tt9"))
-
-    val titles = cache.get(cache.keyOf("Drzewo Magii", Some(2024))).get.cinemaTitles
-    titles should contain allOf ("Drzewo Magii", "drzewo  magii")
-  }
-
-  it should "preserve existing cinemaTitles when writing an enrichment that already has some" in {
-    val repo  = new FakeRepo()
-    val cache = new MovieCache(repo)
-    val enrichmentWithVariants = mkEnrichment("tt1").copy(cinemaTitles = Set("Variant A", "Variant B"))
-    cache.put(cache.keyOf("Variant C", Some(2024)), enrichmentWithVariants)
-
-    cache.get(cache.keyOf("Variant C", Some(2024))).get.cinemaTitles shouldBe
-      Set("Variant A", "Variant B", "Variant C")
+    repo.upserts.toList shouldBe List(("X", Some(2024), mkEnrichment("tt1")))
   }
 
   "invalidate" should "remove from both positive cache and repo" in {
@@ -275,7 +234,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.cinemaShowings.keySet shouldBe Set(Multikino, Helios)
     // Multikino's poster wins the merged view (priority rule).
     row.posterUrl shouldBe Some("multikino.jpg")
-    // Both raw titles are recorded as variants.
+    // Both raw titles are recorded in cinemaScrapes (and surfaced via the
+    // derived `cinemaTitles` view).
     row.cinemaTitles should contain allOf ("Top Gun: Maverick", "Top Gun Maverick")
   }
 
@@ -318,63 +278,29 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("B", Some(2026))).get.cinemaShowings should not contain key (Multikino)
   }
 
-  // Regression for "Diabeł / ДИЯВОЛ" cross-script accumulation. The row's
-  // `cleanTitle` defines its primary script; `cinemaTitles` must only
-  // collect variants in the same script. Cross-script spellings from
-  // legacy data (or anything else that smuggles them in) get filtered
-  // on every cache.put, so the user-visible row never displays a Cyrillic
-  // title for a Polish film (or vice versa).
-  "put" should "filter cross-script entries out of cinemaTitles" in {
+  // Cross-script protection now comes from `MovieService.normalize` keeping
+  // Unicode letters: Cyrillic and Latin titles produce different normalised
+  // forms, so the redirect filter can't merge them. No explicit cross-script
+  // filter on `put` is needed — and `cinemaTitles` itself is derived from
+  // `cinemaScrapes`, so a Polish scrape onto a Polish row never gets a
+  // Cyrillic variant in its cinemaTitles to begin with.
+
+  // Stop the flap loop where a year=None cinema title gets re-created every
+  // tick. With `recordCinemaScrape`'s redirect, a fresh year=None scrape
+  // onto an existing year=Some row gets folded onto that row.
+  it should "redirect a fresh year=None scrape onto an existing year=Some row at the same cleanTitle" in {
     val cache = new MovieCache(new FakeRepo())
-    cache.put(cache.keyOf("Diabeł ubiera się u Prady 2", Some(2026)),
-              mkEnrichment("tt33612209").copy(
-                cinemaTitles = Set(
-                  "Diabeł ubiera się u Prady 2",
-                  "Diabeł ubiera się u prady 2",
-                  "ДИЯВОЛ НОСИТЬ ПРАДА 2"           // ← Cyrillic, must be dropped
-                )
-              ))
-
-    val row = cache.get(cache.keyOf("Diabeł ubiera się u Prady 2", Some(2026))).get
-    row.cinemaTitles shouldBe Set("Diabeł ubiera się u Prady 2", "Diabeł ubiera się u prady 2")
-  }
-
-  "put" should "keep cinemaTitles non-Latin when the row's cleanTitle is non-Latin" in {
-    val cache = new MovieCache(new FakeRepo())
-    cache.put(cache.keyOf("ДИЯВОЛ НОСИТЬ ПРАДА 2", Some(2026)),
-              mkEnrichment("tt33612209").copy(
-                cinemaTitles = Set(
-                  "ДИЯВОЛ НОСИТЬ ПРАДА 2",
-                  "Diabeł ubiera się u Prady 2"   // ← Latin, must be dropped
-                )
-              ))
-
-    val row = cache.get(cache.keyOf("ДИЯВОЛ НОСИТЬ ПРАДА 2", Some(2026))).get
-    row.cinemaTitles shouldBe Set("ДИЯВОЛ НОСИТЬ ПРАДА 2")
-  }
-
-  // Phase-3.5: stop the flap loop where a year=None cinema title gets re-
-  // created every tick only to be deleted by the merger.
-  it should "redirect a fresh year=None scrape onto an existing year=Some row that already knows the title" in {
-    val cache = new MovieCache(new FakeRepo())
-    // Multikino's prior tick created the year=Some(2025) row with
-    // cinemaTitles = {"Bez wyjścia"}.
     val survivor = MovieRecord(
       imdbId = Some("tt1527793"), imdbRating = None, metascore = None,
-      originalTitle = Some("어쩔수가없다"), tmdbId = Some(639988),
-      cinemaTitles = Set("Bez wyjścia")
+      originalTitle = Some("어쩔수가없다"), tmdbId = Some(639988)
     )
     cache.put(cache.keyOf("Bez wyjścia", Some(2025)), survivor)
     cache.snapshot().size shouldBe 1
 
-    // KinoBulgarska now scrapes the same film with year=None. Without the
-    // redirect, this would create a duplicate (Bez wyjścia, None) row that
-    // the merger has to clean up on the next TmdbResolved.
     cache.recordCinemaScrape(KinoBulgarska, Seq(
       cinemaMovie("Bez wyjścia", KinoBulgarska, year = None, showtimes = Seq(showtime("2026-06-01T18:00")))
     ))
 
-    // The redirect should have folded the new slot into the year=2025 row.
     cache.snapshot().size shouldBe 1
     val row = cache.get(cache.keyOf("Bez wyjścia", Some(2025))).get
     row.cinemaShowings.keySet shouldBe Set(KinoBulgarska)
@@ -382,57 +308,40 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Bez wyjścia", None)) shouldBe None
   }
 
-  it should "record the incoming raw cinema title in cinemaTitles even on the redirect path" in {
+  it should "record the incoming raw cinema title in cinemaScrapes (and the derived cinemaTitles view)" in {
     val cache = new MovieCache(new FakeRepo())
-    // Survivor row knows the "Mortal Kombat II" variant (e.g. previously
-    // merged from a year=None row by IdentityMerger), but NOT "Mortal Kombat 2".
     val survivor = MovieRecord(
       imdbId = Some("tt17490712"), imdbRating = None, metascore = None,
-      originalTitle = None, tmdbId = Some(931285),
-      cinemaTitles = Set("Mortal Kombat II")
+      originalTitle = None, tmdbId = Some(931285)
     )
     cache.put(cache.keyOf("Mortal Kombat II", Some(2026)), survivor)
 
-    // A cinema reports the Arabic-numeral variant for the first time. The
-    // primary key ("Mortal Kombat 2", 2026) doesn't exist, so we'd expect
-    // a fresh row UNLESS the redirect catches it — but the redirect uses
-    // cinemaTitles for matching, so unless "Mortal Kombat 2" is already in
-    // some row's cinemaTitles, redirect won't fire. Here it doesn't fire.
     cache.recordCinemaScrape(KinoBulgarska, Seq(cinemaMovie("Mortal Kombat 2", KinoBulgarska, Some(2026))))
 
-    // New row at ("Mortal Kombat 2", 2026) was created — its `cinemaTitles`
-    // must include "Mortal Kombat 2" so the NEXT scrape of that variant
-    // (after IdentityMerger folds it into the survivor) can redirect.
+    // Different year + different cleanTitle normalisation → no redirect; a
+    // fresh row was created at ("Mortal Kombat 2", 2026). Its provenance
+    // records the raw title.
     val newRow = cache.get(cache.keyOf("Mortal Kombat 2", Some(2026))).get
     newRow.cinemaTitles should contain ("Mortal Kombat 2")
   }
 
-  it should "record the incoming raw title on the redirect path so the next scrape uses the same row" in {
+  it should "fold a redirected scrape's slot onto the existing row without creating a duplicate" in {
     val cache = new MovieCache(new FakeRepo())
-    // Survivor already knows "Bez wyjścia" from a prior Multikino scrape.
     cache.put(cache.keyOf("Bez wyjścia", Some(2025)),
-              MovieRecord(imdbId = None, imdbRating = None, metascore = None, originalTitle = None,
-                         cinemaTitles = Set("Bez wyjścia")))
+              MovieRecord(imdbId = None, imdbRating = None, metascore = None, originalTitle = None))
 
-    // First KinoBulgarska scrape with year=None — redirect to survivor.
     cache.recordCinemaScrape(KinoBulgarska, Seq(cinemaMovie("Bez wyjścia", KinoBulgarska, None)))
 
     val row = cache.get(cache.keyOf("Bez wyjścia", Some(2025))).get
-    // The raw title is recorded (it happens to equal the survivor's cleanTitle
-    // here, but the same path applies when they differ).
     row.cinemaTitles should contain ("Bez wyjścia")
     cache.get(cache.keyOf("Bez wyjścia", None)) shouldBe None
   }
 
-  it should "NOT redirect to a different-script row that incidentally carries the variant (cross-script protection)" in {
+  it should "NOT redirect across scripts — Cyrillic and Latin normalise differently" in {
     val cache = new MovieCache(new FakeRepo())
-    // Cyrillic survivor carries the Latin spelling in its cinemaTitles
-    // (legacy from before cross-script merges were forbidden). A new Latin
-    // scrape must NOT redirect into it.
     cache.put(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026)),
               MovieRecord(imdbId = Some("tt17490712"), imdbRating = None, metascore = None,
-                         originalTitle = None, tmdbId = Some(931285),
-                         cinemaTitles = Set("МОРТАЛ КОМБАТ ІІ", "Mortal Kombat II")))
+                         originalTitle = None, tmdbId = Some(931285)))
 
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Mortal Kombat II", Multikino, Some(2026), showtimes = Seq(showtime("2026-06-01T18:00")))
@@ -441,22 +350,20 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // No redirect — a fresh Latin row gets created, distinct from Cyrillic.
     cache.get(cache.keyOf("Mortal Kombat II", Some(2026))) shouldBe defined
     cache.get(cache.keyOf("Mortal Kombat II", Some(2026))).get.cinemaShowings.keySet shouldBe Set(Multikino)
-    // Cyrillic row keeps whatever showings it had (none here) — not touched.
     cache.get(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026))) shouldBe defined
   }
 
-  it should "NOT redirect when two existing rows both know the cinema title (ambiguous)" in {
+  it should "NOT redirect when two existing rows could both be the target (ambiguous)" in {
     val cache = new MovieCache(new FakeRepo())
     // Two different films share the cinema-reported title "Wspinaczka" —
     // one row per year, each pinned to a different imdbId. Redirecting a
-    // year=None scrape would be a coin-flip → keep them distinct, let the
-    // merger sort it out post-TMDB.
+    // year=None scrape would be a coin-flip → keep them distinct.
     cache.put(cache.keyOf("Wspinaczka", Some(2017)),
               MovieRecord(imdbId = Some("tt5157682"), imdbRating = None, metascore = None,
-                         originalTitle = None, cinemaTitles = Set("Wspinaczka")))
+                         originalTitle = None))
     cache.put(cache.keyOf("Wspinaczka", Some(2025)),
               MovieRecord(imdbId = Some("tt36437006"), imdbRating = None, metascore = None,
-                         originalTitle = None, cinemaTitles = Set("Wspinaczka")))
+                         originalTitle = None))
 
     cache.recordCinemaScrape(KinoBulgarska, Seq(cinemaMovie("Wspinaczka", KinoBulgarska, year = None)))
 
@@ -464,17 +371,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.snapshot().size shouldBe 3
   }
 
-  // Regression for the user-visible "Milcząca przyjaciółka" triple-row:
-  // the TMDB stage was creating a fresh row at the raw (title, year) key
-  // even though `recordCinemaScrape`'s redirect had already attached the
-  // cinema slot to a resolved sibling row. `hasResolvedSiblingByTitle`
-  // gives `scheduleTmdbStage` a way to short-circuit.
-  "hasResolvedSiblingByTitle" should "return true when a resolved row knows the raw cinema title" in {
+  // `hasResolvedSiblingByTitle` is what `scheduleTmdbStage` consults to skip
+  // a phantom TMDB call when a sibling row already resolved the same film.
+  "hasResolvedSiblingByTitle" should "return true when a resolved row's cleanTitle normalises to the same form" in {
     val cache = new MovieCache(new FakeRepo())
     cache.put(cache.keyOf("Milcząca przyjaciółka", Some(2025)),
               MovieRecord(imdbId = Some("tt27811632"), imdbRating = None, metascore = None,
-                         originalTitle = None, tmdbId = Some(1168719),
-                         cinemaTitles = Set("Milcząca przyjaciółka")))
+                         originalTitle = None, tmdbId = Some(1168719)))
 
     cache.hasResolvedSiblingByTitle("Milcząca przyjaciółka") shouldBe true
   }
@@ -482,33 +385,25 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "return false when the matching row has no tmdbId yet" in {
     val cache = new MovieCache(new FakeRepo())
     cache.put(cache.keyOf("Foo", None),
-              MovieRecord(imdbId = None, imdbRating = None, metascore = None, originalTitle = None,
-                         cinemaTitles = Set("Foo")))
+              MovieRecord(imdbId = None, imdbRating = None, metascore = None, originalTitle = None))
 
     cache.hasResolvedSiblingByTitle("Foo") shouldBe false
   }
 
-  it should "return false when no row carries the title in cinemaTitles" in {
+  it should "return false when no row carries the title at all" in {
     val cache = new MovieCache(new FakeRepo())
     cache.put(cache.keyOf("Something else", Some(2024)),
               MovieRecord(imdbId = None, imdbRating = None, metascore = None, originalTitle = None,
-                         tmdbId = Some(42), cinemaTitles = Set("Something else")))
+                         tmdbId = Some(42)))
 
     cache.hasResolvedSiblingByTitle("Unrelated") shouldBe false
   }
 
-  // Regression: a Cyrillic-titled row whose cinemaTitles incidentally lists
-  // the Latin spelling (from a previous cross-script collapse) must NOT
-  // short-circuit a Latin scrape. The Latin variant should get its own row.
-  it should "return false when only a different-script row carries the variant (cross-script protection)" in {
+  it should "return false across scripts — Cyrillic cleanTitle doesn't satisfy a Latin lookup" in {
     val cache = new MovieCache(new FakeRepo())
     cache.put(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026)),
               MovieRecord(imdbId = Some("tt17490712"), imdbRating = None, metascore = None,
-                         originalTitle = None, tmdbId = Some(931285),
-                         // Cyrillic row carries the Latin spelling from a
-                         // prior collapse — but its cleanTitle is Cyrillic,
-                         // which normalises differently from the Latin.
-                         cinemaTitles = Set("МОРТАЛ КОМБАТ ІІ", "Mortal Kombat II")))
+                         originalTitle = None, tmdbId = Some(931285)))
 
     cache.hasResolvedSiblingByTitle("Mortal Kombat II") shouldBe false
   }

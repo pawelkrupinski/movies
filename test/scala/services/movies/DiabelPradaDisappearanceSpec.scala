@@ -206,13 +206,13 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       metascore     = None,
       originalTitle = None,
       tmdbId        = Some(1314481),
-      cinemaTitles  = Set(
-        "Diabeł ubiera się u Prady 2",
-        "Diabeł ubiera się u prady 2",
-        "ДИЯВОЛ НОСИТЬ ПРАДА 2"
+      cinemaScrapes = Set(
+        CinemaScrape(Multikino,             "Diabeł ubiera się u Prady 2", Some(2026)),
+        CinemaScrape(CinemaCityPoznanPlaza, "Diabeł ubiera się u prady 2", Some(2026)),
+        CinemaScrape(Helios,                "ДИЯВОЛ НОСИТЬ ПРАДА 2",       Some(2026))
       )
     )
-    e.displayTitle shouldBe "Diabeł ubiera się u Prady 2"
+    e.displayTitle("Diabeł ubiera się u Prady 2") shouldBe "Diabeł ubiera się u Prady 2"
   }
 
   it should "still pick the proper-cased variant when only Latin forms compete" in {
@@ -221,9 +221,13 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       imdbRating    = None,
       metascore     = None,
       originalTitle = None,
-      cinemaTitles  = Set("Top Gun: Maverick", "TOP GUN: MAVERICK", "top gun: maverick")
+      cinemaScrapes = Set(
+        CinemaScrape(Multikino,             "Top Gun: Maverick", Some(2022)),
+        CinemaScrape(CinemaCityPoznanPlaza, "TOP GUN: MAVERICK", Some(2022)),
+        CinemaScrape(Helios,                "top gun: maverick", Some(2022))
+      )
     )
-    e.displayTitle shouldBe "Top Gun: Maverick"
+    e.displayTitle("Top Gun: Maverick") shouldBe "Top Gun: Maverick"
   }
 
   // ── Regression: prevent the duplicate from being created in the first place ──

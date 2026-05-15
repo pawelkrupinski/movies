@@ -7,7 +7,7 @@
 @*-- Top-level record info that the main table row doesn't already show. --*@
 <dl class="detail-grid">
   <dt>displayTitle</dt>
-  <dd>@if(e.displayTitle.nonEmpty) { @e.displayTitle } else { <span class="miss">—</span> }</dd>
+  <dd>@e.displayTitle(title)</dd>
 
   <dt>cinemaTitles (variants)</dt>
   <dd>

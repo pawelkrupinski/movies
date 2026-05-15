@@ -122,7 +122,7 @@ class MovieController(
    *  fixture's capture date and assert what the / page would render at that
    *  moment. Production callers should always use the no-arg variant. */
   def toSchedules(now: LocalDateTime): Seq[FilmSchedule] = {
-    movieService.snapshot().flatMap { case (_, _, e) =>
+    movieService.snapshot().flatMap { case (cleanTitle, _, e) =>
       // Flatten every cinema's future showtimes for this film. Records with
       // no future showings (film stopped playing everywhere) drop out of the
       // list view — they stay in storage per the "keep forever" policy.
@@ -146,7 +146,7 @@ class MovieController(
         val cinemaFilmUrls: Seq[(Cinema, String)] =
           e.cinemaShowings.toSeq.flatMap { case (cinema, slot) => slot.filmUrl.map(cinema -> _) }
         Some((earliest, FilmSchedule(
-          movie          = Movie(e.displayTitle, e.runtimeMinutes, e.releaseYear),
+          movie          = Movie(e.displayTitle(cleanTitle), e.runtimeMinutes, e.releaseYear),
           posterUrl      = e.posterUrl,
           synopsis       = e.synopsis,
           cast           = e.cast,
@@ -162,7 +162,7 @@ class MovieController(
   private def toCinemaSchedules(): Seq[CinemaSchedule] = {
     val now = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
     Cinema.all.flatMap { cinema =>
-      val moviesForCinema = movieService.snapshot().flatMap { case (_, _, e) =>
+      val moviesForCinema = movieService.snapshot().flatMap { case (cleanTitle, _, e) =>
         e.cinemaShowings.get(cinema).flatMap { slot =>
           val future = slot.showtimes.filter(_.dateTime.isAfter(now.minusMinutes(30)))
           if (future.isEmpty) None
@@ -172,7 +172,7 @@ class MovieController(
               .toSeq.sortBy(_._1)
               .map { case (date, sts) => (date, sts.sortBy(_.dateTime)) }
             Some(CinemaMovieSchedule(
-              movie      = Movie(e.displayTitle, e.runtimeMinutes, e.releaseYear),
+              movie      = Movie(e.displayTitle(cleanTitle), e.runtimeMinutes, e.releaseYear),
               // Per-cinema view shows that cinema's own poster (fidelity over
               // merge); fall back to the merged best only if this cinema
               // didn't ship one.

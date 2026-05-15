@@ -23,10 +23,6 @@ case class MovieRecord(
   tmdbId:            Option[Int]    = None,
   metacriticUrl:     Option[String] = None,
   rottenTomatoesUrl: Option[String] = None,
-  // Every raw cinema-reported title that has ever mapped to this record.
-  // Provenance for the merge-key docId; the corpus anchor for cross-tick
-  // stability of the merge rule.
-  cinemaTitles:      Set[String]    = Set.empty,
   // Every (cinema, raw title, raw year) tuple that has scraped into this
   // record. Used by `recordCinemaScrape` to detect repeat scrapes — when a
   // cinema reports the same `(title, year)` it reported last tick, no event
@@ -34,7 +30,9 @@ case class MovieRecord(
   // this combination, so re-publishing would just churn no-op event
   // dispatches across every listener). New scrape tuples — a freshly-seen
   // cinema, a new title spelling, or a year correction — still emit so
-  // enrichment can pick up any context that wasn't present before.
+  // enrichment can pick up any context that wasn't present before. Also
+  // doubles as the source of `cinemaTitles`: every raw title is derived
+  // from the scrape tuples — no separately-stored Set is necessary.
   cinemaScrapes:     Set[CinemaScrape] = Set.empty,
   // Per-cinema data from the most recent scrape tick. Replaces wholesale per
   // cinema per tick. Empty Map for rows that exist only because the TMDB
@@ -61,14 +59,20 @@ case class MovieRecord(
     cinemaShowings.toSeq.sortBy { case (c, _) => (priority(c), Cinema.all.indexOf(c)) }
   }
 
-  /** Display title chosen across known cinema variants. Falls back to the
-   *  first cinemaTitle when preferredDisplay returns nothing (single-variant
-   *  group) or to a stable empty-string sentinel when the record has no
+  /** Derived view of every raw cinema-reported title that has scraped into
+   *  this record. The cache stores per-(cinema, title, year) provenance in
+   *  `cinemaScrapes`; the title set is just the projection. */
+  def cinemaTitles: Set[String] = cinemaScrapes.map(_.title)
+
+  /** Display title chosen across the cinema-reported variants plus the
+   *  record's `cleanTitle` anchor (which is the post-decoration-strip form
+   *  the cache keys the row by). Caller supplies cleanTitle because the
+   *  record itself doesn't carry it — that anchor only exists on the
+   *  surrounding CacheKey. Falls back to cleanTitle when there are no
    *  variants yet (TMDB resolved with no cinema scrape yet). */
-  def displayTitle: String =
-    controllers.TitleNormalizer.preferredDisplay(cinemaTitles.toSeq)
-      .orElse(cinemaTitles.headOption)
-      .getOrElse("")
+  def displayTitle(cleanTitle: String): String =
+    controllers.TitleNormalizer.preferredDisplay((cinemaTitles + cleanTitle).toSeq)
+      .getOrElse(cleanTitle)
 
   /** First non-empty poster URL with Multikino preferred. */
   def posterUrl: Option[String] =

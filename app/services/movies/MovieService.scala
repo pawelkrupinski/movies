@@ -252,9 +252,9 @@ class MovieService(
         // Carry the cinema-side fields forward — `recordCinemaScrape` may
         // have just landed a slot on this row, and the TMDB stage owns
         // none of that data. Without this, a fresh resolve wipes
-        // cinemaShowings and the row drops out of `toSchedules` until the
-        // next scrape tick repopulates it.
-        cinemaTitles      = existing.map(_.cinemaTitles).getOrElse(Set.empty),
+        // cinemaShowings/cinemaScrapes and the row drops out of
+        // `toSchedules` until the next scrape tick repopulates it.
+        cinemaScrapes     = existing.map(_.cinemaScrapes).getOrElse(Set.empty),
         cinemaShowings    = existing.map(_.cinemaShowings).getOrElse(Map.empty)
       )
       cache.put(key, enr)

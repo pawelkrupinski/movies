@@ -55,21 +55,11 @@ class MovieCache(repo: MovieRepo) extends Logging {
   private[services] def isNegative(key: CacheKey): Boolean =
     negative.getIfPresent(key) != null
 
-  /** Write-through: positive cache + Mongo upsert.
-   *
-   *  Folds the row's current `cleanTitle` AND the existing cached row's
-   *  `cinemaTitles` into the written set, so every raw cinema-reported title
-   *  that has ever resolved here is recorded. Cross-script entries are
-   *  filtered out so a row's `cinemaTitles` never accumulates spellings in
-   *  a script other than the row's own (the `cleanTitle`'s) — legacy
-   *  Polish+Cyrillic mixes get cleaned up on the next write. */
+  /** Write-through: positive cache + Mongo upsert. cinemaTitles is no
+   *  longer a stored field — it's derived from `cinemaScrapes`. */
   private[services] def put(key: CacheKey, e: MovieRecord): Unit = {
-    val priorTitles  = Option(positive.getIfPresent(key)).map(_.cinemaTitles).getOrElse(Set.empty)
-    val allVariants  = e.cinemaTitles ++ priorTitles + key.cleanTitle
-    val sameScript   = allVariants.filter(t => controllers.TitleNormalizer.sameScript(t, key.cleanTitle))
-    val merged = e.copy(cinemaTitles = sameScript)
-    positive.put(key, merged)
-    repo.upsert(key.cleanTitle, key.year, merged)
+    positive.put(key, e)
+    repo.upsert(key.cleanTitle, key.year, e)
   }
 
   /** Conditional write — applies `updater` to the row if it currently exists
@@ -89,14 +79,7 @@ class MovieCache(repo: MovieRepo) extends Logging {
    *  concurrent updates to other fields. */
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean = {
     val updated = positive.asMap().computeIfPresent(key, new java.util.function.BiFunction[CacheKey, MovieRecord, MovieRecord] {
-      override def apply(k: CacheKey, current: MovieRecord): MovieRecord = {
-        val next         = updater(current)
-        // Same fold + cross-script filter as `put` — keeps cinemaTitles in
-        // sync across both write paths.
-        val allVariants  = next.cinemaTitles ++ current.cinemaTitles + k.cleanTitle
-        val sameScript   = allVariants.filter(t => controllers.TitleNormalizer.sameScript(t, k.cleanTitle))
-        next.copy(cinemaTitles = sameScript)
-      }
+      override def apply(k: CacheKey, current: MovieRecord): MovieRecord = updater(current)
     })
     if (updated != null) {
       repo.updateIfPresent(key.cleanTitle, key.year, updated)
@@ -172,13 +155,9 @@ class MovieCache(repo: MovieRepo) extends Logging {
       )
       val scrape = CinemaScrape(cinema, cm.movie.title, cm.movie.releaseYear)
       val isNew  = !existing.cinemaScrapes.contains(scrape)
-      // Always record the incoming raw cinema title in `cinemaTitles` — when
-      // a redirect sends us to a row with a different `cleanTitle` ("Mortal
-      // Kombat 2" landing on a row whose cleanTitle is "Mortal Kombat II"),
-      // we still want this variant tracked so the NEXT scrape of "Mortal
-      // Kombat 2" redirects directly via the `cinemaTitles` index.
+      // The raw cinema-reported title goes into `cinemaScrapes`; the
+      // derived `cinemaTitles` view picks it up automatically.
       put(key, existing.copy(
-        cinemaTitles   = existing.cinemaTitles + cm.movie.title,
         cinemaScrapes  = existing.cinemaScrapes + scrape,
         cinemaShowings = existing.cinemaShowings + (cinema -> slot)
       ))
@@ -214,45 +193,28 @@ class MovieCache(repo: MovieRepo) extends Logging {
     if (positive.getIfPresent(primary) != null) return None
     import scala.jdk.CollectionConverters._
     val normalizedRaw = MovieService.normalize(primary.cleanTitle)
-    // Require the candidate row's cleanTitle to normalise to the SAME form
-    // as the incoming title, in addition to having a matching variant in
-    // its cinemaTitles. Without this, a Cyrillic-titled row whose
-    // cinemaTitles incidentally includes the Latin spelling (from an
-    // earlier cross-script write) would absorb Latin scrapes and the two
-    // scripts would collapse onto one row.
+    // Match by cleanTitle normalisation. Cross-script titles produce
+    // different normalised forms (sanitize keeps Unicode letters), so a
+    // Cyrillic row can't be matched by a Latin scrape and vice versa.
     val candidates = positive.asMap().asScala.iterator
-      .filter { case (k, e) =>
-        MovieService.normalize(k.cleanTitle) == normalizedRaw &&
-        e.cinemaTitles.exists(t => MovieService.normalize(t) == normalizedRaw)
-      }
+      .filter { case (k, _) => MovieService.normalize(k.cleanTitle) == normalizedRaw }
       .map(_._1)
       .toSet  // unique by CacheKey (which dedups by normalized form)
     if (candidates.size == 1) Some(candidates.head) else None
   }
 
-  /** True when some existing cache row has a `cinemaTitles` entry that
-   *  normalises to `rawTitle`'s normalised form AND has been TMDB-resolved
-   *  (tmdbId set). The `MovieService` TMDB stage uses this to short-
-   *  circuit: if the cinema's title already maps to an existing resolved
-   *  row via `recordCinemaScrape`'s redirect, there's no point running
-   *  another TMDB lookup for the raw `(title, year)` key and writing a
-   *  phantom row that no later code path would ever clean up.
-   *
-   *  Match uses `MovieService.normalize` so cross-spelling variants
-   *  ("Mortal Kombat 2" vs "Mortal Kombat II") still short-circuit even
-   *  before the merger has had a chance to fold the variants together. */
+  /** True when some existing cache row's cleanTitle normalises to the same
+   *  form as `rawTitle` AND has been TMDB-resolved (tmdbId set). The
+   *  `MovieService` TMDB stage uses this to short-circuit: if the cinema's
+   *  title already maps to an existing resolved row via
+   *  `recordCinemaScrape`'s redirect, there's no point running another
+   *  TMDB lookup for the raw `(title, year)` key and writing a phantom row
+   *  that no later code path would ever clean up. */
   def hasResolvedSiblingByTitle(rawTitle: String): Boolean = {
     import scala.jdk.CollectionConverters._
     val normalizedRaw = MovieService.normalize(rawTitle)
-    // Require the candidate row's cleanTitle to normalise the same way as
-    // `rawTitle`. Without this, a Cyrillic-titled row whose cinemaTitles
-    // happens to include the Latin spelling would short-circuit TMDB for
-    // the Latin variant — leaving the Latin row uncreated even though
-    // it's now meant to be a separate record from the Cyrillic one.
     positive.asMap().asScala.iterator.exists { case (k, e) =>
-      e.tmdbId.isDefined &&
-      MovieService.normalize(k.cleanTitle) == normalizedRaw &&
-      e.cinemaTitles.exists(t => MovieService.normalize(t) == normalizedRaw)
+      e.tmdbId.isDefined && MovieService.normalize(k.cleanTitle) == normalizedRaw
     }
   }
 
