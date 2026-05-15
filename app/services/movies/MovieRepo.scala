@@ -50,11 +50,23 @@ class MovieRepo extends Logging {
       }.getOrElse(Seq.empty)
   }
 
-  /** Remove a single (title, year) row. Best-effort — failures are logged. */
+  /** Remove every doc matching the given (title, year). Filters by `title`
+   *  + `year` fields rather than by `_id`, so legacy docs whose `_id` was
+   *  computed with a prior `docId` formula still get caught — `deleteOne` by
+   *  `_id` would silently match nothing and the orphan would survive every
+   *  startup's merge. Best-effort: failures are logged, never thrown. */
   def delete(title: String, year: Option[Int]): Unit = coll.foreach { c =>
-    val id = docId(title, year)
+    val yearFilter = year match {
+      case Some(y) => Filters.eq("year", y)
+      // year=None in the in-memory model lands as either BsonNull() or a
+      // missing field in legacy docs; cover both.
+      case None    => Filters.or(Filters.eq("year", BsonNull()), Filters.exists("year", false))
+    }
+    val filter = Filters.and(Filters.eq("title", title), yearFilter)
     Try {
-      Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
+      val result = Await.result(c.deleteMany(filter).toFuture(), 10.seconds)
+      if (result.getDeletedCount > 1)
+        logger.info(s"MovieRepo.delete($title, $year) removed ${result.getDeletedCount} doc(s).")
       ()
     }.recover {
       case ex: Throwable => logger.warn(s"MovieRepo.delete($title, $year) failed: ${ex.getMessage}")

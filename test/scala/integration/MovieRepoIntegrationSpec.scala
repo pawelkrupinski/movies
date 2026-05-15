@@ -140,4 +140,44 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     rows.head._3.metacriticUrl     shouldBe None
     rows.head._3.rottenTomatoesUrl shouldBe None
   }
+
+  // Regression: legacy docs in prod were written with an older `docId`
+  // formula (whitespace-preserving), and `repo.delete` — which builds the
+  // `_id` from the *current* formula — silently failed to delete them
+  // (`deleteOne` matched zero docs, no warning). On every restart the
+  // mergeAll pass picked the same losers and tried to delete them, but
+  // their old-formula `_id`s never matched. Fix: delete by `title` + `year`
+  // instead of by `_id`, so any past or future `_id` drift can't defeat the
+  // cleanup.
+  it should "delete every doc matching (title, year), regardless of its _id formula" in {
+    import org.mongodb.scala.bson._
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+      .getCollection[org.mongodb.scala.bson.collection.immutable.Document]("movies")
+    try {
+      // Seed two docs at the same (title, year) but with different `_id`s —
+      // one matching the current formula, one with a stale "old-formula"
+      // shape that the current `MovieRepo.docId` wouldn't compute.
+      val title = "__integration-test-stale-id__"
+      val year  = Some(2099)
+      val freshId = s"${title.toLowerCase.replaceAll("[^a-z0-9]+", "")}|2099"
+      val staleId = s"${title.toLowerCase}|2099"  // stale formula keeps spaces/underscores
+      Seq(freshId, staleId).foreach { id =>
+        val doc = org.mongodb.scala.bson.collection.immutable.Document(
+          "_id"   -> BsonString(id),
+          "title" -> BsonString(title),
+          "year"  -> BsonInt32(2099)
+        )
+        Await.ready(coll.insertOne(doc).toFuture(), 10.seconds)
+      }
+      // Sanity: both docs exist.
+      val before = Await.result(coll.countDocuments(Filters.eq("title", title)).toFuture(), 10.seconds)
+      before shouldBe 2
+
+      repo.delete(title, year)
+
+      val after = Await.result(coll.countDocuments(Filters.eq("title", title)).toFuture(), 10.seconds)
+      after shouldBe 0
+    } finally client.close()
+  }
 }
