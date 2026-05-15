@@ -197,7 +197,59 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       showtimes = showtimes
     )
 
-  "recordCinemaScrape" should "create a new record when no matching row exists yet" in {
+  // ── Provenance: per-(cinema, title, year) scrape dedup ─────────────────────
+  //
+  // recordCinemaScrape returns a `(CinemaMovie, CacheKey, isNew)` triple per
+  // input. `isNew` is true the first time that exact `(cinema, raw title, raw
+  // year)` tuple lands on a row; false on subsequent ticks that report the
+  // same combination. ShowtimeCache uses the flag to suppress redundant
+  // MovieRecordCreated events — every TMDB / IMDb / rating fetcher's listener
+  // re-checks state on each event, so re-publishing for unchanged tuples
+  // just churns dispatches. Any change (new cinema, new title spelling, year
+  // correction) still flips `isNew` back to true so genuine new context can
+  // trigger better enrichment.
+
+  "recordCinemaScrape" should "flag the first scrape of a (cinema, title, year) tuple as new" in {
+    val cache = new MovieCache(new FakeRepo())
+    val touched = cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Top Gun: Maverick", Multikino, Some(2022))
+    ))
+    touched should have size 1
+    touched.head._3 shouldBe true
+  }
+
+  it should "flag a repeat scrape of the same (cinema, title, year) as not-new" in {
+    val cache = new MovieCache(new FakeRepo())
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Top Gun: Maverick", Multikino, Some(2022))))
+    val secondTick = cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Top Gun: Maverick", Multikino, Some(2022))
+    ))
+    secondTick should have size 1
+    secondTick.head._3 shouldBe false
+  }
+
+  it should "flag the second cinema as new when it scrapes a film already in the cache from another cinema" in {
+    val cache = new MovieCache(new FakeRepo())
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Top Gun: Maverick", Multikino, Some(2022))))
+    val helios = cache.recordCinemaScrape(Helios, Seq(
+      cinemaMovie("Top Gun: Maverick", Helios, Some(2022))
+    ))
+    helios.head._3 shouldBe true   // Helios hasn't reported this row before
+  }
+
+  it should "flag a year correction from the same cinema as new" in {
+    val cache = new MovieCache(new FakeRepo())
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Bez wyjścia", Multikino, None)))
+    // Same cinema now reports the same title with a year — different scrape
+    // tuple, even though the redirect routes it onto the same row.
+    val corrected = cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Bez wyjścia", Multikino, Some(2025))
+    ))
+    corrected.head._3 shouldBe true
+    corrected.head._2 shouldBe cache.keyOf("Bez wyjścia", None)  // canonical key unchanged
+  }
+
+  it should "create a new record when no matching row exists yet" in {
     val cache = new MovieCache(new FakeRepo())
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Top Gun: Maverick", Multikino, Some(2022), Some("multikino.jpg"), Seq(showtime("2026-06-01T18:00")))

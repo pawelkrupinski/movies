@@ -73,10 +73,20 @@ class ShowtimeCache(
       // scrape's (title, year) into an existing sibling row, the bus event
       // names the sibling's key so the TMDB stage doesn't run a second
       // time for a phantom row.
-      val touched = movieCache.recordCinemaScrape(cinema, movies)
-      logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms")
-      touched.foreach { case (cm, key) =>
-        bus.publish(MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, cm.director))
+      //
+      // Suppress the event when this (cinema, raw title, raw year) tuple
+      // has already been scraped onto this row: every downstream listener
+      // is idempotent (re-checking state before doing work), so a steady-
+      // state tick where nothing changed would dispatch hundreds of no-op
+      // events per 5-minute interval. Listeners still get fresh events
+      // when a cinema reports a new title spelling, a year correction, or
+      // when a brand new film shows up.
+      val touched     = movieCache.recordCinemaScrape(cinema, movies)
+      val publishable = touched.count(_._3)
+      logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms ($publishable new)")
+      touched.foreach { case (cm, key, isNew) =>
+        if (isNew)
+          bus.publish(MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, cm.director))
       }
     } catch {
       case e: Exception =>

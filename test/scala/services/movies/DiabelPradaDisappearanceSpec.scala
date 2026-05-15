@@ -287,8 +287,9 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     // duplicate-prevention contract under test doesn't depend on it.
     def scrape(cinema: Cinema, cm: CinemaMovie): Unit = {
       val touched = cache.recordCinemaScrape(cinema, Seq(cm))
-      touched.foreach { case (m, key) =>
-        bus.publish(MovieRecordCreated(key.cleanTitle, key.year, m.movie.originalTitle, None))
+      touched.foreach { case (m, key, isNew) =>
+        if (isNew)
+          bus.publish(MovieRecordCreated(key.cleanTitle, key.year, m.movie.originalTitle, None))
       }
     }
 

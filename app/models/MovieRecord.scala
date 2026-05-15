@@ -27,6 +27,15 @@ case class MovieRecord(
   // Provenance for the merge-key docId; the corpus anchor for cross-tick
   // stability of the merge rule.
   cinemaTitles:      Set[String]    = Set.empty,
+  // Every (cinema, raw title, raw year) tuple that has scraped into this
+  // record. Used by `recordCinemaScrape` to detect repeat scrapes — when a
+  // cinema reports the same `(title, year)` it reported last tick, no event
+  // is published (TMDB / IMDb / rating fetchers already did their work for
+  // this combination, so re-publishing would just churn no-op event
+  // dispatches across every listener). New scrape tuples — a freshly-seen
+  // cinema, a new title spelling, or a year correction — still emit so
+  // enrichment can pick up any context that wasn't present before.
+  cinemaScrapes:     Set[CinemaScrape] = Set.empty,
   // Per-cinema data from the most recent scrape tick. Replaces wholesale per
   // cinema per tick. Empty Map for rows that exist only because the TMDB
   // stage resolved them (no cinema is currently screening). Merged top-level

@@ -1,7 +1,7 @@
 package services.movies
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
-import models.{Cinema, CinemaMovie, CinemaShowings, MovieRecord}
+import models.{Cinema, CinemaMovie, CinemaScrape, CinemaShowings, MovieRecord}
 import play.api.Logging
 
 import java.util.concurrent.TimeUnit
@@ -127,21 +127,24 @@ class MovieCache(repo: MovieRepo) extends Logging {
    *  Variant redirect: when the cinema-reported `(title, year)` doesn't have
    *  a row at its primary key, but exactly one existing row already knows
    *  this raw title (via `cinemaTitles`), we write to THAT row's key instead
-   *  of creating a fresh one. Returns one `(CinemaMovie, CacheKey)` pair per
-   *  input movie — the `CacheKey` is the *canonical* key the slot actually
-   *  landed on (post-redirect). Callers driving the enrichment pipeline
-   *  (`ShowtimeCache`) publish `MovieRecordCreated` against this canonical
-   *  key, so when two cinemas report the same film with different `year`
-   *  values, both bus events name the same key and the TMDB stage runs
-   *  exactly once — no phantom row for the redirected variant that
-   *  IdentityMerger would otherwise have to clean up at the next startup.
+   *  of creating a fresh one. Returns one `(CinemaMovie, CacheKey, isNew)`
+   *  triple per input movie:
+   *
+   *    - `CacheKey` is the *canonical* key the slot actually landed on
+   *      (post-redirect). `ShowtimeCache` publishes `MovieRecordCreated`
+   *      against this so two cinemas reporting different `year` values for
+   *      the same film land on a single TMDB-stage event, no phantom row.
+   *    - `isNew` is true when the `(cinema, raw title, raw year)` tuple is
+   *      landing on this row for the first time; false on repeat ticks.
+   *      `ShowtimeCache` skips the bus publish for `isNew == false` so
+   *      already-enriched rows don't churn event dispatches every 5 min.
    *
    *  Doesn't touch enrichment-side fields (imdbId, ratings, URLs, …) — the
    *  TMDB / IMDb / MC / RT / Filmweb stages own those and run independently.
    *  Records are kept even when `cinemaShowings` becomes empty (per the
    *  "keep forever" policy): a film that returns next month finds its
    *  prior enrichment data still in place. */
-  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey)] = {
+  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
     // challenge, parser regex mismatch, ScrapingAnt 503, blank HTML), not a
     // cinema that's genuinely showing zero films right now. Without this
@@ -167,6 +170,8 @@ class MovieCache(repo: MovieRepo) extends Logging {
         originalTitle  = cm.movie.originalTitle,
         showtimes      = cm.showtimes
       )
+      val scrape = CinemaScrape(cinema, cm.movie.title, cm.movie.releaseYear)
+      val isNew  = !existing.cinemaScrapes.contains(scrape)
       // Always record the incoming raw cinema title in `cinemaTitles` — when
       // a redirect sends us to a row with a different `cleanTitle` ("Mortal
       // Kombat 2" landing on a row whose cleanTitle is "Mortal Kombat II"),
@@ -175,9 +180,10 @@ class MovieCache(repo: MovieRepo) extends Logging {
       // having to wait for an IdentityMerger pass to fold it in.
       put(key, existing.copy(
         cinemaTitles   = existing.cinemaTitles + cm.movie.title,
+        cinemaScrapes  = existing.cinemaScrapes + scrape,
         cinemaShowings = existing.cinemaShowings + (cinema -> slot)
       ))
-      (cm, key)
+      (cm, key, isNew)
     }
 
     // Prune: any cache entry that previously had this cinema's slot but

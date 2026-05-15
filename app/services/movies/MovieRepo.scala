@@ -2,7 +2,7 @@ package services.movies
 
 import com.mongodb.MongoException
 import com.mongodb.client.model.ReplaceOptions
-import models.{Cinema, CinemaShowings, MovieRecord, Showtime}
+import models.{Cinema, CinemaScrape, CinemaShowings, MovieRecord, Showtime}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson._
 import org.mongodb.scala.model.Filters
@@ -164,6 +164,15 @@ class MovieRepo extends Logging {
       // so decoding never has to disambiguate "missing field" from "no
       // variants yet" — both legitimately read back as `Set.empty`.
       "cinemaTitles" -> BsonArray.fromIterable(e.cinemaTitles.toSeq.sorted.map(BsonString(_))),
+      // cinemaScrapes: per-(cinema, title, year) provenance the cache uses to
+      // suppress redundant MovieRecordCreated events for tuples it has
+      // already seen. BsonArray of sub-documents. Sorted for stable Mongo
+      // diffs; same "empty array, not null" rule as cinemaTitles.
+      "cinemaScrapes" -> BsonArray.fromIterable(
+        e.cinemaScrapes.toSeq
+          .sortBy(s => (s.cinema.displayName, s.title, s.year.getOrElse(Int.MinValue)))
+          .map(encodeCinemaScrape)
+      ),
       // Per-cinema data — sub-document keyed by Cinema.displayName.
       "cinemaShowings" -> encodeCinemaShowings(e.cinemaShowings),
       "updatedAt"    -> BsonDateTime(Instant.now().toEpochMilli)
@@ -192,6 +201,14 @@ class MovieRepo extends Logging {
     s.releaseYear.foreach(n    => doc.put("releaseYear",    BsonInt32(n)))
     s.originalTitle.foreach(t  => doc.put("originalTitle",  BsonString(t)))
     doc.put("showtimes", BsonArray.fromIterable(s.showtimes.map(encodeShowtime)))
+    doc
+  }
+
+  private def encodeCinemaScrape(s: CinemaScrape): BsonDocument = {
+    val doc = new BsonDocument()
+    doc.put("cinema", BsonString(s.cinema.displayName))
+    doc.put("title",  BsonString(s.title))
+    s.year.foreach(y => doc.put("year", BsonInt32(y)))
     doc
   }
 
@@ -233,9 +250,29 @@ class MovieRepo extends Logging {
         cinemaTitles   = d.get("cinemaTitles").flatMap(v => Try {
           v.asArray().getValues.toArray.collect { case s: BsonString => s.getValue }.toSet
         }.toOption).getOrElse(Set.empty),
+        // Missing for rows that pre-date the provenance field; treat as
+        // Set.empty so the very next scrape tick re-publishes once and
+        // populates the set.
+        cinemaScrapes  = d.get("cinemaScrapes").flatMap(v => Try(decodeCinemaScrapes(v.asArray())).toOption).getOrElse(Set.empty),
         cinemaShowings = d.get("cinemaShowings").flatMap(v => Try(decodeCinemaShowings(v.asDocument())).toOption).getOrElse(Map.empty)
       )
     )
+
+  private def decodeCinemaScrapes(arr: BsonArray): Set[CinemaScrape] = {
+    val byName: Map[String, Cinema] = Cinema.all.map(c => c.displayName -> c).toMap
+    arr.getValues.asScala.iterator.flatMap { v =>
+      for {
+        sub      <- Try(v.asDocument()).toOption
+        cinemaN  <- Try(sub.get("cinema").asString().getValue).toOption
+        cinema   <- byName.get(cinemaN)
+        title    <- Try(sub.get("title").asString().getValue).toOption
+      } yield CinemaScrape(
+        cinema = cinema,
+        title  = title,
+        year   = Option(sub.get("year")).flatMap(v2 => Try(v2.asInt32().getValue).toOption)
+      )
+    }.toSet
+  }
 
   private def decodeCinemaShowings(doc: BsonDocument): Map[Cinema, CinemaShowings] = {
     val byName: Map[String, Cinema] = Cinema.all.map(c => c.displayName -> c).toMap
