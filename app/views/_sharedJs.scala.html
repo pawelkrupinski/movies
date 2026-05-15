@@ -183,23 +183,32 @@
   }
 
   function hideFilm(btn) {
+    // applyFilters() rebuilds the grid via appendChild, which breaks the
+    // browser's scroll anchor — without snapshotting scrollY ourselves, the
+    // viewport snaps to the top of the page.
+    const scrollY = window.scrollY;
     const title = btn.closest('[data-title]').dataset.title;
     const hidden = getHidden();
     if (!hidden.includes(title)) { hidden.push(title); setHidden(hidden); }
     applyFilters();
     updateNavbar();
+    window.scrollTo(0, scrollY);
   }
 
   function restoreFilm(title) {
+    const scrollY = window.scrollY;
     setHidden(getHidden().filter(t => t !== title));
     applyFilters();
     updateNavbar();
+    window.scrollTo(0, scrollY);
   }
 
   function showAllFilms() {
+    const scrollY = window.scrollY;
     setHidden([]);
     applyFilters();
     updateNavbar();
+    window.scrollTo(0, scrollY);
   }
 
   // ── Cinema-filter panel ───────────────────────────────────────────────────
