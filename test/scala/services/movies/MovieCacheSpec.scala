@@ -337,6 +337,44 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Bez wyjścia", None)) shouldBe None
   }
 
+  // Regression: the user-visible "Diabeł ubiera się u Prady 2 appears twice"
+  // bug. Multikino + CinemaCity report year=None; Helios + Rialto report
+  // year=Some(2026). When two threads first-scrape the same brand-new film
+  // concurrently, both can see an empty cache in their redirect check and
+  // each end up creating its own row. After that, every subsequent tick
+  // finds the per-thread row at its primary key and never redirects again,
+  // so both rows persist. recordCinemaScrape must serialise the
+  // redirect-then-put step per normalised title to keep the race from
+  // producing duplicates.
+  it should "not create duplicate rows when two cinemas first-scrape the same title with different years concurrently" in {
+    val title = "Diabeł ubiera się u Prady 2"
+    val iterations = 100
+    for (_ <- 1 to iterations) {
+      val cache = new MovieCache(new FakeRepo())
+      val latch = new java.util.concurrent.CountDownLatch(1)
+      val exec  = java.util.concurrent.Executors.newFixedThreadPool(2)
+      val t1 = exec.submit(new Runnable {
+        def run(): Unit = {
+          latch.await()
+          cache.recordCinemaScrape(Multikino, Seq(cinemaMovie(title, Multikino, None)))
+        }
+      })
+      val t2 = exec.submit(new Runnable {
+        def run(): Unit = {
+          latch.await()
+          cache.recordCinemaScrape(Helios, Seq(cinemaMovie(title, Helios, Some(2026))))
+        }
+      })
+      latch.countDown()
+      t1.get(); t2.get()
+      exec.shutdown()
+
+      withClue(s"snapshot after iteration: ${cache.snapshot().map { case (t, y, _) => s"($t, $y)" }.mkString(", ")} ") {
+        cache.snapshot().size shouldBe 1
+      }
+    }
+  }
+
   it should "NOT redirect across scripts — Cyrillic and Latin normalise differently" in {
     val cache = new MovieCache(new FakeRepo())
     cache.put(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026)),

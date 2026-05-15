@@ -4,7 +4,7 @@ import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.{Cinema, CinemaMovie, CinemaScrape, CinemaShowings, MovieRecord}
 import play.api.Logging
 
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
 /**
  * Normalised `(title, year)` lookup key. Diacritics stripped, lowercased,
@@ -42,6 +42,16 @@ class MovieCache(repo: MovieRepo) extends Logging {
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
   private val negative: Cache[CacheKey, java.lang.Boolean] =
     Caffeine.newBuilder().expireAfterWrite(24, TimeUnit.HOURS).build()
+
+  // Per-normalised-title locks for `recordCinemaScrape`. Two cinemas
+  // first-scraping the same brand-new film concurrently used to each see an
+  // empty cache in their redirect check and each created its own row at a
+  // different `(title, year)` key. Serialising the redirect-then-put step
+  // per normalised title eliminates that race; films with different
+  // normalised titles still scrape in parallel.
+  private val titleLocks = new ConcurrentHashMap[String, AnyRef]()
+  private def lockFor(rawTitle: String): AnyRef =
+    titleLocks.computeIfAbsent(MovieService.normalize(rawTitle), _ => new Object())
 
   hydrateFromRepo()
 
@@ -138,30 +148,36 @@ class MovieCache(repo: MovieRepo) extends Logging {
     if (movies.isEmpty) return Seq.empty
 
     val resolved = movies.map { cm =>
-      val primary = keyOf(cm.movie.title, cm.movie.releaseYear)
-      val key     = redirectToExistingVariant(primary).getOrElse(primary)
-      val existing = Option(positive.getIfPresent(key))
-        .getOrElse(MovieRecord(imdbId = None, imdbRating = None, metascore = None, originalTitle = None))
-      val slot = CinemaShowings(
-        filmUrl        = cm.filmUrl,
-        posterUrl      = cm.posterUrl,
-        synopsis       = cm.synopsis,
-        cast           = cm.cast,
-        director       = cm.director,
-        runtimeMinutes = cm.movie.runtimeMinutes,
-        releaseYear    = cm.movie.releaseYear,
-        originalTitle  = cm.movie.originalTitle,
-        showtimes      = cm.showtimes
-      )
-      val scrape = CinemaScrape(cinema, cm.movie.title, cm.movie.releaseYear)
-      val isNew  = !existing.cinemaScrapes.contains(scrape)
-      // The raw cinema-reported title goes into `cinemaScrapes`; the
-      // derived `cinemaTitles` view picks it up automatically.
-      put(key, existing.copy(
-        cinemaScrapes  = existing.cinemaScrapes + scrape,
-        cinemaShowings = existing.cinemaShowings + (cinema -> slot)
-      ))
-      (cm, key, isNew)
+      // Lock per normalised title so a concurrent first-scrape from another
+      // cinema can't create a duplicate row at a different `(title, year)`
+      // key while we're between the redirect check and the put. Different
+      // films don't contend.
+      lockFor(cm.movie.title).synchronized {
+        val primary = keyOf(cm.movie.title, cm.movie.releaseYear)
+        val key     = redirectToExistingVariant(primary).getOrElse(primary)
+        val existing = Option(positive.getIfPresent(key))
+          .getOrElse(MovieRecord(imdbId = None, imdbRating = None, metascore = None, originalTitle = None))
+        val slot = CinemaShowings(
+          filmUrl        = cm.filmUrl,
+          posterUrl      = cm.posterUrl,
+          synopsis       = cm.synopsis,
+          cast           = cm.cast,
+          director       = cm.director,
+          runtimeMinutes = cm.movie.runtimeMinutes,
+          releaseYear    = cm.movie.releaseYear,
+          originalTitle  = cm.movie.originalTitle,
+          showtimes      = cm.showtimes
+        )
+        val scrape = CinemaScrape(cinema, cm.movie.title, cm.movie.releaseYear)
+        val isNew  = !existing.cinemaScrapes.contains(scrape)
+        // The raw cinema-reported title goes into `cinemaScrapes`; the
+        // derived `cinemaTitles` view picks it up automatically.
+        put(key, existing.copy(
+          cinemaScrapes  = existing.cinemaScrapes + scrape,
+          cinemaShowings = existing.cinemaShowings + (cinema -> slot)
+        ))
+        (cm, key, isNew)
+      }
     }
 
     // Prune: any cache entry that previously had this cinema's slot but
