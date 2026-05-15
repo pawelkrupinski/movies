@@ -1,4 +1,4 @@
-@import models.{Cinema, CinemaShowings, MovieRecord, Showtime}
+@import models.{Cinema, CinemaScrape, CinemaShowings, MovieRecord, Showtime}
 @import java.time.format.DateTimeFormatter
 @(title: String, year: Option[Int], e: MovieRecord)
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
@@ -14,6 +14,17 @@
     @if(e.cinemaTitles.isEmpty) { <span class="miss">—</span> } else {
       <div class="variants">
         @for(t <- e.cinemaTitles.toSeq.sorted) { <span class="variant">@t</span> }
+      </div>
+    }
+  </dd>
+
+  <dt>cinemaScrapes (provenance)</dt>
+  <dd>
+    @if(e.cinemaScrapes.isEmpty) { <span class="miss">—</span> } else {
+      <div class="variants">
+        @for(s <- e.cinemaScrapes.toSeq.sortBy(x => (x.cinema.displayName, x.title, x.year.getOrElse(Int.MinValue)))) {
+          <span class="variant">@s.cinema.displayName: @s.title (@s.year.map(_.toString).getOrElse("—"))</span>
+        }
       </div>
     }
   </dd>
@@ -75,8 +86,10 @@
             @showings.releaseYear.map { y    => <span>year: @y</span> }
             @showings.runtimeMinutes.map { m => <span>runtime: @m min</span> }
             @showings.director.map { d       => <span>dir: @d</span> }
+            @showings.cast.map { c           => <span>cast: <em>@c</em></span> }
             @showings.posterUrl.map { u      => <span>poster: <a href="@u" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a></span> }
           </div>
+          @showings.synopsis.map { s => <div class="cinema-synopsis">@s</div> }
           @if(showings.showtimes.nonEmpty) {
             <div class="showtimes">
               @for((day, slots) <- showings.showtimes.sortBy(_.dateTime).groupBy(_.dateTime.toLocalDate).toSeq.sortBy(_._1)) {
