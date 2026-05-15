@@ -1,7 +1,7 @@
 package scripts
 
 import controllers.TitleNormalizer
-import services.enrichment.MovieRepo
+import services.movies.MovieRepo
 
 /**
  * Phase-1 audit for the upcoming `MovieCache` transition.

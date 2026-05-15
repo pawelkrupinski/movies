@@ -8,7 +8,7 @@ import org.mongodb.scala.MongoClient
 import org.mongodb.scala.bson._
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
-import services.enrichment.MovieRepo
+import services.movies.MovieRepo
 import tools.Env
 
 import scala.concurrent.Await
@@ -187,7 +187,7 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   it should "prefer 'movies' over 'enrichments' when the same docId exists in both" in {
     val sharedTitle = "__integration-test-CONFLICT__"
     val sharedYear  = Some(2026)
-    val sharedId    = s"${services.enrichment.MovieService.normalize(sharedTitle)}|2026"
+    val sharedId    = s"${services.movies.MovieService.normalize(sharedTitle)}|2026"
 
     // Legacy says rating 5.0; canonical (movies) says 8.0. movies wins.
     seedLegacy(sharedId, Document(

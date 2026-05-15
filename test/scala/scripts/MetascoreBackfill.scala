@@ -1,6 +1,7 @@
 package scripts
 
-import services.enrichment.{MovieRepo, MetacriticClient}
+import services.enrichment.MetacriticClient
+import services.movies.MovieRepo
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}

@@ -1,7 +1,7 @@
 package scripts
 
 import clients.TmdbClient
-import services.enrichment.MovieRepo
+import services.movies.MovieRepo
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -53,7 +53,7 @@ object CacheKeyYearBackfill {
     // Group rows by normalised title so we can detect "row at correct key
     // already exists" before re-keying — without a check we'd clobber data.
     val byTitle = rows.groupBy { case (t, _, _) =>
-      services.enrichment.MovieService.normalize(t)
+      services.movies.MovieService.normalize(t)
     }
     val total   = rows.size
     val Workers = 5
@@ -88,7 +88,7 @@ object CacheKeyYearBackfill {
             } else {
               // Wrong key. Look for a sibling at (title, tmdbYear) in our
               // groupBy snapshot — that's the destination.
-              val normalised = services.enrichment.MovieService.normalize(title)
+              val normalised = services.movies.MovieService.normalize(title)
               val sibling = byTitle.getOrElse(normalised, Seq.empty)
                 .find { case (_, y, _) => y == tmdbYear && y != year }
               sibling match {

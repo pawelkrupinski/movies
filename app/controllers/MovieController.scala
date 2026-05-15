@@ -4,7 +4,7 @@ import models._
 import play.api.mvc._
 import play.api.{Environment, Mode}
 import services.ShowtimeCache
-import services.enrichment.MovieService
+import services.movies.MovieService
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets

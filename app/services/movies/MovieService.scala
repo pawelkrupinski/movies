@@ -1,4 +1,4 @@
-package services.enrichment
+package services.movies
 
 import clients.TmdbClient
 import play.api.Logging
@@ -303,7 +303,7 @@ class MovieService(
    *  `TmdbRetryHours`; also clears the negative cache so previously-failed
    *  `(title, year)` lookups get one fresh shot via the next ShowtimeCache
    *  refresh. */
-  private[enrichment] def retryUnresolvedTmdb(): Unit = {
+  private[services] def retryUnresolvedTmdb(): Unit = {
     cache.clearNegatives()
     val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty => k }
     logger.info(s"TMDB retry: cleared negatives + re-scheduling ${targets.size} row(s) with missing tmdbId.")

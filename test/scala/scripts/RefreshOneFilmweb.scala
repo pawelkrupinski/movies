@@ -1,6 +1,7 @@
 package scripts
 
-import services.enrichment.{MovieCache, MovieRepo, FilmwebClient, FilmwebRatings}
+import services.enrichment.{FilmwebClient, FilmwebRatings}
+import services.movies.{MovieCache, MovieRepo}
 
 /** Force a one-row Filmweb refresh for `(title, year)`. Used after wiring
  *  `onImdbIdMissing` on Filmweb so existing rows that were missed at first

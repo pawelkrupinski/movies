@@ -3,7 +3,7 @@ package scripts
 import models.MovieRecord
 import org.mongodb.scala.MongoClient
 import org.mongodb.scala.bson.collection.immutable.Document
-import services.enrichment.{MovieRepo, MovieService}
+import services.movies.{MovieRepo, MovieService}
 import services.lock.MongoLock
 import tools.Env
 

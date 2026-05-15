@@ -1,4 +1,4 @@
-package services.enrichment
+package services.movies
 
 import models.{Cinema, CinemaShowings, MovieRecord, Helios, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec

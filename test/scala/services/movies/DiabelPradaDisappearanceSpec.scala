@@ -1,4 +1,4 @@
-package services.enrichment
+package services.movies
 
 import clients.TmdbClient
 import clients.tools.FakeHttpFetch

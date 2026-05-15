@@ -1,5 +1,7 @@
 package services.enrichment
 
+import services.movies.{CacheKey, MovieCache}
+
 import play.api.Logging
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 
@@ -66,11 +68,11 @@ class FilmwebRatings(cache: MovieCache, filmweb: FilmwebClient) extends Logging 
   // ── Per-row refresh ────────────────────────────────────────────────────────
 
   /** Dispatch a single-row refresh on the worker pool. */
-  private[enrichment] def schedule(key: CacheKey): Unit =
+  private[services] def schedule(key: CacheKey): Unit =
     worker.execute(() => refreshOne(key))
 
   /** Synchronous version of `schedule` — handy for scripts and tests. */
-  private[enrichment] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
+  private[services] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
 
   /** Synchronous refresh by `(title, year)` — public entry point for scripts.
    *  Looks up the row's cache key the same way the rest of the pipeline does. */
@@ -109,7 +111,7 @@ class FilmwebRatings(cache: MovieCache, filmweb: FilmwebClient) extends Logging 
    *  get the cheap rating-only refresh; rows without one get the expensive
    *  full-lookup. The latter group is small in practice — only films
    *  Filmweb didn't surface at first enrichment. */
-  private[enrichment] def refreshAll(): Unit = {
+  private[services] def refreshAll(): Unit = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
     val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.filmwebUrl.isDefined }

@@ -11,7 +11,8 @@ import scala.concurrent.Future
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import services.cinemas.HeliosClient
-import services.enrichment.{MovieCache, MovieRepo, MovieService, FilmwebClient, FilmwebRatings, IdentityMerger, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
+import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
+import services.movies.{IdentityMerger, MovieCache, MovieRepo, MovieService}
 import services.events.EventBus
 import services.ShowtimeCache
 

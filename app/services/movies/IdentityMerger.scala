@@ -1,4 +1,4 @@
-package services.enrichment
+package services.movies
 
 import models.MovieRecord
 import play.api.Logging
@@ -84,7 +84,7 @@ class IdentityMerger(cache: MovieCache) extends Logging {
 
   /** Public sync entry for scripts/tests/backfill. Idempotent: a single call
    *  collapses every row that shares an identity with `triggerKey`. */
-  private[enrichment] def mergeForTrigger(triggerKey: CacheKey): Unit = {
+  private[services] def mergeForTrigger(triggerKey: CacheKey): Unit = {
     val trigger = cache.get(triggerKey).getOrElse(return)
     val groupId = identityKey(trigger).getOrElse(return)
 

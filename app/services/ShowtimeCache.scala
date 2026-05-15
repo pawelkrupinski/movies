@@ -4,7 +4,7 @@ import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, Helios, KinoApollo, KinoBulgarska, KinoMuza, KinoPalacowe, Multikino, Rialto}
 import play.api.Logging
 import services.cinemas.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoApolloClient, KinoBulgarskaClient, KinoMuzaClient, KinoPalacoweClient, MultikinoClient, RialtoClient}
-import services.enrichment.MovieCache
+import services.movies.MovieCache
 import services.events.{EventBus, MovieAdded}
 
 import java.util.concurrent.atomic.AtomicInteger

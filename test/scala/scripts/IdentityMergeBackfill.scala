@@ -1,6 +1,6 @@
 package scripts
 
-import services.enrichment.{MovieCache, MovieRepo, IdentityMerger}
+import services.movies.{MovieCache, MovieRepo, IdentityMerger}
 
 /**
  * One-shot: walk every cached row and invoke `IdentityMerger.mergeForTrigger`

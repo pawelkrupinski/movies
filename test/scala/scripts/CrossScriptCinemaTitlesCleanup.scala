@@ -1,6 +1,6 @@
 package scripts
 
-import services.enrichment.{MovieCache, MovieRepo}
+import services.movies.{MovieCache, MovieRepo}
 import controllers.TitleNormalizer
 
 /**

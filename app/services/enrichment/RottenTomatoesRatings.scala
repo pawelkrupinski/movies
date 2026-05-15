@@ -1,5 +1,7 @@
 package services.enrichment
 
+import services.movies.{CacheKey, MovieCache}
+
 import clients.TmdbClient
 import play.api.Logging
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
@@ -66,11 +68,11 @@ class RottenTomatoesRatings(
   // ── Per-row refresh ────────────────────────────────────────────────────────
 
   /** Dispatch a single-row refresh on the worker pool. */
-  private[enrichment] def schedule(key: CacheKey): Unit =
+  private[services] def schedule(key: CacheKey): Unit =
     worker.execute(() => refreshOne(key))
 
   /** Synchronous version of `schedule` — handy for scripts and tests. */
-  private[enrichment] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
+  private[services] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
 
   /** Synchronous refresh by `(title, year)` — public entry point for scripts. */
   def refreshOneSync(title: String, year: Option[Int]): Unit =
@@ -133,7 +135,7 @@ class RottenTomatoesRatings(
   /** Walk every cached row. Rows with a `rottenTomatoesUrl` get a cheap
    *  Tomatometer refresh; rows without one get the full URL-discovery probe
    *  (and a score refresh if discovery succeeds). */
-  private[enrichment] def refreshAll(): Unit = {
+  private[services] def refreshAll(): Unit = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
     val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.rottenTomatoesUrl.isDefined }

@@ -1,6 +1,6 @@
 package scripts
 
-import services.enrichment.MovieRepo
+import services.movies.MovieRepo
 
 /**
  * Phase-1 backfill for the MovieCache transition.

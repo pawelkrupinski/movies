@@ -1,4 +1,4 @@
-package services.enrichment
+package services.movies
 
 import com.mongodb.MongoException
 import com.mongodb.client.model.ReplaceOptions

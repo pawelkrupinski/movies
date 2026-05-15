@@ -1,5 +1,7 @@
 package services.enrichment
 
+import services.movies.{IdentityMerger, MovieCache, MovieRepo, MovieService}
+
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

@@ -1,4 +1,6 @@
-package services.enrichment
+package services.movies
+
+import services.enrichment.{FilmwebClient, ImdbClient, MetacriticClient, RottenTomatoesClient}
 
 import clients.TmdbClient
 import models.MovieRecord
@@ -25,7 +27,7 @@ import scala.collection.mutable
  *   - A transient TMDB failure must NOT blank an existing row — we invalidate
  *     only AFTER the new TMDB hit is in hand.
  */
-class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
+class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
 
   private class RecordingStub(routes: Map[String, String]) extends HttpFetch {
     val requested = mutable.ListBuffer.empty[String]

@@ -1,7 +1,7 @@
 package scripts
 
 import models.MovieRecord
-import services.enrichment.{MovieRepo, MovieService}
+import services.movies.{MovieRepo, MovieService}
 
 /**
  * Audit duplicate rows across alternative merge keys.

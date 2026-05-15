@@ -1,4 +1,4 @@
-package services.enrichment
+package services.movies
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec

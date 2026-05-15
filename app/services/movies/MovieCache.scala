@@ -1,4 +1,4 @@
-package services.enrichment
+package services.movies
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.{Cinema, CinemaMovie, CinemaShowings, MovieRecord}
@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
  * two cache entries. Equality uses the normalised form; `cleanTitle` retains
  * the original casing for display in snapshots.
  */
-private[enrichment] case class CacheKey(cleanTitle: String, year: Option[Int]) {
+private[services] case class CacheKey(cleanTitle: String, year: Option[Int]) {
   private val normalized = MovieService.normalize(cleanTitle)
   override def hashCode(): Int = (normalized, year).hashCode()
   override def equals(other: Any): Boolean = other match {
@@ -45,14 +45,14 @@ class MovieCache(repo: MovieRepo) extends Logging {
 
   hydrateFromRepo()
 
-  private[enrichment] def keyOf(title: String, year: Option[Int]): CacheKey =
+  private[services] def keyOf(title: String, year: Option[Int]): CacheKey =
     CacheKey(MovieService.searchTitle(title), year)
 
   /** Pure read — never blocks, never schedules. */
-  private[enrichment] def get(key: CacheKey): Option[MovieRecord] =
+  private[services] def get(key: CacheKey): Option[MovieRecord] =
     Option(positive.getIfPresent(key))
 
-  private[enrichment] def isNegative(key: CacheKey): Boolean =
+  private[services] def isNegative(key: CacheKey): Boolean =
     negative.getIfPresent(key) != null
 
   /** Write-through: positive cache + Mongo upsert.
@@ -63,7 +63,7 @@ class MovieCache(repo: MovieRepo) extends Logging {
    *  filtered out so a row's `cinemaTitles` never accumulates spellings in
    *  a script other than the row's own (the `cleanTitle`'s) — legacy
    *  Polish+Cyrillic mixes get cleaned up on the next write. */
-  private[enrichment] def put(key: CacheKey, e: MovieRecord): Unit = {
+  private[services] def put(key: CacheKey, e: MovieRecord): Unit = {
     val priorTitles  = Option(positive.getIfPresent(key)).map(_.cinemaTitles).getOrElse(Set.empty)
     val allVariants  = e.cinemaTitles ++ priorTitles + key.cleanTitle
     val sameScript   = allVariants.filter(t => controllers.TitleNormalizer.sameScript(t, key.cleanTitle))
@@ -87,7 +87,7 @@ class MovieCache(repo: MovieRepo) extends Logging {
    *  than a captured snapshot — so a listener that read the row, made a
    *  slow network call, and now wants to update one field doesn't clobber
    *  concurrent updates to other fields. */
-  private[enrichment] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean = {
+  private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean = {
     val updated = positive.asMap().computeIfPresent(key, new java.util.function.BiFunction[CacheKey, MovieRecord, MovieRecord] {
       override def apply(k: CacheKey, current: MovieRecord): MovieRecord = {
         val next         = updater(current)
@@ -104,17 +104,17 @@ class MovieCache(repo: MovieRepo) extends Logging {
     } else false
   }
 
-  private[enrichment] def markMissing(key: CacheKey): Unit =
+  private[services] def markMissing(key: CacheKey): Unit =
     negative.put(key, java.lang.Boolean.TRUE)
 
   /** Drop all negative entries — used by the daily TMDB retry to give every
    *  previously-failed key one fresh shot. New misses re-populate the cache
    *  organically as they happen. */
-  private[enrichment] def clearNegatives(): Unit = negative.invalidateAll()
+  private[services] def clearNegatives(): Unit = negative.invalidateAll()
 
   /** Drop a row from positive cache + Mongo — used by `reEnrich` to clear the
    *  row before re-fetching every upstream source. */
-  private[enrichment] def invalidate(key: CacheKey): Unit = {
+  private[services] def invalidate(key: CacheKey): Unit = {
     positive.invalidate(key)
     repo.delete(key.cleanTitle, key.year)
   }
@@ -263,7 +263,7 @@ class MovieCache(repo: MovieRepo) extends Logging {
 
   /** Snapshot of (key, enrichment) pairs for the IMDb refresh loop. Copy so a
    *  concurrent `put` mid-iteration doesn't surprise the caller. */
-  private[enrichment] def entries: Seq[(CacheKey, MovieRecord)] = {
+  private[services] def entries: Seq[(CacheKey, MovieRecord)] = {
     import scala.jdk.CollectionConverters._
     positive.asMap().asScala.toSeq
   }

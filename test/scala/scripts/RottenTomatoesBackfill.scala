@@ -1,6 +1,7 @@
 package scripts
 
-import services.enrichment.{MovieRepo, RottenTomatoesClient}
+import services.enrichment.RottenTomatoesClient
+import services.movies.MovieRepo
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger

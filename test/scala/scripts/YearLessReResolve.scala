@@ -2,7 +2,7 @@ package scripts
 
 import clients.TmdbClient
 import models.MovieRecord
-import services.enrichment.MovieRepo
+import services.movies.MovieRepo
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}

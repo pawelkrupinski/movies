@@ -1,6 +1,7 @@
 package scripts
 
-import services.enrichment.{MovieRepo, MetacriticClient}
+import services.enrichment.MetacriticClient
+import services.movies.MovieRepo
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}

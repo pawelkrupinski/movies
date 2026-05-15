@@ -1,5 +1,7 @@
 package services.enrichment
 
+import services.movies.{CacheKey, MovieCache}
+
 import clients.TmdbClient
 import play.api.Logging
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
@@ -69,11 +71,11 @@ class MetascoreRatings(
 
   /** Dispatch a single-row refresh on the worker pool. No-op when the row no
    *  longer exists or can't be resolved. */
-  private[enrichment] def schedule(key: CacheKey): Unit =
+  private[services] def schedule(key: CacheKey): Unit =
     worker.execute(() => refreshOne(key))
 
   /** Synchronous version of `schedule` — used by backfill scripts and tests. */
-  private[enrichment] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
+  private[services] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
 
   /** Synchronous refresh by `(title, year)` — public entry point for scripts.
    *  Looks up the row's cache key the same way the rest of the pipeline does. */
@@ -144,7 +146,7 @@ class MetascoreRatings(
    *  refresh; rows without one get the full URL-discovery probe (and then a
    *  score refresh if discovery succeeds). Per-row failures are logged at
    *  debug — one bad row can't poison the whole tick. */
-  private[enrichment] def refreshAll(): Unit = {
+  private[services] def refreshAll(): Unit = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
     val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.metacriticUrl.isDefined }

@@ -2,7 +2,7 @@ package clients.enrichment
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.enrichment.MovieService
+import services.movies.MovieService
 
 class MovieServiceSpec extends AnyFlatSpec with Matchers {
 
@@ -60,7 +60,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // `getForMerge` fallback that existed in phase 1 is no longer necessary —
   // a plain `get` with any variant finds the row.
 
-  import services.enrichment.{MovieCache, MovieRepo}
+  import services.movies.{MovieCache, MovieRepo}
   import services.events.EventBus
   import clients.TmdbClient
   import models.MovieRecord

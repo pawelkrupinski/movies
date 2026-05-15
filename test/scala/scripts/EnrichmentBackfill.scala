@@ -2,7 +2,8 @@ package scripts
 
 import clients.TmdbClient
 import models.MovieRecord
-import services.enrichment._
+import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
+import services.movies.{MovieCache, MovieRepo, MovieService}
 import services.events.EventBus
 
 import java.util.concurrent.Executors

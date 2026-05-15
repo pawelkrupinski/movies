@@ -1,5 +1,7 @@
 package services.enrichment
 
+import services.movies.{CacheKey, MovieCache}
+
 import play.api.Logging
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 
@@ -68,7 +70,7 @@ class ImdbRatings(cache: MovieCache, imdb: ImdbClient) extends Logging {
   /** Find the IMDb id by title, write it to the cached row, then refresh the
    *  rating in the same call. Public for tests; production goes through the
    *  `onImdbIdMissing` listener. */
-  private[enrichment] def resolveAndRefresh(key: CacheKey, searchTitle: String, year: Option[Int]): Unit =
+  private[services] def resolveAndRefresh(key: CacheKey, searchTitle: String, year: Option[Int]): Unit =
     cache.get(key).foreach { row =>
       if (row.imdbId.isDefined) {
         // Stale event — another resolver beat us to it.
@@ -91,12 +93,12 @@ class ImdbRatings(cache: MovieCache, imdb: ImdbClient) extends Logging {
 
   /** Dispatch a single-row refresh on the worker pool. No-op when the row no
    *  longer exists (was invalidated between event publish and execution). */
-  private[enrichment] def schedule(key: CacheKey): Unit =
+  private[services] def schedule(key: CacheKey): Unit =
     worker.execute(() => refreshOne(key))
 
   /** Synchronous per-row refresh by `CacheKey` — internal callers that
    *  already have the key in hand. */
-  private[enrichment] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
+  private[services] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
 
   /** Synchronous per-row refresh by `(title, year)` — public so scripts and
    *  tests can drive a single row's IMDb refresh on the calling thread,
@@ -125,7 +127,7 @@ class ImdbRatings(cache: MovieCache, imdb: ImdbClient) extends Logging {
    *  rows without an `imdbId` (TMDB resolved them but IMDb hasn't cross-
    *  referenced yet — the daily TMDB-retry tick re-checks those). Runs on
    *  the dedicated `imdb-refresh` thread one entry at a time. */
-  private[enrichment] def refreshAll(): Unit = {
+  private[services] def refreshAll(): Unit = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
     val withImdb  = snapshot.collect { case (k, e) if e.imdbId.isDefined => (k, e, e.imdbId.get) }
