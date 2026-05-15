@@ -272,3 +272,43 @@ If recording a fixture doesn't make sense (the response is trivial, or the
 client is a thin pass-through with no parsing), say so and write a smaller
 unit test instead. Don't skip testing the client entirely just because
 fixtures feel heavy.
+
+## Commit at every stable state
+
+After each self-contained change reaches a stable state — production code
+done, tests written and passing, no leftover compile errors or skipped
+specs — make a git commit before moving on. Don't pile multiple unrelated
+changes into one commit and don't leave finished work sitting uncommitted
+across the next phase. Each commit should be a checkpoint you'd be happy
+to revert to.
+
+What counts as a stable state:
+
+- A bug fix with its regression test, both passing.
+- A new feature plus the tests covering its golden path and the obvious
+  edge cases.
+- A refactor that compiles clean and leaves the test suite green.
+- A mechanical sweep (rename, package move, import shuffle) where the
+  build and tests are still green at the end.
+
+What doesn't:
+
+- Production change without the matching test.
+- Half-done work that's "going to need another pass anyway".
+- A green compile with skipped or commented-out tests.
+
+Commit messages should describe the *why* in one or two sentences, not
+the *what* — the diff already shows the what. The user's recent commit
+style (e.g. `Unify ShowtimeCache + EnrichmentCache into a single
+MovieCache.`, `Move MovieCache, MovieRepo, MovieService, IdentityMerger
+to services.movies.`) is the target tone: a one-liner subject naming the
+change, followed by a short paragraph if the motivation isn't obvious.
+Use a HEREDOC for the message so multi-line formatting survives. Never
+amend a published commit — make a new one.
+
+A long phase that genuinely belongs together (e.g. a multi-file rename
+that only makes sense as one atomic change) is fine to commit as a
+single big commit. But if a phase has internal milestones — phase A
+compiles + tests, phase B compiles + tests, phase C compiles + tests —
+each milestone gets its own commit so the history reads as a sequence
+of safe checkpoints, not one monolith.
