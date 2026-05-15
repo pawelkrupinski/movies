@@ -169,10 +169,9 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       import controllers.MovieController
       import play.api.{Environment, Mode}
       val ctrl = new MovieController(
-        cc                = play.api.test.Helpers.stubControllerComponents(),
-        cache             = null, // ShowtimeCache unused by toSchedules after phase 4
+        cc           = play.api.test.Helpers.stubControllerComponents(),
         movieService = svc,
-        env               = Environment.simple(mode = Mode.Test)
+        env          = Environment.simple(mode = Mode.Test)
       )
       val firstShowtime: java.time.LocalDateTime =
         cache.snapshot().filter { case (_, _, e) => isPrada(e) }

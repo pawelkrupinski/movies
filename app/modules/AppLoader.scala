@@ -90,7 +90,7 @@ class AppComponents(context: Context)
   lazy val showtimeCache = new ShowtimeCache(heliosClient, eventBus, movieCache)
 
   // ── Controllers ───────────────────────────────────────────────────────────
-  lazy val movieController  = new MovieController(controllerComponents, showtimeCache, movieService, environment)
+  lazy val movieController  = new MovieController(controllerComponents, movieService, environment)
   lazy val healthController = new HealthController(controllerComponents)
 
   // ── Router + filters ──────────────────────────────────────────────────────

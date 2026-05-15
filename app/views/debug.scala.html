@@ -1,6 +1,6 @@
 @import models.{Cinema, CinemaShowings, MovieRecord, Showtime}
 @import java.time.format.DateTimeFormatter
-@(rows: Seq[(String, Option[Int], Option[MovieRecord])])
+@(rows: Seq[(String, Option[Int], MovieRecord)])
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -50,8 +50,6 @@
     .reenrich-btn:hover { background: #252540; color: #ccc; }
     .reenrich-btn:disabled { opacity: .4; cursor: default; }
     tr.reenriching td { opacity: .5; }
-    tr.pending td { color: #555; }
-    tr.pending td.title { color: #aab; }
     .ratings { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
     .hidden { display: none !important; }
 
@@ -108,7 +106,7 @@
 
 @_debugNavbar()
 <h1>Debug</h1>
-<div class="summary">@rows.size total · @rows.count(_._3.isDefined) enriched · @rows.count(_._3.isEmpty) pending · click a row to expand · click headers to sort · filter is case-insensitive</div>
+<div class="summary">@rows.size total · click a row to expand · click headers to sort · filter is case-insensitive</div>
 
 <input type="search" id="q" placeholder="Filter by title, original, IMDb id…" oninput="filterRows(this.value)">
 
@@ -126,56 +124,46 @@
     </tr>
   </thead>
   <tbody>
-    @for(((title, year, enrich), idx) <- rows.zipWithIndex) {
-      @defining(enrich.map(_.originalTitle.getOrElse("")).getOrElse("")) { orig =>
-      @defining(enrich.map(_.imdbId.getOrElse("")).getOrElse("")) { imdbId =>
-      <tr class="data @if(enrich.isEmpty) {pending}"
+    @for(((title, year, e), idx) <- rows.zipWithIndex) {
+      @defining(e.originalTitle.getOrElse("")) { orig =>
+      @defining(e.imdbId.getOrElse(""))        { imdbId =>
+      <tr class="data"
           data-row-id="r@idx"
           data-haystack="@{(title + " " + orig + " " + imdbId).toLowerCase}"
           data-title="@title"
           data-orig="@orig"
           data-year="@year.map(_.toString).getOrElse("")"
           data-imdb="@imdbId"
-          data-tmdb="@enrich.flatMap(_.tmdbId).map(_.toString).getOrElse("")"
-          data-imdbR="@enrich.flatMap(_.imdbRating).map(_.toString).getOrElse("")"
-          data-urls="@{enrich.toSeq.flatMap(e => Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten).mkString(" ")}">
+          data-tmdb="@e.tmdbId.map(_.toString).getOrElse("")"
+          data-imdbR="@e.imdbRating.map(_.toString).getOrElse("")"
+          data-urls="@{Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten.mkString(" ")}">
         <td class="title"><a href="@{s"/film?title=${java.net.URLEncoder.encode(title, "UTF-8")}"}" onclick="event.stopPropagation()">@title</a></td>
         <td class="orig">@if(orig.nonEmpty) { @orig } else { <span class="miss">—</span> }</td>
         <td class="year">@year.map(_.toString).getOrElse("—")</td>
         <td class="id">
-          @enrich.flatMap(_.imdbId) match {
+          @e.imdbId match {
             case Some(id) => { <a href="@{s"https://www.imdb.com/title/$id/"}" target="_blank" rel="noopener" onclick="event.stopPropagation()">@id</a> }
             case None     => { <span class="miss">—</span> }
           }
         </td>
         <td class="id">
-          @enrich.flatMap(_.tmdbId) match {
+          @e.tmdbId match {
             case Some(id) => { <a href="@{s"https://www.themoviedb.org/movie/$id"}" target="_blank" rel="noopener" onclick="event.stopPropagation()">@id</a> }
             case None     => { <span class="miss">—</span> }
           }
         </td>
-        <td>
-          @enrich match {
-            case Some(e) => { @_ratingBadges(Some(e), title) }
-            case None    => { <span class="miss">—</span> }
-          }
-        </td>
+        <td>@_ratingBadges(Some(e), title)</td>
         <td class="url-cell">
-          @enrich.flatMap(_.metacriticUrl).map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">MC</a> }
-          @enrich.flatMap(_.rottenTomatoesUrl).map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">RT</a> }
-          @enrich.flatMap(_.filmwebUrl).map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">FW</a> }
+          @e.metacriticUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">MC</a> }
+          @e.rottenTomatoesUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">RT</a> }
+          @e.filmwebUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">FW</a> }
         </td>
         <td>
           <button class="reenrich-btn" type="button" title="Drop and re-fetch all upstream data" onclick="event.stopPropagation()">↻</button>
         </td>
       </tr>
       <tr class="details hidden" data-row-id="r@idx">
-        <td colspan="8">
-          @enrich match {
-            case Some(e) => { @debugDetails(title, year, e) }
-            case None    => { <em class="miss">No enrichment row in cache yet — TMDB stage will fire on the next scrape tick.</em> }
-          }
-        </td>
+        <td colspan="8">@debugDetails(title, year, e)</td>
       </tr>
       }
       }

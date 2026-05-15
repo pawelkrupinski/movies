@@ -3,7 +3,6 @@ package controllers
 import models._
 import play.api.mvc._
 import play.api.{Environment, Mode}
-import services.ShowtimeCache
 import services.movies.MovieService
 
 import java.net.URLDecoder
@@ -35,10 +34,9 @@ case class CinemaMovieSchedule(
 case class CinemaSchedule(cinema: Cinema, movies: Seq[CinemaMovieSchedule])
 
 class MovieController(
-  cc:                ControllerComponents,
-  cache:             ShowtimeCache,
+  cc:           ControllerComponents,
   movieService: MovieService,
-  env:               Environment
+  env:          Environment
 ) extends AbstractController(cc) {
 
   def index(): Action[AnyContent] = Action { request =>
@@ -60,27 +58,7 @@ class MovieController(
 
   def debug(): Action[AnyContent] = Action {
     devOnly {
-      val snapshot = movieService.snapshot()
-      val enriched: Seq[(String, Option[Int], Option[MovieRecord])] =
-        snapshot.map { case (t, y, e) => (t, y, Some(e)) }
-
-      // Pending = a cinema-reported title that no existing row knows about,
-      // either by the (title, year) docId OR by any row's `cinemaTitles`
-      // provenance set. Checking cinemaTitles too catches the case where
-      // KinoBulgarska's `(Bez wyjścia, None)` shouldn't show as pending
-      // because a Multikino-driven `(Bez wyjścia, 2025)` row already records
-      // "Bez wyjścia" as one of its variants.
-      val knownVariants: Set[String] = snapshot.flatMap(_._3.cinemaTitles).toSet
-      val pending: Seq[(String, Option[Int], Option[MovieRecord])] =
-        cache.get()
-          .map(cm => (cm.movie.title, cm.movie.releaseYear))
-          .distinct
-          .filter { case (t, y) =>
-            movieService.get(t, y).isEmpty && !knownVariants.contains(t)
-          }
-          .map { case (t, y) => (t, y, None) }
-
-      val rows = (enriched ++ pending).sortBy { case (t, _, _) => t.toLowerCase }
+      val rows = movieService.snapshot().sortBy { case (t, _, _) => t.toLowerCase }
       Ok(views.html.debug(rows))
     }
   }
