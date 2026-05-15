@@ -75,6 +75,18 @@ class IdentityMerger(cache: MovieCache) extends Logging {
   def mergeFor(title: String, year: Option[Int]): Unit =
     mergeForTrigger(cache.keyOf(title, year))
 
+  /** Sync, blocking walk over every cached row, invoking the merger on each.
+   *  Used at startup to collapse pre-hydrated duplicates that never re-emit
+   *  a `TmdbResolved` event — `MovieService.scheduleTmdbStage` skips rows
+   *  whose `tmdbId` is already set, so the event-driven path can't catch
+   *  legacy duplicates that pre-date the merger or were created across
+   *  multiple restarts. Idempotent: re-running on a clean cache finds no
+   *  siblings and merges nothing. */
+  def mergeAll(): Unit = {
+    val keys = cache.snapshot().map { case (t, y, _) => cache.keyOf(t, y) }
+    keys.foreach(mergeForTrigger)
+  }
+
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   def stop(): Unit = {

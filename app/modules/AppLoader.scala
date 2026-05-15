@@ -138,6 +138,12 @@ class AppComponents(context: Context)
   eventBus.subscribe(filmwebRatings.onTmdbResolved)
   eventBus.subscribe(filmwebRatings.onImdbIdMissing)
 
+  // Collapse any legacy duplicates the event-driven merger can't see —
+  // already-resolved rows don't re-emit `TmdbResolved`, so two rows that
+  // pre-date this code path (or were created across separate restarts
+  // before the merger landed) would otherwise survive forever.
+  identityMerger.mergeAll()
+
   // Start background work and register shutdown hooks. Order matters on stop:
   // every ratings service's stop() must drain its worker pool before the
   // repo's close() runs so in-flight upserts land.

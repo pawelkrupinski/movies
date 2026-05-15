@@ -55,6 +55,32 @@ class IdentityMergerSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Harry Potter", None)) shouldBe None
   }
 
+  // Regression: legacy duplicates that already live in Mongo with both rows
+  // already TMDB-resolved never re-emit a TmdbResolved event (MovieService
+  // skips already-resolved rows), so the event-driven merger never fires for
+  // them. `mergeAll()` is the catch-up sweep that AppLoader calls after
+  // hydration so these duplicates can't survive a restart.
+  "mergeAll" should "collapse pre-hydrated duplicates that never fire a TmdbResolved event" in {
+    val dup = mkEnrichment(tmdbId = Some(1432547), imdbId = Some("tt36148135"),
+                           showings = Map(Multikino -> slot(Multikino)))
+    val seeded = Seq(
+      ("All You Need Is Kill", Some(2025), dup.copy(cinemaShowings = Map(Multikino -> slot(Multikino)))),
+      ("All You Need Is Kill", None,       dup.copy(cinemaShowings = Map(Helios   -> slot(Helios))))
+    )
+    val cache  = new MovieCache(new FakeRepo(seeded))
+    val merger = new IdentityMerger(cache)
+
+    cache.snapshot().size shouldBe 2  // hydrated as-is before the sweep
+
+    merger.mergeAll()
+
+    cache.snapshot().size shouldBe 1
+    val survivor = cache.get(cache.keyOf("All You Need Is Kill", Some(2025)))
+    survivor                                 shouldBe defined
+    survivor.get.cinemaShowings.keySet       shouldBe Set(Multikino, Helios)
+    cache.get(cache.keyOf("All You Need Is Kill", None)) shouldBe None
+  }
+
   it should "be a no-op when the trigger has no siblings (single row in group)" in {
     val cache = new MovieCache(new FakeRepo())
     val only  = mkEnrichment(tmdbId = Some(99), showings = Map(Multikino -> slot(Multikino)))
