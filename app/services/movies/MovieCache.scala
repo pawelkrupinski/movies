@@ -127,16 +127,21 @@ class MovieCache(repo: MovieRepo) extends Logging {
    *  Variant redirect: when the cinema-reported `(title, year)` doesn't have
    *  a row at its primary key, but exactly one existing row already knows
    *  this raw title (via `cinemaTitles`), we write to THAT row's key instead
-   *  of creating a fresh one. This stops the flap loop where a year=None
-   *  cinema title got re-created every 5 min only to be deleted by the
-   *  next IdentityMerger run.
+   *  of creating a fresh one. Returns one `(CinemaMovie, CacheKey)` pair per
+   *  input movie — the `CacheKey` is the *canonical* key the slot actually
+   *  landed on (post-redirect). Callers driving the enrichment pipeline
+   *  (`ShowtimeCache`) publish `MovieRecordCreated` against this canonical
+   *  key, so when two cinemas report the same film with different `year`
+   *  values, both bus events name the same key and the TMDB stage runs
+   *  exactly once — no phantom row for the redirected variant that
+   *  IdentityMerger would otherwise have to clean up at the next startup.
    *
    *  Doesn't touch enrichment-side fields (imdbId, ratings, URLs, …) — the
    *  TMDB / IMDb / MC / RT / Filmweb stages own those and run independently.
    *  Records are kept even when `cinemaShowings` becomes empty (per the
    *  "keep forever" policy): a film that returns next month finds its
    *  prior enrichment data still in place. */
-  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Unit = {
+  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey)] = {
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
     // challenge, parser regex mismatch, ScrapingAnt 503, blank HTML), not a
     // cinema that's genuinely showing zero films right now. Without this
@@ -144,9 +149,9 @@ class MovieCache(repo: MovieRepo) extends Logging {
     // holds across the cache, and the next successful tick would re-add them
     // — producing the visible "row appears and disappears" flicker. Bail out
     // and trust the slot data we have until the next non-empty tick.
-    if (movies.isEmpty) return
+    if (movies.isEmpty) return Seq.empty
 
-    val touched = movies.map { cm =>
+    val resolved = movies.map { cm =>
       val primary = keyOf(cm.movie.title, cm.movie.releaseYear)
       val key     = redirectToExistingVariant(primary).getOrElse(primary)
       val existing = Option(positive.getIfPresent(key))
@@ -172,17 +177,20 @@ class MovieCache(repo: MovieRepo) extends Logging {
         cinemaTitles   = existing.cinemaTitles + cm.movie.title,
         cinemaShowings = existing.cinemaShowings + (cinema -> slot)
       ))
-      key
-    }.toSet
+      (cm, key)
+    }
 
     // Prune: any cache entry that previously had this cinema's slot but
     // wasn't touched this tick → drop the slot. The record itself stays.
+    val touched = resolved.iterator.map(_._2).toSet
     import scala.jdk.CollectionConverters._
     positive.asMap().asScala.iterator
       .filter { case (k, e) => e.cinemaShowings.contains(cinema) && !touched.contains(k) }
       .foreach { case (k, e) =>
         put(k, e.copy(cinemaShowings = e.cinemaShowings - cinema))
       }
+
+    resolved
   }
 
   /** If `primary` doesn't currently exist in the cache, look for an existing

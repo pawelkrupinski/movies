@@ -225,4 +225,83 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     )
     e.displayTitle shouldBe "Top Gun: Maverick"
   }
+
+  // ── Regression: prevent the duplicate from being created in the first place ──
+  //
+  // Production was logging an `IdentityMerger.mergeAll` collapse for the same
+  // ~17 (title, year) pairs on every restart — `Bez wyjścia`, `Drzewo magii`,
+  // `Wartość sentymentalna`, `Diabeł ubiera się u Prady 2`, …, all where two
+  // cinemas reported the same film with different years (one with year=None,
+  // one with year=Some(YYYY)). recordCinemaScrape's redirect already attached
+  // both cinemas' slots to a single row, but `ShowtimeCache.refreshOne`
+  // published a `MovieRecordCreated` event for the RAW (title, year) reported
+  // by each cinema. The TMDB stage ran independently for each raw key, and
+  // when the in-flight TMDB call for the first row hadn't completed yet,
+  // `hasResolvedSiblingByTitle` returned false and the second TMDB call
+  // proceeded to write its own row at (title, year-of-the-second-cinema).
+  // mergeAll then collapsed the pair on the next startup, and the cycle
+  // repeated next deploy.
+  //
+  // Fix: recordCinemaScrape returns the *canonical* CacheKey it actually
+  // wrote each slot to (the redirect target when one applies, the raw key
+  // otherwise). ShowtimeCache publishes MovieRecordCreated using those
+  // canonical keys, so both cinemas' bus events name the same key and the
+  // TMDB stage runs exactly once. No phantom row, no startup merge.
+
+  "recordCinemaScrape" should "return Helios's canonical key as Multikino's row when both report Diabeł Prada with different years" in {
+    val cache = new MovieCache(new FakeRepo)
+
+    // Multikino lands first with year=None.
+    val mkTouched = cache.recordCinemaScrape(Multikino, Seq(multikinoPrada))
+    mkTouched                 should have size 1
+    mkTouched.head._1         shouldBe multikinoPrada
+    mkTouched.head._2         shouldBe cache.keyOf(PradaTitle, None)
+
+    // Helios reports year=Some(2026). The redirect absorbs Helios's slot into
+    // Multikino's row, and recordCinemaScrape returns that as the canonical
+    // key — NOT cache.keyOf(PradaTitle, Some(2026)).
+    val helTouched = cache.recordCinemaScrape(Helios, Seq(heliosPrada))
+    helTouched                should have size 1
+    helTouched.head._1        shouldBe heliosPrada
+    helTouched.head._2        shouldBe cache.keyOf(PradaTitle, None)
+
+    // Only one row exists in the cache — no (PradaTitle, Some(2026)) phantom.
+    cache.snapshot().size     shouldBe 1
+    cache.get(cache.keyOf(PradaTitle, Some(2026))) shouldBe None
+  }
+
+  // End-to-end via the bus-driven pipeline: confirms that publishing events
+  // with the canonical keys (returned by recordCinemaScrape) prevents the
+  // TMDB stage from creating a second row for the year=Some(2026) variant.
+  // svc.stop() drains the worker pool so the assertion is deterministic.
+  "bus-driven scrape pipeline" should "produce exactly one TMDB-resolved row when two cinemas report Diabeł Prada with different years" in {
+    val cache = new MovieCache(new FakeRepo)
+    val bus   = new EventBus
+    val svc   = new MovieService(cache, bus, tmdbStub())
+    bus.subscribe(svc.onMovieRecordCreated)
+
+    // Drive the same wiring `ShowtimeCache.refreshOne` does: publish a
+    // MovieRecordCreated for each canonical key returned by recordCinemaScrape.
+    // The director hint is deliberately omitted — `verifyByDirector` would
+    // otherwise call `/credits`, which the stub doesn't expose, and the
+    // duplicate-prevention contract under test doesn't depend on it.
+    def scrape(cinema: Cinema, cm: CinemaMovie): Unit = {
+      val touched = cache.recordCinemaScrape(cinema, Seq(cm))
+      touched.foreach { case (m, key) =>
+        bus.publish(MovieRecordCreated(key.cleanTitle, key.year, m.movie.originalTitle, None))
+      }
+    }
+
+    scrape(Multikino, multikinoPrada)
+    scrape(Helios,    heliosPrada)
+
+    // Drain the TMDB worker so any in-flight resolutions land before we read.
+    svc.stop()
+
+    val pradaRows = cache.snapshot().filter { case (_, _, e) =>
+      e.tmdbId.contains(928344) || e.imdbId.contains("tt12340108")
+    }
+    pradaRows.size shouldBe 1
+    pradaRows.head._3.cinemaShowings.keySet shouldBe Set(Multikino, Helios)
+  }
 }

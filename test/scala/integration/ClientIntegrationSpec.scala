@@ -12,19 +12,19 @@ class ClientIntegrationSpec
     with ParallelTestExecution {
 
   "MultikinoClient" should "fetch films" in {
-    assertAllHaveRuntime(MultikinoClient.fetch())
+    RetryWithBackoff() { assertAllHaveRuntime(MultikinoClient.fetch()) }
   }
 
   "CharlieMonroeClient" should "fetch films" in {
-    assertAllHaveRuntime(CharlieMonroeClient.fetch())
+    RetryWithBackoff() { assertAllHaveRuntime(CharlieMonroeClient.fetch()) }
   }
 
   "KinoPalacoweClient" should "fetch films" in {
-    assertAllHaveRuntime(KinoPalacoweClient.fetch())
+    RetryWithBackoff() { assertAllHaveRuntime(KinoPalacoweClient.fetch()) }
   }
 
   "HeliosClient" should "fetch films" in {
-    assertAllHaveRuntime(new HeliosClient().fetch())
+    RetryWithBackoff() { assertAllHaveRuntime(new HeliosClient().fetch()) }
   }
 
   // Cinema City lists upcoming films before their duration is published — e.g.
@@ -33,26 +33,26 @@ class ClientIntegrationSpec
   // entries (they still have valid screenings and posters) and require only
   // two-thirds of the catalogue to have a known runtime.
   "CinemaCityClient Kinepolis" should "fetch films" in {
-    assertMostHaveRuntime(CinemaCityClient.fetch("1081", CinemaCityKinepolis))
+    RetryWithBackoff() { assertMostHaveRuntime(CinemaCityClient.fetch("1081", CinemaCityKinepolis)) }
   }
 
   "CinemaCityClient Plaza" should "fetch films" in {
-    assertMostHaveRuntime(CinemaCityClient.fetch("1078", CinemaCityPoznanPlaza))
+    RetryWithBackoff() { assertMostHaveRuntime(CinemaCityClient.fetch("1078", CinemaCityPoznanPlaza)) }
   }
 
   "KinoMuzaClient" should "fetch films" in {
-    assertAllHaveRuntime(KinoMuzaClient.fetch())
+    RetryWithBackoff() { assertAllHaveRuntime(KinoMuzaClient.fetch()) }
   }
 
   "KinoBulgarskaClient" should "fetch films" in {
     // Most films have a runtime, but the cinema occasionally lists
     // preview-screening events ("pokazy przedpremierowe") that don't include
     // one. Don't drop them — they're still real screenings.
-    assertMostHaveRuntime(KinoBulgarskaClient.fetch())
+    RetryWithBackoff() { assertMostHaveRuntime(KinoBulgarskaClient.fetch()) }
   }
 
   "RialtoClient" should "fetch films" in {
-    assertAllHaveRuntime(RialtoClient.fetch())
+    RetryWithBackoff() { assertAllHaveRuntime(RialtoClient.fetch()) }
   }
 
   private def assertAllHaveRuntime(result: Seq[CinemaMovie]) = {

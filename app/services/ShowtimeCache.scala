@@ -68,9 +68,16 @@ class ShowtimeCache(
     try {
       val movies  = fetch()
       val elapsed = System.currentTimeMillis() - t0
-      movieCache.recordCinemaScrape(cinema, movies)
+      // Publish against the *canonical* CacheKey that recordCinemaScrape
+      // actually wrote each slot to — when the redirect absorbed this
+      // scrape's (title, year) into an existing sibling row, the bus event
+      // names the sibling's key so the TMDB stage doesn't run a second
+      // time for a phantom row.
+      val touched = movieCache.recordCinemaScrape(cinema, movies)
       logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms")
-      movies.foreach(cm => bus.publish(MovieRecordCreated(cm.movie.title, cm.movie.releaseYear, cm.movie.originalTitle, cm.director)))
+      touched.foreach { case (cm, key) =>
+        bus.publish(MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, cm.director))
+      }
     } catch {
       case e: Exception =>
         val elapsed = System.currentTimeMillis() - t0
