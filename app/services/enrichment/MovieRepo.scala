@@ -17,8 +17,12 @@ import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * Persistent store for `(title, year) → MovieRecord` records. Backed by a
- * single MongoDB collection (`enrichments`).
+ * Persistent store for `(title, year) → MovieRecord` records. Writes to the
+ * canonical `movies` collection in MongoDB. Reads from both `movies` and the
+ * legacy `enrichments` collection — entries unique to `enrichments` are
+ * merged in, but on a docId collision `movies` wins. Once natural
+ * re-enrichment (or the one-shot `MoviesCollectionMigrate` script) has
+ * drained `enrichments`, a follow-up will drop the dual-read.
  *
  * When `MONGODB_URI` is unset the repo silently no-ops — local dev / tests
  * without Atlas connectivity keep working off the in-memory cache only.
@@ -31,18 +35,32 @@ import scala.util.Try
  */
 class MovieRepo extends Logging {
 
-  private val (clientOpt, coll): (Option[MongoClient], Option[MongoCollection[Document]]) = init()
+  private val (clientOpt, primaryColl, legacyColl)
+    : (Option[MongoClient], Option[MongoCollection[Document]], Option[MongoCollection[Document]]) = init()
 
-  /** Whether Mongo is wired up. Hot path uses `coll` directly. */
-  def enabled: Boolean = coll.isDefined
+  /** Whether Mongo is wired up. Hot path uses `primaryColl` directly. */
+  def enabled: Boolean = primaryColl.isDefined
 
-  /** Snapshot of every persisted enrichment. Returns empty when disabled. */
-  def findAll(): Seq[(String, Option[Int], MovieRecord)] = coll match {
+  /** Snapshot of every persisted record across both collections. `movies`
+   *  wins on docId conflict. Returns empty when disabled. */
+  def findAll(): Seq[(String, Option[Int], MovieRecord)] = primaryColl match {
     case None => Seq.empty
-    case Some(c) =>
+    case Some(primary) =>
       Try {
-        val docs = Await.result(c.find().toFuture(), 30.seconds)
-        docs.flatMap(decode)
+        val primaryDocs = Await.result(primary.find().toFuture(), 30.seconds)
+        val primaryIds  = primaryDocs.iterator
+          .flatMap(_.get("_id"))
+          .flatMap(v => Try(v.asString().getValue).toOption)
+          .toSet
+        val legacyOnly = legacyColl.toSeq.flatMap { c =>
+          Try(Await.result(c.find().toFuture(), 30.seconds)).getOrElse(Seq.empty)
+        }.filterNot { d =>
+          d.get("_id").flatMap(v => Try(v.asString().getValue).toOption)
+            .exists(primaryIds.contains)
+        }
+        if (legacyOnly.nonEmpty)
+          logger.info(s"MovieRepo.findAll merged ${legacyOnly.size} legacy-only doc(s) from 'enrichments'.")
+        (primaryDocs ++ legacyOnly).flatMap(decode)
       }.recover {
         case ex: MongoException =>
           logger.warn(s"MovieRepo.findAll failed: ${ex.getMessage}")
@@ -50,19 +68,24 @@ class MovieRepo extends Logging {
       }.getOrElse(Seq.empty)
   }
 
-  /** Remove a single (title, year) row. Best-effort — failures are logged. */
-  def delete(title: String, year: Option[Int]): Unit = coll.foreach { c =>
-    val id = docId(title, year)
-    Try {
-      Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
-      ()
-    }.recover {
-      case ex: Throwable => logger.warn(s"MovieRepo.delete($title, $year) failed: ${ex.getMessage}")
+  /** Remove a single (title, year) row from both collections. Best-effort —
+   *  failures are logged. */
+  def delete(title: String, year: Option[Int]): Unit = primaryColl.foreach { c =>
+    val id     = docId(title, year)
+    val filter = Filters.eq("_id", id)
+    (Seq(c) ++ legacyColl).foreach { coll =>
+      Try {
+        Await.result(coll.deleteOne(filter).toFuture(), 10.seconds)
+        ()
+      }.recover {
+        case ex: Throwable => logger.warn(s"MovieRepo.delete($title, $year) failed: ${ex.getMessage}")
+      }
     }
   }
 
-  /** Write-through upsert. Best-effort — failures are logged, never thrown. */
-  def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = coll.foreach { c =>
+  /** Write-through upsert to the canonical `movies` collection. Best-effort —
+   *  failures are logged, never thrown. */
+  def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = primaryColl.foreach { c =>
     val id   = docId(title, year)
     val doc  = encode(id, title, year, e)
     val opts = new ReplaceOptions().upsert(true)
@@ -80,20 +103,37 @@ class MovieRepo extends Logging {
     }
   }
 
-  /** Update the row at `(title, year)` only if it currently exists in Mongo.
-   *  Returns true on update, false when no doc matched (concurrent delete,
-   *  or row never existed). Used by the cache's `putIfPresent` so a rating
-   *  write that races against `IdentityMerger`'s delete can't resurrect the
-   *  loser by upserting it back into existence. */
-  def updateIfPresent(title: String, year: Option[Int], e: MovieRecord): Boolean = coll match {
+  /** Update the row at `(title, year)` only if it currently exists in either
+   *  collection. Writes the update to the canonical `movies` collection
+   *  (upserting there iff the doc exists in `enrichments` but not yet in
+   *  `movies` — so the legacy row migrates on first rating refresh).
+   *  Returns true when an existing row was updated, false when neither
+   *  collection had a matching doc. Used by the cache's `putIfPresent` so a
+   *  rating write that races against `IdentityMerger`'s delete can't
+   *  resurrect the loser by upserting it back into existence. */
+  def updateIfPresent(title: String, year: Option[Int], e: MovieRecord): Boolean = primaryColl match {
     case None => false
-    case Some(c) =>
+    case Some(primary) =>
       val id   = docId(title, year)
       val doc  = encode(id, title, year, e)
-      val opts = new ReplaceOptions().upsert(false)
+      val filter = Filters.eq("_id", id)
       Try {
-        val result = Await.result(c.replaceOne(Filters.eq("_id", id), doc, opts).toFuture(), 10.seconds)
-        result.getMatchedCount > 0
+        val primaryResult = Await.result(primary.replaceOne(filter, doc, new ReplaceOptions().upsert(false)).toFuture(), 10.seconds)
+        if (primaryResult.getMatchedCount > 0) true
+        else legacyColl match {
+          case None => false
+          case Some(legacy) =>
+            val legacyCount = Await.result(legacy.countDocuments(filter).toFuture(), 10.seconds)
+            if (legacyCount == 0) false
+            else {
+              // Legacy has the row but `movies` doesn't yet — migrate by
+              // upserting into `movies`. The legacy doc is left in place;
+              // the dual-read in findAll dedupes by _id with `movies`
+              // winning, so this never causes a duplicate.
+              Await.result(primary.replaceOne(filter, doc, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
+              true
+            }
+        }
       }.recover {
         case ex: Throwable if isClusterClosed(ex) => false
         case ex: Throwable =>
@@ -105,28 +145,39 @@ class MovieRepo extends Logging {
   /** Close the underlying MongoClient. No-op when Mongo isn't configured. */
   def close(): Unit = clientOpt.foreach(_.close())
 
-  private def init(): (Option[MongoClient], Option[MongoCollection[Document]]) =
+  private def init(): (Option[MongoClient], Option[MongoCollection[Document]], Option[MongoCollection[Document]]) =
     Env.get("MONGODB_URI") match {
       case None =>
         logger.info("MONGODB_URI not set — MovieRepo disabled (in-memory cache only).")
-        (None, None)
+        (None, None, None)
       case Some(uri) =>
         Try {
-          val db     = Env.get("MONGODB_DB").getOrElse("kinowo")
-          val client = MongoClient(uri)
-          val coll   = client.getDatabase(db).getCollection[Document]("enrichments")
-          // Touch the collection to surface connectivity errors at startup, not
-          // on the first read after the app is "up".
-          Await.result(coll.countDocuments().toFuture(), 10.seconds)
-          logger.info(s"MovieRepo connected to $db.enrichments")
-          (client, coll)
+          val dbName  = Env.get("MONGODB_DB").getOrElse("kinowo")
+          val client  = MongoClient(uri)
+          val db      = client.getDatabase(dbName)
+          val primary = db.getCollection[Document]("movies")
+          // Touch the canonical collection to surface connectivity errors at
+          // startup, not on the first read after the app is "up".
+          Await.result(primary.countDocuments().toFuture(), 10.seconds)
+          // Legacy is best-effort: if it can't be touched (permissions,
+          // already dropped) we keep going with primary only.
+          val legacy = Try {
+            val l = db.getCollection[Document]("enrichments")
+            Await.result(l.countDocuments().toFuture(), 10.seconds)
+            l
+          }.toOption
+          logger.info(
+            s"MovieRepo connected to $dbName.movies" +
+            legacy.fold("")(_ => s" (+ legacy $dbName.enrichments for dual-read)")
+          )
+          (client, primary, legacy)
         }.recover {
           case ex: Throwable =>
             logger.error(s"MovieRepo init failed (${ex.getMessage}) — falling back to in-memory cache.")
             null
         }.toOption.filter(_ != null) match {
-          case Some((c, coll)) => (Some(c), Some(coll))
-          case None            => (None, None)
+          case Some((c, primary, legacy)) => (Some(c), Some(primary), legacy)
+          case None                       => (None, None, None)
         }
     }
 
