@@ -55,7 +55,7 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
   // ── Pre-existing Arabic→Roman behaviour still applies ─────────────────────
 
   // The decoration patterns now live in TitleNormalizer (formerly only in
-  // EnrichmentService.searchTitle) and feed into `canonical`, so anniversary
+  // MovieService.searchTitle) and feed into `canonical`, so anniversary
   // and wersja variants collapse with their base film for merging.
 
   it should "merge 'Top Gun 40th Anniversary' with 'Top Gun' via the decoration-stripped canonical" in {

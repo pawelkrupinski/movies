@@ -1,0 +1,115 @@
+package models
+
+/**
+ * Cross-cinema metadata about a film — ratings + the URLs you need to link out.
+ * Looked up by (cleaned title + year) once and then shared across every
+ * cinema-screening of that same film.
+ *
+ * `imdbId` is optional because TMDB sometimes returns a hit for which it has
+ * no IMDb cross-reference yet (very recent releases, niche films). The
+ * MovieRecord is still useful — TMDB id + Filmweb / Metacritic / RT URLs all
+ * work without an IMDb id; only the IMDb rating + IMDb link are unavailable.
+ * The daily TMDB-retry tick re-checks rows with imdbId=None so they get
+ * filled when IMDb eventually indexes the film.
+ */
+case class MovieRecord(
+  imdbId:            Option[String],
+  imdbRating:        Option[Double],
+  metascore:         Option[Int],
+  originalTitle:     Option[String],
+  filmwebUrl:        Option[String] = None,
+  filmwebRating:     Option[Double] = None,
+  rottenTomatoes:    Option[Int]    = None,
+  tmdbId:            Option[Int]    = None,
+  metacriticUrl:     Option[String] = None,
+  rottenTomatoesUrl: Option[String] = None,
+  // Every raw cinema-reported title that has ever mapped to this record.
+  // Provenance for the merge-key docId; the corpus anchor for cross-tick
+  // stability of the merge rule.
+  cinemaTitles:      Set[String]    = Set.empty,
+  // Per-cinema data from the most recent scrape tick. Replaces wholesale per
+  // cinema per tick. Empty Map for rows that exist only because the TMDB
+  // stage resolved them (no cinema is currently screening). Merged top-level
+  // values (posterUrl, synopsis, …) are computed on the fly from this map —
+  // see the helper methods below — so dropped-cinema cleanup costs nothing.
+  cinemaShowings:    Map[Cinema, CinemaShowings]   = Map.empty
+) {
+  def imdbUrl: Option[String] = imdbId.map(id => s"https://www.imdb.com/title/$id/")
+  def tmdbUrl: Option[String] = tmdbId.map(id => s"https://www.themoviedb.org/movie/$id")
+
+  // ── Merged top-level values derived from cinemaShowings ──────────────────
+  //
+  // Computed on the fly so dropped-cinema cleanup doesn't need a separate
+  // sync step. Ordering rule for "prefer one cinema's value" is Multikino
+  // first, then the rest in `Cinema.all` order — matches today's
+  // `MovieController.metaPriority`.
+
+  /** Iterate cinemaShowings with Multikino first, then everything else in
+   *  Cinema.all's stable order. The output is what's used to pick "best"
+   *  value for fields that have a single source-of-truth across cinemas. */
+  private def prioritizedShowings: Seq[(Cinema, CinemaShowings)] = {
+    val priority: Cinema => Int = c => if (c == Multikino) 0 else 1
+    cinemaShowings.toSeq.sortBy { case (c, _) => (priority(c), Cinema.all.indexOf(c)) }
+  }
+
+  /** Display title chosen across known cinema variants. Falls back to the
+   *  first cinemaTitle when preferredDisplay returns nothing (single-variant
+   *  group) or to a stable empty-string sentinel when the record has no
+   *  variants yet (TMDB resolved with no cinema scrape yet). */
+  def displayTitle: String =
+    controllers.TitleNormalizer.preferredDisplay(cinemaTitles.toSeq)
+      .orElse(cinemaTitles.headOption)
+      .getOrElse("")
+
+  /** First non-empty poster URL with Multikino preferred. */
+  def posterUrl: Option[String] =
+    prioritizedShowings.iterator.flatMap(_._2.posterUrl).nextOption()
+
+  /** Longest non-empty synopsis across cinemas (different cinemas write
+   *  different-length blurbs; the longest tends to be the most complete). */
+  def synopsis: Option[String] =
+    cinemaShowings.values.flatMap(_.synopsis).toSeq.sortBy(-_.length).headOption
+
+  /** Longest non-empty cast string across cinemas. Same rationale as
+   *  `synopsis`. */
+  def cast: Option[String] =
+    cinemaShowings.values.flatMap(_.cast).toSeq.sortBy(-_.length).headOption
+
+  /** First non-empty director with Multikino preferred. */
+  def director: Option[String] =
+    prioritizedShowings.iterator.flatMap(_._2.director).nextOption()
+
+  /** First non-None runtime (cinemas tend to agree; if not, prefer Multikino). */
+  def runtimeMinutes: Option[Int] =
+    prioritizedShowings.iterator.flatMap(_._2.runtimeMinutes).nextOption()
+
+  /** First non-None release year across cinemas. */
+  def releaseYear: Option[Int] =
+    prioritizedShowings.iterator.flatMap(_._2.releaseYear).nextOption()
+
+  /** Cinema → film deep-link, when that cinema reports one. */
+  def filmUrlFor(cinema: Cinema): Option[String] = cinemaShowings.get(cinema).flatMap(_.filmUrl)
+
+  /** Cinema → showtimes (empty when that cinema isn't screening). */
+  def showtimesFor(cinema: Cinema): Seq[Showtime] =
+    cinemaShowings.get(cinema).map(_.showtimes).getOrElse(Seq.empty)
+
+  /** Cinema-reported original/international title — first non-empty with
+   *  Multikino preferred. Separate from `originalTitle` (the TMDB-resolved
+   *  production-language title): this is what the cinema's own API exposed,
+   *  used as a fallback hint when `reEnrich` triggers a fresh TMDB search. */
+  def cinemaOriginalTitle: Option[String] =
+    prioritizedShowings.iterator.flatMap(_._2.originalTitle).nextOption()
+
+  /** Display-time URL: validated stored URL if we have one, else an on-the-fly
+   *  search URL (for legacy records that pre-date URL persistence). */
+  def metacriticHref(fallbackTitle: String): String = metacriticUrl.getOrElse {
+    val q = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
+    s"https://www.metacritic.com/search/$q/?category=2"
+  }
+
+  def rottenTomatoesHref(fallbackTitle: String): String = rottenTomatoesUrl.getOrElse {
+    val q = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
+    s"https://www.rottentomatoes.com/search?search=$q"
+  }
+}

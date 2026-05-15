@@ -1,6 +1,6 @@
 package services.enrichment
 
-import models.Enrichment
+import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, MovieAdded, TmdbResolved}
@@ -16,15 +16,15 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
   // ── Scaffolding ─────────────────────────────────────────────────────────────
 
-  private class FakeRepo(seed: Seq[(String, Option[Int], Enrichment)] = Seq.empty)
-      extends EnrichmentRepo {
-    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), Enrichment]
-    val upserts = mutable.ListBuffer.empty[(String, Option[Int], Enrichment)]
+  private class FakeRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
+      extends MovieRepo {
+    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), MovieRecord]
+    val upserts = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
     seed.foreach { case (t, y, e) => store.put((t, y), e) }
     override def enabled: Boolean = true
-    override def findAll(): Seq[(String, Option[Int], Enrichment)] =
+    override def findAll(): Seq[(String, Option[Int], MovieRecord)] =
       store.iterator.map { case ((t, y), e) => (t, y, e) }.toSeq
-    override def upsert(t: String, y: Option[Int], e: Enrichment): Unit = {
+    override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = {
       store.put((t, y), e); upserts.append((t, y, e))
     }
     override def delete(t: String, y: Option[Int]): Unit = { store.remove((t, y)); () }
@@ -51,8 +51,8 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     imdbId:        String,
     filmwebUrl:    Option[String] = None,
     filmwebRating: Option[Double] = None
-  ): Enrichment =
-    Enrichment(
+  ): MovieRecord =
+    MovieRecord(
       imdbId        = Some(imdbId), imdbRating = None, metascore = None,
       originalTitle = None, tmdbId = Some(42),
       filmwebUrl    = filmwebUrl,
@@ -66,7 +66,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val repo = new FakeRepo(Seq(
       ("Mortal Kombat II", Some(2026), mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(6.0)))
     ))
-    val cache   = new EnrichmentCache(repo)
+    val cache   = new MovieCache(repo)
     val filmweb = new FilmwebClient(new StubFetch(Map(
       "/film/10007434/rating" -> """{"rate":6.72,"count":1000}"""
     )))
@@ -82,7 +82,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     // "unstubbed URL".
     val url = "https://www.filmweb.pl/film/Title-9999"
     val repo = new FakeRepo(Seq(("X", None, mkEnrichment("tt1", filmwebUrl = Some(url)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val filmweb = new FilmwebClient(new StubFetch(Map(
       "/film/9999/rating" -> """{"rate":7.5,"count":1}"""
     )))
@@ -96,7 +96,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
   "refreshOneSync (no stored URL)" should "fall through to filmweb.lookup, populating both URL and rating" in {
     val repo  = new FakeRepo(Seq(("Drama", Some(2024), mkEnrichment("tt1"))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val filmweb = new FilmwebClient(new StubFetch(Map(
       "/live/search"          -> """{"searchHits":[{"id":555,"type":"film","matchedTitle":"Drama"}]}""",
       "/film/555/info"        -> """{"title":"Drama","year":2024}""",
@@ -117,7 +117,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   it should "swallow Filmweb fetch failures without throwing" in {
     val url  = "https://www.filmweb.pl/film/Foo-7"
     val repo = new FakeRepo(Seq(("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(6.0)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val brokenFilmweb = new FilmwebClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("boom")
     })
@@ -128,7 +128,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
-    val cache = new EnrichmentCache(new FakeRepo())
+    val cache = new MovieCache(new FakeRepo())
     val ratings = new FilmwebRatings(cache, new FilmwebClient(deadFetch))
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Missing", None))
   }
@@ -136,7 +136,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   it should "not write back when the rating is unchanged (idempotent)" in {
     val url = "https://www.filmweb.pl/film/Foo-12"
     val repo = new FakeRepo(Seq(("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(7.5)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     repo.upserts.clear()
     val filmweb = new FilmwebClient(new StubFetch(Map("/film/12/rating" -> """{"rate":7.5,"count":1}""")))
     val ratings = new FilmwebRatings(cache, filmweb)
@@ -156,7 +156,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ("B", None, mkEnrichment("tt2", filmwebUrl = Some(urlB), filmwebRating = Some(6.0))),  // unchanged
       ("C", None, mkEnrichment("tt3"))                                                       // full lookup
     ))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val filmweb = new FilmwebClient(new StubFetch(Map(
       "/film/1/rating"   -> """{"rate":7.4,"count":1}""",
       "/film/2/rating"   -> """{"rate":6.0,"count":1}""",
@@ -181,7 +181,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val bus   = new EventBus()
     val url   = "https://www.filmweb.pl/film/Foo-99"
     val repo  = new FakeRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", filmwebUrl = Some(url)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val filmweb = new FilmwebClient(new StubFetch(Map("/film/99/rating" -> """{"rate":7.4,"count":1}""")))
     val ratings = new FilmwebRatings(cache, filmweb)
     bus.subscribe(ratings.onTmdbResolved)
@@ -193,7 +193,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
     val bus   = new EventBus()
-    val cache = new EnrichmentCache(new FakeRepo())
+    val cache = new MovieCache(new FakeRepo())
     val ratings = new FilmwebRatings(cache, new FilmwebClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))

@@ -1,5 +1,5 @@
-@import models.Enrichment
-@(enrichment: Option[Enrichment], fallbackTitle: String)
+@import models.MovieRecord
+@(enrichment: Option[MovieRecord], fallbackTitle: String)
 @enrichment.map { e =>
   <div class="ratings">
     @e.imdbRating.map { r =>

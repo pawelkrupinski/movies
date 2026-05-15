@@ -1,19 +1,19 @@
 package integration
 
-import models.Enrichment
+import models.MovieRecord
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.MongoClient
 import org.mongodb.scala.model.Filters
-import services.enrichment.EnrichmentRepo
+import services.enrichment.MovieRepo
 import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
 /**
- * Live test of EnrichmentRepo against real MongoDB Atlas. Requires MONGODB_URI
+ * Live test of MovieRepo against real MongoDB Atlas. Requires MONGODB_URI
  * to be set (in `.env.local` or the environment). Skips otherwise so CI doesn't
  * fail without secrets.
  *
@@ -21,11 +21,11 @@ import scala.concurrent.duration._
  * up. Run-isolated so it won't interfere with the production collection of
  * real enrichments.
  */
-class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
-  private val repo = new EnrichmentRepo()
+  private val repo = new MovieRepo()
 
   // Tidy sentinel rows so they don't leak into the production positive cache
   // at the next app startup (the service hydrates *everything* from Mongo).
@@ -41,14 +41,14 @@ class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     repo.close()
   } finally super.afterAll()
 
-  "EnrichmentRepo" should "be enabled when MONGODB_URI is set" in {
+  "MovieRepo" should "be enabled when MONGODB_URI is set" in {
     repo.enabled shouldBe true
   }
 
-  it should "round-trip an Enrichment: upsert → findAll → match" in {
+  it should "round-trip an MovieRecord: upsert → findAll → match" in {
     val sentinelTitle = "__integration-test-sentinel__"
     val sentinelYear  = Some(1900)
-    val toStore = Enrichment(
+    val toStore = MovieRecord(
       imdbId         = Some("tt0000001"),
       imdbRating     = Some(7.5),
       metascore      = Some(80),
@@ -81,7 +81,7 @@ class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
   it should "handle Enrichments with all-None optional fields" in {
     val title = "__integration-test-sparse__"
-    val toStore = Enrichment(
+    val toStore = MovieRecord(
       imdbId         = Some("tt0000002"),
       imdbRating     = None,
       metascore      = None,
@@ -115,7 +115,7 @@ class EnrichmentRepoIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   it should "collapse case-variant cleanTitle upserts into a single Mongo row" in {
     val titleCaps = "__integration-test-CASEDEDUPE__"
     val titleLow  = "__integration-test-casededupe__"
-    val withUrls = Enrichment(
+    val withUrls = MovieRecord(
       imdbId            = Some("tt0000010"),
       imdbRating        = Some(7.5),
       metascore         = Some(80),

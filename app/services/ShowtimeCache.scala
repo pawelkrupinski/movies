@@ -4,14 +4,16 @@ import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, Helios, KinoApollo, KinoBulgarska, KinoMuza, KinoPalacowe, Multikino, Rialto}
 import play.api.Logging
 import services.cinemas.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoApolloClient, KinoBulgarskaClient, KinoMuzaClient, KinoPalacoweClient, MultikinoClient, RialtoClient}
+import services.enrichment.MovieCache
 import services.events.{EventBus, MovieAdded}
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{CountDownLatch, Executors, TimeUnit}
 
 class ShowtimeCache(
-  heliosClient: HeliosClient,
-  bus:          EventBus
+  heliosClient:    HeliosClient,
+  bus:             EventBus,
+  movieCache: MovieCache
 ) extends Logging {
 
   logger.info(s"Starting — commit ${Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")}")
@@ -77,6 +79,10 @@ class ShowtimeCache(
       val movies  = fetch()
       val elapsed = System.currentTimeMillis() - t0
       cache.put(cinema, movies)
+      // Dual-write to the unified store. Phase 3 — readers still use this
+      // class's Caffeine cache; phase 4 will swap them over and this `cache`
+      // becomes the cinema-detail-only buffer (or goes away entirely).
+      movieCache.recordCinemaScrape(cinema, movies)
       logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms")
       movies.foreach(cm => bus.publish(MovieAdded(cm.movie.title, cm.movie.releaseYear, cm.movie.originalTitle, cm.director)))
     } catch {

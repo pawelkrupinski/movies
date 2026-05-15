@@ -61,7 +61,7 @@ run can be tuned.
 
 ## Never persist Metacritic or Rotten Tomatoes search URLs
 
-`Enrichment.metacriticUrl` / `Enrichment.rottenTomatoesUrl` may only hold a
+`MovieRecord.metacriticUrl` / `MovieRecord.rottenTomatoesUrl` may only hold a
 **canonical** `/movie/...` or `/m/...` URL — the URL of the actual film page.
 Search URLs (`/search/<query>` on Metacritic, `/search?search=<query>` on RT)
 must never be written to the database or the in-memory cache.
@@ -69,7 +69,7 @@ must never be written to the database or the in-memory cache.
 Why: search URLs are unstable (the result set changes as titles get added /
 renamed), they cache poorly on third-party sites for years, and most
 importantly Mongo persistence makes them sticky — a bad slug stays bad until
-someone re-enriches. The view layer (`Enrichment.metacriticHref` /
+someone re-enriches. The view layer (`MovieRecord.metacriticHref` /
 `rottenTomatoesHref`) already synthesises a display-time search link when the
 stored URL is `None`, so dropping search URLs from persistence loses nothing
 user-facing.

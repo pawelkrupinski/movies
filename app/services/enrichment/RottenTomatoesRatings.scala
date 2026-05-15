@@ -20,11 +20,11 @@ import scala.util.{Failure, Success, Try}
  * self-subscribes or self-schedules (CLAUDE.md).
  *
  * URL resolution needs TMDB data (release year, English title) that the
- * Enrichment row alone doesn't carry — we hit `tmdb.details(tmdbId)` lazily
+ * MovieRecord row alone doesn't carry — we hit `tmdb.details(tmdbId)` lazily
  * only when a row needs URL discovery.
  */
 class RottenTomatoesRatings(
-  cache: EnrichmentCache,
+  cache: MovieCache,
   tmdb:  TmdbClient,
   rt:    RottenTomatoesClient
 ) extends Logging {
@@ -88,7 +88,7 @@ class RottenTomatoesRatings(
       urlOpt.foreach(url => refreshScoreFromUrl(key, e, url))
     }
 
-  private def resolveAndPersistUrl(key: CacheKey, e: models.Enrichment): Option[String] =
+  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[String] =
     e.tmdbId.flatMap { tmdbId =>
       val linkTitle  = e.originalTitle.getOrElse(key.cleanTitle)
       val rtFallback = if (linkTitle != key.cleanTitle) Some(key.cleanTitle) else None
@@ -113,17 +113,18 @@ class RottenTomatoesRatings(
 
       resolved.foreach { url =>
         logger.debug(s"RT: ${key.cleanTitle} discovered $url")
-        cache.put(key, e.copy(rottenTomatoesUrl = Some(url)))
+        cache.putIfPresent(key, _.copy(rottenTomatoesUrl = Some(url)))
       }
       resolved
     }
 
-  private def refreshScoreFromUrl(key: CacheKey, e: models.Enrichment, url: String): Unit =
+  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit =
     Try(rt.scoreFor(url)).toOption.flatten match {
       case Some(score) if !e.rottenTomatoes.contains(score) =>
-        val current = cache.get(key).getOrElse(e)
-        logger.debug(s"RT: ${key.cleanTitle} $url ${current.rottenTomatoes.getOrElse("—")} → $score")
-        cache.put(key, current.copy(rottenTomatoes = Some(score)))
+        cache.putIfPresent(key, current => {
+          logger.debug(s"RT: ${key.cleanTitle} $url ${current.rottenTomatoes.getOrElse("—")} → $score")
+          current.copy(rottenTomatoes = Some(score))
+        })
       case _ => ()
     }
 
@@ -147,7 +148,7 @@ class RottenTomatoesRatings(
       Try(rt.scoreFor(url)) match {
         case Success(fresh) if fresh != enrichment.rottenTomatoes =>
           logger.debug(s"RT refresh: ${key.cleanTitle} $url ${enrichment.rottenTomatoes.getOrElse("—")} → ${fresh.getOrElse("—")}")
-          cache.put(key, enrichment.copy(rottenTomatoes = fresh))
+          cache.putIfPresent(key, _.copy(rottenTomatoes = fresh))
           changed += 1
         case Success(_) => ()
         case Failure(ex) =>
@@ -182,7 +183,7 @@ class RottenTomatoesRatings(
   }
 
   /** Drain the worker pool so in-flight upserts hit Mongo before
-   *  `EnrichmentRepo` closes its client. */
+   *  `MovieRepo` closes its client. */
   def stop(): Unit = {
     worker.shutdown()
     refreshScheduler.shutdown()

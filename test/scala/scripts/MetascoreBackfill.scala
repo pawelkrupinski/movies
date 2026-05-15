@@ -1,6 +1,6 @@
 package scripts
 
-import services.enrichment.{EnrichmentRepo, MetacriticClient}
+import services.enrichment.{MovieRepo, MetacriticClient}
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -27,7 +27,7 @@ object MetascoreBackfill {
   private case class Unchanged(title: String, year: Option[Int], orig: Option[String], hasUrl: Boolean, current: Option[Int]) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repo = new EnrichmentRepo()
+    val repo = new MovieRepo()
     if (!repo.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)

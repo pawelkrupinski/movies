@@ -8,7 +8,7 @@ import java.util.concurrent.{Executors, TimeUnit}
 import scala.util.{Failure, Success, Try}
 
 /**
- * IMDb rating maintenance — extracted out of `EnrichmentService` so the IMDb
+ * IMDb rating maintenance — extracted out of `MovieService` so the IMDb
  * GraphQL CDN's tempo doesn't block (or get blocked by) the TMDB stage.
  *
  * Two responsibilities:
@@ -22,7 +22,7 @@ import scala.util.{Failure, Success, Try}
  * the periodic tick and registers `stop()` as a shutdown hook. The class
  * does not self-subscribe or self-schedule (CLAUDE.md).
  */
-class ImdbRatings(cache: EnrichmentCache, imdb: ImdbClient) extends Logging {
+class ImdbRatings(cache: MovieCache, imdb: ImdbClient) extends Logging {
 
   // IMDb's GraphQL CDN is fast and we only have a few hundred rows; 3 workers
   // is plenty for both event-driven per-row refresh and the hourly walk's
@@ -77,7 +77,9 @@ class ImdbRatings(cache: EnrichmentCache, imdb: ImdbClient) extends Logging {
       Try(imdb.findId(searchTitle, year)).toOption.flatten match {
         case Some(id) =>
           logger.info(s"IMDb id resolved via search: ${key.cleanTitle} (${key.year.getOrElse("?")}) → $id")
-          cache.put(key, row.copy(imdbId = Some(id)))
+          // putIfPresent so an `IdentityMerger` delete that happened between
+          // event publish and id resolution doesn't get resurrected here.
+          cache.putIfPresent(key, _.copy(imdbId = Some(id)))
           // Chain the normal rating refresh now that we have an id.
           refreshOne(key)
         case None =>
@@ -112,7 +114,7 @@ class ImdbRatings(cache: EnrichmentCache, imdb: ImdbClient) extends Logging {
       Try(imdb.lookup(id)).toOption.flatten match {
         case Some(rating) if !e.imdbRating.contains(rating) =>
           logger.debug(s"IMDb: ${key.cleanTitle} $id ${e.imdbRating.getOrElse("—")} → $rating")
-          cache.put(key, e.copy(imdbRating = Some(rating)))
+          cache.putIfPresent(key, _.copy(imdbRating = Some(rating)))
         case _ => ()
       }
     }
@@ -136,7 +138,7 @@ class ImdbRatings(cache: EnrichmentCache, imdb: ImdbClient) extends Logging {
       Try(imdb.lookup(id)) match {
         case Success(fresh) if fresh != enrichment.imdbRating =>
           logger.debug(s"IMDb refresh: ${key.cleanTitle} $id ${enrichment.imdbRating.getOrElse("—")} → ${fresh.getOrElse("—")}")
-          cache.put(key, enrichment.copy(imdbRating = fresh))
+          cache.putIfPresent(key, _.copy(imdbRating = fresh))
           changed += 1
         case Success(_) => ()
         case Failure(ex) =>
@@ -164,7 +166,7 @@ class ImdbRatings(cache: EnrichmentCache, imdb: ImdbClient) extends Logging {
   }
 
   /** Drain the worker pool so in-flight upserts hit Mongo before
-   *  `EnrichmentRepo` closes its client. `AppLoader` must register this so
+   *  `MovieRepo` closes its client. `AppLoader` must register this so
    *  the repo's close hook runs strictly after this returns. */
   def stop(): Unit = {
     worker.shutdown()

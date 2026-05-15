@@ -18,7 +18,7 @@ object TitleNormalizer {
   // Single set of patterns reused by:
   //   - mergeKey / preferredDisplay  — so "Top Gun 40th Anniversary" and a
   //     plain "Top Gun" listing collapse into one card.
-  //   - EnrichmentService.searchTitle — so the TMDB/OMDb query is "Top Gun",
+  //   - MovieService.searchTitle — so the TMDB/OMDb query is "Top Gun",
   //     not "Top Gun 40th Anniversary" (the latter doesn't match anything).
   //
   // Patterns target decoration that cinemas apply to a base film title —
@@ -66,6 +66,31 @@ object TitleNormalizer {
       .replaceAll("\\p{M}", "")
       .toLowerCase
       .replaceAll("[^a-z0-9]+", "")
+
+  /** Corpus-independent stable key — the same collapse as `mergeKeyLookup`'s
+   *  most-aggressive tier (`stripPunct` of `canonical`), applied
+   *  unconditionally rather than gated on a sibling reducing to the same
+   *  form. Used as the persistent docId in `MovieRepo`/`MovieCache`
+   *  so the cache key is stable across refresh ticks and write sites: every
+   *  cinema-reported variant of the same film (Arabic/Roman, colon-or-not,
+   *  &/i, anniversary suffix, "Gwiezdne Wojny:" prefix) lands on the same
+   *  key without needing to see its sibling in the current corpus.
+   *
+   *  Unicode-aware on the strip step — preserves Cyrillic / Greek / CJK
+   *  letters so non-Latin titles keep a non-empty key. Polish `ł` is folded
+   *  to `l` so "Diabeł" and "Diabel" share a key (NFD doesn't decompose `ł`).
+   *
+   *  Per-script titles still get distinct keys (Latin vs Cyrillic translations
+   *  of the same film stay as separate records). The imdbId re-merge step
+   *  (later phase) folds those across scripts. */
+  def sanitize(title: String): String = {
+    val canonicalized = canonical(normalize(title))
+    java.text.Normalizer.normalize(canonicalized, java.text.Normalizer.Form.NFD)
+      .replaceAll("\\p{M}", "")
+      .replace('ł', 'l').replace('Ł', 'l')
+      .toLowerCase
+      .replaceAll("[^\\p{L}\\p{N}]+", "")
+  }
 
   // Group key for merging. Falls back to the plain Roman-numeral form when no
   // sibling title reduces to the same canonical.
@@ -121,18 +146,49 @@ object TitleNormalizer {
     else {
       // After canonical (decoration stripping, & → i, Gwiezdne Wojny: removed),
       // a merged group typically reduces to a single canonical form — return
-      // it. If canonicals still differ (the punctuation-only-merge case:
-      // "Top Gun Maverick" vs "Top Gun: Maverick"), pick the one with the
-      // richest punctuation, then most upper-case letters, then earliest in
-      // the input. That gives "Top Gun: Maverick" over "Top Gun Maverick"
-      // and proper-cased over a Rialto-style sentence-cased duplicate.
+      // it. If canonicals still differ, score each by:
+      //   1. richest punctuation — "Top Gun: Maverick" over "Top Gun Maverick"
+      //   2. Latin script         — Polish "Diabeł ubiera się u Prady 2" over
+      //                             Cyrillic "ДИЯВОЛ НОСИТЬ ПРАДА 2" when the
+      //                             same record collected both during a
+      //                             cross-script merge that pre-dated the
+      //                             cross-script-block rule.
+      //   3. mixed case           — proper "Top Gun: Maverick" beats all-caps
+      //                             "TOP GUN: MAVERICK" and a Rialto-style
+      //                             sentence-cased duplicate. (All-caps
+      //                             Cyrillic also loses on this axis since
+      //                             Cyrillic ALL CAPS scores no `isLower`.)
+      //   4. earliest input       — deterministic tiebreaker.
       val canonicals = seq.map(canonical).distinct
       if (canonicals.size == 1) canonicals.headOption
       else canonicals.zipWithIndex.maxByOption { case (c, i) =>
-        val punct = c.count(ch => !ch.isLetterOrDigit && !ch.isWhitespace)
-        val upper = c.count(_.isUpper)
-        (punct, upper, -i)
+        val punct      = c.count(ch => !ch.isLetterOrDigit && !ch.isWhitespace)
+        val latinScore = if (isLatinDominant(c)) 1 else 0
+        val mixedCase  = if (c.exists(_.isUpper) && c.exists(_.isLower)) 1 else 0
+        (punct, latinScore, mixedCase, -i)
       }.map(_._1)
     }
   }
+
+  /** True when most of `s`'s letters are in the Latin Unicode script.
+   *  Polish diacritics (`ł`, `ś`, `ą`, …) count as Latin; Cyrillic and CJK
+   *  do not. Used to favour the Polish/Latin variant of a film over the
+   *  Ukrainian/Cyrillic one, and to filter cross-script entries out of
+   *  `cinemaTitles` so a single row never accumulates spellings in two
+   *  scripts. */
+  def isLatinDominant(s: String): Boolean = {
+    val letters = s.filter(_.isLetter)
+    if (letters.isEmpty) false
+    else letters.count(c =>
+      Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN
+    ) * 2 >= letters.length
+  }
+
+  /** Two titles share a "primary script" when both are Latin-dominant or
+   *  both are not. We treat scripts as a binary distinction (Latin /
+   *  non-Latin) because the only cross-script collisions we actually see
+   *  in cinema data are Polish-vs-Ukrainian — finer-grained script splits
+   *  would just create unnecessary rows. */
+  def sameScript(a: String, b: String): Boolean =
+    isLatinDominant(a) == isLatinDominant(b)
 }

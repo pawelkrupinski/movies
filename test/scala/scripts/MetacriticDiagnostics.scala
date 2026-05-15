@@ -1,6 +1,6 @@
 package scripts
 
-import services.enrichment.{EnrichmentRepo, MetacriticClient}
+import services.enrichment.{MovieRepo, MetacriticClient}
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
@@ -55,7 +55,7 @@ object MetacriticDiagnostics {
   }
 
   def main(args: Array[String]): Unit = {
-    val repo = new EnrichmentRepo()
+    val repo = new MovieRepo()
     if (!repo.enabled) {
       println("MONGODB_URI not set — nothing to diagnose.")
       sys.exit(1)

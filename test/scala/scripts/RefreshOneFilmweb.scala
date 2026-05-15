@@ -1,6 +1,6 @@
 package scripts
 
-import services.enrichment.{EnrichmentCache, EnrichmentRepo, FilmwebClient, FilmwebRatings}
+import services.enrichment.{MovieCache, MovieRepo, FilmwebClient, FilmwebRatings}
 
 /** Force a one-row Filmweb refresh for `(title, year)`. Used after wiring
  *  `onImdbIdMissing` on Filmweb so existing rows that were missed at first
@@ -9,9 +9,9 @@ import services.enrichment.{EnrichmentCache, EnrichmentRepo, FilmwebClient, Film
 object RefreshOneFilmweb {
   def main(args: Array[String]): Unit = {
     val (title, year) = ("Chłopiec na krańcach świata", Some(2026))
-    val repo  = new EnrichmentRepo()
+    val repo  = new MovieRepo()
     if (!repo.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
-    val cache   = new EnrichmentCache(repo)
+    val cache   = new MovieCache(repo)
     val ratings = new FilmwebRatings(cache, new FilmwebClient())
 
     def show(label: String): Unit =

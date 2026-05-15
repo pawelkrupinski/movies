@@ -28,7 +28,7 @@ import scala.util.{Failure, Success, Try}
  * "5 workers comfortable, more risks soft-blocks"); we stay at 3 here since
  * the per-row work is heavier (potentially search + info + rating).
  */
-class FilmwebRatings(cache: EnrichmentCache, filmweb: FilmwebClient) extends Logging {
+class FilmwebRatings(cache: MovieCache, filmweb: FilmwebClient) extends Logging {
 
   private val Workers       = 3
   private val workerCounter = new AtomicInteger(0)
@@ -92,13 +92,13 @@ class FilmwebRatings(cache: EnrichmentCache, filmweb: FilmwebClient) extends Log
           Try(filmweb.ratingFor(url)).toOption.flatten match {
             case Some(rating) if !e.filmwebRating.contains(rating) =>
               logger.debug(s"Filmweb: ${key.cleanTitle} $url ${e.filmwebRating.getOrElse("—")} → $rating")
-              cache.put(key, e.copy(filmwebRating = Some(rating)))
+              cache.putIfPresent(key, _.copy(filmwebRating = Some(rating)))
             case _ => ()
           }
         case None =>
           Try(filmweb.lookup(key.cleanTitle, key.year)).toOption.flatten.foreach { fw =>
             logger.debug(s"Filmweb: ${key.cleanTitle} discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
-            cache.put(key, e.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
+            cache.putIfPresent(key, _.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
           }
       }
     }
@@ -124,7 +124,7 @@ class FilmwebRatings(cache: EnrichmentCache, filmweb: FilmwebClient) extends Log
       Try(filmweb.ratingFor(url)) match {
         case Success(fresh) if fresh != enrichment.filmwebRating =>
           logger.debug(s"Filmweb refresh: ${key.cleanTitle} $url ${enrichment.filmwebRating.getOrElse("—")} → ${fresh.getOrElse("—")}")
-          cache.put(key, enrichment.copy(filmwebRating = fresh))
+          cache.putIfPresent(key, _.copy(filmwebRating = fresh))
           changed += 1
         case Success(_) => ()
         case Failure(ex) =>
@@ -137,7 +137,7 @@ class FilmwebRatings(cache: EnrichmentCache, filmweb: FilmwebClient) extends Log
       Try(filmweb.lookup(key.cleanTitle, key.year)) match {
         case Success(Some(fw)) =>
           urlDiscovered += 1
-          cache.put(key, enrichment.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
+          cache.putIfPresent(key, _.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
         case Success(None) => ()
         case Failure(ex) =>
           failed += 1
@@ -164,7 +164,7 @@ class FilmwebRatings(cache: EnrichmentCache, filmweb: FilmwebClient) extends Log
   }
 
   /** Drain the worker pool so in-flight upserts hit Mongo before
-   *  `EnrichmentRepo` closes its client. */
+   *  `MovieRepo` closes its client. */
   def stop(): Unit = {
     worker.shutdown()
     refreshScheduler.shutdown()

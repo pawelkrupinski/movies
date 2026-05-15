@@ -1,6 +1,6 @@
 package services.enrichment
 
-import models.Enrichment
+import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, ImdbIdMissing, MovieAdded, TmdbResolved}
@@ -16,15 +16,15 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   // ── Test scaffolding ────────────────────────────────────────────────────────
 
-  private class FakeRepo(seed: Seq[(String, Option[Int], Enrichment)] = Seq.empty)
-      extends EnrichmentRepo {
-    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), Enrichment]
-    val upserts = mutable.ListBuffer.empty[(String, Option[Int], Enrichment)]
+  private class FakeRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
+      extends MovieRepo {
+    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), MovieRecord]
+    val upserts = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
     seed.foreach { case (t, y, e) => store.put((t, y), e) }
     override def enabled: Boolean = true
-    override def findAll(): Seq[(String, Option[Int], Enrichment)] =
+    override def findAll(): Seq[(String, Option[Int], MovieRecord)] =
       store.iterator.map { case ((t, y), e) => (t, y, e) }.toSeq
-    override def upsert(t: String, y: Option[Int], e: Enrichment): Unit = {
+    override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = {
       store.put((t, y), e); upserts.append((t, y, e))
     }
     override def delete(t: String, y: Option[Int]): Unit = { store.remove((t, y)); () }
@@ -70,15 +70,15 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     finally stream.close()
   }
 
-  private def mkEnrichment(imdbId: String, rating: Option[Double] = None): Enrichment =
-    Enrichment(imdbId = Some(imdbId), imdbRating = rating, metascore = None,
+  private def mkEnrichment(imdbId: String, rating: Option[Double] = None): MovieRecord =
+    MovieRecord(imdbId = Some(imdbId), imdbRating = rating, metascore = None,
                originalTitle = None, tmdbId = Some(42))
 
   // ── refreshOneSync ──────────────────────────────────────────────────────────
 
   "refreshOneSync" should "fetch the rating and write it back when it differs from the cached value" in {
     val repo  = new FakeRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
 
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
@@ -88,7 +88,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "not write back when the fetched rating equals the cached value (idempotent)" in {
     val repo  = new FakeRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(7.4)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     repo.upserts.clear()
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
 
@@ -100,7 +100,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "swallow IMDb client failures (network blip, HTML challenge) without throwing" in {
     val repo  = new FakeRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val failingImdb = new ImdbClient(http = new HttpFetch {
       def get(url: String): String                                              = throw new RuntimeException("boom")
       override def post(url: String, body: String, contentType: String): String = throw new RuntimeException("boom")
@@ -113,10 +113,10 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the row has no imdbId (TMDB resolved without a cross-reference)" in {
-    val tmdbOnly = Enrichment(imdbId = None, imdbRating = None, metascore = None,
+    val tmdbOnly = MovieRecord(imdbId = None, imdbRating = None, metascore = None,
                                originalTitle = None, tmdbId = Some(42))
     val repo  = new FakeRepo(Seq(("Foo", Some(2024), tmdbOnly)))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     // ImdbClient must never be invoked — the stub throws on any request.
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
@@ -127,7 +127,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
-    val cache   = new EnrichmentCache(new FakeRepo())
+    val cache   = new MovieCache(new FakeRepo())
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
       override def post(url: String, body: String, contentType: String): String = get(url)
@@ -144,7 +144,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
       ("B", None, mkEnrichment("tt2", rating = Some(6.0))),
       ("C", None, mkEnrichment("tt3", rating = Some(7.0)))
     ))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val ratings = new ImdbRatings(cache, imdbStub(Map(
       "tt1" -> 7.4,  // changed
       "tt2" -> 6.0,  // unchanged
@@ -163,7 +163,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   "onTmdbResolved" should "trigger an IMDb refresh for the resolved row when subscribed on the bus" in {
     val bus   = new EventBus()
     val repo  = new FakeRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
     bus.subscribe(ratings.onTmdbResolved)
 
@@ -175,7 +175,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
     val bus   = new EventBus()
-    val cache = new EnrichmentCache(new FakeRepo())
+    val cache = new MovieCache(new FakeRepo())
     // Stub throws if hit — the test asserts it never is.
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
@@ -193,7 +193,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     // Simulates "Mortal Kombat II" — TMDB knows the film but has no IMDb
     // cross-reference. Cinema lists it under a Polish title; TMDB returns
     // "Mortal Kombat II" as the originalTitle and that's what we IMDb-search by.
-    val tmdbOnly = Enrichment(
+    val tmdbOnly = MovieRecord(
       imdbId        = None,
       imdbRating    = None,
       metascore     = None,
@@ -201,7 +201,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
       tmdbId        = Some(1024)
     )
     val repo  = new FakeRepo(Seq(("Mortal Kombat 2", Some(2026), tmdbOnly)))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val ratings = new ImdbRatings(cache, imdbStub(
       suggestions = Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")),
       ratings     = Map("tt17490712" -> 7.5)
@@ -219,10 +219,10 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "no-op when the suggestion endpoint returns nothing usable" in {
     val bus = new EventBus()
-    val tmdbOnly = Enrichment(imdbId = None, imdbRating = None, metascore = None,
+    val tmdbOnly = MovieRecord(imdbId = None, imdbRating = None, metascore = None,
                                originalTitle = Some("Imaginary Film"), tmdbId = Some(1))
     val repo  = new FakeRepo(Seq(("Imaginary Film", None, tmdbOnly)))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     repo.upserts.clear()
     val ratings = new ImdbRatings(cache, imdbStub(
       suggestions = Map("suggestion" -> """{"d":[]}"""),
@@ -240,10 +240,10 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     val bus = new EventBus()
     // Row already has an imdbId — the event is stale. Listener must NOT
     // overwrite with a fresh search result.
-    val resolved = Enrichment(imdbId = Some("tt9999"), imdbRating = Some(8.0), metascore = None,
+    val resolved = MovieRecord(imdbId = Some("tt9999"), imdbRating = Some(8.0), metascore = None,
                                originalTitle = Some("Foo"), tmdbId = Some(1))
     val repo  = new FakeRepo(Seq(("Foo", None, resolved)))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     repo.upserts.clear()
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("findId should not be called")

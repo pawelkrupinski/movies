@@ -1,7 +1,7 @@
 package services.enrichment
 
 import clients.TmdbClient
-import models.Enrichment
+import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, MovieAdded, TmdbResolved}
@@ -21,15 +21,15 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
 
   // ── Test scaffolding ────────────────────────────────────────────────────────
 
-  private class FakeRepo(seed: Seq[(String, Option[Int], Enrichment)] = Seq.empty)
-      extends EnrichmentRepo {
-    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), Enrichment]
-    val upserts = mutable.ListBuffer.empty[(String, Option[Int], Enrichment)]
+  private class FakeRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
+      extends MovieRepo {
+    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), MovieRecord]
+    val upserts = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
     seed.foreach { case (t, y, e) => store.put((t, y), e) }
     override def enabled: Boolean = true
-    override def findAll(): Seq[(String, Option[Int], Enrichment)] =
+    override def findAll(): Seq[(String, Option[Int], MovieRecord)] =
       store.iterator.map { case ((t, y), e) => (t, y, e) }.toSeq
-    override def upsert(t: String, y: Option[Int], e: Enrichment): Unit = {
+    override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = {
       store.put((t, y), e); upserts.append((t, y, e))
     }
     override def delete(t: String, y: Option[Int]): Unit = { store.remove((t, y)); () }
@@ -52,8 +52,8 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   private def rtClient(pages: Map[String, String]): RottenTomatoesClient =
     new RottenTomatoesClient(http = httpStub(pages))
 
-  private def mkEnrichment(rtUrl: Option[String], score: Option[Int] = None): Enrichment =
-    Enrichment(
+  private def mkEnrichment(rtUrl: Option[String], score: Option[Int] = None): MovieRecord =
+    MovieRecord(
       imdbId            = Some("tt0001"),
       imdbRating        = None,
       metascore         = None,
@@ -68,7 +68,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   "refreshOneSync" should "fetch the score and write it back when it differs from the cached value" in {
     val url = "https://www.rottentomatoes.com/m/the_dark_knight"
     val repo  = new FakeRepo(Seq(("Dark Knight", Some(2008), mkEnrichment(Some(url), score = Some(50)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), rtClient(Map(url -> pageWithScore(94))))
 
     ratings.refreshOneSync(cache.keyOf("Dark Knight", Some(2008)))
@@ -79,7 +79,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   it should "not write back when the fetched score equals the cached value (idempotent)" in {
     val url = "https://www.rottentomatoes.com/m/the_dark_knight"
     val repo  = new FakeRepo(Seq(("Dark Knight", Some(2008), mkEnrichment(Some(url), score = Some(94)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     repo.upserts.clear()
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), rtClient(Map(url -> pageWithScore(94))))
 
@@ -91,7 +91,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   it should "swallow RT client failures (network blip, 503, Cloudflare challenge) without throwing" in {
     val url = "https://www.rottentomatoes.com/m/foo"
     val repo  = new FakeRepo(Seq(("Foo", Some(2024), mkEnrichment(Some(url), score = Some(50)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val failing = new RottenTomatoesClient(http = new HttpFetch {
       def get(u: String): String = throw new RuntimeException("HTTP 503")
     })
@@ -104,7 +104,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when the row has no rottenTomatoesUrl (RT didn't know the film)" in {
     val repo  = new FakeRepo(Seq(("Foo", Some(2024), mkEnrichment(None))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     // RottenTomatoesClient stub throws on any fetch — the test asserts it never is.
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), new RottenTomatoesClient(http = new HttpFetch {
       def get(u: String): String = throw new RuntimeException("should not be called")
@@ -114,7 +114,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
-    val cache   = new EnrichmentCache(new FakeRepo())
+    val cache   = new MovieCache(new FakeRepo())
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), new RottenTomatoesClient(http = new HttpFetch {
       def get(u: String): String = throw new RuntimeException("should not be called")
     }))
@@ -135,7 +135,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
       ("B", None, mkEnrichment(Some(urls("B")), score = Some(60))),
       ("C", None, mkEnrichment(Some(urls("C")), score = Some(70)))
     ))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), rtClient(Map(
       urls("A") -> pageWithScore(74),  // changed
       urls("B") -> pageWithScore(60),  // unchanged
@@ -156,7 +156,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
       // No RT URL — must not be fetched.
       ("B", None, mkEnrichment(None))
     ))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     // Stub only knows A; if the walk tries to fetch B-related anything, it throws.
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), rtClient(Map(urlA -> pageWithScore(85))))
 
@@ -171,7 +171,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     val bus = new EventBus()
     val url = "https://www.rottentomatoes.com/m/foo"
     val repo  = new FakeRepo(Seq(("Foo", Some(2024), mkEnrichment(Some(url), score = Some(50)))))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), rtClient(Map(url -> pageWithScore(74))))
     bus.subscribe(ratings.onTmdbResolved)
 
@@ -182,7 +182,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
     val bus   = new EventBus()
-    val cache = new EnrichmentCache(new FakeRepo())
+    val cache = new MovieCache(new FakeRepo())
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), new RottenTomatoesClient(http = new HttpFetch {
       def get(u: String): String = throw new RuntimeException("should not be called")
     }))

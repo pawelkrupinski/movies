@@ -1,7 +1,7 @@
 package services.enrichment
 
 import clients.TmdbClient
-import models.Enrichment
+import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{DomainEvent, EventBus, MovieAdded, TmdbResolved}
@@ -12,7 +12,7 @@ import scala.collection.mutable
 /**
  * Tests for the two-stage enrichment pipeline:
  *
- *   1. **TMDB stage** (owned by `EnrichmentService`): resolves `(title, year)`
+ *   1. **TMDB stage** (owned by `MovieService`): resolves `(title, year)`
  *      → tmdbId + imdbId + originalTitle. Publishes `TmdbResolved` on success.
  *   2. **IMDb stage** (owned by `ImdbRatings`, decoupled): fetches the IMDb
  *      rating for one cache row. Triggered by `TmdbResolved` via the EventBus,
@@ -37,14 +37,14 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     override def post(url: String, body: String, contentType: String): String = get(url)
   }
 
-  private class FakeRepo(seed: Seq[(String, Option[Int], Enrichment)] = Seq.empty)
-      extends EnrichmentRepo {
-    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), Enrichment]
+  private class FakeRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
+      extends MovieRepo {
+    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), MovieRecord]
     seed.foreach { case (t, y, e) => store.put((t, y), e) }
     override def enabled: Boolean = true
-    override def findAll(): Seq[(String, Option[Int], Enrichment)] =
+    override def findAll(): Seq[(String, Option[Int], MovieRecord)] =
       store.iterator.map { case ((t, y), e) => (t, y, e) }.toSeq
-    override def upsert(t: String, y: Option[Int], e: Enrichment): Unit = { store.put((t, y), e); () }
+    override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = { store.put((t, y), e); () }
     override def delete(t: String, y: Option[Int]): Unit = { store.remove((t, y)); () }
   }
 
@@ -78,10 +78,10 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val seen = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => seen.append(e) }
 
-    val cache       = new EnrichmentCache(new FakeRepo())
+    val cache       = new MovieCache(new FakeRepo())
     val imdb        = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
     val imdbRatings = new ImdbRatings(cache, imdb)
-    val svc   = new EnrichmentService(cache, bus, tmdbStub())
+    val svc   = new MovieService(cache, bus, tmdbStub())
 
     // The async path goes through `reEnrich` → worker pool → runTmdbStage,
     // which publishes the event on success.
@@ -99,9 +99,9 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       http = new StubFetch(Map("/search/movie" -> """{"results":[]}""")),
       apiKey = Some("stub")
     )
-    val cache       = new EnrichmentCache(new FakeRepo())
+    val cache       = new MovieCache(new FakeRepo())
     val imdbRatings = new ImdbRatings(cache, new ImdbClient(http = deadFetch))
-    val svc   = new EnrichmentService(cache, bus, emptyTmdb)
+    val svc   = new MovieService(cache, bus, emptyTmdb)
 
     svc.reEnrich("Unknown Title", None)
 
@@ -121,10 +121,10 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val seen = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => seen.append(e) }
 
-    val cache       = new EnrichmentCache(new FakeRepo())
+    val cache       = new MovieCache(new FakeRepo())
     val imdb        = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
     val imdbRatings = new ImdbRatings(cache, imdb)
-    val svc   = new EnrichmentService(cache, bus, tmdbStub())
+    val svc   = new MovieService(cache, bus, tmdbStub())
 
     svc.reEnrichSync("Mortal Kombat II", Some(2026))
     seen shouldBe empty
@@ -140,9 +140,9 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   "reEnrichSync" should "fill the row's IMDb rating when chained with imdbRatings.refreshOneSync" in {
     val bus      = new EventBus()
     val imdbHttp = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql))
-    val cache    = new EnrichmentCache(new FakeRepo())
+    val cache    = new MovieCache(new FakeRepo())
     val ratings  = new ImdbRatings(cache, new ImdbClient(http = imdbHttp))
-    val svc      = new EnrichmentService(cache, bus, tmdbStub())
+    val svc      = new MovieService(cache, bus, tmdbStub())
 
     svc.reEnrichSync("Mortal Kombat II", Some(2026))
     ratings.refreshOneSync("Mortal Kombat II", Some(2026))
@@ -160,11 +160,11 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // that case; we trust the previously-resolved one until tmdbId itself shifts
   // (which would mean it's a different film).
   it should "preserve an existing imdbId when TMDB resolves the same tmdbId but with no cross-reference" in {
-    val seed = Enrichment(
+    val seed = MovieRecord(
       imdbId = Some("tt17490712"), imdbRating = Some(7.0),
       metascore = None, originalTitle = Some("Mortal Kombat II"), tmdbId = Some(931285)
     )
-    val cache = new EnrichmentCache(new FakeRepo(Seq(
+    val cache = new MovieCache(new FakeRepo(Seq(
       ("Mortal Kombat II", Some(2026), seed)
     )))
     // TMDB search returns the same tmdbId 931285 but external_ids has no imdb_id.
@@ -173,7 +173,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/external_ids" -> """{"id":931285, "imdb_id":""}"""   // ← cross-reference dropped
     ))
     val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val svc = new EnrichmentService(
+    val svc = new MovieService(
       cache, new EventBus(),
       tmdb
     )
@@ -189,11 +189,11 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // film. Preserving the old imdbId across that boundary would be wrong — the
   // new resolution wins, even if its imdbId is None.
   it should "discard the existing imdbId when TMDB resolves to a DIFFERENT tmdbId (correction path)" in {
-    val seed = Enrichment(
+    val seed = MovieRecord(
       imdbId = Some("tt-old-wrong-id"), imdbRating = Some(7.0),
       metascore = None, originalTitle = Some("Old Film"), tmdbId = Some(99999)
     )
-    val cache = new EnrichmentCache(new FakeRepo(Seq(
+    val cache = new MovieCache(new FakeRepo(Seq(
       ("Mortal Kombat II", Some(2026), seed)
     )))
     // TMDB now resolves to a DIFFERENT tmdbId (931285) AND that one has no
@@ -204,7 +204,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/external_ids" -> """{"id":931285, "imdb_id":""}"""
     ))
     val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val svc = new EnrichmentService(
+    val svc = new MovieService(
       cache, new EventBus(),
       tmdb
     )
@@ -219,18 +219,18 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // Seed: row already has a rating. Re-enrich runs TMDB stage (succeeds)
     // and IMDb stage (network blip → no update). The cached rating must be
     // preserved (TMDB stage carries it forward).
-    val seed = Enrichment(
+    val seed = MovieRecord(
       imdbId = Some("tt17490712"), imdbRating = Some(7.2),
       metascore = None, originalTitle = None, tmdbId = Some(931285)
     )
-    val cache = new EnrichmentCache(new FakeRepo(Seq(
+    val cache = new MovieCache(new FakeRepo(Seq(
       ("Mortal Kombat II", Some(2026), seed)
     )))
     val brokenImdb = new ImdbClient(http = new HttpFetch {
       override def get(url: String): String = throw new RuntimeException("network blip")
       override def post(url: String, body: String, contentType: String): String = get(url)
     })
-    val svc = new EnrichmentService(cache, new EventBus(), tmdbStub())
+    val svc = new MovieService(cache, new EventBus(), tmdbStub())
 
     val e = svc.reEnrichSync("Mortal Kombat II", Some(2026))
 
@@ -250,13 +250,13 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   "the TMDB stage" should "reuse a resolved sister row's tmdbId/imdbId when the cleanTitle matches" in {
     // Sister row: "Bez końca" (year=2026) already resolved to the correct
     // 2026 Polish film (tmdbId=1596319, imdbId=tt39075417).
-    val sister = Enrichment(
+    val sister = MovieRecord(
       imdbId        = Some("tt39075417"),
       imdbRating    = None, metascore = None,
       originalTitle = Some("Bez końca"),
       tmdbId        = Some(1596319)
     )
-    val cache = new EnrichmentCache(new FakeRepo(Seq(
+    val cache = new MovieCache(new FakeRepo(Seq(
       ("Bez końca", Some(2026), sister)
     )))
     // TMDB stub: if anyone calls /search/movie, return the wrong (Kieślowski)
@@ -266,7 +266,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       http = new StubFetch(Map("/search/movie" -> kieslowski, "/external_ids" -> """{"id":124,"imdb_id":"tt0086961"}""")),
       apiKey = Some("stub")
     )
-    val svc = new EnrichmentService(cache, new EventBus(), tmdb)
+    val svc = new MovieService(cache, new EventBus(), tmdb)
 
     val e = svc.reEnrichSync("Bez końca", None)
 
@@ -279,15 +279,15 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // Two resolved sisters with DIFFERENT tmdbIds — a classic re-release
     // collision (Bez końca 1985 + 2026 both exist as cache rows). The
     // sister-row shortcut must not pick one arbitrarily; defer to TMDB.
-    val newFilm = Enrichment(
+    val newFilm = MovieRecord(
       imdbId = Some("tt39075417"), imdbRating = None, metascore = None,
       originalTitle = Some("Bez końca"), tmdbId = Some(1596319)
     )
-    val oldFilm = Enrichment(
+    val oldFilm = MovieRecord(
       imdbId = Some("tt0086961"),  imdbRating = None, metascore = None,
       originalTitle = Some("Bez końca"), tmdbId = Some(124)
     )
-    val cache = new EnrichmentCache(new FakeRepo(Seq(
+    val cache = new MovieCache(new FakeRepo(Seq(
       ("Bez końca", Some(2026), newFilm),
       ("Bez końca", Some(1985), oldFilm)
     )))
@@ -297,7 +297,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/external_ids" -> """{"id":124,"imdb_id":"tt0086961"}"""
     ))
     val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val svc  = new EnrichmentService(cache, new EventBus(), tmdb)
+    val svc  = new MovieService(cache, new EventBus(), tmdb)
 
     val e = svc.reEnrichSync("Bez końca", None)
 
@@ -316,17 +316,17 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // the year=None plain-"Belle" row to inherit that resolution via the
   // originalTitle alias.
 
-  it should "match a donor whose Enrichment.originalTitle aligns with self's cleanTitle (different cleanTitles)" in {
+  it should "match a donor whose MovieRecord.originalTitle aligns with self's cleanTitle (different cleanTitles)" in {
     // Donor's cleanTitle is a long Polish-localised title; its TMDB-resolved
-    // Enrichment.originalTitle is the short English name — and that English
+    // MovieRecord.originalTitle is the short English name — and that English
     // name is what the second cinema reports as its own (short) cleanTitle.
-    val donor = Enrichment(
+    val donor = MovieRecord(
       imdbId        = Some("tt0000123"),
       imdbRating    = None, metascore = None,
       originalTitle = Some("Stub Original"),
       tmdbId        = Some(424242)
     )
-    val cache = new EnrichmentCache(new FakeRepo(Seq(
+    val cache = new MovieCache(new FakeRepo(Seq(
       ("Stub Original: długa polska wersja", Some(2026), donor)
     )))
     // TMDB stub returns a different film if asked — assertion is we don't ask.
@@ -335,7 +335,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/search/movie" -> wrong,
       "/external_ids" -> """{"id":999,"imdb_id":"tt9999999"}"""
     )), apiKey = Some("stub"))
-    val svc = new EnrichmentService(cache, new EventBus(), tmdb)
+    val svc = new MovieService(cache, new EventBus(), tmdb)
 
     val e = svc.reEnrichSync("Stub Original", None)
 
@@ -347,12 +347,12 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // Donor's cleanTitle is "Belle"; self comes through the MovieAdded event
     // with a Polish title that doesn't match, but with `originalTitle="Belle"`
     // from the cinema's API.
-    val donor = Enrichment(
+    val donor = MovieRecord(
       imdbId = Some("tt13651628"), imdbRating = None, metascore = None,
       originalTitle = None,
       tmdbId = Some(776305)
     )
-    val cache = new EnrichmentCache(new FakeRepo(Seq(
+    val cache = new MovieCache(new FakeRepo(Seq(
       ("Belle", Some(2021), donor)
     )))
     val bus = new EventBus()
@@ -365,7 +365,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/search/movie" -> wrong,
       "/external_ids" -> """{"id":99999,"imdb_id":"tt9999999"}"""
     )), apiKey = Some("stub"))
-    val svc = new EnrichmentService(cache, bus, tmdb)
+    val svc = new MovieService(cache, bus, tmdb)
     bus.subscribe(svc.onMovieAdded)
 
     bus.publish(MovieAdded("Polski Tytuł", None, Some("Belle")))
@@ -387,7 +387,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // fall back to walking Helgestad's TMDB filmography to find a 2026 hit.
 
   it should "accept the title-search candidate when its director matches the cinema's reported director" in {
-    val cache = new EnrichmentCache(new FakeRepo())
+    val cache = new MovieCache(new FakeRepo())
     val bus   = new EventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case r: TmdbResolved => resolved.append(r) }
@@ -398,7 +398,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/external_ids" -> Mk2ExternalIds
     ))
     val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val svc  = new EnrichmentService(cache, bus, tmdb)
+    val svc  = new MovieService(cache, bus, tmdb)
     bus.subscribe(svc.onMovieAdded)
 
     bus.publish(MovieAdded("Mortal Kombat II", Some(2026), None, Some("Simon McQuoid")))
@@ -410,7 +410,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "walk the director's TMDB filmography when the title candidate has a different director (Niedźwiedzica regression)" in {
-    val cache = new EnrichmentCache(new FakeRepo())
+    val cache = new MovieCache(new FakeRepo())
     val bus   = new EventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     val missing  = mutable.ListBuffer.empty[DomainEvent]
@@ -443,7 +443,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/movie/1648927/external_ids"   -> frostExternalIds
     ))
     val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val svc  = new EnrichmentService(cache, bus, tmdb)
+    val svc  = new MovieService(cache, bus, tmdb)
     bus.subscribe(svc.onMovieAdded)
 
     bus.publish(MovieAdded("Niedźwiedzica", Some(2026), None, Some("Asgeir Helgestad")))
@@ -461,12 +461,12 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   it should "leave behaviour unchanged when the cinema doesn't report a director" in {
     // Mortal Kombat II without a director hint: the existing TMDB title-search
     // path runs and stores the canonical row. Director verification is opt-in.
-    val cache = new EnrichmentCache(new FakeRepo())
+    val cache = new MovieCache(new FakeRepo())
     val bus   = new EventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case r: TmdbResolved => resolved.append(r) }
 
-    val svc = new EnrichmentService(cache, bus, tmdbStub())
+    val svc = new MovieService(cache, bus, tmdbStub())
     bus.subscribe(svc.onMovieAdded)
 
     bus.publish(MovieAdded("Mortal Kombat II", Some(2026)))   // 3-arg form, director=None by default
@@ -481,11 +481,11 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // (1 unanimous tmdbId) and reinforce the stale answer. With self-
     // exclusion, the lookup sees zero sisters and falls through to TMDB,
     // which corrects the row.
-    val stale = Enrichment(
+    val stale = MovieRecord(
       imdbId = Some("tt0086961"), imdbRating = None, metascore = None,
       originalTitle = Some("Bez końca"), tmdbId = Some(124)   // wrong, stale
     )
-    val cache = new EnrichmentCache(new FakeRepo(Seq(
+    val cache = new MovieCache(new FakeRepo(Seq(
       ("Bez końca", None, stale)
     )))
     val tmdbHttp = new StubFetch(Map(
@@ -493,7 +493,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/external_ids" -> """{"id":1596319,"imdb_id":"tt39075417"}"""
     ))
     val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val svc  = new EnrichmentService(cache, new EventBus(), tmdb)
+    val svc  = new MovieService(cache, new EventBus(), tmdb)
 
     val e = svc.reEnrichSync("Bez końca", None)
 
@@ -505,12 +505,12 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // ── Daily TMDB retry ──────────────────────────────────────────────────────
 
   "retryUnresolvedTmdb" should "clear the negative cache so previously-failed lookups get another shot" in {
-    val cache = new EnrichmentCache(new FakeRepo())
+    val cache = new MovieCache(new FakeRepo())
     val key   = cache.keyOf("Some Film", Some(2026))
     cache.markMissing(key)
     cache.isNegative(key) shouldBe true
 
-    val svc = new EnrichmentService(
+    val svc = new MovieService(
       cache, new EventBus(), new TmdbClient(http = new StubFetch(Map("/search/movie" -> """{"results":[]}""")), apiKey = Some("stub"))
     )
 
@@ -526,7 +526,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // drive / Wspinaczka got mis-resolved). URL discovery is the rating
     // services' job: each *Ratings.refreshAll walk probes for missing URLs
     // without ever touching tmdbId / imdbId.
-    val incomplete = Enrichment(
+    val incomplete = MovieRecord(
       imdbId            = Some("tt17490712"),
       imdbRating        = Some(7.0),
       metascore         = None,
@@ -536,14 +536,14 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       rottenTomatoesUrl = None          // ← missing
     )
     val repo  = new FakeRepo(Seq(("Mortal Kombat II", Some(2026), incomplete)))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val bus   = new EventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => resolved.append(e) }
 
     // TMDB stub throws on any call — we assert the retry never reaches it.
     val deadTmdb = new TmdbClient(http = deadFetch, apiKey = Some("stub"))
-    val svc      = new EnrichmentService(cache, bus, deadTmdb)
+    val svc      = new MovieService(cache, bus, deadTmdb)
 
     noException should be thrownBy svc.retryUnresolvedTmdb()
 
@@ -555,18 +555,18 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   it should "schedule the TMDB stage for cached rows whose tmdbId is empty (legacy data)" in {
     // Seed a row that has imdbId but no tmdbId (legacy from before TMDB was
     // always set). The daily retry should re-resolve it.
-    val seed = Enrichment(
+    val seed = MovieRecord(
       imdbId = Some("tt-legacy"), imdbRating = None,
       metascore = None, originalTitle = None, tmdbId = None
     )
     val repo  = new FakeRepo(Seq(("Mortal Kombat II", Some(2026), seed)))
-    val cache = new EnrichmentCache(repo)
+    val cache = new MovieCache(repo)
     val bus   = new EventBus()
     val seenResolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => seenResolved.append(e) }
 
     val imdb = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
-    val svc  = new EnrichmentService(cache, bus, tmdbStub())
+    val svc  = new MovieService(cache, bus, tmdbStub())
 
     svc.retryUnresolvedTmdb()
 
@@ -582,13 +582,13 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // ── MovieAdded triggers TMDB stage; TMDB skip-when-cached short-circuit ───
 
   "onMovieAdded" should "schedule TMDB stage when the row isn't cached" in {
-    val cache    = new EnrichmentCache(new FakeRepo())
+    val cache    = new MovieCache(new FakeRepo())
     val bus      = new EventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => resolved.append(e) }
 
     val imdb = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
-    val svc  = new EnrichmentService(cache, bus, tmdbStub())
+    val svc  = new MovieService(cache, bus, tmdbStub())
     bus.subscribe(svc.onMovieAdded)
 
     bus.publish(MovieAdded("Mortal Kombat II", Some(2026)))
@@ -598,18 +598,18 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "skip rows that already have a tmdbId (no redundant TMDB call)" in {
-    val seed  = Enrichment(
+    val seed  = MovieRecord(
       imdbId = Some("tt17490712"), imdbRating = Some(7.0),
       metascore = None, originalTitle = Some("Mortal Kombat II"),
       tmdbId = Some(931285)
     )
-    val cache = new EnrichmentCache(new FakeRepo(Seq(("Mortal Kombat II", Some(2026), seed))))
+    val cache = new MovieCache(new FakeRepo(Seq(("Mortal Kombat II", Some(2026), seed))))
     val bus   = new EventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => resolved.append(e) }
 
     // dead TMDB / dead Filmweb / dead IMDb — assert no call lands.
-    val svc = new EnrichmentService(
+    val svc = new MovieService(
       cache, bus, new TmdbClient(http = deadFetch, apiKey = Some("stub"))
     )
     bus.subscribe(svc.onMovieAdded)
@@ -626,16 +626,16 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   "onTmdbResolved" should "fetch IMDb rating for the resolved row" in {
     // Seed a row that already has TMDB data but no IMDb rating yet — simulate
     // the state right after the TMDB stage writes.
-    val seed = Enrichment(
+    val seed = MovieRecord(
       imdbId = Some("tt17490712"), imdbRating = None,
       metascore = None, originalTitle = Some("Mortal Kombat II"),
       tmdbId = Some(931285)
     )
-    val cache = new EnrichmentCache(new FakeRepo(Seq(("Mortal Kombat II", Some(2026), seed))))
+    val cache = new MovieCache(new FakeRepo(Seq(("Mortal Kombat II", Some(2026), seed))))
     val bus   = new EventBus()
 
     // This test exercises the IMDb stage listener — wire it directly without
-    // EnrichmentService, since the TMDB stage doesn't fire here.
+    // MovieService, since the TMDB stage doesn't fire here.
     val imdb        = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
     val imdbRatings = new ImdbRatings(cache, imdb)
     bus.subscribe(imdbRatings.onTmdbResolved)

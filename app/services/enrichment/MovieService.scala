@@ -6,7 +6,7 @@ import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieAdded, TmdbRe
 
 import java.text.Normalizer
 import java.util.concurrent.{ConcurrentHashMap, Executors, TimeUnit}
-import models.Enrichment
+import models.MovieRecord
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -29,8 +29,8 @@ import scala.util.{Failure, Success, Try}
  * Single bounded worker pool drains both stages so callers and event
  * publishers are never blocked on network round-trips.
  */
-class EnrichmentService(
-  cache: EnrichmentCache,
+class MovieService(
+  cache: MovieCache,
   bus:   EventBus,
   tmdb:  TmdbClient
 ) extends Logging {
@@ -90,7 +90,7 @@ class EnrichmentService(
     )
   }
 
-  /** Drain the queue so in-flight upserts hit Mongo before `EnrichmentRepo`
+  /** Drain the queue so in-flight upserts hit Mongo before `MovieRepo`
    *  closes its client. The caller (`AppLoader`) must register this so that
    *  Play runs the repo's close hook strictly *after* this returns. */
   def stop(): Unit = {
@@ -117,27 +117,11 @@ class EnrichmentService(
 
   /** Pure cache lookup — never blocks, never schedules. Misses return None;
    *  the next `MovieAdded` event re-triggers a background fetch. */
-  def get(title: String, year: Option[Int]): Option[Enrichment] =
+  def get(title: String, year: Option[Int]): Option[MovieRecord] =
     cache.get(cache.keyOf(title, year))
 
-  /** Variant-tolerant lookup for the merged-card view. The display title
-   *  comes from `TitleNormalizer.normalize` which applies Arabic→Roman
-   *  ("Diabeł ubiera się u Prady 2" → "… II"), but the enrichment row was
-   *  written under whatever the cinema reported (the Arabic form). Try the
-   *  display title first; on miss, fall through to the raw cinema titles
-   *  that fed the merge. Returns the first hit, or None if nothing matches.
-   *
-   *  Lookup-only fallback — no schema change, no per-film overrides; works
-   *  for any case where the merge layer produces a title that diverges from
-   *  the storage layer (matches the project's "merge at display time, not in
-   *  enrichment" stance). */
-  def getForMerge(displayTitle: String, candidateTitles: Iterable[String], year: Option[Int]): Option[Enrichment] =
-    get(displayTitle, year).orElse(
-      candidateTitles.iterator.flatMap(t => get(t, year)).nextOption()
-    )
-
   /** Snapshot of every cached enrichment — for debug tooling. */
-  def snapshot(): Seq[(String, Option[Int], Enrichment)] = cache.snapshot()
+  def snapshot(): Seq[(String, Option[Int], MovieRecord)] = cache.snapshot()
 
   /** Manual re-enrich (debug page). Wipes the cached row, then runs the TMDB
    *  stage on the worker pool — the bus listener picks up `TmdbResolved` and
@@ -173,7 +157,7 @@ class EnrichmentService(
    *  should chain the corresponding `*Ratings.refreshOneSync(title, year)`
    *  call themselves (see `scripts/EnrichmentBackfill` for the pattern). Does
    *  NOT publish bus events, so concurrent listeners don't double-fetch. */
-  def reEnrichSync(title: String, year: Option[Int]): Option[Enrichment] =
+  def reEnrichSync(title: String, year: Option[Int]): Option[MovieRecord] =
     runTmdbStageSync(cache.keyOf(title, year))
 
   // ── TMDB stage ─────────────────────────────────────────────────────────────
@@ -185,6 +169,14 @@ class EnrichmentService(
   ): Unit = {
     if (cache.get(key).exists(_.tmdbId.isDefined)) return  // already resolved
     if (cache.isNegative(key)) return                       // known miss, retry after TTL
+    // A sibling row already knows this raw cinema title (via cinemaTitles)
+    // AND has a tmdbId. `recordCinemaScrape`'s redirect has already
+    // attached this cinema's slot to that sibling, so running TMDB again
+    // would just create a duplicate row at the `(title, year)` key that
+    // `IdentityMerger` then has to delete — wasted TMDB call plus a
+    // transient duplicate visible on /debug (the year=None / year=2025 /
+    // year=2026 triple the user saw).
+    if (cache.hasResolvedSiblingByTitle(key.cleanTitle)) return
     if (pending.add(key))
       worker.execute(() => try runTmdbStage(key, originalTitle, director) finally pending.remove(key))
   }
@@ -231,13 +223,13 @@ class EnrichmentService(
   // `TmdbResolved` on the bus and runs its own discovery/refresh. The TMDB
   // stage preserves any existing values for those fields so a re-resolve
   // doesn't blank them while the listeners catch up. Returns the new
-  // Enrichment, or None when TMDB has no match. Does NOT publish events —
+  // MovieRecord, or None when TMDB has no match. Does NOT publish events —
   // callers decide.
   private def runTmdbStageSync(
     key:               CacheKey,
     originalTitleHint: Option[String] = None,
     directorHint:      Option[String] = None
-  ): Option[Enrichment] =
+  ): Option[MovieRecord] =
     resolveTmdb(key.cleanTitle, key.year, originalTitleHint, directorHint).map { case (hit, imdbId) =>
       val existing = cache.get(key)
       // Preserve the previously-known `imdbId` when TMDB resolved the same
@@ -247,7 +239,7 @@ class EnrichmentService(
       // imdbId (even if None) so a stale id can't leak across a correction.
       val preserveImdbId = existing.exists(_.tmdbId.contains(hit.id))
       val resolvedImdbId = imdbId.orElse(if (preserveImdbId) existing.flatMap(_.imdbId) else None)
-      val enr = Enrichment(
+      val enr = MovieRecord(
         imdbId            = resolvedImdbId,
         imdbRating        = existing.flatMap(_.imdbRating),
         metascore         = existing.flatMap(_.metascore),
@@ -257,7 +249,14 @@ class EnrichmentService(
         rottenTomatoes    = existing.flatMap(_.rottenTomatoes),
         tmdbId            = Some(hit.id),
         metacriticUrl     = existing.flatMap(_.metacriticUrl),
-        rottenTomatoesUrl = existing.flatMap(_.rottenTomatoesUrl)
+        rottenTomatoesUrl = existing.flatMap(_.rottenTomatoesUrl),
+        // Carry the cinema-side fields forward — `recordCinemaScrape` may
+        // have just landed a slot on this row, and the TMDB stage owns
+        // none of that data. Without this, a fresh resolve wipes
+        // cinemaShowings and the row drops out of `toSchedules` until the
+        // next scrape tick repopulates it.
+        cinemaTitles      = existing.map(_.cinemaTitles).getOrElse(Set.empty),
+        cinemaShowings    = existing.map(_.cinemaShowings).getOrElse(Map.empty)
       )
       cache.put(key, enr)
       enr
@@ -378,10 +377,10 @@ class EnrichmentService(
         case None => Some(hit)   // no hint → can't verify, accept
         case Some(dir) =>
           val cinemaNames = dir.split(",").iterator.map(_.trim).filter(_.nonEmpty)
-            .map(EnrichmentService.normalize).toSet
+            .map(MovieService.normalize).toSet
           if (cinemaNames.isEmpty) Some(hit)
           else {
-            val tmdbNames = tmdb.directorsFor(hit.id).map(EnrichmentService.normalize)
+            val tmdbNames = tmdb.directorsFor(hit.id).map(MovieService.normalize)
             val matches = tmdbNames.exists(t => cinemaNames.exists(c => t.contains(c) || c.contains(t)))
             if (matches) Some(hit) else None
           }
@@ -458,29 +457,31 @@ class EnrichmentService(
 
   /** Normalized alias set for a (cleanTitle, originalTitle) pair. Empty
    *  components and duplicates collapse; both sides go through
-   *  `EnrichmentService.normalize` so accent/case differences fold to the
+   *  `MovieService.normalize` so accent/case differences fold to the
    *  same key. */
   private def titleAliases(cleanTitle: String, originalTitle: Option[String]): Set[String] = {
     val parts = Iterator(Option(cleanTitle), originalTitle)
       .flatten
       .map(_.trim)
       .filter(_.nonEmpty)
-      .map(EnrichmentService.normalize)
+      .map(MovieService.normalize)
       .filter(_.nonEmpty)
     parts.toSet
   }
 }
 
-object EnrichmentService {
-  // Lowercase + accent strip + whitespace collapse. NFD strips most diacritics
-  // (ą → a, ę → e, …) but Polish `ł` is a base character, not a composed one,
-  // so we hand-map it.
-  def normalize(title: String): String = {
-    val stripped = Normalizer.normalize(title, Normalizer.Form.NFD).replaceAll("\\p{M}", "")
-    stripped.toLowerCase
-      .replace('ł', 'l').replace('Ł', 'l')
-      .replaceAll("\\s+", " ").trim
-  }
+object MovieService {
+  // Stable docId key for the cache + Mongo `_id`. Delegates to
+  // `controllers.TitleNormalizer.sanitize`, which applies Arabic→Roman,
+  // strips display-only decoration (anniversary/Cykl/wersja), folds
+  // " & " → " i " and the "Gwiezdne Wojny:" prefix, and finally collapses
+  // every non-alphanumeric char so punctuation/whitespace differences
+  // ("Top Gun Maverick" vs "Top Gun: Maverick") share a key.
+  //
+  // Corpus-independent — the same title always produces the same key, so
+  // cache lookups + Mongo upserts are stable across refresh ticks regardless
+  // of which other films happen to be in the cache at the moment.
+  def normalize(title: String): String = controllers.TitleNormalizer.sanitize(title)
 
   // Decoration-stripping lives in `controllers.TitleNormalizer` so the same
   // patterns are used for merging (so "Top Gun 40th Anniversary" and "Top Gun"

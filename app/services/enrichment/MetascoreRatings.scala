@@ -20,12 +20,12 @@ import scala.util.{Failure, Success, Try}
  * self-schedules (CLAUDE.md).
  *
  * URL resolution needs TMDB data (release year, English title) that the
- * Enrichment row alone doesn't carry — we hit `tmdb.details(tmdbId)` lazily
+ * MovieRecord row alone doesn't carry — we hit `tmdb.details(tmdbId)` lazily
  * for rows that need URL discovery, and never for rows that already have a
  * canonical URL.
  */
 class MetascoreRatings(
-  cache:      EnrichmentCache,
+  cache:      MovieCache,
   tmdb:       TmdbClient,
   metacritic: MetacriticClient
 ) extends Logging {
@@ -95,7 +95,7 @@ class MetascoreRatings(
   // Probe MC for a canonical /movie/ URL using TMDB's title data; write it
   // back to the cache when found. Returns the new URL (or None if MC didn't
   // index the film).
-  private def resolveAndPersistUrl(key: CacheKey, e: models.Enrichment): Option[String] =
+  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[String] =
     e.tmdbId.flatMap { tmdbId =>
       val linkTitle  = e.originalTitle.getOrElse(key.cleanTitle)
       val mcFallback = if (linkTitle != key.cleanTitle) Some(key.cleanTitle) else None
@@ -120,19 +120,21 @@ class MetascoreRatings(
 
       resolved.foreach { url =>
         logger.debug(s"Metascore: ${key.cleanTitle} discovered $url")
-        cache.put(key, e.copy(metacriticUrl = Some(url)))
+        cache.putIfPresent(key, _.copy(metacriticUrl = Some(url)))
       }
       resolved
     }
 
-  private def refreshScoreFromUrl(key: CacheKey, e: models.Enrichment, url: String): Unit =
+  private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit =
     Try(metacritic.metascoreFor(url)).toOption.flatten match {
       case Some(score) if !e.metascore.contains(score) =>
-        // Re-read the cached row in case `resolveAndPersistUrl` just wrote
-        // the URL — we want to merge our score onto the freshest version.
-        val current = cache.get(key).getOrElse(e)
-        logger.debug(s"Metascore: ${key.cleanTitle} $url ${current.metascore.getOrElse("—")} → $score")
-        cache.put(key, current.copy(metascore = Some(score)))
+        // The updater receives the live cached row — that's the merge point
+        // for both the URL we may have just written and any other listener's
+        // concurrent updates. No risk of clobbering.
+        cache.putIfPresent(key, current => {
+          logger.debug(s"Metascore: ${key.cleanTitle} $url ${current.metascore.getOrElse("—")} → $score")
+          current.copy(metascore = Some(score))
+        })
       case _ => ()
     }
 
@@ -157,7 +159,7 @@ class MetascoreRatings(
       Try(metacritic.metascoreFor(url)) match {
         case Success(fresh) if fresh != enrichment.metascore =>
           logger.debug(s"Metascore refresh: ${key.cleanTitle} $url ${enrichment.metascore.getOrElse("—")} → ${fresh.getOrElse("—")}")
-          cache.put(key, enrichment.copy(metascore = fresh))
+          cache.putIfPresent(key, _.copy(metascore = fresh))
           changed += 1
         case Success(_) => ()
         case Failure(ex) =>
@@ -193,7 +195,7 @@ class MetascoreRatings(
   }
 
   /** Drain the worker pool so in-flight upserts hit Mongo before
-   *  `EnrichmentRepo` closes its client. */
+   *  `MovieRepo` closes its client. */
   def stop(): Unit = {
     worker.shutdown()
     refreshScheduler.shutdown()

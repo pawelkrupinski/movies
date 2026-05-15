@@ -11,7 +11,7 @@ import scala.concurrent.Future
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import services.cinemas.HeliosClient
-import services.enrichment.{EnrichmentCache, EnrichmentRepo, EnrichmentService, FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
+import services.enrichment.{MovieCache, MovieRepo, MovieService, FilmwebClient, FilmwebRatings, IdentityMerger, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
 import services.events.EventBus
 import services.ShowtimeCache
 
@@ -68,24 +68,28 @@ class AppComponents(context: Context)
   // ── Events ────────────────────────────────────────────────────────────────
   lazy val eventBus = new EventBus()
 
-  // ── Enrichment ────────────────────────────────────────────────────────────
-  lazy val enrichmentRepo    = new EnrichmentRepo()
-  lazy val enrichmentCache   = new EnrichmentCache(enrichmentRepo)
+  // ── MovieRecord ────────────────────────────────────────────────────────────
+  lazy val movieRepo    = new MovieRepo()
+  lazy val movieCache   = new MovieCache(movieRepo)
   // ImdbRatings / RottenTomatoesRatings own the hourly rating refresh + the
   // per-row event listener for their respective services. Pulled out of
-  // EnrichmentService so each external service has its own tempo and the TMDB
+  // MovieService so each external service has its own tempo and the TMDB
   // stage doesn't block on IMDb's GraphQL CDN or RT's HTML render.
-  lazy val imdbRatings           = new ImdbRatings(enrichmentCache, imdbClient)
-  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(enrichmentCache, tmdbClient, rottenTomatoesClient)
-  lazy val metascoreRatings      = new MetascoreRatings(enrichmentCache, tmdbClient, metacriticClient)
-  lazy val filmwebRatings        = new FilmwebRatings(enrichmentCache, filmwebClient)
-  lazy val enrichmentService     = new EnrichmentService(enrichmentCache, eventBus, tmdbClient)
+  lazy val imdbRatings           = new ImdbRatings(movieCache, imdbClient)
+  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient)
+  lazy val metascoreRatings      = new MetascoreRatings(movieCache, tmdbClient, metacriticClient)
+  lazy val filmwebRatings        = new FilmwebRatings(movieCache, filmwebClient)
+  lazy val movieService     = new MovieService(movieCache, eventBus, tmdbClient)
+  // Folds rows that resolve to the same TMDB or IMDb id into one — handles
+  // the year=None vs year=Some(year) duplicates cinemas inconsistently
+  // produce, and bridges cross-script translations of the same film.
+  lazy val identityMerger        = new IdentityMerger(movieCache)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────
-  lazy val showtimeCache = new ShowtimeCache(heliosClient, eventBus)
+  lazy val showtimeCache = new ShowtimeCache(heliosClient, eventBus, movieCache)
 
   // ── Controllers ───────────────────────────────────────────────────────────
-  lazy val movieController  = new MovieController(controllerComponents, showtimeCache, enrichmentService, environment)
+  lazy val movieController  = new MovieController(controllerComponents, showtimeCache, movieService, environment)
   lazy val healthController = new HealthController(controllerComponents)
 
   // ── Router + filters ──────────────────────────────────────────────────────
@@ -109,7 +113,7 @@ class AppComponents(context: Context)
   // tmdbId=1277047, imdb_id=null). Without subscribing to `ImdbIdMissing`,
   // those rows had to wait an hour for the next periodic walk to pick them up.
   //
-  //   MovieAdded    → enrichmentService.onMovieAdded         (runs TMDB stage)
+  //   MovieAdded    → movieService.onMovieAdded         (runs TMDB stage)
   //   TmdbResolved  → imdbRatings.onTmdbResolved             (runs IMDb stage)
   //   TmdbResolved  → rottenTomatoesRatings.onTmdbResolved   (runs RT stage)
   //   TmdbResolved  → metascoreRatings.onTmdbResolved        (runs Metascore stage)
@@ -118,7 +122,12 @@ class AppComponents(context: Context)
   //   ImdbIdMissing → rottenTomatoesRatings.onImdbIdMissing  (RT stage on TMDB-only hits)
   //   ImdbIdMissing → metascoreRatings.onImdbIdMissing       (Metascore stage on TMDB-only hits)
   //   ImdbIdMissing → filmwebRatings.onImdbIdMissing         (Filmweb stage on TMDB-only hits)
-  eventBus.subscribe(enrichmentService.onMovieAdded)
+  eventBus.subscribe(movieService.onMovieAdded)
+  // IdentityMerger runs async on its own worker pool — safe to subscribe
+  // in any order vs the rating listeners because they use `cache.putIfPresent`,
+  // so a rating write to a key the merger just deleted can't resurrect it.
+  eventBus.subscribe(identityMerger.onTmdbResolved)
+  eventBus.subscribe(identityMerger.onImdbIdMissing)
   eventBus.subscribe(imdbRatings.onTmdbResolved)
   eventBus.subscribe(imdbRatings.onImdbIdMissing)
   eventBus.subscribe(rottenTomatoesRatings.onTmdbResolved)
@@ -131,7 +140,7 @@ class AppComponents(context: Context)
   // Start background work and register shutdown hooks. Order matters on stop:
   // every ratings service's stop() must drain its worker pool before the
   // repo's close() runs so in-flight upserts land.
-  enrichmentService.start()
+  movieService.start()
   imdbRatings.start()
   rottenTomatoesRatings.start()
   metascoreRatings.start()
@@ -140,11 +149,12 @@ class AppComponents(context: Context)
 
   applicationLifecycle.addStopHook(() => Future.successful {
     showtimeCache.stop()
-    enrichmentService.stop()
+    movieService.stop()
     imdbRatings.stop()
     rottenTomatoesRatings.stop()
     metascoreRatings.stop()
     filmwebRatings.stop()
-    enrichmentRepo.close()
+    identityMerger.stop()
+    movieRepo.close()
   })
 }

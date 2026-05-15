@@ -5,12 +5,11 @@ GET     /kina                       controllers.MovieController.kina()
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
 GET     /debug                      controllers.MovieController.debug()
-GET     /debug/enrichment           controllers.MovieController.debugEnrichment()
 # Drop one row from cache+Mongo and re-fetch all upstream sources. Writes
 # incrementally as each stage completes so a debug-page reload shows the row
 # repopulating field-by-field.
 + nocsrf
-POST    /debug/enrichment/reenrich          controllers.MovieController.reEnrich(title: String, year: Option[Int] ?= None)
+POST    /debug/reenrich             controllers.MovieController.reEnrich(title: String, year: Option[Int] ?= None)
 
 # ── Health ────────────────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check

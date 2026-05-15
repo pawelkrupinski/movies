@@ -1,7 +1,7 @@
 package services.enrichment
 
 import clients.TmdbClient
-import models.Enrichment
+import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.EventBus
@@ -10,7 +10,7 @@ import tools.HttpFetch
 import scala.collection.mutable
 
 /**
- * Tests for `EnrichmentService.reEnrichSync`.
+ * Tests for `MovieService.reEnrichSync`.
  *
  * Design contract:
  *   - Re-enrichment always re-resolves via TMDB title search. It is NOT
@@ -37,14 +37,14 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
     override def post(url: String, body: String, contentType: String): String = get(url)
   }
 
-  private class FakeRepo(seed: Seq[(String, Option[Int], Enrichment)] = Seq.empty)
-      extends EnrichmentRepo {
-    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), Enrichment]
+  private class FakeRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
+      extends MovieRepo {
+    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), MovieRecord]
     seed.foreach { case (t, y, e) => store.put((t, y), e) }
     override def enabled: Boolean = true
-    override def findAll(): Seq[(String, Option[Int], Enrichment)] =
+    override def findAll(): Seq[(String, Option[Int], MovieRecord)] =
       store.iterator.map { case ((t, y), e) => (t, y, e) }.toSeq
-    override def upsert(t: String, y: Option[Int], e: Enrichment): Unit = { store.put((t, y), e); () }
+    override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = { store.put((t, y), e); () }
     override def delete(t: String, y: Option[Int]): Unit = { store.remove((t, y)); () }
   }
 
@@ -57,8 +57,8 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
   private def deadMetacritic() = new MetacriticClient(http = deadFetch)
   private def deadRt()         = new RottenTomatoesClient(http = deadFetch)
 
-  private def mkEnrichment(imdbId: String, orig: Option[String] = None): Enrichment =
-    Enrichment(imdbId = Some(imdbId), imdbRating = None, metascore = None,
+  private def mkEnrichment(imdbId: String, orig: Option[String] = None): MovieRecord =
+    MovieRecord(imdbId = Some(imdbId), imdbRating = None, metascore = None,
                originalTitle = orig, tmdbId = Some(42))
 
   // ── Setup: TMDB index where the Polish title "Powrót do przyszłości"
@@ -94,8 +94,8 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
     val repo     = new FakeRepo(Seq(
       ("Powrót do przyszłości", Some(2026), mkEnrichment("tt-old-wrong-id"))
     ))
-    val cache = new EnrichmentCache(repo)
-    val svc   = new EnrichmentService(cache, new EventBus(), tmdb)
+    val cache = new MovieCache(repo)
+    val svc   = new MovieService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 
@@ -115,8 +115,8 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repo     = new FakeRepo()
-    val cache    = new EnrichmentCache(repo)
-    val svc      = new EnrichmentService(cache, new EventBus(), tmdb)
+    val cache    = new MovieCache(repo)
+    val svc      = new MovieService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 
@@ -134,8 +134,8 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val original = mkEnrichment("tt-original", orig = Some("Keep me"))
     val repo     = new FakeRepo(Seq(("Title", Some(2024), original)))
-    val cache    = new EnrichmentCache(repo)
-    val svc      = new EnrichmentService(cache, new EventBus(), tmdb)
+    val cache    = new MovieCache(repo)
+    val svc      = new MovieService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Title", Some(2024))
 
@@ -150,8 +150,8 @@ class EnrichmentReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repo     = new FakeRepo()  // empty
-    val cache    = new EnrichmentCache(repo)
-    val svc      = new EnrichmentService(cache, new EventBus(), tmdb)
+    val cache    = new MovieCache(repo)
+    val svc      = new MovieService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 

@@ -1,181 +1,275 @@
-@import models.{CinemaMovie, Enrichment, Movie}
-@(movies: Seq[CinemaMovie], enrichmentByTitle: Map[String, Option[Enrichment]])
+@import models.{Cinema, CinemaShowings, MovieRecord, Showtime}
+@import java.time.format.DateTimeFormatter
+@(rows: Seq[(String, Option[Int], Option[MovieRecord])])
 <!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>Debug – Repertuar</title>
+  <title>Debug</title>
   <style>
     * { box-sizing: border-box; }
-    body { font: 12px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 1rem; }
+    body { font: 12px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 1rem; margin: 0; }
     h1 { font-size: 14px; color: #aad4ff; margin: 0 0 .5rem; }
-    .summary { color: #666; margin-bottom: 1rem; font-size: 11px; }
-    .movie { margin: .6rem 0; border: 1px solid #2a2a3e; border-radius: 4px; overflow: hidden; }
-    .movie-header {
-      background: #1a1a2e;
-      padding: .3rem .6rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: .4rem;
-      align-items: baseline;
-    }
-    .movie-title { color: #aad4ff; font-weight: bold; font-size: 13px; }
-    .movie-runtime { font-size: 10px; color: #99b; font-weight: normal; margin-left: 5px; }
-    .pill {
-      background: #252540;
-      border: 1px solid #3a3a6e;
-      border-radius: 3px;
-      padding: 0 5px;
-      font-size: 10px;
-      color: #99b;
-      white-space: nowrap;
-    }
-    .pill.hi { color: #fc9; border-color: #554422; background: #2a2010; }
-    .entry { padding: .3rem .6rem; border-top: 1px solid #1a1a2e; }
-    .entry:hover { background: #111120; }
-    .cinema-name { color: #7cbb7c; font-weight: bold; }
-    .ext-ids { color: #888; font-size: 10px; }
-    .meta-row { margin: .15rem 0; color: #888; font-size: 11px; }
-    .meta-row a { color: #669fcc; text-decoration: none; }
-    .meta-row a:hover { text-decoration: underline; }
-    .synopsis { color: #666; font-size: 10px; max-width: 80ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
-    .synopsis:hover, .synopsis.expanded { white-space: normal; overflow: visible; }
-    .showtimes { margin-top: .2rem; }
-    .st { display: inline-flex; align-items: center; gap: 2px; margin: 1px 5px 1px 0; }
-    .st-date { color: #666; font-size: 10px; margin-right: 1px; }
-    .st-time { color: #aad4ff; }
-    .st-room { color: #e8c48a; font-size: 10px; padding: 0 3px; background: #2a2010; border-radius: 2px; }
-    .st-fmt  { color: #c8a4e8; font-size: 10px; padding: 0 3px; background: #201028; border-radius: 2px; }
-    .st-book { color: #7c7; font-size: 9px; text-decoration: none; }
-    .st-book:hover { text-decoration: underline; }
-    .no-data { color: #444; font-style: italic; }
-    .tag { background: #1e2e1e; border: 1px solid #2a4a2a; border-radius: 3px; padding: 0 4px; font-size: 10px; color: #9c9; margin-right: 3px; }
-    .enrich { font-size: 10px; color: #888; padding: .25rem .6rem; border-top: 1px solid #1a1a2e; background: #0e0e1e; display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
-    .enrich-original { color: #ccc; font-style: italic; }
-    .enrich-pending { color: #444; font-style: italic; }
-    /* Tighten the shared .ratings layout for this devtools-style page. */
-    .enrich .ratings { margin: 0; }
+    .summary { color: #666; margin-bottom: .5rem; font-size: 11px; }
     input[type=search] {
       background: #1a1a2e; border: 1px solid #3a3a6e; color: #eee;
       padding: .2rem .5rem; border-radius: 4px; font: 12px monospace;
       width: 300px; margin-bottom: .5rem;
     }
+    table { border-collapse: collapse; width: 100%; font-size: 11px; }
+    th, td { padding: .35rem .5rem; border-bottom: 1px solid #1a1a2e; vertical-align: middle; text-align: left; white-space: nowrap; }
+    thead th {
+      background: #1a1a2e; color: #aad4ff; cursor: pointer; user-select: none;
+      position: sticky; top: 0; z-index: 1;
+    }
+    thead th:hover { background: #252540; }
+    thead th .arrow { color: #666; font-size: 9px; margin-left: 3px; }
+    tbody tr.data { cursor: pointer; }
+    tbody tr.data:hover { background: #111120; }
+    tbody tr.data.expanded { background: #1a1a30; }
+    .title { max-width: 32ch; overflow: hidden; text-overflow: ellipsis; }
+    .title a { color: #ccc; }
+    .title a:hover { color: #aad4ff; }
+    .orig  { color: #99b; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
+    .year  { color: #888; text-align: right; font-variant-numeric: tabular-nums; }
+    .id    { color: #669fcc; font-size: 10px; }
+    .miss  { color: #444; }
+    a { color: #669fcc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .url-cell a {
+      display: inline-block;
+      color: #888; font-size: 10px;
+      padding: 0 5px; margin-right: 2px;
+      background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 3px;
+    }
+    .url-cell a:hover { background: #252540; color: #ccc; text-decoration: none; }
+    .reenrich-btn {
+      background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 3px;
+      color: #888; font: 12px monospace; padding: 0 6px; cursor: pointer;
+    }
+    .reenrich-btn:hover { background: #252540; color: #ccc; }
+    .reenrich-btn:disabled { opacity: .4; cursor: default; }
+    tr.reenriching td { opacity: .5; }
+    tr.pending td { color: #555; }
+    tr.pending td.title { color: #aab; }
+    .ratings { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
     .hidden { display: none !important; }
+
+    /* Expanded details row */
+    tr.details > td { background: #0a0a18; padding: .6rem 1rem 1rem; white-space: normal; }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: .25rem 1rem;
+      font-size: 11px;
+      margin-bottom: .8rem;
+    }
+    .detail-grid dt { color: #669fcc; }
+    .detail-grid dd { margin: 0; color: #ccc; white-space: normal; word-break: break-word; }
+    .detail-grid dd.miss { color: #444; }
+    .variants { display: flex; flex-wrap: wrap; gap: .25rem; }
+    .variant {
+      background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 3px;
+      padding: 0 .4rem; color: #99b; font-size: 10px;
+    }
+    .cinemas { display: grid; gap: .6rem; margin-top: .4rem; }
+    .cinema {
+      border: 1px solid #1a1a2e; border-radius: 3px;
+      padding: .4rem .6rem; background: #0d0d18;
+    }
+    .cinema-head {
+      display: flex; align-items: baseline; gap: .6rem;
+      color: #aad4ff; font-weight: bold; margin-bottom: .3rem;
+    }
+    .cinema-head a { color: #66aadd; font-weight: normal; font-size: 10px; }
+    .cinema-meta { color: #888; font-size: 10px; margin-bottom: .35rem; }
+    .cinema-meta span { margin-right: .8rem; }
+    .showtimes { display: grid; gap: .15rem; }
+    .showday {
+      display: grid; grid-template-columns: 8ch 1fr; gap: .6rem;
+      align-items: baseline;
+    }
+    .showday-date { color: #888; font-size: 10px; }
+    .showday-times {
+      display: flex; flex-wrap: wrap; gap: .3rem;
+    }
+    .showtime {
+      background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 3px;
+      padding: 0 .4rem; color: #ccc; font-variant-numeric: tabular-nums;
+    }
+    .showtime .room   { color: #777; font-size: 9px; margin-left: .2rem; }
+    .showtime .format { color: #669fcc; font-size: 9px; margin-left: .2rem; }
+    .showtime a { color: #ccc; }
+    .showtime a:hover { color: #aad4ff; text-decoration: none; }
   </style>
   @_ratingStyles()
 </head>
 <body>
 
-@_debugNavbar("movies")
-<h1>Debug – Raw CinemaMovie Data</h1>
-<div class="summary">
-  @movies.size entries · @movies.map(_.cinema).distinct.size cinemas ·
-  @movies.groupBy(_.movie.title.toLowerCase.trim).size unique titles
-</div>
+@_debugNavbar()
+<h1>Debug</h1>
+<div class="summary">@rows.size total · @rows.count(_._3.isDefined) enriched · @rows.count(_._3.isEmpty) pending · click a row to expand · click headers to sort · filter is case-insensitive</div>
 
-<input type="search" id="q" placeholder="Filter by title…" oninput="filterMovies(this.value)">
+<input type="search" id="q" placeholder="Filter by title, original, IMDb id…" oninput="filterRows(this.value)">
 
-@for((_, group) <- movies.groupBy(cm => cm.movie.title.toLowerCase.trim).toSeq.sortBy(_._1)) {
-  @defining(group.sortBy(_.cinema.displayName)) { entries =>
-  <div class="movie" data-title="@entries.head.movie.title.toLowerCase">
-    <div class="movie-header">
-      <span class="movie-title">
-        @entries.head.movie.title
-        @defining(entries.flatMap(_.movie.runtimeMinutes).headOption) { rt =>
-          @rt.map { r => <span class="movie-runtime">@{r} min</span> }
-        }
-      </span>
-      @defining(entries.flatMap(_.movie.releaseYear).headOption) { yr =>
-        @yr.map { y => <span class="pill">@y</span> }
-      }
-      @defining(entries.flatMap(_.movie.premierePl).headOption) { pl =>
-        @pl.map { d => <span class="pill hi">PL @d</span> }
-      }
-      @defining(entries.flatMap(_.movie.premiereWorld).headOption) { w =>
-        @w.map { d => <span class="pill hi">World @d</span> }
-      }
-      <span class="pill">@entries.size cinema(s)</span>
-      <span class="pill">@entries.flatMap(_.showtimes).size showings</span>
-    </div>
-
-    @defining(enrichmentByTitle.getOrElse(entries.head.movie.title.toLowerCase.trim, None)) { enrich =>
-      <div class="enrich">
-        @_ratingBadges(enrich, entries.head.movie.title)
-        @enrich match {
-          case Some(e) => {
-            <span class="enrich-original">@e.imdbId</span>
-            @e.originalTitle.map { t => <span class="enrich-original">orig: @t</span> }
+<table id="t">
+  <thead>
+    <tr>
+      <th data-key="title" data-type="str">Title <span class="arrow">▲</span></th>
+      <th data-key="orig"  data-type="str">Original</th>
+      <th data-key="year"  data-type="num">Year</th>
+      <th data-key="imdb"  data-type="str">IMDb id</th>
+      <th data-key="tmdb"  data-type="num">TMDB id</th>
+      <th data-key="imdbR" data-type="num">Ratings</th>
+      <th data-key="urls"  data-type="str">Stored URLs</th>
+      <th>↻</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for(((title, year, enrich), idx) <- rows.zipWithIndex) {
+      @defining(enrich.map(_.originalTitle.getOrElse("")).getOrElse("")) { orig =>
+      @defining(enrich.map(_.imdbId.getOrElse("")).getOrElse("")) { imdbId =>
+      <tr class="data @if(enrich.isEmpty) {pending}"
+          data-row-id="r@idx"
+          data-haystack="@{(title + " " + orig + " " + imdbId).toLowerCase}"
+          data-title="@title"
+          data-orig="@orig"
+          data-year="@year.map(_.toString).getOrElse("")"
+          data-imdb="@imdbId"
+          data-tmdb="@enrich.flatMap(_.tmdbId).map(_.toString).getOrElse("")"
+          data-imdbR="@enrich.flatMap(_.imdbRating).map(_.toString).getOrElse("")"
+          data-urls="@{enrich.toSeq.flatMap(e => Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten).mkString(" ")}">
+        <td class="title"><a href="@{s"/film?title=${java.net.URLEncoder.encode(title, "UTF-8")}"}" onclick="event.stopPropagation()">@title</a></td>
+        <td class="orig">@if(orig.nonEmpty) { @orig } else { <span class="miss">—</span> }</td>
+        <td class="year">@year.map(_.toString).getOrElse("—")</td>
+        <td class="id">
+          @enrich.flatMap(_.imdbId) match {
+            case Some(id) => { <a href="@{s"https://www.imdb.com/title/$id/"}" target="_blank" rel="noopener" onclick="event.stopPropagation()">@id</a> }
+            case None     => { <span class="miss">—</span> }
           }
-          case None    => { <span class="enrich-pending">no enrichment (cache miss or pending lookup)</span> }
-        }
-      </div>
-    }
-
-    @for(cm <- entries) {
-    <div class="entry">
-      <span class="cinema-name">@cm.cinema.displayName</span>
-      @if(cm.externalIds.nonEmpty) {
-        <span class="ext-ids">[@cm.externalIds.toSeq.sortBy(_._1).map { case (k,v) => s"$k:$v" }.mkString(" · ")]</span>
-      }
-      @cm.movie.runtimeMinutes.map { r => <span class="pill">@{r} min</span> }
-      @cm.movie.releaseYear.map { y => <span class="pill">@y</span> }
-      @cm.movie.premierePl.map { d => <span class="pill hi">PL @d</span> }
-      @cm.movie.premiereWorld.map { d => <span class="pill hi">World @d</span> }
-
-      <div class="meta-row">
-        @cm.filmUrl.map { u => <a href="@u" target="_blank">filmUrl ↗</a> }
-        @cm.posterUrl match {
-          case Some(u) => { · <a href="@u" target="_blank" class="tag">poster ↗</a> }
-          case None    => { · <span style="color:#444;font-size:10px">no poster</span> }
-        }
-        @cm.director.map { d => · dir: <strong>@d</strong> }
-        @cm.cast.map { c => · cast: @{if(c.length > 80) c.take(80) + "…" else c} }
-      </div>
-
-      @cm.synopsis.map { s =>
-        <div class="synopsis" onclick="this.classList.toggle('expanded')">
-          synopsis (@{s.length}): @s
-        </div>
-      }
-
-      <div class="showtimes">
-        @defining(cm.showtimes.map(_.format.toSet).filter(_.nonEmpty)) { allFmts =>
-        @defining(if (allFmts.isEmpty) Set.empty[String] else allFmts.reduce(_ intersect _)) { commonToks =>
-        @defining(cm.showtimes.map(_.format.filterNot(commonToks.contains).mkString(" ")).filter(_.nonEmpty).distinct.size > 1) { multiFormat =>
-          @for(st <- cm.showtimes) {
-            <span class="st">
-              <span class="st-date">@{st.dateTime.toLocalDate}</span>
-              @st.bookingUrl match {
-                case Some(url) => { <a href="@url" class="st-time st-book" target="_blank">@{st.dateTime.toLocalTime}</a> }
-                case None      => { <span class="st-time">@{st.dateTime.toLocalTime}</span> }
-              }
-              @st.room.map { r => <span class="st-room">@r</span> }
-              @if(multiFormat) {
-                @defining(st.format.filterNot(commonToks.contains).mkString(" ")) { stripped =>
-                  @if(stripped.nonEmpty) { <span class="st-fmt">@stripped</span> }
-                }
-              }
-            </span>
+        </td>
+        <td class="id">
+          @enrich.flatMap(_.tmdbId) match {
+            case Some(id) => { <a href="@{s"https://www.themoviedb.org/movie/$id"}" target="_blank" rel="noopener" onclick="event.stopPropagation()">@id</a> }
+            case None     => { <span class="miss">—</span> }
           }
-        }
-        }
-        }
-        @if(cm.showtimes.isEmpty) { <span class="no-data">no showtimes</span> }
-      </div>
-    </div>
+        </td>
+        <td>
+          @enrich match {
+            case Some(e) => { @_ratingBadges(Some(e), title) }
+            case None    => { <span class="miss">—</span> }
+          }
+        </td>
+        <td class="url-cell">
+          @enrich.flatMap(_.metacriticUrl).map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">MC</a> }
+          @enrich.flatMap(_.rottenTomatoesUrl).map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">RT</a> }
+          @enrich.flatMap(_.filmwebUrl).map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">FW</a> }
+        </td>
+        <td>
+          <button class="reenrich-btn" type="button" title="Drop and re-fetch all upstream data" onclick="event.stopPropagation()">↻</button>
+        </td>
+      </tr>
+      <tr class="details hidden" data-row-id="r@idx">
+        <td colspan="8">
+          @enrich match {
+            case Some(e) => { @debugDetails(title, year, e) }
+            case None    => { <em class="miss">No enrichment row in cache yet — TMDB stage will fire on the next scrape tick.</em> }
+          }
+        </td>
+      </tr>
+      }
+      }
     }
-  </div>
-  }
-}
+  </tbody>
+</table>
 
 <script>
-  function filterMovies(q) {
+  function filterRows(q) {
     const lq = q.trim().toLowerCase();
-    document.querySelectorAll('.movie').forEach(el => {
-      el.classList.toggle('hidden', lq.length > 0 && !el.dataset.title.includes(lq));
+    document.querySelectorAll('#t tbody tr.data').forEach(tr => {
+      const hit = lq.length === 0 || tr.dataset.haystack.includes(lq);
+      tr.classList.toggle('hidden', !hit);
+      // Keep the details row in sync with its data row's visibility; collapse
+      // on filter so the layout stays tight.
+      const details = document.querySelector('#t tbody tr.details[data-row-id="' + tr.dataset.rowId + '"]');
+      if (details) {
+        details.classList.toggle('hidden', !hit || !tr.classList.contains('expanded'));
+        if (!hit) tr.classList.remove('expanded');
+      }
     });
   }
+
+  // Toggle details on data-row click. Inner links + the re-enrich button
+  // call stopPropagation so they don't trigger the toggle.
+  document.querySelectorAll('#t tbody tr.data').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const details = document.querySelector('#t tbody tr.details[data-row-id="' + tr.dataset.rowId + '"]');
+      if (!details) return;
+      const expanded = tr.classList.toggle('expanded');
+      details.classList.toggle('hidden', !expanded);
+    });
+  });
+
+  const table = document.getElementById('t');
+  table.querySelectorAll('thead th').forEach(th => {
+    th.addEventListener('click', () => sortBy(th.dataset.key, th.dataset.type, th));
+  });
+
+  function sortBy(key, type, th) {
+    if (!key) return;
+    const tbody = table.tBodies[0];
+    // Sort by data row, then move each row's details sibling alongside.
+    const dataRows = Array.from(tbody.querySelectorAll('tr.data'));
+    const prevKey = table.dataset.sortKey;
+    const prevDir = table.dataset.sortDir || 'asc';
+    const dir = (prevKey === key && prevDir === 'asc') ? 'desc' : 'asc';
+
+    dataRows.sort((a, b) => {
+      const av = a.dataset[key] || '';
+      const bv = b.dataset[key] || '';
+      if (type === 'num') {
+        const an = av === '' ? -Infinity : parseFloat(av);
+        const bn = bv === '' ? -Infinity : parseFloat(bv);
+        return dir === 'asc' ? an - bn : bn - an;
+      }
+      return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+
+    dataRows.forEach(r => {
+      tbody.appendChild(r);
+      const details = tbody.querySelector('tr.details[data-row-id="' + r.dataset.rowId + '"]');
+      if (details) tbody.appendChild(details);
+    });
+
+    table.dataset.sortKey = key;
+    table.dataset.sortDir = dir;
+    table.querySelectorAll('thead th .arrow').forEach(a => a.remove());
+    const arrow = document.createElement('span');
+    arrow.className = 'arrow';
+    arrow.textContent = dir === 'asc' ? '▲' : '▼';
+    th.appendChild(arrow);
+  }
+
   document.getElementById('q').focus();
+
+  document.querySelectorAll('.reenrich-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const tr = btn.closest('tr');
+      const params = new URLSearchParams();
+      params.set('title', tr.dataset.title);
+      if (tr.dataset.year) params.set('year', tr.dataset.year);
+      btn.disabled = true;
+      tr.classList.add('reenriching');
+      const res = await fetch('/debug/reenrich?' + params.toString(), { method: 'POST' });
+      if (!res.ok) {
+        btn.disabled = false;
+        tr.classList.remove('reenriching');
+        alert('Re-enrich failed: HTTP ' + res.status);
+        return;
+      }
+      setTimeout(() => location.reload(), 1500);
+    });
+  });
 </script>
 </body>
 </html>

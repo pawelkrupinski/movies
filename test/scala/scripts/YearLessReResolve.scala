@@ -1,8 +1,8 @@
 package scripts
 
 import clients.TmdbClient
-import models.Enrichment
-import services.enrichment.EnrichmentRepo
+import models.MovieRecord
+import services.enrichment.MovieRepo
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -46,7 +46,7 @@ object YearLessReResolve {
   private case class Skipped (title: String, year: Option[Int], reason: String)                                           extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repo = new EnrichmentRepo()
+    val repo = new MovieRepo()
     if (!repo.enabled) { println("MONGODB_URI not set — nothing to backfill."); sys.exit(1) }
     val tmdb = new TmdbClient()
 
@@ -84,7 +84,7 @@ object YearLessReResolve {
             // they belonged to a different film and will be refilled by the
             // ratings services on their next ticks (or by the next pass of
             // `EnrichmentBackfill`).
-            val replacement = Enrichment(
+            val replacement = MovieRecord(
               imdbId            = Some(newId),
               imdbRating        = None,
               metascore         = None,

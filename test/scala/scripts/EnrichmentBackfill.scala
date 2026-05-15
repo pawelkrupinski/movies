@@ -1,7 +1,7 @@
 package scripts
 
 import clients.TmdbClient
-import models.Enrichment
+import models.MovieRecord
 import services.enrichment._
 import services.events.EventBus
 
@@ -13,7 +13,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
  * One-shot: walk every (title, year) currently in `kinowo.enrichments` and
- * re-run the full enrichment pipeline via `EnrichmentService.reEnrichSync`,
+ * re-run the full enrichment pipeline via `MovieService.reEnrichSync`,
  * so newly-added fields and TMDB index drift get picked up. Reads
  * MONGODB_URI / TMDB_API_KEY from `.env.local` via tools.Env.
  *
@@ -25,12 +25,12 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  */
 object EnrichmentBackfill {
   private sealed trait Outcome
-  private case class Changed(title: String, year: Option[Int], before: Enrichment, after: Enrichment) extends Outcome
-  private case class Refreshed(title: String, year: Option[Int], after: Enrichment) extends Outcome
-  private case class Failed(title: String, year: Option[Int], before: Enrichment) extends Outcome
+  private case class Changed(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord) extends Outcome
+  private case class Refreshed(title: String, year: Option[Int], after: MovieRecord) extends Outcome
+  private case class Failed(title: String, year: Option[Int], before: MovieRecord) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repo = new EnrichmentRepo()
+    val repo = new MovieRepo()
     if (!repo.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
@@ -40,13 +40,13 @@ object EnrichmentBackfill {
     // and IMDb stages synchronously. MC / RT URL discovery + score scrape
     // now live in their dedicated ratings classes; the script invokes them
     // directly per row so a single backfill pass covers everything.
-    val cache       = new EnrichmentCache(repo)
+    val cache       = new MovieCache(repo)
     val tmdb        = new TmdbClient()
     val imdbRatings = new ImdbRatings(cache, new ImdbClient())
     val mcRatings   = new MetascoreRatings(cache, tmdb, new MetacriticClient())
     val rtRatings   = new RottenTomatoesRatings(cache, tmdb, new RottenTomatoesClient())
     val fwRatings   = new FilmwebRatings(cache, new FilmwebClient())
-    val service = new EnrichmentService(cache, new EventBus(), tmdb)
+    val service = new MovieService(cache, new EventBus(), tmdb)
 
     val rows = repo.findAll().sortBy { case (t, y, _) => (t.toLowerCase, y) }
     val Workers = 5

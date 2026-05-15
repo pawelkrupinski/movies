@@ -1,0 +1,107 @@
+@import models.{Cinema, CinemaShowings, MovieRecord, Showtime}
+@import java.time.format.DateTimeFormatter
+@(title: String, year: Option[Int], e: MovieRecord)
+@dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
+@dateFmt = @{DateTimeFormatter.ofPattern("MM-dd")}
+
+@*-- Top-level record info that the main table row doesn't already show. --*@
+<dl class="detail-grid">
+  <dt>displayTitle</dt>
+  <dd>@if(e.displayTitle.nonEmpty) { @e.displayTitle } else { <span class="miss">—</span> }</dd>
+
+  <dt>cinemaTitles (variants)</dt>
+  <dd>
+    @if(e.cinemaTitles.isEmpty) { <span class="miss">—</span> } else {
+      <div class="variants">
+        @for(t <- e.cinemaTitles.toSeq.sorted) { <span class="variant">@t</span> }
+      </div>
+    }
+  </dd>
+
+  <dt>cinemaOriginalTitle</dt>
+  <dd>@e.cinemaOriginalTitle match {
+    case Some(t) => { @t }
+    case None    => { <span class="miss">—</span> }
+  }</dd>
+
+  <dt>releaseYear (merged)</dt>
+  <dd>@e.releaseYear.map(_.toString).getOrElse("—")</dd>
+
+  <dt>runtime (merged)</dt>
+  <dd>@e.runtimeMinutes.map(m => s"$m min").getOrElse("—")</dd>
+
+  <dt>director (merged)</dt>
+  <dd>@e.director match {
+    case Some(d) => { @d }
+    case None    => { <span class="miss">—</span> }
+  }</dd>
+
+  <dt>cast (merged)</dt>
+  <dd>@e.cast match {
+    case Some(c) => { @c }
+    case None    => { <span class="miss">—</span> }
+  }</dd>
+
+  <dt>synopsis (merged)</dt>
+  <dd>@e.synopsis match {
+    case Some(s) => { @s }
+    case None    => { <span class="miss">—</span> }
+  }</dd>
+
+  <dt>posterUrl (merged)</dt>
+  <dd>@e.posterUrl match {
+    case Some(u) => { <a href="@u" target="_blank" rel="noopener" onclick="event.stopPropagation()">@u</a> }
+    case None    => { <span class="miss">—</span> }
+  }</dd>
+</dl>
+
+@*-- Per-cinema breakdown. --*@
+@if(e.cinemaShowings.isEmpty) {
+  <em class="miss">No cinema currently shows this film. The record stays in storage per the "keep forever" policy.</em>
+} else {
+  <div class="cinemas">
+    @for(cinema <- Cinema.all if e.cinemaShowings.contains(cinema)) {
+      @defining(e.cinemaShowings(cinema)) { (showings: CinemaShowings) =>
+        <div class="cinema">
+          <div class="cinema-head">
+            <span>@cinema.displayName</span>
+            @showings.filmUrl.map { u =>
+              <a href="@u" target="_blank" rel="noopener" onclick="event.stopPropagation()">page ↗</a>
+            }
+          </div>
+          @*-- Per-cinema metadata that fed the merged top-level values. --*@
+          <div class="cinema-meta">
+            @showings.originalTitle.map { t  => <span>orig: <em>@t</em></span> }
+            @showings.releaseYear.map { y    => <span>year: @y</span> }
+            @showings.runtimeMinutes.map { m => <span>runtime: @m min</span> }
+            @showings.director.map { d       => <span>dir: @d</span> }
+            @showings.posterUrl.map { u      => <span>poster: <a href="@u" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a></span> }
+          </div>
+          @if(showings.showtimes.nonEmpty) {
+            <div class="showtimes">
+              @for((day, slots) <- showings.showtimes.sortBy(_.dateTime).groupBy(_.dateTime.toLocalDate).toSeq.sortBy(_._1)) {
+                <div class="showday">
+                  <span class="showday-date">@day.format(dateFmt)</span>
+                  <div class="showday-times">
+                    @for(st <- slots.sortBy(_.dateTime)) {
+                      <span class="showtime">
+                        @st.bookingUrl match {
+                          case Some(u) => { <a href="@u" target="_blank" rel="noopener" onclick="event.stopPropagation()">@st.dateTime.format(dtFmt)</a> }
+                          case None    => { @st.dateTime.format(dtFmt) }
+                        }
+                        @st.room.map { r => <span class="room">@r</span> }
+                        @if(st.format.nonEmpty) { <span class="format">@st.format.mkString("·")</span> }
+                      </span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          } else {
+            <em class="miss">No future showtimes from this cinema.</em>
+          }
+        </div>
+      }
+    }
+  </div>
+}

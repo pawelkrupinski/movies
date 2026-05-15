@@ -4,7 +4,7 @@ import models._
 import play.api.mvc._
 import play.api.{Environment, Mode}
 import services.ShowtimeCache
-import services.enrichment.EnrichmentService
+import services.enrichment.MovieService
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -21,7 +21,7 @@ case class FilmSchedule(
                          director: Option[String],
                          cinemaFilmUrls: Seq[(Cinema, String)],
                          showings: Seq[(LocalDate, Seq[CinemaShowtimes])],
-                         enrichment: Option[Enrichment] = None
+                         enrichment: Option[MovieRecord] = None
                        )
 
 case class CinemaMovieSchedule(
@@ -29,7 +29,7 @@ case class CinemaMovieSchedule(
                                 posterUrl: Option[String],
                                 filmUrl: Option[String],
                                 showings: Seq[(LocalDate, Seq[Showtime])],
-                                enrichment: Option[Enrichment] = None
+                                enrichment: Option[MovieRecord] = None
                               )
 
 case class CinemaSchedule(cinema: Cinema, movies: Seq[CinemaMovieSchedule])
@@ -37,12 +37,12 @@ case class CinemaSchedule(cinema: Cinema, movies: Seq[CinemaMovieSchedule])
 class MovieController(
   cc:                ControllerComponents,
   cache:             ShowtimeCache,
-  enrichmentService: EnrichmentService,
+  movieService: MovieService,
   env:               Environment
 ) extends AbstractController(cc) {
 
   def index(): Action[AnyContent] = Action { request =>
-    Ok(views.html.repertoire(toSchedules(cache.get()), Cinema.all.map(_.displayName), devMode))
+    Ok(views.html.repertoire(toSchedules(), Cinema.all.map(_.displayName), devMode))
   }
 
   // Permissive robots.txt — link-preview scrapers (Facebook's
@@ -55,49 +55,38 @@ class MovieController(
   }
 
   def kina(): Action[AnyContent] = Action { request =>
-    Ok(views.html.kina(toCinemaSchedules(cache.get()), Cinema.all.map(_.displayName), devMode))
+    Ok(views.html.kina(toCinemaSchedules(), Cinema.all.map(_.displayName), devMode))
   }
 
   def debug(): Action[AnyContent] = Action {
     devOnly {
-      val movies = cache.get()
-      // One enrichment lookup per unique title (same grouping key the debug
-      // view uses) — schedule the same year as toSchedules: first non-empty
-      // year seen.
-      val enrichmentByTitle: Map[String, Option[Enrichment]] =
-        movies.groupBy(cm => cm.movie.title.toLowerCase.trim).map { case (k, group) =>
-          val title = group.head.movie.title
-          val year  = group.flatMap(_.movie.releaseYear).headOption
-          k -> enrichmentService.get(title, year)
-        }
-      Ok(views.html.debug(movies, enrichmentByTitle))
-    }
-  }
+      val snapshot = movieService.snapshot()
+      val enriched: Seq[(String, Option[Int], Option[MovieRecord])] =
+        snapshot.map { case (t, y, e) => (t, y, Some(e)) }
 
-  def debugEnrichment(): Action[AnyContent] = Action {
-    devOnly {
-      // Existing rows from the enrichment cache.
-      val enriched: Seq[(String, Option[Int], Option[Enrichment])] =
-        enrichmentService.snapshot().map { case (t, y, e) => (t, y, Some(e)) }
-      val enrichedKeys: Set[(String, Option[Int])] = enriched.map { case (t, y, _) => (t, y) }.toSet
-
-      // Showtime titles currently in the cache, normalised to the same key the
-      // enrichment cache uses (searchTitle strips decoration like anniversary
-      // suffixes). Anything not yet enriched gets a row with no Enrichment.
-      val pending: Seq[(String, Option[Int], Option[Enrichment])] =
+      // Pending = a cinema-reported title that no existing row knows about,
+      // either by the (title, year) docId OR by any row's `cinemaTitles`
+      // provenance set. Checking cinemaTitles too catches the case where
+      // KinoBulgarska's `(Bez wyjścia, None)` shouldn't show as pending
+      // because a Multikino-driven `(Bez wyjścia, 2025)` row already records
+      // "Bez wyjścia" as one of its variants.
+      val knownVariants: Set[String] = snapshot.flatMap(_._3.cinemaTitles).toSet
+      val pending: Seq[(String, Option[Int], Option[MovieRecord])] =
         cache.get()
-          .map(cm => (services.enrichment.EnrichmentService.searchTitle(cm.movie.title), cm.movie.releaseYear))
+          .map(cm => (cm.movie.title, cm.movie.releaseYear))
           .distinct
-          .filterNot(enrichedKeys.contains)
+          .filter { case (t, y) =>
+            movieService.get(t, y).isEmpty && !knownVariants.contains(t)
+          }
           .map { case (t, y) => (t, y, None) }
 
       val rows = (enriched ++ pending).sortBy { case (t, _, _) => t.toLowerCase }
-      Ok(views.html.debugEnrichment(rows))
+      Ok(views.html.debug(rows))
     }
   }
 
   def film(title: String): Action[AnyContent] = Action { request =>
-    toSchedules(cache.get()).find(_.movie.title == normalizeTitle(title)) match {
+    toSchedules().find(_.movie.title == normalizeTitle(title)) match {
       case Some(schedule) =>
         // Build absolute URL for og:url. Trust the proxy: Fly terminates TLS
         // and forwards X-Forwarded-Proto, so request.secure is correct in
@@ -123,14 +112,11 @@ class MovieController(
    *  report). */
   def reEnrich(title: String, year: Option[Int]): Action[AnyContent] = Action {
     devOnly {
-      val normalizedTarget = normalizeTitle(title)
-      val hint = cache.get().find { cm =>
-        normalizeTitle(cm.movie.title) == normalizedTarget && cm.movie.releaseYear == year
-      }
-      enrichmentService.reEnrich(
+      val hint = movieService.get(title, year)
+      movieService.reEnrich(
         title,
         year,
-        hint.flatMap(_.movie.originalTitle),
+        hint.flatMap(_.cinemaOriginalTitle),
         hint.flatMap(_.director)
       )
       NoContent
@@ -146,80 +132,61 @@ class MovieController(
   // Same flag the regular navbar uses to gate the Debug tab.
   private def devMode: Boolean = env.mode != Mode.Prod
 
-  private def toSchedules(cinemaMovies: Seq[CinemaMovie]): Seq[FilmSchedule] = {
-    // Pre-compute canonical→merge-key lookup once (O(N)). Without this, mergeKey
-    // scans all titles on every call → O(N²) over the groupBy below.
-    val keyFor = TitleNormalizer.mergeKeyLookup(cinemaMovies.map(_.movie.title))
-    cinemaMovies
-      .groupBy(cm => keyFor(cm.movie.title))
-      .toSeq
-      .flatMap { case (_, entries) =>
-        val now = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
+  // Phase 4: reads now walk the unified `MovieCache` directly. Each
+  // record carries its own per-cinema slots in `cinemaShowings`; there's no
+  // cross-cinema mergeKey pass at read time because the merge already happened
+  // at write time (phase 2's stable docId + phase 3's `recordCinemaScrape`).
 
-        // Prefer non-Bułgarska titles: that cinema uses sentence case which may differ from others.
-        // Fall back to Bułgarska only if it is the sole source for this film.
-        val nonBulgarska   = entries.filter(_.cinema != KinoBulgarska)
-        val titleSource    = if (nonBulgarska.isEmpty) entries else nonBulgarska
-        // Normalise to Roman numerals before deduplicating so "II" and "2" collapse to one title.
-        // preferredDisplay picks the " i " spelling over " & " when both occur.
-        val distinctTitles = titleSource.map(e => normalizeTitle(e.movie.title)).distinct
-        val displayTitle   = TitleNormalizer.preferredDisplay(distinctTitles)
-                              .getOrElse(normalizeTitle(titleSource.head.movie.title))
+  private def toSchedules(): Seq[FilmSchedule] =
+    toSchedules(LocalDateTime.now(ZoneId.of("Europe/Warsaw")))
 
-        val allShowtimes = entries.flatMap(entry => entry.showtimes.map(st => (entry.cinema, st)))
-          .filter(_._2.dateTime.isAfter(now.minusMinutes(30)))
-        if (allShowtimes.isEmpty) None
-        else {
-          val earliest = allShowtimes.map(_._2.dateTime).min
-
-          val byDate: Seq[(LocalDate, Seq[CinemaShowtimes])] =
-            allShowtimes
-              .groupBy(_._2.dateTime.toLocalDate)
-              .toSeq
-              .sortBy(_._1)
-              .map { case (date, cinemaSlotsOnDate) =>
-                val cinemaShowtimes = cinemaSlotsOnDate
-                  .groupBy(_._1)
-                  .toSeq
-                  .sortBy { case (_, slots) => slots.map(_._2.dateTime).min }
-                  .map { case (cinema, slots) =>
-                    CinemaShowtimes(cinema, slots.map(_._2).sortBy(_.dateTime))
-                  }
-                (date, cinemaShowtimes)
-              }
-
-          // Multikino first so its metadata takes priority; others fill gaps
-          val metaPriority = entries.sortBy(e => if (e.cinema == Multikino) 0 else 1)
-
-          val runtimeMinutes: Option[Int] = entries.flatMap(_.movie.runtimeMinutes).headOption
-          val releaseYear:    Option[Int] = entries.flatMap(_.movie.releaseYear).headOption
-          Some((earliest, FilmSchedule(
-            movie = Movie(displayTitle, runtimeMinutes, releaseYear),
-            posterUrl = metaPriority.flatMap(_.posterUrl).headOption,
-            synopsis = metaPriority.flatMap(_.synopsis).headOption,
-            cast = metaPriority.flatMap(_.cast).headOption,
-            director = metaPriority.flatMap(_.director).headOption,
-            cinemaFilmUrls = entries.flatMap(entry => entry.filmUrl.map(url => (entry.cinema, url))),
-            showings = byDate,
-            // Fall back to the raw cinema-reported titles in case displayTitle
-            // diverges from storage — e.g. all cinemas write "Diabeł …
-            // u Prady 2" with Arabic, but TitleNormalizer.normalize promotes
-            // the merged title to "Prady II".
-            enrichment = enrichmentService.getForMerge(displayTitle, entries.map(_.movie.title), releaseYear)
-          )))
-        }
+  /** Overload with an injectable `now` so tests can pin the clock to a
+   *  fixture's capture date and assert what the / page would render at that
+   *  moment. Production callers should always use the no-arg variant. */
+  def toSchedules(now: LocalDateTime): Seq[FilmSchedule] = {
+    movieService.snapshot().flatMap { case (_, _, e) =>
+      // Flatten every cinema's future showtimes for this film. Records with
+      // no future showings (film stopped playing everywhere) drop out of the
+      // list view — they stay in storage per the "keep forever" policy.
+      val allShowtimes = e.cinemaShowings.toSeq.flatMap { case (cinema, slot) =>
+        slot.showtimes.iterator.filter(_.dateTime.isAfter(now.minusMinutes(30))).map(st => (cinema, st))
       }
-      .sortBy(_._1)
-      .map(_._2)
+      if (allShowtimes.isEmpty) None
+      else {
+        val earliest = allShowtimes.map(_._2.dateTime).min
+        val byDate: Seq[(LocalDate, Seq[CinemaShowtimes])] =
+          allShowtimes
+            .groupBy(_._2.dateTime.toLocalDate)
+            .toSeq.sortBy(_._1)
+            .map { case (date, slots) =>
+              val perCinema = slots
+                .groupBy(_._1)
+                .toSeq.sortBy { case (_, ss) => ss.map(_._2.dateTime).min }
+                .map { case (cinema, ss) => CinemaShowtimes(cinema, ss.map(_._2).sortBy(_.dateTime)) }
+              (date, perCinema)
+            }
+        val cinemaFilmUrls: Seq[(Cinema, String)] =
+          e.cinemaShowings.toSeq.flatMap { case (cinema, slot) => slot.filmUrl.map(cinema -> _) }
+        Some((earliest, FilmSchedule(
+          movie          = Movie(e.displayTitle, e.runtimeMinutes, e.releaseYear),
+          posterUrl      = e.posterUrl,
+          synopsis       = e.synopsis,
+          cast           = e.cast,
+          director       = e.director,
+          cinemaFilmUrls = cinemaFilmUrls,
+          showings       = byDate,
+          enrichment     = Some(e)
+        )))
+      }
+    }.sortBy(_._1).map(_._2)
   }
 
-  private def toCinemaSchedules(cinemaMovies: Seq[CinemaMovie]): Seq[CinemaSchedule] = {
+  private def toCinemaSchedules(): Seq[CinemaSchedule] = {
     val now = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
     Cinema.all.flatMap { cinema =>
-      val movies = cinemaMovies
-        .filter(_.cinema == cinema)
-        .flatMap { entry =>
-          val future = entry.showtimes.filter(_.dateTime.isAfter(now.minusMinutes(30)))
+      val moviesForCinema = movieService.snapshot().flatMap { case (_, _, e) =>
+        e.cinemaShowings.get(cinema).flatMap { slot =>
+          val future = slot.showtimes.filter(_.dateTime.isAfter(now.minusMinutes(30)))
           if (future.isEmpty) None
           else {
             val byDate = future
@@ -227,20 +194,20 @@ class MovieController(
               .toSeq.sortBy(_._1)
               .map { case (date, sts) => (date, sts.sortBy(_.dateTime)) }
             Some(CinemaMovieSchedule(
-              movie      = entry.movie.copy(title = normalizeTitle(entry.movie.title)),
-              posterUrl  = entry.posterUrl,
-              filmUrl    = entry.filmUrl,
+              movie      = Movie(e.displayTitle, e.runtimeMinutes, e.releaseYear),
+              // Per-cinema view shows that cinema's own poster (fidelity over
+              // merge); fall back to the merged best only if this cinema
+              // didn't ship one.
+              posterUrl  = slot.posterUrl.orElse(e.posterUrl),
+              filmUrl    = slot.filmUrl,
               showings   = byDate,
-              // Same Arabic→Roman miss applies on the per-cinema view: fall
-              // back to the raw cinema title if the normalised one doesn't hit.
-              enrichment = enrichmentService.getForMerge(
-                normalizeTitle(entry.movie.title), Seq(entry.movie.title), entry.movie.releaseYear)
+              enrichment = Some(e)
             ))
           }
         }
-        .sortBy(_.showings.head._1)
-      if (movies.isEmpty) None
-      else Some(CinemaSchedule(cinema, movies))
+      }.sortBy(_.showings.head._1)
+      if (moviesForCinema.isEmpty) None
+      else Some(CinemaSchedule(cinema, moviesForCinema))
     }
   }
 

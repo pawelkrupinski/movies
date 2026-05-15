@@ -1,7 +1,7 @@
 package clients.enrichment
 
 import clients.TmdbClient
-import models.Enrichment
+import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.{FilmwebClient, ImdbClient, MetacriticClient, RottenTomatoesClient}
@@ -9,7 +9,7 @@ import tools.HttpFetch
 
 /**
  * Glue-level tests that exercise the same TMDB → IMDb → Filmweb chain
- * EnrichmentService.fetchEnrichment runs, but driven by stub HttpFetch
+ * MovieService.fetchEnrichment runs, but driven by stub HttpFetch
  * instances so we can assert behaviour without touching the live APIs.
  *
  * Regression coverage:
@@ -26,9 +26,9 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
     override def post(url: String, body: String, contentType: String): String = get(url)
   }
 
-  // Run the same chain EnrichmentService.fetchEnrichment runs so the test
+  // Run the same chain MovieService.fetchEnrichment runs so the test
   // catches drift between the production wiring and what we believe it does.
-  // No OMDb step — Enrichment is built directly from TMDB + IMDb (GraphQL
+  // No OMDb step — MovieRecord is built directly from TMDB + IMDb (GraphQL
   // CDN scrape) + Filmweb + URL validators.
   private def run(
     tmdb:    TmdbClient,
@@ -37,7 +37,7 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
     metacritic: MetacriticClient,
     rt:         RottenTomatoesClient,
     title: String, year: Option[Int]
-  ): Option[Enrichment] =
+  ): Option[MovieRecord] =
     for {
       hit    <- tmdb.search(title, year)
       imdbId <- tmdb.imdbId(hit.id)
@@ -48,7 +48,7 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
       val linkTitle   = originalTit.getOrElse(title)
       val metacrUrl   = scala.util.Try(metacritic.urlFor(linkTitle)).toOption.flatten
       val rtomatoeUrl = scala.util.Try(rt.urlFor(linkTitle)).toOption.flatten
-      Enrichment(
+      MovieRecord(
         imdbId            = Some(imdbId),
         imdbRating        = imdbRating,
         metascore         = None,

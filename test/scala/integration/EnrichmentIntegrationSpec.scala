@@ -12,7 +12,7 @@ import tools.Env
  *
  * Exercises the same classes the production code uses — no mocking, no fakes.
  * The Polish-title → TMDB → IMDB id → IMDb-rating chain is what
- * `EnrichmentService.fetchEnrichment` runs in the background; this spec proves
+ * `MovieService.fetchEnrichment` runs in the background; this spec proves
  * the chain works end-to-end on a handful of real films that show up in the
  * site's repertoire.
  */

@@ -33,7 +33,16 @@ class KinoBulgarskaClient(http: HttpFetch = new RealHttpFetch()) {
         val day       = m.group(1).toInt
         val today     = LocalDate.now()
         val candidate = LocalDate.of(today.getYear, month, day)
-        if (candidate.isBefore(today.minusDays(1))) candidate.plusYears(1) else candidate
+        // Cinema dates in the page have no year. Roll forward to next year
+        // only when the parsed date is *substantially* in the past —
+        // legitimate use case is the year-boundary (e.g. late December
+        // showing "13.01" — which means Jan 13 of next year). Don't roll
+        // recent past screenings forward: a website viewed in mid-May still
+        // shows "13.05" / "14.05" entries from a day or two ago, and those
+        // are this year, not next year. 6 months is the sweet spot:
+        // distant-past dates (like January viewed from late June) bump
+        // forward; nearby-past dates (yesterday, last week) stay put.
+        if (candidate.isBefore(today.minusMonths(6))) candidate.plusYears(1) else candidate
       }
     }
 

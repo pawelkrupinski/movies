@@ -1,5 +1,5 @@
-@import models.{Enrichment, Movie}
-@(movie: Movie, posterUrl: Option[String], enrichment: Option[Enrichment] = None)(showingsContent: Html)
+@import models.{MovieRecord, Movie}
+@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord] = None)(showingsContent: Html)
 <div class="card">
   <div class="poster-wrap">
     <button class="hide-btn" onclick="hideFilm(this)" title="Ukryj film">✕</button>
