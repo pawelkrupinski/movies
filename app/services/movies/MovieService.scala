@@ -195,15 +195,15 @@ class MovieService(
     directorHint:      Option[String] = None
   ): Unit =
     Try(runTmdbStageSync(key, originalTitleHint, directorHint)) match {
-      case Success(Some(e)) =>
+      case Success(Some(movieRecord)) =>
         retryAttempts.remove(key)
-        e.imdbId match {
+        movieRecord.imdbId match {
           case Some(id) =>
             bus.publish(TmdbResolved(key.cleanTitle, key.year, id))
             logger.debug(s"TMDB stage: ${key.cleanTitle} (${key.year.getOrElse("?")}) → $id")
           case None =>
-            val searchTitle = e.originalTitle.getOrElse(key.cleanTitle)
-            logger.debug(s"TMDB stage: ${key.cleanTitle} (${key.year.getOrElse("?")}) → tmdbId=${e.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
+            val searchTitle = movieRecord.originalTitle.getOrElse(key.cleanTitle)
+            logger.debug(s"TMDB stage: ${key.cleanTitle} (${key.year.getOrElse("?")}) → tmdbId=${movieRecord.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
             bus.publish(ImdbIdMissing(key.cleanTitle, key.year, searchTitle))
         }
       case Success(None)    =>
