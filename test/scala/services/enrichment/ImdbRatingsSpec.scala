@@ -5,7 +5,7 @@ import services.movies.{IdentityMerger, MovieCache, MovieRepo, MovieService}
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{EventBus, ImdbIdMissing, MovieAdded, TmdbResolved}
+import services.events.{EventBus, ImdbIdMissing, MovieRecordCreated, TmdbResolved}
 import tools.HttpFetch
 
 import scala.collection.mutable
@@ -185,7 +185,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     }))
     bus.subscribe(ratings.onTmdbResolved)
 
-    noException should be thrownBy bus.publish(MovieAdded("Anything", None))
+    noException should be thrownBy bus.publish(MovieRecordCreated("Anything", None))
   }
 
   // ── onImdbIdMissing — IMDb-search fallback for TMDB hits without imdbId ────

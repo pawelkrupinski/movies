@@ -14,7 +14,7 @@ import scala.util.Try
  * Year-less re-resolution backfill: walks every Mongo row whose key still
  * carries a year and asks TMDB to resolve `(title, None)` — the same lookup
  * the post-MultikinoClient-fix flow performs (ShowtimeCache now publishes
- * `MovieAdded` with year=None for MK films; `tmdb.search` year-less ranking
+ * `MovieRecordCreated` with year=None for MK films; `tmdb.search` year-less ranking
  * prefers popular exact-title matches).
  *
  * Why this is needed: an earlier wave of rows was keyed by the cinema's

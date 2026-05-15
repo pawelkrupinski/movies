@@ -4,12 +4,12 @@ import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityPoznanPlaza
 import play.api.Logging
 import services.cinemas.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoApolloClient, KinoBulgarskaClient, KinoMuzaClient, KinoPalacoweClient, MultikinoClient, RialtoClient}
 import services.movies.MovieCache
-import services.events.{EventBus, MovieAdded}
+import services.events.{EventBus, MovieRecordCreated}
 
 import java.util.concurrent.{Executors, TimeUnit}
 
 /** Scrape scheduler. Hits every cinema every 5 minutes, hands the result
- *  to `MovieCache.recordCinemaScrape`, and publishes a `MovieAdded` event
+ *  to `MovieCache.recordCinemaScrape`, and publishes a `MovieRecordCreated` event
  *  per movie so the enrichment pipeline can pick them up. Holds no
  *  in-memory state of its own — `MovieCache` is the read path. */
 class ShowtimeCache(
@@ -47,7 +47,7 @@ class ShowtimeCache(
 
   /** Schedule the periodic refresh. Fires immediately on the first tick so
    *  the cache starts warming as soon as the app is up; then every 5
-   *  minutes. Each cinema fetch publishes its own `MovieAdded` events as
+   *  minutes. Each cinema fetch publishes its own `MovieRecordCreated` events as
    *  soon as it completes, so enrichment starts work without waiting for
    *  the 10-cinema barrier. */
   def start(): Unit =
@@ -70,7 +70,7 @@ class ShowtimeCache(
       val elapsed = System.currentTimeMillis() - t0
       movieCache.recordCinemaScrape(cinema, movies)
       logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms")
-      movies.foreach(cm => bus.publish(MovieAdded(cm.movie.title, cm.movie.releaseYear, cm.movie.originalTitle, cm.director)))
+      movies.foreach(cm => bus.publish(MovieRecordCreated(cm.movie.title, cm.movie.releaseYear, cm.movie.originalTitle, cm.director)))
     } catch {
       case e: Exception =>
         val elapsed = System.currentTimeMillis() - t0

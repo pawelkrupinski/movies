@@ -2,7 +2,7 @@ package services.movies
 
 import clients.TmdbClient
 import play.api.Logging
-import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieAdded, TmdbResolved}
+import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieRecordCreated, TmdbResolved}
 
 import java.text.Normalizer
 import java.util.concurrent.{ConcurrentHashMap, Executors, TimeUnit}
@@ -14,7 +14,7 @@ import scala.util.{Failure, Success, Try}
  *
  *   - **TMDB stage** resolves `(title, year)` → tmdbId + imdbId + originalTitle,
  *     plus Filmweb + Metacritic + Rotten Tomatoes URLs (all of which key off
- *     TMDB's `originalTitle`). Triggered by `MovieAdded`, and re-run once a day
+ *     TMDB's `originalTitle`). Triggered by `MovieRecordCreated`, and re-run once a day
  *     for cached rows whose `tmdbId` is still empty. Publishes `TmdbResolved`
  *     on success so the IMDb stage can fetch the rating asynchronously without
  *     blocking the TMDB lookup.
@@ -108,15 +108,15 @@ class MovieService(
    *
    *  Captures the cinema-provided `originalTitle` (when present) as a hint
    *  the TMDB stage can use as a secondary search title — see `resolveTmdb`. */
-  val onMovieAdded: PartialFunction[DomainEvent, Unit] = {
-    case MovieAdded(title, year, originalTitle, director) =>
+  val onMovieRecordCreated: PartialFunction[DomainEvent, Unit] = {
+    case MovieRecordCreated(title, year, originalTitle, director) =>
       scheduleTmdbStage(cache.keyOf(title, year), originalTitle, director)
   }
 
   // ── Public read + manual re-enrich ────────────────────────────────────────
 
   /** Pure cache lookup — never blocks, never schedules. Misses return None;
-   *  the next `MovieAdded` event re-triggers a background fetch. */
+   *  the next `MovieRecordCreated` event re-triggers a background fetch. */
   def get(title: String, year: Option[Int]): Option[MovieRecord] =
     cache.get(cache.keyOf(title, year))
 
@@ -130,7 +130,7 @@ class MovieService(
    *
    *  `originalTitle` and `director` are cinema-side hints (sourced from the
    *  current `ShowtimeCache` by the controller) that feed the same
-   *  director-verification + director-walk path `MovieAdded` uses. Without
+   *  director-verification + director-walk path `MovieRecordCreated` uses. Without
    *  them, the TMDB title search alone can lock in a same-title-different-
    *  film result, undoing whatever the bus-driven path already corrected.
    *

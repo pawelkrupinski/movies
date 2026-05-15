@@ -103,7 +103,7 @@ class AppComponents(context: Context)
   if (environment.mode == Mode.Prod && Option(System.getenv("SCRAPINGANT_KEY")).forall(_.isEmpty))
     throw new RuntimeException("SCRAPINGANT_KEY must be set in production")
 
-  // Subscribe BEFORE ShowtimeCache.start() so the bus's first MovieAdded
+  // Subscribe BEFORE ShowtimeCache.start() so the bus's first MovieRecordCreated
   // events reach the enrichment handlers. Bus uses PartialFunction.applyOrElse,
   // so each listener only sees events it pattern-matches.
   //
@@ -114,7 +114,7 @@ class AppComponents(context: Context)
   // tmdbId=1277047, imdb_id=null). Without subscribing to `ImdbIdMissing`,
   // those rows had to wait an hour for the next periodic walk to pick them up.
   //
-  //   MovieAdded    → movieService.onMovieAdded         (runs TMDB stage)
+  //   MovieRecordCreated    → movieService.onMovieRecordCreated         (runs TMDB stage)
   //   TmdbResolved  → imdbRatings.onTmdbResolved             (runs IMDb stage)
   //   TmdbResolved  → rottenTomatoesRatings.onTmdbResolved   (runs RT stage)
   //   TmdbResolved  → metascoreRatings.onTmdbResolved        (runs Metascore stage)
@@ -123,7 +123,7 @@ class AppComponents(context: Context)
   //   ImdbIdMissing → rottenTomatoesRatings.onImdbIdMissing  (RT stage on TMDB-only hits)
   //   ImdbIdMissing → metascoreRatings.onImdbIdMissing       (Metascore stage on TMDB-only hits)
   //   ImdbIdMissing → filmwebRatings.onImdbIdMissing         (Filmweb stage on TMDB-only hits)
-  eventBus.subscribe(movieService.onMovieAdded)
+  eventBus.subscribe(movieService.onMovieRecordCreated)
   // IdentityMerger runs async on its own worker pool — safe to subscribe
   // in any order vs the rating listeners because they use `cache.putIfPresent`,
   // so a rating write to a key the merger just deleted can't resurrect it.

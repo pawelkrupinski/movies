@@ -6,7 +6,7 @@ import clients.TmdbClient
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{EventBus, MovieAdded, TmdbResolved}
+import services.events.{EventBus, MovieRecordCreated, TmdbResolved}
 import tools.HttpFetch
 
 import scala.collection.mutable
@@ -190,7 +190,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     }))
     bus.subscribe(ratings.onTmdbResolved)
 
-    noException should be thrownBy bus.publish(MovieAdded("Anything", None))
+    noException should be thrownBy bus.publish(MovieRecordCreated("Anything", None))
   }
 
   // Tiny polling helper — refreshOneSync runs sync but `onTmdbResolved`

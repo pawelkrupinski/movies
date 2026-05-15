@@ -33,7 +33,7 @@ sealed trait DomainEvent
  *
  *  Both optional fields default to None so existing tests and cinemas
  *  without the field stay unchanged. */
-case class MovieAdded(
+case class MovieRecordCreated(
   title:         String,
   year:          Option[Int],
   originalTitle: Option[String] = None,

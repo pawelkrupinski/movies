@@ -6,7 +6,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
-import services.events.{EventBus, MovieAdded}
+import services.events.{EventBus, MovieRecordCreated}
 import tools.HttpFetch
 
 import scala.collection.mutable
@@ -21,7 +21,7 @@ import scala.collection.mutable
  * Replays the actual fixture payloads through the live cinema parsers
  * (`MultikinoClient`, `CinemaCityClient`, `HeliosClient`), runs them
  * through the production enrichment pipeline (recordCinemaScrape +
- * `MovieService.onMovieAdded` on the bus), and asserts the
+ * `MovieService.onMovieRecordCreated` on the bus), and asserts the
  * post-pipeline cache holds exactly ONE row for the film — with
  * `cinemaShowings` spanning every cinema that screened it.
  */
@@ -107,7 +107,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   // ── Parametrized scrape-order regression ──────────────────────────────────
   //
   // Same invariant as the MK II spec: after the production pipeline runs
-  // (recordCinemaScrape + MovieAdded on the bus), exactly one row in the
+  // (recordCinemaScrape + MovieRecordCreated on the bus), exactly one row in the
   // cache must hold the cinema slots — anything more is a duplicate card
   // on screen, anything less makes the film vanish from the home-page
   // list. Every permutation of the four scrape orders gets its own case
@@ -130,15 +130,15 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       val svc   = new MovieService(cache, bus, tmdbStub())
 
       // First scrape resolves the row synchronously so subsequent
-      // cinemas' MovieAdded events find a sibling with a tmdbId.
+      // cinemas' MovieRecordCreated events find a sibling with a tmdbId.
       val first = ordering.head
       cache.recordCinemaScrape(first.cinema, Seq(first.cm))
       svc.reEnrichSync(first.title, first.year)
 
-      bus.subscribe(svc.onMovieAdded)
+      bus.subscribe(svc.onMovieRecordCreated)
       for (s <- ordering.tail) {
         cache.recordCinemaScrape(s.cinema, Seq(s.cm))
-        bus.publish(MovieAdded(s.title, s.year, s.cm.movie.originalTitle, s.cm.director))
+        bus.publish(MovieRecordCreated(s.title, s.year, s.cm.movie.originalTitle, s.cm.director))
       }
 
       def isPrada(e: MovieRecord): Boolean =
