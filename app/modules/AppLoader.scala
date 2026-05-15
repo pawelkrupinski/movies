@@ -12,7 +12,7 @@ import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import services.cinemas.HeliosClient
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbIdResolver, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
-import services.movies.{IdentityMerger, MovieCache, MovieRepo, MovieService}
+import services.movies.{MovieCache, MovieRepo, MovieService}
 import services.events.EventBus
 import services.ShowtimeCache
 
@@ -85,10 +85,6 @@ class AppComponents(context: Context)
   lazy val metascoreRatings      = new MetascoreRatings(movieCache, tmdbClient, metacriticClient)
   lazy val filmwebRatings        = new FilmwebRatings(movieCache, filmwebClient)
   lazy val movieService     = new MovieService(movieCache, eventBus, tmdbClient)
-  // Folds rows that resolve to the same TMDB or IMDb id into one — handles
-  // the year=None vs year=Some(year) duplicates cinemas inconsistently
-  // produce, and bridges cross-script translations of the same film.
-  lazy val identityMerger        = new IdentityMerger(movieCache)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────
   lazy val showtimeCache = new ShowtimeCache(heliosClient, eventBus, movieCache)
@@ -129,11 +125,6 @@ class AppComponents(context: Context)
   //   ImdbIdMissing      → filmwebRatings.onImdbIdMissing            (Filmweb stage on TMDB-only hits)
   //   ImdbIdResolved     → imdbRatings.onImdbIdResolved              (rating fetch once id is known)
   eventBus.subscribe(movieService.onMovieRecordCreated)
-  // IdentityMerger runs async on its own worker pool — safe to subscribe
-  // in any order vs the rating listeners because they use `cache.putIfPresent`,
-  // so a rating write to a key the merger just deleted can't resurrect it.
-  eventBus.subscribe(identityMerger.onTmdbResolved)
-  eventBus.subscribe(identityMerger.onImdbIdMissing)
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   eventBus.subscribe(imdbRatings.onTmdbResolved)
   eventBus.subscribe(imdbRatings.onImdbIdResolved)
@@ -143,12 +134,6 @@ class AppComponents(context: Context)
   eventBus.subscribe(metascoreRatings.onImdbIdMissing)
   eventBus.subscribe(filmwebRatings.onTmdbResolved)
   eventBus.subscribe(filmwebRatings.onImdbIdMissing)
-
-  // Collapse any legacy duplicates the event-driven merger can't see —
-  // already-resolved rows don't re-emit `TmdbResolved`, so two rows that
-  // pre-date this code path (or were created across separate restarts
-  // before the merger landed) would otherwise survive forever.
-  identityMerger.mergeAll()
 
   // Start background work and register shutdown hooks. Order matters on stop:
   // every ratings service's stop() must drain its worker pool before the
@@ -168,7 +153,6 @@ class AppComponents(context: Context)
     rottenTomatoesRatings.stop()
     metascoreRatings.stop()
     filmwebRatings.stop()
-    identityMerger.stop()
     movieRepo.close()
   })
 }

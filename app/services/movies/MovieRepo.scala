@@ -95,8 +95,8 @@ class MovieRepo extends Logging {
   /** Update the row at `(title, year)` only if it currently exists in Mongo.
    *  Returns true on update, false when no doc matched (concurrent delete,
    *  or row never existed). Used by the cache's `putIfPresent` so a rating
-   *  write that races against `IdentityMerger`'s delete can't resurrect the
-   *  loser by upserting it back into existence. */
+   *  write that races against a concurrent `cache.invalidate` can't
+   *  resurrect the row by upserting it back into existence. */
   def updateIfPresent(title: String, year: Option[Int], e: MovieRecord): Boolean = coll match {
     case None => false
     case Some(c) =>

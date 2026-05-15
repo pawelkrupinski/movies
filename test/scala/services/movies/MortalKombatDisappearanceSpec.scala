@@ -145,115 +145,15 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
     row.cinemaShowings.keySet shouldBe Set(Multikino)
   }
 
-  // ── Step 3: end-to-end — three cinemas + sister-row resolution + merge ────
+  // ── Scrape-order regression: every ordering produces a single visible row ──
   //
-  // Reproduces the user-visible disappearance exactly. Each cinema's
-  // recordCinemaScrape lands a slot, the subsequent TMDB stage wipes it,
-  // and IdentityMerger collapses the empty rows into one empty row.
-
-  it should "carry every cinema's showings through the full pipeline (all three slots survive)" in {
-    val cache  = new MovieCache(new FakeRepo)
-    val bus    = new EventBus
-    val svc    = new MovieService(cache, bus, tmdbStub())
-    val merger = new IdentityMerger(cache)
-
-    // Multikino tick. Lands at ("mortalkombatii", None).
-    cache.recordCinemaScrape(Multikino, Seq(multikinoMk))
-    svc.reEnrichSync("Mortal Kombat 2", None)
-
-    // CinemaCity tick. CacheKey normalises to the SAME ("mortalkombatii",
-    // None) as Multikino, so the slot updates the same row.
-    cache.recordCinemaScrape(CinemaCityPoznanPlaza, Seq(cinemaCityMk))
-    svc.reEnrichSync("Mortal Kombat II", None)
-
-    // Helios tick — year=2025 lands on its own row. Resolution falls back
-    // to the sister-row alias path (matching the production log).
-    cache.recordCinemaScrape(Helios, Seq(heliosMk))
-    svc.reEnrichSync("Mortal Kombat II", Some(2025))
-
-    // Collapse the rows. mergeFor is the sync entry point that matches
-    // IdentityMerger's event-driven contract one trigger at a time.
-    merger.mergeFor("Mortal Kombat 2",  None)
-    merger.mergeFor("Mortal Kombat II", Some(2025))
-
-    val snapshot = cache.snapshot()
-    snapshot.size shouldBe 1
-    val (_, _, survivor) = snapshot.head
-    survivor.tmdbId shouldBe Some(931285)
-    survivor.imdbId shouldBe Some("tt17490712")
-    // Currently FAILS: each TMDB stage wiped its row's cinemaShowings
-    // (see Step 2), so when the merger unions the empty maps the survivor
-    // carries no slots. With zero showings, MovieController.toSchedules
-    // drops the film from the listing → "Mortal Kombat II disappears".
-    survivor.cinemaShowings.keySet should contain allOf (Multikino, CinemaCityPoznanPlaza, Helios)
-    survivor.cinemaShowings.values.flatMap(_.showtimes) should not be empty
-
-    merger.stop()
-  }
-
-  // ── Step 4: identity merge — exactly one entry, in cache and in repo ──────
-  //
-  // The three cinema scrapes go through two distinct CacheKeys
-  // (("mortalkombatii", None) for Multikino+CinemaCity, and
-  // ("mortalkombatii", Some(2025)) for Helios). `IdentityMerger` joins
-  // siblings on shared tmdbId/imdbId, so the final state must carry one row
-  // per film — anything more shows up as a duplicate card on the home page.
-
-  it should "leave exactly one Mortal Kombat II row in cache and in the persisted repo" in {
-    val repo   = new FakeRepo
-    val cache  = new MovieCache(repo)
-    val bus    = new EventBus
-    val svc    = new MovieService(cache, bus, tmdbStub())
-    val merger = new IdentityMerger(cache)
-
-    cache.recordCinemaScrape(Multikino, Seq(multikinoMk))
-    svc.reEnrichSync("Mortal Kombat 2", None)
-    cache.recordCinemaScrape(CinemaCityPoznanPlaza, Seq(cinemaCityMk))
-    svc.reEnrichSync("Mortal Kombat II", None)
-    cache.recordCinemaScrape(Helios, Seq(heliosMk))
-    svc.reEnrichSync("Mortal Kombat II", Some(2025))
-
-    // Two distinct rows before the merger runs — same tmdbId, different year.
-    val preMerge = cache.snapshot().filter { case (_, _, e) => e.tmdbId.contains(931285) }
-    preMerge.size shouldBe 2
-
-    merger.mergeFor("Mortal Kombat 2",  None)
-    merger.mergeFor("Mortal Kombat II", Some(2025))
-
-    // Match by tmdbId/imdbId, not title — that's the merger's identity rule
-    // and the right anchor for "same film, possibly under a different key".
-    def isMk2(e: MovieRecord): Boolean =
-      e.tmdbId.contains(931285) || e.imdbId.contains("tt17490712")
-
-    // Cache: one row after the merge.
-    cache.snapshot().count { case (_, _, e) => isMk2(e) } shouldBe 1
-
-    // Repo (Mongo write-through): one persisted row. The merger deletes the
-    // loser keys via `cache.invalidate`, which propagates to `repo.delete`,
-    // so a successful merge must leave no orphan persisted row behind.
-    repo.findAll().count { case (_, _, e) => isMk2(e) } shouldBe 1
-
-    // Screen: `displayTitle` is the card label; a single snapshot row means
-    // a single rendered entry, and the picked label folds both raw titles.
-    val (_, _, survivor) = cache.snapshot().find { case (_, _, e) => isMk2(e) }.get
-    survivor.displayTitle              shouldBe "Mortal Kombat II"
-    survivor.cinemaTitles              should contain allOf ("Mortal Kombat 2", "Mortal Kombat II")
-    survivor.cinemaShowings.keySet     shouldBe Set(Multikino, CinemaCityPoznanPlaza, Helios)
-
-    merger.stop()
-  }
-
-  // ── Step 5: every scrape order leaves exactly one visible row ─────────────
-  //
-  // IdentityMerger reconciles duplicate rows asynchronously on its own
-  // worker pool — there's a window between TMDB-stage completion and merger
-  // execution during which a user request would see multiple cache rows
-  // for the same film. The fix at the scrape layer is to consolidate same-
-  // film variants onto a single row eagerly, so any extra rows the merger
-  // is yet to clean up carry no cinema slots and `toSchedules` filters
-  // them out. The invariant: at most one row in the snapshot has
-  // `cinemaShowings.nonEmpty` for any given film, regardless of which
-  // cinema scrapes first.
+  // Steps 3 and 4 used to drive IdentityMerger explicitly to collapse the
+  // three Mortal Kombat II rows into one. After the canonical-key fix in
+  // recordCinemaScrape + the cinemaScrapes provenance check, no extra rows
+  // are created at scrape time, so the merger isn't needed and was removed.
+  // The remaining invariant — exactly one row carries the cinema slots,
+  // regardless of which cinema scrapes first — is now enforced entirely by
+  // the scrape layer + the bus-driven TMDB stage's sibling short-circuit.
 
   private case class Scrape(cinema: Cinema, title: String, year: Option[Int], cm: CinemaMovie)
   private def scrapes = Seq(

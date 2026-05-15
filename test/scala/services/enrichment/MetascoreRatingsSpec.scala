@@ -1,6 +1,6 @@
 package services.enrichment
 
-import services.movies.{IdentityMerger, MovieCache, MovieRepo, MovieService}
+import services.movies.{MovieCache, MovieRepo, MovieService}
 
 import clients.TmdbClient
 import models.MovieRecord

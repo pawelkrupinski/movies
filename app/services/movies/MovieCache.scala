@@ -77,7 +77,7 @@ class MovieCache(repo: MovieRepo) extends Logging {
    *
    *  Used by the rating listeners (`ImdbRatings`, `FilmwebRatings`,
    *  `MetascoreRatings`, `RottenTomatoesRatings`) so a rating fetch that
-   *  finishes after `IdentityMerger` deleted the row doesn't resurrect it.
+   *  finishes after a concurrent `cache.invalidate` doesn't resurrect the row.
    *  The updater runs inside Caffeine's per-key compute lock so two
    *  concurrent rating updates on the same key serialize cleanly. The Mongo
    *  side uses `replaceOne(upsert=false)` for the same no-resurrect
@@ -176,8 +176,7 @@ class MovieCache(repo: MovieRepo) extends Logging {
       // a redirect sends us to a row with a different `cleanTitle` ("Mortal
       // Kombat 2" landing on a row whose cleanTitle is "Mortal Kombat II"),
       // we still want this variant tracked so the NEXT scrape of "Mortal
-      // Kombat 2" redirects directly via the `cinemaTitles` index, without
-      // having to wait for an IdentityMerger pass to fold it in.
+      // Kombat 2" redirects directly via the `cinemaTitles` index.
       put(key, existing.copy(
         cinemaTitles   = existing.cinemaTitles + cm.movie.title,
         cinemaScrapes  = existing.cinemaScrapes + scrape,
@@ -208,15 +207,9 @@ class MovieCache(repo: MovieRepo) extends Logging {
    *  Match uses `MovieService.normalize` so an Arabic/Roman /
    *  punctuation / case variant ("Mortal Kombat 2") redirects onto a row
    *  that only knows the canonical form ("Mortal Kombat II") — without
-   *  this, the FIRST cinema's raw spelling pins the row's `cinemaTitles`
-   *  and every other cinema's variant of the same film creates a separate
-   *  row that IdentityMerger then has to async-clean up. During that
-   *  window each row carries a cinema slot and renders as its own card.
-   *
-   *  Without this redirect, every scrape tick re-creates "year=None" rows
-   *  that the IdentityMerger then has to delete again: a wasted TMDB API
-   *  call per row per tick, plus a brief window where /debug/enrichment
-   *  shows the orphan as a "pending" duplicate. */
+   *  this, the FIRST cinema's raw spelling would pin the row's
+   *  `cinemaTitles` and every other cinema's variant of the same film
+   *  would create a separate row at its own key. */
   private def redirectToExistingVariant(primary: CacheKey): Option[CacheKey] = {
     if (positive.getIfPresent(primary) != null) return None
     import scala.jdk.CollectionConverters._
@@ -225,9 +218,8 @@ class MovieCache(repo: MovieRepo) extends Logging {
     // as the incoming title, in addition to having a matching variant in
     // its cinemaTitles. Without this, a Cyrillic-titled row whose
     // cinemaTitles incidentally includes the Latin spelling (from an
-    // earlier cross-script merge) would absorb Latin scrapes and the two
-    // scripts would re-merge on every tick — exactly the user-visible
-    // collapse `IdentityMerger.isSibling` now refuses.
+    // earlier cross-script write) would absorb Latin scrapes and the two
+    // scripts would collapse onto one row.
     val candidates = positive.asMap().asScala.iterator
       .filter { case (k, e) =>
         MovieService.normalize(k.cleanTitle) == normalizedRaw &&
@@ -243,10 +235,8 @@ class MovieCache(repo: MovieRepo) extends Logging {
    *  (tmdbId set). The `MovieService` TMDB stage uses this to short-
    *  circuit: if the cinema's title already maps to an existing resolved
    *  row via `recordCinemaScrape`'s redirect, there's no point running
-   *  another TMDB lookup for the raw `(title, year)` key and creating a
-   *  phantom row that the `IdentityMerger` would have to delete async —
-   *  during which window each row carries a cinema slot and renders as
-   *  its own card.
+   *  another TMDB lookup for the raw `(title, year)` key and writing a
+   *  phantom row that no later code path would ever clean up.
    *
    *  Match uses `MovieService.normalize` so cross-spelling variants
    *  ("Mortal Kombat 2" vs "Mortal Kombat II") still short-circuit even

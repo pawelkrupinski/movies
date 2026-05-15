@@ -172,10 +172,9 @@ class MovieService(
     // A sibling row already knows this raw cinema title (via cinemaTitles)
     // AND has a tmdbId. `recordCinemaScrape`'s redirect has already
     // attached this cinema's slot to that sibling, so running TMDB again
-    // would just create a duplicate row at the `(title, year)` key that
-    // `IdentityMerger` then has to delete — wasted TMDB call plus a
-    // transient duplicate visible on /debug (the year=None / year=2025 /
-    // year=2026 triple the user saw).
+    // would just create a phantom row at the `(title, year)` key that
+    // nothing would clean up — wasted TMDB call plus a stale year-
+    // divergent row sitting in Mongo forever.
     if (cache.hasResolvedSiblingByTitle(key.cleanTitle)) return
     if (pending.add(key))
       worker.execute(() => try runTmdbStage(key, originalTitle, director) finally pending.remove(key))

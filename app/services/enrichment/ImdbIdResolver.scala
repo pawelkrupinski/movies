@@ -60,8 +60,8 @@ class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends
       Try(imdb.findId(searchTitle, year)).toOption.flatten match {
         case Some(id) =>
           logger.info(s"IMDb id resolved via search: ${key.cleanTitle} (${key.year.getOrElse("?")}) → $id")
-          // putIfPresent so an `IdentityMerger` delete that happened between
-          // event publish and id resolution doesn't resurrect the row.
+          // putIfPresent so a concurrent `cache.invalidate` happening between
+          // event publish and id resolution can't resurrect the row.
           val wrote = cache.putIfPresent(key, _.copy(imdbId = Some(id)))
           if (wrote) bus.publish(ImdbIdResolved(title, year, id))
         case None =>
