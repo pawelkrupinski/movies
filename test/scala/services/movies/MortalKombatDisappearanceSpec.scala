@@ -17,17 +17,21 @@ import tools.HttpFetch
  *
  *   Multikino    → ("Mortal Kombat 2",  None)         — MultikinoParser
  *                  drops the Polish theatrical date on purpose.
- *   CinemaCity   → ("Mortal Kombat II", None)         — releaseYear is a
- *                  STRING in the payload ("2026"); `asOpt[Int]` returns
- *                  None, so the parser effectively drops the year too.
+ *   CinemaCity   → ("Mortal Kombat II", Some(2026))   — releaseYear comes
+ *                  through as a String ("2026") in the API; the client
+ *                  parses it to Int (see CinemaCityClient — was a bug fix).
  *   Helios       → ("Mortal Kombat II", Some(2025))   — yearOfProduction
  *                  is the production year (2025), not the 2026 release.
  *
- * Multikino + CinemaCity collapse to the same CacheKey ("mortalkombatii",
- * None) — `CacheKey.equals` normalises the cleanTitle so "Mortal Kombat 2"
- * and "Mortal Kombat II" share a row. Helios lands on a separate row
- * because the year differs. The TMDB stage resolves the year=2025 row via
- * the sister-row alias path; the log line in production is:
+ * Three distinct CacheKey shapes (different titles AND different years),
+ * but all three normalise their cleanTitles to "mortalkombatii". The
+ * `recordCinemaScrape` redirect collapses them onto whichever key landed
+ * first — so the test invariant is "one visible row with all three
+ * cinema slots", not "Multikino + CinemaCity collapse and Helios is
+ * separate" (that was the pre-CC-year-fix world). The TMDB stage's
+ * `hasResolvedSiblingByTitle` short-circuit prevents subsequent bus
+ * events from creating phantom rows at the raw `(title, year)` keys; the
+ * log line in production is:
  *
  *   Sister-row match: Mortal Kombat II (2025) → tmdbId=931285 imdbId=tt17490712 via aliases=mortalkombatii
  *
@@ -89,9 +93,10 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
     multikinoMk.showtimes         should not be empty
 
     cinemaCityMk.movie.title       shouldBe "Mortal Kombat II"
-    // CinemaCity's payload encodes "releaseYear":"2026" as a string and the
-    // parser uses `asOpt[Int]`, so the year drops to None.
-    cinemaCityMk.movie.releaseYear shouldBe None
+    // CinemaCity's payload encodes "releaseYear":"2026" as a string; the
+    // client parses both String and Int forms (was a bug fix — `asOpt[Int]`
+    // silently dropped every CC year before).
+    cinemaCityMk.movie.releaseYear shouldBe Some(2026)
     cinemaCityMk.showtimes         should not be empty
 
     heliosMk.movie.title           shouldBe "Mortal Kombat II"
@@ -140,9 +145,9 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
 
   private case class Scrape(cinema: Cinema, title: String, year: Option[Int], cm: CinemaMovie)
   private def scrapes = Seq(
-    Scrape(Multikino,             "Mortal Kombat 2",  None,        multikinoMk),
-    Scrape(CinemaCityPoznanPlaza, "Mortal Kombat II", None,        cinemaCityMk),
-    Scrape(Helios,                "Mortal Kombat II", Some(2025),  heliosMk)
+    Scrape(Multikino,             "Mortal Kombat 2",  None,         multikinoMk),
+    Scrape(CinemaCityPoznanPlaza, "Mortal Kombat II", Some(2026),   cinemaCityMk),
+    Scrape(Helios,                "Mortal Kombat II", Some(2025),   heliosMk)
   )
 
   for (ordering <- scrapes.permutations.toList) {
