@@ -254,6 +254,77 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     c.filmwebRating shouldBe Some(8.1)
   }
 
+  // ── auditOneSync (backfill API) ────────────────────────────────────────────
+
+  "auditOneSync" should "drop a stored URL whose canonical id no longer matches the row's identity" in {
+    // Row carries a stale Filmweb URL pointing at a completely unrelated film
+    // (the legacy buggy lookup picked it). The tightened re-resolve returns
+    // None because no candidate clears the title bar → URL + rating cleared.
+    val staleUrl = "https://www.filmweb.pl/film/Its+About+Time-2015-838929"
+    val repo = new InMemoryMovieRepo(Seq(
+      ("Wartość sentymentalna", Some(2025), mkEnrichment(
+        "tt1", filmwebUrl = Some(staleUrl), filmwebRating = Some(7.5)
+      ))
+    ))
+    val cache = new MovieCache(repo)
+    val filmweb = new FilmwebClient(new StubFetch(Map(
+      "/live/search"     -> """{"searchHits":[{"id":838929,"type":"film","matchedTitle":"Wartość sentymentalna"}]}""",
+      "/film/838929/info" -> """{"title":"It's About Time","year":2015}"""
+    )))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+
+    val outcome = ratings.auditOneSync("Wartość sentymentalna", Some(2025))
+
+    outcome shouldBe FilmwebRatings.Dropped(staleUrl)
+    val after = cache.get(cache.keyOf("Wartość sentymentalna", Some(2025))).get
+    after.filmwebUrl    shouldBe None
+    after.filmwebRating shouldBe None
+  }
+
+  it should "report Corrected when re-resolution picks a different canonical URL" in {
+    val staleUrl  = "https://www.filmweb.pl/film/Wrong-2015-111"
+    val rightId   = 222
+    val repo = new InMemoryMovieRepo(Seq(
+      ("Foo", Some(2024), mkEnrichment("tt1", filmwebUrl = Some(staleUrl), filmwebRating = Some(5.0)))
+    ))
+    val cache = new MovieCache(repo)
+    val filmweb = new FilmwebClient(new StubFetch(Map(
+      "/live/search"          -> s"""{"searchHits":[{"id":$rightId,"type":"film","matchedTitle":"Foo"}]}""",
+      s"/film/$rightId/info"  -> """{"title":"Foo","year":2024}""",
+      s"/film/$rightId/rating"-> """{"rate":8.0,"count":1}"""
+    )))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+
+    val outcome = ratings.auditOneSync("Foo", Some(2024))
+
+    outcome shouldBe a [FilmwebRatings.Corrected]
+    val after = cache.get(cache.keyOf("Foo", Some(2024))).get
+    after.filmwebUrl.get should include (s"-$rightId")
+    after.filmwebRating  shouldBe Some(8.0)
+  }
+
+  it should "report Kept when re-resolution returns the same canonical URL" in {
+    val rightId = 333
+    val rightUrl = s"https://www.filmweb.pl/film/Foo-2024-$rightId"
+    val repo = new InMemoryMovieRepo(Seq(
+      ("Foo", Some(2024), mkEnrichment("tt1", filmwebUrl = Some(rightUrl), filmwebRating = Some(7.0)))
+    ))
+    val cache = new MovieCache(repo)
+    val filmweb = new FilmwebClient(new StubFetch(Map(
+      "/live/search"          -> s"""{"searchHits":[{"id":$rightId,"type":"film","matchedTitle":"Foo"}]}""",
+      s"/film/$rightId/info"  -> """{"title":"Foo","year":2024}""",
+      s"/film/$rightId/rating"-> """{"rate":7.0,"count":1}"""
+    )))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+
+    val outcome = ratings.auditOneSync("Foo", Some(2024))
+
+    outcome shouldBe FilmwebRatings.Kept(rightUrl)
+    val after = cache.get(cache.keyOf("Foo", Some(2024))).get
+    after.filmwebUrl    shouldBe Some(rightUrl)
+    after.filmwebRating shouldBe Some(7.0)
+  }
+
   // ── Event listener ──────────────────────────────────────────────────────────
 
   "onTmdbResolved" should "trigger a per-row refresh when subscribed on the bus" in {

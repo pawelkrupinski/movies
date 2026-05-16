@@ -86,6 +86,53 @@ class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient
   def refreshOneSync(title: String, year: Option[Int]): Unit =
     refreshOne(cache.keyOf(title, year))
 
+  /** Audit-and-fix the stored `filmwebUrl` for `(title, year)` against the
+   *  tightened `FilmwebClient.lookup`. Re-resolves regardless of whether a
+   *  URL is already stored, writes back any change to the cache (which
+   *  write-throughs to Mongo), and returns a classification so the caller
+   *  (typically `scripts.FilmwebUrlAudit`) can summarise the run.
+   *
+   *  Outcomes:
+   *    - Kept       — re-resolved to the same URL; rating refreshed if
+   *                   Filmweb returned a fresh value.
+   *    - Corrected  — re-resolved to a DIFFERENT canonical URL; URL +
+   *                   rating both replaced.
+   *    - Dropped    — no candidate clears the tightened bar; URL + rating
+   *                   both cleared.
+   *    - NoUrl      — row has no filmwebUrl and the re-resolve didn't find
+   *                   one either; nothing to do.
+   *
+   *  Backfill semantics — required by CLAUDE.md when ingestion logic
+   *  changes (the old `lookup` had no title acceptance bar, so the DB holds
+   *  stale URLs pointing at unrelated films). Public on the ratings class
+   *  so the audit script doesn't need cache visibility. */
+  def auditOneSync(title: String, year: Option[Int]): FilmwebRatings.AuditOutcome = {
+    val key = cache.keyOf(title, year)
+    cache.get(key) match {
+      case None => FilmwebRatings.NoUrl
+      case Some(e) =>
+        val resolved = resolveUrl(key, e)
+        (e.filmwebUrl, resolved) match {
+          case (Some(before), Some(fw)) if fw.url == before =>
+            if (fw.rating.isDefined && fw.rating != e.filmwebRating)
+              cache.putIfPresent(key, _.copy(filmwebRating = fw.rating))
+            FilmwebRatings.Kept(before)
+          case (_, Some(fw)) =>
+            val before = e.filmwebUrl
+            cache.putIfPresent(key, _.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
+            before match {
+              case Some(b) => FilmwebRatings.Corrected(b, fw.url)
+              case None    => FilmwebRatings.Kept(fw.url) // first-time discovery counts as Kept-like.
+            }
+          case (Some(before), None) =>
+            cache.putIfPresent(key, _.copy(filmwebUrl = None, filmwebRating = None))
+            FilmwebRatings.Dropped(before)
+          case (None, None) =>
+            FilmwebRatings.NoUrl
+        }
+    }
+  }
+
   // Look up Filmweb data for the row, write back any changes. Two paths:
   //   - Row already has filmwebUrl → cheap: rating-only refresh via the
   //     URL's id. Skips the search/info round-trips that the original
@@ -116,7 +163,16 @@ class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient
   // films whose cinema-reported title doesn't surface a Filmweb hit still
   // resolve, and the union of TMDB credits + every cinema's reported director
   // as `directors` so same-titled films across years disambiguate.
-  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Unit = {
+  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Unit =
+    resolveUrl(key, e).foreach { fw =>
+      logger.debug(s"Filmweb: ${key.cleanTitle} discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
+      cache.putIfPresent(key, _.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
+    }
+
+  // Pure re-resolve — never writes. Shared by `resolveAndPersistUrl` (production
+  // URL-discovery path) and `auditOneSync` (one-off backfill that compares
+  // the freshly-resolved URL against what's already stored).
+  private def resolveUrl(key: CacheKey, e: models.MovieRecord): Option[FilmwebClient.FilmwebInfo] = {
     val linkTitle = key.cleanTitle
     val details   = e.tmdbId.flatMap(tmdb.details)
     val fallback  = e.originalTitle
@@ -126,10 +182,7 @@ class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient
     val cinemaDirectors = e.cinemaShowings.values.flatMap(_.director).toSet
     val directors       = tmdbDirectors ++ cinemaDirectors
 
-    Try(filmweb.lookup(linkTitle, key.year, fallback, directors)).toOption.flatten.foreach { fw =>
-      logger.debug(s"Filmweb: ${key.cleanTitle} discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
-      cache.putIfPresent(key, _.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
-    }
+    Try(filmweb.lookup(linkTitle, key.year, fallback, directors)).toOption.flatten
   }
 
   // ── Periodic walk ──────────────────────────────────────────────────────────
@@ -200,4 +253,18 @@ class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient
     refreshScheduler.shutdown()
     worker.awaitTermination(15, TimeUnit.SECONDS)
   }
+}
+
+object FilmwebRatings {
+  /** Outcome of a single `auditOneSync` call. The summary stats in the
+   *  `FilmwebUrlAudit` script are derived by counting these. */
+  sealed trait AuditOutcome
+  /** Stored URL re-resolves to the same canonical id (good). */
+  final case class Kept(url: String) extends AuditOutcome
+  /** Stored URL re-resolves to a DIFFERENT canonical id — fixed in place. */
+  final case class Corrected(before: String, after: String) extends AuditOutcome
+  /** Stored URL no longer passes the title + director bar — cleared. */
+  final case class Dropped(before: String) extends AuditOutcome
+  /** Row had no `filmwebUrl` and re-resolve didn't find one either. */
+  case object NoUrl extends AuditOutcome
 }
