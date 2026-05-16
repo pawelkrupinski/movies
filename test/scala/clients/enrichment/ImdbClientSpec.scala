@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.ImdbClient
-import tools.HttpFetch
+import tools.GetOnlyHttpFetch
 
 class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
@@ -117,7 +117,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
   "findId" should "hit the suggestion endpoint and return the parsed tt-id" in {
     val fixture = loadFixture(MortalKombatFixture)
-    val c = new ImdbClient(http = new HttpFetch {
+    val c = new ImdbClient(http = new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.contains("v3.sg.media-imdb.com/suggestion/")) fixture
         else throw new RuntimeException(s"unexpected URL: $url")
@@ -126,7 +126,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "swallow network / HTTP failures and return None" in {
-    val c = new ImdbClient(http = new HttpFetch {
+    val c = new ImdbClient(http = new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("HTTP 503")
     })
     c.findId("anything", None) shouldBe None

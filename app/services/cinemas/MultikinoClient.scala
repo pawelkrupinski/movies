@@ -1,7 +1,7 @@
 package services.cinemas
 
 import models.CinemaMovie
-import tools.{Env, HttpFetch}
+import tools.{Env, GetOnlyHttpFetch, HttpFetch}
 
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.net.{CookieManager, CookiePolicy, URI}
@@ -26,7 +26,7 @@ object MultikinoClient {
   private val UserAgent  = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
   private val AcceptLang = "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7"
 
-  object DefaultFetch extends HttpFetch {
+  object DefaultFetch extends GetOnlyHttpFetch {
     // Shared `HttpClient` — its `CookieManager` is needed by the direct path
     // to carry the cookies the homepage sets into the subsequent API call.
     // (`ScrapingAntClient` is stateless across calls; each call fetches fresh

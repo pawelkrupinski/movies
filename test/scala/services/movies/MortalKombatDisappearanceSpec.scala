@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
 import services.events.{InProcessEventBus, MovieRecordCreated}
-import tools.HttpFetch
+import tools.GetOnlyHttpFetch
 
 /**
  * Reproduction of the "Mortal Kombat II disappears" report.
@@ -47,7 +47,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
 
   // ── Stubs ──────────────────────────────────────────────────────────────────
 
-  private class StubFetch(routes: Map[String, String]) extends HttpFetch {
+  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
     override def get(url: String): String =
       routes.collectFirst { case (frag, body) if url.contains(frag) => body }
         .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))

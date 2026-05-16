@@ -1,12 +1,12 @@
 package clients.tools
 
-import tools.{HttpFetch, RealHttpFetch}
+import tools.{GetOnlyHttpFetch, RealHttpFetch}
 
 import java.io.File
 import java.net.URI
 import java.nio.file.Files
 
-class RecordingHttpFetch(fixtureDir: String, realFetch: RealHttpFetch) extends HttpFetch {
+class RecordingHttpFetch(fixtureDir: String, realFetch: RealHttpFetch) extends GetOnlyHttpFetch {
   val fixtureRoot = "test/resources/fixtures/" + fixtureDir
 
   override def get(url: String): String = {

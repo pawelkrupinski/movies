@@ -4,12 +4,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.FilmwebClient
 import services.enrichment.FilmwebClient.Candidate
-import tools.HttpFetch
+import tools.GetOnlyHttpFetch
 
 class FilmwebClientSpec extends AnyFlatSpec with Matchers {
 
   /** Test stub: routes URLs by substring to canned JSON. */
-  private class StubFetch(routes: Map[String, String]) extends HttpFetch {
+  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
     override def get(url: String): String =
       routes.collectFirst { case (frag, body) if url.contains(frag) => body }
         .getOrElse(throw new RuntimeException(s"HTTP 404 for $url"))

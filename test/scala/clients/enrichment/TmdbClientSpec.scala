@@ -68,7 +68,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   // exact-title matches over year-distance.
 
   private def fakeClient(responses: Map[String, String]): TmdbClient = {
-    val fake = new tools.HttpFetch {
+    val fake = new tools.GetOnlyHttpFetch {
       def get(url: String): String =
         responses.collectFirst { case (frag, body) if url.contains(frag) => body }
           .getOrElse(throw new RuntimeException(s"unexpected URL: $url"))

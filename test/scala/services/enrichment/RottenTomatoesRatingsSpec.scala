@@ -7,7 +7,7 @@ import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, InProcessEventBus, MovieRecordCreated, TmdbResolved}
-import tools.HttpFetch
+import tools.{GetOnlyHttpFetch, HttpFetch}
 import tools.Eventually.eventually
 
 /**
@@ -31,7 +31,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
 
   /** Stub HttpFetch that returns canned HTML keyed by URL. Throws for unknown
    *  URLs so a misrouted fetch surfaces loudly in tests. */
-  private def httpStub(pages: Map[String, String]): HttpFetch = new HttpFetch {
+  private def httpStub(pages: Map[String, String]): HttpFetch = new GetOnlyHttpFetch {
     def get(url: String): String =
       pages.getOrElse(url, throw new RuntimeException(s"unstubbed URL: $url"))
   }
@@ -79,7 +79,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     val url = "https://www.rottentomatoes.com/m/foo"
     val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment(Some(url), score = Some(50)))))
     val cache = new CaffeineMovieCache(repo)
-    val failing = new RottenTomatoesClient(http = new HttpFetch {
+    val failing = new RottenTomatoesClient(http = new GetOnlyHttpFetch {
       def get(u: String): String = throw new RuntimeException("HTTP 503")
     })
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), failing)
@@ -93,7 +93,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment(None))))
     val cache = new CaffeineMovieCache(repo)
     // RottenTomatoesClient stub throws on any fetch — the test asserts it never is.
-    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), new RottenTomatoesClient(http = new HttpFetch {
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), new RottenTomatoesClient(http = new GetOnlyHttpFetch {
       def get(u: String): String = throw new RuntimeException("should not be called")
     }))
 
@@ -102,7 +102,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when the cache has no entry for the key" in {
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), new RottenTomatoesClient(http = new HttpFetch {
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), new RottenTomatoesClient(http = new GetOnlyHttpFetch {
       def get(u: String): String = throw new RuntimeException("should not be called")
     }))
 
@@ -170,7 +170,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
     val bus   = new InProcessEventBus()
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), new RottenTomatoesClient(http = new HttpFetch {
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(apiKey = None), new RottenTomatoesClient(http = new GetOnlyHttpFetch {
       def get(u: String): String = throw new RuntimeException("should not be called")
     }))
     bus.subscribe(ratings.onTmdbResolved)

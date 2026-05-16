@@ -1,12 +1,12 @@
 package clients.tools
 
-import tools.HttpFetch
+import tools.GetOnlyHttpFetch
 
 import java.net.URI
 import java.nio.file.{Files, Paths}
 import java.util.concurrent.CompletableFuture
 
-class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
+class FakeHttpFetch(fixtureDir: String) extends GetOnlyHttpFetch {
   val fixtureRoot = "test/resources/fixtures/" + fixtureDir
 
   override def get(url: String): String = {

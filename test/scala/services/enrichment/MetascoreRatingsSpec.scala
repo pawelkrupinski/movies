@@ -7,7 +7,7 @@ import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, InProcessEventBus, MovieRecordCreated, TmdbResolved}
-import tools.HttpFetch
+import tools.GetOnlyHttpFetch
 import tools.Eventually.eventually
 
 /**
@@ -20,7 +20,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
 
   // Stub MC client that maps URL → JSON-LD HTML and lets the real parser run.
   private def mcStub(scores: Map[String, Option[Int]]): MetacriticClient = {
-    new MetacriticClient(new HttpFetch {
+    new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         scores.get(url) match {
           case Some(Some(s)) =>
@@ -94,7 +94,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   it should "swallow MC fetch failures (network blip, Cloudflare challenge) without throwing" in {
     val repo  = new InMemoryMovieRepo(Seq(("X", None, mkEnrichment("tt9", mcUrl = Some(Url), metascore = Some(70)))))
     val cache = new CaffeineMovieCache(repo)
-    val brokenMc = new MetacriticClient(new HttpFetch {
+    val brokenMc = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("boom")
     })
     val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), brokenMc)
@@ -107,7 +107,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val repo  = new InMemoryMovieRepo(Seq(("X", None, mkEnrichment("tt9", mcUrl = None, metascore = None))))
     val cache = new CaffeineMovieCache(repo)
     // MC stub throws on any call — proving we never tried to fetch.
-    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new HttpFetch {
+    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))
 
@@ -116,7 +116,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when the cache has no entry for the key" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new HttpFetch {
+    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))
 
@@ -167,7 +167,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
         {"iso_3166_1":"US","title":"Harry Potter and the Sorcerer's Stone","type":""}
       ]}
     }"""
-    val tmdb = new TmdbClient(http = new HttpFetch {
+    val tmdb = new TmdbClient(http = new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.contains("/movie/671?")) tmdbBody
         else throw new RuntimeException(s"unstubbed TMDB url: $url")
@@ -185,7 +185,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     ))
     val cache = new CaffeineMovieCache(repo)
     // MC stub: 404 for both philosophers slug variants, 200 + JSON-LD for sorcerers.
-    val mc = new MetacriticClient(new HttpFetch {
+    val mc = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url == sorcerers)
           """<html><head><script type="application/ld+json">
@@ -222,7 +222,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
     val bus   = new InProcessEventBus()
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new HttpFetch {
+    val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))
     bus.subscribe(rates.onTmdbResolved)

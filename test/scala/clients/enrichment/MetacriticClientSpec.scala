@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.MetacriticClient
-import tools.HttpFetch
+import tools.GetOnlyHttpFetch
 
 class MetacriticClientSpec extends AnyFlatSpec with Matchers {
 
@@ -42,7 +42,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   }
 
   // Stub fetch that throws for any URL containing one of the 404 fragments.
-  private def stub(notFound: Set[String]) = new HttpFetch {
+  private def stub(notFound: Set[String]) = new GetOnlyHttpFetch {
     def get(url: String): String =
       if (notFound.exists(url.contains)) throw new RuntimeException("HTTP 404")
       else "OK"
@@ -133,7 +133,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return None when neither primary nor fallback resolve and the search page is empty" in {
     // Stub 404s every probe AND returns an empty search page → no fallback path.
-    val c = new MetacriticClient(new HttpFetch {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
         else "<html><body></body></html>"  // search page with no items
@@ -219,7 +219,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // urlFor's full chain falls through to search when every slug probe 404s.
   "urlFor" should "fall through to the search-page scrape when slug probes 404" in {
     val fixture = loadFixture(SearchTopGunFixture)
-    val c = new MetacriticClient(new HttpFetch {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
         else if (url.contains("/search/")) fixture
@@ -244,7 +244,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
         |  <div>Mar 03, 2018</div>
         |</a>
         |</body></html>""".stripMargin
-    val c = new MetacriticClient(new HttpFetch {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
         else if (url.contains("/search/")) html
@@ -291,7 +291,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
 
   "metascoreFor" should "fetch the URL and return the parsed score" in {
     val fixture = loadFixture(MovieWithMetascoreFixture)
-    val c = new MetacriticClient(new HttpFetch {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url == "https://www.metacritic.com/movie/the-dark-knight") fixture
         else throw new RuntimeException(s"unexpected URL: $url")
@@ -300,7 +300,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return None when the HTTP fetch fails" in {
-    val c = new MetacriticClient(new HttpFetch {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("HTTP 404")
     })
     c.metascoreFor("https://www.metacritic.com/movie/whatever") shouldBe None

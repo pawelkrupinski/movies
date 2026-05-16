@@ -7,7 +7,7 @@ import models.{CinemaShowings, MovieRecord, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, InProcessEventBus, MovieRecordCreated, TmdbResolved}
-import tools.HttpFetch
+import tools.GetOnlyHttpFetch
 import tools.Eventually.eventually
 
 /**
@@ -23,14 +23,14 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
    *    /film/{id}/info         → title + year
    *    /film/{id}/rating       → rate
    */
-  private class StubFetch(routes: Map[String, String]) extends HttpFetch {
+  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
     override def get(url: String): String =
       routes.collectFirst { case (frag, body) if url.contains(frag) => body }
         .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
     override def post(url: String, body: String, contentType: String): String = get(url)
   }
 
-  private val deadFetch = new HttpFetch {
+  private val deadFetch = new GetOnlyHttpFetch {
     override def get(url: String): String = throw new RuntimeException(s"unused: $url")
     override def post(url: String, body: String, contentType: String): String = get(url)
   }
@@ -116,7 +116,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     //   - Persist the URL + rating.
     val tmdbBody    = """{"id":693134,"title":"Dune: Part Two","release_date":"2024-02-27","alternative_titles":{"titles":[]}}"""
     val creditsBody = """{"id":693134,"crew":[{"job":"Director","name":"Denis Villeneuve"}]}"""
-    val tmdb = new TmdbClient(http = new HttpFetch {
+    val tmdb = new TmdbClient(http = new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.contains("/movie/693134?")) tmdbBody
         else if (url.contains("/movie/693134/credits")) creditsBody
@@ -163,7 +163,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     // → tightened lookup returns None → row stays URL-less.
     val tmdbBody    = """{"id":682507,"title":"Belle","release_date":"2021-07-16","alternative_titles":{"titles":[]}}"""
     val creditsBody = """{"id":682507,"crew":[{"job":"Director","name":"Mamoru Hosoda"}]}"""
-    val tmdb = new TmdbClient(http = new HttpFetch {
+    val tmdb = new TmdbClient(http = new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.contains("/movie/682507?")) tmdbBody
         else if (url.contains("/movie/682507/credits")) creditsBody
@@ -197,7 +197,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val url  = "https://www.filmweb.pl/film/Foo-7"
     val repo = new InMemoryMovieRepo(Seq(("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(6.0)))))
     val cache = new CaffeineMovieCache(repo)
-    val brokenFilmweb = new FilmwebClient(new HttpFetch {
+    val brokenFilmweb = new FilmwebClient(new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("boom")
     })
     val ratings = new FilmwebRatings(cache, disabledTmdb, brokenFilmweb)
@@ -344,7 +344,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
     val bus   = new InProcessEventBus()
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(new HttpFetch {
+    val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))
     bus.subscribe(ratings.onTmdbResolved)

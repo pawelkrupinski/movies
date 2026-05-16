@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.HeliosClient
-import tools.HttpFetch
+import tools.GetOnlyHttpFetch
 
 import java.util.concurrent.CompletableFuture
 
@@ -12,7 +12,7 @@ class HeliosClientResilienceSpec extends AnyFlatSpec with Matchers {
 
   // A FakeHttpFetch that returns "[]" for the REST screening URL and fails for any
   // other REST endpoint, so the client must fall back to NUXT-only data.
-  private class NuxtOnlyHttpFetch extends HttpFetch {
+  private class NuxtOnlyHttpFetch extends GetOnlyHttpFetch {
     private val nuxt = new FakeHttpFetch("helios/rest-enrichment")
 
     override def get(url: String): String =

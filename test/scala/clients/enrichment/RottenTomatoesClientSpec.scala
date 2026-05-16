@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.RottenTomatoesClient
-import tools.HttpFetch
+import tools.GetOnlyHttpFetch
 
 class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
@@ -23,7 +23,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     RottenTomatoesClient.slugify("  Top   Gun!! ") shouldBe "top_gun"
   }
 
-  private def stub(notFound: Set[String]) = new HttpFetch {
+  private def stub(notFound: Set[String]) = new GetOnlyHttpFetch {
     def get(url: String): String =
       if (notFound.exists(url.contains)) throw new RuntimeException("HTTP 404")
       else "OK"
@@ -175,7 +175,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // probe 404s — same pattern MC uses.
   "urlFor" should "fall through to the search-page scrape when slug probes 404" in {
     val fixture = loadFixture(SearchTopGunFixture)
-    val c = new RottenTomatoesClient(new HttpFetch {
+    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.contains("/m/")) throw new RuntimeException("HTTP 404")
         else if (url.contains("/search")) fixture
@@ -195,7 +195,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return None when neither primary nor fallback resolve and the search yields nothing" in {
-    val c = new RottenTomatoesClient(new HttpFetch {
+    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.contains("/m/")) throw new RuntimeException("HTTP 404")
         else "<html><body></body></html>"
@@ -231,7 +231,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
   "scoreFor" should "fetch the URL and return the parsed Tomatometer percentage" in {
     val fixture = loadFixture(MovieTheDarkKnightFixture)
-    val c = new RottenTomatoesClient(new HttpFetch {
+    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url == "https://www.rottentomatoes.com/m/the_dark_knight") fixture
         else throw new RuntimeException(s"unexpected URL: $url")
@@ -240,7 +240,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return None when the fetch fails (transient or 404)" in {
-    val c = new RottenTomatoesClient(new HttpFetch {
+    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("HTTP 503")
     })
     c.scoreFor("https://www.rottentomatoes.com/m/whatever") shouldBe None
