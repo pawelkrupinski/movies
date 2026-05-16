@@ -3,9 +3,9 @@ package services.movies
 import clients.TmdbClient
 import play.api.Logging
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieRecordCreated, TmdbResolved}
+import tools.DaemonExecutors
 
-import java.text.Normalizer
-import java.util.concurrent.{ConcurrentHashMap, Executors, TimeUnit}
+import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import models.MovieRecord
 import scala.util.{Failure, Success, Try}
 
@@ -43,26 +43,16 @@ class MovieService(
   // for the TMDB stage, plus IMDb GraphQL for the IMDb stage. Each lookup is
   // mostly network wait, so 10 in-flight is comfortable under TMDB's published
   // rate limit (~50 req/s).
-  private val EnrichmentWorkers = 10
-  private val workerCounter     = new java.util.concurrent.atomic.AtomicInteger(0)
-  private val worker = Executors.newFixedThreadPool(EnrichmentWorkers, { r: Runnable =>
-    val t = new Thread(r, s"enrichment-worker-${workerCounter.incrementAndGet()}")
-    t.setDaemon(true)
-    t
-  })
+  private val worker = DaemonExecutors.fixedPool("enrichment-worker", 10)
 
   // Separate scheduler for delayed retries — it just hands a Runnable back to
   // the worker pool when the timer fires, so we don't tie up a worker thread
   // sleeping. Daemon so it doesn't keep the JVM alive.
-  private val retryScheduler = Executors.newSingleThreadScheduledExecutor { r =>
-    val t = new Thread(r, "enrichment-retry-scheduler"); t.setDaemon(true); t
-  }
+  private val retryScheduler = DaemonExecutors.scheduler("enrichment-retry-scheduler")
 
   // Daily-tick scheduler for `retryUnresolvedTmdb`. The hourly IMDb refresh
   // lives in `ImdbRatings`.
-  private val tmdbRetryScheduler = Executors.newSingleThreadScheduledExecutor { r =>
-    val t = new Thread(r, "tmdb-retry"); t.setDaemon(true); t
-  }
+  private val tmdbRetryScheduler = DaemonExecutors.scheduler("tmdb-retry")
 
   // First run fires shortly after startup so Mongo hydration has time to
   // populate the cache and we don't race app boot.

@@ -1,13 +1,9 @@
 package services.enrichment
 
+import clients.TmdbClient
+import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 import services.movies.{CacheKey, MovieCache}
 
-import clients.TmdbClient
-import play.api.Logging
-import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
-
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{Executors, TimeUnit}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -16,10 +12,7 @@ import scala.util.{Failure, Success, Try}
  *     cleanTitle fallback, lazy `englishTitle` fallback for non-English films).
  *   - `rottenTomatoes` (Tomatometer percentage) scrape from the resolved URL.
  *
- * Mirrors `FilmwebRatings` / `MetascoreRatings`: per-row refresh on
- * `TmdbResolved`, plus a periodic hourly walk that discovers missing URLs and
- * refreshes existing scores. Lifecycle owned by `AppLoader`; the class never
- * self-subscribes or self-schedules (CLAUDE.md).
+ * Shared lifecycle + worker plumbing lives in [[PeriodicCacheRefresher]].
  *
  * URL resolution needs TMDB data (release year, English title) that the
  * MovieRecord row alone doesn't carry — we hit `tmdb.details(tmdbId)` lazily
@@ -29,26 +22,18 @@ class RottenTomatoesRatings(
   cache: MovieCache,
   tmdb:  TmdbClient,
   rt:    RottenTomatoesClient
-) extends Logging {
-
+) extends PeriodicCacheRefresher(
+  name                = "RT",
   // 5 workers comfortably under CLAUDE.md's "5–10" band for undocumented
-  // services. Each refresh is a single GET to a /m/ page; smaller than the
-  // TMDB stage's pool so an RT slowdown can't starve more important fetches.
-  private val Workers       = 5
-  private val workerCounter = new AtomicInteger(0)
-  private val worker = Executors.newFixedThreadPool(Workers, { r: Runnable =>
-    val t = new Thread(r, s"rt-stage-${workerCounter.incrementAndGet()}")
-    t.setDaemon(true); t
-  })
-
-  private val refreshScheduler = Executors.newSingleThreadScheduledExecutor { r =>
-    val t = new Thread(r, "rt-refresh"); t.setDaemon(true); t
-  }
+  // services. Each refresh is a single GET to a /m/ page.
+  workers             = 5,
   // Stagger startup against IMDb (10s) so first-tick bursts don't pile up.
-  private val StartupDelaySeconds = 15L
-  private val RefreshHours        = 1L
+  startupDelaySeconds = 15L,
+  refreshHours        = 1L,
+  cache               = cache
+) {
 
-  // ── Event listener ─────────────────────────────────────────────────────────
+  // ── Event listeners ────────────────────────────────────────────────────────
 
   /** Bus listener: discover the RT URL (if missing) and refresh the Tomatometer
    *  as soon as the TMDB stage produces a row. */
@@ -59,24 +44,12 @@ class RottenTomatoesRatings(
   /** Sibling listener: fire on `ImdbIdMissing` too. The TMDB stage publishes
    *  this when TMDB resolved the film but had no IMDb cross-reference yet
    *  (common for very recent Polish releases). The RT URL + score don't
-   *  depend on the IMDb id, so we want to refresh on either signal.
-   */
+   *  depend on the IMDb id, so we want to refresh on either signal. */
   val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
     case ImdbIdMissing(title, year, _) => schedule(cache.keyOf(title, year))
   }
 
-  // ── Per-row refresh ────────────────────────────────────────────────────────
-
-  /** Dispatch a single-row refresh on the worker pool. */
-  private[services] def schedule(key: CacheKey): Unit =
-    worker.execute(() => refreshOne(key))
-
-  /** Synchronous version of `schedule` — handy for scripts and tests. */
-  private[services] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
-
-  /** Synchronous refresh by `(title, year)` — public entry point for scripts. */
-  def refreshOneSync(title: String, year: Option[Int]): Unit =
-    refreshOne(cache.keyOf(title, year))
+  // ── Per-row work ───────────────────────────────────────────────────────────
 
   // Two paths, mirroring FilmwebRatings / MetascoreRatings:
   //   - URL already known → cheap: scrape Tomatometer, write back if changed.
@@ -84,7 +57,7 @@ class RottenTomatoesRatings(
   //     suffix preference + English-title fallback for non-English films),
   //     write the URL, then scrape the score.
   // Per-row failures are swallowed; the next periodic tick tries again.
-  private def refreshOne(key: CacheKey): Unit =
+  protected def refreshOne(key: CacheKey): Unit =
     cache.get(key).foreach { e =>
       val urlOpt = e.rottenTomatoesUrl.orElse(resolveAndPersistUrl(key, e))
       urlOpt.foreach(url => refreshScoreFromUrl(key, e, url))
@@ -169,26 +142,5 @@ class RottenTomatoesRatings(
     val took = System.currentTimeMillis() - startedAt
     logger.info(s"RT refresh: tick done in ${took}ms — $changed score(s) changed, " +
                 s"$urlDiscovered URL(s) newly discovered, $failed failed.")
-  }
-
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
-
-  /** Schedule the periodic hourly refresh. Called from `AppLoader`. */
-  def start(): Unit = {
-    logger.info(s"RT refresh scheduled every ${RefreshHours}h (first run in ${StartupDelaySeconds}s).")
-    refreshScheduler.scheduleAtFixedRate(
-      () => Try(refreshAll()).recover {
-        case ex => logger.warn(s"RT refresh tick failed: ${ex.getMessage}")
-      },
-      StartupDelaySeconds, RefreshHours * 3600, TimeUnit.SECONDS
-    )
-  }
-
-  /** Drain the worker pool so in-flight upserts hit Mongo before
-   *  `MovieRepo` closes its client. */
-  def stop(): Unit = {
-    worker.shutdown()
-    refreshScheduler.shutdown()
-    worker.awaitTermination(15, TimeUnit.SECONDS)
   }
 }

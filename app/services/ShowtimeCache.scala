@@ -5,8 +5,9 @@ import play.api.Logging
 import services.cinemas.CinemaScraper
 import services.movies.MovieCache
 import services.events.{EventBus, MovieRecordCreated}
+import tools.DaemonExecutors
 
-import java.util.concurrent.{Executors, TimeUnit}
+import java.util.concurrent.TimeUnit
 
 /** Scrape scheduler. Hits every cinema every 5 minutes, hands the result
  *  to `MovieCache.recordCinemaScrape`, and publishes a `MovieRecordCreated` event
@@ -23,17 +24,8 @@ class ShowtimeCache(
 
   logger.info(s"Starting — commit ${Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")}")
 
-  private val fetchExecutor = Executors.newFixedThreadPool(scrapers.size.max(1), { r: Runnable =>
-    val t = new Thread(r, "showtime-fetch")
-    t.setDaemon(true)
-    t
-  })
-
-  private val scheduler = Executors.newSingleThreadScheduledExecutor { r =>
-    val t = new Thread(r, "showtime-cache-refresh")
-    t.setDaemon(true)
-    t
-  }
+  private val fetchExecutor = DaemonExecutors.fixedPool("showtime-fetch", scrapers.size.max(1))
+  private val scheduler     = DaemonExecutors.scheduler("showtime-cache-refresh")
 
   /** Schedule the periodic refresh. Fires immediately on the first tick so
    *  the cache starts warming as soon as the app is up; then every 5

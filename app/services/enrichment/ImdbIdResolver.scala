@@ -3,9 +3,9 @@ package services.enrichment
 import play.api.Logging
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, ImdbIdResolved}
 import services.movies.MovieCache
+import tools.DaemonExecutors
 
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{Executors, TimeUnit}
+import java.util.concurrent.TimeUnit
 import scala.util.Try
 
 /**
@@ -25,12 +25,7 @@ class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends
   // IMDb's suggestion endpoint is fast; one or two workers is plenty for the
   // event-driven path (TmdbResolved fans out hundreds of events at startup but
   // very few of them carry an `ImdbIdMissing`).
-  private val Workers       = 2
-  private val workerCounter = new AtomicInteger(0)
-  private val worker = Executors.newFixedThreadPool(Workers, { r: Runnable =>
-    val t = new Thread(r, s"imdb-id-resolver-${workerCounter.incrementAndGet()}")
-    t.setDaemon(true); t
-  })
+  private val worker = DaemonExecutors.fixedPool("imdb-id-resolver", 2)
 
   /** Bus listener: when the TMDB stage resolved a film but TMDB has no IMDb
    *  cross-reference for it, recover the id via IMDb's suggestion endpoint

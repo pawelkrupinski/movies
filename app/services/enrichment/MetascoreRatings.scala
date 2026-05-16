@@ -1,13 +1,9 @@
 package services.enrichment
 
+import clients.TmdbClient
+import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 import services.movies.{CacheKey, MovieCache}
 
-import clients.TmdbClient
-import play.api.Logging
-import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
-
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{Executors, TimeUnit}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -16,10 +12,7 @@ import scala.util.{Failure, Success, Try}
  *     `englishTitle` fallback for non-English films).
  *   - `metascore` scrape from the resolved URL.
  *
- * Mirrors `FilmwebRatings`'s shape: per-row refresh on `TmdbResolved`, plus a
- * periodic hourly walk that discovers missing URLs and refreshes existing
- * scores. Lifecycle owned by `AppLoader`; the class never self-subscribes or
- * self-schedules (CLAUDE.md).
+ * Shared lifecycle + worker plumbing lives in [[PeriodicCacheRefresher]].
  *
  * URL resolution needs TMDB data (release year, English title) that the
  * MovieRecord row alone doesn't carry — we hit `tmdb.details(tmdbId)` lazily
@@ -30,27 +23,21 @@ class MetascoreRatings(
   cache:      MovieCache,
   tmdb:       TmdbClient,
   metacritic: MetacriticClient
-) extends Logging {
-
+) extends PeriodicCacheRefresher(
+  name                = "Metascore",
   // 3 workers — MC pages are heavier than IMDb's GraphQL endpoint, and the
   // hourly walk makes hundreds of requests. 3 keeps us under MC's tolerated
   // rate while still parallelising the I/O wait.
-  private val Workers       = 3
-  private val workerCounter = new AtomicInteger(0)
-  private val worker = Executors.newFixedThreadPool(Workers, { r: Runnable =>
-    val t = new Thread(r, s"metascore-stage-${workerCounter.incrementAndGet()}")
-    t.setDaemon(true); t
-  })
+  workers             = 3,
+  // Stagger the startup tick so we don't race the IMDb / RT refreshes —
+  // they all walk the same cache and serialising the bursts avoids Mongo
+  // fan-in.
+  startupDelaySeconds = 30L,
+  refreshHours        = 1L,
+  cache               = cache
+) {
 
-  private val refreshScheduler = Executors.newSingleThreadScheduledExecutor { r =>
-    val t = new Thread(r, "metascore-refresh"); t.setDaemon(true); t
-  }
-  // Stagger the startup tick so we don't race the IMDb / RT refreshes — they
-  // all walk the same cache and serialising the bursts avoids Mongo fan-in.
-  private val StartupDelaySeconds = 30L
-  private val RefreshHours        = 1L
-
-  // ── Event listener ─────────────────────────────────────────────────────────
+  // ── Event listeners ────────────────────────────────────────────────────────
 
   /** Bus listener: discover the MC URL (if missing) and refresh the metascore
    *  as soon as the TMDB stage produces a row. */
@@ -61,26 +48,12 @@ class MetascoreRatings(
   /** Sibling listener: fire on `ImdbIdMissing` too. The TMDB stage publishes
    *  this when TMDB resolved the film but had no IMDb cross-reference yet
    *  (common for very recent Polish releases). The MC URL + metascore don't
-   *  depend on the IMDb id, so we want to refresh on either signal.
-   */
+   *  depend on the IMDb id, so we want to refresh on either signal. */
   val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
     case ImdbIdMissing(title, year, _) => schedule(cache.keyOf(title, year))
   }
 
-  // ── Per-row refresh ────────────────────────────────────────────────────────
-
-  /** Dispatch a single-row refresh on the worker pool. No-op when the row no
-   *  longer exists or can't be resolved. */
-  private[services] def schedule(key: CacheKey): Unit =
-    worker.execute(() => refreshOne(key))
-
-  /** Synchronous version of `schedule` — used by backfill scripts and tests. */
-  private[services] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
-
-  /** Synchronous refresh by `(title, year)` — public entry point for scripts.
-   *  Looks up the row's cache key the same way the rest of the pipeline does. */
-  def refreshOneSync(title: String, year: Option[Int]): Unit =
-    refreshOne(cache.keyOf(title, year))
+  // ── Per-row work ───────────────────────────────────────────────────────────
 
   // Two paths, mirroring FilmwebRatings:
   //   - URL already known → cheap: scrape metascore, write back if changed.
@@ -88,7 +61,7 @@ class MetascoreRatings(
   //     details for English title + year disambiguation), write the URL,
   //     then scrape the metascore.
   // Per-row failures are swallowed; the next periodic tick tries again.
-  private def refreshOne(key: CacheKey): Unit =
+  protected def refreshOne(key: CacheKey): Unit =
     cache.get(key).foreach { e =>
       val urlOpt = e.metacriticUrl.orElse(resolveAndPersistUrl(key, e))
       urlOpt.foreach(url => refreshScoreFromUrl(key, e, url))
@@ -181,26 +154,5 @@ class MetascoreRatings(
     val took = System.currentTimeMillis() - startedAt
     logger.info(s"Metascore refresh: tick done in ${took}ms — $changed score(s) changed, " +
                 s"$urlDiscovered URL(s) newly discovered, $failed failed.")
-  }
-
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
-
-  /** Schedule the periodic hourly refresh. Called from `AppLoader`. */
-  def start(): Unit = {
-    logger.info(s"Metascore refresh scheduled every ${RefreshHours}h (first run in ${StartupDelaySeconds}s).")
-    refreshScheduler.scheduleAtFixedRate(
-      () => Try(refreshAll()).recover {
-        case ex => logger.warn(s"Metascore refresh tick failed: ${ex.getMessage}")
-      },
-      StartupDelaySeconds, RefreshHours * 3600, TimeUnit.SECONDS
-    )
-  }
-
-  /** Drain the worker pool so in-flight upserts hit Mongo before
-   *  `MovieRepo` closes its client. */
-  def stop(): Unit = {
-    worker.shutdown()
-    refreshScheduler.shutdown()
-    worker.awaitTermination(15, TimeUnit.SECONDS)
   }
 }

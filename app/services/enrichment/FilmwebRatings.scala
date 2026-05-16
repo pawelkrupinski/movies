@@ -1,13 +1,9 @@
 package services.enrichment
 
+import clients.TmdbClient
+import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 import services.movies.{CacheKey, MovieCache}
 
-import clients.TmdbClient
-import play.api.Logging
-import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
-
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{Executors, TimeUnit}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -15,9 +11,8 @@ import scala.util.{Failure, Success, Try}
  * `RottenTomatoesRatings`, and `MetascoreRatings`.
  *
  * Two responsibilities:
- *   1. **Per-row refresh**: when the TMDB stage publishes `TmdbResolved`,
- *      fetch Filmweb data for that row. Subscribe `onTmdbResolved` on the
- *      bus from `AppLoader`.
+ *   1. **Per-row refresh**: when the TMDB stage publishes `TmdbResolved` or
+ *      `ImdbIdMissing`, fetch Filmweb data for that row.
  *   2. **Periodic walk**: refresh every cached row hourly. For rows that
  *      already have a `filmwebUrl`, the walk does the cheap rating-only
  *      lookup (one HTTP); for rows without a URL it does the full
@@ -26,35 +21,26 @@ import scala.util.{Failure, Success, Try}
  * URL resolution needs TMDB data (English / original title, director credits)
  * that the MovieRecord row alone may not carry — we hit `tmdb.details` and
  * `tmdb.directorsFor` lazily for rows that need URL discovery, and never for
- * rows whose canonical Filmweb URL is already stored. Mirrors how
- * `MetascoreRatings` and `RottenTomatoesRatings` consume TMDB.
+ * rows whose canonical Filmweb URL is already stored.
  *
- * Lifecycle is owned by the caller (`AppLoader` calls `start()` and
- * registers `stop()` as a shutdown hook). The class never self-subscribes
- * or self-schedules — see CLAUDE.md.
+ * Shared lifecycle + worker plumbing lives in [[PeriodicCacheRefresher]].
  *
  * Filmweb has tighter rate limits than the other services (CLAUDE.md notes
  * "5 workers comfortable, more risks soft-blocks"); we stay at 3 here since
  * the per-row work is heavier (potentially search + info + preview + rating).
  */
-class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient) extends Logging {
+class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient)
+    extends PeriodicCacheRefresher(
+      name                = "Filmweb",
+      workers             = 3,
+      // Stagger startup against the other rating services (IMDb @10s, RT
+      // @15s, Metascore @30s) so the first-tick bursts don't pile up.
+      startupDelaySeconds = 45L,
+      refreshHours        = 1L,
+      cache               = cache
+    ) {
 
-  private val Workers       = 3
-  private val workerCounter = new AtomicInteger(0)
-  private val worker = Executors.newFixedThreadPool(Workers, { r: Runnable =>
-    val t = new Thread(r, s"filmweb-stage-${workerCounter.incrementAndGet()}")
-    t.setDaemon(true); t
-  })
-
-  private val refreshScheduler = Executors.newSingleThreadScheduledExecutor { r =>
-    val t = new Thread(r, "filmweb-refresh"); t.setDaemon(true); t
-  }
-  // Stagger startup against the other rating services (IMDb @10s, RT @10s,
-  // Metascore @30s) so the first-tick bursts don't pile up.
-  private val StartupDelaySeconds = 45L
-  private val RefreshHours        = 1L
-
-  // ── Event listener ─────────────────────────────────────────────────────────
+  // ── Event listeners ────────────────────────────────────────────────────────
 
   /** Bus listener: fetch Filmweb data as soon as the TMDB stage publishes a
    *  `TmdbResolved` for this `(title, year)`. */
@@ -66,25 +52,10 @@ class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient
    *  Polish films without an IMDb cross-reference yet (`imdb_id: null`); the
    *  TMDB stage publishes `ImdbIdMissing` for those instead of `TmdbResolved`.
    *  Filmweb data doesn't depend on the IMDb id — we look up the film by
-   *  title/year — so we want to refresh on either event.
-   */
+   *  title/year — so we want to refresh on either event. */
   val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
     case ImdbIdMissing(title, year, _) => schedule(cache.keyOf(title, year))
   }
-
-  // ── Per-row refresh ────────────────────────────────────────────────────────
-
-  /** Dispatch a single-row refresh on the worker pool. */
-  private[services] def schedule(key: CacheKey): Unit =
-    worker.execute(() => refreshOne(key))
-
-  /** Synchronous version of `schedule` — handy for scripts and tests. */
-  private[services] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
-
-  /** Synchronous refresh by `(title, year)` — public entry point for scripts.
-   *  Looks up the row's cache key the same way the rest of the pipeline does. */
-  def refreshOneSync(title: String, year: Option[Int]): Unit =
-    refreshOne(cache.keyOf(title, year))
 
   /** Audit-and-fix the stored `filmwebUrl` for `(title, year)` against the
    *  tightened `FilmwebClient.lookup`. Re-resolves regardless of whether a
@@ -142,7 +113,7 @@ class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient
   //     → /preview per candidate when verifying directors → rating).
   // Per-row failures are swallowed (network blip, Filmweb soft-block); the
   // next periodic tick tries again.
-  private def refreshOne(key: CacheKey): Unit =
+  protected def refreshOne(key: CacheKey): Unit =
     cache.get(key).foreach { e =>
       e.filmwebUrl match {
         case Some(url) => refreshRatingFromUrl(key, e, url)
@@ -233,26 +204,6 @@ class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient
                 s"$urlDiscovered URL(s) newly discovered, $failed failed.")
   }
 
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
-
-  /** Schedule the periodic hourly refresh. Called from `AppLoader`. */
-  def start(): Unit = {
-    logger.info(s"Filmweb refresh scheduled every ${RefreshHours}h (first run in ${StartupDelaySeconds}s).")
-    refreshScheduler.scheduleAtFixedRate(
-      () => Try(refreshAll()).recover {
-        case ex => logger.warn(s"Filmweb refresh tick failed: ${ex.getMessage}")
-      },
-      StartupDelaySeconds, RefreshHours * 3600, TimeUnit.SECONDS
-    )
-  }
-
-  /** Drain the worker pool so in-flight upserts hit Mongo before
-   *  `MovieRepo` closes its client. */
-  def stop(): Unit = {
-    worker.shutdown()
-    refreshScheduler.shutdown()
-    worker.awaitTermination(15, TimeUnit.SECONDS)
-  }
 }
 
 object FilmwebRatings {
