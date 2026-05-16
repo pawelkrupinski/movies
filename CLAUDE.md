@@ -315,22 +315,35 @@ of safe checkpoints, not one monolith.
 
 ## Extract repeated patterns into a shared abstraction
 
-If you find yourself writing the same shape of code in a third place — a
+If you find yourself writing the same shape of code in a second place — a
 `FakeRepo extends MovieRepo` defined inside every spec, the same regex
-+ `replaceAll` chain copy-pasted across three parsers, a "load fixture
++ `replaceAll` chain copy-pasted across two parsers, a "load fixture
 from disk and feed it through this client" helper duplicated per spec —
 stop and extract it into a shared place (a `private[services]` helper,
 a `test/scala/...` shared base, a method on the most relevant existing
-class). The threshold is *three* uses, not two: two copies is sometimes
-just two unrelated things that happen to look alike, but three is a
-pattern asking to be named.
+class). The threshold is *two* uses, not three: one copy is a one-off,
+but two copies that share the same shape are a pattern asking to be
+named.
 
-This is the *other* side of "three similar lines is better than a
-premature abstraction" (see the project guidance at the top of this
-file). Premature means "I wrote one helper because I imagine the second
-caller is coming." Extract-on-third means "the second and third copies
-already exist and I'm writing the fourth." Don't preempt — but don't
-keep paying the duplication tax once it's clearly recurring.
+This rule is about **multi-line shapes** — a worker-pool + scheduler
+scaffolding, a `NFD → strip diacritics → ł→l → lowercase` chain, a
+"parse the script[type=application/ld+json] block and read
+aggregateRating" idiom, a parser plus its regex companion. It is **not**
+the same rule as the project guidance at the top of this file
+("three similar lines is better than a premature abstraction"). That
+one targets *trivial inline statements* (`val x = a + b`, `val y = b +
+c`, `val z = c + d`) — inlining one of those into a helper buys nothing
+and obscures the code. This rule targets *named patterns* whose
+boilerplate adds up across copies. They don't collide: a multi-line
+shape that repeats once already has enough surface area to be a
+concept, and naming it pays for itself the moment a third caller
+considers reaching for it.
+
+Premature means "I wrote one helper because I imagine the second caller
+is coming." Extract-on-second means "the first and second copies
+already exist and I'm writing or about to write the third." Don't
+preempt — but don't keep paying the duplication tax once it's clearly
+recurring.
 
 When extracting:
 
@@ -356,7 +369,7 @@ What to look at, at the end of each task (and at the start when the area
 looks crufty enough that touching it without first tidying will produce
 worse code):
 
-- **Duplication you just introduced or noticed.** The third copy of a
+- **Duplication you just introduced or noticed.** The second copy of a
   pattern — extract it (see "Extract repeated patterns into a shared
   abstraction" above). Don't promise to do it "next time."
 - **Dead code the change made obsolete.** A field you stopped writing
