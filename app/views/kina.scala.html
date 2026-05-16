@@ -165,19 +165,21 @@
   }
 
   function sortSection(section, earlyMap) {
-    const indexed = earlyMap.map((_, i) => i);
-    indexed.sort((a, b) => {
+    // Same logic as repertoire's sortByEarliestVisible (see comment there).
+    // Hidden columns aren't sorted or moved — display:none keeps them out of
+    // layout, so their DOM position is irrelevant. Skipping the rebuild when
+    // the new visible order is a subsequence of the last applied one is what
+    // keeps `hideFilm` from jumping the scroll position.
+    const visible = [];
+    for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);
+    visible.sort((a, b) => {
       const ta = earlyMap[a], tb = earlyMap[b];
-      if (!ta && !tb) return a - b;
-      if (!ta) return 1;
-      if (!tb) return -1;
       return ta < tb ? -1 : ta > tb ? 1 : (a - b);
     });
-    const key = indexed.join(',');
-    if (key === section.prevOrderKey) return;
-    section.prevOrderKey = key;
+    if (isSubsequence(visible, section.prevVisibleOrder || [])) return;
+    section.prevVisibleOrder = visible;
     const frag = document.createDocumentFragment();
-    for (const i of indexed) frag.appendChild(section.cols[i].el);
+    for (const i of visible) frag.appendChild(section.cols[i].el);
     section.row.appendChild(frag);
   }
 </script>

@@ -81,7 +81,11 @@
     }
   }
 
-  let _prevOrderKey = '';
+  // Last-applied DOM order of VISIBLE cards (by their INDEX position).
+  // Hidden cards never appear here — they're display:none and their DOM
+  // position is irrelevant to layout. The subsequence check below uses this
+  // to decide when the rebuild is a no-op.
+  let _prevVisibleOrder = [];
 
   function applyFilters() {
     if (!INDEX) return;
@@ -171,25 +175,26 @@
   }
 
   function sortByEarliestVisible(earlyMap) {
-    // Build a stable, comparable signature for the desired order; if it matches
-    // the previously-applied order, skip the DOM moves entirely.
-    const indexed = earlyMap.map((t, i) => i);
-    indexed.sort((a, b) => {
+    // Only the VISIBLE cards' DOM order matters — hidden ones are display:none
+    // and don't participate in layout. Sort just those by earliest showtime.
+    const visible = [];
+    for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);
+    visible.sort((a, b) => {
       const ta = earlyMap[a], tb = earlyMap[b];
-      if (!ta && !tb) return a - b;
-      if (!ta) return 1;
-      if (!tb) return -1;
       return ta < tb ? -1 : ta > tb ? 1 : (a - b);
     });
-    const key = indexed.join(',');
-    if (key === _prevOrderKey) return;
-    _prevOrderKey = key;
 
-    // Batch the moves via a DocumentFragment — a single layout flush instead of
-    // one per appendChild.
+    // Skip the rebuild when the new order is a subsequence of the last applied
+    // one — i.e. cards only became hidden, the remaining ones are in the same
+    // relative position in the DOM. This is what keeps `hideFilm` jump-free:
+    // appendChild detaches+reattaches every visible card and breaks the
+    // browser's scroll anchor; we'd rather not touch the DOM at all.
+    if (isSubsequence(visible, _prevVisibleOrder)) return;
+    _prevVisibleOrder = visible;
+
     const grid = document.getElementById('film-grid');
     const frag = document.createDocumentFragment();
-    for (const i of indexed) frag.appendChild(INDEX[i].el);
+    for (const i of visible) frag.appendChild(INDEX[i].el);
     grid.appendChild(frag);
   }
 </script>
