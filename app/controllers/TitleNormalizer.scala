@@ -83,14 +83,10 @@ object TitleNormalizer {
    *  Per-script titles still get distinct keys (Latin vs Cyrillic translations
    *  of the same film stay as separate records). The imdbId re-merge step
    *  (later phase) folds those across scripts. */
-  def sanitize(title: String): String = {
-    val canonicalized = canonical(normalize(title))
-    java.text.Normalizer.normalize(canonicalized, java.text.Normalizer.Form.NFD)
-      .replaceAll("\\p{M}", "")
-      .replace('ł', 'l').replace('Ł', 'l')
+  def sanitize(title: String): String =
+    tools.TextNormalization.deburr(canonical(normalize(title)))
       .toLowerCase
       .replaceAll("[^\\p{L}\\p{N}]+", "")
-  }
 
   // Group key for merging. Falls back to the plain Roman-numeral form when no
   // sibling title reduces to the same canonical.

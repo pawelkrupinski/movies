@@ -1,11 +1,10 @@
 package services.enrichment
 
 import play.api.libs.json._
-import tools.{HttpFetch, RealHttpFetch}
+import tools.{HttpFetch, RealHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.text.Normalizer
 import scala.util.Try
 
 /**
@@ -225,9 +224,5 @@ object FilmwebClient {
   /** Lower-case + strip diacritics for fuzzy director comparison. Cinemas
    *  sometimes drop diacritics ("Malgorzata Szumowska"); Filmweb keeps them
    *  ("Małgorzata Szumowska"). Normalising both sides catches that case. */
-  private def deburr(s: String): String =
-    Normalizer.normalize(s, Normalizer.Form.NFD)
-      .replaceAll("\\p{M}", "")
-      .replace('ł', 'l').replace('Ł', 'l')
-      .toLowerCase.trim
+  private def deburr(s: String): String = TextNormalization.deburr(s).toLowerCase.trim
 }

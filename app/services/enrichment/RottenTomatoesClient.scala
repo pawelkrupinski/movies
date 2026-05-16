@@ -1,12 +1,11 @@
 package services.enrichment
 
 import org.jsoup.Jsoup
-import play.api.libs.json._
-import tools.{HttpFetch, RealHttpFetch}
+import services.enrichment.scraping.JsonLdAggregateRating
+import tools.{HttpFetch, RealHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.text.Normalizer
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -169,21 +168,8 @@ class RottenTomatoesClient(http: HttpFetch = new RealHttpFetch()) {
    *  ld+json">` block. The block is a `Movie` schema.org object with an
    *  `aggregateRating.ratingValue` string ("94" for The Dark Knight). Out-of-
    *  range or non-numeric values return None so we never persist garbage. */
-  def parseScore(html: String): Option[Int] = {
-    val doc = Jsoup.parse(html)
-    doc.select("script[type=application/ld+json]").asScala.iterator
-      .map(_.data())
-      .flatMap { raw =>
-        Try(Json.parse(raw)).toOption.toSeq.flatMap { js =>
-          (js \ "aggregateRating" \ "ratingValue").asOpt[JsValue].flatMap {
-            case JsString(s) => Try(s.toInt).toOption
-            case JsNumber(n) => Try(n.toInt).toOption
-            case _           => None
-          }
-        }
-      }
-      .find(score => score >= 0 && score <= 100)
-  }
+  def parseScore(html: String): Option[Int] =
+    JsonLdAggregateRating.parseInt(html).filter(score => score >= 0 && score <= 100)
 }
 
 object RottenTomatoesClient {
@@ -196,13 +182,9 @@ object RottenTomatoesClient {
    * RT-style slug: lowercase, accents stripped, apostrophes dropped, all
    * other non-alphanumerics collapsed to a single underscore.
    */
-  def slugify(title: String): String = {
-    val unaccented = Normalizer.normalize(title, Normalizer.Form.NFD)
-      .replaceAll("\\p{M}", "")
-      .replace('ł', 'l').replace('Ł', 'l')
-    unaccented.toLowerCase
+  def slugify(title: String): String =
+    TextNormalization.deburr(title).toLowerCase
       .replaceAll("[''']", "")
       .replaceAll("[^a-z0-9]+", "_")
       .replaceAll("^_+|_+$", "")
-  }
 }

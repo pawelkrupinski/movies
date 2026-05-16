@@ -1,12 +1,11 @@
 package services.enrichment
 
 import org.jsoup.Jsoup
-import play.api.libs.json.{JsValue, Json}
-import tools.{HttpFetch, RealHttpFetch}
+import services.enrichment.scraping.JsonLdAggregateRating
+import tools.{HttpFetch, RealHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.text.Normalizer
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -162,15 +161,11 @@ object MetacriticClient {
    * it in slugs ("airplane!", "moulin-rouge!", "yu-gi-oh!-the-dark-side-of-
    * dimensions"). All other non-alphanumerics collapse to a single hyphen.
    */
-  def slugify(title: String): String = {
-    val unaccented = Normalizer.normalize(title, Normalizer.Form.NFD)
-      .replaceAll("\\p{M}", "")
-      .replace('ł', 'l').replace('Ł', 'l')
-    unaccented.toLowerCase
+  def slugify(title: String): String =
+    TextNormalization.deburr(title).toLowerCase
       .replaceAll("[''']", "")        // drop apostrophes (straight + curly)
       .replaceAll("[^a-z0-9!]+", "-") // preserve !, everything else → hyphen
       .replaceAll("^-+|-+$", "")
-  }
 
   /** Some films index without their leading "the"/"a"/"an" (more common on
    *  RT, but happens on Metacritic too). Returns the de-articled slug only
@@ -187,19 +182,7 @@ object MetacriticClient {
    *  parses it, and returns `aggregateRating.ratingValue` as `Option[Int]`.
    *  Returns None when MC hasn't aggregated a score yet (the JSON-LD
    *  omits `aggregateRating`) or when parsing fails. */
-  def parseMetascore(html: String): Option[Int] = {
-    val doc     = Jsoup.parse(html)
-    val scripts = doc.select("script[type=application/ld+json]").asScala
-    scripts.iterator.flatMap { script =>
-      Try(Json.parse(script.data())).toOption.iterator.flatMap { json =>
-        (json \ "aggregateRating" \ "ratingValue").asOpt[JsValue].flatMap(extractInt)
-      }
-    }.toSeq.headOption
-  }
-
-  // ratingValue is usually an Int but JSON-LD spec allows string. Accept both.
-  private def extractInt(v: JsValue): Option[Int] =
-    v.asOpt[Int].orElse(v.asOpt[String].flatMap(s => Try(s.toInt).toOption))
+  def parseMetascore(html: String): Option[Int] = JsonLdAggregateRating.parseInt(html)
 
   /** True when `title` starts with `query` and the *next* non-space character
    *  is punctuation — indicating a modifier suffix like " - Re-Release",
