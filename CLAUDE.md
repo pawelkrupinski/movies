@@ -343,3 +343,56 @@ When extracting:
 - Name the extracted thing after the *concept* (`InMemoryMovieRepo`,
   not `FakeRepo`; `ProductionLineRegex`, not `parseHelper`) — generic
   names re-attract duplication later.
+
+## Treat cleanup as a phase of every task
+
+Every feature / change / bugfix / refactor ends with a cleanup pass, and
+sometimes opens with one too. The work isn't done when the new code
+compiles + tests pass — it's done when the surrounding area is at least
+as clean as it was when you started, ideally cleaner. The cleanup pass
+is part of the task, not a separate ticket.
+
+What to look at, at the end of each task (and at the start when the area
+looks crufty enough that touching it without first tidying will produce
+worse code):
+
+- **Duplication you just introduced or noticed.** The third copy of a
+  pattern — extract it (see "Extract repeated patterns into a shared
+  abstraction" above). Don't promise to do it "next time."
+- **Dead code the change made obsolete.** A field you stopped writing
+  to. A method whose only caller you just removed. A test that asserted
+  behaviour that no longer exists. An import that's now unused. A
+  one-shot script whose purpose is served. Delete it in the same
+  commit, not a follow-up.
+- **Comments that lie now.** Doc comments referencing the old name,
+  the old flow, or the old caller. Either rewrite or remove.
+- **Redundant intermediate variables / helper methods** that the change
+  collapsed into one line at the call site. Inline them.
+- **Stale tests / fixtures.** A test that exercises behaviour the
+  change removed. A fixture file that's no longer loaded by anything.
+- **Naming drift.** A class still called `EnrichmentCache` after the
+  concept it represented became `MovieCache`. Rename it now while
+  you're already in the file.
+
+When to open with cleanup instead of charging straight at the task:
+
+- The function you're about to extend has three near-identical
+  branches that you'd be adding a fourth to. Refactor the three first,
+  then add the fourth.
+- The class you're about to modify has a field, parameter, or method
+  that's already dead. Removing it first makes the diff for the real
+  change much easier to read in review.
+- The test you're about to add would copy-paste setup from two existing
+  tests. Extract the setup helper before writing the third test.
+
+The output of the task is the diff. A diff that's half real change and
+half "and I also deleted these three dead methods I happened to notice"
+is the *right* shape — that's the cleanup pass working. A diff that
+only changes the new feature and ignores the dust around it is the
+wrong shape.
+
+Skip cleanup only when it would balloon the change beyond what a
+reviewer can hold in their head, or when the cruft is genuinely outside
+the area you're touching. In those cases, mention it explicitly so we
+can decide together whether to tackle it now or later — don't silently
+shrug and move on.
