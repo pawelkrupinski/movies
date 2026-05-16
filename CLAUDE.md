@@ -413,3 +413,59 @@ Skip cleanup only when it would balloon a *single* commit beyond what
 a reviewer can hold in their head AND there's no clean way to split
 it. In that case, mention what you saw and didn't do — don't silently
 shrug and move on.
+
+## Follow SOLID — especially depend on interfaces, not implementations
+
+The SOLID principles are the design baseline:
+
+- **Single responsibility** — one class, one reason to change. The
+  IMDb-id-discovery and the IMDb-rating-refresh are two reasons → two
+  classes (`ImdbIdResolver`, `ImdbRatings`). Don't bundle.
+- **Open / closed** — code is open to extension, closed to modification.
+  New cinema? Add a `CinemaXClient` that fits the existing scrape
+  contract, don't fork `ShowtimeCache`'s scheduler logic per cinema.
+- **Liskov substitution** — any subtype must work everywhere its parent
+  does, with no surprises (no "throws UnsupportedOperationException
+  here"). `InMemoryMovieRepo` honours the same write-through contract
+  the production repo does, otherwise it doesn't belong as a subtype.
+- **Interface segregation** — many small, focused traits beat one
+  god-trait. A consumer that only needs to read shouldn't be forced to
+  see the write API.
+- **Dependency inversion** — high-level modules depend on abstractions,
+  not on concrete classes. **This is the load-bearing one for this
+  codebase.** `MovieService` should take a `MovieRepo` *trait*; the
+  Mongo implementation and the in-memory test double are both
+  subtypes. Wiring lives in `AppLoader` (composition root); everything
+  downstream sees only the abstraction.
+
+What this looks like in practice:
+
+- Constructors and method parameters take the **abstraction**, never a
+  concrete class. `class FilmwebRatings(cache: MovieCache, client:
+  FilmwebClient)` — `MovieCache` and `FilmwebClient` are the
+  interfaces consumers see, the implementations are wired in
+  `AppLoader`.
+- Production code never references a test subclass directly. The test
+  swaps in via the constructor parameter, not via inheritance from
+  inside production.
+
+**Never suffix a class with `Impl`.** Names like `MovieRepoImpl`,
+`FilmwebClientImpl`, `EventBusImpl` are an anti-pattern — they tell you
+the class is "the implementation" without telling you of *what kind*,
+and they only exist because the writer ran out of names. Name the
+class after what makes it distinct from other implementations:
+
+- `MovieRepo` (trait) + `MongoMovieRepo` (concrete, persists to
+  Mongo) + `InMemoryMovieRepo` (concrete, test double). Each name
+  earns its keep.
+- `FilmwebClient` (trait) + `HttpFilmwebClient` if there's ever a
+  second backend. Not `FilmwebClientImpl`.
+- If there's truly only one production implementation and naming it
+  feels awkward, that's a signal you don't need a separate trait yet
+  — collapse the trait into the class until a second implementation
+  shows up. The rule is "no `Impl` suffix," not "every concrete class
+  needs a trait."
+
+When in doubt: would a future reader of the class name be able to
+guess what the class *does* without opening it? `MongoMovieRepo` —
+yes. `MovieRepoImpl` — no.
