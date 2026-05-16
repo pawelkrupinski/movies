@@ -223,9 +223,9 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
    *
    *  Doesn't touch enrichment-side fields (imdbId, ratings, URLs, …) — the
    *  TMDB / IMDb / MC / RT / Filmweb stages own those and run independently.
-   *  Records are kept even when `cinemaShowings` becomes empty (per the
-   *  "keep forever" policy): a film that returns next month finds its
-   *  prior enrichment data still in place. */
+   *  Records whose `cinemaShowings` becomes empty are pruned daily by
+   *  `UnscreenedCleanup`; a film that returns after the prune ran will
+   *  re-pay the full enrichment cost on its next scrape. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
     // challenge, parser regex mismatch, ScrapingAnt 503, blank HTML), not a

@@ -13,7 +13,7 @@ import play.filters.cors.CORSComponents
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
 import services.cinemas.{CharlieMonroeClient, CinemaCityClient, CinemaCityScraper, CinemaScraper, HeliosClient, KinoApolloClient, KinoBulgarskaClient, KinoMuzaClient, KinoPalacoweClient, MultikinoClient, RialtoClient}
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbIdResolver, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieCache, MovieRepo, MovieService}
+import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieCache, MovieRepo, MovieService, UnscreenedCleanup}
 import services.events.{EventBus, InProcessEventBus}
 import services.ShowtimeCache
 
@@ -102,6 +102,11 @@ class AppComponents(context: Context)
   lazy val metascoreRatings      = new MetascoreRatings(movieCache, tmdbClient, metacriticClient)
   lazy val filmwebRatings        = new FilmwebRatings(movieCache, tmdbClient, filmwebClient)
   lazy val movieService     = new MovieService(movieCache, eventBus, tmdbClient)
+  // Daily tick that drops rows whose `cinemaShowings` is empty — i.e. films
+  // that no cinema is currently showing. Without it the cache + Mongo grow
+  // unbounded (every festival / anniversary / one-off screening leaves a
+  // permanent row when its single cinema drops the listing).
+  lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────
   lazy val showtimeCache = new ShowtimeCache(cinemaScrapers, eventBus, movieCache)
@@ -160,6 +165,7 @@ class AppComponents(context: Context)
   rottenTomatoesRatings.start()
   metascoreRatings.start()
   filmwebRatings.start()
+  unscreenedCleanup.start()
   showtimeCache.start()
 
   applicationLifecycle.addStopHook(() => Future.successful {
@@ -170,6 +176,7 @@ class AppComponents(context: Context)
     rottenTomatoesRatings.stop()
     metascoreRatings.stop()
     filmwebRatings.stop()
+    unscreenedCleanup.stop()
     movieRepo.close()
   })
 }
