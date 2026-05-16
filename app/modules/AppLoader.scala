@@ -83,7 +83,7 @@ class AppComponents(context: Context)
   lazy val imdbIdResolver        = new ImdbIdResolver(movieCache, imdbClient, eventBus)
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient)
   lazy val metascoreRatings      = new MetascoreRatings(movieCache, tmdbClient, metacriticClient)
-  lazy val filmwebRatings        = new FilmwebRatings(movieCache, filmwebClient)
+  lazy val filmwebRatings        = new FilmwebRatings(movieCache, tmdbClient, filmwebClient)
   lazy val movieService     = new MovieService(movieCache, eventBus, tmdbClient)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────

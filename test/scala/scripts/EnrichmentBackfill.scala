@@ -46,7 +46,7 @@ object EnrichmentBackfill {
     val imdbRatings = new ImdbRatings(cache, new ImdbClient())
     val mcRatings   = new MetascoreRatings(cache, tmdb, new MetacriticClient())
     val rtRatings   = new RottenTomatoesRatings(cache, tmdb, new RottenTomatoesClient())
-    val fwRatings   = new FilmwebRatings(cache, new FilmwebClient())
+    val fwRatings   = new FilmwebRatings(cache, tmdb, new FilmwebClient())
     val service = new MovieService(cache, new EventBus(), tmdb)
 
     val rows = repo.findAll().sortBy { case (t, y, _) => (t.toLowerCase, y) }

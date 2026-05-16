@@ -1,5 +1,6 @@
 package scripts
 
+import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.movies.{MovieCache, MovieRepo}
 
@@ -13,7 +14,7 @@ object RefreshOneFilmweb {
     val repo  = new MovieRepo()
     if (!repo.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
     val cache   = new MovieCache(repo)
-    val ratings = new FilmwebRatings(cache, new FilmwebClient())
+    val ratings = new FilmwebRatings(cache, new TmdbClient(), new FilmwebClient())
 
     def show(label: String): Unit =
       repo.findAll().find { case (t, y, _) => t == title && y == year }.foreach { case (_, _, e) =>

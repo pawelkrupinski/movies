@@ -2,7 +2,8 @@ package services.enrichment
 
 import services.movies.{InMemoryMovieRepo, MovieCache, MovieService}
 
-import models.MovieRecord
+import clients.TmdbClient
+import models.{CinemaShowings, MovieRecord, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, MovieRecordCreated, TmdbResolved}
@@ -34,6 +35,11 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     override def post(url: String, body: String, contentType: String): String = get(url)
   }
 
+  /** TmdbClient with no API key — every method short-circuits to None / empty
+   *  without making a network call. Used by tests whose path doesn't exercise
+   *  URL discovery (i.e. row already has a filmwebUrl). */
+  private val disabledTmdb = new TmdbClient(apiKey = None)
+
   private def mkEnrichment(
     imdbId:        String,
     filmwebUrl:    Option[String] = None,
@@ -57,7 +63,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val filmweb = new FilmwebClient(new StubFetch(Map(
       "/film/10007434/rating" -> """{"rate":6.72,"count":1000}"""
     )))
-    val ratings = new FilmwebRatings(cache, filmweb)
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Mortal Kombat II", Some(2026)))
 
@@ -73,7 +79,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val filmweb = new FilmwebClient(new StubFetch(Map(
       "/film/9999/rating" -> """{"rate":7.5,"count":1}"""
     )))
-    val ratings = new FilmwebRatings(cache, filmweb)
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
 
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("X", None))
     cache.get(cache.keyOf("X", None)).flatMap(_.filmwebRating) shouldBe Some(7.5)
@@ -89,7 +95,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/555/info"        -> """{"title":"Drama","year":2024}""",
       "/film/555/rating"      -> """{"rate":7.2,"count":500}"""
     )))
-    val ratings = new FilmwebRatings(cache, filmweb)
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Drama", Some(2024)))
 
@@ -97,6 +103,92 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     after.filmwebUrl    should not be empty
     after.filmwebUrl.get should endWith ("-555")
     after.filmwebRating shouldBe Some(7.2)
+  }
+
+  // ── refreshOneSync: URL discovery uses TMDB-derived fallback + directors ───
+
+  it should "pass TMDB's originalTitle as fallback and TMDB credits as directors to filmweb.lookup" in {
+    // Cinema scrapes "Diuna: Część druga" (Polish title); the row already
+    // carries an `originalTitle` (the cinema-reported English/original), a
+    // tmdbId, and one cinema's director slot. The lookup should:
+    //   - Search Filmweb with the Polish title (succeeds, one hit).
+    //   - Verify the Filmweb /preview director matches TMDB's credits.
+    //   - Persist the URL + rating.
+    val tmdbBody    = """{"id":693134,"title":"Dune: Part Two","release_date":"2024-02-27","alternative_titles":{"titles":[]}}"""
+    val creditsBody = """{"id":693134,"crew":[{"job":"Director","name":"Denis Villeneuve"}]}"""
+    val tmdb = new TmdbClient(http = new HttpFetch {
+      def get(url: String): String =
+        if (url.contains("/movie/693134?")) tmdbBody
+        else if (url.contains("/movie/693134/credits")) creditsBody
+        else throw new RuntimeException(s"unstubbed TMDB url: $url")
+    }, apiKey = Some("stub"))
+
+    val cinemaShowings = Map[models.Cinema, CinemaShowings](
+      Multikino -> CinemaShowings(
+        filmUrl = None, posterUrl = None, synopsis = None, cast = None,
+        director = Some("Denis Villeneuve"), runtimeMinutes = None,
+        releaseYear = None, showtimes = Seq.empty
+      )
+    )
+    val repo = new InMemoryMovieRepo(Seq(
+      ("Diuna: Część druga", Some(2024), MovieRecord(
+        imdbId        = Some("tt15239678"),
+        imdbRating    = None,
+        metascore     = None,
+        originalTitle = Some("Dune: Part Two"),
+        tmdbId        = Some(693134),
+        cinemaShowings = cinemaShowings
+      ))
+    ))
+    val cache = new MovieCache(repo)
+    val filmweb = new FilmwebClient(new StubFetch(Map(
+      "/live/search"          -> """{"searchHits":[{"id":779836,"type":"film","matchedTitle":"Diuna"}]}""",
+      "/film/779836/info"     -> """{"title":"Diuna: Część druga","originalTitle":"Dune: Part Two","year":2024}""",
+      "/film/779836/preview"  -> """{"directors":[{"id":1,"name":"Denis Villeneuve"}]}""",
+      "/film/779836/rating"   -> """{"rate":8.2,"count":100}"""
+    )))
+    val ratings = new FilmwebRatings(cache, tmdb, filmweb)
+
+    ratings.refreshOneSync(cache.keyOf("Diuna: Część druga", Some(2024)))
+
+    val after = cache.get(cache.keyOf("Diuna: Część druga", Some(2024))).get
+    after.filmwebUrl    should not be empty
+    after.filmwebUrl.get should include ("-779836")
+    after.filmwebRating shouldBe Some(8.2)
+  }
+
+  it should "drop a row whose only Filmweb candidate has a director that doesn't match TMDB's" in {
+    // Same shape, but Filmweb returns the wrong "Belle" (Asante, 2013); TMDB
+    // knows the cinema is screening Hosoda's 2021 anime. Director mismatch
+    // → tightened lookup returns None → row stays URL-less.
+    val tmdbBody    = """{"id":682507,"title":"Belle","release_date":"2021-07-16","alternative_titles":{"titles":[]}}"""
+    val creditsBody = """{"id":682507,"crew":[{"job":"Director","name":"Mamoru Hosoda"}]}"""
+    val tmdb = new TmdbClient(http = new HttpFetch {
+      def get(url: String): String =
+        if (url.contains("/movie/682507?")) tmdbBody
+        else if (url.contains("/movie/682507/credits")) creditsBody
+        else throw new RuntimeException(s"unstubbed TMDB url: $url")
+    }, apiKey = Some("stub"))
+
+    val repo = new InMemoryMovieRepo(Seq(
+      ("Belle", Some(2021), MovieRecord(
+        imdbId = None, imdbRating = None, metascore = None, originalTitle = Some("Belle"),
+        tmdbId = Some(682507)
+      ))
+    ))
+    val cache = new MovieCache(repo)
+    val filmweb = new FilmwebClient(new StubFetch(Map(
+      "/live/search"      -> """{"searchHits":[{"id":1,"type":"film","matchedTitle":"Belle"}]}""",
+      "/film/1/info"      -> """{"title":"Belle","year":2013}""",
+      "/film/1/preview"   -> """{"directors":[{"id":10,"name":"Amma Asante"}]}"""
+    )))
+    val ratings = new FilmwebRatings(cache, tmdb, filmweb)
+
+    ratings.refreshOneSync(cache.keyOf("Belle", Some(2021)))
+
+    val after = cache.get(cache.keyOf("Belle", Some(2021))).get
+    after.filmwebUrl    shouldBe None
+    after.filmwebRating shouldBe None
   }
 
   // ── Failure handling ───────────────────────────────────────────────────────
@@ -108,7 +200,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val brokenFilmweb = new FilmwebClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("boom")
     })
-    val ratings = new FilmwebRatings(cache, brokenFilmweb)
+    val ratings = new FilmwebRatings(cache, disabledTmdb, brokenFilmweb)
 
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", None))
     cache.get(cache.keyOf("Foo", None)).flatMap(_.filmwebRating) shouldBe Some(6.0)
@@ -116,7 +208,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when the cache has no entry for the key" in {
     val cache = new MovieCache(new InMemoryMovieRepo())
-    val ratings = new FilmwebRatings(cache, new FilmwebClient(deadFetch))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(deadFetch))
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Missing", None))
   }
 
@@ -126,7 +218,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val cache = new MovieCache(repo)
     repo.upserts.clear()
     val filmweb = new FilmwebClient(new StubFetch(Map("/film/12/rating" -> """{"rate":7.5,"count":1}""")))
-    val ratings = new FilmwebRatings(cache, filmweb)
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Foo", None))
 
@@ -151,7 +243,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       "/film/33/info"    -> """{"title":"C","year":2024}""",
       "/film/33/rating"  -> """{"rate":8.1,"count":1}"""
     )))
-    val ratings = new FilmwebRatings(cache, filmweb)
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
 
     ratings.refreshAll()
 
@@ -170,7 +262,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", filmwebUrl = Some(url)))))
     val cache = new MovieCache(repo)
     val filmweb = new FilmwebClient(new StubFetch(Map("/film/99/rating" -> """{"rate":7.4,"count":1}""")))
-    val ratings = new FilmwebRatings(cache, filmweb)
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
     bus.subscribe(ratings.onTmdbResolved)
 
     bus.publish(TmdbResolved("Foo", Some(2024), "tt1"))
@@ -181,7 +273,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
     val bus   = new EventBus()
     val cache = new MovieCache(new InMemoryMovieRepo())
-    val ratings = new FilmwebRatings(cache, new FilmwebClient(new HttpFetch {
+    val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))
     bus.subscribe(ratings.onTmdbResolved)

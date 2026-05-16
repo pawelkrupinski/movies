@@ -2,6 +2,7 @@ package services.enrichment
 
 import services.movies.{CacheKey, MovieCache}
 
+import clients.TmdbClient
 import play.api.Logging
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 
@@ -20,7 +21,13 @@ import scala.util.{Failure, Success, Try}
  *   2. **Periodic walk**: refresh every cached row hourly. For rows that
  *      already have a `filmwebUrl`, the walk does the cheap rating-only
  *      lookup (one HTTP); for rows without a URL it does the full
- *      `filmweb.lookup` (search + info + rating).
+ *      `filmweb.lookup` (search + info + optionally preview + rating).
+ *
+ * URL resolution needs TMDB data (English / original title, director credits)
+ * that the MovieRecord row alone may not carry — we hit `tmdb.details` and
+ * `tmdb.directorsFor` lazily for rows that need URL discovery, and never for
+ * rows whose canonical Filmweb URL is already stored. Mirrors how
+ * `MetascoreRatings` and `RottenTomatoesRatings` consume TMDB.
  *
  * Lifecycle is owned by the caller (`AppLoader` calls `start()` and
  * registers `stop()` as a shutdown hook). The class never self-subscribes
@@ -28,9 +35,9 @@ import scala.util.{Failure, Success, Try}
  *
  * Filmweb has tighter rate limits than the other services (CLAUDE.md notes
  * "5 workers comfortable, more risks soft-blocks"); we stay at 3 here since
- * the per-row work is heavier (potentially search + info + rating).
+ * the per-row work is heavier (potentially search + info + preview + rating).
  */
-class FilmwebRatings(cache: MovieCache, filmweb: FilmwebClient) extends Logging {
+class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient) extends Logging {
 
   private val Workers       = 3
   private val workerCounter = new AtomicInteger(0)
@@ -83,27 +90,47 @@ class FilmwebRatings(cache: MovieCache, filmweb: FilmwebClient) extends Logging 
   //   - Row already has filmwebUrl → cheap: rating-only refresh via the
   //     URL's id. Skips the search/info round-trips that the original
   //     resolution paid for.
-  //   - Row doesn't have filmwebUrl → expensive: full lookup (search →
-  //     pick best year-match → rating). Populates the URL too.
+  //   - Row doesn't have filmwebUrl → expensive: full lookup with TMDB-
+  //     derived fallback title + director set (search → /info per candidate
+  //     → /preview per candidate when verifying directors → rating).
   // Per-row failures are swallowed (network blip, Filmweb soft-block); the
   // next periodic tick tries again.
   private def refreshOne(key: CacheKey): Unit =
     cache.get(key).foreach { e =>
       e.filmwebUrl match {
-        case Some(url) =>
-          Try(filmweb.ratingFor(url)).toOption.flatten match {
-            case Some(rating) if !e.filmwebRating.contains(rating) =>
-              logger.debug(s"Filmweb: ${key.cleanTitle} $url ${e.filmwebRating.getOrElse("—")} → $rating")
-              cache.putIfPresent(key, _.copy(filmwebRating = Some(rating)))
-            case _ => ()
-          }
-        case None =>
-          Try(filmweb.lookup(key.cleanTitle, key.year)).toOption.flatten.foreach { fw =>
-            logger.debug(s"Filmweb: ${key.cleanTitle} discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
-            cache.putIfPresent(key, _.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
-          }
+        case Some(url) => refreshRatingFromUrl(key, e, url)
+        case None      => resolveAndPersistUrl(key, e)
       }
     }
+
+  private def refreshRatingFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Unit =
+    Try(filmweb.ratingFor(url)).toOption.flatten match {
+      case Some(rating) if !e.filmwebRating.contains(rating) =>
+        logger.debug(s"Filmweb: ${key.cleanTitle} $url ${e.filmwebRating.getOrElse("—")} → $rating")
+        cache.putIfPresent(key, _.copy(filmwebRating = Some(rating)))
+      case _ => ()
+    }
+
+  // Full URL discovery — only called when the row has no stored filmwebUrl.
+  // Passes TMDB's originalTitle / englishTitle as `fallback` so non-Polish
+  // films whose cinema-reported title doesn't surface a Filmweb hit still
+  // resolve, and the union of TMDB credits + every cinema's reported director
+  // as `directors` so same-titled films across years disambiguate.
+  private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Unit = {
+    val linkTitle = key.cleanTitle
+    val details   = e.tmdbId.flatMap(tmdb.details)
+    val fallback  = e.originalTitle
+      .orElse(details.flatMap(_.englishTitle))
+      .filterNot(_.equalsIgnoreCase(linkTitle))
+    val tmdbDirectors   = e.tmdbId.map(tmdb.directorsFor).getOrElse(Set.empty)
+    val cinemaDirectors = e.cinemaShowings.values.flatMap(_.director).toSet
+    val directors       = tmdbDirectors ++ cinemaDirectors
+
+    Try(filmweb.lookup(linkTitle, key.year, fallback, directors)).toOption.flatten.foreach { fw =>
+      logger.debug(s"Filmweb: ${key.cleanTitle} discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
+      cache.putIfPresent(key, _.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
+    }
+  }
 
   // ── Periodic walk ──────────────────────────────────────────────────────────
 
@@ -136,11 +163,12 @@ class FilmwebRatings(cache: MovieCache, filmweb: FilmwebClient) extends Logging 
     }
 
     missingUrl.foreach { case (key, enrichment) =>
-      Try(filmweb.lookup(key.cleanTitle, key.year)) match {
-        case Success(Some(fw)) =>
-          urlDiscovered += 1
-          cache.putIfPresent(key, _.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
-        case Success(None) => ()
+      Try(resolveAndPersistUrl(key, enrichment)) match {
+        case Success(_) =>
+          // urlDiscovered: re-read the cache to see if the helper actually
+          // stored a URL. Cheap (single Caffeine lookup) and avoids leaking
+          // the resolved Option through the helper's API.
+          if (cache.get(key).exists(_.filmwebUrl.isDefined && !enrichment.filmwebUrl.isDefined)) urlDiscovered += 1
         case Failure(ex) =>
           failed += 1
           logger.debug(s"Filmweb refresh: ${key.cleanTitle} full-lookup failed: ${ex.getMessage}")
