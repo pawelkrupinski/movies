@@ -48,8 +48,12 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
       "Drugie życie",
       "Drzewo magii",
       "Erupcja",
-      "FANTASTYCZNE ZWIERZĘTA I JAK JE ZNALEŹĆ",
-      "FANTASTYCZNE ZWIERZĘTA: ZBRODNIE GRINDELWALDA",
+      // Multikino's API returns these two titles in ALL CAPS. The parser
+      // sentence-cases titles that have no lowercase letters; titles that
+      // are already mixed-case (e.g. "LIGA MISTRZÓW UEFA - FINAŁ 2026:
+      // Paris Saint-Germain - Arsenal FC" below) stay untouched.
+      "Fantastyczne zwierzęta i jak je znaleźć",
+      "Fantastyczne zwierzęta: zbrodnie grindelwalda",
       "Fantastyczne zwierzęta: Tajemnice Dumbledorea",
       "Harry Potter i Czara ognia",
       "Harry Potter i Insygnia Śmierci cz. 1",
@@ -147,8 +151,8 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Drugie życie")                                                       shouldBe Some(0)
     runtimes("Drzewo magii")                                                       shouldBe Some(110)
     runtimes("Erupcja")                                                            shouldBe Some(71)
-    runtimes("FANTASTYCZNE ZWIERZĘTA I JAK JE ZNALEŹĆ")                            shouldBe Some(0)
-    runtimes("FANTASTYCZNE ZWIERZĘTA: ZBRODNIE GRINDELWALDA")                      shouldBe Some(0)
+    runtimes("Fantastyczne zwierzęta i jak je znaleźć")                            shouldBe Some(0)
+    runtimes("Fantastyczne zwierzęta: zbrodnie grindelwalda")                      shouldBe Some(0)
     runtimes("Fantastyczne zwierzęta: Tajemnice Dumbledorea")                      shouldBe Some(142)
     runtimes("Harry Potter i Czara ognia")                                         shouldBe Some(0)
     runtimes("Harry Potter i Insygnia Śmierci cz. 1")                              shouldBe Some(0)
@@ -278,8 +282,8 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     posters("Drugie życie")                                                       shouldBe Some("https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/drugiezycie_plakat.jpg?rev=b3e62875d7b248b78e1a7d07fdf010d2")
     posters("Drzewo magii")                                                       shouldBe Some("https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drzewo-magii/drzewo-magii_plakat-glowny_plakat.jpg?rev=78ae4df57ddb40d98d5535803ff32357")
     posters("Erupcja")                                                            shouldBe Some("https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/erupcja.jpg?rev=66cbdeeffa9b41eca82059aab89bb588")
-    posters("FANTASTYCZNE ZWIERZĘTA I JAK JE ZNALEŹĆ")                            shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/fantastyczne-zwierzeta/fantastyczne_cz1_plakat.jpg?rev=1a4e976bba414fff9058bac59c8a86ae")
-    posters("FANTASTYCZNE ZWIERZĘTA: ZBRODNIE GRINDELWALDA")                      shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/fantastyczne-zwierzeta/fantastyczne_cz2_plakat.jpg?rev=187efed51ce645569fb425ca6a669679")
+    posters("Fantastyczne zwierzęta i jak je znaleźć")                            shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/fantastyczne-zwierzeta/fantastyczne_cz1_plakat.jpg?rev=1a4e976bba414fff9058bac59c8a86ae")
+    posters("Fantastyczne zwierzęta: zbrodnie grindelwalda")                      shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/fantastyczne-zwierzeta/fantastyczne_cz2_plakat.jpg?rev=187efed51ce645569fb425ca6a669679")
     posters("Fantastyczne zwierzęta: Tajemnice Dumbledorea")                      shouldBe Some("https://www.multikino.pl/-/media/multikino/multikino_imported/imported_from_external_source/posterimage/pl-fnbst3-plakat-oficjalny-cut_f5cdf984c2.jpg?rev=0a9c0072657b4727ab2bce0e955867d2")
     posters("Harry Potter i Czara ognia")                                         shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-czara-ognia-plakat.png?rev=af3507e8ea434b0dad8ffe759ae3c699")
     posters("Harry Potter i Insygnia Śmierci cz. 1")                              shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-insygnia-1-plakat.png?rev=4bb3985b391c48bb8865e6ad3c792e81")
@@ -358,8 +362,8 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Drugie życie")                                                       shouldBe Some("https://www.multikino.pl/filmy/drugie-zycie")
     filmUrls("Drzewo magii")                                                       shouldBe Some("https://www.multikino.pl/filmy/drzewo-magii")
     filmUrls("Erupcja")                                                            shouldBe Some("https://www.multikino.pl/filmy/erupcja")
-    filmUrls("FANTASTYCZNE ZWIERZĘTA I JAK JE ZNALEŹĆ")                            shouldBe Some("https://www.multikino.pl/filmy/fantastyczne-zwierzeta-i-jak-je-znalezc")
-    filmUrls("FANTASTYCZNE ZWIERZĘTA: ZBRODNIE GRINDELWALDA")                      shouldBe Some("https://www.multikino.pl/filmy/fantastyczne-zwierzeta-zbrodnie-grindelwalda")
+    filmUrls("Fantastyczne zwierzęta i jak je znaleźć")                            shouldBe Some("https://www.multikino.pl/filmy/fantastyczne-zwierzeta-i-jak-je-znalezc")
+    filmUrls("Fantastyczne zwierzęta: zbrodnie grindelwalda")                      shouldBe Some("https://www.multikino.pl/filmy/fantastyczne-zwierzeta-zbrodnie-grindelwalda")
     filmUrls("Fantastyczne zwierzęta: Tajemnice Dumbledorea")                      shouldBe Some("https://www.multikino.pl/filmy/fantastyczne-zwierzeta-tajemnice-dumbledore-a")
     filmUrls("Harry Potter i Czara ognia")                                         shouldBe Some("https://www.multikino.pl/filmy/harry-potter-i-czara-ognia")
     filmUrls("Harry Potter i Insygnia Śmierci cz. 1")                              shouldBe Some("https://www.multikino.pl/filmy/harry-potter-i-insygnia-smierci-cz-1")
@@ -435,7 +439,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Diabeł ubiera się u Prady 2").director                                        shouldBe Some("David Frankel")
     byTitle("Drama").director                                                              shouldBe Some("Kristoffer Borgli ")
     byTitle("Erupcja").director                                                            shouldBe Some("Pete Ohs")
-    byTitle("FANTASTYCZNE ZWIERZĘTA I JAK JE ZNALEŹĆ").director                            shouldBe Some("David Yates")
+    byTitle("Fantastyczne zwierzęta i jak je znaleźć").director                            shouldBe Some("David Yates")
     byTitle("Fantastyczne zwierzęta: Tajemnice Dumbledorea").director                      shouldBe Some("David Yates")
     byTitle("Harry Potter i Czara ognia").director                                         shouldBe Some("Mike Newell")
     byTitle("Harry Potter i Insygnia Śmierci cz. 1").director                              shouldBe Some("David Yates")
@@ -485,7 +489,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana").director            shouldBe Some("Terry Jones")
     byTitle("Drugie życie").director                                                       shouldBe None
     byTitle("Drzewo magii").director                                                       shouldBe None
-    byTitle("FANTASTYCZNE ZWIERZĘTA: ZBRODNIE GRINDELWALDA").director                      shouldBe None
+    byTitle("Fantastyczne zwierzęta: zbrodnie grindelwalda").director                      shouldBe None
     byTitle("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC").director  shouldBe None
     byTitle("Maraton: Powrót do przyszłości").director                                     shouldBe None
     byTitle("NT Live: Audiencja").director                                                 shouldBe None
@@ -517,8 +521,8 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     counts("Drugie życie")                                                       shouldBe 1
     counts("Drzewo magii")                                                       shouldBe 3
     counts("Erupcja")                                                            shouldBe 1
-    counts("FANTASTYCZNE ZWIERZĘTA I JAK JE ZNALEŹĆ")                            shouldBe 2
-    counts("FANTASTYCZNE ZWIERZĘTA: ZBRODNIE GRINDELWALDA")                      shouldBe 2
+    counts("Fantastyczne zwierzęta i jak je znaleźć")                            shouldBe 2
+    counts("Fantastyczne zwierzęta: zbrodnie grindelwalda")                      shouldBe 2
     counts("Fantastyczne zwierzęta: Tajemnice Dumbledorea")                      shouldBe 2
     counts("Harry Potter i Czara ognia")                                         shouldBe 1
     counts("Harry Potter i Insygnia Śmierci cz. 1")                              shouldBe 1
@@ -617,6 +621,30 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     mk2.exists(_.format == List("2D", "DUB"))                          shouldBe true
     mk2.exists(_.format == List("2D", "NAP"))                          shouldBe true
     mk2.forall(s => s.format.contains("DUB") || s.format.contains("NAP")) shouldBe true
+  }
+
+  // ── Title case normalisation ──────────────────────────────────────────────
+
+  // Multikino's API occasionally ships titles in ALL CAPS (the two
+  // "Fantastyczne zwierzęta" prequels in this fixture). The parser converts
+  // those to sentence case so the home-page list doesn't render Polish films
+  // in shouting-case. Titles that already have at least one lowercase letter
+  // stay byte-identical to what the API returned — even when they look
+  // shouty in part (e.g. the UEFA broadcast below).
+  "title case normalisation" should "sentence-case titles with zero lowercase letters" in {
+    val titles = results.map(_.movie.title).toSet
+    titles should contain ("Fantastyczne zwierzęta i jak je znaleźć")
+    titles should contain ("Fantastyczne zwierzęta: zbrodnie grindelwalda")
+    // Neither all-caps form should survive after parsing.
+    titles should not contain "FANTASTYCZNE ZWIERZĘTA I JAK JE ZNALEŹĆ"
+    titles should not contain "FANTASTYCZNE ZWIERZĘTA: ZBRODNIE GRINDELWALDA"
+  }
+
+  it should "leave mixed-case titles untouched even when most of the title is uppercase" in {
+    val titles = results.map(_.movie.title).toSet
+    // This title has lowercase letters inside the team-names half, so it
+    // is NOT all-uppercase by the rule — preserve verbatim.
+    titles should contain ("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC")
   }
 
 }

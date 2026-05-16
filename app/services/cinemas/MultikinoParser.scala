@@ -19,7 +19,7 @@ object MultikinoParser {
     (Json.parse(json) \ "result").as[JsArray].value.map(parseFilm).toSeq
 
   private def parseFilm(film: JsValue): CinemaMovie = {
-    val title       = (film \ "filmTitle").as[String].replaceFirst("^Kino na obcasach:\\s*", "")
+    val title       = normaliseCase((film \ "filmTitle").as[String].replaceFirst("^Kino na obcasach:\\s*", ""))
     val multikinoId = (film \ "filmId").asOpt[String].filter(_.nonEmpty)
     val mxcId       = (film \ "movieXchangeCode").asOpt[String].filter(_.nonEmpty)
     val sessions    = (film \ "showingGroups").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
@@ -80,4 +80,25 @@ object MultikinoParser {
 
   private def absoluteUrl(url: Option[String]): Option[String] =
     url.filter(_.nonEmpty).map(u => if (u.startsWith("http")) u else BaseUrl + u)
+
+  // Multikino's API occasionally ships titles in ALL CAPS — `FANTASTYCZNE
+  // ZWIERZĘTA: ZBRODNIE GRINDELWALDA` is the canonical example. Convert to
+  // sentence case (first letter capital, rest lowercase) so the home-page
+  // list doesn't render Polish films in shouting-case. Titles that already
+  // have at least one lowercase letter — including the partially-shouting
+  // "LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC" —
+  // stay byte-identical.
+  //
+  // Non-letter prefix (e.g. "90. ") is preserved so a hypothetical "90.
+  // URODZINY..." would become "90. Urodziny...". Proper-noun casing inside
+  // an all-caps title is lost (we have no way to recover it without manual
+  // overrides, which CLAUDE.md disallows) — acceptable, since the all-caps
+  // forms Multikino actually ships have no proper nouns.
+  private def normaliseCase(title: String): String =
+    if (title.exists(_.isLower)) title
+    else {
+      val idx = title.indexWhere(_.isLetter)
+      if (idx < 0) title
+      else title.substring(0, idx) + title.charAt(idx).toUpper + title.substring(idx + 1).toLowerCase
+    }
 }
