@@ -42,6 +42,13 @@ trait MovieCache {
   /** Stable snapshot for debug tooling — sorted by title (case-insensitive). */
   def snapshot(): Seq[StoredMovieRecord]
 
+  /** Reload the positive cache from the repo: drop every in-memory positive
+   *  entry, then `repo.findAll()` and put each row. Returns the number of
+   *  rows loaded. Leaves the negative cache (24h-TTL TMDB miss markers)
+   *  alone — negatives aren't persisted in Mongo, so they're orthogonal to
+   *  this reload. Used at construction and by the admin rehydrate endpoint. */
+  def rehydrate(): Int
+
   // ── Internal surface (services.* only) ───────────────────────────────────
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey
   private[services] def get(key: CacheKey): Option[MovieRecord]
@@ -59,7 +66,7 @@ trait MovieCache {
  *
  * Two caches:
  *   - **Positive**: successful enrichments, never expire in-process (they
- *     change slowly; restarts re-warm via `hydrateFromRepo`).
+ *     change slowly; restarts re-warm via `rehydrate`).
  *   - **Negative**: known misses (events, festivals, retrospectives that
  *     don't match a real film), 24h TTL — failed TMDB lookups get retried
  *     about once a day. The daily TMDB-retry scheduler can clear the whole
@@ -86,7 +93,17 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
   private def lockFor(rawTitle: String): AnyRef =
     titleLocks.computeIfAbsent(MovieService.normalize(rawTitle), _ => new Object())
 
-  hydrateFromRepo()
+  // Per-tmdbId locks for the `put` identity gate (see below). Serialises the
+  // "is there already a row with this tmdbId?" check + the resulting fold,
+  // so two threads writing the same freshly-resolved tmdbId to different
+  // CacheKeys can't both pass the no-sibling check and produce duplicates.
+  // Always acquired *inside* a titleLock when both apply, so the lock order
+  // is stable (title → tmdb).
+  private val tmdbLocks = new ConcurrentHashMap[Int, AnyRef]()
+  private def tmdbLockFor(tmdbId: Int): AnyRef =
+    tmdbLocks.computeIfAbsent(tmdbId, _ => new Object())
+
+  rehydrate()
 
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey =
     CacheKey(MovieService.searchTitle(title), year)
@@ -97,9 +114,51 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
   private[services] def isNegative(key: CacheKey): Boolean =
     negative.getIfPresent(key) != null
 
-  private[services] def put(key: CacheKey, e: MovieRecord): Unit = {
+  /** Persist a row at `key`. **Identity gate**: when `e` carries a `tmdbId`
+   *  AND a different cache key already holds that same tmdbId, the write is
+   *  folded onto that canonical row instead of creating a duplicate — the
+   *  victim's cinema-side data is unioned in via `MovieRecordMerge.union`,
+   *  the source key is dropped from both cache and repo. tmdbId is the
+   *  identity signal: two CacheKeys with the same tmdbId are the same film
+   *  regardless of any year-divergence or title-spelling differences.
+   *
+   *  This is the only persist path in the codebase — `MovieRepo.upsert` is
+   *  called from nowhere else — so the gate is the chokepoint that prevents
+   *  new tmdbId-duplicates from ever being written. */
+  private[services] def put(key: CacheKey, e: MovieRecord): Unit = e.tmdbId match {
+    case Some(tid) =>
+      tmdbLockFor(tid).synchronized {
+        siblingKeyByTmdb(tid, excluding = key) match {
+          case Some(canonical) => foldOnto(canonical, key, e)
+          case None            => persist(key, e)
+        }
+      }
+    case None =>
+      persist(key, e)
+  }
+
+  private def persist(key: CacheKey, e: MovieRecord): Unit = {
     positive.put(key, e)
     repo.upsert(key.cleanTitle, key.year, e)
+  }
+
+  private def siblingKeyByTmdb(tid: Int, excluding: CacheKey): Option[CacheKey] = {
+    import scala.jdk.CollectionConverters._
+    positive.asMap().asScala.iterator
+      .find { case (k, v) => k != excluding && v.tmdbId.contains(tid) }
+      .map(_._1)
+  }
+
+  private def foldOnto(canonical: CacheKey, source: CacheKey, victim: MovieRecord): Unit = {
+    val current = Option(positive.getIfPresent(canonical)).getOrElse(victim)
+    val merged  = MovieRecordMerge.union(current, victim)
+    persist(canonical, merged)
+    if (source != canonical) {
+      positive.invalidate(source)
+      repo.delete(source.cleanTitle, source.year)
+      logger.info(s"Folded duplicate '${source.cleanTitle}' (${source.year.getOrElse("—")}) " +
+                  s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — same tmdbId=${victim.tmdbId.get}.")
+    }
   }
 
   /** Conditional write — applies `updater` to the row if it currently exists
@@ -273,9 +332,11 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
     positive.asMap().asScala.toSeq
   }
 
-  private def hydrateFromRepo(): Unit = {
+  def rehydrate(): Int = {
+    positive.invalidateAll()
     val rows = repo.findAll()
     rows.foreach(r => positive.put(CacheKey(r.title, r.year), r.record))
     if (rows.nonEmpty) logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo.")
+    rows.size
   }
 }

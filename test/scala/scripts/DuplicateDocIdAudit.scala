@@ -61,7 +61,7 @@ object DuplicateDocIdAudit {
         println()
       }
 
-    // ── tmdbId duplicates — what IdentityMerger.mergeAll actually catches ──
+    // ── tmdbId duplicates — what the MovieCache.put tmdbId gate now folds ──
     println()
     println(s"══════ tmdbId duplicates (different (title, year), same tmdbId) ══════")
     val byTmdb = all

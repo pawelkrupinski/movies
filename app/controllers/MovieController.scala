@@ -64,14 +64,19 @@ class MovieController(
   }
 
   def film(title: String): Action[AnyContent] = Action { request =>
-    toSchedules().find(_.movie.title == normalizeTitle(title)) match {
+    // Normalize both sides: the home-page link encodes the *displayed* title,
+    // which still carries the cinema-reported Arabic numeral ("Prady 2"),
+    // while `normalizeTitle` folds it to Roman ("Prady II"). Without
+    // normalising the schedule side too, the lookup misses any film whose
+    // display title contained a single-digit Arabic numeral.
+    val needle = normalizeTitle(title)
+    toSchedules().find(s => normalizeTitle(s.movie.title) == needle) match {
       case Some(schedule) =>
         // Build absolute URL for og:url. Trust the proxy: Fly terminates TLS
         // and forwards X-Forwarded-Proto, so request.secure is correct in
-        // production. URL-encode the title so unusual characters round-trip.
+        // production.
         val proto        = if (request.secure) "https" else "http"
-        val encodedTitle = java.net.URLEncoder.encode(schedule.movie.title, "UTF-8")
-        val canonicalUrl = s"$proto://${request.host}/film?title=$encodedTitle"
+        val canonicalUrl = s"$proto://${request.host}${FilmHref(schedule.movie.title)}"
         Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule)))
       case None => NotFound(s"Film not found: $title")
     }
@@ -99,6 +104,15 @@ class MovieController(
       )
       NoContent
     }
+  }
+
+  /** Drop the in-memory positive cache and reload it from Mongo. Available in
+   *  every mode (unlike the rest of the debug endpoints) so a fly.io instance
+   *  whose cache drifted from Mongo can be reconciled without a redeploy.
+   *  The negative cache (24h TTL TMDB-miss markers) is left alone. */
+  def rehydrate(): Action[AnyContent] = Action {
+    val n = movieService.rehydrate()
+    Ok(s"rehydrated $n rows\n").as("text/plain; charset=utf-8")
   }
 
   // All /debug/* endpoints return 404 in production so the cache contents and

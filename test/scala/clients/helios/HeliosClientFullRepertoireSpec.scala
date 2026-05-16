@@ -34,7 +34,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       "Cirque du Soleil: Kooza",
       "Diabeł ubiera się u Prady 2",
       "Drama",
-      "Drugie życie - Kino Kobiet",
+      "Drugie życie",
       "Drzewo magii",
       "Dyyavol Nosyt' Prada 2 - UA ",
       "Hopnięci",
@@ -89,7 +89,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     runtimes("Cirque du Soleil: Kooza")                                     shouldBe Some(90)
     runtimes("Diabeł ubiera się u Prady 2")                                 shouldBe Some(120)
     runtimes("Drama")                                                       shouldBe Some(106)
-    runtimes("Drugie życie - Kino Kobiet")                                  shouldBe Some(116)
+    runtimes("Drugie życie")                                  shouldBe Some(116)
     runtimes("Drzewo magii")                                                shouldBe Some(110)
     runtimes("Dyyavol Nosyt' Prada 2 - UA ")                               shouldBe Some(125)
     runtimes("Hopnięci")                                                    shouldBe Some(106)
@@ -293,7 +293,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       Some("https://img.helios.pl/pliki/film/billie-eilish-hit-me-hard-and-soft-the-tour/billie-eilish-hit-me-hard-and-soft-the-tour-plakat-28207.png")
     posters("Billie Eilish - Hit Me Hard and Soft: The Tour Live") shouldBe
       Some("https://img.helios.pl/pliki/film/billie-eilish-hit-me-hard-and-soft-the-tour/billie-eilish-hit-me-hard-and-soft-the-tour-plakat-28207.png")
-    posters("Drugie życie - Kino Kobiet")     shouldBe Some("https://img.helios.pl/pliki/film/drugie-zycie/drugie-zycie-plakat-293.jpg")
+    posters("Drugie życie")     shouldBe Some("https://img.helios.pl/pliki/film/drugie-zycie/drugie-zycie-plakat-293.jpg")
     posters("The Amazing Digital Circus: The Last Act - napisy - Event projekt") shouldBe
       Some("https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg")
   }
@@ -333,7 +333,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     counts("Cirque du Soleil: Kooza")                                     shouldBe 1
     counts("Diabeł ubiera się u Prady 2")                                 shouldBe 56
     counts("Drama")                                                       shouldBe 2
-    counts("Drugie życie - Kino Kobiet")                                  shouldBe 1
+    counts("Drugie życie")                                  shouldBe 1
     counts("Drzewo magii")                                                shouldBe 10
     counts("Dyyavol Nosyt' Prada 2 - UA ")                               shouldBe 1
     counts("Hopnięci")                                                    shouldBe 1

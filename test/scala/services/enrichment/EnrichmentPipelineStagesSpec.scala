@@ -363,9 +363,14 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     bus.publish(MovieRecordCreated("Polski Tytuł", None, Some("Belle")))
 
     eventually(resolved.size shouldBe 1)
-    val e = cache.get(cache.keyOf("Polski Tytuł", None)).get
-    e.tmdbId shouldBe Some(776305)
-    e.imdbId shouldBe Some("tt13651628")
+    // The TMDB stage resolves "Polski Tytuł" to tmdbId=776305, which the
+    // donor "Belle" already holds — `MovieCache.put`'s identity gate folds
+    // the new row onto the donor, so the data lives on the donor key.
+    // "Polski Tytuł" must not survive as a separate row.
+    cache.get(cache.keyOf("Polski Tytuł", None)) shouldBe None
+    val donorRow = cache.get(cache.keyOf("Belle", Some(2021))).get
+    donorRow.tmdbId shouldBe Some(776305)
+    donorRow.imdbId shouldBe Some("tt13651628")
   }
 
   // ── Director-match verification + director-page filmography walk ──────────

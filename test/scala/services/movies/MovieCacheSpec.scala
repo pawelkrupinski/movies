@@ -19,6 +19,51 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Drzewo Magii", Some(2024)))
   }
 
+  // rehydrate(): reload from repo. Boot-time hydration goes through the same
+  // method, so we cover the on-demand admin-endpoint behaviour here:
+  // (a) in-memory rows that aren't in Mongo get dropped, (b) repo-side edits
+  // become visible, (c) the negative cache is orthogonal and survives.
+  "rehydrate" should "drop in-memory rows that aren't in the repo" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+
+    // Land a row in the positive cache without writing to the repo, by using
+    // Caffeine directly via the trait's `put`… actually `put` writes through.
+    // Instead: put through the cache (repo gets the upsert), then delete from
+    // the repo behind the cache's back so they diverge.
+    cache.put(cache.keyOf("Ghost", Some(2024)), mkEnrichment("tt1"))
+    repo.delete("Ghost", Some(2024))
+    cache.get(cache.keyOf("Ghost", Some(2024))) shouldBe defined  // still cached
+
+    val n = cache.rehydrate()
+
+    n shouldBe 0
+    cache.get(cache.keyOf("Ghost", Some(2024))) shouldBe None
+  }
+
+  it should "make repo-side edits visible" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    cache.put(cache.keyOf("X", Some(2024)), mkEnrichment("tt1", rating = Some(7.0)))
+
+    // Edit Mongo out-of-band: replace the rating.
+    repo.upsert("X", Some(2024), mkEnrichment("tt1", rating = Some(9.5)))
+
+    cache.rehydrate() shouldBe 1
+    cache.get(cache.keyOf("X", Some(2024))).flatMap(_.imdbRating) shouldBe Some(9.5)
+  }
+
+  it should "leave the negative cache alone" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val key   = cache.keyOf("not-a-real-film", Some(2099))
+    cache.markMissing(key)
+    cache.isNegative(key) shouldBe true
+
+    cache.rehydrate()
+
+    cache.isNegative(key) shouldBe true
+  }
+
   it should "treat case + diacritics + whitespace differences as the same key" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.put(cache.keyOf("Drzewo Magii", Some(2024)), mkEnrichment("tt9"))
@@ -36,6 +81,135 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.put(cache.keyOf("X", Some(2024)), mkEnrichment("tt1"))
 
     repo.upserts.toList shouldBe List(("X", Some(2024), mkEnrichment("tt1")))
+  }
+
+  // ── tmdbId identity gate ───────────────────────────────────────────────────
+  //
+  // `put` is the single persist point in the codebase (every cache + Mongo
+  // write goes through it). The gate is the chokepoint: when a write would
+  // create a *new* row carrying a tmdbId that another row already holds,
+  // the write is folded onto that canonical row instead — same film at two
+  // (title, year) keys can never produce two persisted rows. Both the prod
+  // path (MongoMovieRepo behind the cache) and the test path (this
+  // InMemoryMovieRepo behind the cache) inherit the gate automatically;
+  // there's no duplicate logic to maintain.
+
+  private def mkResolved(tmdbId: Int, scrapes: Set[CinemaScrape] = Set.empty,
+                        showings: Map[Cinema, CinemaShowings] = Map.empty): MovieRecord =
+    MovieRecord(
+      imdbId         = Some("tt-anything"),
+      imdbRating     = Some(8.0),
+      metascore      = None,
+      originalTitle  = Some("Original"),
+      tmdbId         = Some(tmdbId),
+      cinemaScrapes  = scrapes,
+      cinemaShowings = showings
+    )
+
+  "put with tmdbId" should "fold onto an existing key carrying the same tmdbId" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val k1    = cache.keyOf("Viridiana", Some(1961))
+    val k2    = cache.keyOf("Viridiana", Some(1962))
+    cache.put(k1, mkResolved(4497, scrapes = Set(CinemaScrape(KinoPalacowe, "Viridiana", Some(1961)))))
+    repo.upserts.clear()
+    repo.deletes.clear()
+
+    // Second write at K2 with same tmdbId — should NOT create a row at K2.
+    cache.put(k2, mkResolved(4497, scrapes = Set(CinemaScrape(KinoPalacowe, "Viridiana", Some(1962)))))
+
+    cache.get(k1) shouldBe defined
+    cache.get(k2) shouldBe None
+    cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Viridiana", Some(1961)))
+  }
+
+  it should "union cinemaScrapes from the victim onto the canonical row" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val k1    = cache.keyOf("Viridiana", Some(1961))
+    val k2    = cache.keyOf("Viridiana", Some(1962))
+    cache.put(k1, mkResolved(4497, scrapes = Set(CinemaScrape(KinoPalacowe, "Viridiana", Some(1961)))))
+    cache.put(k2, mkResolved(4497, scrapes = Set(CinemaScrape(KinoPalacowe, "Viridiana", Some(1962)))))
+
+    cache.get(k1).get.cinemaScrapes shouldBe Set(
+      CinemaScrape(KinoPalacowe, "Viridiana", Some(1961)),
+      CinemaScrape(KinoPalacowe, "Viridiana", Some(1962))
+    )
+  }
+
+  it should "delete the victim from Mongo when the source key already held a row" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val k1    = cache.keyOf("Viridiana", Some(1961))
+    val k2    = cache.keyOf("Viridiana", Some(1962))
+    cache.put(k1, mkResolved(4497))
+    // Source row exists with no tmdbId yet (e.g. fresh scrape).
+    cache.put(k2, mkResolved(4497).copy(tmdbId = None))
+    repo.upserts.clear()
+    repo.deletes.clear()
+
+    // TMDB resolution lands on K2 — gate folds onto K1, K2 must be deleted.
+    cache.put(k2, mkResolved(4497))
+
+    repo.deletes.toList should contain (("Viridiana", Some(1962)))
+    cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Viridiana", Some(1961)))
+  }
+
+  it should "write through to the repo at the canonical key, not the source" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val k1    = cache.keyOf("Viridiana", Some(1961))
+    val k2    = cache.keyOf("Viridiana", Some(1962))
+    cache.put(k1, mkResolved(4497))
+    repo.upserts.clear()
+
+    cache.put(k2, mkResolved(4497, scrapes = Set(CinemaScrape(KinoPalacowe, "Viridiana", Some(1962)))))
+
+    val titles = repo.upserts.map { case (t, y, _) => (t, y) }
+    titles should contain (("Viridiana", Some(1961)))
+    titles should not contain (("Viridiana", Some(1962)))
+  }
+
+  it should "NOT fold when tmdbId differs (two different films sharing a title)" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val k1    = cache.keyOf("Wspinaczka", Some(2017))
+    val k2    = cache.keyOf("Wspinaczka", Some(2025))
+    cache.put(k1, mkResolved(111))  // film A
+    cache.put(k2, mkResolved(222))  // film B — different tmdbId, genuinely different film
+
+    cache.get(k1) shouldBe defined
+    cache.get(k2) shouldBe defined
+    cache.snapshot().map(r => (r.title, r.year)) should contain allOf (
+      ("Wspinaczka", Some(2017)),
+      ("Wspinaczka", Some(2025))
+    )
+  }
+
+  it should "NOT fold when the value has no tmdbId yet (pre-resolution scrape)" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val k1    = cache.keyOf("Viridiana", Some(1961))
+    val k2    = cache.keyOf("Viridiana", Some(1962))
+    cache.put(k1, mkResolved(4497))
+    // Fresh scrape at K2, tmdbId not yet known. Gate doesn't apply — the
+    // scrape-layer redirect (recordCinemaScrape) is the right tool here,
+    // not the tmdbId gate.
+    cache.put(k2, mkEnrichment("tt-x").copy(tmdbId = None))
+
+    cache.get(k1) shouldBe defined
+    cache.get(k2) shouldBe defined
+  }
+
+  it should "be a no-op when the same key is re-written (regular update, not a fold)" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val k1    = cache.keyOf("Viridiana", Some(1961))
+    cache.put(k1, mkResolved(4497))
+    repo.deletes.clear()
+
+    // Same key, same tmdbId — sibling check `k != key` excludes itself, no fold.
+    cache.put(k1, mkResolved(4497).copy(imdbRating = Some(9.0)))
+
+    cache.get(k1).get.imdbRating shouldBe Some(9.0)
+    repo.deletes shouldBe empty
   }
 
   "invalidate" should "remove from both positive cache and repo" in {

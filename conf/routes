@@ -10,6 +10,11 @@ GET     /debug                      controllers.MovieController.debug()
 # repopulating field-by-field.
 + nocsrf
 POST    /debug/reenrich             controllers.MovieController.reEnrich(title: String, year: Option[Int] ?= None)
+# Drop the in-memory positive cache and reload it from Mongo. Not gated by
+# devOnly — usable on a deployed instance to reconcile after out-of-band
+# Mongo edits.
++ nocsrf
+POST    /debug/rehydrate            controllers.MovieController.rehydrate()
 
 # ── Health ────────────────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check

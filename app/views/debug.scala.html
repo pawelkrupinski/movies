@@ -1,4 +1,5 @@
 @import models.{Cinema, CinemaShowings, MovieRecord, Showtime}
+@import controllers.FilmHref
 @import java.time.format.DateTimeFormatter
 @(rows: Seq[(String, Option[Int], MovieRecord)])
 <!DOCTYPE html>
@@ -141,7 +142,7 @@
           data-tmdb="@e.tmdbId.map(_.toString).getOrElse("")"
           data-imdbR="@e.imdbRating.map(_.toString).getOrElse("")"
           data-urls="@{Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten.mkString(" ")}">
-        <td class="title"><a href="@{s"/film?title=${java.net.URLEncoder.encode(title, "UTF-8")}"}" onclick="event.stopPropagation()">@title</a></td>
+        <td class="title"><a href="@FilmHref(e.displayTitle(title))" onclick="event.stopPropagation()">@title</a></td>
         <td class="orig">@if(orig.nonEmpty) { @orig } else { <span class="miss">—</span> }</td>
         <td class="year">@year.map(_.toString).getOrElse("—")</td>
         <td class="id">

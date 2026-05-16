@@ -23,7 +23,8 @@ object HeliosNuxt {
   // collapses to the canonical "Diabeł ubiera się u Prady 2".
   def cleanTitle(title: String): String =
     Seq(" w Helios RePlay", " w Helios Anime", " w Helios na Scenie", " w HnS",
-        " - Salon Kultury Helios", " - KNTJ", " - KNT", " - seanse z konkursami HDD")
+        " - Salon Kultury Helios", " - KNTJ", " - KNT", " - Kino Kobiet",
+        " - seanse z konkursami HDD")
       .foldLeft(title)((t, suffix) => t.stripSuffix(suffix))
 
   def buildMovies(html: String): Seq[CinemaMovie] = {
