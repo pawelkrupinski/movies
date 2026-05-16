@@ -7,6 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, MovieRecordCreated, TmdbResolved}
 import tools.HttpFetch
+import tools.Eventually.eventually
 
 /**
  * Tests for `FilmwebRatings` — the extracted Filmweb stage. Mirrors the
@@ -188,13 +189,4 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     noException should be thrownBy bus.publish(MovieRecordCreated("Anything", None))
   }
 
-  private def eventually(check: => org.scalatest.Assertion): org.scalatest.Assertion = {
-    val deadline = System.currentTimeMillis() + 2000
-    var last: Throwable = null
-    while (System.currentTimeMillis() < deadline) {
-      try return check
-      catch { case t: Throwable => last = t; Thread.sleep(20) }
-    }
-    throw last
-  }
 }

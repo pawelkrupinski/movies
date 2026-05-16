@@ -8,6 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{DomainEvent, EventBus, MovieRecordCreated, TmdbResolved}
 import tools.HttpFetch
+import tools.Eventually.eventually
 
 import scala.collection.mutable
 
@@ -637,15 +638,4 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     eventually(cache.get(key).flatMap(_.imdbRating) shouldBe Some(7.0))
   }
 
-  // ── Helper: poll until the assertion holds, or fail after a short timeout.
-  private def eventually(check: => org.scalatest.Assertion): org.scalatest.Assertion = {
-    val deadline = System.currentTimeMillis() + 2000
-    var lastErr: Option[Throwable] = None
-    while (System.currentTimeMillis() < deadline) {
-      try return check
-      catch { case t: Throwable => lastErr = Some(t) }
-      Thread.sleep(20)
-    }
-    throw lastErr.getOrElse(new RuntimeException("eventually timed out"))
-  }
 }

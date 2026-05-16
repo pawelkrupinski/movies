@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, ImdbIdMissing, ImdbIdResolved}
 import services.movies.{InMemoryMovieRepo, MovieCache}
 import tools.HttpFetch
+import tools.Eventually.eventually
 
 import scala.collection.mutable
 
@@ -39,18 +40,6 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     require(stream != null, s"fixture not found: $path")
     try scala.io.Source.fromInputStream(stream, "UTF-8").mkString
     finally stream.close()
-  }
-
-  // Tiny polling helper — `onImdbIdMissing` dispatches via a worker pool, so
-  // assertions need a small wait window.
-  private def eventually(check: => org.scalatest.Assertion): org.scalatest.Assertion = {
-    val deadline = System.currentTimeMillis() + 2000
-    var last: Throwable = null
-    while (System.currentTimeMillis() < deadline) {
-      try return check
-      catch { case t: Throwable => last = t; Thread.sleep(20) }
-    }
-    throw last
   }
 
   // ── onImdbIdMissing ─────────────────────────────────────────────────────────
