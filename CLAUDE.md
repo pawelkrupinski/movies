@@ -671,3 +671,55 @@ class after what makes it distinct from other implementations:
 When in doubt: would a future reader of the class name be able to
 guess what the class *does* without opening it? `MongoMovieRepo` —
 yes. `MovieRepoImpl` — no.
+
+## Share business logic between real and fake implementations
+
+When a trait has both a real and a fake/test/stub implementation, draw the
+trait so that the business logic lives in **shared** code, not duplicated
+across the implementations. The two impls should differ only at the
+infrastructure boundary — where data is stored, which HTTP backend is
+called, what clock ticks — never in their understanding of the rules.
+
+Whenever you reach for a new fake (`FakeFooClient`, `StubFooService`,
+`InMemoryFoo…`), first ask whether the logic you're about to copy into it
+belongs above the trait instead. If the fake needs to re-implement the
+same merge rule, the same write-through ordering, the same "don't publish
+on no-op" filter, the same caching strategy — that logic is on the wrong
+side of the seam. Push it up before writing the fake.
+
+How to push it up:
+
+- **Split the trait into two layers.** The outer layer is a single
+  concrete class that owns the business logic; it depends on an inner
+  trait that's a narrow infrastructure boundary. Only the inner trait
+  gets a fake.
+  - Example: `MovieCache` (concrete — owns Caffeine, write-through,
+    event publishing) depends on `MovieRepo` (trait — Mongo or
+    in-memory). Tests inject `InMemoryMovieRepo` and get the real
+    cache semantics for free.
+- **Default methods on the trait.** Scala `trait Foo { def primitive():
+  X; final def derived(): Y = ... }`. Real and fake both implement the
+  primitives; the derived behaviour is shared by construction.
+- **Extract a helper / pure function** that both impls call, so any
+  shared decision has exactly one source of truth.
+
+Treat the refactor as part of the change that introduces the fake — not
+a follow-up. "We'll deduplicate later" never happens, and a fake that
+re-implements logic the real class already has is worse than no fake at
+all: it lets tests pass while the real code is broken (or vice versa).
+
+Signs you've drawn the seam in the wrong place:
+
+- The fake has its own copy of a sorting / merging / filtering rule that
+  the real impl also has.
+- A behaviour change to the real impl forces a parallel change to the
+  fake to keep tests green. Tests should fail because behaviour changed,
+  not because both impls had to be updated in lockstep.
+- The fake's body is longer than "store this, return that" — it's
+  actually deciding things.
+- Two tests against the fake disagree about the rule, because each test
+  patched the fake slightly differently.
+
+Done right, a fake is boring: a `HashMap`, a fixed list of HTTP
+responses, a `Clock.fixed(...)`. The business logic is whatever sits
+above it, exercised end-to-end with the real outer class.
