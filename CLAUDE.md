@@ -416,27 +416,175 @@ shrug and move on.
 
 ## Follow SOLID — especially depend on interfaces, not implementations
 
-The SOLID principles are the design baseline:
+The SOLID principles are the design baseline. Each gets its own
+section below — short rationale, the smells that signal a violation,
+and how it lands in this codebase.
 
-- **Single responsibility** — one class, one reason to change. The
-  IMDb-id-discovery and the IMDb-rating-refresh are two reasons → two
-  classes (`ImdbIdResolver`, `ImdbRatings`). Don't bundle.
-- **Open / closed** — code is open to extension, closed to modification.
-  New cinema? Add a `CinemaXClient` that fits the existing scrape
-  contract, don't fork `ShowtimeCache`'s scheduler logic per cinema.
-- **Liskov substitution** — any subtype must work everywhere its parent
-  does, with no surprises (no "throws UnsupportedOperationException
-  here"). `InMemoryMovieRepo` honours the same write-through contract
-  the production repo does, otherwise it doesn't belong as a subtype.
-- **Interface segregation** — many small, focused traits beat one
-  god-trait. A consumer that only needs to read shouldn't be forced to
-  see the write API.
-- **Dependency inversion** — high-level modules depend on abstractions,
-  not on concrete classes. **This is the load-bearing one for this
-  codebase.** `MovieService` should take a `MovieRepo` *trait*; the
-  Mongo implementation and the in-memory test double are both
-  subtypes. Wiring lives in `AppLoader` (composition root); everything
-  downstream sees only the abstraction.
+### S — Single Responsibility
+
+> A class should have one, and only one, reason to change.
+
+A class's "responsibility" is *who* asks for it to change. If two
+different concerns (or two different stakeholders, or two different
+upstream services) can each independently force the class to change,
+that's two responsibilities — split. The flip side is cohesion:
+*things that change together should live together*. Code that's
+tightly coupled to one purpose belongs in one place; code that's
+coupled to two should be two places.
+
+Signals you're violating SRP:
+
+- You can't describe the class without saying "and." `Cache` —
+  fine. `CacheAndPersistentStoreAndEventPublisher` — three classes.
+- It has a generic noun in its name (`Manager`, `Handler`,
+  `Util`, `Helper`, `Processor`) — those almost always become
+  catch-alls for unrelated logic.
+- A small bugfix in one feature touches lots of methods unrelated
+  to the bug. The class is mixing reasons-to-change.
+- It has many private helpers that no two callers share — each
+  caller pulls in a different subset of the class. Likely the
+  subsets are separate responsibilities sharing a file.
+
+In this codebase:
+
+- `ImdbIdResolver` recovers a missing IMDb id; `ImdbRatings`
+  refreshes the rating. Two reasons to change (IMDb's suggestion
+  endpoint vs IMDb's GraphQL rating API) → two classes. They were
+  one class until we split them.
+- `MovieCache` is the unified store; `MovieService` is the
+  orchestration around TMDB resolution; `ShowtimeCache` is the
+  scrape scheduler. Each could change for a reason the others
+  don't care about.
+
+### O — Open / Closed
+
+> Software entities should be open for extension, but closed for
+> modification.
+
+Adding a new variant of an existing concept shouldn't require
+editing the existing code — you should be able to *extend* the
+system (new subtype, new strategy, new plugin) without going back
+and reopening the closed file. In practice this almost always means
+"use polymorphism instead of `switch` / `if-else-on-type`."
+
+Signals you're violating OCP:
+
+- A `match`/`switch` on an enum or sealed family that grows by one
+  case every time a new variant is added. The new case touches
+  every site that already matches. Move the per-variant logic onto
+  the variant.
+- A core class that takes a config flag and forks behaviour inside.
+  Move the fork into a strategy.
+- Adding a new feature requires editing 5 files, none of which is
+  the new feature's own file.
+
+In this codebase:
+
+- Adding a cinema is a new `CinemaXClient` that fits the existing
+  scrape contract. `ShowtimeCache` doesn't change. The `Cinema`
+  sealed family doesn't grow special-case branches downstream
+  because the per-cinema logic lives behind the contract.
+- Adding a rating source is a new `*Ratings` class subscribing to
+  the existing `TmdbResolved` / `ImdbIdMissing` bus events. The
+  bus, the cache, and the service don't change.
+
+### L — Liskov Substitution
+
+> Subtypes must be substitutable for their base types without
+> breaking the program. (Barbara Liskov, 1987.)
+
+A subtype must honour the **behavioural** contract of its
+supertype, not just the type signatures:
+
+- **Preconditions can't be strengthened.** If the base accepts
+  any String, the subtype can't suddenly require a non-empty one.
+- **Postconditions can't be weakened.** If the base returns a
+  non-null result, the subtype can't start returning null.
+- **Invariants must be preserved.** If the base guarantees the
+  cache is thread-safe, the subtype can't drop that guarantee.
+- **The history constraint.** A subtype can't introduce mutation
+  the base didn't permit (e.g. immutable base, mutable subtype
+  exposed via the base reference).
+
+Signals you're violating LSP:
+
+- Override that throws `UnsupportedOperationException` or
+  `NotImplementedError`. The subtype isn't actually a subtype.
+- The classic `Square extends Rectangle` shape — setting width
+  and height independently works on `Rectangle` and breaks on
+  `Square`.
+- Callers have to know the concrete type (`if (repo
+  .isInstanceOf[InMemoryMovieRepo])`) to use it correctly. The
+  abstraction is leaking.
+
+In this codebase:
+
+- `InMemoryMovieRepo` honours `MovieRepo`'s write-through contract
+  — `upsert` updates the store, `delete` removes from it,
+  `findAll` returns the current contents. A caller using the
+  `MovieRepo` reference can't tell the difference.
+
+### I — Interface Segregation
+
+> Clients should not be forced to depend on methods they do not
+> use.
+
+Prefer many small, focused interfaces over one general-purpose
+"god trait." A consumer that only reads shouldn't have to compile
+against the write API. A test fake that only needs two methods
+shouldn't have to stub fifteen.
+
+Signals you're violating ISP:
+
+- A trait with 20+ methods and most callers using 2–3 each.
+- Test fakes with many `???` / "should not be called" stubs because
+  the interface they're forced to implement is wider than the test
+  actually exercises.
+- Methods on the interface marked "callers should ignore this"
+  or "only the X impl actually uses this."
+
+In this codebase: keep `MovieRepo` to the persistence contract
+(`findAll`, `upsert`, `updateIfPresent`, `delete`, `enabled`,
+`close`) — don't bolt enrichment, scheduling, or display concerns
+on. If a new caller needs only a read, prefer a `MovieRepoReader`
+sub-trait over expanding the existing trait.
+
+### D — Dependency Inversion
+
+> High-level modules should not depend on low-level modules. Both
+> should depend on abstractions. Abstractions should not depend on
+> details — details should depend on abstractions.
+
+**This is the load-bearing principle for this codebase.** Every
+non-trivial collaboration is wired in `AppLoader` (the composition
+root); everything else sees only abstractions through constructor
+parameters. The `MovieService` doesn't know whether `MovieRepo` is
+talking to Mongo, an in-memory map, or a flat file — it knows the
+trait. The Mongo and in-memory implementations both depend on the
+trait; the trait depends on neither.
+
+Signals you're violating DIP:
+
+- A high-level class imports a concrete low-level class directly
+  (`import services.movies.MongoMovieRepo` from inside
+  `MovieService`). The dependency should be on the trait.
+- Constructors take concrete classes instead of traits.
+- Tests have to stand up real infrastructure (Mongo, HTTP server,
+  filesystem) because there's no abstraction to swap.
+- "I need a feature flag to toggle behaviour X" — usually means a
+  missing abstraction; introduce a trait with two implementations
+  and pick one at the composition root.
+
+Closely related:
+
+- **Inversion of Control.** Don't construct your collaborators
+  inside yourself — accept them. `class FilmwebRatings(cache:
+  MovieCache, client: FilmwebClient)` not `class FilmwebRatings()
+  { val cache = new MovieCache(); val client = new
+  FilmwebClient() }`.
+- **The Dependency Rule** (Clean Architecture). Source code
+  dependencies point inward, toward higher-level policy. Domain
+  doesn't import infrastructure; infrastructure imports domain.
 
 What this looks like in practice:
 
