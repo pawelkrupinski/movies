@@ -306,7 +306,7 @@ class MovieService(
    *  `TmdbRetryHours`; also clears the negative cache so previously-failed
    *  `(title, year)` lookups get one fresh shot via the next ShowtimeCache
    *  refresh. */
-  private[services] def retryUnresolvedTmdb(): Unit = {
+  def retryUnresolvedTmdb(): Unit = {
     cache.clearNegatives()
     // Pass each row's `cinemaShowings`-merged director + originalTitle as
     // hints. By the time the daily retry fires, the row has absorbed every
