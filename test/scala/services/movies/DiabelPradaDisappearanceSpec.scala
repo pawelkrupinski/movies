@@ -92,11 +92,11 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     multikinoPrada.showtimes           should not be empty
 
     ccPlazaPrada.movie.title           shouldBe PradaTitle
-    ccPlazaPrada.movie.releaseYear     shouldBe None         // releaseYear is a string in CC's payload
+    ccPlazaPrada.movie.releaseYear     shouldBe Some(2026)   // CC's API uses String "2026" — parser now handles it
     ccPlazaPrada.showtimes             should not be empty
 
     ccKinepolisPrada.movie.title       shouldBe PradaTitle
-    ccKinepolisPrada.movie.releaseYear shouldBe None
+    ccKinepolisPrada.movie.releaseYear shouldBe Some(2026)
     ccKinepolisPrada.showtimes         should not be empty
 
     heliosPrada.movie.title            shouldBe PradaTitle
@@ -117,8 +117,8 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   private case class Scrape(cinema: Cinema, title: String, year: Option[Int], cm: CinemaMovie)
   private def scrapes = Seq(
     Scrape(Multikino,             PradaTitle, None,       multikinoPrada),
-    Scrape(CinemaCityPoznanPlaza, PradaTitle, None,       ccPlazaPrada),
-    Scrape(CinemaCityKinepolis,   PradaTitle, None,       ccKinepolisPrada),
+    Scrape(CinemaCityPoznanPlaza, PradaTitle, Some(2026), ccPlazaPrada),
+    Scrape(CinemaCityKinepolis,   PradaTitle, Some(2026), ccKinepolisPrada),
     Scrape(Helios,                PradaTitle, Some(2026), heliosPrada)
   )
 

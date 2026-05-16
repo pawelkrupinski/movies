@@ -166,6 +166,7 @@ class MovieCache(repo: MovieRepo) extends Logging {
           runtimeMinutes = cm.movie.runtimeMinutes,
           releaseYear    = cm.movie.releaseYear,
           originalTitle  = cm.movie.originalTitle,
+          country        = cm.movie.country,
           showtimes      = cm.showtimes
         )
         val scrape = CinemaScrape(cinema, cm.movie.title, cm.movie.releaseYear)

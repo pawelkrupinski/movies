@@ -144,9 +144,10 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   private def cinemaMovie(title: String, cinema: Cinema, year: Option[Int] = Some(2026),
-                          poster: Option[String] = None, showtimes: Seq[Showtime] = Seq.empty): CinemaMovie =
+                          poster: Option[String] = None, showtimes: Seq[Showtime] = Seq.empty,
+                          country: Option[String] = None): CinemaMovie =
     CinemaMovie(
-      movie     = Movie(title = title, releaseYear = year),
+      movie     = Movie(title = title, releaseYear = year, country = country),
       cinema    = cinema,
       posterUrl = poster,
       filmUrl   = None,
@@ -237,6 +238,43 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // Both raw titles are recorded in cinemaScrapes (and surfaced via the
     // derived `cinemaTitles` view).
     row.cinemaTitles should contain allOf ("Top Gun: Maverick", "Top Gun Maverick")
+  }
+
+  // Five of the cinema clients (Helios, Rialto, KinoBulgarska, KinoMuza,
+  // KinoPalacowe) parse a production-country string from their sources but
+  // until this change CinemaShowings dropped it on the floor — the value was
+  // populated on Movie.country, then thrown away when the slot was built.
+  // Persisting it lets a downstream view show "USA, Polska" without having to
+  // re-scrape, and lets the merged MovieRecord.country surface whichever
+  // cinema actually reported one (Multikino-priority, skipping cinemas that
+  // never carry the field).
+  it should "store production country per cinema slot and expose it on the merged record" in {
+    val cache = new MovieCache(new FakeRepo())
+    cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Top Gun: Maverick", Multikino, Some(2022), country = None)
+    ))
+    cache.recordCinemaScrape(Helios, Seq(
+      cinemaMovie("Top Gun Maverick", Helios, Some(2022), country = Some("USA"))
+    ))
+
+    val row = cache.get(cache.keyOf("Top Gun: Maverick", Some(2022))).get
+    row.cinemaShowings(Multikino).country shouldBe None
+    row.cinemaShowings(Helios).country    shouldBe Some("USA")
+    // Multikino has the slot but no country; Helios fills in.
+    row.country shouldBe Some("USA")
+  }
+
+  it should "prefer Multikino's country over other cinemas' on the merged record" in {
+    val cache = new MovieCache(new FakeRepo())
+    // Hypothetical: a future Multikino enrichment fills country directly.
+    cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Foo", Multikino, Some(2026), country = Some("Polska"))
+    ))
+    cache.recordCinemaScrape(Helios, Seq(
+      cinemaMovie("Foo", Helios, Some(2026), country = Some("USA"))
+    ))
+
+    cache.get(cache.keyOf("Foo", Some(2026))).get.country shouldBe Some("Polska")
   }
 
   it should "preserve enrichment-side fields when only cinema data changes" in {

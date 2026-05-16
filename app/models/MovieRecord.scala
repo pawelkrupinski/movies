@@ -100,6 +100,13 @@ case class MovieRecord(
   def releaseYear: Option[Int] =
     prioritizedShowings.iterator.flatMap(_._2.releaseYear).nextOption()
 
+  /** Production country (or co-production list) — first non-None cinema in
+   *  priority order. Cinemas that don't parse a country (Multikino, Cinema
+   *  City, Charlie Monroe, Kino Apollo) contribute None and are skipped, so
+   *  whichever cinema does carry one fills the merged value. */
+  def country: Option[String] =
+    prioritizedShowings.iterator.flatMap(_._2.country).nextOption()
+
   /** Cinema → film deep-link, when that cinema reports one. */
   def filmUrlFor(cinema: Cinema): Option[String] = cinemaShowings.get(cinema).flatMap(_.filmUrl)
 

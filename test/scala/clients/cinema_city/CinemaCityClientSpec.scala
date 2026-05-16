@@ -121,6 +121,41 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Zabawa w pochowanego 2")                                        shouldBe Some(104)
   }
 
+  // ─── Kinepolis: release years ─────────────────────────────────────────────
+  //
+  // Regression: the API returns releaseYear as a JSON String
+  // (`"releaseYear":"2026"`), so `asOpt[Int]` always failed silently and
+  // the field stayed None on every CinemaCity row. After fixing the
+  // parser, the merged year flows through to MovieCache and the redirect
+  // doesn't have to bridge a year=None onto a year=Some sibling.
+
+  it should "return correct release year for every film" in {
+    val years = kinepolis.map(m => m.movie.title -> m.movie.releaseYear).toMap
+    years("Kurozając i świątynia świstaka")        shouldBe Some(2026)
+    years("Drzewo magii")                          shouldBe Some(2025)
+    years("Mortal Kombat II")                      shouldBe Some(2026)
+    years("Top Gun Maverick")                      shouldBe Some(2020)
+    years("Top Gun 40th Anniversary")              shouldBe Some(1986)
+    years("Billie Eilish – Hit Me Hard and Soft: The Tour") shouldBe Some(2026)
+    years("Diabeł ubiera się u Prady 2")           shouldBe Some(2026)
+  }
+
+  // ─── Kinepolis: country (parsed from per-film details page) ───────────────
+  //
+  // Country isn't in the film-events JSON. CC's per-film page renders it as
+  // `<p>Produkcja: <countries> <year>?</p>`. The client fetches each film's
+  // page in parallel, parses the line, and falls back to None when the
+  // fixture isn't present or the line isn't there.
+
+  it should "parse the country from the per-film details page when available" in {
+    val countries = kinepolis.map(m => m.movie.title -> m.movie.country).toMap
+    countries("Kurozając i świątynia świstaka") shouldBe Some("Belgia, Francja, USA")
+    countries("Diabeł ubiera się u Prady 2")    shouldBe Some("USA")
+    // Films whose details-page fixture isn't captured fall back to None,
+    // which is the right behaviour in prod when a fetch fails too.
+    countries("Mortal Kombat II")               shouldBe None
+  }
+
   // ─── Kinepolis: poster URLs ───────────────────────────────────────────────
 
   it should "return correct poster URL for every film" in {
