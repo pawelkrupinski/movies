@@ -1,6 +1,6 @@
 package services.enrichment
 
-import services.movies.{InMemoryMovieRepo, MovieCache}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 
 import clients.TmdbClient
 import models.MovieRecord
@@ -54,7 +54,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val repo  = new InMemoryMovieRepo(Seq(
       ("The Dark Knight", Some(2008), mkEnrichment("tt0468569", mcUrl = Some(Url), metascore = Some(70)))
     ))
-    val cache  = new MovieCache(repo)
+    val cache  = new CaffeineMovieCache(repo)
     val mc     = mcStub(Map(Url -> Some(85)))
     val rates  = new MetascoreRatings(cache, new TmdbClient(apiKey = None), mc)
 
@@ -67,7 +67,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val repo  = new InMemoryMovieRepo(Seq(
       ("The Dark Knight", Some(2008), mkEnrichment("tt0468569", mcUrl = Some(Url), metascore = Some(85)))
     ))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     repo.upserts.clear()
     val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), mcStub(Map(Url -> Some(85))))
 
@@ -80,7 +80,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val repo  = new InMemoryMovieRepo(Seq(
       ("Indie Film", Some(2025), mkEnrichment("tt9", mcUrl = Some(Url), metascore = Some(70)))
     ))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), mcStub(Map(Url -> None)))
 
     rates.refreshOneSync(cache.keyOf("Indie Film", Some(2025)))
@@ -93,7 +93,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "swallow MC fetch failures (network blip, Cloudflare challenge) without throwing" in {
     val repo  = new InMemoryMovieRepo(Seq(("X", None, mkEnrichment("tt9", mcUrl = Some(Url), metascore = Some(70)))))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     val brokenMc = new MetacriticClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("boom")
     })
@@ -105,7 +105,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when the row has no metacriticUrl" in {
     val repo  = new InMemoryMovieRepo(Seq(("X", None, mkEnrichment("tt9", mcUrl = None, metascore = None))))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     // MC stub throws on any call — proving we never tried to fetch.
     val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
@@ -115,7 +115,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
-    val cache = new MovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))
@@ -134,7 +134,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
       ("C", None, mkEnrichment("tt3", mcUrl = Some(url3), metascore = Some(100))),
       ("D", None, mkEnrichment("tt4", mcUrl = None,       metascore = None))   // skipped: no URL
     ))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), mcStub(Map(
       Url  -> Some(85),    // changed
       url2 -> Some(74),    // unchanged
@@ -183,7 +183,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
         metacriticUrl = None
       ))
     ))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     // MC stub: 404 for both philosophers slug variants, 200 + JSON-LD for sorcerers.
     val mc = new MetacriticClient(new HttpFetch {
       def get(url: String): String =
@@ -210,7 +210,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val repo  = new InMemoryMovieRepo(Seq(
       ("Foo", Some(2024), mkEnrichment("tt1", mcUrl = Some(Url), metascore = None))
     ))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), mcStub(Map(Url -> Some(85))))
     bus.subscribe(rates.onTmdbResolved)
 
@@ -221,7 +221,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
     val bus   = new EventBus()
-    val cache = new MovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))

@@ -12,7 +12,7 @@ import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import services.cinemas.HeliosClient
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbIdResolver, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
-import services.movies.{MongoMovieRepo, MovieCache, MovieRepo, MovieService}
+import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieCache, MovieRepo, MovieService}
 import services.events.EventBus
 import services.ShowtimeCache
 
@@ -71,7 +71,7 @@ class AppComponents(context: Context)
 
   // ── MovieRecord ────────────────────────────────────────────────────────────
   lazy val movieRepo: MovieRepo = new MongoMovieRepo()
-  lazy val movieCache   = new MovieCache(movieRepo)
+  lazy val movieCache: MovieCache = new CaffeineMovieCache(movieRepo)
   // ImdbRatings / RottenTomatoesRatings own the hourly rating refresh + the
   // per-row event listener for their respective services. Pulled out of
   // MovieService so each external service has its own tempo and the TMDB

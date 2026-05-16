@@ -22,7 +22,40 @@ private[services] case class CacheKey(cleanTitle: String, year: Option[Int]) {
 }
 
 /**
- * In-memory enrichment store with write-through to Mongo via `MovieRepo`.
+ * In-memory enrichment store with write-through to the underlying `MovieRepo`.
+ *
+ * Per CLAUDE.md DIP guidance: consumers depend on this trait, not the concrete
+ * implementation. `CaffeineMovieCache` is the production implementation;
+ * tests can swap in any other implementation if they ever need to.
+ */
+trait MovieCache {
+  // ── Public read surface (controllers, ShowtimeCache) ─────────────────────
+
+  /** Apply one cinema's fresh scrape to the cache. Returns one
+   *  `(CinemaMovie, CacheKey, isNew)` triple per input movie. */
+  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)]
+
+  /** True when some existing cache row's cleanTitle normalises to the same
+   *  form as `rawTitle` AND has been TMDB-resolved (tmdbId set). */
+  def hasResolvedSiblingByTitle(rawTitle: String): Boolean
+
+  /** Stable snapshot for debug tooling — sorted by title (case-insensitive). */
+  def snapshot(): Seq[(String, Option[Int], MovieRecord)]
+
+  // ── Internal surface (services.* only) ───────────────────────────────────
+  private[services] def keyOf(title: String, year: Option[Int]): CacheKey
+  private[services] def get(key: CacheKey): Option[MovieRecord]
+  private[services] def isNegative(key: CacheKey): Boolean
+  private[services] def put(key: CacheKey, e: MovieRecord): Unit
+  private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
+  private[services] def markMissing(key: CacheKey): Unit
+  private[services] def clearNegatives(): Unit
+  private[services] def invalidate(key: CacheKey): Unit
+  private[services] def entries: Seq[(CacheKey, MovieRecord)]
+}
+
+/**
+ * Caffeine-backed `MovieCache` with write-through to `MovieRepo`.
  *
  * Two caches:
  *   - **Positive**: successful enrichments, never expire in-process (they
@@ -37,7 +70,7 @@ private[services] case class CacheKey(cleanTitle: String, year: Option[Int]) {
  * effects — callers that want to *trigger* a lookup on miss go through
  * `MovieService` (which owns the worker pool + dedup).
  */
-class MovieCache(repo: MovieRepo) extends Logging {
+class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
   private val negative: Cache[CacheKey, java.lang.Boolean] =
@@ -58,15 +91,12 @@ class MovieCache(repo: MovieRepo) extends Logging {
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey =
     CacheKey(MovieService.searchTitle(title), year)
 
-  /** Pure read — never blocks, never schedules. */
   private[services] def get(key: CacheKey): Option[MovieRecord] =
     Option(positive.getIfPresent(key))
 
   private[services] def isNegative(key: CacheKey): Boolean =
     negative.getIfPresent(key) != null
 
-  /** Write-through: positive cache + Mongo upsert. cinemaTitles is no
-   *  longer a stored field — it's derived from `cinemaScrapes`. */
   private[services] def put(key: CacheKey, e: MovieRecord): Unit = {
     positive.put(key, e)
     repo.upsert(key.cleanTitle, key.year, e)
@@ -220,13 +250,6 @@ class MovieCache(repo: MovieRepo) extends Logging {
     if (candidates.size == 1) Some(candidates.head) else None
   }
 
-  /** True when some existing cache row's cleanTitle normalises to the same
-   *  form as `rawTitle` AND has been TMDB-resolved (tmdbId set). The
-   *  `MovieService` TMDB stage uses this to short-circuit: if the cinema's
-   *  title already maps to an existing resolved row via
-   *  `recordCinemaScrape`'s redirect, there's no point running another
-   *  TMDB lookup for the raw `(title, year)` key and writing a phantom row
-   *  that no later code path would ever clean up. */
   def hasResolvedSiblingByTitle(rawTitle: String): Boolean = {
     import scala.jdk.CollectionConverters._
     val normalizedRaw = MovieService.normalize(rawTitle)
@@ -235,7 +258,6 @@ class MovieCache(repo: MovieRepo) extends Logging {
     }
   }
 
-  /** Stable snapshot for debug tooling — sorted by title (case-insensitive). */
   def snapshot(): Seq[(String, Option[Int], MovieRecord)] = {
     import scala.jdk.CollectionConverters._
     positive.asMap().asScala.iterator

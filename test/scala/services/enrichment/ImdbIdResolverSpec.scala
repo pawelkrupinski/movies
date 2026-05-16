@@ -4,7 +4,7 @@ import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, ImdbIdMissing, ImdbIdResolved}
-import services.movies.{InMemoryMovieRepo, MovieCache}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 import tools.HttpFetch
 import tools.Eventually.eventually
 
@@ -54,7 +54,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       tmdbId        = Some(1024)
     )
     val repo  = new InMemoryMovieRepo(Seq(("Mortal Kombat 2", Some(2026), tmdbOnly)))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     val resolver = new ImdbIdResolver(cache, imdbStub(
       Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))
     ), bus)
@@ -77,7 +77,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val tmdbOnly = MovieRecord(imdbId = None, imdbRating = None, metascore = None,
                                originalTitle = Some("Imaginary Film"), tmdbId = Some(1))
     val repo  = new InMemoryMovieRepo(Seq(("Imaginary Film", None, tmdbOnly)))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     repo.upserts.clear()
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")), bus)
 
@@ -96,7 +96,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val resolved = MovieRecord(imdbId = Some("tt9999"), imdbRating = Some(8.0), metascore = None,
                                originalTitle = Some("Foo"), tmdbId = Some(1))
     val repo  = new InMemoryMovieRepo(Seq(("Foo", None, resolved)))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     repo.upserts.clear()
     // Stub that THROWS if findId or any HTTP call lands — confirms the
     // resolver short-circuits before hitting IMDb when the id is already

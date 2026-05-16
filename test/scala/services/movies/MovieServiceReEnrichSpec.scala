@@ -85,7 +85,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val repo     = new InMemoryMovieRepo(Seq(
       ("Powrót do przyszłości", Some(2026), mkEnrichment("tt-old-wrong-id"))
     ))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     val svc   = new MovieService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
@@ -106,7 +106,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repo     = new InMemoryMovieRepo()
-    val cache    = new MovieCache(repo)
+    val cache    = new CaffeineMovieCache(repo)
     val svc      = new MovieService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
@@ -125,7 +125,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val original = mkEnrichment("tt-original", orig = Some("Keep me"))
     val repo     = new InMemoryMovieRepo(Seq(("Title", Some(2024), original)))
-    val cache    = new MovieCache(repo)
+    val cache    = new CaffeineMovieCache(repo)
     val svc      = new MovieService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Title", Some(2024))
@@ -141,7 +141,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repo     = new InMemoryMovieRepo()  // empty
-    val cache    = new MovieCache(repo)
+    val cache    = new CaffeineMovieCache(repo)
     val svc      = new MovieService(cache, new EventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))

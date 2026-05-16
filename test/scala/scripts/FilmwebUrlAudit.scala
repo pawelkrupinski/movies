@@ -2,7 +2,7 @@ package scripts
 
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
-import services.movies.{MongoMovieRepo, MovieCache}
+import services.movies.{CaffeineMovieCache, MongoMovieRepo}
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -40,7 +40,7 @@ object FilmwebUrlAudit {
       println("MONGODB_URI not set — nothing to audit.")
       sys.exit(1)
     }
-    val cache   = new MovieCache(repo)
+    val cache   = new CaffeineMovieCache(repo)
     val tmdb    = new TmdbClient()
     val filmweb = new FilmwebClient()
     val ratings = new FilmwebRatings(cache, tmdb, filmweb)

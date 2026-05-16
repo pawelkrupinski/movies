@@ -3,7 +3,7 @@ package scripts
 import clients.TmdbClient
 import models.MovieRecord
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
-import services.movies.{MongoMovieRepo, MovieCache, MovieService}
+import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieService}
 import services.events.EventBus
 
 import java.util.concurrent.Executors
@@ -41,7 +41,7 @@ object EnrichmentBackfill {
     // and IMDb stages synchronously. MC / RT URL discovery + score scrape
     // now live in their dedicated ratings classes; the script invokes them
     // directly per row so a single backfill pass covers everything.
-    val cache       = new MovieCache(repo)
+    val cache       = new CaffeineMovieCache(repo)
     val tmdb        = new TmdbClient()
     val imdbRatings = new ImdbRatings(cache, new ImdbClient())
     val mcRatings   = new MetascoreRatings(cache, tmdb, new MetacriticClient())

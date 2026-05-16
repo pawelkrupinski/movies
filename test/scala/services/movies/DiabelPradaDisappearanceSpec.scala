@@ -108,7 +108,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   for (ordering <- scrapes.permutations.toList) {
     val label = ordering.map(_.cinema.getClass.getSimpleName.stripSuffix("$")).mkString(" → ")
     s"scrape order $label" should "leave exactly one visible Diabeł u Prady 2 row carrying every cinema's showtimes" in {
-      val cache = new MovieCache(new InMemoryMovieRepo)
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
       val bus   = new EventBus
       val svc   = new MovieService(cache, bus, tmdbStub())
 
@@ -236,7 +236,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   // TMDB stage runs exactly once. No phantom row, no startup merge.
 
   "recordCinemaScrape" should "return Helios's canonical key as Multikino's row when both report Diabeł Prada with different years" in {
-    val cache = new MovieCache(new InMemoryMovieRepo)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
 
     // Multikino lands first with year=None.
     val mkTouched = cache.recordCinemaScrape(Multikino, Seq(multikinoPrada))
@@ -262,7 +262,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   // TMDB stage from creating a second row for the year=Some(2026) variant.
   // svc.stop() drains the worker pool so the assertion is deterministic.
   "bus-driven scrape pipeline" should "produce exactly one TMDB-resolved row when two cinemas report Diabeł Prada with different years" in {
-    val cache = new MovieCache(new InMemoryMovieRepo)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
     val bus   = new EventBus
     val svc   = new MovieService(cache, bus, tmdbStub())
     bus.subscribe(svc.onMovieRecordCreated)

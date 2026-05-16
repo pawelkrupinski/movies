@@ -1,6 +1,6 @@
 package services.enrichment
 
-import services.movies.{InMemoryMovieRepo, MovieCache, MovieService}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
@@ -40,7 +40,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   "refreshOneSync" should "fetch the rating and write it back when it differs from the cached value" in {
     val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
 
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
@@ -50,7 +50,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "not write back when the fetched rating equals the cached value (idempotent)" in {
     val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(7.4)))))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     repo.upserts.clear()
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
 
@@ -62,7 +62,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "swallow IMDb client failures (network blip, HTML challenge) without throwing" in {
     val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     val failingImdb = new ImdbClient(http = new HttpFetch {
       def get(url: String): String                                              = throw new RuntimeException("boom")
       override def post(url: String, body: String, contentType: String): String = throw new RuntimeException("boom")
@@ -78,7 +78,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     val tmdbOnly = MovieRecord(imdbId = None, imdbRating = None, metascore = None,
                                originalTitle = None, tmdbId = Some(42))
     val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), tmdbOnly)))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     // ImdbClient must never be invoked — the stub throws on any request.
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
@@ -89,7 +89,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
-    val cache   = new MovieCache(new InMemoryMovieRepo())
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo())
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
       override def post(url: String, body: String, contentType: String): String = get(url)
@@ -106,7 +106,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
       ("B", None, mkEnrichment("tt2", rating = Some(6.0))),
       ("C", None, mkEnrichment("tt3", rating = Some(7.0)))
     ))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     val ratings = new ImdbRatings(cache, imdbStub(Map(
       "tt1" -> 7.4,  // changed
       "tt2" -> 6.0,  // unchanged
@@ -125,7 +125,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   "onTmdbResolved" should "trigger an IMDb refresh for the resolved row when subscribed on the bus" in {
     val bus   = new EventBus()
     val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new MovieCache(repo)
+    val cache = new CaffeineMovieCache(repo)
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
     bus.subscribe(ratings.onTmdbResolved)
 
@@ -137,7 +137,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
     val bus   = new EventBus()
-    val cache = new MovieCache(new InMemoryMovieRepo())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     // Stub throws if hit — the test asserts it never is.
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
@@ -153,7 +153,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   "onImdbIdResolved" should "refresh the rating for the resolved row" in {
     val bus = new EventBus()
     val resolved = mkEnrichment("tt12345", rating = None)
-    val cache = new MovieCache(new InMemoryMovieRepo(Seq(("Resolved", Some(2025), resolved))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(("Resolved", Some(2025), resolved))))
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt12345" -> 8.4)))
     bus.subscribe(ratings.onImdbIdResolved)
 
