@@ -22,8 +22,6 @@ class ShowtimeCache(
   movieCache: MovieCache
 ) extends Logging {
 
-  logger.info(s"Starting — commit ${Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")}")
-
   private val fetchExecutor = DaemonExecutors.fixedPool("showtime-fetch", scrapers.size.max(1))
   private val scheduler     = DaemonExecutors.scheduler("showtime-cache-refresh")
 
@@ -32,13 +30,15 @@ class ShowtimeCache(
    *  minutes. Each cinema fetch publishes its own `MovieRecordCreated` events as
    *  soon as it completes, so enrichment starts work without waiting for
    *  the N-cinema barrier. */
-  def start(): Unit =
+  def start(): Unit = {
+    logger.info(s"Starting — commit ${Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")}")
     scheduler.scheduleAtFixedRate(
       () => scrapers.foreach { s =>
         fetchExecutor.submit(new Runnable { def run(): Unit = refreshOne(s) })
       },
       0L, 5L, TimeUnit.MINUTES
     )
+  }
 
   def stop(): Unit = {
     scheduler.shutdown()
