@@ -31,6 +31,44 @@ that explicitly: `"sha256:abc… (binary, not shown)"`.
 This applies to ad-hoc scripts you write inside the conversation, not to the
 production app's logging.
 
+## Remove one-shot scripts after they're used
+
+A script written for a specific past fix — "backfill the rows whose
+`metacriticUrl` was stored as a search URL", "delete the orphaned
+'DZIEŃ DZIECKA W APOLLO' row", "investigate the three Viridiana
+rows" — should be deleted in the same commit that finishes the work,
+or in an immediate follow-up. Once the change is in the code and the
+data has been reconciled, the script will never be re-run; leaving it
+behind clutters `test/scala/scripts/`, bit-rots against the current
+schema, and tempts the next reader to model their fresh script on a
+stale one.
+
+What counts as a one-shot:
+
+- Backfills tied to a specific commit / fix where the data is now in
+  the target state (`AllCapsTitleBackfill`, `ApolloPrefixBackfill`,
+  `CacheKeyYearBackfill`).
+- Per-film investigations (`InvestigateViridiana`).
+- Phase audits for a migration that has since landed (`MergeKeyAudit`,
+  `MongoIdConsolidate`).
+- One-shot data-shape migrations (`MoviesCollectionMigrate`,
+  `SameTmdbIdMerge`).
+
+What to keep:
+
+- Re-runnable diagnostics with no destructive write (`DuplicateAudit`,
+  `DuplicateDocIdAudit`, `MetacriticDiagnostics`).
+- Per-service revalidation patterns that will rerun on the next
+  client change (`MetacriticBackfill`, `RottenTomatoesBackfill`,
+  `FilmwebUrlAudit`, `MetascoreBackfill`, `FilmwebReset`,
+  `EnrichmentBackfill`).
+- Ad-hoc one-row refresh tools (`RefreshOneFilmweb`).
+
+If you're unsure, delete. A future change can re-derive the script
+from a remaining template in five minutes; a stale script that
+references a renamed field or a dropped collection wastes more than
+that to read and rule out.
+
 ## Parallelize scripts, but don't get rate-limited
 
 Long-running scripts that hit external services (TMDB, IMDb, Filmweb,
