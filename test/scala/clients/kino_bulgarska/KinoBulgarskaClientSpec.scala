@@ -180,4 +180,35 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
       Showtime(LocalDateTime.of(2026, 5, 14, 16, 0), None, Some("Sala Dzienniki Motocyklowe"), Nil),
     )
   }
+
+  // ── Suffix stripping (normalizeTitle) ─────────────────────────────────────
+  //
+  // The page tacks decoration suffixes onto raw titles ("DRZEWO MAGII –
+  // Pokazy przedpremierowe – Kino dzieci"). All must be stripped before the
+  // title reaches the cache so the row merges with the same film reported
+  // un-decorated by other cinemas.
+
+  "KinoBulgarskaClient.normalizeTitle" should "strip a single '– pokazy przedpremierowe' suffix" in {
+    KinoBulgarskaClient.normalizeTitle("POSŁANI – Pokazy przedpremierowe") shouldBe "Posłani"
+  }
+
+  it should "strip a single '– pokaz przedpremierowy' suffix" in {
+    KinoBulgarskaClient.normalizeTitle("FILM – Pokaz przedpremierowy") shouldBe "Film"
+  }
+
+  it should "strip a single '– kino dzieci' suffix" in {
+    KinoBulgarskaClient.normalizeTitle("PUCIO – Kino dzieci") shouldBe "Pucio"
+  }
+
+  it should "strip chained '– pokazy przedpremierowe – kino dzieci' suffixes" in {
+    KinoBulgarskaClient.normalizeTitle("DRZEWO MAGII – Pokazy przedpremierowe – Kino dzieci") shouldBe "Drzewo magii"
+  }
+
+  it should "still strip the legacy '– poznańska premiera' suffix" in {
+    KinoBulgarskaClient.normalizeTitle("ROMERÍA – Poznańska premiera") shouldBe "Romería"
+  }
+
+  it should "leave plain titles untouched apart from sentence-casing" in {
+    KinoBulgarskaClient.normalizeTitle("CHRONOLOGIA WODY") shouldBe "Chronologia wody"
+  }
 }

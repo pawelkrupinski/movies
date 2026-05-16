@@ -20,13 +20,9 @@ class KinoBulgarskaClient(http: HttpFetch = new RealHttpFetch()) extends CinemaS
     "września" -> 9, "października" -> 10, "listopada" -> 11, "grudnia" -> 12
   )
 
-  private val PremiereSuffixPat = """(?i)\s+–\s+poznańska premiera$""".r
-  private val DatePat           = """(\d+)\s+(\w+)""".r
+  private val DatePat = """(\d+)\s+(\w+)""".r
 
-  private def normalizeTitle(raw: String): String = {
-    val stripped = PremiereSuffixPat.replaceFirstIn(raw, "")
-    if (stripped.isEmpty) stripped else stripped.head.toUpper + stripped.tail.toLowerCase
-  }
+  private def normalizeTitle(raw: String): String = KinoBulgarskaClient.normalizeTitle(raw)
 
   private def parsePolishDate(text: String): Option[LocalDate] =
     DatePat.findFirstMatchIn(text).flatMap { m =>
@@ -125,6 +121,27 @@ class KinoBulgarskaClient(http: HttpFetch = new RealHttpFetch()) extends CinemaS
         )
       }
     }
+  }
+}
+
+object KinoBulgarskaClient {
+  // Cinema decoration suffixes the page tacks onto raw titles. Stripped in
+  // this fixed order so chained suffixes peel off inside-out — "Drzewo magii
+  // – pokazy przedpremierowe – kino dzieci" needs "– kino dzieci" gone first
+  // so the next pattern's `$` anchor can match the residual "– pokazy
+  // przedpremierowe" tail. Case-insensitive — the page's raw titles are
+  // mixed-case ("DRZEWO MAGII – Pokazy przedpremierowe – Kino dzieci"),
+  // sentence-casing happens after.
+  private val SuffixPats: Seq[scala.util.matching.Regex] = Seq(
+    """(?i)\s+–\s+kino dzieci$""".r,
+    """(?i)\s+–\s+pokazy przedpremierowe$""".r,
+    """(?i)\s+–\s+pokaz przedpremierowy$""".r,
+    """(?i)\s+–\s+poznańska premiera$""".r
+  )
+
+  def normalizeTitle(raw: String): String = {
+    val stripped = SuffixPats.foldLeft(raw)((acc, p) => p.replaceFirstIn(acc, ""))
+    if (stripped.isEmpty) stripped else stripped.head.toUpper + stripped.tail.toLowerCase
   }
 }
 
