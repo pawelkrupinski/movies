@@ -31,7 +31,13 @@ import scala.util.Try
  */
 class MovieRepo extends Logging {
 
-  private val (clientOpt, coll): (Option[MongoClient], Option[MongoCollection[Document]]) = init()
+  // Lazy so subclasses that override every wire method (e.g.
+  // `InMemoryMovieRepo` in tests) never trigger a Mongo connection
+  // attempt — `new InMemoryMovieRepo()` was waiting 10 seconds per test
+  // for the parent's init() to time out against an unreachable cluster.
+  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[Document]]) = init()
+  private def clientOpt: Option[MongoClient]               = initResult._1
+  private def coll:      Option[MongoCollection[Document]] = initResult._2
 
   /** Whether Mongo is wired up. Hot path uses `coll` directly. */
   def enabled: Boolean = coll.isDefined
