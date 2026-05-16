@@ -2,7 +2,7 @@ package scripts
 
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
-import services.movies.{MovieCache, MovieRepo}
+import services.movies.{MongoMovieRepo, MovieCache}
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -35,7 +35,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 object FilmwebUrlAudit {
 
   def main(args: Array[String]): Unit = {
-    val repo = new MovieRepo()
+    val repo = new MongoMovieRepo()
     if (!repo.enabled) {
       println("MONGODB_URI not set — nothing to audit.")
       sys.exit(1)

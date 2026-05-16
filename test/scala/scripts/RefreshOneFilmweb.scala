@@ -2,7 +2,7 @@ package scripts
 
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
-import services.movies.{MovieCache, MovieRepo}
+import services.movies.{MongoMovieRepo, MovieCache}
 
 /** Force a one-row Filmweb refresh for `(title, year)`. Used after wiring
  *  `onImdbIdMissing` on Filmweb so existing rows that were missed at first
@@ -11,7 +11,7 @@ import services.movies.{MovieCache, MovieRepo}
 object RefreshOneFilmweb {
   def main(args: Array[String]): Unit = {
     val (title, year) = ("Chłopiec na krańcach świata", Some(2026))
-    val repo  = new MovieRepo()
+    val repo  = new MongoMovieRepo()
     if (!repo.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
     val cache   = new MovieCache(repo)
     val ratings = new FilmwebRatings(cache, new TmdbClient(), new FilmwebClient())

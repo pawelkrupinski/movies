@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.MongoClient
 import org.mongodb.scala.model.Filters
-import services.movies.MovieRepo
+import services.movies.MongoMovieRepo
 import tools.Env
 
 import scala.concurrent.Await
@@ -25,7 +25,7 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
 
-  private val repo = new MovieRepo()
+  private val repo = new MongoMovieRepo()
 
   // Tidy sentinel rows so they don't leak into the production positive cache
   // at the next app startup (the service hydrates *everything* from Mongo).

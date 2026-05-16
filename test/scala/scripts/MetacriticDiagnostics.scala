@@ -1,7 +1,7 @@
 package scripts
 
 import services.enrichment.MetacriticClient
-import services.movies.MovieRepo
+import services.movies.MongoMovieRepo
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
@@ -56,7 +56,7 @@ object MetacriticDiagnostics {
   }
 
   def main(args: Array[String]): Unit = {
-    val repo = new MovieRepo()
+    val repo = new MongoMovieRepo()
     if (!repo.enabled) {
       println("MONGODB_URI not set — nothing to diagnose.")
       sys.exit(1)

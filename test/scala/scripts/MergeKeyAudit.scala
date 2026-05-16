@@ -1,7 +1,7 @@
 package scripts
 
 import controllers.TitleNormalizer
-import services.movies.MovieRepo
+import services.movies.MongoMovieRepo
 
 /**
  * Phase-1 audit for the upcoming `MovieCache` transition.
@@ -29,7 +29,7 @@ import services.movies.MovieRepo
  */
 object MergeKeyAudit {
   def main(args: Array[String]): Unit = {
-    val repo = new MovieRepo()
+    val repo = new MongoMovieRepo()
     if (!repo.enabled) {
       println("MONGODB_URI not set — nothing to audit.")
       sys.exit(1)

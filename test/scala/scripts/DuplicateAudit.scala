@@ -1,7 +1,7 @@
 package scripts
 
 import models.MovieRecord
-import services.movies.{MovieRepo, MovieService}
+import services.movies.{MongoMovieRepo, MovieService}
 
 /**
  * Audit duplicate rows across alternative merge keys.
@@ -37,7 +37,7 @@ import services.movies.{MovieRepo, MovieService}
  */
 object DuplicateAudit {
   def main(args: Array[String]): Unit = {
-    val repo = new MovieRepo()
+    val repo = new MongoMovieRepo()
     if (!repo.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
 
     val rows: Seq[(String, Option[Int], MovieRecord)] = repo.findAll()

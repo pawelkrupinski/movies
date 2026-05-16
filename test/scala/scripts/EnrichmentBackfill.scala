@@ -3,7 +3,7 @@ package scripts
 import clients.TmdbClient
 import models.MovieRecord
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
-import services.movies.{MovieCache, MovieRepo, MovieService}
+import services.movies.{MongoMovieRepo, MovieCache, MovieService}
 import services.events.EventBus
 
 import java.util.concurrent.Executors
@@ -31,7 +31,7 @@ object EnrichmentBackfill {
   private case class Failed(title: String, year: Option[Int], before: MovieRecord) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repo = new MovieRepo()
+    val repo = new MongoMovieRepo()
     if (!repo.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)

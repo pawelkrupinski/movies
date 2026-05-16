@@ -1,7 +1,7 @@
 package scripts
 
 import clients.TmdbClient
-import services.movies.MovieRepo
+import services.movies.MongoMovieRepo
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -43,7 +43,7 @@ object CacheKeyYearBackfill {
   private case class Unchanged(title: String, year: Option[Int], reason: String)                     extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repo = new MovieRepo()
+    val repo = new MongoMovieRepo()
     if (!repo.enabled) { println("MONGODB_URI not set — nothing to backfill."); sys.exit(1) }
     val tmdb = new TmdbClient()
 

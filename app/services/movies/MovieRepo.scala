@@ -17,8 +17,42 @@ import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * Persistent store for `(title, year) → MovieRecord` records. Backed by the
- * `movies` collection in MongoDB.
+ * Persistent store for `(title, year) → MovieRecord` records.
+ *
+ * The trait is what consumers (`MovieCache`, scripts, integration tests) see
+ * — `MongoMovieRepo` (production) and `InMemoryMovieRepo` (tests) are the two
+ * implementations. Per CLAUDE.md's DIP guidance: every collaborator is wired
+ * via the trait; the concrete type only appears at the composition root
+ * (`AppLoader`) and in test setup.
+ */
+trait MovieRepo {
+  /** Whether the persistence layer is wired up. When false, callers can still
+   *  use the in-memory cache but writes are no-ops. */
+  def enabled: Boolean
+
+  /** Snapshot of every persisted record. Returns empty when disabled. */
+  def findAll(): Seq[(String, Option[Int], MovieRecord)]
+
+  /** Remove every record matching the given (title, year). Best-effort —
+   *  failures are logged, never thrown. */
+  def delete(title: String, year: Option[Int]): Unit
+
+  /** Write-through upsert. Best-effort — failures are logged, never thrown. */
+  def upsert(title: String, year: Option[Int], e: MovieRecord): Unit
+
+  /** Update the row at `(title, year)` only if it currently exists. Returns
+   *  true on update, false when no row matched (concurrent delete, or the
+   *  row never existed). Used by the cache's `putIfPresent` so a rating
+   *  write that races against a concurrent `cache.invalidate` can't
+   *  resurrect the row by upserting it back into existence. */
+  def updateIfPresent(title: String, year: Option[Int], e: MovieRecord): Boolean
+
+  /** Release any underlying resources. No-op when nothing to release. */
+  def close(): Unit
+}
+
+/**
+ * MongoDB-backed `MovieRepo`. Persists records to the `movies` collection.
  *
  * When `MONGODB_URI` is unset the repo silently no-ops — local dev / tests
  * without Atlas connectivity keep working off the in-memory cache only.
@@ -29,7 +63,7 @@ import scala.util.Try
  * Lifecycle: caller (`AppLoader`) registers a shutdown hook that calls
  * `close()` — the class doesn't self-register.
  */
-class MovieRepo extends Logging {
+class MongoMovieRepo extends MovieRepo with Logging {
 
   // Lazy so subclasses that override every wire method (e.g.
   // `InMemoryMovieRepo` in tests) never trigger a Mongo connection
@@ -39,10 +73,8 @@ class MovieRepo extends Logging {
   private def clientOpt: Option[MongoClient]               = initResult._1
   private def coll:      Option[MongoCollection[Document]] = initResult._2
 
-  /** Whether Mongo is wired up. Hot path uses `coll` directly. */
   def enabled: Boolean = coll.isDefined
 
-  /** Snapshot of every persisted record. Returns empty when disabled. */
   def findAll(): Seq[(String, Option[Int], MovieRecord)] = coll match {
     case None => Seq.empty
     case Some(c) =>
@@ -56,11 +88,10 @@ class MovieRepo extends Logging {
       }.getOrElse(Seq.empty)
   }
 
-  /** Remove every doc matching the given (title, year). Filters by `title`
-   *  + `year` fields rather than by `_id`, so legacy docs whose `_id` was
-   *  computed with a prior `docId` formula still get caught — `deleteOne` by
-   *  `_id` would silently match nothing and the orphan would survive every
-   *  startup's merge. Best-effort: failures are logged, never thrown. */
+  /** Filters by `title` + `year` fields rather than by `_id`, so legacy docs
+   *  whose `_id` was computed with a prior `docId` formula still get caught
+   *  — `deleteOne` by `_id` would silently match nothing and the orphan
+   *  would survive every startup's merge. */
   def delete(title: String, year: Option[Int]): Unit = coll.foreach { c =>
     val yearFilter = year match {
       case Some(y) => Filters.eq("year", y)
@@ -79,7 +110,6 @@ class MovieRepo extends Logging {
     }
   }
 
-  /** Write-through upsert. Best-effort — failures are logged, never thrown. */
   def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = coll.foreach { c =>
     val id   = docId(title, year)
     val doc  = encode(id, title, year, e)
@@ -98,11 +128,6 @@ class MovieRepo extends Logging {
     }
   }
 
-  /** Update the row at `(title, year)` only if it currently exists in Mongo.
-   *  Returns true on update, false when no doc matched (concurrent delete,
-   *  or row never existed). Used by the cache's `putIfPresent` so a rating
-   *  write that races against a concurrent `cache.invalidate` can't
-   *  resurrect the row by upserting it back into existence. */
   def updateIfPresent(title: String, year: Option[Int], e: MovieRecord): Boolean = coll match {
     case None => false
     case Some(c) =>
@@ -120,13 +145,12 @@ class MovieRepo extends Logging {
       }.getOrElse(false)
   }
 
-  /** Close the underlying MongoClient. No-op when Mongo isn't configured. */
   def close(): Unit = clientOpt.foreach(_.close())
 
   private def init(): (Option[MongoClient], Option[MongoCollection[Document]]) =
     Env.get("MONGODB_URI") match {
       case None =>
-        logger.info("MONGODB_URI not set — MovieRepo disabled (in-memory cache only).")
+        logger.info("MONGODB_URI not set — MongoMovieRepo disabled (in-memory cache only).")
         (None, None)
       case Some(uri) =>
         Try {
@@ -136,11 +160,11 @@ class MovieRepo extends Logging {
           // Touch the collection to surface connectivity errors at startup,
           // not on the first read after the app is "up".
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
-          logger.info(s"MovieRepo connected to $dbName.movies")
+          logger.info(s"MongoMovieRepo connected to $dbName.movies")
           (client, coll)
         }.recover {
           case ex: Throwable =>
-            logger.error(s"MovieRepo init failed (${ex.getMessage}) — falling back to in-memory cache.")
+            logger.error(s"MongoMovieRepo init failed (${ex.getMessage}) — falling back to in-memory cache.")
             null
         }.toOption.filter(_ != null) match {
           case Some((c, coll)) => (Some(c), Some(coll))

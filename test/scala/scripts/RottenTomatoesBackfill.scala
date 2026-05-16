@@ -1,7 +1,7 @@
 package scripts
 
 import services.enrichment.RottenTomatoesClient
-import services.movies.MovieRepo
+import services.movies.MongoMovieRepo
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -42,7 +42,7 @@ object RottenTomatoesBackfill {
   private case class  ScoreCleared (before: Int)                   extends Change
 
   def main(args: Array[String]): Unit = {
-    val repo = new MovieRepo()
+    val repo = new MongoMovieRepo()
     if (!repo.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
