@@ -391,8 +391,25 @@ is the *right* shape — that's the cleanup pass working. A diff that
 only changes the new feature and ignores the dust around it is the
 wrong shape.
 
-Skip cleanup only when it would balloon the change beyond what a
-reviewer can hold in their head, or when the cruft is genuinely outside
-the area you're touching. In those cases, mention it explicitly so we
-can decide together whether to tackle it now or later — don't silently
+**Cleanup can — and should — reach beyond the file you'd otherwise
+touch.** If, while working on a feature in `MovieCache`, you read
+through `MovieService` to understand a caller and notice it has dead
+code, a stale comment, or a duplicated pattern that begs to be shared,
+fix it in the same change. Don't artificially limit the diff to the
+files the new feature strictly requires — every file you read while
+doing the task is fair game for cleanup. The discipline isn't "stay in
+your lane"; it's "leave anywhere you looked at least as tidy as you
+found it." The whole codebase is in scope for opportunistic cleanup,
+not just the lines around your edit.
+
+That said: extract the cleanup commits separately when they're
+substantial. A one-line dead-import removal can ride along with the
+feature commit; a 200-line rename of a class you noticed was named
+wrong gets its own commit so the feature's diff stays reviewable. The
+"commit at every stable state" rule applies — each cleanup that's a
+self-contained improvement gets its own checkpoint.
+
+Skip cleanup only when it would balloon a *single* commit beyond what
+a reviewer can hold in their head AND there's no clean way to split
+it. In that case, mention what you saw and didn't do — don't silently
 shrug and move on.
