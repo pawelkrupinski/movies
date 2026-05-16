@@ -6,7 +6,7 @@ import clients.TmdbClient
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{DomainEvent, EventBus, MovieRecordCreated, TmdbResolved}
+import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieRecordCreated, TmdbResolved}
 import tools.HttpFetch
 import tools.Eventually.eventually
 
@@ -66,7 +66,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // ── TmdbResolved is published by the async TMDB stage (event-driven path) ──
 
   "the async TMDB stage" should "publish TmdbResolved after a successful resolution" in {
-    val bus  = new EventBus()
+    val bus  = new InProcessEventBus()
     val seen = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => seen.append(e) }
 
@@ -83,7 +83,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "NOT publish TmdbResolved when TMDB has no match" in {
-    val bus  = new EventBus()
+    val bus  = new InProcessEventBus()
     val seen = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => seen.append(e) }
 
@@ -109,7 +109,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // the calling thread; if reEnrichSync also fired bus events, every
     // subscribed *Ratings listener would async-fetch in parallel with the
     // caller's explicit refresh, racing on writes back to the cache.
-    val bus  = new EventBus()
+    val bus  = new InProcessEventBus()
     val seen = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => seen.append(e) }
 
@@ -130,7 +130,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // pass compose the two services themselves — the script in
   // `scripts/EnrichmentBackfill` follows this pattern.
   "reEnrichSync" should "fill the row's IMDb rating when chained with imdbRatings.refreshOneSync" in {
-    val bus      = new EventBus()
+    val bus      = new InProcessEventBus()
     val imdbHttp = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql))
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepo())
     val ratings  = new ImdbRatings(cache, new ImdbClient(http = imdbHttp))
@@ -166,7 +166,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     ))
     val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val svc = new MovieService(
-      cache, new EventBus(),
+      cache, new InProcessEventBus(),
       tmdb
     )
 
@@ -197,7 +197,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     ))
     val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val svc = new MovieService(
-      cache, new EventBus(),
+      cache, new InProcessEventBus(),
       tmdb
     )
 
@@ -222,7 +222,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       override def get(url: String): String = throw new RuntimeException("network blip")
       override def post(url: String, body: String, contentType: String): String = get(url)
     })
-    val svc = new MovieService(cache, new EventBus(), tmdbStub())
+    val svc = new MovieService(cache, new InProcessEventBus(), tmdbStub())
 
     val e = svc.reEnrichSync("Mortal Kombat II", Some(2026))
 
@@ -258,7 +258,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       http = new StubFetch(Map("/search/movie" -> kieslowski, "/external_ids" -> """{"id":124,"imdb_id":"tt0086961"}""")),
       apiKey = Some("stub")
     )
-    val svc = new MovieService(cache, new EventBus(), tmdb)
+    val svc = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val e = svc.reEnrichSync("Bez końca", None)
 
@@ -289,7 +289,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/external_ids" -> """{"id":124,"imdb_id":"tt0086961"}"""
     ))
     val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val svc  = new MovieService(cache, new EventBus(), tmdb)
+    val svc  = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val e = svc.reEnrichSync("Bez końca", None)
 
@@ -327,7 +327,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/search/movie" -> wrong,
       "/external_ids" -> """{"id":999,"imdb_id":"tt9999999"}"""
     )), apiKey = Some("stub"))
-    val svc = new MovieService(cache, new EventBus(), tmdb)
+    val svc = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val e = svc.reEnrichSync("Stub Original", None)
 
@@ -347,7 +347,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(
       ("Belle", Some(2021), donor)
     )))
-    val bus = new EventBus()
+    val bus = new InProcessEventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case r: TmdbResolved => resolved.append(r) }
     // TMDB stub returns the wrong film if asked — the assertion is that we
@@ -380,7 +380,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
   it should "accept the title-search candidate when its director matches the cinema's reported director" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case r: TmdbResolved => resolved.append(r) }
 
@@ -403,7 +403,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
   it should "walk the director's TMDB filmography when the title candidate has a different director (Niedźwiedzica regression)" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     val missing  = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case r: TmdbResolved => resolved.append(r) }
@@ -454,7 +454,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // Mortal Kombat II without a director hint: the existing TMDB title-search
     // path runs and stores the canonical row. Director verification is opt-in.
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case r: TmdbResolved => resolved.append(r) }
 
@@ -485,7 +485,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       "/external_ids" -> """{"id":1596319,"imdb_id":"tt39075417"}"""
     ))
     val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val svc  = new MovieService(cache, new EventBus(), tmdb)
+    val svc  = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val e = svc.reEnrichSync("Bez końca", None)
 
@@ -503,7 +503,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     cache.isNegative(key) shouldBe true
 
     val svc = new MovieService(
-      cache, new EventBus(), new TmdbClient(http = new StubFetch(Map("/search/movie" -> """{"results":[]}""")), apiKey = Some("stub"))
+      cache, new InProcessEventBus(), new TmdbClient(http = new StubFetch(Map("/search/movie" -> """{"results":[]}""")), apiKey = Some("stub"))
     )
 
     svc.retryUnresolvedTmdb()
@@ -529,7 +529,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     )
     val repo  = new InMemoryMovieRepo(Seq(("Mortal Kombat II", Some(2026), incomplete)))
     val cache = new CaffeineMovieCache(repo)
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => resolved.append(e) }
 
@@ -553,7 +553,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     )
     val repo  = new InMemoryMovieRepo(Seq(("Mortal Kombat II", Some(2026), seed)))
     val cache = new CaffeineMovieCache(repo)
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val seenResolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => seenResolved.append(e) }
 
@@ -575,7 +575,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
   "onMovieRecordCreated" should "schedule TMDB stage when the row isn't cached" in {
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val bus      = new EventBus()
+    val bus      = new InProcessEventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => resolved.append(e) }
 
@@ -596,7 +596,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       tmdbId = Some(931285)
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(("Mortal Kombat II", Some(2026), seed))))
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => resolved.append(e) }
 
@@ -624,7 +624,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       tmdbId = Some(931285)
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(("Mortal Kombat II", Some(2026), seed))))
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
 
     // This test exercises the IMDb stage listener — wire it directly without
     // MovieService, since the TMDB stage doesn't fire here.

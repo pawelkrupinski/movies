@@ -9,7 +9,7 @@ import scala.collection.mutable
 class EventBusSpec extends AnyFlatSpec with Matchers {
 
   "EventBus.publish" should "invoke a subscriber whose PartialFunction matches the event" in {
-    val bus  = new EventBus
+    val bus  = new InProcessEventBus
     val seen = mutable.ListBuffer.empty[MovieRecordCreated]
     bus.subscribe { case e: MovieRecordCreated => seen.append(e) }
 
@@ -19,7 +19,7 @@ class EventBusSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "deliver to every subscriber when multiple are registered" in {
-    val bus    = new EventBus
+    val bus    = new InProcessEventBus
     val counts = (0 until 3).map(_ => new AtomicInteger(0))
     counts.foreach { c =>
       bus.subscribe { case _: MovieRecordCreated => c.incrementAndGet(); () }
@@ -35,7 +35,7 @@ class EventBusSpec extends AnyFlatSpec with Matchers {
   // so events that don't match a subscriber's PF are silently skipped — no
   // explicit `case _ => ()` fallback required.
   it should "silently skip events the subscriber's PartialFunction doesn't match (applyOrElse)" in {
-    val bus  = new EventBus
+    val bus  = new InProcessEventBus
     val seen = mutable.ListBuffer.empty[MovieRecordCreated]
     // Subscriber only cares about events whose title starts with "Keep:".
     bus.subscribe { case e @ MovieRecordCreated(t, _, _, _) if t.startsWith("Keep:") => seen.append(e) }
@@ -48,7 +48,7 @@ class EventBusSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "isolate handler exceptions so one bad subscriber can't break the bus" in {
-    val bus  = new EventBus
+    val bus  = new InProcessEventBus
     val seen = mutable.ListBuffer.empty[String]
     bus.subscribe { case MovieRecordCreated(t, _, _, _) => throw new RuntimeException(s"boom on $t") }
     bus.subscribe { case MovieRecordCreated(t, _, _, _) => seen.append(t) }
@@ -62,7 +62,7 @@ class EventBusSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "support PartialFunctions composed with orElse on a single subscription" in {
-    val bus  = new EventBus
+    val bus  = new InProcessEventBus
     val seen = mutable.ListBuffer.empty[String]
     val handleWithYear: PartialFunction[DomainEvent, Unit] = {
       case MovieRecordCreated(t, Some(y), _, _) => seen.append(s"with-year:$t/$y")

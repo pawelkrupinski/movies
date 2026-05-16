@@ -61,13 +61,13 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // a plain `get` with any variant finds the row.
 
   import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
-  import services.events.EventBus
+  import services.events.{EventBus, InProcessEventBus}
   import clients.TmdbClient
   import models.MovieRecord
 
   private def svc(seed: (String, Option[Int], MovieRecord)*): MovieService = {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(seed))
-    new MovieService(cache, new EventBus(), new TmdbClient(apiKey = None))
+    new MovieService(cache, new InProcessEventBus(), new TmdbClient(apiKey = None))
   }
 
   private val pradyEnrichment = MovieRecord(

@@ -6,7 +6,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
-import services.events.{EventBus, MovieRecordCreated}
+import services.events.{EventBus, InProcessEventBus, MovieRecordCreated}
 import tools.HttpFetch
 
 /**
@@ -109,7 +109,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     val label = ordering.map(_.cinema.getClass.getSimpleName.stripSuffix("$")).mkString(" → ")
     s"scrape order $label" should "leave exactly one visible Diabeł u Prady 2 row carrying every cinema's showtimes" in {
       val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
-      val bus   = new EventBus
+      val bus   = new InProcessEventBus
       val svc   = new MovieService(cache, bus, tmdbStub())
 
       // First scrape resolves the row synchronously so subsequent
@@ -263,7 +263,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   // svc.stop() drains the worker pool so the assertion is deterministic.
   "bus-driven scrape pipeline" should "produce exactly one TMDB-resolved row when two cinemas report Diabeł Prada with different years" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
-    val bus   = new EventBus
+    val bus   = new InProcessEventBus
     val svc   = new MovieService(cache, bus, tmdbStub())
     bus.subscribe(svc.onMovieRecordCreated)
 

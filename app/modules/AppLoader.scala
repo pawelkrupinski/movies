@@ -13,7 +13,7 @@ import play.filters.cors.CORSComponents
 import services.cinemas.HeliosClient
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbIdResolver, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieCache, MovieRepo, MovieService}
-import services.events.EventBus
+import services.events.{EventBus, InProcessEventBus}
 import services.ShowtimeCache
 
 /**
@@ -67,7 +67,7 @@ class AppComponents(context: Context)
   lazy val rottenTomatoesClient = new RottenTomatoesClient()
 
   // ── Events ────────────────────────────────────────────────────────────────
-  lazy val eventBus = new EventBus()
+  lazy val eventBus: EventBus = new InProcessEventBus()
 
   // ── MovieRecord ────────────────────────────────────────────────────────────
   lazy val movieRepo: MovieRepo = new MongoMovieRepo()

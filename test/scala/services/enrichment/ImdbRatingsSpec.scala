@@ -5,7 +5,7 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{EventBus, ImdbIdResolved, MovieRecordCreated, TmdbResolved}
+import services.events.{EventBus, ImdbIdResolved, InProcessEventBus, MovieRecordCreated, TmdbResolved}
 import tools.{Eventually, HttpFetch}
 import Eventually.eventually
 
@@ -123,7 +123,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   // ── Event listener ──────────────────────────────────────────────────────────
 
   "onTmdbResolved" should "trigger an IMDb refresh for the resolved row when subscribed on the bus" in {
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
     val cache = new CaffeineMovieCache(repo)
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
@@ -136,7 +136,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     // Stub throws if hit — the test asserts it never is.
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
@@ -151,7 +151,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   // ── onImdbIdResolved — rating refresh once ImdbIdResolver finds the id ────
 
   "onImdbIdResolved" should "refresh the rating for the resolved row" in {
-    val bus = new EventBus()
+    val bus = new InProcessEventBus()
     val resolved = mkEnrichment("tt12345", rating = None)
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(("Resolved", Some(2025), resolved))))
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt12345" -> 8.4)))

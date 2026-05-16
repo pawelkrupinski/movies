@@ -6,7 +6,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
-import services.events.{EventBus, MovieRecordCreated}
+import services.events.{InProcessEventBus, MovieRecordCreated}
 import tools.HttpFetch
 
 /**
@@ -111,7 +111,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
 
   it should "preserve Multikino's slot when the TMDB stage resolves the row" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
-    val svc   = new MovieService(cache, new EventBus, tmdbStub())
+    val svc   = new MovieService(cache, new InProcessEventBus, tmdbStub())
 
     cache.recordCinemaScrape(Multikino, Seq(multikinoMk))
 
@@ -154,7 +154,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
     val label = ordering.map(_.cinema.getClass.getSimpleName.stripSuffix("$")).mkString(" → ")
     s"scrape order $label" should "leave exactly one visible Mortal Kombat II row (no merger run)" in {
       val cache = new CaffeineMovieCache(new InMemoryMovieRepo)
-      val bus   = new EventBus
+      val bus   = new InProcessEventBus
       val svc   = new MovieService(cache, bus, tmdbStub())
 
       // First scrape resolves the row synchronously so subsequent cinemas

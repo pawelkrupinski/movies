@@ -4,7 +4,7 @@ import clients.TmdbClient
 import models.MovieRecord
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieService}
-import services.events.EventBus
+import services.events.{EventBus, InProcessEventBus}
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -47,7 +47,7 @@ object EnrichmentBackfill {
     val mcRatings   = new MetascoreRatings(cache, tmdb, new MetacriticClient())
     val rtRatings   = new RottenTomatoesRatings(cache, tmdb, new RottenTomatoesClient())
     val fwRatings   = new FilmwebRatings(cache, tmdb, new FilmwebClient())
-    val service = new MovieService(cache, new EventBus(), tmdb)
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val rows = repo.findAll().sortBy { case (t, y, _) => (t.toLowerCase, y) }
     val Workers = 5

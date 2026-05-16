@@ -62,16 +62,29 @@ case class ImdbIdMissing(title: String, year: Option[Int], searchTitle: String) 
  *  the per-row refresh once the id is finally known. */
 case class ImdbIdResolved(title: String, year: Option[Int], imdbId: String) extends DomainEvent
 
-class EventBus extends Logging {
+/**
+ * Publish/subscribe bus carrying `DomainEvent`s. Per CLAUDE.md DIP guidance,
+ * consumers depend on this trait; `InProcessEventBus` is the production
+ * (and only) implementation.
+ */
+trait EventBus {
+  /** Register a handler. The bus uses `applyOrElse`, so the handler only
+   *  needs to match the cases it cares about. */
+  def subscribe(handler: PartialFunction[DomainEvent, Unit]): Unit
+
+  /** Invoke every subscriber on the caller's thread. Throwing handlers are
+   *  logged and skipped — a buggy listener can't break the bus or other
+   *  listeners. */
+  def publish(event: DomainEvent): Unit
+}
+
+class InProcessEventBus extends EventBus with Logging {
   // CopyOnWriteArrayList: writes (subscribe) are rare and happen at startup;
   // reads (publish) are hot and want a stable snapshot without locking.
   private val listeners = new CopyOnWriteArrayList[PartialFunction[DomainEvent, Unit]]()
 
   def subscribe(handler: PartialFunction[DomainEvent, Unit]): Unit = listeners.add(handler)
 
-  /** Invoke every subscriber on the caller's thread. A handler that throws is
-   *  logged and skipped — a buggy listener can't break the bus or other
-   *  listeners. */
   def publish(event: DomainEvent): Unit = {
     val it = listeners.iterator()
     while (it.hasNext) {

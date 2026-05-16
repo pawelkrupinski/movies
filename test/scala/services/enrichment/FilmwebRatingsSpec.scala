@@ -6,7 +6,7 @@ import clients.TmdbClient
 import models.{CinemaShowings, MovieRecord, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{EventBus, MovieRecordCreated, TmdbResolved}
+import services.events.{EventBus, InProcessEventBus, MovieRecordCreated, TmdbResolved}
 import tools.HttpFetch
 import tools.Eventually.eventually
 
@@ -328,7 +328,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   // ── Event listener ──────────────────────────────────────────────────────────
 
   "onTmdbResolved" should "trigger a per-row refresh when subscribed on the bus" in {
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val url   = "https://www.filmweb.pl/film/Foo-99"
     val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), mkEnrichment("tt1", filmwebUrl = Some(url)))))
     val cache = new CaffeineMovieCache(repo)
@@ -342,7 +342,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     val ratings = new FilmwebRatings(cache, disabledTmdb, new FilmwebClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")

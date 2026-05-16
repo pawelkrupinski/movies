@@ -6,7 +6,7 @@ import clients.TmdbClient
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{EventBus, MovieRecordCreated, TmdbResolved}
+import services.events.{EventBus, InProcessEventBus, MovieRecordCreated, TmdbResolved}
 import tools.HttpFetch
 import tools.Eventually.eventually
 
@@ -206,7 +206,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   // ── Event listener ──────────────────────────────────────────────────────────
 
   "onTmdbResolved" should "trigger a metascore refresh for the resolved row when subscribed on the bus" in {
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val repo  = new InMemoryMovieRepo(Seq(
       ("Foo", Some(2024), mkEnrichment("tt1", mcUrl = Some(Url), metascore = None))
     ))
@@ -220,7 +220,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "ignore events of other types (PartialFunction.applyOrElse)" in {
-    val bus   = new EventBus()
+    val bus   = new InProcessEventBus()
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     val rates = new MetascoreRatings(cache, new TmdbClient(apiKey = None), new MetacriticClient(new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")

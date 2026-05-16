@@ -3,7 +3,7 @@ package services.enrichment
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{EventBus, ImdbIdMissing, ImdbIdResolved}
+import services.events.{EventBus, ImdbIdMissing, ImdbIdResolved, InProcessEventBus}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 import tools.HttpFetch
 import tools.Eventually.eventually
@@ -45,7 +45,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   // ── onImdbIdMissing ─────────────────────────────────────────────────────────
 
   "onImdbIdMissing" should "find the IMDb id via the suggestion endpoint, write it back, and publish ImdbIdResolved" in {
-    val bus = new EventBus()
+    val bus = new InProcessEventBus()
     val tmdbOnly = MovieRecord(
       imdbId        = None,
       imdbRating    = None,
@@ -73,7 +73,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "no-op when the suggestion endpoint returns nothing usable" in {
-    val bus = new EventBus()
+    val bus = new InProcessEventBus()
     val tmdbOnly = MovieRecord(imdbId = None, imdbRating = None, metascore = None,
                                originalTitle = Some("Imaginary Film"), tmdbId = Some(1))
     val repo  = new InMemoryMovieRepo(Seq(("Imaginary Film", None, tmdbOnly)))
@@ -92,7 +92,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the row already has an imdbId (stale event raced with another resolver)" in {
-    val bus = new EventBus()
+    val bus = new InProcessEventBus()
     val resolved = MovieRecord(imdbId = Some("tt9999"), imdbRating = Some(8.0), metascore = None,
                                originalTitle = Some("Foo"), tmdbId = Some(1))
     val repo  = new InMemoryMovieRepo(Seq(("Foo", None, resolved)))

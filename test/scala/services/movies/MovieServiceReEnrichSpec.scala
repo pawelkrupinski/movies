@@ -6,7 +6,7 @@ import clients.TmdbClient
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.EventBus
+import services.events.{EventBus, InProcessEventBus}
 import tools.HttpFetch
 
 import scala.collection.mutable
@@ -86,7 +86,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
       ("Powrót do przyszłości", Some(2026), mkEnrichment("tt-old-wrong-id"))
     ))
     val cache = new CaffeineMovieCache(repo)
-    val svc   = new MovieService(cache, new EventBus(), tmdb)
+    val svc   = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 
@@ -107,7 +107,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repo     = new InMemoryMovieRepo()
     val cache    = new CaffeineMovieCache(repo)
-    val svc      = new MovieService(cache, new EventBus(), tmdb)
+    val svc      = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 
@@ -126,7 +126,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val original = mkEnrichment("tt-original", orig = Some("Keep me"))
     val repo     = new InMemoryMovieRepo(Seq(("Title", Some(2024), original)))
     val cache    = new CaffeineMovieCache(repo)
-    val svc      = new MovieService(cache, new EventBus(), tmdb)
+    val svc      = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val result = svc.reEnrichSync("Title", Some(2024))
 
@@ -142,7 +142,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repo     = new InMemoryMovieRepo()  // empty
     val cache    = new CaffeineMovieCache(repo)
-    val svc      = new MovieService(cache, new EventBus(), tmdb)
+    val svc      = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val result = svc.reEnrichSync("Powrót do przyszłości", Some(2026))
 
