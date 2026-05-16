@@ -427,6 +427,47 @@ a reviewer can hold in their head AND there's no clean way to split
 it. In that case, mention what you saw and didn't do — don't silently
 shrug and move on.
 
+## After every change, audit what it displaced
+
+Once a change is functionally done — tests pass, the diff would land
+cleanly — pause and ask: *what did this change just make obsolete?*
+The cleanup-as-a-phase rule above is reactive ("notice dead code while
+you're looking"); this one is proactive ("for every change, analyse
+its impact on the surrounding code path, class, or configuration and
+remove what no longer earns its keep").
+
+Walk the call graph after each change and check:
+
+- **A code path the change replaced.** The fallback branch that
+  handled the case the new path now handles; the alternative resolver
+  that was the workaround for the bug just fixed; the `if/else`
+  branch whose `else` is now unreachable; the helper whose only caller
+  now inlines its work.
+- **A class whose functionality is now redundant.** Its methods are
+  pass-throughs to the new implementation, or it only existed for a
+  caller you just removed, or the trait it implemented was deleted.
+- **A parameter, event type, or config flag with no remaining
+  purpose.** A feature flag whose "off" branch is unreachable; an
+  event nothing subscribes to; a constructor argument whose only
+  consumer was refactored away; a default value the call site now
+  always overrides.
+- **A test for behaviour that no longer exists.** A regression test
+  for a bug now structurally impossible after the refactor; a fixture
+  nobody loads; an assertion that was specific to the old code path.
+
+When the redundancy is obvious — single-caller method now inlined, an
+unreachable branch, an unused import — delete in the same commit.
+When it's debatable — removal would ripple wider than this change's
+scope, or the class might still earn its keep for a use case I'm not
+certain about — surface it explicitly: "Heads-up, X is now redundant.
+Want me to remove it in a follow-up?" Don't silently leave debatable
+redundancy in the codebase; it accrues into the kind of dust the
+cleanup pass struggles to find six months later.
+
+Each change's diff either deletes the displaced code alongside the
+new, or names the displacement out loud. Silently leaving the now-dead
+path is the failure mode.
+
 ## Follow SOLID — especially depend on interfaces, not implementations
 
 The SOLID principles are the design baseline. Each gets its own
