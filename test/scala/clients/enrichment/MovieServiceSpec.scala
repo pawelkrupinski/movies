@@ -60,24 +60,13 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // `getForMerge` fallback that existed in phase 1 is no longer necessary —
   // a plain `get` with any variant finds the row.
 
-  import services.movies.{MovieCache, MovieRepo}
+  import services.movies.{InMemoryMovieRepo, MovieCache}
   import services.events.EventBus
   import clients.TmdbClient
   import models.MovieRecord
-  import scala.collection.mutable
-
-  private class InMemRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty) extends MovieRepo {
-    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), MovieRecord]
-    seed.foreach { case (t, y, e) => store.put((t, y), e) }
-    override def enabled: Boolean = true
-    override def findAll(): Seq[(String, Option[Int], MovieRecord)] =
-      store.iterator.map { case ((t, y), e) => (t, y, e) }.toSeq
-    override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = { store.put((t, y), e); () }
-    override def delete(t: String, y: Option[Int]): Unit = { store.remove((t, y)); () }
-  }
 
   private def svc(seed: (String, Option[Int], MovieRecord)*): MovieService = {
-    val cache = new MovieCache(new InMemRepo(seed))
+    val cache = new MovieCache(new InMemoryMovieRepo(seed))
     new MovieService(cache, new EventBus(), new TmdbClient(apiKey = None))
   }
 

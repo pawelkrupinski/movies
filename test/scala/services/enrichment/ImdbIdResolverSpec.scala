@@ -4,7 +4,7 @@ import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, ImdbIdMissing, ImdbIdResolved}
-import services.movies.{MovieCache, MovieRepo}
+import services.movies.{InMemoryMovieRepo, MovieCache}
 import tools.HttpFetch
 
 import scala.collection.mutable
@@ -20,20 +20,6 @@ import scala.collection.mutable
 class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
 
   // ── Test scaffolding ────────────────────────────────────────────────────────
-
-  private class FakeRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
-      extends MovieRepo {
-    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), MovieRecord]
-    val upserts = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
-    seed.foreach { case (t, y, e) => store.put((t, y), e) }
-    override def enabled: Boolean = true
-    override def findAll(): Seq[(String, Option[Int], MovieRecord)] =
-      store.iterator.map { case ((t, y), e) => (t, y, e) }.toSeq
-    override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = {
-      store.put((t, y), e); upserts.append((t, y, e))
-    }
-    override def delete(t: String, y: Option[Int]): Unit = { store.remove((t, y)); () }
-  }
 
   // Serves IMDb's suggestion endpoint (GET only). The `suggestions` map keys
   // are substrings the URL is expected to contain (case-insensitive); the
@@ -78,7 +64,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       originalTitle = Some("Mortal Kombat II"),
       tmdbId        = Some(1024)
     )
-    val repo  = new FakeRepo(Seq(("Mortal Kombat 2", Some(2026), tmdbOnly)))
+    val repo  = new InMemoryMovieRepo(Seq(("Mortal Kombat 2", Some(2026), tmdbOnly)))
     val cache = new MovieCache(repo)
     val resolver = new ImdbIdResolver(cache, imdbStub(
       Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))
@@ -101,7 +87,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val bus = new EventBus()
     val tmdbOnly = MovieRecord(imdbId = None, imdbRating = None, metascore = None,
                                originalTitle = Some("Imaginary Film"), tmdbId = Some(1))
-    val repo  = new FakeRepo(Seq(("Imaginary Film", None, tmdbOnly)))
+    val repo  = new InMemoryMovieRepo(Seq(("Imaginary Film", None, tmdbOnly)))
     val cache = new MovieCache(repo)
     repo.upserts.clear()
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")), bus)
@@ -120,7 +106,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val bus = new EventBus()
     val resolved = MovieRecord(imdbId = Some("tt9999"), imdbRating = Some(8.0), metascore = None,
                                originalTitle = Some("Foo"), tmdbId = Some(1))
-    val repo  = new FakeRepo(Seq(("Foo", None, resolved)))
+    val repo  = new InMemoryMovieRepo(Seq(("Foo", None, resolved)))
     val cache = new MovieCache(repo)
     repo.upserts.clear()
     // Stub that THROWS if findId or any HTTP call lands — confirms the

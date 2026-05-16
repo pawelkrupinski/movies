@@ -39,17 +39,6 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     override def post(url: String, body: String, contentType: String): String = get(url)
   }
 
-  private class FakeRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
-      extends MovieRepo {
-    private val store = mutable.LinkedHashMap.empty[(String, Option[Int]), MovieRecord]
-    seed.foreach { case (t, y, e) => store.put((t, y), e) }
-    override def enabled: Boolean = true
-    override def findAll(): Seq[(String, Option[Int], MovieRecord)] =
-      store.iterator.map { case ((t, y), e) => (t, y, e) }.toSeq
-    override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = { store.put((t, y), e); () }
-    override def delete(t: String, y: Option[Int]): Unit = { store.remove((t, y)); () }
-  }
-
   private val deadFetch = new HttpFetch {
     override def get(url: String): String = throw new RuntimeException(s"unused: $url")
     override def post(url: String, body: String, contentType: String): String = get(url)
@@ -93,7 +82,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     // should accept the new TMDB answer rather than anchoring on the stale id.
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val repo     = new FakeRepo(Seq(
+    val repo     = new InMemoryMovieRepo(Seq(
       ("Powrót do przyszłości", Some(2026), mkEnrichment("tt-old-wrong-id"))
     ))
     val cache = new MovieCache(repo)
@@ -116,7 +105,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
   it should "resolve the famous title via year-less fallback when the cinema's year is the scheduling year, not the release year" in {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val repo     = new FakeRepo()
+    val repo     = new InMemoryMovieRepo()
     val cache    = new MovieCache(repo)
     val svc      = new MovieService(cache, new EventBus(), tmdb)
 
@@ -135,7 +124,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     ))
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val original = mkEnrichment("tt-original", orig = Some("Keep me"))
-    val repo     = new FakeRepo(Seq(("Title", Some(2024), original)))
+    val repo     = new InMemoryMovieRepo(Seq(("Title", Some(2024), original)))
     val cache    = new MovieCache(repo)
     val svc      = new MovieService(cache, new EventBus(), tmdb)
 
@@ -151,7 +140,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
   it should "resolve via search for a brand-new key (no existing row)" in {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val repo     = new FakeRepo()  // empty
+    val repo     = new InMemoryMovieRepo()  // empty
     val cache    = new MovieCache(repo)
     val svc      = new MovieService(cache, new EventBus(), tmdb)
 

@@ -9,8 +9,6 @@ import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
 import services.events.{EventBus, MovieRecordCreated}
 import tools.HttpFetch
 
-import scala.collection.mutable
-
 /**
  * Reproduction of the "Mortal Kombat II disappears" report.
  *
@@ -66,21 +64,6 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
     apiKey = Some("stub")
   )
 
-  // Mirrors `MovieRepo`'s `docId = normalize(title)|year` keying: two
-  // upserts of the same film under different raw titles ("Mortal Kombat 2"
-  // vs "Mortal Kombat II") collapse to one persisted row, just like Mongo.
-  private class FakeRepo extends MovieRepo {
-    private def docId(t: String, y: Option[Int]): String =
-      s"${MovieService.normalize(t)}|${y.map(_.toString).getOrElse("")}"
-    private val store = mutable.LinkedHashMap.empty[String, (String, Option[Int], MovieRecord)]
-    override def enabled: Boolean = true
-    override def findAll(): Seq[(String, Option[Int], MovieRecord)] = store.values.toSeq
-    override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = {
-      store.put(docId(t, y), (t, y, e)); ()
-    }
-    override def delete(t: String, y: Option[Int]): Unit = { store.remove(docId(t, y)); () }
-  }
-
   // ── Step 1: clients DO fetch the film from their fixtures ─────────────────
   //
   // Each cinema's fixture is the same recorded payload that drives the
@@ -122,7 +105,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
   // synchronous TMDB resolution — the slot we just wrote is gone.
 
   it should "preserve Multikino's slot when the TMDB stage resolves the row" in {
-    val cache = new MovieCache(new FakeRepo)
+    val cache = new MovieCache(new InMemoryMovieRepo)
     val svc   = new MovieService(cache, new EventBus, tmdbStub())
 
     cache.recordCinemaScrape(Multikino, Seq(multikinoMk))
@@ -165,7 +148,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
   for (ordering <- scrapes.permutations.toList) {
     val label = ordering.map(_.cinema.getClass.getSimpleName.stripSuffix("$")).mkString(" → ")
     s"scrape order $label" should "leave exactly one visible Mortal Kombat II row (no merger run)" in {
-      val cache = new MovieCache(new FakeRepo)
+      val cache = new MovieCache(new InMemoryMovieRepo)
       val bus   = new EventBus
       val svc   = new MovieService(cache, bus, tmdbStub())
 
