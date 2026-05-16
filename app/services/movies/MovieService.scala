@@ -113,6 +113,11 @@ class MovieService(
   /** Snapshot of every cached enrichment — for debug tooling. */
   def snapshot(): Seq[StoredMovieRecord] = cache.snapshot()
 
+  /** Reload the positive cache from Mongo. Returns the number of rows loaded.
+   *  Wired to the `/debug/rehydrate` admin endpoint; useful when Mongo has
+   *  been edited out-of-band and the in-memory cache needs to catch up. */
+  def rehydrate(): Int = cache.rehydrate()
+
   /** Manual re-enrich (debug page). Wipes the cached row, then runs the TMDB
    *  stage on the worker pool — the bus listener picks up `TmdbResolved` and
    *  chains the IMDb stage; the *Ratings refreshes will re-derive MC / RT /
@@ -158,7 +163,16 @@ class MovieService(
     director:      Option[String] = None
   ): Unit = {
     if (cache.get(key).exists(_.tmdbId.isDefined)) return  // already resolved
-    if (cache.isNegative(key)) return                       // known miss, retry after TTL
+    // Negative cache: short-circuit known misses — but ONLY when this event
+    // brings no new resolution signal. A later scrape that carries a director
+    // (Helios/Multikino) or originalTitle (the cinema's English title field)
+    // the prior attempt didn't have is worth retrying: `directorWalk` runs
+    // off the director hint, and a TMDB title search by originalTitle can
+    // hit where the Polish title missed. Without this carve-out, a row
+    // where the first-scraping cinema reports no director (CinemaCity,
+    // Charlie Monroe) stays trapped at tmdbId=None for the full 24h
+    // negative TTL — the Kurozając class of regression.
+    if (cache.isNegative(key) && originalTitle.isEmpty && director.isEmpty) return
     // A sibling row already knows this raw cinema title (via cinemaTitles)
     // AND has a tmdbId. `recordCinemaScrape`'s redirect has already
     // attached this cinema's slot to that sibling, so running TMDB again
@@ -294,11 +308,19 @@ class MovieService(
    *  refresh. */
   private[services] def retryUnresolvedTmdb(): Unit = {
     cache.clearNegatives()
-    val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty => k }
+    // Pass each row's `cinemaShowings`-merged director + originalTitle as
+    // hints. By the time the daily retry fires, the row has absorbed every
+    // cinema's slot via `recordCinemaScrape`'s redirect — even if the cinema
+    // that scraped FIRST didn't report a director, a later one might have,
+    // and that hint is the only path `directorWalk` can fire on for films
+    // TMDB doesn't index under their Polish title.
+    val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty => (k, e) }
     logger.info(s"TMDB retry: cleared negatives + re-scheduling ${targets.size} row(s) with missing tmdbId.")
-    targets.foreach { k =>
+    targets.foreach { case (k, e) =>
+      val origHint = e.cinemaOriginalTitle
+      val dirHint  = e.director
       if (pending.add(k))
-        worker.execute(() => try runTmdbStage(k) finally pending.remove(k))
+        worker.execute(() => try runTmdbStage(k, origHint, dirHint) finally pending.remove(k))
     }
   }
 
