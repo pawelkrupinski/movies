@@ -312,3 +312,34 @@ single big commit. But if a phase has internal milestones — phase A
 compiles + tests, phase B compiles + tests, phase C compiles + tests —
 each milestone gets its own commit so the history reads as a sequence
 of safe checkpoints, not one monolith.
+
+## Extract repeated patterns into a shared abstraction
+
+If you find yourself writing the same shape of code in a third place — a
+`FakeRepo extends MovieRepo` defined inside every spec, the same regex
++ `replaceAll` chain copy-pasted across three parsers, a "load fixture
+from disk and feed it through this client" helper duplicated per spec —
+stop and extract it into a shared place (a `private[services]` helper,
+a `test/scala/...` shared base, a method on the most relevant existing
+class). The threshold is *three* uses, not two: two copies is sometimes
+just two unrelated things that happen to look alike, but three is a
+pattern asking to be named.
+
+This is the *other* side of "three similar lines is better than a
+premature abstraction" (see the project guidance at the top of this
+file). Premature means "I wrote one helper because I imagine the second
+caller is coming." Extract-on-third means "the second and third copies
+already exist and I'm writing the fourth." Don't preempt — but don't
+keep paying the duplication tax once it's clearly recurring.
+
+When extracting:
+
+- Put the shared piece where the most callers can already see it
+  (`services.movies` if every caller is in `services.*`; a `test/scala`
+  shared object if it's test-only) — don't pull in cross-package
+  imports just to satisfy visibility.
+- Delete the inline copies in the same commit. Leaving even one behind
+  defeats the point and creates drift.
+- Name the extracted thing after the *concept* (`InMemoryMovieRepo`,
+  not `FakeRepo`; `ProductionLineRegex`, not `parseHelper`) — generic
+  names re-attract duplication later.
