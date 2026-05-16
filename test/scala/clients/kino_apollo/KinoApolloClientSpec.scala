@@ -16,10 +16,12 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
 
   // ── Totals ────────────────────────────────────────────────────────────────
 
-  "KinoApolloClient.fetch" should "return 14 films from the recorded repertoire page" in {
+  "KinoApolloClient.fetch" should "return 13 films from the recorded repertoire page" in {
     // Two "Drzewo Magii - seans przedpremierowy" screenings merge into the plain
-    // "Drzewo Magii" entry after the suffix is stripped (15 → 14).
-    results.size shouldBe 14
+    // "Drzewo Magii" entry after the suffix is stripped (15 → 14), and the
+    // "DZIEŃ DZIECKA W APOLLO - Drzewo Magii" children's-day event merges in
+    // too after the prefix is stripped (14 → 13).
+    results.size shouldBe 13
   }
 
   it should "return 30 unique screenings in total" in {
@@ -48,7 +50,6 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
       "Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble (1977)",
       "Cykl „Wajda: re-wizje\" - Krajobraz po bitwie / Landscape After the Battle (1970)",
       "Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)",
-      "DZIEŃ DZIECKA W APOLLO - Drzewo Magii",
       "Drzewo Magii",
       "Milcząca przyjaciółka",
       "Miłość w czasach apokalipsy",
@@ -63,11 +64,11 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     val counts = results.map(cm => cm.movie.title -> cm.showtimes.size).toMap
     counts("Miłość w czasach apokalipsy")                                            shouldBe 4
     counts("Milcząca przyjaciółka")                                                  shouldBe 6
-    // 3 plain "Drzewo Magii" + 2 pre-premiere screenings (suffix stripped) = 5
-    counts("Drzewo Magii")                                                           shouldBe 5
+    // 3 plain "Drzewo Magii" + 2 pre-premiere screenings (suffix stripped)
+    // + 2 children's-day screenings (prefix stripped) = 7
+    counts("Drzewo Magii")                                                           shouldBe 7
     counts("Znaki Pana Śliwki")                                                      shouldBe 4
     counts("Znaki Pana Śliwki + prelekcja i spotkanie z Damianem Dudkiem")           shouldBe 1
-    counts("DZIEŃ DZIECKA W APOLLO - Drzewo Magii")                                  shouldBe 2
     counts("Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)") shouldBe 1
     counts("Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble (1977)")    shouldBe 1
     counts("Cykl „Wajda: re-wizje\" - Brzezina / The Birch Wood (1970)")             shouldBe 1
@@ -109,11 +110,19 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     )
   }
 
-  it should "return exact showtimes for the DZIEŃ DZIECKA family event" in {
-    byTitle("DZIEŃ DZIECKA W APOLLO - Drzewo Magii").showtimes shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 6, 1, 16, 30), Some("https://bilety.kinoapollo.pl/event/view/id/662084")),
-      Showtime(LocalDateTime.of(2026, 6, 1, 19,  0), Some("https://bilety.kinoapollo.pl/event/view/id/662085")),
-    )
+  // Children's-day banner — "DZIEŃ DZIECKA W APOLLO - Drzewo Magii" is the
+  // same film as the regular run. Strip the prefix so the 2 family showtimes
+  // merge into the base "Drzewo Magii" entry rather than competing as a
+  // separate row that no enrichment can resolve (TMDB's title search for the
+  // banner-prefixed string returns nothing, and the row stays at tmdbId=None).
+  it should "strip the 'DZIEŃ DZIECKA W APOLLO - ' prefix and merge with the base title" in {
+    val titles = results.map(_.movie.title).toSet
+    titles.foreach(t => withClue(s"title: $t") {
+      t                            should not startWith "DZIEŃ DZIECKA W APOLLO - "
+    })
+    val drzewo = byTitle("Drzewo Magii").showtimes.flatMap(_.bookingUrl)
+    drzewo                         should contain ("https://bilety.kinoapollo.pl/event/view/id/662084")
+    drzewo                         should contain ("https://bilety.kinoapollo.pl/event/view/id/662085")
   }
 
   it should "return the single far-future showtime for the Wajda cycle's Krajobraz po bitwie" in {

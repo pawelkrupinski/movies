@@ -90,10 +90,15 @@ class KinoApolloClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScra
       .sortBy(_.movie.title)
   }
 
-  // Strip event/promo suffixes so the same film with a "seans przedpremierowy"
-  // (pre-premiere) screening collapses into the same Movie as the regular run.
+  // Strip event/promo decoration so the same film with a "seans przedpremierowy"
+  // (pre-premiere) screening or a "DZIEŃ DZIECKA W APOLLO - ..." (children's-day
+  // banner) screening collapses into the same Movie as the regular run. Without
+  // this, those decorated rows can't be enriched — TMDB's title search returns
+  // nothing for the decorated string and the row stays at tmdbId=None.
   def cleanTitle(title: String): String =
-    Seq(" - seans przedpremierowy").foldLeft(title)((t, suffix) => t.stripSuffix(suffix))
+    title
+      .stripPrefix("DZIEŃ DZIECKA W APOLLO - ")
+      .stripSuffix(" - seans przedpremierowy")
 
   // WordPress generates many size variants for each poster (e.g.
   // `..._plakat-200x300.jpg`, `..._plakat-683x1024.jpg`, `..._plakat-scaled.jpg`,
