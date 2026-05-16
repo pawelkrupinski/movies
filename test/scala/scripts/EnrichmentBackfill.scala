@@ -3,7 +3,7 @@ package scripts
 import clients.TmdbClient
 import models.MovieRecord
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieService}
+import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieService, StoredMovieRecord}
 import services.events.{EventBus, InProcessEventBus}
 
 import java.util.concurrent.Executors
@@ -49,7 +49,7 @@ object EnrichmentBackfill {
     val fwRatings   = new FilmwebRatings(cache, tmdb, new FilmwebClient())
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
-    val rows = repo.findAll().sortBy { case (t, y, _) => (t.toLowerCase, y) }
+    val rows = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
     val Workers = 5
     println(s"${rows.size} rows in Mongo · re-enriching in parallel ($Workers workers)…\n")
 
@@ -61,7 +61,7 @@ object EnrichmentBackfill {
     val RefreshedSampleSize = 10
     val startedAtMs    = System.currentTimeMillis()
 
-    val tasks = rows.map { case (title, year, before) =>
+    val tasks = rows.map { case StoredMovieRecord(title, year, before) =>
       Future {
         service.reEnrichSync(title, year)
         // Drive the per-row work for the ratings classes directly so a single

@@ -1,7 +1,7 @@
 package scripts
 
 import services.enrichment.MetacriticClient
-import services.movies.MongoMovieRepo
+import services.movies.{MongoMovieRepo, StoredMovieRecord}
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -35,9 +35,9 @@ object MetascoreBackfill {
     }
     val mc = new MetacriticClient()
 
-    val rows = repo.findAll().sortBy { case (t, y, _) => (t.toLowerCase, y) }
-    val withUrl = rows.count(_._3.metacriticUrl.isDefined)
-    val withScore = rows.count(_._3.metascore.isDefined)
+    val rows = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
+    val withUrl = rows.count(_.record.metacriticUrl.isDefined)
+    val withScore = rows.count(_.record.metascore.isDefined)
     println(s"${rows.size} rows in Mongo · $withUrl have MC URL · $withScore have metascore · revalidating every row's metascore")
     val Workers = 3
     println(s"Probing MC with $Workers workers in parallel…\n")
@@ -48,7 +48,7 @@ object MetascoreBackfill {
     val total       = rows.size
     val startedAtMs = System.currentTimeMillis()
 
-    val tasks = rows.map { case (title, year, e) =>
+    val tasks = rows.map { case StoredMovieRecord(title, year, e) =>
       Future {
         val freshScore = e.metacriticUrl.flatMap(url => Try(mc.metascoreFor(url)).toOption.flatten)
         val idx = done.incrementAndGet()

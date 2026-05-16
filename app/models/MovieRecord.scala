@@ -71,7 +71,7 @@ case class MovieRecord(
    *  surrounding CacheKey. Falls back to cleanTitle when there are no
    *  variants yet (TMDB resolved with no cinema scrape yet). */
   def displayTitle(cleanTitle: String): String =
-    controllers.TitleNormalizer.preferredDisplay((cinemaTitles + cleanTitle).toSeq)
+    services.movies.TitleNormalizer.preferredDisplay((cinemaTitles + cleanTitle).toSeq)
       .getOrElse(cleanTitle)
 
   /** First non-empty poster URL with Multikino preferred. */

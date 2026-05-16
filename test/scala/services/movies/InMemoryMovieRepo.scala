@@ -19,25 +19,25 @@ import scala.collection.mutable
  */
 class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty) extends MovieRepo {
 
-  private val store   = mutable.LinkedHashMap.empty[String, (String, Option[Int], MovieRecord)]
+  private val store   = mutable.LinkedHashMap.empty[String, StoredMovieRecord]
   val upserts         = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
   val deletes         = mutable.ListBuffer.empty[(String, Option[Int])]
 
-  seed.foreach { case (t, y, e) => store.put(idOf(t, y), (t, y, e)) }
+  seed.foreach { case (t, y, e) => store.put(idOf(t, y), StoredMovieRecord(t, y, e)) }
 
   def enabled: Boolean = true
 
-  def findAll(): Seq[(String, Option[Int], MovieRecord)] = store.values.toSeq
+  def findAll(): Seq[StoredMovieRecord] = store.values.toSeq
 
   def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = {
-    store.put(idOf(t, y), (t, y, e))
+    store.put(idOf(t, y), StoredMovieRecord(t, y, e))
     upserts.append((t, y, e))
   }
 
   def updateIfPresent(t: String, y: Option[Int], e: MovieRecord): Boolean = {
     val id = idOf(t, y)
     if (store.contains(id)) {
-      store.put(id, (t, y, e))
+      store.put(id, StoredMovieRecord(t, y, e))
       upserts.append((t, y, e))
       true
     } else false

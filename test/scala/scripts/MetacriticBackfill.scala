@@ -1,7 +1,7 @@
 package scripts
 
 import services.enrichment.MetacriticClient
-import services.movies.MongoMovieRepo
+import services.movies.{MongoMovieRepo, StoredMovieRecord}
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -44,8 +44,8 @@ object MetacriticBackfill {
     }
     val mc = new MetacriticClient()
 
-    val rows = repo.findAll().sortBy { case (t, y, _) => (t.toLowerCase, y) }
-    val bogusCount = rows.count(_._3.metacriticUrl.exists(_.endsWith(BogusUrlSuffix)))
+    val rows = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
+    val bogusCount = rows.count(_.record.metacriticUrl.exists(_.endsWith(BogusUrlSuffix)))
     // 10 workers is the upper end of CLAUDE.md's "5–10" range for
     // undocumented services. MC handles concurrent probes well in practice
     // — `urlFor` issues at most 2-3 GETs per row (slug probe + de-articled
@@ -53,7 +53,7 @@ object MetacriticBackfill {
     // requests against MC at peak. Halve to 5 if we ever see 429/503 back.
     val Workers = 10
     println(s"${rows.size} rows in Mongo · revalidating every MC URL · " +
-            s"${rows.count(_._3.metacriticUrl.isEmpty)} currently None · $bogusCount currently bogus /movie/")
+            s"${rows.count(_.record.metacriticUrl.isEmpty)} currently None · $bogusCount currently bogus /movie/")
     println(s"Probing MC with $Workers workers in parallel…\n")
 
     val pool = Executors.newFixedThreadPool(Workers)
@@ -63,7 +63,7 @@ object MetacriticBackfill {
     val total       = rows.size
     val startedAtMs = System.currentTimeMillis()
 
-    val tasks = rows.map { case (title, year, e) =>
+    val tasks = rows.map { case StoredMovieRecord(title, year, e) =>
       Future {
         // Per-row trace so the user can see progress and which row is in
         // flight when something stalls (a slow MC search-scrape, a 503
@@ -136,7 +136,7 @@ object MetacriticBackfill {
     val unchangedStillNone = unchanged.filter { case Unchanged(t, y, _) =>
       // We don't carry MC URL on Unchanged, so look it up via the closure:
       // pull from `rows` for this (title, year) key.
-      rows.find { case (rt, ry, _) => rt == t && ry == y }.flatMap(_._3.metacriticUrl).isEmpty
+      rows.find(r => r.title == t && r.year == y).flatMap(_.record.metacriticUrl).isEmpty
     }
 
     println()

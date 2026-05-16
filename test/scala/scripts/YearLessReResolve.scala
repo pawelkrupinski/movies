@@ -2,7 +2,7 @@ package scripts
 
 import clients.TmdbClient
 import models.MovieRecord
-import services.movies.MongoMovieRepo
+import services.movies.{MongoMovieRepo, StoredMovieRecord}
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -51,8 +51,8 @@ object YearLessReResolve {
     val tmdb = new TmdbClient()
 
     val rows         = repo.findAll()
-    val yearKeyed    = rows.filter { case (_, y, _) => y.isDefined }
-    val noneKeyed    = rows.count   { case (_, y, _) => y.isEmpty   }
+    val yearKeyed    = rows.filter(_.year.isDefined)
+    val noneKeyed    = rows.count(_.year.isEmpty)
     println(s"${rows.size} rows in Mongo · $noneKeyed at year=None · ${yearKeyed.size} year-keyed (candidates for re-resolve)")
     val Workers = 5
     println(s"Probing TMDB year-less with $Workers workers in parallel…\n")
@@ -63,7 +63,7 @@ object YearLessReResolve {
     val total       = yearKeyed.size
     val startedAtMs = System.currentTimeMillis()
 
-    val tasks: Seq[Future[Outcome]] = yearKeyed.map { case (title, year, e) =>
+    val tasks: Seq[Future[Outcome]] = yearKeyed.map { case StoredMovieRecord(title, year, e) =>
       Future {
         val idx = done.incrementAndGet()
         val newHit   = Try(tmdb.search(title, None)).toOption.flatten

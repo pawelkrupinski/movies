@@ -1,7 +1,7 @@
 package scripts
 
 import services.enrichment.RottenTomatoesClient
-import services.movies.MongoMovieRepo
+import services.movies.{MongoMovieRepo, StoredMovieRecord}
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -49,15 +49,15 @@ object RottenTomatoesBackfill {
     }
     val rt = new RottenTomatoesClient()
 
-    val rows = repo.findAll().sortBy { case (t, y, _) => (t.toLowerCase, y) }
-    val bogusUrlCount = rows.count(_._3.rottenTomatoesUrl.exists(_.endsWith(BogusUrlSuffix)))
-    val missingScore = rows.count(_._3.rottenTomatoes.isEmpty)
+    val rows = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
+    val bogusUrlCount = rows.count(_.record.rottenTomatoesUrl.exists(_.endsWith(BogusUrlSuffix)))
+    val missingScore = rows.count(_.record.rottenTomatoes.isEmpty)
     // 10 workers per CLAUDE.md ("5–10 for undocumented services"). Each row
     // makes at most 3 GETs: slug probe → optional search scrape → score page.
     // Halve if RT starts returning 429/503.
     val Workers = 10
     println(s"${rows.size} rows in Mongo · revalidating RT URL + score · " +
-            s"${rows.count(_._3.rottenTomatoesUrl.isEmpty)} URL None · $bogusUrlCount URL bogus /m/ · " +
+            s"${rows.count(_.record.rottenTomatoesUrl.isEmpty)} URL None · $bogusUrlCount URL bogus /m/ · " +
             s"$missingScore score None")
     println(s"Probing RT with $Workers workers in parallel…\n")
 
@@ -68,7 +68,7 @@ object RottenTomatoesBackfill {
     val total   = rows.size
     val t0      = System.currentTimeMillis()
 
-    val tasks = rows.map { case (title, year, e) =>
+    val tasks = rows.map { case StoredMovieRecord(title, year, e) =>
       Future {
         val sIdx = started.incrementAndGet()
         println(f"[$sIdx%3d/$total%3d] STARTED   $title (${year.getOrElse("?")})")

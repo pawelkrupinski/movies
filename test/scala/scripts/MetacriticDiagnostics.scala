@@ -1,7 +1,7 @@
 package scripts
 
 import services.enrichment.MetacriticClient
-import services.movies.MongoMovieRepo
+import services.movies.{MongoMovieRepo, StoredMovieRecord}
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
@@ -64,8 +64,8 @@ object MetacriticDiagnostics {
 
     val rows = repo.findAll()
     val missing = rows
-      .filter { case (_, _, e) => e.metacriticUrl.isEmpty }
-      .sortBy { case (t, y, _) => (t.toLowerCase, y) }
+      .filter(_.record.metacriticUrl.isEmpty)
+      .sortBy(r => (r.title.toLowerCase, r.year))
 
     println(s"${rows.size} rows in Mongo · ${missing.size} missing Metacritic URL · probing variants…\n")
 
@@ -76,7 +76,7 @@ object MetacriticDiagnostics {
     val httpProbes  = new AtomicInteger(0)
     val startedAtMs = System.currentTimeMillis()
 
-    val tasks = missing.map { case (title, year, e) =>
+    val tasks = missing.map { case StoredMovieRecord(title, year, e) =>
       Future {
         val orig      = e.originalTitle
         val linkTitle = orig.getOrElse(title)

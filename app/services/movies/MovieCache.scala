@@ -40,7 +40,7 @@ trait MovieCache {
   def hasResolvedSiblingByTitle(rawTitle: String): Boolean
 
   /** Stable snapshot for debug tooling — sorted by title (case-insensitive). */
-  def snapshot(): Seq[(String, Option[Int], MovieRecord)]
+  def snapshot(): Seq[StoredMovieRecord]
 
   // ── Internal surface (services.* only) ───────────────────────────────────
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey
@@ -258,12 +258,12 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
     }
   }
 
-  def snapshot(): Seq[(String, Option[Int], MovieRecord)] = {
+  def snapshot(): Seq[StoredMovieRecord] = {
     import scala.jdk.CollectionConverters._
     positive.asMap().asScala.iterator
-      .map { case (k, e) => (k.cleanTitle, k.year, e) }
+      .map { case (k, e) => StoredMovieRecord(k.cleanTitle, k.year, e) }
       .toSeq
-      .sortBy { case (t, _, _) => t.toLowerCase }
+      .sortBy(_.title.toLowerCase)
   }
 
   /** Snapshot of (key, enrichment) pairs for the IMDb refresh loop. Copy so a
@@ -275,7 +275,7 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
 
   private def hydrateFromRepo(): Unit = {
     val rows = repo.findAll()
-    rows.foreach { case (title, year, e) => positive.put(CacheKey(title, year), e) }
+    rows.foreach(r => positive.put(CacheKey(r.title, r.year), r.record))
     if (rows.nonEmpty) logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo.")
   }
 }

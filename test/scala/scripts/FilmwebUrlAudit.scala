@@ -2,7 +2,7 @@ package scripts
 
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
-import services.movies.{CaffeineMovieCache, MongoMovieRepo}
+import services.movies.{CaffeineMovieCache, MongoMovieRepo, StoredMovieRecord}
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -46,8 +46,8 @@ object FilmwebUrlAudit {
     val ratings = new FilmwebRatings(cache, tmdb, filmweb)
 
     val candidates = repo.findAll()
-      .filter { case (_, _, e) => e.filmwebUrl.isDefined }
-      .sortBy { case (t, y, _) => (t.toLowerCase, y) }
+      .filter(_.record.filmwebUrl.isDefined)
+      .sortBy(r => (r.title.toLowerCase, r.year))
     val Workers = 3  // CLAUDE.md: Filmweb soft-blocks above ~5.
     println(s"${candidates.size} row(s) carry a filmwebUrl — auditing with $Workers workers.\n")
 
@@ -57,7 +57,7 @@ object FilmwebUrlAudit {
     val total      = candidates.size
     val startedAt  = System.currentTimeMillis()
 
-    val tasks = candidates.map { case (title, year, _) =>
+    val tasks = candidates.map { case StoredMovieRecord(title, year, _) =>
       Future {
         val outcome = ratings.auditOneSync(title, year)
         val idx = done.incrementAndGet()

@@ -1,4 +1,4 @@
-package controllers
+package services.movies
 
 object TitleNormalizer {
   // "Mortal Kombat 2" and "Mortal Kombat II" should collapse.

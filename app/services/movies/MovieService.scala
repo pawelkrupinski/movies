@@ -111,7 +111,7 @@ class MovieService(
     cache.get(cache.keyOf(title, year))
 
   /** Snapshot of every cached enrichment — for debug tooling. */
-  def snapshot(): Seq[(String, Option[Int], MovieRecord)] = cache.snapshot()
+  def snapshot(): Seq[StoredMovieRecord] = cache.snapshot()
 
   /** Manual re-enrich (debug page). Wipes the cached row, then runs the TMDB
    *  stage on the worker pool — the bus listener picks up `TmdbResolved` and
@@ -461,21 +461,21 @@ class MovieService(
 
 object MovieService {
   // Stable docId key for the cache + Mongo `_id`. Delegates to
-  // `controllers.TitleNormalizer.sanitize`, which applies Arabic→Roman,
-  // strips display-only decoration (anniversary/Cykl/wersja), folds
-  // " & " → " i " and the "Gwiezdne Wojny:" prefix, and finally collapses
-  // every non-alphanumeric char so punctuation/whitespace differences
-  // ("Top Gun Maverick" vs "Top Gun: Maverick") share a key.
+  // `TitleNormalizer.sanitize`, which applies Arabic→Roman, strips display-
+  // only decoration (anniversary/Cykl/wersja), folds " & " → " i " and the
+  // "Gwiezdne Wojny:" prefix, and finally collapses every non-alphanumeric
+  // char so punctuation/whitespace differences ("Top Gun Maverick" vs
+  // "Top Gun: Maverick") share a key.
   //
   // Corpus-independent — the same title always produces the same key, so
   // cache lookups + Mongo upserts are stable across refresh ticks regardless
   // of which other films happen to be in the cache at the moment.
-  def normalize(title: String): String = controllers.TitleNormalizer.sanitize(title)
+  def normalize(title: String): String = TitleNormalizer.sanitize(title)
 
-  // Decoration-stripping lives in `controllers.TitleNormalizer` so the same
-  // patterns are used for merging (so "Top Gun 40th Anniversary" and "Top Gun"
-  // collapse into one card) AND for TMDB/Filmweb lookups (so the search hits
-  // the base film). See `TitleNormalizer.searchTitle` for the full list and
-  // why each anchor is shaped the way it is.
-  def searchTitle(display: String): String = controllers.TitleNormalizer.searchTitle(display)
+  // Decoration-stripping lives in `TitleNormalizer` so the same patterns
+  // are used for merging (so "Top Gun 40th Anniversary" and "Top Gun"
+  // collapse into one card) AND for TMDB/Filmweb lookups (so the search
+  // hits the base film). See `TitleNormalizer.searchTitle` for the full
+  // list and why each anchor is shaped the way it is.
+  def searchTitle(display: String): String = TitleNormalizer.searchTitle(display)
 }

@@ -3,6 +3,11 @@ package services.movies
 import com.mongodb.MongoException
 import com.mongodb.client.model.ReplaceOptions
 import models.{Cinema, CinemaScrape, CinemaShowings, MovieRecord, Showtime}
+
+/** One persisted (title, year) → MovieRecord row. Used as the return type
+ *  of `MovieRepo.findAll` and `MovieCache.snapshot` so callers iterate
+ *  named fields instead of destructuring an anonymous 3-tuple. */
+case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord)
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson._
 import org.mongodb.scala.model.Filters
@@ -31,7 +36,7 @@ trait MovieRepo {
   def enabled: Boolean
 
   /** Snapshot of every persisted record. Returns empty when disabled. */
-  def findAll(): Seq[(String, Option[Int], MovieRecord)]
+  def findAll(): Seq[StoredMovieRecord]
 
   /** Remove every record matching the given (title, year). Best-effort —
    *  failures are logged, never thrown. */
@@ -75,7 +80,7 @@ class MongoMovieRepo extends MovieRepo with Logging {
 
   def enabled: Boolean = coll.isDefined
 
-  def findAll(): Seq[(String, Option[Int], MovieRecord)] = coll match {
+  def findAll(): Seq[StoredMovieRecord] = coll match {
     case None => Seq.empty
     case Some(c) =>
       Try {
@@ -264,13 +269,13 @@ class MongoMovieRepo extends MovieRepo with Logging {
     doc
   }
 
-  private def decode(d: Document): Option[(String, Option[Int], MovieRecord)] =
+  private def decode(d: Document): Option[StoredMovieRecord] =
     for {
       // `imdbId` is optional now (TMDB hits without an IMDb cross-reference
       // still produce a row), but the row must at least have a `title` to be
       // usable as a cache key. Anything else missing is treated as None.
       title <- d.get("title").flatMap(v => Try(v.asString().getValue).toOption)
-    } yield (
+    } yield StoredMovieRecord(
       title,
       d.get("year").flatMap(v => Try(v.asInt32().getValue).toOption),
       MovieRecord(

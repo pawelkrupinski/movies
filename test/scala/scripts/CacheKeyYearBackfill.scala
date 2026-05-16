@@ -1,7 +1,7 @@
 package scripts
 
 import clients.TmdbClient
-import services.movies.MongoMovieRepo
+import services.movies.{MongoMovieRepo, StoredMovieRecord}
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -52,9 +52,7 @@ object CacheKeyYearBackfill {
 
     // Group rows by normalised title so we can detect "row at correct key
     // already exists" before re-keying — without a check we'd clobber data.
-    val byTitle = rows.groupBy { case (t, _, _) =>
-      services.movies.MovieService.normalize(t)
-    }
+    val byTitle = rows.groupBy(r => services.movies.MovieService.normalize(r.title))
     val total   = rows.size
     val Workers = 5
     println(s"Probing TMDB with $Workers workers in parallel…\n")
@@ -64,7 +62,7 @@ object CacheKeyYearBackfill {
     val done        = new AtomicInteger(0)
     val startedAtMs = System.currentTimeMillis()
 
-    val tasks: Seq[Future[Outcome]] = rows.map { case (title, year, e) =>
+    val tasks: Seq[Future[Outcome]] = rows.map { case StoredMovieRecord(title, year, e) =>
       Future {
         val idx = done.incrementAndGet()
         // Pick the anchor TMDB lookup. imdbId is preferred (it cross-checks
@@ -90,9 +88,9 @@ object CacheKeyYearBackfill {
               // groupBy snapshot — that's the destination.
               val normalised = services.movies.MovieService.normalize(title)
               val sibling = byTitle.getOrElse(normalised, Seq.empty)
-                .find { case (_, y, _) => y == tmdbYear && y != year }
+                .find(r => r.year == tmdbYear && r.year != year)
               sibling match {
-                case Some((sibT, sibY, sibE)) =>
+                case Some(StoredMovieRecord(sibT, sibY, sibE)) =>
                   // Merge: prefer the row with more populated fields.
                   val rowScore = populatedCount(e)
                   val sibScore = populatedCount(sibE)

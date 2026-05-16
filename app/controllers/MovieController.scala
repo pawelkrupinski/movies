@@ -3,7 +3,7 @@ package controllers
 import models._
 import play.api.mvc._
 import play.api.{Environment, Mode}
-import services.movies.MovieService
+import services.movies.{MovieService, StoredMovieRecord, TitleNormalizer}
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -58,8 +58,8 @@ class MovieController(
 
   def debug(): Action[AnyContent] = Action {
     devOnly {
-      val rows = movieService.snapshot().sortBy { case (t, _, _) => t.toLowerCase }
-      Ok(views.html.debug(rows))
+      val rows = movieService.snapshot().sortBy(_.title.toLowerCase)
+      Ok(views.html.debug(rows.map(r => (r.title, r.year, r.record))))
     }
   }
 
@@ -122,7 +122,7 @@ class MovieController(
    *  fixture's capture date and assert what the / page would render at that
    *  moment. Production callers should always use the no-arg variant. */
   def toSchedules(now: LocalDateTime): Seq[FilmSchedule] = {
-    movieService.snapshot().flatMap { case (cleanTitle, _, e) =>
+    movieService.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
       // Flatten every cinema's future showtimes for this film. Records with
       // no future showings (film stopped playing everywhere) drop out of the
       // list view — they stay in storage per the "keep forever" policy.
@@ -162,7 +162,7 @@ class MovieController(
   private def toCinemaSchedules(): Seq[CinemaSchedule] = {
     val now = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
     Cinema.all.flatMap { cinema =>
-      val moviesForCinema = movieService.snapshot().flatMap { case (cleanTitle, _, e) =>
+      val moviesForCinema = movieService.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
         e.cinemaShowings.get(cinema).flatMap { slot =>
           val future = slot.showtimes.filter(_.dateTime.isAfter(now.minusMinutes(30)))
           if (future.isEmpty) None

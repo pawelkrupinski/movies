@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.MongoClient
 import org.mongodb.scala.model.Filters
-import services.movies.MongoMovieRepo
+import services.movies.{MongoMovieRepo, StoredMovieRecord}
 import tools.Env
 
 import scala.concurrent.Await
@@ -64,9 +64,9 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     repo.upsert(sentinelTitle, sentinelYear, toStore)
 
     val all   = repo.findAll()
-    val found = all.find { case (t, y, _) => t == sentinelTitle && y == sentinelYear }
+    val found = all.find(r => r.title == sentinelTitle && r.year == sentinelYear)
     found should not be empty
-    val (_, _, e) = found.get
+    val e = found.get.record
     e.imdbId         shouldBe Some("tt0000001")
     e.imdbRating     shouldBe Some(7.5)
     e.metascore      shouldBe Some(80)
@@ -91,9 +91,9 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       rottenTomatoes = None
     )
     repo.upsert(title, None, toStore)
-    val found = repo.findAll().find { case (t, y, _) => t == title && y.isEmpty }
+    val found = repo.findAll().find(r => r.title == title && r.year.isEmpty)
     found should not be empty
-    val (_, _, e) = found.get
+    val e = found.get.record
     e.imdbId         shouldBe Some("tt0000002")
     e.imdbRating     shouldBe None
     e.metascore      shouldBe None
@@ -132,9 +132,9 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     )
     repo.upsert(title, year, toStore)
 
-    val found = repo.findAll().find { case (t, y, _) => t == title && y == year }
+    val found = repo.findAll().find(r => r.title == title && r.year == year)
     found should not be empty
-    val (_, _, e) = found.get
+    val e = found.get.record
     e.cinemaShowings.keySet shouldBe Set(Helios)
     e.cinemaShowings(Helios).country shouldBe Some("Polska, Francja")
     e.cinemaShowings(Helios).filmUrl shouldBe Some("https://example/film")
@@ -153,10 +153,10 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       imdbId = None, imdbRating = None, metascore = None, originalTitle = None,
       cinemaShowings = Map(Multikino -> slot)
     ))
-    val found = repo.findAll().find { case (t, y, _) => t == title && y.isEmpty }
+    val found = repo.findAll().find(r => r.title == title && r.year.isEmpty)
     found should not be empty
-    found.get._3.cinemaShowings(Multikino).country shouldBe None
-    found.get._3.country shouldBe None
+    found.get.record.cinemaShowings(Multikino).country shouldBe None
+    found.get.record.country shouldBe None
   }
 
   // Regression for "Tom i Jerry: Przygoda w muzeum" / "Tom i jerry: przygoda w
@@ -187,12 +187,12 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     repo.upsert(titleCaps, Some(2025), withUrls)
     repo.upsert(titleLow,  Some(2025), withoutUrls)
 
-    val rows = repo.findAll().filter(_._3.imdbId.contains("tt0000010"))
+    val rows = repo.findAll().filter(_.record.imdbId.contains("tt0000010"))
     rows                                  should have size 1
     // Second upsert wins: URLs nulled, which is exactly what made the
     // production case observable.
-    rows.head._3.metacriticUrl     shouldBe None
-    rows.head._3.rottenTomatoesUrl shouldBe None
+    rows.head.record.metacriticUrl     shouldBe None
+    rows.head.record.rottenTomatoesUrl shouldBe None
   }
 
   // Regression: legacy docs in prod were written with an older `docId`

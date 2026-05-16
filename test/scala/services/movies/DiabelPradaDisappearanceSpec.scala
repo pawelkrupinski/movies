@@ -127,12 +127,12 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       def isPrada(e: MovieRecord): Boolean =
         e.tmdbId.contains(928344) || e.imdbId.contains("tt12340108")
 
-      val visibleRows = cache.snapshot().filter { case (_, _, e) =>
+      val visibleRows = cache.snapshot().filter { case StoredMovieRecord(_, _, e) =>
         isPrada(e) && e.cinemaShowings.nonEmpty
       }
       visibleRows.size shouldBe 1
 
-      val (_, _, visible) = visibleRows.head
+      val visible = visibleRows.head.record
       visible.cinemaShowings.keySet shouldBe
         Set(Multikino, CinemaCityPoznanPlaza, CinemaCityKinepolis, Helios)
       // Each cinema's showtimes survive the pipeline (the disappearance
@@ -157,8 +157,8 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
         env          = Environment.simple(mode = Mode.Test)
       )
       val firstShowtime: java.time.LocalDateTime =
-        cache.snapshot().filter { case (_, _, e) => isPrada(e) }
-          .flatMap { case (_, _, e) => e.cinemaShowings.values.flatMap(_.showtimes.map(_.dateTime)) }
+        cache.snapshot().filter(r => isPrada(r.record))
+          .flatMap(_.record.cinemaShowings.values.flatMap(_.showtimes.map(_.dateTime)))
           .min
       val pinnedNow = firstShowtime.minusDays(1)
 
@@ -286,10 +286,10 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     // Drain the TMDB worker so any in-flight resolutions land before we read.
     svc.stop()
 
-    val pradaRows = cache.snapshot().filter { case (_, _, e) =>
+    val pradaRows = cache.snapshot().filter { case StoredMovieRecord(_, _, e) =>
       e.tmdbId.contains(928344) || e.imdbId.contains("tt12340108")
     }
     pradaRows.size shouldBe 1
-    pradaRows.head._3.cinemaShowings.keySet shouldBe Set(Multikino, Helios)
+    pradaRows.head.record.cinemaShowings.keySet shouldBe Set(Multikino, Helios)
   }
 }

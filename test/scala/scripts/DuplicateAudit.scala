@@ -1,7 +1,6 @@
 package scripts
 
-import models.MovieRecord
-import services.movies.{MongoMovieRepo, MovieService}
+import services.movies.{MongoMovieRepo, MovieService, StoredMovieRecord}
 
 /**
  * Audit duplicate rows across alternative merge keys.
@@ -40,7 +39,7 @@ object DuplicateAudit {
     val repo = new MongoMovieRepo()
     if (!repo.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
 
-    val rows: Seq[(String, Option[Int], MovieRecord)] = repo.findAll()
+    val rows: Seq[StoredMovieRecord] = repo.findAll()
     println(s"@@ ${rows.size} rows read")
     println()
 
@@ -50,25 +49,21 @@ object DuplicateAudit {
     def directorKey(d: Option[String]): String =
       d.map(MovieService.normalize).getOrElse("")
 
-    auditStrategy("Strategy 1: by sanitized title alone (drop year)", rows) { case (t, _, _) =>
-      titleKey(t)
-    }
-    auditStrategy("Strategy 2: by (sanitized title, normalized director)", rows) { case (t, _, e) =>
-      s"${titleKey(t)}|${directorKey(e.director)}"
+    auditStrategy("Strategy 1: by sanitized title alone (drop year)", rows)(r => titleKey(r.title))
+    auditStrategy("Strategy 2: by (sanitized title, normalized director)", rows) { r =>
+      s"${titleKey(r.title)}|${directorKey(r.record.director)}"
     }
     auditStrategy("Strategy 3: by imdbId (only rows with imdbId)",
-                  rows.filter { case (_, _, e) => e.imdbId.isDefined }) { case (_, _, e) =>
-      e.imdbId.get
-    }
+                  rows.filter(_.record.imdbId.isDefined))(_.record.imdbId.get)
 
     // Cross-strategy: how many rows would title-only merge collapse if we
     // ALSO required imdbId consistency (the safe subset of strategy 1)?
     println()
     println(s"════ Safe title-only merge ════")
     val safeMerges = rows
-      .groupBy { case (t, _, _) => titleKey(t) }
+      .groupBy(r => titleKey(r.title))
       .filter { case (_, group) =>
-        val imdbIds = group.flatMap(_._3.imdbId).toSet
+        val imdbIds = group.flatMap(_.record.imdbId).toSet
         group.size > 1 && imdbIds.size <= 1   // either all-same-imdbId or all-None
       }
     val safeRows = safeMerges.values.map(_.size).sum
@@ -78,19 +73,19 @@ object DuplicateAudit {
     // Title groups where merging is UNSAFE (different imdbIds → different films
     // sharing a title key).
     val unsafe = rows
-      .groupBy { case (t, _, _) => titleKey(t) }
+      .groupBy(r => titleKey(r.title))
       .filter { case (_, group) =>
-        val imdbIds = group.flatMap(_._3.imdbId).toSet
+        val imdbIds = group.flatMap(_.record.imdbId).toSet
         group.size > 1 && imdbIds.size > 1
       }
     if (unsafe.nonEmpty) {
       println()
       println(s"════ Unsafe title-only collapses (different imdbIds — would corrupt) ════")
       unsafe.toSeq.sortBy(-_._2.size).foreach { case (key, group) =>
-        println(s"  key='$key'  rows=${group.size}  imdbIds=${group.flatMap(_._3.imdbId).toSet.mkString(", ")}")
-        group.foreach { case (t, y, e) =>
-          println(s"    · '$t' (${y.getOrElse("?")})  imdb=${e.imdbId.getOrElse("—")}  director=${e.director.getOrElse("—")}")
-        }
+        println(s"  key='$key'  rows=${group.size}  imdbIds=${group.flatMap(_.record.imdbId).toSet.mkString(", ")}")
+        group.foreach(r =>
+          println(s"    · '${r.title}' (${r.year.getOrElse("?")})  imdb=${r.record.imdbId.getOrElse("—")}  director=${r.record.director.getOrElse("—")}")
+        )
       }
     }
 
@@ -99,8 +94,8 @@ object DuplicateAudit {
 
   private def auditStrategy(
     label: String,
-    rows:  Seq[(String, Option[Int], MovieRecord)]
-  )(key: ((String, Option[Int], MovieRecord)) => String): Unit = {
+    rows:  Seq[StoredMovieRecord]
+  )(key: StoredMovieRecord => String): Unit = {
     println(s"════ $label ════")
     val groups = rows.groupBy(key)
     val multi  = groups.filter(_._2.size > 1)
@@ -110,7 +105,7 @@ object DuplicateAudit {
     var consistent  = 0
     var inconsistent = 0
     multi.foreach { case (_, group) =>
-      val imdbIds = group.flatMap(_._3.imdbId).toSet
+      val imdbIds = group.flatMap(_.record.imdbId).toSet
       if (imdbIds.size <= 1) consistent += 1 else inconsistent += 1
     }
 

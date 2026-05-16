@@ -16,7 +16,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(seed))
 
     cache.get(cache.keyOf("Drzewo Magii", Some(2024))) shouldBe Some(mkEnrichment("tt1"))
-    cache.snapshot().map { case (t, y, _) => (t, y) } shouldBe Seq(("Drzewo Magii", Some(2024)))
+    cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Drzewo Magii", Some(2024)))
   }
 
   it should "treat case + diacritics + whitespace differences as the same key" in {
@@ -384,7 +384,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       t1.get(); t2.get()
       exec.shutdown()
 
-      withClue(s"snapshot after iteration: ${cache.snapshot().map { case (t, y, _) => s"($t, $y)" }.mkString(", ")} ") {
+      withClue(s"snapshot after iteration: ${cache.snapshot().map(r => s"(${r.title}, ${r.year})").mkString(", ")} ") {
         cache.snapshot().size shouldBe 1
       }
     }
@@ -553,6 +553,6 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.put(cache.keyOf("alpha", None),   mkEnrichment("tt1"))
     cache.put(cache.keyOf("Beta", None),    mkEnrichment("tt2"))
 
-    cache.snapshot().map { case (t, _, _) => t } shouldBe Seq("alpha", "Beta", "Zorro")
+    cache.snapshot().map(_.title) shouldBe Seq("alpha", "Beta", "Zorro")
   }
 }

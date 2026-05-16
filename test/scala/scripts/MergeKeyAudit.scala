@@ -1,7 +1,6 @@
 package scripts
 
-import controllers.TitleNormalizer
-import services.movies.MongoMovieRepo
+import services.movies.{MongoMovieRepo, StoredMovieRecord, TitleNormalizer}
 
 /**
  * Phase-1 audit for the upcoming `MovieCache` transition.
@@ -42,13 +41,13 @@ object MergeKeyAudit {
     // (stored variants ∪ this-tick titles), but for an audit against the
     // current persisted state, the stored cleanTitles are the closest
     // analogue to "what the merge rule will see at write time."
-    val keyFor = TitleNormalizer.mergeKeyLookup(rows.map(_._1))
+    val keyFor = TitleNormalizer.mergeKeyLookup(rows.map(_.title))
 
     // Group by (merge-key, year). Year stays part of the key because today's
     // docId is `${normalize(title)}|${year}` — same-titled films from
     // different years are independent records.
-    val groups: Map[(String, Option[Int]), Seq[(String, Option[Int], models.MovieRecord)]] =
-      rows.groupBy { case (title, year, _) => (keyFor(title), year) }
+    val groups: Map[(String, Option[Int]), Seq[StoredMovieRecord]] =
+      rows.groupBy(r => (keyFor(r.title), r.year))
 
     val multi      = groups.filter { case (_, rs) => rs.size > 1 }
     val sortedDesc = multi.toSeq.sortBy { case (_, rs) => -rs.size }
@@ -60,13 +59,13 @@ object MergeKeyAudit {
     var suspect = 0
 
     sortedDesc.foreach { case ((key, year), rs) =>
-      val imdbIds = rs.flatMap(_._3.imdbId).toSet
+      val imdbIds = rs.flatMap(_.record.imdbId).toSet
       val isSuspect = imdbIds.size > 1 || (imdbIds.isEmpty && rs.size > 1)
       if (isSuspect) suspect += 1
 
       val flag = if (isSuspect) "SUSPECT" else "ok    "
       println(s"@@ [$flag] key='$key'  year=${year.getOrElse("?")}  rows=${rs.size}  imdbIds=${imdbIds.size}")
-      rs.foreach { case (title, _, e) =>
+      rs.foreach { case StoredMovieRecord(title, _, e) =>
         val imdb = e.imdbId.getOrElse("—")
         val tmdb = e.tmdbId.map(_.toString).getOrElse("—")
         val orig = e.originalTitle.getOrElse("—")

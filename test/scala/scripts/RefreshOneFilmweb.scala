@@ -17,7 +17,8 @@ object RefreshOneFilmweb {
     val ratings = new FilmwebRatings(cache, new TmdbClient(), new FilmwebClient())
 
     def show(label: String): Unit =
-      repo.findAll().find { case (t, y, _) => t == title && y == year }.foreach { case (_, _, e) =>
+      repo.findAll().find(r => r.title == title && r.year == year).foreach { r =>
+        val e = r.record
         println(s"$label  filmwebUrl=${e.filmwebUrl.getOrElse("None")}  filmwebRating=${e.filmwebRating.getOrElse("None")}")
       }
 
