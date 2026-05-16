@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{CinemaMovie, KinoMuza, Movie, Showtime}
+import models.{Cinema, CinemaMovie, KinoMuza, Movie, Showtime}
 import org.jsoup.Jsoup
 import tools.{HttpFetch, RealHttpFetch}
 
@@ -8,8 +8,9 @@ import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class KinoMuzaClient(http: HttpFetch = new RealHttpFetch()) {
+class KinoMuzaClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScraper {
 
+  val cinema: Cinema = KinoMuza
   private val RepertoireUrl = "https://www.kinomuza.pl/repertuar/"
 
   private def parseDate(ddMM: String): Option[LocalDate] =
@@ -90,6 +91,3 @@ class KinoMuzaClient(http: HttpFetch = new RealHttpFetch()) {
   }
 }
 
-object KinoMuzaClient {
-  def fetch(): Seq[CinemaMovie] = new KinoMuzaClient().fetch()
-}

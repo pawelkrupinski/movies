@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{CharlieMonroe, CinemaMovie, Movie, Showtime}
+import models.{CharlieMonroe, Cinema, CinemaMovie, Movie, Showtime}
 import org.jsoup.Jsoup
 import play.api.libs.json._
 import tools.{HttpFetch, RealHttpFetch}
@@ -9,8 +9,9 @@ import java.time.{LocalDateTime, ZonedDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class CharlieMonroeClient(http: HttpFetch = new RealHttpFetch()) {
+class CharlieMonroeClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScraper {
 
+  val cinema: Cinema = CharlieMonroe
   private val PageUrl = "https://kinomalta.pl/seanse"
 
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
@@ -107,6 +108,3 @@ class CharlieMonroeClient(http: HttpFetch = new RealHttpFetch()) {
     }.toOption.flatten
 }
 
-object CharlieMonroeClient {
-  def fetch(): Seq[CinemaMovie] = new CharlieMonroeClient().fetch()
-}

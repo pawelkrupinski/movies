@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{CinemaMovie, KinoPalacowe, Movie, Showtime}
+import models.{Cinema, CinemaMovie, KinoPalacowe, Movie, Showtime}
 import org.jsoup.Jsoup
 import play.api.libs.json._
 import tools.{HttpFetch, RealHttpFetch}
@@ -9,8 +9,9 @@ import java.time.LocalDateTime
 import java.util.concurrent.Executors
 import scala.util.Try
 
-class KinoPalacoweClient(http: HttpFetch = new RealHttpFetch()) {
+class KinoPalacoweClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScraper {
 
+  val cinema: Cinema = KinoPalacowe
   private val BaseUrl = "https://kinopalacowe.pl"
   private val ApiBase = s"$BaseUrl/public/api/calendar/?widgetHash=widget_17943"
 
@@ -193,6 +194,3 @@ class KinoPalacoweClient(http: HttpFetch = new RealHttpFetch()) {
   }
 }
 
-object KinoPalacoweClient {
-  def fetch(): Seq[CinemaMovie] = new KinoPalacoweClient().fetch()
-}

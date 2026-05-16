@@ -10,7 +10,8 @@ import play.api.{Application, ApplicationLoader, BuiltInComponentsFromContext, L
 import scala.concurrent.Future
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
-import services.cinemas.HeliosClient
+import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
+import services.cinemas.{CharlieMonroeClient, CinemaCityClient, CinemaCityScraper, CinemaScraper, HeliosClient, KinoApolloClient, KinoBulgarskaClient, KinoMuzaClient, KinoPalacoweClient, MultikinoClient, RialtoClient}
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbIdResolver, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieCache, MovieRepo, MovieService}
 import services.events.{EventBus, InProcessEventBus}
@@ -58,13 +59,29 @@ class AppComponents(context: Context)
     with CORSComponents
     with AssetsComponents {
 
-  // ── Cinema scrapers + external API clients ────────────────────────────────
-  lazy val heliosClient         = new HeliosClient()
+  // ── External API clients ──────────────────────────────────────────────────
   lazy val tmdbClient           = new TmdbClient()
   lazy val filmwebClient        = new FilmwebClient()
   lazy val imdbClient           = new ImdbClient()
   lazy val metacriticClient     = new MetacriticClient()
   lazy val rottenTomatoesClient = new RottenTomatoesClient()
+
+  // ── Cinema scrapers ───────────────────────────────────────────────────────
+  // The only place that names a specific cinema. ShowtimeCache iterates the
+  // list — adding a new cinema is a new entry here plus its scraper class.
+  lazy val cinemaCityClient = new CinemaCityClient()
+  lazy val cinemaScrapers: Seq[CinemaScraper] = Seq(
+    new MultikinoClient(),
+    new CharlieMonroeClient(),
+    new KinoPalacoweClient(),
+    new HeliosClient(),
+    new CinemaCityScraper(cinemaCityClient, "1078", CinemaCityPoznanPlaza),
+    new CinemaCityScraper(cinemaCityClient, "1081", CinemaCityKinepolis),
+    new KinoMuzaClient(),
+    new KinoBulgarskaClient(),
+    new KinoApolloClient(),
+    new RialtoClient()
+  )
 
   // ── Events ────────────────────────────────────────────────────────────────
   lazy val eventBus: EventBus = new InProcessEventBus()
@@ -87,7 +104,7 @@ class AppComponents(context: Context)
   lazy val movieService     = new MovieService(movieCache, eventBus, tmdbClient)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────
-  lazy val showtimeCache = new ShowtimeCache(heliosClient, eventBus, movieCache)
+  lazy val showtimeCache = new ShowtimeCache(cinemaScrapers, eventBus, movieCache)
 
   // ── Controllers ───────────────────────────────────────────────────────────
   lazy val movieController  = new MovieController(controllerComponents, movieService, environment)

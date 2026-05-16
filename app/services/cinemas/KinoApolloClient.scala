@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{CinemaMovie, KinoApollo, Movie, Showtime}
+import models.{Cinema, CinemaMovie, KinoApollo, Movie, Showtime}
 import tools.{HttpFetch, RealHttpFetch}
 
 import java.time.format.DateTimeFormatter
@@ -21,8 +21,9 @@ import scala.util.Try
  *   5. Poster     — `<img>` to a WordPress media URL
  *   6. "Kup bilet" button (same booking URL as the time link)
  */
-class KinoApolloClient(http: HttpFetch = new RealHttpFetch()) {
+class KinoApolloClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScraper {
 
+  val cinema: Cinema = KinoApollo
   // Production redirects from /kino to /kino/ — request the canonical-shaped URL
   // directly. The FakeHttpFetch can't traverse a trailing slash to a file.
   private val PageUrl = "https://kinoapollo.pl/kino"
@@ -122,6 +123,3 @@ class KinoApolloClient(http: HttpFetch = new RealHttpFetch()) {
   )
 }
 
-object KinoApolloClient {
-  def fetch(): Seq[CinemaMovie] = new KinoApolloClient().fetch()
-}

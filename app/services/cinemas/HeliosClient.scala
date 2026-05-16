@@ -1,7 +1,7 @@
 package services.cinemas
 
 import services.cinemas.HeliosNuxt.{BaseUrl, BookingBase, CinemaSourceId, cleanTitle}
-import models.{CinemaMovie, Helios, Movie, Showtime}
+import models.{Cinema, CinemaMovie, Helios, Movie, Showtime}
 import play.api.libs.json._
 import tools.{HeliosFetch, HttpFetch}
 
@@ -9,7 +9,10 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
 import scala.util.Try
 
-class HeliosClient(http: HttpFetch = HeliosFetch) {
+class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
+
+  val cinema: Cinema = Helios
+
 
   private val PageUrl    = "https://helios.pl/poznan/kino-helios/repertuar"
   private val ApiBase    = "https://restapi.helios.pl/api"
@@ -225,6 +228,3 @@ class HeliosClient(http: HttpFetch = HeliosFetch) {
   }
 }
 
-object HeliosClient {
-  def fetch(): Seq[CinemaMovie] = new HeliosClient().fetch()
-}

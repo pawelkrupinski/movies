@@ -1,8 +1,8 @@
 package services
 
-import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, Helios, KinoApollo, KinoBulgarska, KinoMuza, KinoPalacowe, Multikino, Rialto}
+import models.{Cinema, CinemaMovie}
 import play.api.Logging
-import services.cinemas.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoApolloClient, KinoBulgarskaClient, KinoMuzaClient, KinoPalacoweClient, MultikinoClient, RialtoClient}
+import services.cinemas.CinemaScraper
 import services.movies.MovieCache
 import services.events.{EventBus, MovieRecordCreated}
 
@@ -11,29 +11,19 @@ import java.util.concurrent.{Executors, TimeUnit}
 /** Scrape scheduler. Hits every cinema every 5 minutes, hands the result
  *  to `MovieCache.recordCinemaScrape`, and publishes a `MovieRecordCreated` event
  *  per movie so the enrichment pipeline can pick them up. Holds no
- *  in-memory state of its own — `MovieCache` is the read path. */
+ *  in-memory state of its own — `MovieCache` is the read path.
+ *
+ *  Per CLAUDE.md OCP guidance: adding a new cinema is a new `CinemaScraper`
+ *  wired in `AppLoader`; this class never names a specific cinema. */
 class ShowtimeCache(
-  heliosClient: HeliosClient,
-  bus:          EventBus,
-  movieCache:   MovieCache
+  scrapers:   Seq[CinemaScraper],
+  bus:        EventBus,
+  movieCache: MovieCache
 ) extends Logging {
 
   logger.info(s"Starting — commit ${Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")}")
 
-  private val sources = Map(
-    Multikino             -> (() => MultikinoClient.fetch()),
-    CharlieMonroe         -> (() => CharlieMonroeClient.fetch()),
-    KinoPalacowe          -> (() => KinoPalacoweClient.fetch()),
-    Helios                -> (() => heliosClient.fetch()),
-    CinemaCityPoznanPlaza -> (() => CinemaCityClient.fetch("1078", CinemaCityPoznanPlaza)),
-    CinemaCityKinepolis   -> (() => CinemaCityClient.fetch("1081", CinemaCityKinepolis)),
-    KinoMuza              -> (() => KinoMuzaClient.fetch()),
-    KinoBulgarska         -> (() => KinoBulgarskaClient.fetch()),
-    KinoApollo            -> (() => KinoApolloClient.fetch()),
-    Rialto                -> (() => RialtoClient.fetch())
-  )
-
-  private val fetchExecutor = Executors.newFixedThreadPool(sources.size, { r: Runnable =>
+  private val fetchExecutor = Executors.newFixedThreadPool(scrapers.size.max(1), { r: Runnable =>
     val t = new Thread(r, "showtime-fetch")
     t.setDaemon(true)
     t
@@ -49,11 +39,11 @@ class ShowtimeCache(
    *  the cache starts warming as soon as the app is up; then every 5
    *  minutes. Each cinema fetch publishes its own `MovieRecordCreated` events as
    *  soon as it completes, so enrichment starts work without waiting for
-   *  the 10-cinema barrier. */
+   *  the N-cinema barrier. */
   def start(): Unit =
     scheduler.scheduleAtFixedRate(
-      () => sources.foreach { case (cinema, fetch) =>
-        fetchExecutor.submit(new Runnable { def run(): Unit = refreshOne(cinema, fetch) })
+      () => scrapers.foreach { s =>
+        fetchExecutor.submit(new Runnable { def run(): Unit = refreshOne(s) })
       },
       0L, 5L, TimeUnit.MINUTES
     )
@@ -63,10 +53,11 @@ class ShowtimeCache(
     fetchExecutor.shutdown()
   }
 
-  private def refreshOne(cinema: Cinema, fetch: () => Seq[CinemaMovie]): Unit = {
-    val t0 = System.currentTimeMillis()
+  private def refreshOne(scraper: CinemaScraper): Unit = {
+    val cinema = scraper.cinema
+    val t0     = System.currentTimeMillis()
     try {
-      val movies  = fetch()
+      val movies  = scraper.fetch()
       val elapsed = System.currentTimeMillis() - t0
       // Publish against the *canonical* CacheKey that recordCinemaScrape
       // actually wrote each slot to — when the redirect absorbed this

@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.CinemaMovie
+import models.{Cinema, CinemaMovie, Multikino}
 import tools.{Env, GetOnlyHttpFetch, HttpFetch}
 
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
@@ -13,7 +13,8 @@ import java.net.{CookieManager, CookiePolicy, URI}
  * production, Multikino blocks datacenter IPs) or to a direct `HttpClient`
  * with a one-shot homepage-then-API retry for cookie acquisition.
  */
-class MultikinoClient(http: HttpFetch = MultikinoClient.DefaultFetch) {
+class MultikinoClient(http: HttpFetch = MultikinoClient.DefaultFetch) extends CinemaScraper {
+  val cinema: Cinema = Multikino
   def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(http.get(MultikinoClient.ApiUrl))
 }
 
@@ -79,6 +80,4 @@ object MultikinoClient {
       .GET()
       .build()
   }
-
-  def fetch(): Seq[CinemaMovie] = new MultikinoClient().fetch()
 }

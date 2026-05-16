@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{CinemaMovie, KinoBulgarska, Movie, Showtime}
+import models.{Cinema, CinemaMovie, KinoBulgarska, Movie, Showtime}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import tools.{HttpFetch, RealHttpFetch}
@@ -9,8 +9,9 @@ import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class KinoBulgarskaClient(http: HttpFetch = new RealHttpFetch()) {
+class KinoBulgarskaClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScraper {
 
+  val cinema: Cinema = KinoBulgarska
   private val PageUrl = "http://kinobulgarska19.pl/repertuar"
 
   private val PolishMonths = Map(
@@ -127,6 +128,3 @@ class KinoBulgarskaClient(http: HttpFetch = new RealHttpFetch()) {
   }
 }
 
-object KinoBulgarskaClient {
-  def fetch(): Seq[CinemaMovie] = new KinoBulgarskaClient().fetch()
-}

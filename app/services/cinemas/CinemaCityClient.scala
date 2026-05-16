@@ -141,7 +141,3 @@ class CinemaCityClient(http: HttpFetch = new RealHttpFetch()) {
     }.filter(_.nonEmpty)
 }
 
-object CinemaCityClient {
-  def fetch(cinemaId: String, cinema: Cinema): Seq[CinemaMovie] =
-    new CinemaCityClient().fetch(cinemaId, cinema)
-}
