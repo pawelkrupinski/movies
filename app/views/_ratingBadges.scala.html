@@ -15,9 +15,9 @@
         <span class="rating-rt-label">RT</span><span class="rating-rt-value">@rt%</span>
       </a>
     }
-    @e.filmwebUrl.map { url =>
-      <a href="@url" target="_blank" rel="noopener" class="rating-fw" title="Filmweb">
-        <span class="rating-fw-label">FW</span>@e.filmwebRating.map { r => <span class="rating-fw-value">@{f"$r%.1f"}</span> }
+    @e.filmwebRating.map { r =>
+      <a href="@e.filmwebHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-fw" title="Filmweb">
+        <span class="rating-fw-label">FW</span><span class="rating-fw-value">@{f"$r%.1f"}</span>
       </a>
     }
   </div>

@@ -132,4 +132,9 @@ case class MovieRecord(
     val q = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
     s"https://www.rottentomatoes.com/search?search=$q"
   }
+
+  def filmwebHref(fallbackTitle: String): String = filmwebUrl.getOrElse {
+    val q = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
+    s"https://www.filmweb.pl/search?query=$q"
+  }
 }
