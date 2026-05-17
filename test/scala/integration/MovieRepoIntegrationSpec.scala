@@ -146,54 +146,6 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     found.get.record.countries shouldBe Seq.empty
   }
 
-  // Production Mongo carries rows written before the source-keyed `data` field
-  // existed — they use the legacy `cinemaShowings` sub-doc and a top-level
-  // `originalTitle` field for TMDB's value. Bypass `repo.upsert` and write a
-  // raw legacy-shape Document directly so we can prove the decoder still
-  // hydrates these correctly. The next upsert from the live app rewrites the
-  // row in the new shape and the legacy fields disappear.
-  it should "decode a legacy cinemaShowings/originalTitle Mongo row into the new data map" in {
-    import org.mongodb.scala.bson.{BsonArray, BsonInt32, BsonString, Document}
-    val title  = "__integration-test-legacy-shape__"
-    val year   = Some(2024)
-    val client = MongoClient(Env.get("MONGODB_URI").get)
-    val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
-      .getCollection("movies")
-    try {
-      val legacyShowings = Document(
-        Helios.displayName -> Document(
-          "synopsis"       -> BsonString("legacy synopsis"),
-          "director"       -> BsonString("legacy dir"),
-          "runtimeMinutes" -> BsonInt32(101),
-          "countries"      -> BsonArray.fromIterable(Seq(BsonString("Polska")))
-        )
-      )
-      val legacyDoc = Document(
-        "_id"            -> BsonString(s"__integration-test-legacy-shape__|2024"),
-        "title"          -> BsonString(title),
-        "year"           -> BsonInt32(2024),
-        "imdbId"         -> BsonString("tt9999999"),
-        "originalTitle"  -> BsonString("Legacy Original"),
-        "cinemaShowings" -> legacyShowings
-      )
-      Await.result(coll.insertOne(legacyDoc).toFuture(), 10.seconds)
-
-      val found = repo.findAll().find(r => r.title == title && r.year == year)
-      found should not be empty
-      val e = found.get.record
-      // Cinema slot decoded into `data` with Helios as the key.
-      e.cinemaData.keySet shouldBe Set(Helios)
-      e.cinemaData(Helios).synopsis shouldBe Some("legacy synopsis")
-      e.cinemaData(Helios).director shouldBe Some("legacy dir")
-      e.cinemaData(Helios).runtimeMinutes shouldBe Some(101)
-      e.cinemaData(Helios).countries shouldBe Seq("Polska")
-      // Top-level `originalTitle` field folded into a Tmdb SourceData slot,
-      // so the accessor still returns Some("Legacy Original").
-      e.originalTitle shouldBe Some("Legacy Original")
-      e.data.get(Tmdb).flatMap(_.originalTitle) shouldBe Some("Legacy Original")
-    } finally client.close()
-  }
-
   // Regression for "Tom i Jerry: Przygoda w muzeum" / "Tom i jerry: przygoda w
   // muzeum": case-only variants of the same Polish title accumulated as
   // separate Mongo rows because docId was case-preserved. The hourly refresh

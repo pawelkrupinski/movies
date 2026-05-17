@@ -2,24 +2,22 @@ package services.movies
 
 import com.mongodb.MongoException
 import com.mongodb.client.model.ReplaceOptions
-import models.{Cinema, MovieRecord, Showtime, Source, SourceData, Tmdb}
-
-/** One persisted (title, year) → MovieRecord row. Used as the return type
- *  of `MovieRepo.findAll` and `MovieCache.snapshot` so callers iterate
- *  named fields instead of destructuring an anonymous 3-tuple. */
-case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord)
-import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.bson._
+import models.MovieRecord
+import org.mongodb.scala.bson.BsonNull
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoClient, MongoCollection, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 import tools.Env
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 import scala.util.Try
+
+/** One persisted (title, year) → MovieRecord row. Used as the return type
+ *  of `MovieRepo.findAll` and `MovieCache.snapshot` so callers iterate
+ *  named fields instead of destructuring an anonymous 3-tuple. */
+case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord)
 
 /**
  * Persistent store for `(title, year) → MovieRecord` records.
@@ -65,6 +63,13 @@ trait MovieRepo {
  * The driver uses Reactive Streams, but the enrichment pipeline is a single
  * daemon worker so we use the blocking `.toFuture()` form throughout.
  *
+ * Round-tripping happens through mongo-scala-driver's case-class codec
+ * macros — see `MovieCodecs.registry` for the wiring and `StoredMovieDto`
+ * for the storage-shape DTO. The collection is typed `[StoredMovieDto]`,
+ * so reads and writes carry the case class directly; the small
+ * `fromDomain`/`toDomain` helpers bridge the `Map[Source, SourceData]`
+ * domain shape and the `Map[String, SourceData]` storage shape.
+ *
  * Lifecycle: caller (`AppLoader`) registers a shutdown hook that calls
  * `close()` — the class doesn't self-register.
  */
@@ -74,9 +79,9 @@ class MongoMovieRepo extends MovieRepo with Logging {
   // `InMemoryMovieRepo` in tests) never trigger a Mongo connection
   // attempt — `new InMemoryMovieRepo()` was waiting 10 seconds per test
   // for the parent's init() to time out against an unreachable cluster.
-  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[Document]]) = init()
-  private def clientOpt: Option[MongoClient]               = initResult._1
-  private def coll:      Option[MongoCollection[Document]] = initResult._2
+  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) = init()
+  private def clientOpt: Option[MongoClient]                       = initResult._1
+  private def coll:      Option[MongoCollection[StoredMovieDto]]   = initResult._2
 
   def enabled: Boolean = coll.isDefined
 
@@ -84,8 +89,7 @@ class MongoMovieRepo extends MovieRepo with Logging {
     case None => Seq.empty
     case Some(c) =>
       Try {
-        val docs = Await.result(c.find().toFuture(), 30.seconds)
-        docs.flatMap(decode)
+        Await.result(c.find().toFuture(), 30.seconds).map(StoredMovieDto.toDomain)
       }.recover {
         case ex: MongoException =>
           logger.warn(s"MovieRepo.findAll failed: ${ex.getMessage}")
@@ -117,10 +121,10 @@ class MongoMovieRepo extends MovieRepo with Logging {
 
   def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = coll.foreach { c =>
     val id   = docId(title, year)
-    val doc  = encode(id, title, year, e)
+    val dto  = StoredMovieDto.fromDomain(id, title, year, e, Instant.now())
     val opts = new ReplaceOptions().upsert(true)
     Try {
-      Await.result(c.replaceOne(Filters.eq("_id", id), doc, opts).toFuture(), 10.seconds)
+      Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
       ()
     }.recover {
       case ex: Throwable if isClusterClosed(ex) =>
@@ -137,10 +141,10 @@ class MongoMovieRepo extends MovieRepo with Logging {
     case None => false
     case Some(c) =>
       val id   = docId(title, year)
-      val doc  = encode(id, title, year, e)
+      val dto  = StoredMovieDto.fromDomain(id, title, year, e, Instant.now())
       val opts = new ReplaceOptions().upsert(false)
       Try {
-        val result = Await.result(c.replaceOne(Filters.eq("_id", id), doc, opts).toFuture(), 10.seconds)
+        val result = Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
         result.getMatchedCount > 0
       }.recover {
         case ex: Throwable if isClusterClosed(ex) => false
@@ -152,7 +156,7 @@ class MongoMovieRepo extends MovieRepo with Logging {
 
   def close(): Unit = clientOpt.foreach(_.close())
 
-  private def init(): (Option[MongoClient], Option[MongoCollection[Document]]) =
+  private def init(): (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) =
     Env.get("MONGODB_URI") match {
       case None =>
         logger.info("MONGODB_URI not set — MongoMovieRepo disabled (in-memory cache only).")
@@ -161,7 +165,8 @@ class MongoMovieRepo extends MovieRepo with Logging {
         Try {
           val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
           val client = MongoClient(uri)
-          val coll   = client.getDatabase(dbName).getCollection[Document]("movies")
+          val db     = client.getDatabase(dbName).withCodecRegistry(MovieCodecs.registry)
+          val coll   = db.getCollection[StoredMovieDto]("movies")
           // Touch the collection to surface connectivity errors at startup,
           // not on the first read after the app is "up".
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
@@ -190,174 +195,4 @@ class MongoMovieRepo extends MovieRepo with Logging {
   // tick walks the deduplicated Caffeine cache).
   private def docId(title: String, year: Option[Int]): String =
     s"${MovieService.normalize(title)}|${year.map(_.toString).getOrElse("")}"
-
-  private def encode(id: String, title: String, year: Option[Int], e: MovieRecord): Document =
-    Document(
-      "_id"          -> BsonString(id),
-      "title"        -> BsonString(title),
-      "year"         -> year.map(y => org.mongodb.scala.bson.BsonInt32(y)).getOrElse(BsonNull()),
-      "imdbId"       -> e.imdbId.map(BsonString(_)).getOrElse(BsonNull()),
-      "imdbRating"   -> e.imdbRating.map(org.mongodb.scala.bson.BsonDouble(_)).getOrElse(BsonNull()),
-      "metascore"    -> e.metascore.map(org.mongodb.scala.bson.BsonInt32(_)).getOrElse(BsonNull()),
-      "filmwebUrl"   -> e.filmwebUrl.map(BsonString(_)).getOrElse(BsonNull()),
-      "filmwebRating"-> e.filmwebRating.map(org.mongodb.scala.bson.BsonDouble(_)).getOrElse(BsonNull()),
-      "rottenTomatoes"-> e.rottenTomatoes.map(org.mongodb.scala.bson.BsonInt32(_)).getOrElse(BsonNull()),
-      "tmdbId"       -> e.tmdbId.map(org.mongodb.scala.bson.BsonInt32(_)).getOrElse(BsonNull()),
-      "metacriticUrl"-> e.metacriticUrl.map(BsonString(_)).getOrElse(BsonNull()),
-      "rottenTomatoesUrl" -> e.rottenTomatoesUrl.map(BsonString(_)).getOrElse(BsonNull()),
-      // Per-source data — sub-document keyed by Source.displayName (cinema
-      // displayNames + "TMDB" + "IMDB"). Replaces the old per-cinema
-      // `cinemaShowings` sub-doc; the decoder still reads `cinemaShowings`
-      // for legacy rows that pre-date this change.
-      "sourceData" -> encodeSourceData(e.data),
-      "updatedAt"    -> BsonDateTime(Instant.now().toEpochMilli)
-    )
-
-  // Sub-document keyed by Source.displayName so the keys are stable strings
-  // (BSON doesn't have an enum type). Decoder maps the names back via
-  // `Source.byDisplayName`. Unknown source names are dropped silently —
-  // they can't be resolved into a Source instance, so they don't go into
-  // the model.
-  private def encodeSourceData(map: Map[Source, SourceData]): BsonDocument = {
-    val doc = new BsonDocument()
-    map.foreach { case (source, slot) =>
-      doc.put(source.displayName, encodeOneSourceData(slot))
-    }
-    doc
-  }
-
-  private def encodeOneSourceData(s: SourceData): BsonDocument = {
-    val doc = new BsonDocument()
-    s.title.foreach(t          => doc.put("title",          BsonString(t)))
-    s.originalTitle.foreach(t  => doc.put("originalTitle",  BsonString(t)))
-    s.synopsis.foreach(t       => doc.put("synopsis",       BsonString(t)))
-    s.cast.foreach(t           => doc.put("cast",           BsonString(t)))
-    s.director.foreach(t       => doc.put("director",       BsonString(t)))
-    s.runtimeMinutes.foreach(n => doc.put("runtimeMinutes", BsonInt32(n)))
-    s.releaseYear.foreach(n    => doc.put("releaseYear",    BsonInt32(n)))
-    if (s.countries.nonEmpty)
-      doc.put("countries", BsonArray.fromIterable(s.countries.map(BsonString(_))))
-    s.posterUrl.foreach(u      => doc.put("posterUrl",      BsonString(u)))
-    s.filmUrl.foreach(u        => doc.put("filmUrl",        BsonString(u)))
-    if (s.showtimes.nonEmpty)
-      doc.put("showtimes", BsonArray.fromIterable(s.showtimes.map(encodeShowtime)))
-    doc
-  }
-
-  private def encodeShowtime(s: Showtime): BsonDocument = {
-    val doc = new BsonDocument()
-    // Store as epoch-millis in UTC. Tests pin a fixed clock; the wall-clock
-    // semantics that matter are encoded in the LocalDateTime itself (no zone
-    // attached), so we serialise via the UTC offset for symmetry on decode.
-    doc.put("dateTime", BsonDateTime(s.dateTime.toInstant(ZoneOffset.UTC).toEpochMilli))
-    s.bookingUrl.foreach(u => doc.put("bookingUrl", BsonString(u)))
-    s.room.foreach(r => doc.put("room", BsonString(r)))
-    if (s.format.nonEmpty) doc.put("format", BsonArray.fromIterable(s.format.map(BsonString(_))))
-    doc
-  }
-
-  private def decode(d: Document): Option[StoredMovieRecord] =
-    for {
-      // `imdbId` is optional now (TMDB hits without an IMDb cross-reference
-      // still produce a row), but the row must at least have a `title` to be
-      // usable as a cache key. Anything else missing is treated as None.
-      title <- d.get("title").flatMap(v => Try(v.asString().getValue).toOption)
-    } yield {
-      // Read per-source data — prefer the new `sourceData` sub-doc; fall back
-      // to the legacy `cinemaShowings` sub-doc (cinema-keyed). The legacy
-      // top-level `originalTitle` field (TMDB's value) folds into a Tmdb
-      // SourceData slot so it survives the migration; the next TMDB enrich
-      // tick will replace this minimal slot with a fully-populated one.
-      val newShape    = d.get("sourceData").flatMap(v => Try(decodeSourceData(v.asDocument())).toOption)
-      val legacyShape = d.get("cinemaShowings").flatMap(v => Try(decodeLegacyCinemaShowings(v.asDocument())).toOption)
-      val legacyOrigTitle = d.get("originalTitle").flatMap(v => Try(v.asString().getValue).toOption)
-      val data = newShape.getOrElse {
-        val cinemaSlots = legacyShape.getOrElse(Map.empty[Source, SourceData])
-        legacyOrigTitle match {
-          case Some(t) if !cinemaSlots.contains(Tmdb) => cinemaSlots + (Tmdb -> SourceData(originalTitle = Some(t)))
-          case _                                      => cinemaSlots
-        }
-      }
-      StoredMovieRecord(
-        title,
-        d.get("year").flatMap(v => Try(v.asInt32().getValue).toOption),
-        MovieRecord(
-          imdbId        = d.get("imdbId").flatMap(v => Try(v.asString().getValue).toOption),
-          imdbRating    = d.get("imdbRating").flatMap(v => Try(v.asDouble().getValue).toOption),
-          metascore     = d.get("metascore").flatMap(v => Try(v.asInt32().getValue).toOption),
-          filmwebUrl     = d.get("filmwebUrl").flatMap(v => Try(v.asString().getValue).toOption),
-          filmwebRating  = d.get("filmwebRating").flatMap(v => Try(v.asDouble().getValue).toOption),
-          rottenTomatoes = d.get("rottenTomatoes").flatMap(v => Try(v.asInt32().getValue).toOption),
-          tmdbId         = d.get("tmdbId").flatMap(v => Try(v.asInt32().getValue).toOption),
-          metacriticUrl  = d.get("metacriticUrl").flatMap(v => Try(v.asString().getValue).toOption),
-          rottenTomatoesUrl = d.get("rottenTomatoesUrl").flatMap(v => Try(v.asString().getValue).toOption),
-          // Legacy fields (`cinemaScrapes`, `cinemaTitles`) on older docs are
-          // ignored — current isNew dedup and `cinemaTitles` derive from
-          // `data`. The next upsert rewrites the row without these fields.
-          data = data
-        )
-      )
-    }
-
-  private def decodeSourceData(doc: BsonDocument): Map[Source, SourceData] =
-    doc.entrySet().asScala.iterator.flatMap { entry =>
-      for {
-        source <- Source.byDisplayName.get(entry.getKey)
-        sub    <- Try(entry.getValue.asDocument()).toOption
-        slot   <- Try(decodeOneSourceData(sub)).toOption
-      } yield source -> slot
-    }.toMap
-
-  /** Legacy decoder for rows persisted before the `sourceData` sub-doc was
-   *  introduced. Cinema slots become `Source` entries directly (Cinema
-   *  already extends Source). The next upsert rewrites these in the new
-   *  shape. */
-  private def decodeLegacyCinemaShowings(doc: BsonDocument): Map[Source, SourceData] =
-    doc.entrySet().asScala.iterator.flatMap { entry =>
-      for {
-        cinema <- Source.byDisplayName.get(entry.getKey).collect { case c: Cinema => c }
-        sub    <- Try(entry.getValue.asDocument()).toOption
-        slot   <- Try(decodeOneSourceData(sub)).toOption
-      } yield (cinema: Source) -> slot
-    }.toMap
-
-  private def decodeOneSourceData(doc: BsonDocument): SourceData = {
-    def str(field: String)   = Option(doc.get(field)).flatMap(v => Try(v.asString().getValue).toOption)
-    def int32(field: String) = Option(doc.get(field)).flatMap(v => Try(v.asInt32().getValue).toOption)
-    val showtimes = Option(doc.get("showtimes")).flatMap(v => Try(v.asArray()).toOption)
-      .map(_.getValues.asScala.toSeq.flatMap(v => Try(decodeShowtime(v.asDocument())).toOption))
-      .getOrElse(Seq.empty)
-    SourceData(
-      title          = str("title"),
-      originalTitle  = str("originalTitle"),
-      synopsis       = str("synopsis"),
-      cast           = str("cast"),
-      director       = str("director"),
-      runtimeMinutes = int32("runtimeMinutes"),
-      releaseYear    = int32("releaseYear"),
-      // Forward shape is `countries: BsonArray`. Older rows have
-      // `country: BsonString` (sometimes comma-separated) — comma-split for
-      // backward compat. The next scrape tick rewrites the slot with the
-      // new shape and the legacy field drops out.
-      countries      = Option(doc.get("countries")).flatMap(v => Try(v.asArray()).toOption)
-                         .map(_.getValues.asScala.toSeq.flatMap(v => Try(v.asString().getValue).toOption))
-                         .getOrElse(
-                           str("country").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-                         ),
-      posterUrl      = str("posterUrl"),
-      filmUrl        = str("filmUrl"),
-      showtimes      = showtimes
-    )
-  }
-
-  private def decodeShowtime(doc: BsonDocument): Showtime = {
-    val epochMs = doc.get("dateTime").asDateTime().getValue
-    val dateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMs), ZoneOffset.UTC)
-    val bookingUrl = Option(doc.get("bookingUrl")).flatMap(v => Try(v.asString().getValue).toOption)
-    val room       = Option(doc.get("room")).flatMap(v => Try(v.asString().getValue).toOption)
-    val format     = Option(doc.get("format")).flatMap(v => Try(v.asArray()).toOption)
-      .map(_.getValues.asScala.toList.flatMap(v => Try(v.asString().getValue).toOption))
-      .getOrElse(Nil)
-    Showtime(dateTime, bookingUrl, room, format)
-  }
 }
