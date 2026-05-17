@@ -52,7 +52,7 @@ trait Wiring {
 
   // ── MovieRecord ────────────────────────────────────────────────────────────
   lazy val movieRepo: MovieRepo = new MongoMovieRepo()
-  lazy val movieCache: MovieCache = new CaffeineMovieCache(movieRepo)
+  lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo)
   // ImdbRatings / RottenTomatoesRatings own the hourly rating refresh + the
   // per-row event listener for their respective services. Pulled out of
   // MovieService so each external service has its own tempo and the TMDB
@@ -119,6 +119,7 @@ trait Wiring {
   // every ratings service's stop() must drain its worker pool before the
   // repo's close() runs so in-flight upserts land.
   protected def start(): Unit = {
+    movieCache.start()
     movieService.start()
     imdbRatings.start()
     rottenTomatoesRatings.start()
@@ -154,6 +155,7 @@ trait Wiring {
     showtimeCache.stop()
     cascadeDrainOrder.foreach(_.stop())
     unscreenedCleanup.stop()
+    movieCache.stop()
     movieRepo.close()
   }
 

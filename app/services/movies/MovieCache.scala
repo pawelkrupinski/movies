@@ -3,9 +3,12 @@ package services.movies
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.{Cinema, CinemaMovie, MovieRecord, Source, SourceData}
 import play.api.Logging
+import services.Stoppable
 import services.cinemas.CountryNames
+import tools.DaemonExecutors
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+import scala.util.Try
 
 /**
  * Normalised `(title, year)` lookup key. Diacritics stripped, lowercased,
@@ -78,7 +81,7 @@ trait MovieCache {
  * effects — callers that want to *trigger* a lookup on miss go through
  * `MovieService` (which owns the worker pool + dedup).
  */
-class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
+class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
   private val negative: Cache[CacheKey, java.lang.Boolean] =
@@ -398,10 +401,50 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
   }
 
   def rehydrate(): Int = {
-    positive.invalidateAll()
-    val rows = repo.findAll()
+    // Additive sync — never blank the cache mid-rehydrate. The periodic
+    // 30-s tick (see `start()` below) runs while page loads are flying
+    // through `snapshot()`; an `invalidateAll()` window would briefly
+    // render an empty repertoire. Instead: put every Mongo row (cache's
+    // copy gets overwritten if it changed), then evict only the keys
+    // that disappeared from Mongo since the last sync.
+    import scala.jdk.CollectionConverters._
+    val rows     = repo.findAll()
+    val nextKeys = rows.iterator.map(r => CacheKey(r.title, r.year)).toSet
     rows.foreach(r => positive.put(CacheKey(r.title, r.year), r.record))
+    positive.asMap().keySet().asScala.toSeq
+      .filterNot(nextKeys.contains)
+      .foreach(positive.invalidate)
     if (rows.nonEmpty) logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo.")
     rows.size
   }
+
+  // ── Periodic Mongo → cache sync ───────────────────────────────────────────
+  //
+  // Out-of-band Mongo edits — `FilmwebUrlAudit` clearing a stale URL, a
+  // manual `db.movies.update(...)` to fix one row — bypass the cache. The
+  // running app would carry the stale value forever without an explicit
+  // `/debug/rehydrate`. A 30-s tick walks `repo.findAll()` and reconciles;
+  // the in-memory state lags Mongo by at most one tick. The `$set`-based
+  // `updateIfPresent` (see `MovieRepo`) makes those out-of-band writes
+  // durable; this tick makes them visible.
+  //
+  // Cost: ~150 ms per tick (measured against the production cluster, 200
+  // rows). Twice a minute, on a daemon thread — invisible to the rest of
+  // the app. The tick scheduler is owned here but only fires when
+  // `start()` is called (Wiring does, tests don't), so unit tests still
+  // get a single one-shot hydrate at construction.
+  private val refreshScheduler           = DaemonExecutors.scheduler("movie-cache-refresh")
+  private val RefreshIntervalSeconds     = 30L
+
+  def start(): Unit = {
+    logger.info(s"MovieCache periodic rehydrate scheduled every ${RefreshIntervalSeconds}s.")
+    refreshScheduler.scheduleAtFixedRate(
+      () => Try(rehydrate()).recover {
+        case ex => logger.warn(s"MovieCache rehydrate tick failed: ${ex.getMessage}")
+      },
+      RefreshIntervalSeconds, RefreshIntervalSeconds, TimeUnit.SECONDS
+    )
+  }
+
+  def stop(): Unit = refreshScheduler.shutdown()
 }
