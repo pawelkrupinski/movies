@@ -41,16 +41,22 @@ class ImdbClient(http: HttpFetch) {
     } yield r
   }
 
-  /** One GraphQL POST that returns rating + plot + director + top cast +
-   *  the English-language title. Used by the IMDb enrichment stage to fill
-   *  the `SourceData(Imdb)` slot in a single round-trip even when TMDB
-   *  already supplied the IMDb id.
+  /** One GraphQL POST that returns rating + director + top cast + the
+   *  English-language title and poster. Used by the IMDb enrichment stage
+   *  to fill the `SourceData(Imdb)` slot in a single round-trip even when
+   *  TMDB already supplied the IMDb id.
    *
-   *  IMDb's `plot.plotText.plainText` is the English long-form synopsis;
    *  `principalCredits` carries up to ~10 directors/writers/stars in the
    *  same shape the title page uses. We pick the Directors block and the
    *  Stars block; cast names join into one comma-separated string capped
-   *  at `MaxCastNames` to match TMDB's shape. */
+   *  at `MaxCastNames` to match TMDB's shape.
+   *
+   *  IMDb's `plot.plotText.plainText` is the English long-form synopsis
+   *  — deliberately NOT fetched. Polish-audience film cards should show
+   *  Polish copy (cinema-scraped or TMDB's pl-PL `overview`); IMDb's
+   *  English plot used to win the merged-synopsis "longest wins" rule on
+   *  rows where the cinema-side synopsis was short or missing, producing
+   *  inappropriate English blurbs for Polish films. */
   def details(imdbId: String): Option[ImdbClient.Details] =
     Try(http.post(Endpoint, detailsQueryBody(imdbId), "application/json"))
       .toOption.flatMap(body => Try(parseDetails(body)).toOption)
@@ -60,7 +66,6 @@ class ImdbClient(http: HttpFetch) {
     val rating = parseRating(body)
     val titleText  = (title \ "titleText" \ "text").asOpt[String].filter(_.nonEmpty)
     val originalT  = (title \ "originalTitleText" \ "text").asOpt[String].filter(_.nonEmpty)
-    val plot       = (title \ "plot" \ "plotText" \ "plainText").asOpt[String].filter(_.nonEmpty)
     val releaseYr  = (title \ "releaseYear" \ "year").asOpt[Int]
     val runtimeS   = (title \ "runtime" \ "seconds").asOpt[Int].map(s => (s / 60).max(1))
     val credits    = (title \ "principalCredits").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
@@ -78,7 +83,6 @@ class ImdbClient(http: HttpFetch) {
       rating         = rating,
       title          = titleText,
       originalTitle  = originalT,
-      synopsis       = plot,
       director       = if (directors.nonEmpty) Some(directors.mkString(", ")) else None,
       cast           = if (stars.nonEmpty)     Some(stars.mkString(", "))     else None,
       runtimeMinutes = runtimeS,
@@ -97,9 +101,10 @@ class ImdbClient(http: HttpFetch) {
     ))
   }
 
-  // Larger GraphQL query covering rating + plot + credits + title info.
-  // IMDb's caching CDN accepts the same `title(id)` query shape — this is
-  // exactly what their site uses to render the title page header.
+  // Larger GraphQL query covering rating + credits + title info. IMDb's
+  // caching CDN accepts the same `title(id)` query shape — this is
+  // exactly what their site uses to render the title page header. Plot
+  // (`plot{plotText{plainText}}`) deliberately omitted; see `details`.
   private def detailsQueryBody(imdbId: String): String = {
     val query =
       """query TitleDetails($id:ID!){
@@ -109,7 +114,6 @@ class ImdbClient(http: HttpFetch) {
         |    releaseYear{year}
         |    runtime{seconds}
         |    ratingsSummary{aggregateRating voteCount}
-        |    plot{plotText{plainText}}
         |    countriesOfOrigin{countries{text}}
         |    primaryImage{url}
         |    principalCredits{
@@ -188,7 +192,6 @@ object ImdbClient {
     rating:         Option[Double],
     title:          Option[String],
     originalTitle:  Option[String],
-    synopsis:       Option[String],
     director:       Option[String],
     cast:           Option[String],
     runtimeMinutes: Option[Int],

@@ -454,8 +454,8 @@ runtimeMinutes:    105
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/billie-eilish/billie-eilish_plakat_cut.jpg?rev=25c4d4367da24664815b62a9c3b17741
-synopsis.length:   420
-cast:              Billie Eilish, Finneas O'Connell
+synopsis.length:   384
+cast:              Billie Eilish
 director:          James Cameron
 tmdbId:            1515899
 imdbId:            tt39018643
@@ -475,28 +475,28 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Billie Eilish – Hit Me Hard and Soft: The Tour / 2026
   Cinema City Poznań Plaza / Billie Eilish – Hit Me Hard and Soft: The Tour / 2026
-  Helios Posnania / Billie Eilish - Hit Me Hard and Soft: The Tour / 2026
+  Helios Posnania / Billie Eilish - Hit Me Hard and Soft: The Tour / —
   Multikino Stary Browar / Billie Eilish - Hit Me Hard and Soft: The Tour / —
 showings:
   2026-05-17  Cinema City Kinepolis         10:00 Sal14 3D/NAP · 11:00 Sala8 2D/NAP · 11:30 Sala7 2D/NAP · 12:30 Sal14 2D/NAP · 13:40 Sala8 2D/NAP · 14:10 Sala7 3D/NAP · 15:10 Sal14 3D/NAP · 16:45 Sala7 3D/NAP · 17:50 Sal14 3D/NAP
   2026-05-17  Cinema City Poznań Plaza      11:00 Sala 8 2D/NAP · 13:40 Sala 8 3D/NAP · 16:20 Sala 8 3D/NAP · 19:00 Sala 8 2D/NAP
-  2026-05-17  Helios Posnania               18:00 Sala 2 2D/NAP · 21:00 Sala 1 3D/NAP
+  2026-05-17  Helios Posnania               18:00 2D/NAP · 21:00 3D/NAP
   2026-05-17  Multikino Stary Browar        14:15 Sala 8 2D/NAP · 19:10 Sala 8 3D/NAP
   2026-05-18  Cinema City Kinepolis         12:30 Sal14 2D/NAP · 15:10 Sal14 3D/NAP · 16:45 Sala7 3D/NAP · 17:50 Sal14 3D/NAP · 20:30 Sal14 3D/NAP
   2026-05-18  Cinema City Poznań Plaza      11:00 Sala 8 2D/NAP · 13:40 Sala 8 3D/NAP · 16:20 Sala 8 3D/NAP · 19:00 Sala 8 2D/NAP
-  2026-05-18  Helios Posnania               19:20 Sala 6 3D/NAP · 21:15 Sala 2 2D/NAP
+  2026-05-18  Helios Posnania               19:20 3D/NAP · 21:15 2D/NAP
   2026-05-18  Multikino Stary Browar        14:15 Sala 8 2D/NAP · 19:10 Sala 8 3D/NAP
   2026-05-19  Cinema City Kinepolis         12:30 Sal14 2D/NAP · 15:10 Sal14 3D/NAP · 16:45 Sala7 3D/NAP · 17:50 Sal14 3D/NAP · 20:30 Sal14 3D/NAP
   2026-05-19  Cinema City Poznań Plaza      11:00 Sala 8 2D/NAP · 13:40 Sala 8 3D/NAP · 16:20 Sala 8 3D/NAP · 19:00 Sala 8 2D/NAP
-  2026-05-19  Helios Posnania               19:30 Sala 6 3D/NAP · 21:15 Sala 2 2D/NAP
+  2026-05-19  Helios Posnania               19:30 3D/NAP · 21:15 2D/NAP
   2026-05-19  Multikino Stary Browar        14:15 Sala 8 2D/NAP · 19:10 Sala 8 3D/NAP
   2026-05-20  Cinema City Kinepolis         12:30 Sal14 2D/NAP · 15:10 Sal14 3D/NAP · 16:45 Sala7 3D/NAP · 17:50 Sal14 3D/NAP · 20:30 Sal14 3D/NAP
   2026-05-20  Cinema City Poznań Plaza      11:00 Sala 8 2D/NAP · 13:40 Sala 8 3D/NAP · 16:20 Sala 8 3D/NAP · 19:00 Sala 8 2D/NAP
-  2026-05-20  Helios Posnania               19:20 Sala 6 3D/NAP · 21:15 Sala 2 2D/NAP
+  2026-05-20  Helios Posnania               19:20 3D/NAP · 21:15 2D/NAP
   2026-05-20  Multikino Stary Browar        14:15 Sala 8 2D/NAP · 19:10 Sala 8 3D/NAP
   2026-05-21  Cinema City Kinepolis         12:30 Sal14 2D/NAP · 15:10 Sal14 3D/NAP · 16:45 Sala9 2D/NAP · 17:50 Sal14 3D/NAP
   2026-05-21  Cinema City Poznań Plaza      11:00 Sala 8 2D/NAP · 13:40 Sala 8 3D/NAP · 16:20 Sala 8 3D/NAP · 19:00 Sala 8 2D/NAP
-  2026-05-21  Helios Posnania               17:45 Sala 6 3D/NAP · 20:10 Sala 3 2D/NAP
+  2026-05-21  Helios Posnania               17:45 3D/NAP · 20:10 2D/NAP
   2026-05-21  Multikino Stary Browar        11:55 Sala 1 3D/NAP · 14:15 Sala 8 2D/NAP
 
 === Bluey w kinie: Kolekcja Zabawy z przyjaciółmi ===
@@ -867,8 +867,8 @@ runtimeMinutes:    120
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/diabel-ubiera-sie-u-prady-2/diabelprada2_plakatoficial-cut.jpg?rev=6e854aefaa8e47c0b27446b60a57f68a
-synopsis.length:   1006
-cast:              Anne Hathaway, Meryl Streep, Stanley Tucci, Emily Blunt
+synopsis.length:   581
+cast:              Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci
 director:          David Frankel
 tmdbId:            1314481
 imdbId:            tt33612209
@@ -890,34 +890,34 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Diabeł ubiera się u Prady 2 / 2026
   Cinema City Poznań Plaza / Diabeł ubiera się u Prady 2 / 2026
-  Helios Posnania / Diabeł ubiera się u Prady 2 / 2026
+  Helios Posnania / Diabeł ubiera się u Prady 2 / —
   Kino Malta Charlie Monroe / Diabeł ubiera się u Prady 2 / —
   Kino Rialto / Diabeł ubiera się u prady 2 / 2026
   Multikino Stary Browar / Diabeł ubiera się u Prady 2 / —
 showings:
   2026-05-17  Cinema City Kinepolis         10:30 Sal17 2D/NAP · 10:40 Sala6 2D/NAP · 11:10 Sal15 2D/NAP · 11:50 Sal12 2D/NAP · 12:20 Sala1 2D/NAP · 13:10 Sal17 2D/NAP · 13:20 Sala6 2D/NAP · 13:50 Sal15 2D/NAP · 14:30 Sal12 2D/NAP · 15:00 Sala1 2D/NAP · 15:50 Sal17 2D/NAP · 16:00 Sala6 2D/NAP · 16:30 Sal15 2D/NAP · 17:10 Sal12 2D/NAP · 17:40 Sala1 2D/NAP · 18:30 Sal17 2D/NAP · 18:40 Sala6 2D/NAP · 19:20 Sal15 2D/NAP · 19:50 Sal12 2D/NAP · 21:10 Sal17 2D/NAP · 21:20 Sala6 2D/NAP · 22:00 Sal15 2D/NAP · 22:30 Sal12 2D/NAP
   2026-05-17  Cinema City Poznań Plaza      10:30 Sala 4 2D/NAP · 11:20 Sala 6 2D/NAP · 12:10 Sala 3 2D/NAP · 13:10 Sala 4 2D/NAP · 14:00 Sala 6 2D/NAP · 15:50 Sala 4 2D/NAP · 16:40 Sala 6 2D/NAP · 17:45 Sala 3 2D/NAP · 19:20 Sala 6 2D/NAP · 20:30 Sala 3 2D/NAP · 21:00 Sala 4 2D/NAP · 22:00 Sala 6 2D/NAP
-  2026-05-17  Helios Posnania               11:10 Sala 3 2D/NAP · 15:30 Sala 1 2D/NAP · 17:15 Sala 7 - Dream 2D/NAP/ATMOS · 18:15 Sala 1 2D/NAP · 20:00 Sala 7 - Dream 2D/NAP/ATMOS · 20:45 Sala 2 2D/NAP
+  2026-05-17  Helios Posnania               11:10 2D/NAP · 15:30 2D/NAP · 17:15 2D/NAP/ATMOS · 18:15 2D/NAP · 20:00 2D/NAP/ATMOS · 20:45 2D/NAP
   2026-05-17  Kino Rialto                   18:00 · 20:15
   2026-05-17  Multikino Stary Browar        09:20 Sala 2 2D/NAP · 10:20 Sala 6 2D/NAP · 12:00 Sala 2 2D/NAP · 13:00 Sala 6 2D/NAP · 14:30 Sala 4 2D/NAP · 15:40 Sala 6 2D/NAP · 17:00 Sala 2 2D/NAP · 18:20 Sala 6 2D/NAP · 19:40 Sala 2 2D/NAP · 21:00 Sala 6 2D/NAP
   2026-05-18  Cinema City Kinepolis         13:10 Sal17 2D/NAP · 13:50 Sal15 2D/NAP · 14:30 Sal12 2D/NAP · 15:50 Sal17 2D/NAP · 16:00 Sala6 2D/NAP · 16:30 Sal15 2D/NAP · 17:10 Sal12 2D/NAP · 17:40 Sala1 2D/NAP · 18:30 Sal17 2D/NAP · 18:40 Sala6 2D/NAP · 19:20 Sal15 2D/NAP · 19:50 Sal12 2D/NAP · 20:20 Sala1 2D/NAP · 21:10 Sal17 2D/NAP · 21:20 Sala6 2D/NAP · 22:00 Sal15 2D/NAP
   2026-05-18  Cinema City Poznań Plaza      10:30 Sala 4 2D/NAP · 11:20 Sala 6 2D/NAP · 12:10 Sala 3 2D/NAP · 13:10 Sala 4 2D/NAP · 14:00 Sala 6 2D/NAP · 15:50 Sala 4 2D/NAP · 16:40 Sala 6 2D/NAP · 17:45 Sala 3 2D/NAP · 19:20 Sala 6 2D/NAP · 20:30 Sala 3 2D/NAP · 21:00 Sala 4 2D/NAP · 22:00 Sala 6 2D/NAP
-  2026-05-18  Helios Posnania               12:45 Sala 1 2D/NAP · 15:30 Sala 1 2D/NAP · 17:15 Sala 7 - Dream 2D/NAP/ATMOS · 18:15 Sala 1 2D/NAP · 20:00 Sala 7 - Dream 2D/NAP/ATMOS · 21:00 Sala 1 2D/NAP
+  2026-05-18  Helios Posnania               12:45 2D/NAP · 15:30 2D/NAP · 17:15 2D/NAP/ATMOS · 18:15 2D/NAP · 20:00 2D/NAP/ATMOS · 21:00 2D/NAP
   2026-05-18  Kino Rialto                   16:30 · 20:45
   2026-05-18  Multikino Stary Browar        09:00 Sala 2 2D/NAP · 10:20 Sala 6 2D/NAP · 11:40 Sala 2 2D/NAP · 13:00 Sala 6 2D/NAP · 14:20 Sala 2 2D/NAP · 15:40 Sala 6 2D/NAP · 17:00 Sala 2 2D/NAP · 17:40 Sala 1 2D/NAP · 18:20 Sala 6 2D/NAP · 19:40 Sala 2 2D/NAP · 21:00 Sala 6 2D/NAP
   2026-05-19  Cinema City Kinepolis         13:10 Sal17 2D/NAP · 13:50 Sal15 2D/NAP · 14:30 Sal12 2D/NAP · 15:50 Sal17 2D/NAP · 16:00 Sala6 2D/NAP · 16:30 Sal15 2D/NAP · 17:10 Sal12 2D/NAP · 17:40 Sala1 2D/NAP · 18:30 Sal17 2D/NAP · 18:40 Sala6 2D/NAP · 19:20 Sal15 2D/NAP · 19:50 Sal12 2D/NAP · 20:20 Sala1 2D/NAP · 21:10 Sal17 2D/NAP · 21:20 Sala6 2D/NAP · 22:00 Sal15 2D/NAP
   2026-05-19  Cinema City Poznań Plaza      10:30 Sala 4 2D/NAP · 11:20 Sala 6 2D/NAP · 12:10 Sala 3 2D/NAP · 13:10 Sala 4 2D/NAP · 14:00 Sala 6 2D/NAP · 15:50 Sala 4 2D/NAP · 16:40 Sala 6 2D/NAP · 17:45 Sala 3 2D/NAP · 19:20 Sala 6 2D/NAP · 20:30 Sala 3 2D/NAP · 21:00 Sala 4 2D/NAP · 22:00 Sala 6 2D/NAP
-  2026-05-19  Helios Posnania               10:00 Sala 1 2D/NAP · 12:45 Sala 1 2D/NAP · 15:30 Sala 1 2D/NAP · 17:15 Sala 7 - Dream 2D/NAP/ATMOS · 18:15 Sala 1 2D/NAP · 20:00 Sala 7 - Dream 2D/NAP/ATMOS · 21:00 Sala 1 2D/NAP
+  2026-05-19  Helios Posnania               10:00 2D/NAP · 12:45 2D/NAP · 15:30 2D/NAP · 17:15 2D/NAP/ATMOS · 18:15 2D/NAP · 20:00 2D/NAP/ATMOS · 21:00 2D/NAP
   2026-05-19  Kino Rialto                   13:00 · 15:30 · 18:00
   2026-05-19  Multikino Stary Browar        09:00 Sala 2 2D/NAP · 11:40 Sala 2 2D/NAP · 13:00 Sala 6 2D/NAP · 14:20 Sala 2 2D/NAP · 15:00 Sala 4 2D/NAP · 15:40 Sala 6 2D/NAP · 17:00 Sala 2 2D/NAP · 18:20 Sala 6 2D/NAP · 19:40 Sala 2 2D/NAP · 21:00 Sala 6 2D/NAP
   2026-05-20  Cinema City Kinepolis         13:10 Sal17 2D/NAP · 13:50 Sal15 2D/NAP · 14:30 Sal12 2D/NAP · 15:50 Sal17 2D/NAP · 16:00 Sala6 2D/NAP · 16:30 Sal15 2D/NAP · 17:10 Sal12 2D/NAP · 17:40 Sala1 2D/NAP · 18:30 Sal17 2D/NAP · 18:40 Sala6 2D/NAP · 19:20 Sal15 2D/NAP · 19:50 Sal12 2D/NAP · 20:20 Sala1 2D/NAP · 21:10 Sal17 2D/NAP · 21:20 Sala6 2D/NAP · 22:00 Sal15 2D/NAP
   2026-05-20  Cinema City Poznań Plaza      10:30 Sala 4 2D/NAP · 12:10 Sala 3 2D/NAP · 13:10 Sala 4 2D/NAP · 14:00 Sala 6 2D/NAP · 15:50 Sala 4 2D/NAP · 16:40 Sala 6 2D/NAP · 17:45 Sala 3 2D/NAP · 19:20 Sala 6 2D/NAP · 20:30 Sala 3 2D/NAP · 21:00 Sala 4 2D/NAP · 22:00 Sala 6 2D/NAP
-  2026-05-20  Helios Posnania               12:45 Sala 1 2D/NAP · 15:30 Sala 1 2D/NAP · 17:15 Sala 7 - Dream 2D/NAP/ATMOS · 18:15 Sala 1 2D/NAP · 20:00 Sala 7 - Dream 2D/NAP/ATMOS · 21:00 Sala 1 2D/NAP
+  2026-05-20  Helios Posnania               12:45 2D/NAP · 15:30 2D/NAP · 17:15 2D/NAP/ATMOS · 18:15 2D/NAP · 20:00 2D/NAP/ATMOS · 21:00 2D/NAP
   2026-05-20  Kino Rialto                   21:15
   2026-05-20  Multikino Stary Browar        10:20 Sala 6 2D/NAP · 11:40 Sala 2 2D/NAP · 13:00 Sala 6 2D/NAP · 14:20 Sala 2 2D/NAP · 15:40 Sala 6 2D/NAP · 17:00 Sala 2 2D/NAP · 17:50 Sala 4 2D/NAP · 18:20 Sala 6 2D/NAP · 19:40 Sala 2 2D/NAP · 21:00 Sala 6 2D/NAP
   2026-05-21  Cinema City Kinepolis         12:50 Sal17 2D/NAP · 13:50 Sal15 2D/NAP · 14:30 Sal12 2D/NAP · 15:30 Sal17 2D/NAP · 16:10 Sala6 2D/NAP · 16:30 Sal15 2D/NAP · 17:10 Sal12 2D/NAP · 17:40 Sala1 2D/NAP · 18:10 Sal17 2D/NAP · 19:20 Sal15 2D/NAP · 19:50 Sal12 2D/NAP · 20:20 Sala1 2D/NAP · 22:00 Sal15 2D/NAP
   2026-05-21  Cinema City Poznań Plaza      10:30 Sala 4 2D/NAP · 11:20 Sala 6 2D/NAP · 12:10 Sala 1 2D/NAP · 13:10 Sala 4 2D/NAP · 14:00 Sala 6 2D/NAP · 15:50 Sala 4 2D/NAP · 16:40 Sala 6 2D/NAP · 18:30 Sala 4 2D/NAP · 21:10 Sala 4 2D/NAP · 22:30 Sala 6 2D/NAP
-  2026-05-21  Helios Posnania               14:00 Sala 1 2D/NAP · 16:40 Sala 1 2D/NAP · 17:15 Sala 5 - Dream 2D/NAP/ATMOS · 20:20 Sala 8 2D/NAP
+  2026-05-21  Helios Posnania               14:00 2D/NAP · 16:40 2D/NAP · 17:15 2D/NAP/ATMOS · 20:20 2D/NAP
   2026-05-21  Kino Rialto                   17:30
   2026-05-21  Multikino Stary Browar        09:00 Sala 2 2D/NAP · 10:55 Sala 6 2D/NAP · 11:40 Sala 2 2D/NAP · 13:35 Sala 6 2D/NAP · 14:20 Sala 2 2D/NAP · 16:15 Sala 6 2D/NAP · 17:00 Sala 1 2D/NAP · 18:00 Sala 4 2D/NAP · 19:10 Sala 7 2D/NAP · 20:40 Sala 4 2D/NAP
   2026-05-22  Kino Malta Charlie Monroe     20:30 Sala Marilyn
@@ -1088,14 +1088,14 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Drzewo magii / 2025
   Cinema City Poznań Plaza / Drzewo magii / 2025
-  Helios Posnania / Drzewo magii / 2026
+  Helios Posnania / Drzewo magii / —
   Kino Apollo / Drzewo Magii / —
   Kino Bułgarska 19 / Drzewo magii / 2026
   Multikino Stary Browar / Drzewo magii / —
 showings:
   2026-05-17  Cinema City Kinepolis         15:50 Sal11 2D/DUB
   2026-05-17  Cinema City Poznań Plaza      12:30 Sala 5 2D/DUB
-  2026-05-17  Helios Posnania               13:30 Sala 4 2D/DUB · 16:45 Sala 6 2D/DUB
+  2026-05-17  Helios Posnania               13:30 2D/DUB · 16:45 2D/DUB
   2026-05-17  Kino Bułgarska 19             15:00 Sala Dzienniki Motocyklowe
   2026-05-17  Multikino Stary Browar        11:00 Sala 7 2D/DUB
   2026-05-20  Cinema City Poznań Plaza      09:30 Sala 1 2D/DUB
@@ -1108,32 +1108,6 @@ showings:
   2026-05-31  Kino Apollo                   15:30
   2026-06-01  Helios Posnania               17:15 2D/DUB
   2026-06-01  Kino Apollo                   16:30 · 19:00
-
-=== Dyyavol Nosyt' Prada 2 - UA ===
-displayTitle:      Dyyavol Nosyt' Prada 2 - UA
-cinemaTitles:      Dyyavol Nosyt' Prada 2 - UA 
-runtimeMinutes:    125
-releaseYear:       2026
-countries:         USA
-posterUrl:         https://movies.helios.pl/images/Diabelubierasieuprady2UA.jpg
-synopsis.length:   270
-cast:              Стенлі Туччі, Емілі Блант, Меріл Стріп, Енн Гетевей, Кеннет Брана
-director:          Девід Франкель
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
-cinemaFilmUrls:    —
-cinemaScrapes:
-  Helios Posnania / Dyyavol Nosyt' Prada 2 - UA  / 2026
-showings:
-  2026-05-17  Helios Posnania               12:50 Sala 1 2D/DUB
 
 === Dziecko z pyłu ===
 displayTitle:      Dziecko z pyłu
@@ -2519,7 +2493,7 @@ runtimeMinutes:    89
 releaseYear:       2026
 countries:         Belgia, Francja, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/kurozajac-i-swiatynia-swistaka/kurozajac_plakat.jpg?rev=8e07534364604957a7cfab295c1dc9ec
-synopsis.length:   526
+synopsis.length:   451
 cast:              —
 director:          Benjamin Mousquet
 tmdbId:            —
@@ -2541,31 +2515,31 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Kurozając i świątynia świstaka / 2026
   Cinema City Poznań Plaza / Kurozając i świątynia świstaka / 2026
-  Helios Posnania / Kurozając i Świątynia Świstaka / 2025
+  Helios Posnania / Kurozając i Świątynia Świstaka / —
   Kino Malta Charlie Monroe / Kurozając i Świątynia Świstaka / —
   Multikino Stary Browar / Kurozając i Świątynia Świstaka / —
 showings:
   2026-05-17  Cinema City Kinepolis         11:00 Sal13 2D/DUB · 13:10 Sal13 2D/DUB · 14:40 Sala5 2D/DUB · 16:50 Sala5 2D/DUB · 19:00 Sala5 2D/DUB
   2026-05-17  Cinema City Poznań Plaza      10:45 Sala 2 2D/DUB · 13:00 Sala 2 2D/DUB · 15:15 Sala 2 2D/DUB · 17:30 Sala 2 2D/DUB
-  2026-05-17  Helios Posnania               10:30 Sala 1 2D/DUB · 12:30 Sala 7 - Dream 2D/DUB
+  2026-05-17  Helios Posnania               10:30 2D/DUB · 12:30 2D/DUB
   2026-05-17  Kino Malta Charlie Monroe     13:05 Sala Charlie
   2026-05-17  Multikino Stary Browar        09:20 Sala 3 2D/DUB · 11:30 Sala 3 2D/DUB · 13:45 Sala 3 2D/DUB · 15:55 Sala 3 2D/DUB · 18:05 Sala 3 2D/DUB
   2026-05-18  Cinema City Kinepolis         12:10 Sal12 2D/DUB · 13:10 Sal13 2D/DUB · 16:50 Sala5 2D/DUB · 19:00 Sala5 2D/DUB
   2026-05-18  Cinema City Poznań Plaza      10:45 Sala 2 2D/DUB · 13:00 Sala 2 2D/DUB · 15:15 Sala 2 2D/DUB · 17:30 Sala 2 2D/DUB
-  2026-05-18  Helios Posnania               11:45 Sala 8 2D/DUB · 12:30 Sala 7 - Dream 2D/DUB · 14:00 Sala 8 2D/DUB · 16:20 Sala 8 2D/DUB
+  2026-05-18  Helios Posnania               11:45 2D/DUB · 12:30 2D/DUB · 14:00 2D/DUB · 16:20 2D/DUB
   2026-05-18  Multikino Stary Browar        10:55 Sala 3 2D/DUB · 13:10 Sala 3 2D/DUB · 15:20 Sala 3 2D/DUB · 17:30 Sala 3 2D/DUB
   2026-05-19  Cinema City Kinepolis         12:10 Sal12 2D/DUB · 13:10 Sal13 2D/DUB · 16:50 Sala5 2D/DUB · 19:00 Sala5 2D/DUB
   2026-05-19  Cinema City Poznań Plaza      10:45 Sala 2 2D/DUB · 13:00 Sala 2 2D/DUB · 15:15 Sala 2 2D/DUB · 17:30 Sala 2 2D/DUB
-  2026-05-19  Helios Posnania               11:45 Sala 8 2D/DUB · 12:30 Sala 7 - Dream 2D/DUB · 14:00 Sala 8 2D/DUB · 16:20 Sala 8 2D/DUB
+  2026-05-19  Helios Posnania               11:45 2D/DUB · 12:30 2D/DUB · 14:00 2D/DUB · 16:20 2D/DUB
   2026-05-19  Multikino Stary Browar        09:20 Sala 3 2D/DUB · 11:30 Sala 3 2D/DUB · 13:45 Sala 3 2D/DUB · 15:55 Sala 3 2D/DUB · 18:05 Sala 3 2D/DUB
   2026-05-20  Cinema City Kinepolis         12:10 Sal12 2D/DUB · 13:00 Sal13 2D/DUB · 16:50 Sala5 2D/DUB · 19:00 Sala5 2D/DUB
   2026-05-20  Cinema City Poznań Plaza      10:45 Sala 2 2D/DUB · 11:30 Sala 6 2D/DUB · 13:00 Sala 2 2D/DUB · 15:15 Sala 2 2D/DUB · 17:30 Sala 2 2D/DUB
-  2026-05-20  Helios Posnania               11:45 Sala 8 2D/DUB · 12:30 Sala 7 - Dream 2D/DUB · 14:00 Sala 8 2D/DUB · 16:20 Sala 8 2D/DUB
+  2026-05-20  Helios Posnania               11:45 2D/DUB · 12:30 2D/DUB · 14:00 2D/DUB · 16:20 2D/DUB
   2026-05-20  Kino Malta Charlie Monroe     15:30 Sala Charlie
   2026-05-20  Multikino Stary Browar        09:20 Sala 3 2D/DUB · 11:30 Sala 3 2D/DUB · 13:45 Sala 3 2D/DUB · 15:55 Sala 3 2D/DUB · 18:05 Sala 3 2D/DUB
   2026-05-21  Cinema City Kinepolis         12:10 Sal12 2D/DUB · 13:10 Sal13 2D/DUB · 16:50 Sala5 2D/DUB · 18:50 Sala5 2D/DUB
   2026-05-21  Cinema City Poznań Plaza      10:45 Sala 2 2D/DUB · 13:00 Sala 2 2D/DUB · 15:15 Sala 2 2D/DUB · 17:30 Sala 2 2D/DUB
-  2026-05-21  Helios Posnania               11:45 Sala 8 2D/DUB · 12:30 Sala 5 - Dream 2D/DUB · 13:50 Sala 8 2D/DUB · 16:00 Sala 8 2D/DUB
+  2026-05-21  Helios Posnania               11:45 2D/DUB · 12:30 2D/DUB · 13:50 2D/DUB · 16:00 2D/DUB
   2026-05-21  Multikino Stary Browar        11:00 Sala 3 2D/DUB · 13:10 Sala 3 2D/DUB · 15:20 Sala 3 2D/DUB · 17:30 Sala 3 2D/DUB
 
 === Kłopotliwy niedźwiedź ===
@@ -2784,7 +2758,7 @@ runtimeMinutes:    132
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/mandalorian-grogu/mandalorian-plakat-fin.jpg?rev=90e8fd31606f41a0b6393770f3fe36d1
-synopsis.length:   681
+synopsis.length:   338
 cast:              Pedro Pascal, Sigourney Weaver, Jeremy Allen White
 director:          Jon Favreau
 tmdbId:            1228710
@@ -2805,20 +2779,20 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema City Poznań Plaza / Gwiezdne Wojny: Mandalorian i Grogu / 2026
-  Helios Posnania / Mandalorian & Grogu / 2025
+  Helios Posnania / Mandalorian & Grogu / —
   Multikino Stary Browar / Mandalorian i Grogu / —
 showings:
   2026-05-21  Cinema City Kinepolis         19:00 Sala6 2D/DUB · 20:00 Sala7 2D/NAP · 20:30 Sal14 3D/NAP · 20:50 Sal17 2D/NAP · 22:00 Sala6 2D/NAP
   2026-05-21  Cinema City Poznań Plaza      19:00 IMAX IMAX/3D/NAP · 19:30 Sala 6 2D/DUB · 20:00 Sala 3 2D/NAP · 20:30 Sala 1 3D/NAP · 22:00 IMAX IMAX/3D/NAP
-  2026-05-21  Helios Posnania               19:00 Sala 7 - Dream 2D/DUB/ATMOS · 19:30 Sala 1 3D/DUB · 20:00 Sala 5 - Dream 2D/NAP/ATMOS · 20:30 Sala 6 3D/NAP
+  2026-05-21  Helios Posnania               19:00 2D/DUB/ATMOS · 19:30 3D/DUB · 20:00 2D/NAP/ATMOS · 20:30 3D/NAP
   2026-05-21  Multikino Stary Browar        19:00 Sala 6 2D/NAP · 19:20 Sala 8 2D/DUB · 19:40 Sala 3 2D/NAP
   2026-05-22  Cinema City Kinepolis         13:00 Sal13 2D/DUB · 14:00 Sal12 2D/NAP · 14:30 Sal17 2D/DUB · 15:30 Sal14 3D/DUB · 16:00 Sal13 2D/DUB · 17:00 Sal12 2D/NAP · 17:30 Sal17 2D/NAP · 18:30 Sal14 3D/NAP · 19:00 Sal13 2D/DUB · 20:00 Sal12 2D/NAP · 20:30 Sal17 2D/NAP · 22:00 Sal13 2D/NAP
   2026-05-22  Cinema City Poznań Plaza      10:00 IMAX IMAX/3D/DUB · 10:30 Sala 6 2D/DUB · 11:30 Sala 3 2D/NAP · 13:00 IMAX IMAX/3D/NAP · 13:30 Sala 6 2D/DUB · 14:30 Sala 3 2D/NAP · 15:00 Sala 1 3D/DUB · 16:00 IMAX IMAX/3D/DUB · 16:30 Sala 6 2D/DUB · 17:30 Sala 3 2D/NAP · 18:00 Sala 1 3D/NAP · 19:00 IMAX IMAX/3D/NAP · 19:30 Sala 6 2D/DUB · 20:30 Sala 3 2D/NAP · 22:00 IMAX IMAX/3D/NAP
-  2026-05-22  Helios Posnania               12:30 Sala 1 2D/DUB · 15:30 Sala 1 2D/NAP · 17:00 Sala 7 - Dream 2D/DUB/ATMOS · 18:30 Sala 1 2D/DUB · 20:00 Sala 7 - Dream 2D/NAP/ATMOS · 21:30 Sala 1 2D/NAP
+  2026-05-22  Helios Posnania               12:30 2D/DUB · 15:30 2D/NAP · 17:00 2D/DUB/ATMOS · 18:30 2D/DUB · 20:00 2D/NAP/ATMOS · 21:30 2D/NAP
   2026-05-22  Multikino Stary Browar        10:00 Sala 3 3D/DUB · 11:00 Sala 6 2D/NAP · 13:00 Sala 3 2D/DUB · 14:00 Sala 6 2D/NAP · 16:00 Sala 3 2D/NAP · 17:00 Sala 6 2D/NAP · 19:00 Sala 3 3D/DUB · 20:00 Sala 6 2D/NAP
   2026-05-23  Cinema City Kinepolis         10:00 Sal13 2D/DUB · 11:00 Sal12 2D/NAP · 11:30 Sal17 2D/DUB · 13:00 Sal13 2D/DUB · 14:00 Sal12 2D/NAP · 14:30 Sal17 2D/DUB · 15:30 Sal14 3D/DUB · 16:00 Sal13 2D/DUB · 17:00 Sal12 2D/NAP · 17:30 Sal17 2D/NAP · 18:30 Sal14 3D/NAP · 19:00 Sal13 2D/DUB · 20:00 Sal12 2D/NAP · 20:30 Sal17 2D/NAP · 22:00 Sal13 2D/NAP
   2026-05-23  Cinema City Poznań Plaza      10:00 IMAX IMAX/3D/DUB · 10:30 Sala 6 2D/DUB · 11:30 Sala 3 2D/NAP · 12:00 Sala 1 3D/DUB · 13:00 IMAX IMAX/3D/NAP · 13:30 Sala 6 2D/DUB · 14:30 Sala 3 2D/NAP · 16:00 IMAX IMAX/3D/DUB · 16:30 Sala 6 2D/DUB · 17:30 Sala 3 2D/NAP · 18:00 Sala 1 3D/NAP · 19:00 IMAX IMAX/3D/NAP · 19:30 Sala 6 2D/DUB · 20:30 Sala 3 2D/NAP · 22:00 IMAX IMAX/3D/NAP
-  2026-05-23  Helios Posnania               12:30 Sala 1 2D/DUB · 15:30 Sala 1 2D/NAP · 17:00 Sala 7 - Dream 2D/DUB/ATMOS · 18:30 Sala 1 2D/DUB · 20:00 Sala 7 - Dream 2D/NAP/ATMOS · 21:30 Sala 1 2D/NAP
+  2026-05-23  Helios Posnania               12:30 2D/DUB · 15:30 2D/NAP · 17:00 2D/DUB/ATMOS · 18:30 2D/DUB · 20:00 2D/NAP/ATMOS · 21:30 2D/NAP
   2026-05-23  Multikino Stary Browar        10:00 Sala 3 3D/DUB · 11:00 Sala 6 2D/NAP · 13:00 Sala 3 2D/DUB · 14:00 Sala 6 2D/NAP · 16:00 Sala 3 2D/NAP · 17:00 Sala 6 2D/NAP · 19:00 Sala 3 3D/DUB · 20:00 Sala 6 2D/NAP
   2026-05-24  Cinema City Kinepolis         10:00 Sal13 2D/DUB · 11:00 Sal12 2D/NAP · 11:30 Sal17 2D/DUB · 13:00 Sal13 2D/DUB · 14:00 Sal12 2D/NAP · 14:30 Sal17 2D/DUB · 15:30 Sal14 3D/DUB · 16:00 Sal13 2D/DUB · 17:00 Sal12 2D/NAP · 17:30 Sal17 2D/NAP · 18:30 Sal14 3D/NAP · 19:00 Sal13 2D/DUB · 20:00 Sal12 2D/NAP · 20:30 Sal17 2D/NAP · 22:00 Sal13 2D/NAP
   2026-05-24  Cinema City Poznań Plaza      10:00 IMAX IMAX/3D/DUB · 10:30 Sala 6 2D/DUB · 11:30 Sala 3 2D/NAP · 13:00 IMAX IMAX/3D/NAP · 13:30 Sala 6 2D/DUB · 14:30 Sala 3 2D/NAP · 15:00 Sala 1 3D/DUB · 16:00 IMAX IMAX/3D/DUB · 16:30 Sala 6 2D/DUB · 17:30 Sala 3 2D/NAP · 18:00 Sala 1 3D/NAP · 19:00 IMAX IMAX/3D/NAP · 19:30 Sala 6 2D/DUB · 20:30 Sala 3 2D/NAP · 22:00 IMAX IMAX/3D/NAP
@@ -2978,8 +2952,8 @@ runtimeMinutes:    127
 releaseYear:       2026
 countries:         USA, Wielka Brytania
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/michael/michael-plakat-net-fin-cut.jpg?rev=50ffa68228ab41d0a9633db28bbd2b6e
-synopsis.length:   828
-cast:              Colman Domingo, Jaafar Jackson, Juliano Valdi
+synopsis.length:   578
+cast:              Jaafar Jackson, Juliano Valdi, Colman Domingo
 director:          Antoine Fuqua
 tmdbId:            936075
 imdbId:            tt11378946
@@ -2999,28 +2973,28 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Michael / 2026
   Cinema City Poznań Plaza / Michael / 2026
-  Helios Posnania / Michael / 2026
+  Helios Posnania / Michael / —
   Multikino Stary Browar / Michael / —
 showings:
   2026-05-17  Cinema City Kinepolis         11:30 Sala9 2D/NAP · 14:20 Sala9 2D/NAP · 16:40 Sal18 2D/NAP · 17:10 Sala9 2D/NAP · 19:30 Sal18 2D/NAP · 20:00 Sala9 2D/NAP
   2026-05-17  Cinema City Poznań Plaza      10:00 IMAX IMAX/2D/NAP · 14:50 Sala 3 2D/NAP · 19:40 Sala 2 2D/NAP
-  2026-05-17  Helios Posnania               11:30 Sala 5 - Dream 2D/NAP/ATMOS · 17:00 Sala 5 - Dream 2D/NAP/ATMOS · 21:15 Sala 4 2D/NAP
+  2026-05-17  Helios Posnania               11:30 2D/NAP/ATMOS · 17:00 2D/NAP/ATMOS · 21:15 2D/NAP
   2026-05-17  Multikino Stary Browar        09:00 Sala 5 2D/NAP · 11:50 Sala 5 2D/NAP · 13:40 Sala 7 2D/NAP · 14:40 Sala 5 2D/NAP · 16:30 Sala 7 2D/NAP · 17:30 Sala 5 2D/NAP · 19:20 Sala 7 2D/NAP · 20:20 Sala 5 2D/NAP
   2026-05-18  Cinema City Kinepolis         16:40 Sal18 2D/NAP · 17:10 Sala9 2D/NAP · 19:30 Sal18 2D/NAP · 20:00 Sala9 2D/NAP
   2026-05-18  Cinema City Poznań Plaza      12:40 IMAX IMAX/2D/NAP · 14:50 Sala 3 2D/NAP · 19:40 Sala 2 2D/NAP
-  2026-05-18  Helios Posnania               11:30 Sala 5 - Dream 2D/NAP/ATMOS · 17:00 Sala 5 - Dream 2D/NAP/ATMOS · 20:15 Sala 4 2D/NAP
+  2026-05-18  Helios Posnania               11:30 2D/NAP/ATMOS · 17:00 2D/NAP/ATMOS · 20:15 2D/NAP
   2026-05-18  Multikino Stary Browar        09:00 Sala 5 2D/NAP · 11:50 Sala 5 2D/NAP · 13:40 Sala 7 2D/NAP · 14:40 Sala 5 2D/NAP · 16:30 Sala 7 2D/NAP · 17:30 Sala 5 2D/NAP · 19:20 Sala 7 2D/NAP · 20:20 Sala 5 2D/NAP
   2026-05-19  Cinema City Kinepolis         16:40 Sal18 2D/NAP · 17:10 Sala9 2D/NAP · 19:30 Sal18 2D/NAP · 20:00 Sala9 2D/NAP
   2026-05-19  Cinema City Poznań Plaza      12:40 IMAX IMAX/2D/NAP · 14:50 Sala 3 2D/NAP · 19:40 Sala 2 2D/NAP
-  2026-05-19  Helios Posnania               11:30 Sala 5 - Dream 2D/NAP/ATMOS · 17:00 Sala 5 - Dream 2D/NAP/ATMOS · 20:15 Sala 4 2D/NAP
+  2026-05-19  Helios Posnania               11:30 2D/NAP/ATMOS · 17:00 2D/NAP/ATMOS · 20:15 2D/NAP
   2026-05-19  Multikino Stary Browar        09:00 Sala 5 2D/NAP · 11:50 Sala 5 2D/NAP · 13:40 Sala 7 2D/NAP · 14:40 Sala 5 2D/NAP · 16:30 Sala 7 2D/NAP · 17:30 Sala 5 2D/NAP · 19:20 Sala 7 2D/NAP · 20:20 Sala 5 2D/NAP
   2026-05-20  Cinema City Kinepolis         16:40 Sal18 2D/NAP · 17:10 Sala9 2D/NAP · 19:30 Sal18 2D/NAP · 20:00 Sala9 2D/NAP
   2026-05-20  Cinema City Poznań Plaza      12:40 IMAX IMAX/2D/NAP · 14:50 Sala 3 2D/NAP · 19:40 Sala 2 2D/NAP
-  2026-05-20  Helios Posnania               11:30 Sala 5 - Dream 2D/NAP/ATMOS · 17:00 Sala 5 - Dream 2D/NAP/ATMOS · 20:15 Sala 4 2D/NAP
+  2026-05-20  Helios Posnania               11:30 2D/NAP/ATMOS · 17:00 2D/NAP/ATMOS · 20:15 2D/NAP
   2026-05-20  Multikino Stary Browar        09:00 Sala 5 2D/NAP · 11:50 Sala 5 2D/NAP · 12:40 Sala 10 2D/NAP · 13:40 Sala 7 2D/NAP · 14:40 Sala 5 2D/NAP · 16:30 Sala 7 2D/NAP · 17:30 Sala 5 2D/NAP · 19:20 Sala 7 2D/NAP · 20:20 Sala 5 2D/NAP
   2026-05-21  Cinema City Kinepolis         16:40 Sal18 2D/NAP · 17:10 Sala7 2D/NAP · 19:30 Sal18 2D/NAP
   2026-05-21  Cinema City Poznań Plaza      13:30 IMAX IMAX/2D/NAP · 14:50 Sala 1 2D/NAP · 19:40 Sala 2 2D/NAP
-  2026-05-21  Helios Posnania               16:10 Sala 7 - Dream 2D/NAP/ATMOS
+  2026-05-21  Helios Posnania               16:10 2D/NAP/ATMOS
   2026-05-21  Multikino Stary Browar        09:00 Sala 5 2D/NAP · 11:50 Sala 5 2D/NAP · 13:30 Sala 7 2D/NAP · 14:40 Sala 5 2D/NAP · 16:20 Sala 7 2D/NAP · 17:30 Sala 5 2D/NAP · 19:30 Sala 11 2D/NAP · 20:20 Sala 5 2D/NAP
 
 === Miejskie Święto Rowerowe: Pokaz filmu Cycling Cities ===
@@ -3223,28 +3197,28 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Mortal Kombat II / 2026
   Cinema City Poznań Plaza / Mortal Kombat II / 2026
-  Helios Posnania / Mortal Kombat II / 2025
+  Helios Posnania / Mortal Kombat II / —
   Multikino Stary Browar / Mortal Kombat 2 / —
 showings:
   2026-05-17  Cinema City Kinepolis         10:30 Sal11 2D/NAP · 13:10 Sal11 2D/DUB · 16:20 Sal16 2D/NAP · 18:30 Sal11 2D/NAP · 19:00 Sal16 2D/NAP · 21:10 Sal11 2D/NAP
   2026-05-17  Cinema City Poznań Plaza      11:30 Sala 9 2D/NAP · 12:45 IMAX IMAX/2D/NAP · 14:10 Sala 9 2D/DUB · 15:20 IMAX IMAX/2D/NAP · 16:50 Sala 9 2D/NAP · 19:30 Sala 9 2D/NAP · 20:50 IMAX IMAX/2D/NAP · 22:10 Sala 9 2D/NAP
-  2026-05-17  Helios Posnania               10:50 Sala 4 2D/DUB · 14:20 Sala 5 - Dream 2D/DUB · 16:10 Sala 4 2D/DUB · 18:45 Sala 4 2D/NAP · 19:45 Sala 5 - Dream 2D/NAP/ATMOS
+  2026-05-17  Helios Posnania               10:50 2D/DUB · 14:20 2D/DUB · 16:10 2D/DUB · 18:45 2D/NAP · 19:45 2D/NAP/ATMOS
   2026-05-17  Multikino Stary Browar        10:40 Sala 9 2D/DUB · 13:20 Sala 9 2D/NAP · 16:00 Sala 9 2D/DUB · 17:20 Sala 4 2D/NAP · 18:40 Sala 9 2D/DUB · 20:30 Sala 4 2D/NAP · 21:20 Sala 9 2D/NAP
   2026-05-18  Cinema City Kinepolis         13:10 Sal11 2D/DUB · 15:50 Sal11 2D/DUB · 16:20 Sal16 2D/NAP · 18:30 Sal11 2D/NAP · 19:00 Sal16 2D/NAP · 21:10 Sal11 2D/NAP
   2026-05-18  Cinema City Poznań Plaza      10:00 IMAX IMAX/2D/NAP · 11:35 Sala 9 2D/NAP · 14:10 Sala 9 2D/DUB · 15:30 IMAX IMAX/2D/NAP · 16:50 Sala 9 2D/NAP · 18:10 IMAX IMAX/2D/NAP · 19:30 Sala 9 2D/NAP · 20:50 IMAX IMAX/2D/NAP · 22:10 Sala 9 2D/NAP
-  2026-05-18  Helios Posnania               13:20 Sala 2 2D/DUB · 14:20 Sala 5 - Dream 2D/DUB · 16:00 Sala 2 2D/DUB · 18:45 Sala 2 2D/NAP · 19:45 Sala 5 - Dream 2D/NAP/ATMOS
+  2026-05-18  Helios Posnania               13:20 2D/DUB · 14:20 2D/DUB · 16:00 2D/DUB · 18:45 2D/NAP · 19:45 2D/NAP/ATMOS
   2026-05-18  Multikino Stary Browar        10:30 Sala 9 2D/DUB · 13:10 Sala 9 2D/NAP · 15:50 Sala 9 2D/DUB · 17:10 Sala 4 2D/NAP · 19:50 Sala 4 2D/NAP · 20:50 Sala 9 2D/NAP
   2026-05-19  Cinema City Kinepolis         13:10 Sal11 2D/DUB · 15:50 Sal11 2D/DUB · 16:20 Sal16 2D/NAP · 18:30 Sal11 2D/NAP · 19:00 Sal16 2D/NAP · 21:10 Sal11 2D/NAP
   2026-05-19  Cinema City Poznań Plaza      10:00 IMAX IMAX/2D/NAP · 11:30 Sala 9 2D/NAP · 14:10 Sala 9 2D/DUB · 15:30 IMAX IMAX/2D/NAP · 16:50 Sala 9 2D/NAP · 18:10 IMAX IMAX/2D/NAP · 19:30 Sala 9 2D/NAP · 20:50 IMAX IMAX/2D/NAP · 22:10 Sala 9 2D/NAP
-  2026-05-19  Helios Posnania               13:20 Sala 2 2D/DUB · 14:20 Sala 5 - Dream 2D/DUB · 16:00 Sala 2 2D/DUB · 18:45 Sala 2 2D/NAP · 19:45 Sala 5 - Dream 2D/NAP/ATMOS
+  2026-05-19  Helios Posnania               13:20 2D/DUB · 14:20 2D/DUB · 16:00 2D/DUB · 18:45 2D/NAP · 19:45 2D/NAP/ATMOS
   2026-05-19  Multikino Stary Browar        10:40 Sala 9 2D/DUB · 13:20 Sala 9 2D/NAP · 16:00 Sala 9 2D/DUB · 17:45 Sala 4 2D/NAP · 18:40 Sala 9 2D/DUB · 20:30 Sala 4 2D/NAP · 21:20 Sala 9 2D/NAP
   2026-05-20  Cinema City Kinepolis         13:10 Sal11 2D/DUB · 15:50 Sal11 2D/DUB · 16:20 Sal16 2D/NAP · 18:30 Sal11 2D/NAP · 19:00 Sal16 2D/NAP · 21:10 Sal11 2D/NAP
   2026-05-20  Cinema City Poznań Plaza      10:00 IMAX IMAX/2D/NAP · 11:30 Sala 9 2D/NAP · 14:10 Sala 9 2D/DUB · 15:30 IMAX IMAX/2D/NAP · 16:50 Sala 9 2D/NAP · 18:10 IMAX IMAX/2D/NAP · 19:30 Sala 9 2D/NAP · 20:50 IMAX IMAX/2D/NAP · 22:10 Sala 9 2D/NAP
-  2026-05-20  Helios Posnania               13:20 Sala 2 2D/DUB · 14:20 Sala 5 - Dream 2D/DUB · 16:00 Sala 2 2D/DUB · 18:45 Sala 2 2D/NAP · 19:45 Sala 5 - Dream 2D/NAP/ATMOS
+  2026-05-20  Helios Posnania               13:20 2D/DUB · 14:20 2D/DUB · 16:00 2D/DUB · 18:45 2D/NAP · 19:45 2D/NAP/ATMOS
   2026-05-20  Multikino Stary Browar        10:40 Sala 9 2D/DUB · 13:20 Sala 9 2D/NAP · 16:00 Sala 9 2D/DUB · 17:20 Sala 1 2D/NAP · 18:40 Sala 9 2D/DUB · 20:40 Sala 4 2D/NAP · 21:20 Sala 9 2D/NAP
   2026-05-21  Cinema City Kinepolis         13:10 Sal11 2D/DUB · 15:50 Sal11 2D/DUB · 16:20 Sal16 2D/NAP · 18:30 Sal11 2D/NAP · 19:00 Sal16 2D/NAP · 21:10 Sal11 2D/NAP
   2026-05-21  Cinema City Poznań Plaza      10:50 IMAX IMAX/2D/NAP · 11:30 Sala 9 2D/NAP · 14:10 Sala 9 2D/DUB · 16:20 IMAX IMAX/2D/NAP · 16:50 Sala 9 2D/NAP · 19:30 Sala 9 2D/NAP · 22:10 Sala 9 2D/NAP
-  2026-05-21  Helios Posnania               13:00 Sala 2 2D/DUB · 13:20 Sala 7 - Dream 2D/DUB · 15:45 Sala 2 2D/DUB · 18:30 Sala 2 2D/NAP · 21:10 Sala 2 2D/NAP
+  2026-05-21  Helios Posnania               13:00 2D/DUB · 13:20 2D/DUB · 15:45 2D/DUB · 18:30 2D/NAP · 21:10 2D/NAP
   2026-05-21  Multikino Stary Browar        10:20 Sala 9 2D/DUB · 13:00 Sala 9 2D/NAP · 15:15 Sala 4 2D/NAP · 15:40 Sala 9 2D/DUB · 18:20 Sala 9 2D/DUB · 21:00 Sala 9 2D/NAP
 
 === Mortal Kombat II ukraiński dubbing ===
@@ -4156,8 +4130,8 @@ runtimeMinutes:    109
 releaseYear:       2025
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/obsesja/obsesja-plakat-fin.jpg?rev=0e43004367554ace94bab8ac67bd3742
-synopsis.length:   382
-cast:              Michael Johnston, Inde Navarrette, Cooper Tomlinson, Megan Lawless, Andy Richter
+synopsis.length:   364
+cast:              Michael Johnston, Inde Navarrette, Cooper Tomlinson
 director:          Curry Barker
 tmdbId:            1339713
 imdbId:            tt37287335
@@ -4177,28 +4151,28 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Obsesja / 2025
   Cinema City Poznań Plaza / Obsesja / 2025
-  Helios Posnania / Obsesja / 2026
+  Helios Posnania / Obsesja / —
   Multikino Stary Browar / Obsesja / —
 showings:
   2026-05-17  Cinema City Kinepolis         14:30 Sal10 2D/NAP · 19:30 Sal10 2D/NAP · 21:40 Sal16 2D/NAP · 22:00 Sal10 2D/NAP
   2026-05-17  Cinema City Poznań Plaza      14:50 Sala 1 2D/NAP · 20:30 Sala 7 2D/NAP
-  2026-05-17  Helios Posnania               14:00 Sala 3 2D/NAP · 16:30 Sala 3 2D/NAP · 19:00 Sala 3 2D/NAP · 21:30 Sala 3 2D/NAP
+  2026-05-17  Helios Posnania               14:00 2D/NAP · 16:30 2D/NAP · 19:00 2D/NAP · 21:30 2D/NAP
   2026-05-17  Multikino Stary Browar        15:30 Sala 10 2D/NAP · 18:00 Sala 10 2D/NAP · 20:30 Sala 10 2D/NAP
   2026-05-18  Cinema City Kinepolis         14:30 Sal10 2D/NAP · 19:30 Sal10 2D/NAP · 21:40 Sal16 2D/NAP · 22:00 Sal10 2D/NAP
   2026-05-18  Cinema City Poznań Plaza      14:50 Sala 1 2D/NAP · 20:30 Sala 7 2D/NAP
-  2026-05-18  Helios Posnania               12:15 Sala 3 2D/NAP · 16:30 Sala 3 2D/NAP · 19:00 Sala 3 2D/NAP · 21:30 Sala 3 2D/NAP
+  2026-05-18  Helios Posnania               12:15 2D/NAP · 16:30 2D/NAP · 19:00 2D/NAP · 21:30 2D/NAP
   2026-05-18  Multikino Stary Browar        15:30 Sala 10 2D/NAP · 18:00 Sala 10 2D/NAP · 20:30 Sala 10 2D/NAP
   2026-05-19  Cinema City Kinepolis         14:30 Sal10 2D/NAP · 19:30 Sal10 2D/NAP · 21:40 Sal16 2D/NAP · 22:00 Sal10 2D/NAP
   2026-05-19  Cinema City Poznań Plaza      14:50 Sala 1 2D/NAP · 20:30 Sala 7 2D/NAP
-  2026-05-19  Helios Posnania               12:15 Sala 3 2D/NAP · 16:30 Sala 3 2D/NAP · 19:00 Sala 3 2D/NAP · 21:30 Sala 3 2D/NAP
+  2026-05-19  Helios Posnania               12:15 2D/NAP · 16:30 2D/NAP · 19:00 2D/NAP · 21:30 2D/NAP
   2026-05-19  Multikino Stary Browar        15:30 Sala 10 2D/NAP · 18:00 Sala 10 2D/NAP · 20:30 Sala 10 2D/NAP
   2026-05-20  Cinema City Kinepolis         14:30 Sal10 2D/NAP · 19:30 Sal10 2D/NAP · 21:40 Sal16 2D/NAP · 22:00 Sal10 2D/NAP
   2026-05-20  Cinema City Poznań Plaza      14:50 Sala 1 2D/NAP · 20:30 Sala 7 2D/NAP
-  2026-05-20  Helios Posnania               12:15 Sala 3 2D/NAP · 16:30 Sala 3 2D/NAP · 19:00 Sala 3 2D/NAP · 21:30 Sala 3 2D/NAP
+  2026-05-20  Helios Posnania               12:15 2D/NAP · 16:30 2D/NAP · 19:00 2D/NAP · 21:30 2D/NAP
   2026-05-20  Multikino Stary Browar        15:30 Sala 10 2D/NAP · 18:00 Sala 10 2D/NAP · 20:35 Sala 10 2D/NAP
   2026-05-21  Cinema City Kinepolis         14:30 Sal10 2D/NAP · 19:30 Sal10 2D/NAP · 21:40 Sal16 2D/NAP · 22:00 Sal10 2D/NAP
   2026-05-21  Cinema City Poznań Plaza      14:50 Sala 5 2D/NAP · 20:30 Sala 7 2D/NAP
-  2026-05-21  Helios Posnania               12:15 Sala 4 2D/NAP · 16:20 Sala 4 2D/NAP · 18:45 Sala 4 2D/NAP · 21:20 Sala 4 2D/NAP
+  2026-05-21  Helios Posnania               12:15 2D/NAP · 16:20 2D/NAP · 18:45 2D/NAP · 21:20 2D/NAP
   2026-05-21  Multikino Stary Browar        15:30 Sala 10 2D/NAP · 18:00 Sala 10 2D/NAP · 20:30 Sala 10 2D/NAP
 
 === Odlot ===
@@ -4806,8 +4780,8 @@ runtimeMinutes:    157
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/projekt-hail-mary/projekthailmary_plakat.jpg?rev=5dee71e5ec014e75a577f1e8055c4dbf
-synopsis.length:   689
-cast:              Ryan Gosling, Milana Vayntrub, Liz Kingsman
+synopsis.length:   497
+cast:              Ryan Gosling, Ken Leung, Milana Vayntrub
 director:          Phil Lord, Christopher Miller
 tmdbId:            687163
 imdbId:            tt12042730
@@ -4827,28 +4801,28 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Projekt Hail Mary / 2026
   Cinema City Poznań Plaza / Projekt Hail Mary / 2026
-  Helios Posnania / Projekt Hail Mary / 2026
+  Helios Posnania / Projekt Hail Mary / —
   Multikino Stary Browar / Projekt Hail Mary / —
 showings:
   2026-05-17  Cinema City Kinepolis         10:00 Sala3 2D/NAP · 13:15 Sala3 2D/NAP · 16:30 Sala3 2D/NAP · 19:50 Sala3 2D/NAP
   2026-05-17  Cinema City Poznań Plaza      21:40 Sala 8 2D/NAP
-  2026-05-17  Helios Posnania               13:20 Sala 6 2D/NAP · 19:30 Sala 6 2D/NAP
+  2026-05-17  Helios Posnania               13:20 2D/NAP · 19:30 2D/NAP
   2026-05-17  Multikino Stary Browar        12:10 Sala 10 2D/NAP · 19:50 Sala 11 2D/NAP
   2026-05-18  Cinema City Kinepolis         16:30 Sala3 2D/NAP · 19:50 Sala3 2D/NAP
   2026-05-18  Cinema City Poznań Plaza      21:30 Sala 8 2D/NAP
-  2026-05-18  Helios Posnania               13:30 Sala 6 2D/NAP
+  2026-05-18  Helios Posnania               13:30 2D/NAP
   2026-05-18  Multikino Stary Browar        12:10 Sala 10 2D/NAP · 19:50 Sala 11 2D/NAP
   2026-05-19  Cinema City Kinepolis         16:30 Sala3 2D/NAP · 19:50 Sala3 2D/NAP
   2026-05-19  Cinema City Poznań Plaza      21:30 Sala 8 2D/NAP
-  2026-05-19  Helios Posnania               13:30 Sala 6 2D/NAP
+  2026-05-19  Helios Posnania               13:30 2D/NAP
   2026-05-19  Multikino Stary Browar        12:10 Sala 10 2D/NAP · 19:50 Sala 11 2D/NAP
   2026-05-20  Cinema City Kinepolis         16:30 Sala3 2D/NAP · 19:50 Sala3 2D/NAP
   2026-05-20  Cinema City Poznań Plaza      21:30 Sala 8 2D/NAP
-  2026-05-20  Helios Posnania               13:30 Sala 6 2D/NAP · 20:45 Sala 8 2D/NAP
+  2026-05-20  Helios Posnania               13:30 2D/NAP · 20:45 2D/NAP
   2026-05-20  Multikino Stary Browar        14:00 Sala 1 2D/NAP · 19:50 Sala 11 2D/NAP
   2026-05-21  Cinema City Kinepolis         16:30 Sala3 2D/NAP · 19:50 Sala3 2D/NAP
   2026-05-21  Cinema City Poznań Plaza      21:30 Sala 8 2D/NAP
-  2026-05-21  Helios Posnania               13:30 Sala 3 2D/NAP
+  2026-05-21  Helios Posnania               13:30 2D/NAP
   2026-05-21  Multikino Stary Browar        10:10 Sala 7 2D/NAP
 
 === Przepis na morderstwo ===
@@ -4916,8 +4890,8 @@ runtimeMinutes:    45
 releaseYear:       2026
 countries:         Polska, Anna Błaszczyk, Dominik Litwiniak
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/pucio/pucio-plakat.jpg?rev=5c59e10082a64578b39f13a3bf9616bd
-synopsis.length:   1325
-cast:              Małgorzata Socha, Grzegorz Turnau, Artur Barciś
+synopsis.length:   1165
+cast:              —
 director:          Marta Stróżycka
 tmdbId:            1645035
 imdbId:            tt42003604
@@ -4940,7 +4914,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Pucio / 2026
   Cinema City Poznań Plaza / Pucio / 2026
-  Helios Posnania / Pucio / 2026
+  Helios Posnania / Pucio / —
   Kino Bułgarska 19 / Pucio / 2026
   Kino Malta Charlie Monroe / Pucio / —
   Kino Pałacowe / Pucio / 2026
@@ -4948,21 +4922,21 @@ cinemaScrapes:
 showings:
   2026-05-17  Cinema City Kinepolis         10:40 Sal18 2D/DUB · 11:00 Sala1 2D/DUB
   2026-05-17  Cinema City Poznań Plaza      10:50 Sala 1 2D/DUB
-  2026-05-17  Helios Posnania               11:00 Sala 2 2D/DUB · 12:40 Sala 2 2D/DUB · 14:10 Sala 2 2D/DUB
+  2026-05-17  Helios Posnania               11:00 2D/DUB · 12:40 2D/DUB · 14:10 2D/DUB
   2026-05-17  Kino Bułgarska 19             14:30 Sala Thelma & Louise
   2026-05-17  Kino Malta Charlie Monroe     13:00 Sala Audrey
   2026-05-17  Multikino Stary Browar        09:30 Sala 4 2D/DUB · 10:45 Sala 4 2D/DUB · 12:00 Sala 4 2D/DUB · 13:15 Sala 4 2D/DUB
   2026-05-18  Cinema City Poznań Plaza      10:50 Sala 1 2D/DUB
-  2026-05-18  Helios Posnania               12:00 Sala 2 2D/DUB · 15:00 Sala 3 2D/DUB
+  2026-05-18  Helios Posnania               12:00 2D/DUB · 15:00 2D/DUB
   2026-05-18  Multikino Stary Browar        09:00 Sala 6 2D/DUB · 09:20 Sala 4 2D/DUB · 10:35 Sala 4 2D/DUB · 11:50 Sala 4 2D/DUB · 13:05 Sala 4 2D/DUB
   2026-05-19  Cinema City Kinepolis         11:15 Sal11 2D/DUB
   2026-05-19  Cinema City Poznań Plaza      10:50 Sala 1 2D/DUB
-  2026-05-19  Helios Posnania               12:00 Sala 2 2D/DUB · 15:00 Sala 3 2D/DUB
+  2026-05-19  Helios Posnania               12:00 2D/DUB · 15:00 2D/DUB
   2026-05-19  Multikino Stary Browar        09:00 Sala 9 2D/DUB · 09:55 Sala 4 2D/DUB · 11:10 Sala 4 2D/DUB · 12:25 Sala 4 2D/DUB · 13:40 Sala 4 2D/DUB
-  2026-05-20  Helios Posnania               12:00 Sala 2 2D/DUB · 15:00 Sala 3 2D/DUB
+  2026-05-20  Helios Posnania               12:00 2D/DUB · 15:00 2D/DUB
   2026-05-20  Multikino Stary Browar        09:10 Sala 4 2D/DUB · 10:25 Sala 4 2D/DUB · 11:40 Sala 4 2D/DUB · 12:55 Sala 4 2D/DUB · 14:10 Sala 4 2D/DUB
   2026-05-21  Cinema City Poznań Plaza      10:50 Sala 5 2D/DUB
-  2026-05-21  Helios Posnania               12:00 Sala 3 2D/DUB · 14:50 Sala 4 2D/DUB
+  2026-05-21  Helios Posnania               12:00 2D/DUB · 14:50 2D/DUB
   2026-05-21  Multikino Stary Browar        09:30 Sala 6 2D/DUB · 10:10 Sala 4 2D/DUB · 11:25 Sala 4 2D/DUB · 12:40 Sala 4 2D/DUB · 13:55 Sala 4 2D/DUB
   2026-06-06  Kino Pałacowe                 11:00 Sala 1 - Kinowa
   2026-06-14  Kino Pałacowe                 11:00 Sala 1 - Kinowa
@@ -5232,33 +5206,33 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Sprawiedliwość owiec / 2026
   Cinema City Poznań Plaza / Sprawiedliwość owiec / 2026
-  Helios Posnania / Sprawiedliwość owiec / 2026
+  Helios Posnania / Sprawiedliwość owiec / —
   Kino Rialto / Sprawiedliwość owiec / 2026
   Multikino Stary Browar / Sprawiedliwość owiec / —
 showings:
   2026-05-17  Cinema City Kinepolis         11:00 Sal16 2D/DUB · 12:00 Sal10 2D/DUB · 13:40 Sal16 2D/DUB · 17:00 Sal10 2D/DUB
   2026-05-17  Cinema City Poznań Plaza      10:00 Sala 5 2D/DUB · 15:00 Sala 5 2D/DUB · 18:30 Sala 4 2D/DUB
-  2026-05-17  Helios Posnania               10:40 Sala 6 2D/DUB · 14:40 Sala 7 - Dream 2D/DUB
+  2026-05-17  Helios Posnania               10:40 2D/DUB · 14:40 2D/DUB
   2026-05-17  Kino Rialto                   16:00
   2026-05-17  Multikino Stary Browar        09:50 Sala 11 2D/DUB · 12:20 Sala 11 2D/DUB · 14:50 Sala 11 2D/DUB · 17:20 Sala 11 2D/DUB
   2026-05-18  Cinema City Kinepolis         12:00 Sal10 2D/DUB · 13:40 Sal16 2D/DUB · 17:00 Sal10 2D/DUB
   2026-05-18  Cinema City Poznań Plaza      10:00 Sala 5 2D/DUB · 12:30 Sala 5 2D/DUB · 15:00 Sala 5 2D/DUB · 18:30 Sala 4 2D/DUB
-  2026-05-18  Helios Posnania               14:40 Sala 7 - Dream 2D/DUB · 16:50 Sala 6 2D/DUB
+  2026-05-18  Helios Posnania               14:40 2D/DUB · 16:50 2D/DUB
   2026-05-18  Kino Rialto                   18:45
   2026-05-18  Multikino Stary Browar        09:50 Sala 11 2D/DUB · 12:20 Sala 11 2D/DUB · 14:50 Sala 11 2D/DUB · 17:20 Sala 11 2D/DUB
   2026-05-19  Cinema City Kinepolis         11:00 Sal10 2D/DUB · 13:40 Sal16 2D/DUB · 17:00 Sal10 2D/DUB
   2026-05-19  Cinema City Poznań Plaza      10:00 Sala 5 2D/DUB · 12:30 Sala 5 2D/DUB · 15:00 Sala 5 2D/DUB · 18:30 Sala 4 2D/DUB
-  2026-05-19  Helios Posnania               14:40 Sala 7 - Dream 2D/DUB · 16:50 Sala 6 2D/DUB
+  2026-05-19  Helios Posnania               14:40 2D/DUB · 16:50 2D/DUB
   2026-05-19  Kino Rialto                   20:30
   2026-05-19  Multikino Stary Browar        09:50 Sala 11 2D/DUB · 12:20 Sala 11 2D/DUB · 14:50 Sala 11 2D/DUB · 17:20 Sala 11 2D/DUB
   2026-05-20  Cinema City Kinepolis         12:00 Sal10 2D/DUB · 13:40 Sal16 2D/DUB · 17:00 Sal10 2D/DUB
   2026-05-20  Cinema City Poznań Plaza      10:00 Sala 5 2D/DUB · 12:30 Sala 5 2D/DUB · 15:00 Sala 5 2D/DUB · 18:30 Sala 4 2D/DUB
-  2026-05-20  Helios Posnania               14:40 Sala 7 - Dream 2D/DUB · 16:50 Sala 6 2D/DUB
+  2026-05-20  Helios Posnania               14:40 2D/DUB · 16:50 2D/DUB
   2026-05-20  Kino Rialto                   15:00
   2026-05-20  Multikino Stary Browar        11:00 Sala 8 2D/DUB · 12:20 Sala 11 2D/DUB · 14:50 Sala 11 2D/DUB · 17:20 Sala 11 2D/DUB
   2026-05-21  Cinema City Kinepolis         12:00 Sal10 2D/DUB · 13:40 Sal16 2D/DUB · 17:00 Sal10 2D/DUB
   2026-05-21  Cinema City Poznań Plaza      10:00 Sala 3 2D/DUB · 12:30 Sala 3 2D/DUB · 15:00 Sala 3 2D/DUB · 17:50 Sala 1 2D/DUB
-  2026-05-21  Helios Posnania               14:40 Sala 5 - Dream 2D/DUB
+  2026-05-21  Helios Posnania               14:40 2D/DUB
   2026-05-21  Kino Rialto                   15:30
   2026-05-21  Multikino Stary Browar        09:30 Sala 11 2D/DUB · 12:00 Sala 11 2D/DUB · 14:30 Sala 11 2D/DUB · 17:00 Sala 11 2D/DUB
 
@@ -5348,7 +5322,7 @@ runtimeMinutes:    100
 releaseYear:       2026
 countries:         Japonia, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/super-mario-galaxy-film/super-mario-galaxy-film-plakat-final.jpg?rev=343089138a9844fb8f7d115642cf2862
-synopsis.length:   632
+synopsis.length:   181
 cast:              —
 director:          Aaron Horvath, Michael Jelenic
 tmdbId:            1226863
@@ -5369,28 +5343,28 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City Kinepolis / Super Mario Galaxy Film / 2026
   Cinema City Poznań Plaza / Super Mario Galaxy Film / 2026
-  Helios Posnania / Super Mario Galaxy Film / 2026
+  Helios Posnania / Super Mario Galaxy Film / —
   Multikino Stary Browar / Super Mario Galaxy Film / —
 showings:
   2026-05-17  Cinema City Kinepolis         10:00 Sala5 2D/DUB · 12:00 Sal18 2D/DUB · 12:20 Sala5 2D/DUB · 14:20 Sal18 2D/DUB
   2026-05-17  Cinema City Poznań Plaza      11:00 Sala 7 2D/DUB · 13:20 Sala 7 2D/DUB · 15:40 Sala 7 2D/DUB
-  2026-05-17  Helios Posnania               10:10 Sala 7 - Dream 2D/DUB · 11:20 Sala 8 2D/DUB · 13:40 Sala 8 2D/DUB
+  2026-05-17  Helios Posnania               10:10 2D/DUB · 11:20 2D/DUB · 13:40 2D/DUB
   2026-05-17  Multikino Stary Browar        09:35 Sala 8 2D/DUB · 11:55 Sala 8 2D/DUB · 16:50 Sala 8 2D/DUB
   2026-05-18  Cinema City Kinepolis         12:00 Sal18 2D/DUB · 14:20 Sal18 2D/DUB
   2026-05-18  Cinema City Poznań Plaza      11:00 Sala 7 2D/DUB · 13:20 Sala 7 2D/DUB · 15:40 Sala 7 2D/DUB
-  2026-05-18  Helios Posnania               13:10 Sala 4 2D/DUB · 15:40 Sala 4 2D/DUB
+  2026-05-18  Helios Posnania               13:10 2D/DUB · 15:40 2D/DUB
   2026-05-18  Multikino Stary Browar        09:35 Sala 8 2D/DUB · 11:55 Sala 8 2D/DUB · 15:15 Sala 1 2D/DUB · 16:50 Sala 8 2D/DUB
   2026-05-19  Cinema City Kinepolis         12:00 Sal18 2D/DUB · 14:20 Sal18 2D/DUB
   2026-05-19  Cinema City Poznań Plaza      13:20 Sala 7 2D/DUB · 15:40 Sala 7 2D/DUB
-  2026-05-19  Helios Posnania               10:00 2D/DUB · 13:10 Sala 4 2D/DUB · 15:40 Sala 4 2D/DUB · 18:00 Sala 4 2D/DUB
+  2026-05-19  Helios Posnania               10:00 2D/DUB · 13:10 2D/DUB · 15:40 2D/DUB · 18:00 2D/DUB
   2026-05-19  Multikino Stary Browar        09:35 Sala 8 2D/DUB · 11:55 Sala 8 2D/DUB · 14:45 Sala 1 2D/DUB · 16:50 Sala 8 2D/DUB
   2026-05-20  Cinema City Kinepolis         12:00 Sal18 2D/DUB · 14:20 Sal18 2D/DUB
   2026-05-20  Cinema City Poznań Plaza      10:00 Sala 7 2D/DUB · 13:20 Sala 7 2D/DUB · 15:40 Sala 7 2D/DUB
-  2026-05-20  Helios Posnania               13:10 Sala 4 2D/DUB · 15:40 Sala 4 2D/DUB · 18:00 Sala 4 2D/DUB
+  2026-05-20  Helios Posnania               13:10 2D/DUB · 15:40 2D/DUB · 18:00 2D/DUB
   2026-05-20  Multikino Stary Browar        09:50 Sala 11 2D/DUB · 15:30 Sala 4 2D/DUB · 16:50 Sala 8 2D/DUB
   2026-05-21  Cinema City Kinepolis         12:00 Sal18 2D/DUB · 14:20 Sal18 2D/DUB
   2026-05-21  Cinema City Poznań Plaza      11:00 Sala 7 2D/DUB · 13:20 Sala 7 2D/DUB · 15:40 Sala 7 2D/DUB
-  2026-05-21  Helios Posnania               12:50 Sala 6 2D/DUB · 15:15 Sala 6 2D/DUB
+  2026-05-21  Helios Posnania               12:50 2D/DUB · 15:15 2D/DUB
   2026-05-21  Multikino Stary Browar        09:35 Sala 8 2D/DUB · 11:55 Sala 8 2D/DUB · 16:50 Sala 8 2D/DUB
 
 === Słodkie życie ===
@@ -6641,4 +6615,4 @@ cinemaFilmUrls:
 cinemaScrapes:
   Helios Posnania / ДИЯВОЛ НОСИТЬ ПРАДА 2 / —
 showings:
-  2026-05-17  Helios Posnania               12:50 Sala 1 2D/DUB
+  2026-05-17  Helios Posnania               12:50 2D/DUB

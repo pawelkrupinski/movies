@@ -729,32 +729,28 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     )
   }
 
-  // ── Synopsis from the detail page ─────────────────────────────────────────
+  // ── Synopsis ──────────────────────────────────────────────────────────────
   //
-  // Muza's repertoire listing carries title, director, runtime, year, country,
-  // poster — but no synopsis. The synopsis sits on the per-film detail page
-  // (`https://www.kinomuza.pl/movie/<slug>/`) inside `div.col-lg-7.paragraph`.
-  // Detail-page fixtures are recorded for the two films asserted below;
-  // every other film hits an unmocked URL via `FakeHttpFetch` and the
-  // synopsis stays None (best-effort — the listing data is still useful).
+  // The 5-minute scrape no longer fetches per-film detail pages — Muza's
+  // burst limiter doesn't tolerate 80+ detail-page requests every tick.
+  // A separate background `KinoMuzaSynopsisRefresher` (see its spec) walks
+  // unresolved rows once, slowly, and writes back. `fetch()` returns
+  // CinemaMovies with `synopsis = None`; the listing data (title, director,
+  // runtime, year, country, poster, showtimes) is still rich enough to
+  // render the home-page card. The `parseSynopsis(html)` helper stays
+  // public so the refresher can replay the same parse without re-running
+  // the listing loop.
 
-  it should "extract the synopsis from a film's detail page" in {
-    val s = byTitle("Pieniądze to wszystko").synopsis
+  it should "return synopsis = None for every film (detail fetch moved to the refresher)" in {
+    results.flatMap(_.synopsis) shouldBe empty
+  }
+
+  it should "still expose parseSynopsis for the refresher to call against a recorded detail page" in {
+    val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(scala.io.Codec.UTF8).mkString
+    val s    = client.parseSynopsis(html)
     s                            should not be empty
     s.get                        should startWith ("James Cox Chambers Jr.")
     s.get                        should include ("Fergie")
-  }
-
-  it should "extract the synopsis for a second film with the same detail-page shape" in {
-    val s = byTitle("Dziecko z pyłu").synopsis
-    s                            should not be empty
-    s.get                        should startWith ("Sang to jedno")
-  }
-
-  it should "leave synopsis None when the detail page isn't recorded" in {
-    // No fixture for /movie/drama/ → FakeHttpFetch throws → synopsis stays
-    // None. Same fallback path production uses when the detail fetch fails.
-    byTitle("Drama").synopsis shouldBe None
   }
 
   it should "return exact showtimes for Drama" in {

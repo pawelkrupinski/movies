@@ -34,6 +34,11 @@ trait Wiring {
   // decision drops out entirely.
   lazy val multikinoFetch: HttpFetch = MultikinoClient.fetchFor(httoFetch)
 
+  // Named so `KinoMuzaSynopsisRefresher` can share the same instance — the
+  // refresher calls `client.parseSynopsis` to keep one source of truth for
+  // the detail-page parse.
+  lazy val kinoMuzaClient: KinoMuzaClient = new KinoMuzaClient(httoFetch)
+
   lazy val cinemaScrapers: Seq[CinemaScraper] = Seq(
     new MultikinoClient(multikinoFetch),
     new CharlieMonroeClient(httoFetch),
@@ -41,7 +46,7 @@ trait Wiring {
     new HeliosClient(httoFetch),
     new CinemaCityScraper(cinemaCityClient, "1078", CinemaCityPoznanPlaza),
     new CinemaCityScraper(cinemaCityClient, "1081", CinemaCityKinepolis),
-    new KinoMuzaClient(httoFetch),
+    kinoMuzaClient,
     new KinoBulgarskaClient(httoFetch),
     new KinoApolloClient(httoFetch),
     new RialtoClient(httoFetch)
@@ -72,6 +77,13 @@ trait Wiring {
   // unbounded (every festival / anniversary / one-off screening leaves a
   // permanent row when its single cinema drops the listing).
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
+
+  // Background per-row synopsis fill for Muza — the listing scrape no longer
+  // hits per-film detail pages (their burst limiter doesn't tolerate 80+
+  // every 5 min). Refresher walks unresolved rows one per minute, writes
+  // the parsed synopsis back to the slot, uses Some("") as the "tried,
+  // nothing" sentinel so each row is processed at most once.
+  lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────
   lazy val showtimeCache = new ShowtimeCache(cinemaScrapers, eventBus, movieCache)
@@ -126,6 +138,7 @@ trait Wiring {
     metascoreRatings.start()
     filmwebRatings.start()
     unscreenedCleanup.start()
+    kinoMuzaSynopsisRefresher.start()
     showtimeCache.start()
   }
 
@@ -155,6 +168,7 @@ trait Wiring {
     showtimeCache.stop()
     cascadeDrainOrder.foreach(_.stop())
     unscreenedCleanup.stop()
+    kinoMuzaSynopsisRefresher.stop()
     movieCache.stop()
     movieRepo.close()
   }

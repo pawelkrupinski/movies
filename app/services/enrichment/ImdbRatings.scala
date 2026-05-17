@@ -67,16 +67,17 @@ class ImdbRatings(cache: MovieCache, imdb: ImdbClient)
     }
 
   /** Translate an `ImdbClient.Details` into a `SourceData` slot — only the
-   *  content fields (synopsis, director, cast, runtime, year, countries,
-   *  poster, title, originalTitle). Returns None when every content field
-   *  is empty, so a rating-only GraphQL response (the legacy `lookup` shape
-   *  that recorded fixtures replay) doesn't churn an empty slot onto the
-   *  record. Public for the refreshAll loop. */
+   *  content fields (director, cast, runtime, year, countries, poster,
+   *  title, originalTitle). Synopsis is intentionally left empty: IMDb's
+   *  plot is always English and a Polish audience shouldn't see it bleed
+   *  through the merged-synopsis "longest wins" rule. Returns None when
+   *  every content field is empty, so a rating-only GraphQL response
+   *  (the legacy `lookup` shape that recorded fixtures replay) doesn't
+   *  churn an empty slot onto the record. Public for the refreshAll loop. */
   private[services] def makeSlot(d: ImdbClient.Details): Option[SourceData] = {
     val slot = SourceData(
       title          = d.title,
       originalTitle  = d.originalTitle,
-      synopsis       = d.synopsis,
       cast           = d.cast,
       director       = d.director,
       runtimeMinutes = d.runtimeMinutes,
@@ -87,7 +88,7 @@ class ImdbRatings(cache: MovieCache, imdb: ImdbClient)
       countries      = d.countries.map(CountryNames.canonical).distinct,
       posterUrl      = d.posterUrl
     )
-    val hasContent = slot.title.isDefined || slot.originalTitle.isDefined || slot.synopsis.isDefined ||
+    val hasContent = slot.title.isDefined || slot.originalTitle.isDefined ||
                      slot.cast.isDefined || slot.director.isDefined || slot.runtimeMinutes.isDefined ||
                      slot.releaseYear.isDefined || slot.countries.nonEmpty ||
                      slot.posterUrl.isDefined

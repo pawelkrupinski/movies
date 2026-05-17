@@ -2,12 +2,9 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.{DaemonExecutors, HttpFetch}
+import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -24,52 +21,15 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
       if (candidate.isBefore(today.minusDays(1))) candidate.plusYears(1) else candidate
     }.toOption
 
-  def fetch(): Seq[CinemaMovie] = {
-    val listing = parseHtml(http.get(RepertoireUrl))
-    val urls    = listing.flatMap(_.filmUrl).distinct
-    if (urls.isEmpty) listing
-    else {
-      val synopses = fetchSynopses(urls)
-      listing.map { cm =>
-        cm.copy(synopsis = cm.filmUrl.flatMap(synopses.get).flatten.orElse(cm.synopsis))
-      }
-    }
-  }
-
-  // Detail-page fetch — concurrent across films. Two workers, not the 5
-  // CLAUDE.md mentions for undocumented services: Muza is a small Poznań
-  // cinema, not a production API, and 5 simultaneous requests at scrape
-  // start trips their burst limiter — subsequent requests stall past our
-  // 30-s timeout and every synopsis comes back None for that tick. Two
-  // workers still finishes ~50 detail pages well inside the 5-minute
-  // scrape window while staying gentle. Failed fetches map to None
-  // silently so a flaky detail page doesn't drop the whole row from the
-  // repertoire.
-  private def fetchSynopses(urls: Seq[String]): Map[String, Option[String]] = {
-    // Cap concurrency at 2 — Muza's upstream burst-limits and 5 parallel GETs
-    // starting at the scrape-tick boundary stalls every request past our
-    // 30-s timeout. `boundedEC` parks the extra virtual threads cheaply.
-    val ec = DaemonExecutors.boundedEC("kino-muza-details", maxConcurrent = 2)
-    try {
-      val futures = urls.map(url => Future(url -> Try(http.get(url)).toOption.flatMap(parseSynopsis))(ec))
-      // Best-effort: when the whole upstream stalls (every URL hits its 30-s
-      // HTTP timeout, e.g. Muza dropping CI's datacenter IP), return what we
-      // have rather than failing the whole `fetch()`. The listing-page data
-      // (title, runtime, poster, showtimes) is still useful on its own; a
-      // film with no synopsis still renders.
-      Try(Await.result(Future.sequence(futures)(implicitly, ec), 2.minutes))
-        .getOrElse(Seq.empty)
-        .toMap
-    } finally {
-      ec.shutdown()
-      // Let in-flight 30-s HTTP timeouts settle their Future.onComplete
-      // callbacks BEFORE the underlying executor stops accepting Runnables —
-      // otherwise every still-running body's promise-resolution lands on a
-      // shut-down EC and logs RejectedExecutionException. 35 s covers a full
-      // HTTP timeout + slack.
-      ec.awaitTermination(35, TimeUnit.SECONDS)
-    }
-  }
+  // 5-min scrape returns just the listing — title, director, runtime, year,
+  // country, poster, showtimes. Per-film detail-page synopses used to be
+  // fetched inline (two-phase fetch + parallel workers) but the 80+ extra
+  // requests every tick tripped Muza's burst limiter and synopses came
+  // back empty for the whole tick. A separate
+  // `KinoMuzaSynopsisRefresher` walks unresolved rows once, slowly, off
+  // the scrape tick; this `fetch()` is back to a single repertuar-page
+  // request.
+  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl))
 
   // Muza's detail pages render the synopsis in the first `paragraph`-classed
   // column of the film header — `div.col-lg-7.paragraph`. A second
@@ -77,6 +37,9 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
   // content); scoping to the col-lg-7 variant keeps that out. Multiple
   // `<p>` children get joined with a blank line so original paragraph
   // boundaries survive the homepage card formatter.
+  //
+  // Public so `KinoMuzaSynopsisRefresher` can drive its per-row fetches
+  // through the same parser without re-running the listing loop.
   def parseSynopsis(html: String): Option[String] = {
     val doc = Jsoup.parse(html)
     val paragraphs = doc.select("div.col-lg-7.paragraph > p").asScala
