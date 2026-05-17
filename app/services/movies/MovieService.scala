@@ -3,6 +3,7 @@ package services.movies
 import clients.TmdbClient
 import play.api.Logging
 import services.Stoppable
+import services.cinemas.CountryNames
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieRecordCreated, TmdbResolved}
 import tools.DaemonExecutors
 
@@ -260,16 +261,34 @@ class MovieService(
       // every cinema's slot, and the row drops out of `toSchedules` until
       // the next scrape tick repopulates it.
       val carriedData = existing.map(_.data).getOrElse(Map.empty[Source, SourceData])
-      // Write a `SourceData(Tmdb)` slot from the search-hit shape: title +
-      // originalTitle + releaseYear. Richer fields (Polish synopsis,
-      // director, cast, runtime, countries, poster) are added in a later
-      // stage that calls `/movie/{id}` for the full record.
+      // Fetch the full TMDB record in a single round-trip so the SourceData
+      // (Tmdb) slot carries the Polish synopsis, director, cast, runtime,
+      // year, countries and poster — not just the search-hit-shape fields.
+      // On a fetch failure we fall back to the search-hit-shape so the row
+      // at least keeps title + originalTitle + year going forward.
       val existingTmdbSlot = carriedData.getOrElse(Tmdb, SourceData())
-      val tmdbSlot = existingTmdbSlot.copy(
-        title         = Some(hit.title).filter(_.nonEmpty).orElse(existingTmdbSlot.title),
-        originalTitle = hit.originalTitle.orElse(existingTmdbSlot.originalTitle),
-        releaseYear   = hit.releaseYear.orElse(existingTmdbSlot.releaseYear)
-      )
+      val tmdbSlot = tmdb.fullDetails(hit.id) match {
+        case Some(d) => SourceData(
+          title          = d.title.orElse(Some(hit.title).filter(_.nonEmpty)).orElse(existingTmdbSlot.title),
+          originalTitle  = d.originalTitle.orElse(hit.originalTitle).orElse(existingTmdbSlot.originalTitle),
+          synopsis       = d.synopsis.orElse(existingTmdbSlot.synopsis),
+          cast           = d.cast.orElse(existingTmdbSlot.cast),
+          director       = d.director.orElse(existingTmdbSlot.director),
+          runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
+          releaseYear    = d.releaseYear.orElse(hit.releaseYear).orElse(existingTmdbSlot.releaseYear),
+          // Canonicalise TMDB's English country names ("United States of
+          // America" → "USA") so the merged-record dedup operates on the
+          // same strings cinemas already write.
+          countries      = if (d.countries.nonEmpty) d.countries.map(CountryNames.canonical).distinct
+                           else existingTmdbSlot.countries,
+          posterUrl      = d.posterUrl.orElse(existingTmdbSlot.posterUrl)
+        )
+        case None => existingTmdbSlot.copy(
+          title         = Some(hit.title).filter(_.nonEmpty).orElse(existingTmdbSlot.title),
+          originalTitle = hit.originalTitle.orElse(existingTmdbSlot.originalTitle),
+          releaseYear   = hit.releaseYear.orElse(existingTmdbSlot.releaseYear)
+        )
+      }
       val enr = MovieRecord(
         imdbId            = resolvedImdbId,
         imdbRating        = existing.flatMap(_.imdbRating),

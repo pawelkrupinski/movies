@@ -161,6 +161,48 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
     }.getOrElse(Set.empty)
   }.getOrElse(Set.empty)
 
+  /** One TMDB `/movie/{id}?language=pl-PL&append_to_response=credits` call
+   *  returning everything the TMDB enrichment stage needs to fill a
+   *  `SourceData(Tmdb)` slot:
+   *    - Polish title + production-language original title
+   *    - Polish-language synopsis (`overview`)
+   *    - Director(s) + top-billed cast
+   *    - Year (`release_date`) + runtime
+   *    - Production countries (raw names — caller canonicalises)
+   *    - Poster URL (constructed from `poster_path`)
+   *
+   *  Returns None on network failure / unknown id — callers fall back to
+   *  whatever the previous slot held. Designed as a single round-trip so
+   *  the TMDB stage doesn't grow into N+1 calls per resolve. */
+  def fullDetails(tmdbId: Int): Option[TmdbClient.FullDetails] = apiKey.flatMap { key =>
+    Try(http.get(s"$ApiBase/movie/$tmdbId?api_key=$key&language=pl-PL&append_to_response=credits"))
+      .toOption.map { body =>
+        val js   = Json.parse(body)
+        val crew = (js \ "credits" \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+        val cast = (js \ "credits" \ "cast").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+        val directors = crew
+          .filter(c => (c \ "job").asOpt[String].contains("Director"))
+          .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty)
+        val topCast = cast
+          .sortBy(c => (c \ "order").asOpt[Int].getOrElse(Int.MaxValue))
+          .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty)
+          .take(TmdbClient.MaxCastNames)
+        val countries = (js \ "production_countries").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+          .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty)
+        TmdbClient.FullDetails(
+          title         = (js \ "title").asOpt[String].filter(_.nonEmpty),
+          originalTitle = (js \ "original_title").asOpt[String].filter(_.nonEmpty),
+          synopsis      = (js \ "overview").asOpt[String].filter(_.nonEmpty),
+          director      = if (directors.nonEmpty) Some(directors.mkString(", ")) else None,
+          cast          = if (topCast.nonEmpty)   Some(topCast.mkString(", "))    else None,
+          runtimeMinutes= (js \ "runtime").asOpt[Int].filter(_ > 0),
+          releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
+          countries     = countries,
+          posterUrl     = (js \ "poster_path").asOpt[String].filter(_.nonEmpty).map(p => s"${TmdbClient.PosterBase}$p")
+        )
+      }
+  }
+
   /** TMDB person id for a name search, or None when the search returns no
    *  Directing-known hit. Picks the highest-popularity match whose
    *  `known_for_department` is "Directing" — keeps us from matching an actor
@@ -223,6 +265,14 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
 
 object TmdbClient {
   private val ApiBase = "https://api.themoviedb.org/3"
+  // TMDB's CDN-served poster path. w500 is the largest "good" size for our
+  // cards (next step up is "original" which can be 2000+ px and isn't worth
+  // the bytes). Matches the size Multikino's own posters ship at.
+  private val PosterBase = "https://image.tmdb.org/t/p/w500"
+  // Top-N cast cap for `fullDetails.cast`. TMDB's `cast` is the whole role
+  // list; keeping the top 5 matches the length cinemas typically ship.
+  private val MaxCastNames = 5
+
   val ApiKey: Option[String] = Env.get("TMDB_API_KEY")
 
   case class SearchResult(
@@ -243,6 +293,23 @@ object TmdbClient {
     englishTitle: Option[String],
     releaseYear:  Option[Int],
     usTitle:      Option[String] = None
+  )
+
+  /** Full TMDB record consumed by the TMDB enrichment stage. Returned by
+   *  `fullDetails(tmdbId)` in one HTTP round-trip; the MovieService maps
+   *  this into a `SourceData(Tmdb)` slot on the row. Polish-localised
+   *  (Polish title + Polish synopsis), original-language `originalTitle`,
+   *  and the canonicalised production countries downstream. */
+  case class FullDetails(
+    title:          Option[String],
+    originalTitle:  Option[String],
+    synopsis:       Option[String],
+    director:       Option[String],
+    cast:           Option[String],
+    runtimeMinutes: Option[Int],
+    releaseYear:    Option[Int],
+    countries:      Seq[String],
+    posterUrl:      Option[String]
   )
 
   private[clients] def urlEncode(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
