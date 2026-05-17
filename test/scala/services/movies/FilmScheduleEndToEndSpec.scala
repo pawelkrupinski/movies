@@ -46,7 +46,7 @@ import scala.collection.mutable
  * Asserting the full `FilmSchedule` makes that mode loud — any field
  * regressing to None or wrong value fails specifically.
  */
-class DiabelPradaFilmScheduleSpec extends AnyFlatSpec with Matchers {
+class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   private val PradaTitle = "Diabeł ubiera się u Prady 2"
   // Pulled from the recorded fixture (`/3/search/movie.<hash>` body for
   // the Polish title, then `/3/movie/1314481/external_ids` for the IMDb
