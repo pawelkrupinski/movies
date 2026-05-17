@@ -28,8 +28,7 @@ libraryDependencies ++= Seq(
   "com.github.ben-manes.caffeine" % "caffeine" % "3.1.8",
 
   // Testing
-  "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
-  "org.mockito"            %% "mockito-scala"      % "1.17.31" % Test
+  "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test
 )
 
 // ── Test layout ───────────────────────────────────────────────────────────────
