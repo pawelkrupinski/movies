@@ -5,6 +5,7 @@ import org.jsoup.Jsoup
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.util.concurrent.Executors
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -21,7 +22,47 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
       if (candidate.isBefore(today.minusDays(1))) candidate.plusYears(1) else candidate
     }.toOption
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl))
+  def fetch(): Seq[CinemaMovie] = {
+    val listing = parseHtml(http.get(RepertoireUrl))
+    val urls    = listing.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) listing
+    else {
+      val synopses = fetchSynopses(urls)
+      listing.map { cm =>
+        cm.copy(synopsis = cm.filmUrl.flatMap(synopses.get).flatten.orElse(cm.synopsis))
+      }
+    }
+  }
+
+  // Detail-page fetch — concurrent across films, 5 workers per CLAUDE.md's
+  // rate-limit guidance for undocumented services. Failed fetches map to
+  // None silently so a flaky detail page doesn't drop the whole row from
+  // the repertoire.
+  private def fetchSynopses(urls: Seq[String]): Map[String, Option[String]] = {
+    val pool = Executors.newFixedThreadPool(5)
+    try urls
+      .map(url => url -> pool.submit[Option[String]](() =>
+        Try(http.get(url)).toOption.flatMap(parseSynopsis)
+      ))
+      .map { case (url, f) => url -> f.get() }
+      .toMap
+    finally pool.shutdown()
+  }
+
+  // Muza's detail pages render the synopsis in the first `paragraph`-classed
+  // column of the film header — `div.col-lg-7.paragraph`. A second
+  // `.paragraph` block appears further down for "Treści wrażliwe" (sensitive
+  // content); scoping to the col-lg-7 variant keeps that out. Multiple
+  // `<p>` children get joined with a blank line so original paragraph
+  // boundaries survive the homepage card formatter.
+  def parseSynopsis(html: String): Option[String] = {
+    val doc = Jsoup.parse(html)
+    val paragraphs = doc.select("div.col-lg-7.paragraph > p").asScala
+      .map(_.text().trim)
+      .filter(_.nonEmpty)
+      .toSeq
+    if (paragraphs.isEmpty) None else Some(paragraphs.mkString("\n\n"))
+  }
 
   private val RuntimePat = """(\d+)’""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r

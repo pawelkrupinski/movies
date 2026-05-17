@@ -729,6 +729,34 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     )
   }
 
+  // ── Synopsis from the detail page ─────────────────────────────────────────
+  //
+  // Muza's repertoire listing carries title, director, runtime, year, country,
+  // poster — but no synopsis. The synopsis sits on the per-film detail page
+  // (`https://www.kinomuza.pl/movie/<slug>/`) inside `div.col-lg-7.paragraph`.
+  // Detail-page fixtures are recorded for the two films asserted below;
+  // every other film hits an unmocked URL via `FakeHttpFetch` and the
+  // synopsis stays None (best-effort — the listing data is still useful).
+
+  it should "extract the synopsis from a film's detail page" in {
+    val s = byTitle("Pieniądze to wszystko").synopsis
+    s                            should not be empty
+    s.get                        should startWith ("James Cox Chambers Jr.")
+    s.get                        should include ("Fergie")
+  }
+
+  it should "extract the synopsis for a second film with the same detail-page shape" in {
+    val s = byTitle("Dziecko z pyłu").synopsis
+    s                            should not be empty
+    s.get                        should startWith ("Sang to jedno")
+  }
+
+  it should "leave synopsis None when the detail page isn't recorded" in {
+    // No fixture for /movie/drama/ → FakeHttpFetch throws → synopsis stays
+    // None. Same fallback path production uses when the detail fetch fails.
+    byTitle("Drama").synopsis shouldBe None
+  }
+
   it should "return exact showtimes for Drama" in {
     val st = byTitle("Drama").showtimes
     st.size shouldBe 5
