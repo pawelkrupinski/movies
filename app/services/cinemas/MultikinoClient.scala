@@ -1,21 +1,54 @@
 package services.cinemas
 
 import models.{Cinema, CinemaMovie, Multikino}
-import tools.{Env, GetOnlyHttpFetch, HttpFetch}
+import tools.{Env, HttpFetch}
 
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
-import java.net.{CookieManager, CookiePolicy, URI}
+import java.net.http.HttpClient
+import java.net.{CookieManager, CookiePolicy}
 
 /**
  * Multikino fetches `microservice/showings/cinemas/0011/films` and hands the
  * JSON to [[MultikinoParser]]. Transport is delegated to either
- * [[ScrapingAntClient]] (when `SCRAPINGANT_KEY` is set — required in
- * production, Multikino blocks datacenter IPs) or to a direct `HttpClient`
- * with a one-shot homepage-then-API retry for cookie acquisition.
+ * [[ScrapingAntClient]] (when one is injected — required in production,
+ * Multikino blocks datacenter IPs) or to the injected [[HttpFetch]] with a
+ * one-shot homepage-then-API retry for cookie acquisition. The retry path
+ * relies on the injected fetch persisting cookies between calls
+ * (`RealHttpFetch` does, via a `CookieManager`).
+ *
+ * Session-handling lives here, not in a wrapper that callers compose
+ * around the fetch, so the rules run identically in production
+ * (`RealHttpFetch`) and in fixture tests (`FakeHttpFetch`) — there is no
+ * parallel HTTP code path that tests can accidentally bypass.
+ *
+ * `scrapingAnt` is injected (composition root reads
+ * [[MultikinoClient.scrapingAntFromEnv]]) so tests are hermetic — they
+ * just pass `None`.
  */
-class MultikinoClient(http: HttpFetch) extends CinemaScraper {
+class MultikinoClient(
+  http:        HttpFetch,
+  scrapingAnt: Option[ScrapingAntClient] = None,
+) extends CinemaScraper {
+  import MultikinoClient._
+
   val cinema: Cinema = Multikino
-  def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(http.get(MultikinoClient.ApiUrl))
+
+  def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(getApi())
+
+  private def getApi(): String =
+    scrapingAnt.fold(directGet())(_.getWithCookies(ApiUrl, HomeUrl))
+
+  // The API responds 401 to direct datacenter requests until you've
+  // touched the homepage. The first attempt is optimistic — once the
+  // session cookie is established on the underlying client, subsequent
+  // ticks succeed without the warm-up. On failure, fetch the homepage
+  // (its `Set-Cookie` lands in the underlying fetch's cookie store) and
+  // retry the API.
+  private def directGet(): String =
+    try http.get(ApiUrl)
+    catch { case _: Exception =>
+      try http.get(HomeUrl) catch { case _: Exception => () }
+      http.get(ApiUrl)
+    }
 }
 
 object MultikinoClient {
@@ -23,61 +56,22 @@ object MultikinoClient {
   val BaseUrl = "https://www.multikino.pl"
   val ApiUrl  = s"$BaseUrl/api/microservice/showings/cinemas/0011/films?minEmbargoLevel=2&includesSession=true&includeSessionAttributes=true"
 
-  private val HomeUrl    = s"$BaseUrl/"
-  private val UserAgent  = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-  private val AcceptLang = "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7"
+  private val HomeUrl = s"$BaseUrl/"
 
-  object DefaultFetch extends GetOnlyHttpFetch {
-    // Shared `HttpClient` — its `CookieManager` is needed by the direct path
-    // to carry the cookies the homepage sets into the subsequent API call.
-    // (`ScrapingAntClient` is stateless across calls; each call fetches fresh
-    // cookies.)
-    private val httpClient = HttpClient.newBuilder()
-      .version(HttpClient.Version.HTTP_1_1)
-      .followRedirects(HttpClient.Redirect.NORMAL)
-      .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
-      .build()
+  /** Reads `SCRAPINGANT_KEY` from the environment. Used by the composition
+   *  root (`Wiring`) to plug ScrapingAnt routing into production; tests
+   *  skip this and pass `None`, keeping `.env.local` out of the spec
+   *  execution. */
+  def scrapingAntFromEnv: Option[ScrapingAntClient] =
+    Env.get("SCRAPINGANT_KEY").map(k => new ScrapingAntClient(scrapingAntHttpClient, k))
 
-    private val scrapingAnt: Option[ScrapingAntClient] =
-      Env.get("SCRAPINGANT_KEY").map(k => new ScrapingAntClient(httpClient, k))
-
-    override def get(url: String): String =
-      scrapingAnt.fold(directGet(url))(_.getWithCookies(url, HomeUrl))
-
-    // ── Direct path (no ScrapingAnt key, e.g. local dev) ──────────────────
-    //
-    // The API responds 401 to direct datacenter requests until you've touched
-    // the homepage. The shared CookieManager picks up the cookies; the retry
-    // just resends the same API request now that the session is established.
-    private def directGet(url: String): String = {
-      val first = httpClient.send(apiRequest(url), HttpResponse.BodyHandlers.ofString())
-      first.statusCode() match {
-        case 200       => first.body()
-        case 401 | 403 =>
-          httpClient.send(homepageRequest(), HttpResponse.BodyHandlers.discarding())
-          val retry = httpClient.send(apiRequest(url), HttpResponse.BodyHandlers.ofString())
-          if (retry.statusCode() != 200)
-            throw new RuntimeException(s"API returned ${retry.statusCode()} after session refresh")
-          retry.body()
-        case code      => throw new RuntimeException(s"API returned $code")
-      }
-    }
-
-    private def apiRequest(url: String) = HttpRequest.newBuilder()
-      .uri(URI.create(url))
-      .header("User-Agent", UserAgent)
-      .header("Accept", "application/json, text/plain, */*")
-      .header("Accept-Language", AcceptLang)
-      .header("Referer", s"$BaseUrl/repertuar/poznan-stary-browar/teraz-gramy")
-      .GET()
-      .build()
-
-    private def homepageRequest() = HttpRequest.newBuilder()
-      .uri(URI.create(HomeUrl))
-      .header("User-Agent", UserAgent)
-      .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-      .header("Accept-Language", AcceptLang)
-      .GET()
-      .build()
-  }
+  // ScrapingAnt has its own cookie-carryover protocol (read `Set-Cookie`
+  // off the homepage response, pass via `&cookies=`) that needs raw
+  // response headers — not expressible through the stateless
+  // `HttpFetch.get` surface. So it keeps a dedicated client.
+  private lazy val scrapingAntHttpClient = HttpClient.newBuilder()
+    .version(HttpClient.Version.HTTP_1_1)
+    .followRedirects(HttpClient.Redirect.NORMAL)
+    .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
+    .build()
 }

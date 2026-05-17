@@ -4,6 +4,7 @@ import play.api.Logging
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse, HttpTimeoutException}
+import java.net.{CookieManager, CookiePolicy}
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
@@ -18,10 +19,17 @@ class RealHttpFetch extends HttpFetch with Logging {
   private val ConnectTimeout = Duration.ofSeconds(10)
   private val RequestTimeout = Duration.ofSeconds(30)
 
+  // `CookieManager` makes the client a well-behaved HTTP citizen: any
+  // `Set-Cookie` header lands in the in-memory store and is sent back on
+  // subsequent requests to the same domain. Multikino's direct path
+  // depends on it — the homepage hands out a session cookie that the
+  // API call must carry — and other clients are unaffected (cookies
+  // are domain-scoped, and the APIs we talk to are otherwise stateless).
   private val underlying = HttpClient.newBuilder()
     .version(HttpClient.Version.HTTP_1_1)
     .followRedirects(HttpClient.Redirect.NORMAL)
     .connectTimeout(ConnectTimeout)
+    .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
     .build()
 
   override def get(url: String): String = sendLogged("GET", url, underlying.send(buildRequest(url), HttpResponse.BodyHandlers.ofString()))
