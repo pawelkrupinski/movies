@@ -25,10 +25,17 @@ ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app
 COPY --from=build /app/target/universal/stage .
 EXPOSE 9000
+# `--sun-misc-unsafe-memory-access=allow`: Scala 3.3.7's LazyVals runtime
+# helper still calls `sun.misc.Unsafe.objectFieldOffset`; JDK 24+'s default
+# warns on every such call. The 3.3 LTS line hasn't backported the
+# VarHandle migration that landed in 3.4+, so until the next Scala LTS
+# adopts it (or we move off 3.3) the warning is noise — `allow` silences
+# it. `warn` is the default; `deny` would block the call.
 CMD exec bin/movies \
     -Dplay.http.secret.key="${APPLICATION_SECRET}" \
     -Dplay.server.http.address=0.0.0.0 \
     -Dhttp.address=0.0.0.0 \
     -Dpidfile.path=/dev/null \
     -J-Xmx400m \
-    -J-Xms128m
+    -J-Xms128m \
+    -J--sun-misc-unsafe-memory-access=allow

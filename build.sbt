@@ -63,3 +63,12 @@ scalacOptions ++= Seq(
   // Twirl templates, so silencing the whole tree is safe.
   "-Wconf:src=.*views/.*:silent"
 )
+
+// ── Runtime JVM options ───────────────────────────────────────────────────────
+
+// Scala 3.3.7's LazyVals runtime helper still calls
+// `sun.misc.Unsafe.objectFieldOffset`; JDK 24+'s default warns on every
+// such call. The 3.3 LTS line hasn't backported the VarHandle migration
+// that landed in 3.4+, so until we move off 3.3 the warning is noise.
+// `allow` silences it; the production Dockerfile has the same flag.
+Compile / run / javaOptions += "--sun-misc-unsafe-memory-access=allow"
