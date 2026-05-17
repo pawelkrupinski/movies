@@ -7,6 +7,7 @@ import services.movies.MovieCache
 import tools.DaemonExecutors
 
 import java.util.concurrent.TimeUnit
+import scala.concurrent.{ExecutionContextExecutorService, Future}
 import scala.util.Try
 
 /**
@@ -23,10 +24,11 @@ import scala.util.Try
  */
 class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends Stoppable with Logging {
 
-  // IMDb's suggestion endpoint is fast; one or two workers is plenty for the
-  // event-driven path (TmdbResolved fans out hundreds of events at startup but
-  // very few of them carry an `ImdbIdMissing`).
-  private val worker = DaemonExecutors.fixedPool("imdb-id-resolver", 2)
+  // IMDb's suggestion endpoint is fast and the event-driven path is sparse
+  // (TmdbResolved fans out hundreds of events at startup but very few carry
+  // an `ImdbIdMissing`). Virtual threads keep per-task overhead trivial; the
+  // rate cap, if any, sits at the HTTP layer.
+  private val ec: ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("imdb-id-resolver")
 
   /** Bus listener: when the TMDB stage resolved a film but TMDB has no IMDb
    *  cross-reference for it, recover the id via IMDb's suggestion endpoint
@@ -38,7 +40,8 @@ class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends
    *  the row imdbId-less than guess a wrong id. */
   val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
     case ImdbIdMissing(title, year, searchTitle) =>
-      worker.execute(() => resolve(title, year, searchTitle, publishEvent = true))
+      Future(resolve(title, year, searchTitle, publishEvent = true))(ec)
+      ()
   }
 
   /** Synchronous resolution — public for tests/scripts. Doesn't publish
@@ -80,7 +83,7 @@ class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends
    *  `cascadeDrainOrder`'s next entry was shutting down a pool that
    *  still had inbound work coming. */
   def stop(): Unit = {
-    worker.shutdown()
-    while (!worker.isTerminated) worker.awaitTermination(1, TimeUnit.HOURS)
+    ec.shutdown()
+    while (!ec.isTerminated) ec.awaitTermination(1, TimeUnit.HOURS)
   }
 }

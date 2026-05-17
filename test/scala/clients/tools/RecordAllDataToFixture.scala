@@ -5,7 +5,7 @@ import tools.{DaemonExecutors, RealHttpFetch, TestWiring}
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 
 /**
  * One-shot fixture recorder. Runs the full production pipeline once
@@ -98,8 +98,7 @@ object RecordAllDataToFixture extends TestWiring with App {
   val total = rows.size
   println(s"Sync-pass: re-running enrichment for $total cache row(s) across $SyncPassWorkers worker(s)…")
   val startedAt = System.currentTimeMillis()
-  val syncPool  = DaemonExecutors.fixedPool("sync-pass", SyncPassWorkers)
-  implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(syncPool)
+  implicit val syncPool: ExecutionContextExecutorService = DaemonExecutors.boundedEC("sync-pass", SyncPassWorkers)
   val done = new AtomicInteger(0)
 
   val futures = rows.map { row =>

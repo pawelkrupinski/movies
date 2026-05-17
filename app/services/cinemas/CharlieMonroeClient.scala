@@ -3,10 +3,11 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import play.api.libs.json._
-import tools.HttpFetch
+import tools.{DaemonExecutors, HttpFetch}
 
 import java.time.{LocalDateTime, ZonedDateTime}
-import java.util.concurrent.Executors
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -39,12 +40,11 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
   }
 
   private def fetchCountries(urls: Seq[String]): Map[String, Seq[String]] = {
-    val pool = Executors.newFixedThreadPool(5)
-    try urls
-      .map(url => url -> pool.submit[Seq[String]](() => fetchCountriesFor(url)))
-      .map { case (url, f) => url -> f.get() }
-      .toMap
-    finally pool.shutdown()
+    val ec = DaemonExecutors.virtualThreadEC("charlie-monroe-countries")
+    try {
+      val futures = urls.map(url => Future(url -> fetchCountriesFor(url))(ec))
+      Await.result(Future.sequence(futures)(implicitly, ec), 1.minute).toMap
+    } finally ec.shutdown()
   }
 
   private def fetchCountriesFor(detailUrl: String): Seq[String] =

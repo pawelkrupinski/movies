@@ -22,10 +22,6 @@ import scala.util.{Failure, Try}
 class ImdbRatings(cache: MovieCache, imdb: ImdbClient)
     extends PeriodicCacheRefresher(
       name                = "IMDb",
-      // IMDb's GraphQL CDN is fast and we only have a few hundred rows; 3
-      // workers is plenty. Smaller than the TMDB stage's pool so a sudden
-      // IMDb slowdown can't starve more important fetches.
-      workers             = 3,
       // First run fires shortly after startup so Mongo hydration has time
       // to populate the cache before the walk reads from it.
       startupDelaySeconds = 10L,

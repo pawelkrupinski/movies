@@ -25,10 +25,6 @@ class MetascoreRatings(
   metacritic: MetacriticClient
 ) extends PeriodicCacheRefresher(
   name                = "Metascore",
-  // 3 workers — MC pages are heavier than IMDb's GraphQL endpoint, and the
-  // hourly walk makes hundreds of requests. 3 keeps us under MC's tolerated
-  // rate while still parallelising the I/O wait.
-  workers             = 3,
   // Stagger the startup tick so we don't race the IMDb / RT refreshes —
   // they all walk the same cache and serialising the bursts avoids Mongo
   // fan-in.

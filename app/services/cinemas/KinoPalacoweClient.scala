@@ -3,10 +3,11 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import play.api.libs.json._
-import tools.HttpFetch
+import tools.{DaemonExecutors, HttpFetch}
 
 import java.time.LocalDateTime
-import java.util.concurrent.Executors
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.util.Try
 
 class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
@@ -63,14 +64,13 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
   def fetch(): Seq[CinemaMovie] = {
     val entries = fetchAllEntries()
 
-    val pool = Executors.newFixedThreadPool(8)
+    val ec = DaemonExecutors.virtualThreadEC("kino-palacowe-meta")
     val metaByUrl: Map[String, FilmMeta] =
       try {
-        entries.flatMap(_.filmUrl).distinct
-          .map(url => url -> pool.submit[FilmMeta](() => fetchFilmMeta(url)))
-          .map { case (url, f) => url -> f.get() }
-          .toMap
-      } finally pool.shutdown()
+        val futures = entries.flatMap(_.filmUrl).distinct
+          .map(url => Future(url -> fetchFilmMeta(url))(ec))
+        Await.result(Future.sequence(futures)(implicitly, ec), 2.minutes).toMap
+      } finally ec.shutdown()
 
     entries
       .groupBy(_.movieTitle)

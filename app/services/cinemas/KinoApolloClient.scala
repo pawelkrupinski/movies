@@ -2,11 +2,12 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{DaemonExecutors, HttpFetch}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, LocalTime}
-import java.util.concurrent.Executors
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -114,12 +115,11 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
   private val EmptyDetailMeta = DetailMeta(None, None, None, None, Seq.empty)
 
   private def fetchDetails(urls: Seq[String]): Map[String, DetailMeta] = {
-    val pool = Executors.newFixedThreadPool(5)
-    try urls
-      .map(url => url -> pool.submit[DetailMeta](() => fetchDetail(url)))
-      .map { case (url, f) => url -> f.get() }
-      .toMap
-    finally pool.shutdown()
+    val ec = DaemonExecutors.virtualThreadEC("kino-apollo-details")
+    try {
+      val futures = urls.map(url => Future(url -> fetchDetail(url))(ec))
+      Await.result(Future.sequence(futures)(implicitly, ec), 1.minute).toMap
+    } finally ec.shutdown()
   }
 
   private def fetchDetail(detailUrl: String): DetailMeta =

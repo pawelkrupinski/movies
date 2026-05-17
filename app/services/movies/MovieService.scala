@@ -9,6 +9,7 @@ import tools.DaemonExecutors
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import models.{MovieRecord, Source, SourceData, Tmdb}
+import scala.concurrent.{ExecutionContextExecutorService, Future}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -41,11 +42,12 @@ class MovieService(
   // twice. (The IMDb stage doesn't dedup — it's idempotent and cheap.)
   private val pending = ConcurrentHashMap.newKeySet[CacheKey]()
 
-  // Bounded pool drains both stages — TMDB-search/external_ids/Filmweb/MC/RT
-  // for the TMDB stage, plus IMDb GraphQL for the IMDb stage. Each lookup is
-  // mostly network wait, so 10 in-flight is comfortable under TMDB's published
-  // rate limit (~50 req/s).
-  private val worker = DaemonExecutors.fixedPool("enrichment-worker", 10)
+  // Virtual-thread EC drains both stages — TMDB-search/external_ids/Filmweb/
+  // MC/RT for the TMDB stage, plus IMDb GraphQL for the IMDb stage. Each
+  // lookup is mostly network wait; virtual threads make per-task concurrency
+  // free, and TMDB's published rate limit (~50 req/s) is enforced at the
+  // HTTP layer (back off on 429/503) rather than at the thread count.
+  private val ec: ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("enrichment-worker")
 
   // Separate scheduler for delayed retries — it just hands a Runnable back to
   // the worker pool when the timer fires, so we don't tie up a worker thread
@@ -97,10 +99,10 @@ class MovieService(
    *  in the happy path; the bound is "every task runs to completion or
    *  the JVM is force-killed by the lifecycle". */
   def stop(): Unit = {
-    worker.shutdown()
+    ec.shutdown()
     retryScheduler.shutdown()
     tmdbRetryScheduler.shutdown()
-    while (!worker.isTerminated) worker.awaitTermination(1, TimeUnit.HOURS)
+    while (!ec.isTerminated) ec.awaitTermination(1, TimeUnit.HOURS)
   }
 
   // ── Event listeners ───────────────────────────────────────────────────────
@@ -156,7 +158,8 @@ class MovieService(
     // last landed on). A fresh row writes those as None and lets the
     // dedicated ratings classes rediscover them.
     cache.invalidate(key)
-    worker.execute(() => runTmdbStage(key, originalTitle, director))
+    Future(runTmdbStage(key, originalTitle, director))(ec)
+    ()
   }
 
   /** Same as `reEnrich` but blocks the calling thread and returns the row TMDB
@@ -193,8 +196,10 @@ class MovieService(
     // nothing would clean up — wasted TMDB call plus a stale year-
     // divergent row sitting in Mongo forever.
     if (cache.hasResolvedSiblingByTitle(key.cleanTitle)) return
-    if (pending.add(key))
-      worker.execute(() => try runTmdbStage(key, originalTitle, director) finally pending.remove(key))
+    if (pending.add(key)) {
+      Future(try runTmdbStage(key, originalTitle, director) finally pending.remove(key))(ec)
+      ()
+    }
   }
 
   // Async wrapper around runTmdbStageSync: handles retry policy + event publish.
@@ -374,8 +379,10 @@ class MovieService(
     targets.foreach { case (k, e) =>
       val origHint = e.cinemaOriginalTitle
       val dirHint  = e.director
-      if (pending.add(k))
-        worker.execute(() => try runTmdbStage(k, origHint, dirHint) finally pending.remove(k))
+      if (pending.add(k)) {
+        Future(try runTmdbStage(k, origHint, dirHint) finally pending.remove(k))(ec)
+        ()
+      }
     }
   }
 

@@ -4,12 +4,11 @@ import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.events.InProcessEventBus
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieService, StoredMovieRecord}
-import tools.RealHttpFetch
+import tools.{DaemonExecutors, RealHttpFetch}
 
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 import scala.util.Try
 
 /**
@@ -73,8 +72,7 @@ object FilmwebReset {
     val svc     = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val Workers = 5  // CLAUDE.md: Filmweb soft-blocks above ~5.
-    val pool    = Executors.newFixedThreadPool(Workers)
-    implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
+    implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("filmweb-reset", Workers)
     val done       = new AtomicInteger(0)
     val total      = before.size
     val startedAt  = System.currentTimeMillis()
@@ -126,7 +124,7 @@ object FilmwebReset {
     }
 
     val outcomes = Await.result(Future.sequence(tasks), 60.minutes)
-    pool.shutdown()
+    ec.shutdown()
     repo.close()
 
     val kept       = outcomes.count(_._3.isInstanceOf[ReplacedSame])

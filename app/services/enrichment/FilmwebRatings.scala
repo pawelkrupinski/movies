@@ -32,7 +32,6 @@ import scala.util.{Failure, Success, Try}
 class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient)
     extends PeriodicCacheRefresher(
       name                = "Filmweb",
-      workers             = 3,
       // Stagger startup against the other rating services (IMDb @10s, RT
       // @15s, Metascore @30s) so the first-tick bursts don't pile up.
       startupDelaySeconds = 45L,

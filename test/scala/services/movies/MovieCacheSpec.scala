@@ -648,22 +648,18 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     for (_ <- 1 to iterations) {
       val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
       val latch = new java.util.concurrent.CountDownLatch(1)
-      val exec  = java.util.concurrent.Executors.newFixedThreadPool(2)
-      val t1 = exec.submit(new Runnable {
-        def run(): Unit = {
-          latch.await()
-          cache.recordCinemaScrape(Multikino, Seq(cinemaMovie(title, Multikino, None)))
-        }
-      })
-      val t2 = exec.submit(new Runnable {
-        def run(): Unit = {
-          latch.await()
-          cache.recordCinemaScrape(Helios, Seq(cinemaMovie(title, Helios, Some(2026))))
-        }
-      })
+      val ec    = tools.DaemonExecutors.virtualThreadEC("movie-cache-race")
+      val t1 = scala.concurrent.Future {
+        latch.await()
+        cache.recordCinemaScrape(Multikino, Seq(cinemaMovie(title, Multikino, None)))
+      }(ec)
+      val t2 = scala.concurrent.Future {
+        latch.await()
+        cache.recordCinemaScrape(Helios, Seq(cinemaMovie(title, Helios, Some(2026))))
+      }(ec)
       latch.countDown()
-      t1.get(); t2.get()
-      exec.shutdown()
+      scala.concurrent.Await.ready(scala.concurrent.Future.sequence(Seq(t1, t2))(implicitly, ec), scala.concurrent.duration.Duration.Inf)
+      ec.shutdown()
 
       withClue(s"snapshot after iteration: ${cache.snapshot().map(r => s"(${r.title}, ${r.year})").mkString(", ")} ") {
         cache.snapshot().size shouldBe 1

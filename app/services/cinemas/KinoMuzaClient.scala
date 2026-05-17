@@ -2,10 +2,11 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{DaemonExecutors, HttpFetch}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
-import java.util.concurrent.Executors
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -44,14 +45,14 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
   // silently so a flaky detail page doesn't drop the whole row from the
   // repertoire.
   private def fetchSynopses(urls: Seq[String]): Map[String, Option[String]] = {
-    val pool = Executors.newFixedThreadPool(2)
-    try urls
-      .map(url => url -> pool.submit[Option[String]](() =>
-        Try(http.get(url)).toOption.flatMap(parseSynopsis)
-      ))
-      .map { case (url, f) => url -> f.get() }
-      .toMap
-    finally pool.shutdown()
+    // Cap concurrency at 2 — Muza's upstream burst-limits and 5 parallel GETs
+    // starting at the scrape-tick boundary stalls every request past our
+    // 30-s timeout. `boundedEC` parks the extra virtual threads cheaply.
+    val ec = DaemonExecutors.boundedEC("kino-muza-details", maxConcurrent = 2)
+    try {
+      val futures = urls.map(url => Future(url -> Try(http.get(url)).toOption.flatMap(parseSynopsis))(ec))
+      Await.result(Future.sequence(futures)(implicitly, ec), 5.minutes).toMap
+    } finally ec.shutdown()
   }
 
   // Muza's detail pages render the synopsis in the first `paragraph`-classed

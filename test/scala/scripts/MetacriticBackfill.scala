@@ -2,12 +2,11 @@ package scripts
 
 import services.enrichment.MetacriticClient
 import services.movies.{MongoMovieRepo, StoredMovieRecord}
-import tools.RealHttpFetch
+import tools.{DaemonExecutors, RealHttpFetch}
 
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 import scala.util.Try
 
 /**
@@ -57,8 +56,7 @@ object MetacriticBackfill {
             s"${rows.count(_.record.metacriticUrl.isEmpty)} currently None · $bogusCount currently bogus /movie/")
     println(s"Probing MC with $Workers workers in parallel…\n")
 
-    val pool = Executors.newFixedThreadPool(Workers)
-    implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
+    implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("mc-backfill", Workers)
     val started     = new AtomicInteger(0)
     val done        = new AtomicInteger(0)
     val total       = rows.size
@@ -124,7 +122,7 @@ object MetacriticBackfill {
     }
 
     val outcomes = Await.result(Future.sequence(tasks), 30.minutes)
-    pool.shutdown()
+    ec.shutdown()
     repo.close()
 
     val filled    = outcomes.collect { case f: Filled    => f }

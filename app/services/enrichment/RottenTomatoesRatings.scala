@@ -24,9 +24,6 @@ class RottenTomatoesRatings(
   rt:    RottenTomatoesClient
 ) extends PeriodicCacheRefresher(
   name                = "RT",
-  // 5 workers comfortably under CLAUDE.md's "5–10" band for undocumented
-  // services. Each refresh is a single GET to a /m/ page.
-  workers             = 5,
   // Stagger startup against IMDb (10s) so first-tick bursts don't pile up.
   startupDelaySeconds = 15L,
   refreshHours        = 1L,

@@ -2,15 +2,15 @@ package scripts
 
 import services.enrichment.MetacriticClient
 import services.movies.{MongoMovieRepo, StoredMovieRecord}
+import tools.DaemonExecutors
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.Duration
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 import scala.util.Try
 
 /**
@@ -70,8 +70,7 @@ object MetacriticDiagnostics {
     println(s"${rows.size} rows in Mongo · ${missing.size} missing Metacritic URL · probing variants…\n")
 
     val Workers = 4
-    val pool = Executors.newFixedThreadPool(Workers)
-    implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
+    implicit val ec: ExecutionContextExecutorService = DaemonExecutors.boundedEC("mc-diag", Workers)
     val done        = new AtomicInteger(0)
     val httpProbes  = new AtomicInteger(0)
     val startedAtMs = System.currentTimeMillis()
@@ -117,7 +116,7 @@ object MetacriticDiagnostics {
     }
 
     val all = Await.result(Future.sequence(tasks), 10.minutes)
-    pool.shutdown()
+    ec.shutdown()
 
     // Group: which label "won" (first 200)?
     val grouped = mutable.LinkedHashMap.empty[String, mutable.ArrayBuffer[(String, Option[Int], Option[String], Probe)]]

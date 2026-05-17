@@ -6,6 +6,7 @@ import services.movies.{CacheKey, MovieCache}
 import tools.DaemonExecutors
 
 import java.util.concurrent.TimeUnit
+import scala.concurrent.{ExecutionContextExecutorService, Future}
 import scala.util.Try
 
 /**
@@ -13,7 +14,8 @@ import scala.util.Try
  * `FilmwebRatings`, `MetascoreRatings`, `RottenTomatoesRatings`). Each one
  * needs:
  *
- *   1. A bounded worker pool draining bus-event-driven per-row refreshes.
+ *   1. A virtual-thread `ExecutionContext` draining bus-event-driven per-row
+ *      refreshes (`schedule(key)` dispatches `refreshOne` on the EC).
  *   2. A single-thread scheduler firing a periodic `refreshAll` over the
  *      whole cache.
  *   3. `schedule(key)` / `refreshOneSync(key)` / `refreshOneSync(title,
@@ -31,21 +33,22 @@ import scala.util.Try
  */
 abstract class PeriodicCacheRefresher(
   name:                String,
-  workers:             Int,
   startupDelaySeconds: Long,
   refreshHours:        Long,
   protected val cache: MovieCache
 ) extends Stoppable with Logging {
 
-  private val worker           = DaemonExecutors.fixedPool(s"$name-stage", workers)
-  private val refreshScheduler = DaemonExecutors.scheduler(s"$name-refresh")
+  private val ec: ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC(s"$name-stage")
+  private val refreshScheduler                    = DaemonExecutors.scheduler(s"$name-refresh")
 
   // ── Per-row refresh ────────────────────────────────────────────────────────
 
-  /** Dispatch a single-row refresh on the worker pool. No-op when the row no
-   *  longer exists or can't be resolved by the subclass. */
-  private[services] def schedule(key: CacheKey): Unit =
-    worker.execute(() => refreshOne(key))
+  /** Dispatch a single-row refresh on the virtual-thread EC. No-op when the
+   *  row no longer exists or can't be resolved by the subclass. */
+  private[services] def schedule(key: CacheKey): Unit = {
+    Future(refreshOne(key))(ec)
+    ()
+  }
 
   /** Synchronous version of `schedule` — used by scripts and tests. */
   private[services] def refreshOneSync(key: CacheKey): Unit = refreshOne(key)
@@ -73,16 +76,16 @@ abstract class PeriodicCacheRefresher(
     )
   }
 
-  /** Drain the worker pool so in-flight URL discovery + rating scrapes
-   *  finish before the caller moves on. Waits for the queue to drain
+  /** Drain in-flight per-row refreshes so URL discovery + rating scrapes
+   *  finish before the caller moves on. Waits for the EC to terminate
    *  rather than capping at a fixed window — the bounded cap was
    *  returning before real-network per-row work finished, so recording
    *  scripts saw no MC / RT / FW fixtures captured. Play's lifecycle
    *  has its own deadline on top, so production's worst-case shutdown
    *  is still bounded. */
   def stop(): Unit = {
-    worker.shutdown()
+    ec.shutdown()
     refreshScheduler.shutdown()
-    while (!worker.isTerminated) worker.awaitTermination(1, TimeUnit.HOURS)
+    while (!ec.isTerminated) ec.awaitTermination(1, TimeUnit.HOURS)
   }
 }
