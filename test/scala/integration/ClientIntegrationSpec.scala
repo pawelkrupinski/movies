@@ -13,9 +13,12 @@ class ClientIntegrationSpec
     with ParallelTestExecution {
   val fetch = new RealHttpFetch()
 
+  // Multikino blocks bare datacenter requests — use the production fetcher
+  // (homepage-cookie dance, plus ScrapingAnt fallback when SCRAPINGANT_KEY
+  // is set) instead of RealHttpFetch.
   "MultikinoClient" should "fetch films" in {
     RetryWithBackoff() {
-      assertAllHaveRuntime(new MultikinoClient(fetch).fetch()) }
+      assertAllHaveRuntime(new MultikinoClient(MultikinoClient.DefaultFetch).fetch()) }
   }
 
   "CharlieMonroeClient" should "fetch films" in {
