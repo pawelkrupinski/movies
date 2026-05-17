@@ -33,8 +33,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   private def mkEnrichment(imdbId: String, rating: Option[Double] = None): MovieRecord =
-    MovieRecord(imdbId = Some(imdbId), imdbRating = rating, metascore = None,
-               originalTitle = None, tmdbId = Some(42))
+    MovieRecord(imdbId = Some(imdbId), imdbRating = rating, tmdbId = Some(42))
 
   // ── refreshOneSync ──────────────────────────────────────────────────────────
 
@@ -75,8 +74,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the row has no imdbId (TMDB resolved without a cross-reference)" in {
-    val tmdbOnly = MovieRecord(imdbId = None, imdbRating = None, metascore = None,
-                               originalTitle = None, tmdbId = Some(42))
+    val tmdbOnly = MovieRecord(tmdbId = Some(42))
     val repo  = new InMemoryMovieRepo(Seq(("Foo", Some(2024), tmdbOnly)))
     val cache = new CaffeineMovieCache(repo)
     // ImdbClient must never be invoked — the stub throws on any request.

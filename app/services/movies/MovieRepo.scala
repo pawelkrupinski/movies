@@ -2,7 +2,7 @@ package services.movies
 
 import com.mongodb.MongoException
 import com.mongodb.client.model.ReplaceOptions
-import models.{Cinema, CinemaScrape, CinemaShowings, MovieRecord, Showtime}
+import models.{Cinema, CinemaScrape, MovieRecord, Showtime, Source, SourceData, Tmdb}
 
 /** One persisted (title, year) → MovieRecord row. Used as the return type
  *  of `MovieRepo.findAll` and `MovieCache.snapshot` so callers iterate
@@ -199,7 +199,6 @@ class MongoMovieRepo extends MovieRepo with Logging {
       "imdbId"       -> e.imdbId.map(BsonString(_)).getOrElse(BsonNull()),
       "imdbRating"   -> e.imdbRating.map(org.mongodb.scala.bson.BsonDouble(_)).getOrElse(BsonNull()),
       "metascore"    -> e.metascore.map(org.mongodb.scala.bson.BsonInt32(_)).getOrElse(BsonNull()),
-      "originalTitle"-> e.originalTitle.map(BsonString(_)).getOrElse(BsonNull()),
       "filmwebUrl"   -> e.filmwebUrl.map(BsonString(_)).getOrElse(BsonNull()),
       "filmwebRating"-> e.filmwebRating.map(org.mongodb.scala.bson.BsonDouble(_)).getOrElse(BsonNull()),
       "rottenTomatoes"-> e.rottenTomatoes.map(org.mongodb.scala.bson.BsonInt32(_)).getOrElse(BsonNull()),
@@ -217,36 +216,42 @@ class MongoMovieRepo extends MovieRepo with Logging {
           .sortBy(s => (s.cinema.displayName, s.title, s.year.getOrElse(Int.MinValue)))
           .map(encodeCinemaScrape)
       ),
-      // Per-cinema data — sub-document keyed by Cinema.displayName.
-      "cinemaShowings" -> encodeCinemaShowings(e.cinemaShowings),
+      // Per-source data — sub-document keyed by Source.displayName (cinema
+      // displayNames + "TMDB" + "IMDB"). Replaces the old per-cinema
+      // `cinemaShowings` sub-doc; the decoder still reads `cinemaShowings`
+      // for legacy rows that pre-date this change.
+      "sourceData" -> encodeSourceData(e.data),
       "updatedAt"    -> BsonDateTime(Instant.now().toEpochMilli)
     )
 
-  // Sub-document keyed by Cinema.displayName so the keys are stable strings
+  // Sub-document keyed by Source.displayName so the keys are stable strings
   // (BSON doesn't have an enum type). Decoder maps the names back via
-  // Cinema.all. Unknown cinema names are dropped silently — they can't be
-  // resolved into a Cinema instance, so they don't go into the model.
-  private def encodeCinemaShowings(map: Map[Cinema, CinemaShowings]): BsonDocument = {
+  // `Source.byDisplayName`. Unknown source names are dropped silently —
+  // they can't be resolved into a Source instance, so they don't go into
+  // the model.
+  private def encodeSourceData(map: Map[Source, SourceData]): BsonDocument = {
     val doc = new BsonDocument()
-    map.foreach { case (cinema, showings) =>
-      doc.put(cinema.displayName, encodeOneCinemaShowings(showings))
+    map.foreach { case (source, slot) =>
+      doc.put(source.displayName, encodeOneSourceData(slot))
     }
     doc
   }
 
-  private def encodeOneCinemaShowings(s: CinemaShowings): BsonDocument = {
+  private def encodeOneSourceData(s: SourceData): BsonDocument = {
     val doc = new BsonDocument()
-    s.filmUrl.foreach(u        => doc.put("filmUrl",        BsonString(u)))
-    s.posterUrl.foreach(u      => doc.put("posterUrl",      BsonString(u)))
+    s.title.foreach(t          => doc.put("title",          BsonString(t)))
+    s.originalTitle.foreach(t  => doc.put("originalTitle",  BsonString(t)))
     s.synopsis.foreach(t       => doc.put("synopsis",       BsonString(t)))
     s.cast.foreach(t           => doc.put("cast",           BsonString(t)))
     s.director.foreach(t       => doc.put("director",       BsonString(t)))
     s.runtimeMinutes.foreach(n => doc.put("runtimeMinutes", BsonInt32(n)))
     s.releaseYear.foreach(n    => doc.put("releaseYear",    BsonInt32(n)))
-    s.originalTitle.foreach(t  => doc.put("originalTitle",  BsonString(t)))
     if (s.countries.nonEmpty)
       doc.put("countries", BsonArray.fromIterable(s.countries.map(BsonString(_))))
-    doc.put("showtimes", BsonArray.fromIterable(s.showtimes.map(encodeShowtime)))
+    s.posterUrl.foreach(u      => doc.put("posterUrl",      BsonString(u)))
+    s.filmUrl.foreach(u        => doc.put("filmUrl",        BsonString(u)))
+    if (s.showtimes.nonEmpty)
+      doc.put("showtimes", BsonArray.fromIterable(s.showtimes.map(encodeShowtime)))
     doc
   }
 
@@ -276,29 +281,45 @@ class MongoMovieRepo extends MovieRepo with Logging {
       // still produce a row), but the row must at least have a `title` to be
       // usable as a cache key. Anything else missing is treated as None.
       title <- d.get("title").flatMap(v => Try(v.asString().getValue).toOption)
-    } yield StoredMovieRecord(
-      title,
-      d.get("year").flatMap(v => Try(v.asInt32().getValue).toOption),
-      MovieRecord(
-        imdbId        = d.get("imdbId").flatMap(v => Try(v.asString().getValue).toOption),
-        imdbRating    = d.get("imdbRating").flatMap(v => Try(v.asDouble().getValue).toOption),
-        metascore     = d.get("metascore").flatMap(v => Try(v.asInt32().getValue).toOption),
-        originalTitle = d.get("originalTitle").flatMap(v => Try(v.asString().getValue).toOption),
-        filmwebUrl     = d.get("filmwebUrl").flatMap(v => Try(v.asString().getValue).toOption),
-        filmwebRating  = d.get("filmwebRating").flatMap(v => Try(v.asDouble().getValue).toOption),
-        rottenTomatoes = d.get("rottenTomatoes").flatMap(v => Try(v.asInt32().getValue).toOption),
-        tmdbId         = d.get("tmdbId").flatMap(v => Try(v.asInt32().getValue).toOption),
-        metacriticUrl  = d.get("metacriticUrl").flatMap(v => Try(v.asString().getValue).toOption),
-        rottenTomatoesUrl = d.get("rottenTomatoesUrl").flatMap(v => Try(v.asString().getValue).toOption),
-        // Missing for rows that pre-date the provenance field; treat as
-        // Set.empty so the very next scrape tick re-publishes once and
-        // populates the set. The legacy `cinemaTitles` field, if present
-        // in Mongo, is ignored — `cinemaTitles` is now derived from
-        // `cinemaScrapes`, and the next write drops it from the doc.
-        cinemaScrapes  = d.get("cinemaScrapes").flatMap(v => Try(decodeCinemaScrapes(v.asArray())).toOption).getOrElse(Set.empty),
-        cinemaShowings = d.get("cinemaShowings").flatMap(v => Try(decodeCinemaShowings(v.asDocument())).toOption).getOrElse(Map.empty)
+    } yield {
+      // Read per-source data — prefer the new `sourceData` sub-doc; fall back
+      // to the legacy `cinemaShowings` sub-doc (cinema-keyed). The legacy
+      // top-level `originalTitle` field (TMDB's value) folds into a Tmdb
+      // SourceData slot so it survives the migration; the next TMDB enrich
+      // tick will replace this minimal slot with a fully-populated one.
+      val newShape    = d.get("sourceData").flatMap(v => Try(decodeSourceData(v.asDocument())).toOption)
+      val legacyShape = d.get("cinemaShowings").flatMap(v => Try(decodeLegacyCinemaShowings(v.asDocument())).toOption)
+      val legacyOrigTitle = d.get("originalTitle").flatMap(v => Try(v.asString().getValue).toOption)
+      val data = newShape.getOrElse {
+        val cinemaSlots = legacyShape.getOrElse(Map.empty[Source, SourceData])
+        legacyOrigTitle match {
+          case Some(t) if !cinemaSlots.contains(Tmdb) => cinemaSlots + (Tmdb -> SourceData(originalTitle = Some(t)))
+          case _                                      => cinemaSlots
+        }
+      }
+      StoredMovieRecord(
+        title,
+        d.get("year").flatMap(v => Try(v.asInt32().getValue).toOption),
+        MovieRecord(
+          imdbId        = d.get("imdbId").flatMap(v => Try(v.asString().getValue).toOption),
+          imdbRating    = d.get("imdbRating").flatMap(v => Try(v.asDouble().getValue).toOption),
+          metascore     = d.get("metascore").flatMap(v => Try(v.asInt32().getValue).toOption),
+          filmwebUrl     = d.get("filmwebUrl").flatMap(v => Try(v.asString().getValue).toOption),
+          filmwebRating  = d.get("filmwebRating").flatMap(v => Try(v.asDouble().getValue).toOption),
+          rottenTomatoes = d.get("rottenTomatoes").flatMap(v => Try(v.asInt32().getValue).toOption),
+          tmdbId         = d.get("tmdbId").flatMap(v => Try(v.asInt32().getValue).toOption),
+          metacriticUrl  = d.get("metacriticUrl").flatMap(v => Try(v.asString().getValue).toOption),
+          rottenTomatoesUrl = d.get("rottenTomatoesUrl").flatMap(v => Try(v.asString().getValue).toOption),
+          // Missing for rows that pre-date the provenance field; treat as
+          // Set.empty so the very next scrape tick re-publishes once and
+          // populates the set. The legacy `cinemaTitles` field, if present
+          // in Mongo, is ignored — `cinemaTitles` is now derived from
+          // `cinemaScrapes`, and the next write drops it from the doc.
+          cinemaScrapes = d.get("cinemaScrapes").flatMap(v => Try(decodeCinemaScrapes(v.asArray())).toOption).getOrElse(Set.empty),
+          data          = data
+        )
       )
-    )
+    }
 
   private def decodeCinemaScrapes(arr: BsonArray): Set[CinemaScrape] = {
     val byName: Map[String, Cinema] = Cinema.all.map(c => c.displayName -> c).toMap
@@ -316,32 +337,42 @@ class MongoMovieRepo extends MovieRepo with Logging {
     }.toSet
   }
 
-  private def decodeCinemaShowings(doc: BsonDocument): Map[Cinema, CinemaShowings] = {
-    val byName: Map[String, Cinema] = Cinema.all.map(c => c.displayName -> c).toMap
+  private def decodeSourceData(doc: BsonDocument): Map[Source, SourceData] =
     doc.entrySet().asScala.iterator.flatMap { entry =>
       for {
-        cinema   <- byName.get(entry.getKey)
-        sub      <- Try(entry.getValue.asDocument()).toOption
-        showings <- Try(decodeOneCinemaShowings(sub)).toOption
-      } yield cinema -> showings
+        source <- Source.byDisplayName.get(entry.getKey)
+        sub    <- Try(entry.getValue.asDocument()).toOption
+        slot   <- Try(decodeOneSourceData(sub)).toOption
+      } yield source -> slot
     }.toMap
-  }
 
-  private def decodeOneCinemaShowings(doc: BsonDocument): CinemaShowings = {
-    def str(field: String)  = Option(doc.get(field)).flatMap(v => Try(v.asString().getValue).toOption)
+  /** Legacy decoder for rows persisted before the `sourceData` sub-doc was
+   *  introduced. Cinema slots become `Source` entries directly (Cinema
+   *  already extends Source). The next upsert rewrites these in the new
+   *  shape. */
+  private def decodeLegacyCinemaShowings(doc: BsonDocument): Map[Source, SourceData] =
+    doc.entrySet().asScala.iterator.flatMap { entry =>
+      for {
+        cinema <- Source.byDisplayName.get(entry.getKey).collect { case c: Cinema => c }
+        sub    <- Try(entry.getValue.asDocument()).toOption
+        slot   <- Try(decodeOneSourceData(sub)).toOption
+      } yield (cinema: Source) -> slot
+    }.toMap
+
+  private def decodeOneSourceData(doc: BsonDocument): SourceData = {
+    def str(field: String)   = Option(doc.get(field)).flatMap(v => Try(v.asString().getValue).toOption)
     def int32(field: String) = Option(doc.get(field)).flatMap(v => Try(v.asInt32().getValue).toOption)
     val showtimes = Option(doc.get("showtimes")).flatMap(v => Try(v.asArray()).toOption)
       .map(_.getValues.asScala.toSeq.flatMap(v => Try(decodeShowtime(v.asDocument())).toOption))
       .getOrElse(Seq.empty)
-    CinemaShowings(
-      filmUrl        = str("filmUrl"),
-      posterUrl      = str("posterUrl"),
+    SourceData(
+      title          = str("title"),
+      originalTitle  = str("originalTitle"),
       synopsis       = str("synopsis"),
       cast           = str("cast"),
       director       = str("director"),
       runtimeMinutes = int32("runtimeMinutes"),
       releaseYear    = int32("releaseYear"),
-      originalTitle  = str("originalTitle"),
       // Forward shape is `countries: BsonArray`. Older rows have
       // `country: BsonString` (sometimes comma-separated) — comma-split for
       // backward compat. The next scrape tick rewrites the slot with the
@@ -351,6 +382,8 @@ class MongoMovieRepo extends MovieRepo with Logging {
                          .getOrElse(
                            str("country").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
                          ),
+      posterUrl      = str("posterUrl"),
+      filmUrl        = str("filmUrl"),
       showtimes      = showtimes
     )
   }

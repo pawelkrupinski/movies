@@ -3,7 +3,7 @@ package services.movies
 import services.enrichment.{FilmwebClient, ImdbClient, MetacriticClient, RottenTomatoesClient}
 
 import clients.TmdbClient
-import models.MovieRecord
+import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, InProcessEventBus}
@@ -49,8 +49,11 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
   private def deadRt()         = new RottenTomatoesClient(http = deadFetch)
 
   private def mkEnrichment(imdbId: String, orig: Option[String] = None): MovieRecord =
-    MovieRecord(imdbId = Some(imdbId), imdbRating = None, metascore = None,
-               originalTitle = orig, tmdbId = Some(42))
+    MovieRecord(
+      imdbId = Some(imdbId),
+      tmdbId = Some(42),
+      data   = orig.map(o => Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some(o)))).getOrElse(Map.empty)
+    )
 
   // ── Setup: TMDB index where the Polish title "Powrót do przyszłości"
   // ── resolves to "Back to the Future" (1985). The cinema reports year=2026

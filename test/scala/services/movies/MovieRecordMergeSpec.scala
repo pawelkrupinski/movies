@@ -11,9 +11,8 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
   private def slot(
     poster:    String,
     showtimes: Seq[Showtime] = Seq.empty
-  ): CinemaShowings = CinemaShowings(
-    filmUrl = None, posterUrl = Some(poster), synopsis = None, cast = None,
-    director = None, runtimeMinutes = None, releaseYear = None,
+  ): SourceData = SourceData(
+    posterUrl = Some(poster),
     showtimes = showtimes
   )
 
@@ -23,19 +22,23 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     imdbId        = Some("tt1"),
     imdbRating    = Some(8.0),
     metascore     = Some(75),
-    originalTitle = Some("Canonical"),
     tmdbId        = Some(42),
     cinemaScrapes = Set(CinemaScrape(Multikino, "Foo", Some(2024))),
-    cinemaShowings = Map(Multikino -> slot("m.jpg"))
+    data = Map[Source, SourceData](
+      Multikino -> slot("m.jpg"),
+      Tmdb      -> SourceData(originalTitle = Some("Canonical"))
+    )
   )
   private val victim = MovieRecord(
     imdbId        = Some("tt-stale"),
     imdbRating    = Some(1.0),
     metascore     = None,
-    originalTitle = Some("Stale"),
     tmdbId        = Some(42),
     cinemaScrapes  = Set(CinemaScrape(Helios, "Foo", None)),
-    cinemaShowings = Map(Helios -> slot("h.jpg"))
+    data = Map[Source, SourceData](
+      Helios -> slot("h.jpg"),
+      Tmdb   -> SourceData(originalTitle = Some("Stale"))
+    )
   )
 
   "union" should "keep all enrichment fields from canonical" in {
@@ -58,9 +61,9 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
   // Disjoint cinemas: each cinema's slot lands intact, no merging needed.
   it should "carry both rows' cinemaShowings entries when the cinemas don't overlap" in {
     val merged = MovieRecordMerge.union(canonical, victim)
-    merged.cinemaShowings.keySet           shouldBe Set(Multikino, Helios)
-    merged.cinemaShowings(Multikino).posterUrl shouldBe Some("m.jpg")
-    merged.cinemaShowings(Helios).posterUrl    shouldBe Some("h.jpg")
+    merged.cinemaData.keySet           shouldBe Set(Multikino, Helios)
+    merged.cinemaData(Multikino).posterUrl shouldBe Some("m.jpg")
+    merged.cinemaData(Helios).posterUrl    shouldBe Some("h.jpg")
   }
 
   // Same-cinema collision: this is the regression case
@@ -74,14 +77,14 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
   it should "union showtimes (canonical metadata wins) when the same cinema appears in both rows" in {
     val canonicalSlot = slot("canon.jpg", showtimes = Seq(at("2026-05-16T18:00"), at("2026-05-16T20:00")))
     val victimSlot    = slot("victim.jpg", showtimes = Seq(at("2026-05-16T22:30")))
-    val a = canonical.copy(cinemaShowings = Map(Multikino -> canonicalSlot))
-    val b = victim.copy(cinemaShowings    = Map(Multikino -> victimSlot))
+    val a = canonical.copy(data = canonical.data + ((Multikino: Source) -> canonicalSlot))
+    val b = victim.copy(data    = victim.data    + ((Multikino: Source) -> victimSlot))
 
     val merged = MovieRecordMerge.union(a, b)
 
-    merged.cinemaShowings.keySet               shouldBe Set(Multikino)
-    merged.cinemaShowings(Multikino).posterUrl shouldBe Some("canon.jpg")   // canonical wins on metadata
-    merged.cinemaShowings(Multikino).showtimes.map(_.dateTime) shouldBe Seq(
+    merged.cinemaData.keySet               shouldBe Set(Multikino, Helios)
+    merged.cinemaData(Multikino).posterUrl shouldBe Some("canon.jpg")   // canonical wins on metadata
+    merged.cinemaData(Multikino).showtimes.map(_.dateTime) shouldBe Seq(
       LocalDateTime.parse("2026-05-16T18:00"),
       LocalDateTime.parse("2026-05-16T20:00"),
       LocalDateTime.parse("2026-05-16T22:30")
@@ -92,11 +95,11 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
   // a cinema's daily refresh) should only appear once in the union.
   it should "deduplicate showtimes when merging two same-cinema slots" in {
     val shared = at("2026-05-16T18:00")
-    val a = canonical.copy(cinemaShowings = Map(Multikino -> slot("canon.jpg", showtimes = Seq(shared, at("2026-05-16T20:00")))))
-    val b = victim.copy(cinemaShowings    = Map(Multikino -> slot("victim.jpg", showtimes = Seq(shared, at("2026-05-16T22:30")))))
+    val a = canonical.copy(data = canonical.data + ((Multikino: Source) -> slot("canon.jpg", showtimes = Seq(shared, at("2026-05-16T20:00")))))
+    val b = victim.copy(data    = victim.data    + ((Multikino: Source) -> slot("victim.jpg", showtimes = Seq(shared, at("2026-05-16T22:30")))))
 
     val merged = MovieRecordMerge.union(a, b)
 
-    merged.cinemaShowings(Multikino).showtimes.size shouldBe 3
+    merged.cinemaData(Multikino).showtimes.size shouldBe 3
   }
 }

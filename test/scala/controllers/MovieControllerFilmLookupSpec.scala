@@ -1,7 +1,7 @@
 package controllers
 
 import clients.TmdbClient
-import models.{CinemaShowings, Helios, MovieRecord}
+import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.Mode
@@ -26,14 +26,15 @@ class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
   private def buildController(title: String, year: Option[Int]): MovieController = {
     val now = LocalDateTime.now()
     val record = MovieRecord(
-      imdbId = Some("tt12340108"), imdbRating = None, metascore = None,
-      originalTitle = Some("The Devil Wears Prada 2"),
-      cinemaShowings = Map(Helios -> CinemaShowings(
-        filmUrl        = None, posterUrl = None, synopsis = None, cast = None,
-        director       = None, runtimeMinutes = None,
-        releaseYear    = year, originalTitle = None, countries = Seq.empty,
-        showtimes      = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
-      ))
+      imdbId = Some("tt12340108"),
+      data = Map[Source, SourceData](
+        Helios -> SourceData(
+          title          = Some(title),
+          releaseYear    = year,
+          showtimes      = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
+        ),
+        Tmdb -> SourceData(originalTitle = Some("The Devil Wears Prada 2"))
+      )
     )
     val repo  = new InMemoryMovieRepo(Seq((title, year, record)))
     val cache = new CaffeineMovieCache(repo)

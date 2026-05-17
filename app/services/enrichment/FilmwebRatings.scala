@@ -150,7 +150,7 @@ class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient
       .orElse(details.flatMap(_.englishTitle))
       .filterNot(_.equalsIgnoreCase(linkTitle))
     val tmdbDirectors   = e.tmdbId.map(tmdb.directorsFor).getOrElse(Set.empty)
-    val cinemaDirectors = e.cinemaShowings.values.flatMap(_.director).toSet
+    val cinemaDirectors = e.cinemaData.values.flatMap(_.director).toSet
     val directors       = tmdbDirectors ++ cinemaDirectors
 
     Try(filmweb.lookup(linkTitle, key.year, fallback, directors)).toOption.flatten

@@ -293,7 +293,12 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       )
       dub.movie.title           shouldBe "ДИЯВОЛ НОСИТЬ ПРАДА 2"
       dub.movie.runtimeMinutes  shouldBe Some(125)
-      dub.movie.releaseYear     shouldBe None
+      // TMDB now contributes to the merged accessors when the cinema slot
+      // is silent — Helios doesn't expose a year for the dub but TMDB's
+      // search result for the same film does. Same applies to director /
+      // synopsis when `fullDetails` lands a fixture; here the fullDetails
+      // call goes unrecorded so those stay None for the dub.
+      dub.movie.releaseYear     shouldBe Some(2026)
       dub.cast                  shouldBe None
       dub.director              shouldBe None
       dub.synopsis              shouldBe None

@@ -41,9 +41,6 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
   private def mkEnrichment(rtUrl: Option[String], score: Option[Int] = None): MovieRecord =
     MovieRecord(
       imdbId            = Some("tt0001"),
-      imdbRating        = None,
-      metascore         = None,
-      originalTitle     = None,
       tmdbId            = Some(42),
       rottenTomatoes    = score,
       rottenTomatoesUrl = rtUrl

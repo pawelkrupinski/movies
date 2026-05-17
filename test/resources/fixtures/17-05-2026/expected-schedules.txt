@@ -175,7 +175,7 @@ showings:
 displayTitle:      Arcybiskup Lefebvre – dlaczego?
 cinemaTitles:      Arcybiskup Lefebvre – dlaczego?
 runtimeMinutes:    128
-releaseYear:       —
+releaseYear:       2025
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Plakat_abp_dlaczego_2025_kino_Q-po-zmniejszeniu-200x288.jpg
 synopsis.length:   279
@@ -341,7 +341,7 @@ showings:
 displayTitle:      Bałtyk
 cinemaTitles:      Bałtyk
 runtimeMinutes:    66
-releaseYear:       —
+releaseYear:       2025
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/08/BALTYK-PLAKAT-W-KINACH-22.08-jpg-po-zmniejszeniu-200x288.jpg
 synopsis.length:   273
@@ -395,7 +395,7 @@ showings:
 displayTitle:      Bez wyjścia
 cinemaTitles:      Bez wyjścia
 runtimeMinutes:    139
-releaseYear:       —
+releaseYear:       2025
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Bez-wyjscia_plakat_B1_HQ-po-zmniejszeniu-200x288.jpg
 synopsis.length:   283
@@ -588,7 +588,7 @@ showings:
 displayTitle:      Być kochaną
 cinemaTitles:      Być kochaną
 runtimeMinutes:    105
-releaseYear:       —
+releaseYear:       2024
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/Byc-kochana_-plakat-HQ-po-zmniejszeniu-200x288.jpg
 synopsis.length:   273
@@ -642,7 +642,7 @@ showings:
 displayTitle:      Camper
 cinemaTitles:      Camper
 runtimeMinutes:    77
-releaseYear:       —
+releaseYear:       2025
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/CAMPER_PLAKAT-po-zmniejszeniu-200x288.jpg
 synopsis.length:   288
@@ -768,7 +768,7 @@ showings:
 displayTitle:      Cirque du Soleil: Kooza
 cinemaTitles:      Cirque du Soleil: Kooza
 runtimeMinutes:    90
-releaseYear:       —
+releaseYear:       2008
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/img/import/4e7d682d-c594-4525-a0d9-6a0b2fd97021_cirque-du-soleil-kooza_posters_koo_full_2000x3000px_712px.png?rev=ecb26b3f261f45559f7c9bd2c71b1b22
 synopsis.length:   469
@@ -1021,7 +1021,7 @@ showings:
 === Drugie życie ===
 displayTitle:      Drugie życie
 cinemaTitles:      Drugie życie
-runtimeMinutes:    0
+runtimeMinutes:    116
 releaseYear:       2025
 countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/drugiezycie_plakat.jpg?rev=b3e62875d7b248b78e1a7d07fdf010d2
@@ -1165,7 +1165,7 @@ showings:
 displayTitle:      Erupcja
 cinemaTitles:      Erupcja
 runtimeMinutes:    71
-releaseYear:       —
+releaseYear:       2026
 countries:         2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/erupcja.jpg?rev=66cbdeeffa9b41eca82059aab89bb588
 synopsis.length:   220
@@ -1221,8 +1221,8 @@ showings:
 === Fantastyczne zwierzęta i jak je znaleźć ===
 displayTitle:      Fantastyczne zwierzęta i jak je znaleźć
 cinemaTitles:      Fantastyczne zwierzęta i jak je znaleźć
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2016
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/fantastyczne-zwierzeta/fantastyczne_cz1_plakat.jpg?rev=1a4e976bba414fff9058bac59c8a86ae
 synopsis.length:   163
@@ -1250,7 +1250,7 @@ showings:
 displayTitle:      Fantastyczne zwierzęta: Tajemnice Dumbledorea
 cinemaTitles:      Fantastyczne zwierzęta: Tajemnice Dumbledorea
 runtimeMinutes:    142
-releaseYear:       —
+releaseYear:       2022
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/multikino_imported/imported_from_external_source/posterimage/pl-fnbst3-plakat-oficjalny-cut_f5cdf984c2.jpg?rev=0a9c0072657b4727ab2bce0e955867d2
 synopsis.length:   608
@@ -1277,8 +1277,8 @@ showings:
 === Fantastyczne zwierzęta: zbrodnie grindelwalda ===
 displayTitle:      Fantastyczne zwierzęta: zbrodnie grindelwalda
 cinemaTitles:      Fantastyczne zwierzęta: zbrodnie grindelwalda
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2018
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/fantastyczne-zwierzeta/fantastyczne_cz2_plakat.jpg?rev=187efed51ce645569fb425ca6a669679
 synopsis.length:   123
@@ -1445,7 +1445,7 @@ showings:
 displayTitle:      Follemente. W tym szaleństwie jest metoda
 cinemaTitles:      Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda
 runtimeMinutes:    97
-releaseYear:       —
+releaseYear:       2025
 countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg
 synopsis.length:   584
@@ -1558,7 +1558,7 @@ showings:
 displayTitle:      Głos Hind Rajab
 cinemaTitles:      Głos Hind Rajab
 runtimeMinutes:    89
-releaseYear:       —
+releaseYear:       2025
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Glos_Hind_Rajab-polski-plakat1-po-zmniejszeniu-200x288.jpg
 synopsis.length:   278
@@ -1645,7 +1645,7 @@ showings:
 displayTitle:      Harry Angel
 cinemaTitles:      Harry Angel
 runtimeMinutes:    114
-releaseYear:       —
+releaseYear:       1987
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/10/plakat-Harry-200x288.webp
 synopsis.length:   275
@@ -1671,8 +1671,8 @@ showings:
 === Harry Potter i Czara ognia ===
 displayTitle:      Harry Potter i Czara ognia
 cinemaTitles:      Harry Potter i Czara ognia
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2005
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-czara-ognia-plakat.png?rev=af3507e8ea434b0dad8ffe759ae3c699
 synopsis.length:   122
@@ -1698,7 +1698,7 @@ showings:
 === Harry Potter i Insygnia Śmierci cz. 1 ===
 displayTitle:      Harry Potter i Insygnia Śmierci cz. 1
 cinemaTitles:      Harry Potter i Insygnia Śmierci cz. 1
-runtimeMinutes:    0
+runtimeMinutes:    —
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-insygnia-1-plakat.png?rev=4bb3985b391c48bb8865e6ad3c792e81
@@ -1725,8 +1725,8 @@ showings:
 === Harry Potter i Insygnia Śmierci cz. 2 ===
 displayTitle:      Harry Potter i Insygnia Śmierci cz. 2
 cinemaTitles:      Harry Potter i Insygnia Śmierci cz. 2
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2011
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-insygnia-2-plakat.png?rev=02dfe6e3a9fb4f0db308efee9f943de2
 synopsis.length:   88
@@ -1752,8 +1752,8 @@ showings:
 === Harry Potter i Kamień filozoficzny ===
 displayTitle:      Harry Potter i Kamień filozoficzny
 cinemaTitles:      Harry Potter i Kamień filozoficzny
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2001
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/harry-potter-i-kamien.jpg?rev=746ac80d53474907bcb22092c0f29d46
 synopsis.length:   113
@@ -1785,8 +1785,8 @@ showings:
 === Harry Potter i Komnata Tajemnic ===
 displayTitle:      Harry Potter i Komnata Tajemnic
 cinemaTitles:      Harry Potter i Komnata Tajemnic
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2002
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/harry-potter-i-komnata.jpg?rev=2a3cdf37f6a241efa4b8cdb19164d545
 synopsis.length:   136
@@ -1812,8 +1812,8 @@ showings:
 === Harry Potter i Książę Półkrwi ===
 displayTitle:      Harry Potter i Książę Półkrwi
 cinemaTitles:      Harry Potter i Książę Półkrwi
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2009
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-ksiaze-plakat.png?rev=44968ea3411d4cf6895a2305451256de
 synopsis.length:   70
@@ -1839,7 +1839,7 @@ showings:
 === Harry Potter i Więzień Azkabanu ===
 displayTitle:      Harry Potter i Więzień Azkabanu
 cinemaTitles:      Harry Potter i Więzień Azkabanu
-runtimeMinutes:    0
+runtimeMinutes:    —
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/harry-potter-i-wiezien.jpg?rev=d9efdcb242c24a7a8f7eafe56cdb8878
@@ -1866,8 +1866,8 @@ showings:
 === Harry Potter i Zakon Feniksa ===
 displayTitle:      Harry Potter i Zakon Feniksa
 cinemaTitles:      Harry Potter i Zakon Feniksa
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2007
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-zakon-plakat.png?rev=cc1f0e4ef6e14bc684b712282bcabe91
 synopsis.length:   125
@@ -1893,7 +1893,7 @@ showings:
 === Hopnięci ===
 displayTitle:      Hopnięci
 cinemaTitles:      Hopnięci
-runtimeMinutes:    0
+runtimeMinutes:    104
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/hopnieci/hopnieci-plakat-final-cut.jpg?rev=9d1707945c83489aad3da15956eb50fa
@@ -2070,7 +2070,7 @@ showings:
 displayTitle:      Kicia Kocia ma braciszka
 cinemaTitles:      Kicia Kocia ma braciszka
 runtimeMinutes:    45
-releaseYear:       —
+releaseYear:       2025
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/Kicia-Kocia-ma-braciszka-PLAKAT-online-po-zmniejszeniu-200x288.jpg
 synopsis.length:   281
@@ -2318,7 +2318,7 @@ showings:
 === Klątwa doliny węży -  z autorską narracją Łony ===
 displayTitle:      Klątwa doliny węży -  z autorską narracją Łony
 cinemaTitles:      Klątwa doliny węży -  z autorską narracją Łony
-runtimeMinutes:    0
+runtimeMinutes:    —
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/klatwa-doliny-wezy_plakat.jpg?rev=c58ea807e26643fb8bc1425578f746b0
@@ -2409,7 +2409,7 @@ showings:
 displayTitle:      Kopnęłabym cię, gdybym mogła
 cinemaTitles:      Kopnęłabym cię, gdybym mogła
 runtimeMinutes:    113
-releaseYear:       —
+releaseYear:       2025
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/KOPNELABYM-CIE_patroni-po-zmniejszeniu-200x288.jpg
 synopsis.length:   273
@@ -2436,8 +2436,8 @@ showings:
 === Kosmiczny mecz ===
 displayTitle:      Kosmiczny mecz
 cinemaTitles:      Kosmiczny mecz | Kosmiczny mecz. 30. Rocznica
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    88
+releaseYear:       1996
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/kosmicznymecz96.jpg?rev=5cf7d42444434cff9f803083a634a9ee
 synopsis.length:   136
@@ -2731,7 +2731,7 @@ showings:
 displayTitle:      Left-Handed Girl. To była ręka... diabła!
 cinemaTitles:      Left-Handed Girl. To była ręka... diabła!
 runtimeMinutes:    109
-releaseYear:       —
+releaseYear:       2025
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/LEFT-HANDED-GIRL_PLAKAT-PL-jpg-200x288.jpg
 synopsis.length:   282
@@ -2790,7 +2790,7 @@ showings:
 === LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC ===
 displayTitle:      LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC
 cinemaTitles:      LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC
-runtimeMinutes:    0
+runtimeMinutes:    —
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/euro/2026/plakat_30maja.jpg?rev=b087764f339d4085af181aa6fc494509
@@ -2868,7 +2868,7 @@ showings:
 === Maraton: Powrót do przyszłości ===
 displayTitle:      Maraton: Powrót do przyszłości
 cinemaTitles:      Maraton: Powrót do przyszłości
-runtimeMinutes:    0
+runtimeMinutes:    —
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
@@ -2929,7 +2929,7 @@ showings:
 displayTitle:      Matador
 cinemaTitles:      Matador
 runtimeMinutes:    106
-releaseYear:       —
+releaseYear:       1986
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/jBBLDaF7j3EeTPkOwDPqdfSCWWk-200x288.jpg
 synopsis.length:   283
@@ -3090,8 +3090,8 @@ showings:
 === Milczenie owiec ===
 displayTitle:      Milczenie owiec
 cinemaTitles:      Milczenie owiec
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       1991
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/milczenie-owiec-cut.jpg?rev=e42068650341416bb3c39e499ad5bc5b
 synopsis.length:   594
@@ -3175,7 +3175,7 @@ showings:
 displayTitle:      Miłość w czasach apokalipsy
 cinemaTitles:      Miłość w czasach apokalipsy
 runtimeMinutes:    100
-releaseYear:       —
+releaseYear:       2025
 countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/04/milosc-w-czasach-apo_plakat-700x1050-1.jpg
 synopsis.length:   1268
@@ -3318,8 +3318,8 @@ showings:
 === Moulin Rouge! ===
 displayTitle:      Moulin Rouge!
 cinemaTitles:      Moulin Rouge! – wersja oryginalna
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2001
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/moulinrouge_plakat.jpg?rev=8ca27e12f37248789e7785bd6c5bc786
 synopsis.length:   78
@@ -3346,8 +3346,8 @@ showings:
 === Mumia: Film Lee Cronina ===
 displayTitle:      Mumia: Film Lee Cronina
 cinemaTitles:      Mumia: Film Lee Cronina
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2026
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/mumia/mumia_plakat_fin_cut.jpg?rev=c4702594b644437f91c4ba1c5c656aa2
 synopsis.length:   200
@@ -3598,7 +3598,7 @@ showings:
 displayTitle:      Nie ma duchów w mieszkaniu na Dobrej
 cinemaTitles:      Nie ma duchów w mieszkaniu na Dobrej
 runtimeMinutes:    90
-releaseYear:       —
+releaseYear:       2026
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/NIE-MA-DUCHOW_PLAKAT-po-zmniejszeniu-200x288.jpg
 synopsis.length:   272
@@ -3808,7 +3808,7 @@ showings:
 displayTitle:      Niewinni czarodzieje
 cinemaTitles:      Cykl „Wajda: re-wizje" - Niewinni czarodzieje / Innocent Sorcerers (1960) | Niewinni czarodzieje
 runtimeMinutes:    84
-releaseYear:       —
+releaseYear:       1960
 countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png
 synopsis.length:   1244
@@ -4229,8 +4229,8 @@ showings:
 === Odlot ===
 displayTitle:      Odlot
 cinemaTitles:      Odlot
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2009
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
 synopsis.length:   183
@@ -4316,7 +4316,7 @@ showings:
 displayTitle:      Opętanie
 cinemaTitles:      Opętanie
 runtimeMinutes:    124
-releaseYear:       —
+releaseYear:       1981
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/04/plw5syL13CNWIxGaqhuSOlLPUM2-200x288.jpg
 synopsis.length:   278
@@ -4467,7 +4467,7 @@ showings:
 displayTitle:      Perfect Days
 cinemaTitles:      Perfect Days
 runtimeMinutes:    125
-releaseYear:       —
+releaseYear:       2023
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2024/04/Perfect_Days_plakatPL_680x980_3mm_LQ-200x288.jpg
 synopsis.length:   274
@@ -4603,7 +4603,7 @@ showings:
 displayTitle:      Pod skórą
 cinemaTitles:      Pod skórą
 runtimeMinutes:    108
-releaseYear:       —
+releaseYear:       2014
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2024/11/463315300_122193112556195240_4187623239888508464_n-200x288.jpg
 synopsis.length:   270
@@ -4629,7 +4629,7 @@ showings:
 === Podziemny krąg ===
 displayTitle:      Podziemny krąg
 cinemaTitles:      Podziemny krąg
-runtimeMinutes:    0
+runtimeMinutes:    140
 releaseYear:       1999
 countries:         Niemcy, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/podziemny-krag_online_cut.jpg?rev=8b4016e21dd74d46a7dc788b826c7a8e
@@ -4729,8 +4729,8 @@ showings:
 === Powrót do przyszłości ===
 displayTitle:      Powrót do przyszłości
 cinemaTitles:      Powrót do przyszłości
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    116
+releaseYear:       1985
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/powrot-do-przyszlosci/bttf-1-plakat-cut2.jpg?rev=604aded5095847c2a0149a31a4f91d11
 synopsis.length:   156
@@ -4761,8 +4761,8 @@ showings:
 === Powrót do przyszłości II ===
 displayTitle:      Powrót do przyszłości II
 cinemaTitles:      Powrót do przyszłości II
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    108
+releaseYear:       1989
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/powrot-do-przyszlosci/bttf2-plakat-cut2.jpg?rev=be69cfb939234d949dfec4644c17885e
 synopsis.length:   111
@@ -4793,8 +4793,8 @@ showings:
 === Powrót do przyszłości III ===
 displayTitle:      Powrót do przyszłości III
 cinemaTitles:      Powrót do przyszłości III
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    118
+releaseYear:       1990
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/powrot-do-przyszlosci/bttf3-plakat-cut2.jpg?rev=7e089f9f6c1843a998fac58f33e21687
 synopsis.length:   126
@@ -4995,8 +4995,8 @@ showings:
 === Romeo i Julia ===
 displayTitle:      Romeo i Julia
 cinemaTitles:      Romeo i Julia – wersja oryginalna
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       1996
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/romeojulia_plakat.jpg?rev=fa911f8bb60b4b95bd7cb1861a8adf77
 synopsis.length:   417
@@ -5290,7 +5290,7 @@ showings:
 === Straszny film ===
 displayTitle:      Straszny film
 cinemaTitles:      Straszny film | Straszny film 
-runtimeMinutes:    0
+runtimeMinutes:    94
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/straszny-film/straszny-film-plakat-net.jpg?rev=90bf6b7775c948f49f68a67c868d264b
@@ -5479,7 +5479,7 @@ showings:
 displayTitle:      Takie jest życie
 cinemaTitles:      Takie jest życie
 runtimeMinutes:    —
-releaseYear:       —
+releaseYear:       2001
 countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Takie-jest-zycie_B1-1-scaled.jpg
 synopsis.length:   831
@@ -5509,7 +5509,7 @@ showings:
 displayTitle:      The Amazing Digital Circus: Ostatni Akt
 cinemaTitles:      The Amazing Digital Circus: Ostatni Akt
 runtimeMinutes:    93
-releaseYear:       —
+releaseYear:       2026
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/tadc/tadc_plakat1.jpg?rev=6804403f06ff476592b3fb32300bcdf8
 synopsis.length:   593
@@ -5665,7 +5665,7 @@ showings:
 === Top Gun ===
 displayTitle:      Top Gun
 cinemaTitles:      Top Gun | Top Gun 40. Rocznica | Top Gun 40th Anniversary
-runtimeMinutes:    0
+runtimeMinutes:    110
 releaseYear:       1986
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/top-gun-rocznica40.jpg?rev=9d8790a579a34b90a653b01fa16444c9
@@ -5875,7 +5875,7 @@ showings:
 === Werdykt ===
 displayTitle:      Werdykt
 cinemaTitles:      Werdykt
-runtimeMinutes:    0
+runtimeMinutes:    —
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/werdykt_plakat_cut.jpg?rev=433b248d041a4fed8dfc6fbed59f146c
@@ -6268,7 +6268,7 @@ showings:
 displayTitle:      Yu-Gi-Oh! The Dark Side of Dimensions
 cinemaTitles:      Yu-Gi-Oh! The Dark Side of Dimensions
 runtimeMinutes:    130
-releaseYear:       —
+releaseYear:       2016
 countries:         —
 posterUrl:         https://img.helios.pl/pliki/film/yu-gi-oh-the-dark-side-of-dimensions/yu-gi-oh-the-dark-side-of-dimensions-plakat-81113.jpg
 synopsis.length:   —
@@ -6294,7 +6294,7 @@ showings:
 === Za duży na bajki 3 ===
 displayTitle:      Za duży na bajki 3
 cinemaTitles:      Za duży na bajki 3
-runtimeMinutes:    0
+runtimeMinutes:    90
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/za-duzy-na-bajki-3/zaduzynabajki3_plakat.jpg?rev=9b8f08e7580848568d5657d0881b4a65
@@ -6362,8 +6362,8 @@ showings:
 === Zaplątani ===
 displayTitle:      Zaplątani
 cinemaTitles:      Zaplątani
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2010
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
 synopsis.length:   142
@@ -6390,8 +6390,8 @@ showings:
 === Zaproszenie ===
 displayTitle:      Zaproszenie
 cinemaTitles:      Zaproszenie
-runtimeMinutes:    0
-releaseYear:       —
+runtimeMinutes:    —
+releaseYear:       2022
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
 synopsis.length:   —
@@ -6417,7 +6417,7 @@ showings:
 === Zawieście czerwone latarnie ===
 displayTitle:      Zawieście czerwone latarnie
 cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | Zawieście czerwone latarnie
-runtimeMinutes:    0
+runtimeMinutes:    142
 releaseYear:       1991
 countries:         Chiny, Hongkong
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/zawiecie_czerwone_laternie_plakat.jpg?rev=300dbab82eef4904a6bb9c1888bbea70
@@ -6585,7 +6585,7 @@ showings:
 displayTitle:      Ścieżki życia
 cinemaTitles:      Ścieżki życia
 runtimeMinutes:    115
-releaseYear:       —
+releaseYear:       2025
 countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/Sciezki_zycia_plakat_PL_HQ-po-zmniejszeniu-200x288.jpg
 synopsis.length:   264
@@ -6613,7 +6613,7 @@ showings:
 displayTitle:      Żywot Briana
 cinemaTitles:      Cykl "Kultowa klasyka" - Żywot Briana / Life of Brian (1979)
 runtimeMinutes:    94
-releaseYear:       —
+releaseYear:       1979
 countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/03/KM_Zywot_briana_plakat-scaled.png
 synopsis.length:   1706
@@ -6695,7 +6695,7 @@ showings:
 displayTitle:      ДИЯВОЛ НОСИТЬ ПРАДА 2
 cinemaTitles:      ДИЯВОЛ НОСИТЬ ПРАДА 2
 runtimeMinutes:    125
-releaseYear:       —
+releaseYear:       2026
 countries:         —
 posterUrl:         https://img.helios.pl/pliki/film/dyyavol-nosyt-prada-2-ua/dyyavol-nosyt-prada-2-ua-plakat-161.jpg
 synopsis.length:   —

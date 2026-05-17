@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   private def mkEnrichment(imdbId: String, rating: Option[Double] = None): MovieRecord =
-    MovieRecord(imdbId = Some(imdbId), imdbRating = rating, metascore = None, originalTitle = None)
+    MovieRecord(imdbId = Some(imdbId), imdbRating = rating)
 
   "MovieCache" should "hydrate from the repo on construction" in {
     val seed = Seq(("Drzewo Magii", Some(2024), mkEnrichment("tt1")))
@@ -95,15 +95,14 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // there's no duplicate logic to maintain.
 
   private def mkResolved(tmdbId: Int, scrapes: Set[CinemaScrape] = Set.empty,
-                        showings: Map[Cinema, CinemaShowings] = Map.empty): MovieRecord =
+                        showings: Map[Cinema, SourceData] = Map.empty): MovieRecord =
     MovieRecord(
       imdbId         = Some("tt-anything"),
       imdbRating     = Some(8.0),
-      metascore      = None,
-      originalTitle  = Some("Original"),
       tmdbId         = Some(tmdbId),
       cinemaScrapes  = scrapes,
-      cinemaShowings = showings
+      data           = showings.map { case (c, sd) => (c: Source) -> sd } +
+                       (Tmdb -> SourceData(originalTitle = Some("Original")))
     )
 
   "put with tmdbId" should "fold onto an existing key carrying the same tmdbId" in {
@@ -402,9 +401,9 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     ))
 
     val row = cache.get(cache.keyOf("Top Gun: Maverick", Some(2022))).get
-    row.cinemaShowings.keySet shouldBe Set(Multikino)
-    row.cinemaShowings(Multikino).posterUrl shouldBe Some("multikino.jpg")
-    row.cinemaShowings(Multikino).showtimes.size shouldBe 1
+    row.cinemaData.keySet shouldBe Set(Multikino)
+    row.cinemaData(Multikino).posterUrl shouldBe Some("multikino.jpg")
+    row.cinemaData(Multikino).showtimes.size shouldBe 1
   }
 
   it should "merge two cinemas' slots into the same record when their titles share a docId" in {
@@ -418,7 +417,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     ))
 
     val row = cache.get(cache.keyOf("Top Gun: Maverick", Some(2022))).get
-    row.cinemaShowings.keySet shouldBe Set(Multikino, Helios)
+    row.cinemaData.keySet shouldBe Set(Multikino, Helios)
     // Multikino's poster wins the merged view (priority rule).
     row.posterUrl shouldBe Some("multikino.jpg")
     // Both raw titles are recorded in cinemaScrapes (and surfaced via the
@@ -442,8 +441,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     ))
 
     val row = cache.get(cache.keyOf("Top Gun: Maverick", Some(2022))).get
-    row.cinemaShowings(Multikino).countries shouldBe Seq.empty
-    row.cinemaShowings(Helios).countries    shouldBe Seq("USA")
+    row.cinemaData(Multikino).countries shouldBe Seq.empty
+    row.cinemaData(Helios).countries    shouldBe Seq("USA")
     // Multikino has the slot but no countries; Helios fills in.
     row.countries shouldBe Seq("USA")
   }
@@ -478,8 +477,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val row = cache.get(cache.keyOf("Bar", Some(2026))).get
     // Per-cinema slot already stores canonical names — `Stany Zjednoczone`
     // folded to `USA`, `UK` folded to `Wielka Brytania`.
-    row.cinemaShowings(Multikino).countries shouldBe Seq("USA", "Wielka Brytania")
-    row.cinemaShowings(Helios).countries    shouldBe Seq("USA", "Wielka Brytania", "Francja")
+    row.cinemaData(Multikino).countries shouldBe Seq("USA", "Wielka Brytania")
+    row.cinemaData(Helios).countries    shouldBe Seq("USA", "Wielka Brytania", "Francja")
     // Merged union sees the same canonical strings from both cinemas, so
     // dedup collapses them to one entry each.
     row.countries shouldBe Seq("USA", "Wielka Brytania", "Francja")
@@ -490,7 +489,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // Seed with an enriched record (TMDB-resolved, no cinemas yet).
     val seed = MovieRecord(
       imdbId = Some("tt1745960"), imdbRating = Some(8.2), metascore = Some(78),
-      originalTitle = Some("Top Gun: Maverick"), tmdbId = Some(361743)
+      tmdbId = Some(361743),
+      data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Top Gun: Maverick")))
     )
     cache.put(cache.keyOf("Top Gun: Maverick", Some(2022)), seed)
 
@@ -502,7 +502,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.imdbId        shouldBe Some("tt1745960")
     row.imdbRating    shouldBe Some(8.2)
     row.metascore     shouldBe Some(78)
-    row.cinemaShowings.keySet shouldBe Set(Multikino)
+    row.cinemaData.keySet shouldBe Set(Multikino)
   }
 
   it should "prune a cinema's slot from records that didn't appear in the fresh scrape" in {
@@ -512,16 +512,16 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       cinemaMovie("A", Multikino),
       cinemaMovie("B", Multikino)
     ))
-    cache.get(cache.keyOf("A", Some(2026))).get.cinemaShowings should contain key Multikino
-    cache.get(cache.keyOf("B", Some(2026))).get.cinemaShowings should contain key Multikino
+    cache.get(cache.keyOf("A", Some(2026))).get.cinemaData should contain key Multikino
+    cache.get(cache.keyOf("B", Some(2026))).get.cinemaData should contain key Multikino
 
     // Tick 2: Multikino only reports A. B's Multikino slot should be pruned.
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("A", Multikino)
     ))
 
-    cache.get(cache.keyOf("A", Some(2026))).get.cinemaShowings should contain key Multikino
-    cache.get(cache.keyOf("B", Some(2026))).get.cinemaShowings should not contain key (Multikino)
+    cache.get(cache.keyOf("A", Some(2026))).get.cinemaData should contain key Multikino
+    cache.get(cache.keyOf("B", Some(2026))).get.cinemaData should not contain key (Multikino)
   }
 
   // Cross-script protection now comes from `MovieService.normalize` keeping
@@ -537,8 +537,9 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "redirect a fresh year=None scrape onto an existing year=Some row at the same cleanTitle" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     val survivor = MovieRecord(
-      imdbId = Some("tt1527793"), imdbRating = None, metascore = None,
-      originalTitle = Some("어쩔수가없다"), tmdbId = Some(639988)
+      imdbId = Some("tt1527793"),
+      tmdbId = Some(639988),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("어쩔수가없다")))
     )
     cache.put(cache.keyOf("Bez wyjścia", Some(2025)), survivor)
     cache.snapshot().size shouldBe 1
@@ -549,16 +550,16 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
     cache.snapshot().size shouldBe 1
     val row = cache.get(cache.keyOf("Bez wyjścia", Some(2025))).get
-    row.cinemaShowings.keySet shouldBe Set(KinoBulgarska)
-    row.cinemaShowings(KinoBulgarska).showtimes.size shouldBe 1
+    row.cinemaData.keySet shouldBe Set(KinoBulgarska)
+    row.cinemaData(KinoBulgarska).showtimes.size shouldBe 1
     cache.get(cache.keyOf("Bez wyjścia", None)) shouldBe None
   }
 
   it should "record the incoming raw cinema title in cinemaScrapes (and the derived cinemaTitles view)" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     val survivor = MovieRecord(
-      imdbId = Some("tt17490712"), imdbRating = None, metascore = None,
-      originalTitle = None, tmdbId = Some(931285)
+      imdbId = Some("tt17490712"),
+      tmdbId = Some(931285)
     )
     cache.put(cache.keyOf("Mortal Kombat II", Some(2026)), survivor)
 
@@ -574,7 +575,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "fold a redirected scrape's slot onto the existing row without creating a duplicate" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.put(cache.keyOf("Bez wyjścia", Some(2025)),
-              MovieRecord(imdbId = None, imdbRating = None, metascore = None, originalTitle = None))
+              MovieRecord())
 
     cache.recordCinemaScrape(KinoBulgarska, Seq(cinemaMovie("Bez wyjścia", KinoBulgarska, None)))
 
@@ -624,8 +625,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "NOT redirect across scripts — Cyrillic and Latin normalise differently" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.put(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026)),
-              MovieRecord(imdbId = Some("tt17490712"), imdbRating = None, metascore = None,
-                         originalTitle = None, tmdbId = Some(931285)))
+              MovieRecord(imdbId = Some("tt17490712"), tmdbId = Some(931285)))
 
     cache.recordCinemaScrape(Multikino, Seq(
       cinemaMovie("Mortal Kombat II", Multikino, Some(2026), showtimes = Seq(showtime("2026-06-01T18:00")))
@@ -633,7 +633,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
     // No redirect — a fresh Latin row gets created, distinct from Cyrillic.
     cache.get(cache.keyOf("Mortal Kombat II", Some(2026))) shouldBe defined
-    cache.get(cache.keyOf("Mortal Kombat II", Some(2026))).get.cinemaShowings.keySet shouldBe Set(Multikino)
+    cache.get(cache.keyOf("Mortal Kombat II", Some(2026))).get.cinemaData.keySet shouldBe Set(Multikino)
     cache.get(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026))) shouldBe defined
   }
 
@@ -643,11 +643,9 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // one row per year, each pinned to a different imdbId. Redirecting a
     // year=None scrape would be a coin-flip → keep them distinct.
     cache.put(cache.keyOf("Wspinaczka", Some(2017)),
-              MovieRecord(imdbId = Some("tt5157682"), imdbRating = None, metascore = None,
-                         originalTitle = None))
+              MovieRecord(imdbId = Some("tt5157682")))
     cache.put(cache.keyOf("Wspinaczka", Some(2025)),
-              MovieRecord(imdbId = Some("tt36437006"), imdbRating = None, metascore = None,
-                         originalTitle = None))
+              MovieRecord(imdbId = Some("tt36437006")))
 
     cache.recordCinemaScrape(KinoBulgarska, Seq(cinemaMovie("Wspinaczka", KinoBulgarska, year = None)))
 
@@ -660,8 +658,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   "hasResolvedSiblingByTitle" should "return true when a resolved row's cleanTitle normalises to the same form" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.put(cache.keyOf("Milcząca przyjaciółka", Some(2025)),
-              MovieRecord(imdbId = Some("tt27811632"), imdbRating = None, metascore = None,
-                         originalTitle = None, tmdbId = Some(1168719)))
+              MovieRecord(imdbId = Some("tt27811632"), tmdbId = Some(1168719)))
 
     cache.hasResolvedSiblingByTitle("Milcząca przyjaciółka") shouldBe true
   }
@@ -669,7 +666,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "return false when the matching row has no tmdbId yet" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.put(cache.keyOf("Foo", None),
-              MovieRecord(imdbId = None, imdbRating = None, metascore = None, originalTitle = None))
+              MovieRecord())
 
     cache.hasResolvedSiblingByTitle("Foo") shouldBe false
   }
@@ -677,8 +674,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "return false when no row carries the title at all" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.put(cache.keyOf("Something else", Some(2024)),
-              MovieRecord(imdbId = None, imdbRating = None, metascore = None, originalTitle = None,
-                         tmdbId = Some(42)))
+              MovieRecord(tmdbId = Some(42)))
 
     cache.hasResolvedSiblingByTitle("Unrelated") shouldBe false
   }
@@ -686,8 +682,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "return false across scripts — Cyrillic cleanTitle doesn't satisfy a Latin lookup" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.put(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026)),
-              MovieRecord(imdbId = Some("tt17490712"), imdbRating = None, metascore = None,
-                         originalTitle = None, tmdbId = Some(931285)))
+              MovieRecord(imdbId = Some("tt17490712"), tmdbId = Some(931285)))
 
     cache.hasResolvedSiblingByTitle("Mortal Kombat II") shouldBe false
   }
@@ -715,12 +710,12 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     // Seed with a film the cinema was previously showing.
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, Some(2026))))
-    cache.get(cache.keyOf("Foo", Some(2026))).get.cinemaShowings.keySet shouldBe Set(Multikino)
+    cache.get(cache.keyOf("Foo", Some(2026))).get.cinemaData.keySet shouldBe Set(Multikino)
 
     // Scraper "fails": returns empty list. With the safeguard this is a no-op.
     cache.recordCinemaScrape(Multikino, Seq.empty)
 
-    cache.get(cache.keyOf("Foo", Some(2026))).get.cinemaShowings.keySet shouldBe Set(Multikino)
+    cache.get(cache.keyOf("Foo", Some(2026))).get.cinemaData.keySet shouldBe Set(Multikino)
   }
 
   it should "still prune a slot when the scrape returned other films but not this one" in {
@@ -736,8 +731,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       cinemaMovie("Foo", Multikino, Some(2026))
     ))
 
-    cache.get(cache.keyOf("Foo", Some(2026))).get.cinemaShowings.keySet shouldBe Set(Multikino)
-    cache.get(cache.keyOf("Bar", Some(2026))).get.cinemaShowings.keySet shouldBe Set.empty
+    cache.get(cache.keyOf("Foo", Some(2026))).get.cinemaData.keySet shouldBe Set(Multikino)
+    cache.get(cache.keyOf("Bar", Some(2026))).get.cinemaData.keySet shouldBe Set.empty
   }
 
   // Regression for the "Mortal Kombat row appears and disappears" symptom: a
@@ -748,7 +743,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Mortal Kombat", Multikino, Some(2026))))
     cache.recordCinemaScrape(Helios,    Seq(cinemaMovie("Mortal Kombat", Helios,    Some(2026))))
     val key = cache.keyOf("Mortal Kombat", Some(2026))
-    cache.get(key).get.cinemaShowings.keySet shouldBe Set(Multikino, Helios)
+    cache.get(key).get.cinemaData.keySet shouldBe Set(Multikino, Helios)
 
     // Multikino's scraper has a hiccup and returns nothing this tick.
     cache.recordCinemaScrape(Multikino, Seq.empty)
@@ -757,8 +752,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // safeguard so the row keeps rendering until Multikino's next successful
     // tick (which is the "row reappears" the user saw 60s later).
     val row = cache.get(key).get
-    row.cinemaShowings.keySet should contain (Helios)
-    row.cinemaShowings.keySet should contain (Multikino)
+    row.cinemaData.keySet should contain (Helios)
+    row.cinemaData.keySet should contain (Multikino)
   }
 
   it should "not prune other cinemas' slots when one cinema's tick lands" in {
@@ -768,14 +763,14 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.recordCinemaScrape(Helios,    Seq(cinemaMovie("Shared", Helios,    Some(2026), Some("he.jpg"))))
 
     val before = cache.get(cache.keyOf("Shared", Some(2026))).get
-    before.cinemaShowings.keySet shouldBe Set(Multikino, Helios)
+    before.cinemaData.keySet shouldBe Set(Multikino, Helios)
 
     // Helios genuinely drops Shared (scrape returns other films, just not
     // Shared) — Helios's slot is pruned, Multikino's slot is untouched.
     cache.recordCinemaScrape(Helios, Seq(cinemaMovie("Different Film", Helios, Some(2026))))
 
     val after = cache.get(cache.keyOf("Shared", Some(2026))).get
-    after.cinemaShowings.keySet shouldBe Set(Multikino)
+    after.cinemaData.keySet shouldBe Set(Multikino)
   }
 
   "snapshot" should "return rows sorted by title (case-insensitive)" in {

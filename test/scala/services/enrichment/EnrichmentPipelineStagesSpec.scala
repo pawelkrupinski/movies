@@ -1,7 +1,7 @@
 package services.enrichment
 
 import clients.TmdbClient
-import models.MovieRecord
+import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{DomainEvent, InProcessEventBus, MovieRecordCreated, TmdbResolved}
@@ -151,7 +151,8 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   it should "preserve an existing imdbId when TMDB resolves the same tmdbId but with no cross-reference" in {
     val seed = MovieRecord(
       imdbId = Some("tt17490712"), imdbRating = Some(7.0),
-      metascore = None, originalTitle = Some("Mortal Kombat II"), tmdbId = Some(931285)
+      tmdbId = Some(931285),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II")))
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(
       ("Mortal Kombat II", Some(2026), seed)
@@ -180,7 +181,8 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   it should "discard the existing imdbId when TMDB resolves to a DIFFERENT tmdbId (correction path)" in {
     val seed = MovieRecord(
       imdbId = Some("tt-old-wrong-id"), imdbRating = Some(7.0),
-      metascore = None, originalTitle = Some("Old Film"), tmdbId = Some(99999)
+      tmdbId = Some(99999),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Old Film")))
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(
       ("Mortal Kombat II", Some(2026), seed)
@@ -210,7 +212,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // preserved (TMDB stage carries it forward).
     val seed = MovieRecord(
       imdbId = Some("tt17490712"), imdbRating = Some(7.2),
-      metascore = None, originalTitle = None, tmdbId = Some(931285)
+      tmdbId = Some(931285)
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(
       ("Mortal Kombat II", Some(2026), seed)
@@ -241,9 +243,8 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // 2026 Polish film (tmdbId=1596319, imdbId=tt39075417).
     val sister = MovieRecord(
       imdbId        = Some("tt39075417"),
-      imdbRating    = None, metascore = None,
-      originalTitle = Some("Bez końca"),
-      tmdbId        = Some(1596319)
+      tmdbId        = Some(1596319),
+      data          = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Bez końca")))
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(
       ("Bez końca", Some(2026), sister)
@@ -269,12 +270,14 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // collision (Bez końca 1985 + 2026 both exist as cache rows). The
     // sister-row shortcut must not pick one arbitrarily; defer to TMDB.
     val newFilm = MovieRecord(
-      imdbId = Some("tt39075417"), imdbRating = None, metascore = None,
-      originalTitle = Some("Bez końca"), tmdbId = Some(1596319)
+      imdbId = Some("tt39075417"),
+      tmdbId = Some(1596319),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Bez końca")))
     )
     val oldFilm = MovieRecord(
-      imdbId = Some("tt0086961"),  imdbRating = None, metascore = None,
-      originalTitle = Some("Bez końca"), tmdbId = Some(124)
+      imdbId = Some("tt0086961"),
+      tmdbId = Some(124),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Bez końca")))
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(
       ("Bez końca", Some(2026), newFilm),
@@ -311,9 +314,8 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // name is what the second cinema reports as its own (short) cleanTitle.
     val donor = MovieRecord(
       imdbId        = Some("tt0000123"),
-      imdbRating    = None, metascore = None,
-      originalTitle = Some("Stub Original"),
-      tmdbId        = Some(424242)
+      tmdbId        = Some(424242),
+      data          = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Stub Original")))
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(
       ("Stub Original: długa polska wersja", Some(2026), donor)
@@ -339,8 +341,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // tmdbId/imdbId — the new "Polski Tytuł" row gets the same enrichment
     // without a fresh TMDB call.
     val donor = MovieRecord(
-      imdbId = Some("tt13651628"), imdbRating = None, metascore = None,
-      originalTitle = None,
+      imdbId = Some("tt13651628"),
       tmdbId = Some(776305)
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(
@@ -482,8 +483,9 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // exclusion, the lookup sees zero sisters and falls through to TMDB,
     // which corrects the row.
     val stale = MovieRecord(
-      imdbId = Some("tt0086961"), imdbRating = None, metascore = None,
-      originalTitle = Some("Bez końca"), tmdbId = Some(124)   // wrong, stale
+      imdbId = Some("tt0086961"),
+      tmdbId = Some(124),   // wrong, stale
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Bez końca")))
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(
       ("Bez końca", None, stale)
@@ -529,11 +531,8 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val incomplete = MovieRecord(
       imdbId            = Some("tt17490712"),
       imdbRating        = Some(7.0),
-      metascore         = None,
-      originalTitle     = Some("Mortal Kombat II"),
       tmdbId            = Some(931285),
-      metacriticUrl     = None,         // ← missing
-      rottenTomatoesUrl = None          // ← missing
+      data              = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II")))
     )
     val repo  = new InMemoryMovieRepo(Seq(("Mortal Kombat II", Some(2026), incomplete)))
     val cache = new CaffeineMovieCache(repo)
@@ -556,8 +555,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // Seed a row that has imdbId but no tmdbId (legacy from before TMDB was
     // always set). The daily retry should re-resolve it.
     val seed = MovieRecord(
-      imdbId = Some("tt-legacy"), imdbRating = None,
-      metascore = None, originalTitle = None, tmdbId = None
+      imdbId = Some("tt-legacy")
     )
     val repo  = new InMemoryMovieRepo(Seq(("Mortal Kombat II", Some(2026), seed)))
     val cache = new CaffeineMovieCache(repo)
@@ -600,8 +598,8 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   it should "skip rows that already have a tmdbId (no redundant TMDB call)" in {
     val seed  = MovieRecord(
       imdbId = Some("tt17490712"), imdbRating = Some(7.0),
-      metascore = None, originalTitle = Some("Mortal Kombat II"),
-      tmdbId = Some(931285)
+      tmdbId = Some(931285),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II")))
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(("Mortal Kombat II", Some(2026), seed))))
     val bus   = new InProcessEventBus()
@@ -627,9 +625,9 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // Seed a row that already has TMDB data but no IMDb rating yet — simulate
     // the state right after the TMDB stage writes.
     val seed = MovieRecord(
-      imdbId = Some("tt17490712"), imdbRating = None,
-      metascore = None, originalTitle = Some("Mortal Kombat II"),
-      tmdbId = Some(931285)
+      imdbId = Some("tt17490712"),
+      tmdbId = Some(931285),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II")))
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(("Mortal Kombat II", Some(2026), seed))))
     val bus   = new InProcessEventBus()

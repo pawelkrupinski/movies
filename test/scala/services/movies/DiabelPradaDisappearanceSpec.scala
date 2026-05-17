@@ -129,17 +129,17 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
         e.tmdbId.contains(928344) || e.imdbId.contains("tt12340108")
 
       val visibleRows = cache.snapshot().filter { case StoredMovieRecord(_, _, e) =>
-        isPrada(e) && e.cinemaShowings.nonEmpty
+        isPrada(e) && e.cinemaData.nonEmpty
       }
       visibleRows.size shouldBe 1
 
       val visible = visibleRows.head.record
-      visible.cinemaShowings.keySet shouldBe
+      visible.cinemaData.keySet shouldBe
         Set(Multikino, CinemaCityPoznanPlaza, CinemaCityKinepolis, Helios)
       // Each cinema's showtimes survive the pipeline (the disappearance
       // mode of the original bug was empty cinemaShowings on the visible
       // row even when the cinema slots were present).
-      visible.cinemaShowings.values.foreach(_.showtimes should not be empty)
+      visible.cinemaData.values.foreach(_.showtimes should not be empty)
 
       // ── Controller-level reproduction ────────────────────────────────
       // The cache says the row is there with full slots, but the user's
@@ -153,7 +153,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       val ctrl = new MovieControllerService(svc)
       val firstShowtime: java.time.LocalDateTime =
         cache.snapshot().filter(r => isPrada(r.record))
-          .flatMap(_.record.cinemaShowings.values.flatMap(_.showtimes.map(_.dateTime)))
+          .flatMap(_.record.cinemaData.values.flatMap(_.showtimes.map(_.dateTime)))
           .min
       val pinnedNow = firstShowtime.minusDays(1)
 
@@ -180,9 +180,6 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   "displayTitle" should "prefer the Latin / mixed-case variant over an all-caps Cyrillic one" in {
     val e = MovieRecord(
       imdbId        = Some("tt33612209"),
-      imdbRating    = None,
-      metascore     = None,
-      originalTitle = None,
       tmdbId        = Some(1314481),
       cinemaScrapes = Set(
         CinemaScrape(Multikino,             "Diabeł ubiera się u Prady 2", Some(2026)),
@@ -195,10 +192,6 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
 
   it should "still pick the proper-cased variant when only Latin forms compete" in {
     val e = MovieRecord(
-      imdbId        = None,
-      imdbRating    = None,
-      metascore     = None,
-      originalTitle = None,
       cinemaScrapes = Set(
         CinemaScrape(Multikino,             "Top Gun: Maverick", Some(2022)),
         CinemaScrape(CinemaCityPoznanPlaza, "TOP GUN: MAVERICK", Some(2022)),
@@ -285,6 +278,6 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       e.tmdbId.contains(928344) || e.imdbId.contains("tt12340108")
     }
     pradaRows.size shouldBe 1
-    pradaRows.head.record.cinemaShowings.keySet shouldBe Set(Multikino, Helios)
+    pradaRows.head.record.cinemaData.keySet shouldBe Set(Multikino, Helios)
   }
 }

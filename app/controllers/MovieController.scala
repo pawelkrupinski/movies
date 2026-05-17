@@ -60,7 +60,7 @@ class MovieControllerService(movieService: MovieService) {
       // Flatten every cinema's future showtimes for this film. Records with
       // no future showings (film stopped playing everywhere) drop out of the
       // list view — they stay in storage per the "keep forever" policy.
-      val allShowtimes = e.cinemaShowings.toSeq.flatMap { case (cinema, slot) =>
+      val allShowtimes = e.cinemaData.toSeq.flatMap { case (cinema, slot) =>
         slot.showtimes.iterator.filter(_.dateTime.isAfter(now.minusMinutes(30))).map(st => (cinema, st))
       }
       if (allShowtimes.isEmpty) None
@@ -78,7 +78,7 @@ class MovieControllerService(movieService: MovieService) {
               (date, perCinema)
             }
         val cinemaFilmUrls: Seq[(Cinema, String)] =
-          e.cinemaShowings.toSeq.flatMap { case (cinema, slot) => slot.filmUrl.map(cinema -> _) }
+          e.cinemaData.toSeq.flatMap { case (cinema, slot) => slot.filmUrl.map(cinema -> _) }
         Some((earliest, FilmSchedule(
           movie = Movie(e.displayTitle(cleanTitle), e.runtimeMinutes, e.releaseYear, countries = e.countries),
           posterUrl = e.posterUrl,
@@ -97,7 +97,7 @@ class MovieControllerService(movieService: MovieService) {
     val now = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
     Cinema.all.flatMap { cinema =>
       val moviesForCinema = movieService.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
-        e.cinemaShowings.get(cinema).flatMap { slot =>
+        e.cinemaData.get(cinema).flatMap { slot =>
           val future = slot.showtimes.filter(_.dateTime.isAfter(now.minusMinutes(30)))
           if (future.isEmpty) None
           else {

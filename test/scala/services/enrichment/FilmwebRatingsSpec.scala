@@ -2,7 +2,7 @@ package services.enrichment
 
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 import clients.TmdbClient
-import models.{CinemaShowings, MovieRecord, Multikino}
+import models.{MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, InProcessEventBus, MovieRecordCreated, TmdbResolved}
@@ -45,8 +45,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     filmwebRating: Option[Double] = None
   ): MovieRecord =
     MovieRecord(
-      imdbId        = Some(imdbId), imdbRating = None, metascore = None,
-      originalTitle = None, tmdbId = Some(42),
+      imdbId        = Some(imdbId), tmdbId = Some(42),
       filmwebUrl    = filmwebUrl,
       filmwebRating = filmwebRating
     )
@@ -122,21 +121,17 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
         else throw new RuntimeException(s"unstubbed TMDB url: $url")
     }, apiKey = Some("stub"))
 
-    val cinemaShowings = Map[models.Cinema, CinemaShowings](
-      Multikino -> CinemaShowings(
-        filmUrl = None, posterUrl = None, synopsis = None, cast = None,
-        director = Some("Denis Villeneuve"), runtimeMinutes = None,
-        releaseYear = None, showtimes = Seq.empty
-      )
-    )
     val repo = new InMemoryMovieRepo(Seq(
       ("Diuna: Część druga", Some(2024), MovieRecord(
         imdbId        = Some("tt15239678"),
-        imdbRating    = None,
-        metascore     = None,
-        originalTitle = Some("Dune: Part Two"),
         tmdbId        = Some(693134),
-        cinemaShowings = cinemaShowings
+        data = Map[Source, SourceData](
+          Multikino -> SourceData(
+            title    = Some("Diuna: Część druga"),
+            director = Some("Denis Villeneuve")
+          ),
+          Tmdb -> SourceData(originalTitle = Some("Dune: Part Two"))
+        )
       ))
     ))
     val cache = new CaffeineMovieCache(repo)
@@ -171,8 +166,8 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
     val repo = new InMemoryMovieRepo(Seq(
       ("Belle", Some(2021), MovieRecord(
-        imdbId = None, imdbRating = None, metascore = None, originalTitle = Some("Belle"),
-        tmdbId = Some(682507)
+        tmdbId = Some(682507),
+        data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Belle")))
       ))
     ))
     val cache = new CaffeineMovieCache(repo)

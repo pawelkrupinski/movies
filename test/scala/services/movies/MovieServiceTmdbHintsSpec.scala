@@ -1,7 +1,7 @@
 package services.movies
 
 import clients.TmdbClient
-import models.{CinemaShowings, Helios, MovieRecord}
+import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieRecordCreated}
@@ -68,11 +68,10 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     apiKey = Some("stub")
   )
 
-  // Helios slot shape — minimal CinemaShowings with director populated.
-  private val heliosSlot = CinemaShowings(
-    filmUrl = None, posterUrl = None, synopsis = None, cast = None,
-    director = Some(Director), runtimeMinutes = None, releaseYear = None,
-    showtimes = Seq.empty
+  // Helios slot shape — minimal SourceData with director populated.
+  private val heliosSlot = SourceData(
+    title    = Some(Title),
+    director = Some(Director)
   )
 
   // ── Fix 1 — bus path: new director hint must bypass the negative cache ────
@@ -132,9 +131,8 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     // carries the director) but TMDB resolution was poisoned earlier. tmdbId
     // is None; the daily retry tick needs to recover.
     val seeded = MovieRecord(
-      imdbId         = None, imdbRating = None, metascore = None,
-      originalTitle  = None,                              // TMDB never resolved
-      cinemaShowings = Map(Helios -> heliosSlot)          // but Helios reported director
+      // TMDB never resolved; Helios reported director
+      data = Map[Source, SourceData](Helios -> heliosSlot)
     )
     val repo  = new InMemoryMovieRepo(Seq((Title, Year, seeded)))
     val cache = new CaffeineMovieCache(repo)

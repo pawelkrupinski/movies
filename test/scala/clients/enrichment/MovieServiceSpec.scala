@@ -64,7 +64,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
   import services.events.{EventBus, InProcessEventBus}
   import clients.TmdbClient
-  import models.MovieRecord
+  import models.{MovieRecord, Source, SourceData, Tmdb}
 
   private def svc(seed: (String, Option[Int], MovieRecord)*): MovieService = {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(seed))
@@ -75,8 +75,8 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     imdbId        = Some("tt33612209"),
     imdbRating    = Some(6.7),
     metascore     = Some(62),
-    originalTitle = Some("The Devil Wears Prada 2"),
-    tmdbId        = Some(1314481)
+    tmdbId        = Some(1314481),
+    data          = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("The Devil Wears Prada 2")))
   )
 
   // Regression: cinemas report "Diabeł ubiera się u Prady 2" with an Arabic

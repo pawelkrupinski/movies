@@ -1,9 +1,9 @@
 package services.movies
 
-import models.{Cinema, CinemaShowings, MovieRecord}
+import models.{MovieRecord, Source, SourceData}
 
 /**
- * Pure merge primitive — combines a `victim` row's cinema-side data onto a
+ * Pure merge primitive — combines a `victim` row's per-source data onto a
  * `canonical` row. Used by:
  *   - `CaffeineMovieCache.put`'s tmdbId gate (runtime, prevents fresh
  *     duplicates from being persisted).
@@ -14,20 +14,20 @@ import models.{Cinema, CinemaShowings, MovieRecord}
  * "merge two rows of the same film" means.
  *
  * Rule of thumb:
- *   - Enrichment fields (tmdbId, imdbId, ratings, originalTitle, MC/RT/Filmweb
- *     URLs) come from the canonical. Both rows necessarily have the same
- *     tmdbId-derived data once they're identified as the same film; preferring
- *     the canonical avoids churn.
+ *   - Enrichment-side single-source fields (tmdbId, imdbId, ratings,
+ *     MC/RT/Filmweb URLs) come from the canonical. Both rows necessarily
+ *     have the same tmdbId-derived data once they're identified as the
+ *     same film; preferring the canonical avoids churn.
  *   - `cinemaScrapes` is unioned — every (cinema, raw title, raw year)
  *     provenance entry from both rows survives.
- *   - `cinemaShowings` is unioned per-cinema: when only one row has a slot
- *     for cinema C, that slot survives unchanged; when BOTH rows have a slot
- *     for the same cinema (the regression case — a cinema reports the film
- *     twice in the same tick under variant titles that resolve to the same
- *     tmdbId, e.g. "Diabeł ubiera się u Prady 2" + "Diabeł ubiera się u Prady
- *     2 ukraiński dubbing" from CinemaCity Poznań Plaza), the two slots'
- *     **showtimes are merged** (deduplicated, time-sorted) and the canonical
- *     slot's metadata fields (filmUrl, posterUrl, …) are kept.
+ *   - `data` is unioned per-source: when only one row has a slot for source
+ *     S, that slot survives unchanged; when BOTH rows have a slot for the
+ *     same source (the regression case — a cinema reports the film twice
+ *     in the same tick under variant titles that resolve to the same
+ *     tmdbId, e.g. "Diabeł ubiera się u Prady 2" + "Diabeł ubiera się u
+ *     Prady 2 ukraiński dubbing" from CinemaCity Poznań Plaza), the two
+ *     slots' **showtimes are merged** (deduplicated, time-sorted) and the
+ *     canonical slot's metadata fields (filmUrl, posterUrl, …) are kept.
  *
  *     The previous right-biased `++` lost data: the second-resolved variant
  *     (often the dub, with one-off late screenings) overwrote the first
@@ -39,22 +39,22 @@ object MovieRecordMerge {
 
   def union(canonical: MovieRecord, victim: MovieRecord): MovieRecord =
     canonical.copy(
-      cinemaScrapes  = canonical.cinemaScrapes ++ victim.cinemaScrapes,
-      cinemaShowings = mergeShowings(canonical.cinemaShowings, victim.cinemaShowings)
+      cinemaScrapes = canonical.cinemaScrapes ++ victim.cinemaScrapes,
+      data          = mergeData(canonical.data, victim.data)
     )
 
-  private def mergeShowings(
-    canonical: Map[Cinema, CinemaShowings],
-    victim:    Map[Cinema, CinemaShowings]
-  ): Map[Cinema, CinemaShowings] =
-    (canonical.keySet ++ victim.keySet).iterator.map { c =>
-      val mergedShowings = (canonical.get(c), victim.get(c)) match {
+  private def mergeData(
+    canonical: Map[Source, SourceData],
+    victim:    Map[Source, SourceData]
+  ): Map[Source, SourceData] =
+    (canonical.keySet ++ victim.keySet).iterator.map { src =>
+      val mergedSlot = (canonical.get(src), victim.get(src)) match {
         case (Some(a), Some(b)) =>
           a.copy(showtimes = (a.showtimes ++ b.showtimes).distinct.sortBy(_.dateTime))
-        case (Some(a), None) => a
+        case (Some(a), None)    => a
         case (None,    Some(b)) => b
-        case (None,    None)    => throw new MatchError(c)   // unreachable: c ∈ keys union
+        case (None,    None)    => throw new MatchError(src)   // unreachable: src ∈ keys union
       }
-      c -> mergedShowings
+      src -> mergedSlot
     }.toMap
 }

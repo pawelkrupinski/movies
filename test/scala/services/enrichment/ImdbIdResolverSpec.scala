@@ -1,6 +1,6 @@
 package services.enrichment
 
-import models.MovieRecord
+import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, ImdbIdMissing, ImdbIdResolved, InProcessEventBus}
@@ -47,11 +47,8 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   "onImdbIdMissing" should "find the IMDb id via the suggestion endpoint, write it back, and publish ImdbIdResolved" in {
     val bus = new InProcessEventBus()
     val tmdbOnly = MovieRecord(
-      imdbId        = None,
-      imdbRating    = None,
-      metascore     = None,
-      originalTitle = Some("Mortal Kombat II"),
-      tmdbId        = Some(1024)
+      tmdbId = Some(1024),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II")))
     )
     val repo  = new InMemoryMovieRepo(Seq(("Mortal Kombat 2", Some(2026), tmdbOnly)))
     val cache = new CaffeineMovieCache(repo)
@@ -74,8 +71,10 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
 
   it should "no-op when the suggestion endpoint returns nothing usable" in {
     val bus = new InProcessEventBus()
-    val tmdbOnly = MovieRecord(imdbId = None, imdbRating = None, metascore = None,
-                               originalTitle = Some("Imaginary Film"), tmdbId = Some(1))
+    val tmdbOnly = MovieRecord(
+      tmdbId = Some(1),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Imaginary Film")))
+    )
     val repo  = new InMemoryMovieRepo(Seq(("Imaginary Film", None, tmdbOnly)))
     val cache = new CaffeineMovieCache(repo)
     repo.upserts.clear()
@@ -93,8 +92,11 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when the row already has an imdbId (stale event raced with another resolver)" in {
     val bus = new InProcessEventBus()
-    val resolved = MovieRecord(imdbId = Some("tt9999"), imdbRating = Some(8.0), metascore = None,
-                               originalTitle = Some("Foo"), tmdbId = Some(1))
+    val resolved = MovieRecord(
+      imdbId = Some("tt9999"), imdbRating = Some(8.0),
+      tmdbId = Some(1),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Foo")))
+    )
     val repo  = new InMemoryMovieRepo(Seq(("Foo", None, resolved)))
     val cache = new CaffeineMovieCache(repo)
     repo.upserts.clear()

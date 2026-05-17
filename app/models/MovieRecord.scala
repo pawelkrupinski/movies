@@ -1,9 +1,10 @@
 package models
 
 /**
- * Cross-cinema metadata about a film — ratings + the URLs you need to link out.
- * Looked up by (cleaned title + year) once and then shared across every
- * cinema-screening of that same film.
+ * Cross-cinema metadata about a film — ratings, IDs, and the per-source
+ * content slots used to derive the merged display values. Looked up by
+ * (cleaned title + year) once and then shared across every cinema-screening
+ * of that same film.
  *
  * `imdbId` is optional because TMDB sometimes returns a hit for which it has
  * no IMDb cross-reference yet (very recent releases, niche films). The
@@ -11,18 +12,29 @@ package models
  * work without an IMDb id; only the IMDb rating + IMDb link are unavailable.
  * The daily TMDB-retry tick re-checks rows with imdbId=None so they get
  * filled when IMDb eventually indexes the film.
+ *
+ * Per-source content (synopsis, cast, director, year, countries, …) lives in
+ * `data: Map[Source, SourceData]`. Cinemas contribute slots via
+ * `recordCinemaScrape`; the TMDB and IMDb enrichment stages contribute their
+ * own slots keyed by `Tmdb` / `Imdb`. Merged values are derived on the fly
+ * by the accessors below — Multikino first, then the rest of `Cinema.all`,
+ * then `Tmdb`, then `Imdb`. Data is *added* to the map, never folded into
+ * top-level fields, so each source's contribution stays inspectable.
  */
 case class MovieRecord(
-  imdbId:            Option[String],
-  imdbRating:        Option[Double],
-  metascore:         Option[Int],
-  originalTitle:     Option[String],
-  filmwebUrl:        Option[String] = None,
-  filmwebRating:     Option[Double] = None,
-  rottenTomatoes:    Option[Int]    = None,
-  tmdbId:            Option[Int]    = None,
-  metacriticUrl:     Option[String] = None,
-  rottenTomatoesUrl: Option[String] = None,
+  // ── Single-source IDs, ratings, and external-site URLs ────────────────────
+  // Each of these has exactly one canonical writer in the codebase, so they
+  // stay top-level Option rather than going through the per-source map.
+  imdbId:            Option[String]   = None,
+  imdbRating:        Option[Double]   = None,
+  metascore:         Option[Int]      = None,
+  filmwebUrl:        Option[String]   = None,
+  filmwebRating:     Option[Double]   = None,
+  rottenTomatoes:    Option[Int]      = None,
+  tmdbId:            Option[Int]      = None,
+  metacriticUrl:     Option[String]   = None,
+  rottenTomatoesUrl: Option[String]   = None,
+
   // Every (cinema, raw title, raw year) tuple that has scraped into this
   // record. Used by `recordCinemaScrape` to detect repeat scrapes — when a
   // cinema reports the same `(title, year)` it reported last tick, no event
@@ -34,35 +46,55 @@ case class MovieRecord(
   // doubles as the source of `cinemaTitles`: every raw title is derived
   // from the scrape tuples — no separately-stored Set is necessary.
   cinemaScrapes:     Set[CinemaScrape] = Set.empty,
-  // Per-cinema data from the most recent scrape tick. Replaces wholesale per
-  // cinema per tick. Empty Map for rows that exist only because the TMDB
-  // stage resolved them (no cinema is currently screening). Merged top-level
-  // values (posterUrl, synopsis, …) are computed on the fly from this map —
-  // see the helper methods below — so dropped-cinema cleanup costs nothing.
-  cinemaShowings:    Map[Cinema, CinemaShowings]   = Map.empty
+
+  // Per-source data from the most recent refresh. Cinemas contribute on
+  // every scrape tick (their slot gets replaced wholesale, and dropped if
+  // the film leaves their listings); `Tmdb`/`Imdb` slots come from the
+  // enrichment pipeline (and are kept until something re-enriches the row).
+  // Merged top-level values (posterUrl, synopsis, …) are computed on the
+  // fly from this map — see the accessors below.
+  data:              Map[Source, SourceData] = Map.empty
 ) {
   def imdbUrl: Option[String] = imdbId.map(id => s"https://www.imdb.com/title/$id/")
   def tmdbUrl: Option[String] = tmdbId.map(id => s"https://www.themoviedb.org/movie/$id")
 
-  // ── Merged top-level values derived from cinemaShowings ──────────────────
-  //
-  // Computed on the fly so dropped-cinema cleanup doesn't need a separate
-  // sync step. Ordering rule for "prefer one cinema's value" is Multikino
-  // first, then the rest in `Cinema.all` order — matches today's
-  // `MovieController.metaPriority`.
+  // ── Slices and views ──────────────────────────────────────────────────────
 
-  /** Iterate cinemaShowings with Multikino first, then everything else in
-   *  Cinema.all's stable order. The output is what's used to pick "best"
-   *  value for fields that have a single source-of-truth across cinemas. */
-  private def prioritizedShowings: Seq[(Cinema, CinemaShowings)] = {
-    val priority: Cinema => Int = c => if (c == Multikino) 0 else 1
-    cinemaShowings.toSeq.sortBy { case (c, _) => (priority(c), Cinema.all.indexOf(c)) }
-  }
+  /** Cinema-only view of `data` — used by the per-cinema controller paths
+   *  (filmUrl per cinema, showtimes per cinema) where TMDB/IMDb slots are
+   *  irrelevant. */
+  def cinemaData: Map[Cinema, SourceData] =
+    data.collect { case (c: Cinema, sd) => c -> sd }
 
   /** Derived view of every raw cinema-reported title that has scraped into
-   *  this record. The cache stores per-(cinema, title, year) provenance in
-   *  `cinemaScrapes`; the title set is just the projection. */
+   *  this record. */
   def cinemaTitles: Set[String] = cinemaScrapes.map(_.title)
+
+  // ── Merged top-level values derived from `data` ──────────────────────────
+  //
+  // Two flavours of merge:
+  //   - **Priority-first** (`director`, `runtimeMinutes`, `releaseYear`,
+  //     `posterUrl`, `countries`): iterate sources in `Source.priority`
+  //     order — Multikino, then the rest of `Cinema.all`, then `Tmdb`, then
+  //     `Imdb` — and pick the first non-empty value (or union for
+  //     `countries`). This preserves the prior cinema-only behaviour while
+  //     letting TMDB/IMDb fill in fields no cinema reported.
+  //   - **Longest-wins** (`synopsis`, `cast`): pick the longest non-empty
+  //     value across all sources. Different sources write different-length
+  //     blurbs; the longest tends to be the most complete.
+
+  /** Iterate `data` in source-priority order — Multikino first, then the
+   *  rest of `Cinema.all`, then `Tmdb`, then `Imdb`. Used by every "first
+   *  non-empty" merged accessor. */
+  private def prioritized: Seq[(Source, SourceData)] =
+    data.toSeq.sortBy { case (s, _) => Source.priority.getOrElse(s, Int.MaxValue) }
+
+  /** Cinema-only iteration in the same priority order — used by accessors
+   *  that should *not* fall back to TMDB/IMDb (e.g. `cinemaOriginalTitle`,
+   *  which is specifically the cinema-reported English title used as a
+   *  TMDB-search hint). */
+  private def prioritizedCinema: Seq[(Cinema, SourceData)] =
+    cinemaData.toSeq.sortBy { case (c, _) => Source.priority.getOrElse(c, Int.MaxValue) }
 
   /** Display title chosen across the cinema-reported variants plus the
    *  record's `cleanTitle` anchor (which is the post-decoration-strip form
@@ -74,44 +106,43 @@ case class MovieRecord(
     services.movies.TitleNormalizer.preferredDisplay((cinemaTitles + cleanTitle).toSeq)
       .getOrElse(cleanTitle)
 
-  /** First non-empty poster URL with Multikino preferred. */
+  /** TMDB-resolved original (production-language) title. None when TMDB
+   *  hasn't filled this row yet. */
+  def originalTitle: Option[String] = data.get(Tmdb).flatMap(_.originalTitle)
+
+  /** First non-empty poster URL across sources in priority order. */
   def posterUrl: Option[String] =
-    prioritizedShowings.iterator.flatMap(_._2.posterUrl).nextOption()
+    prioritized.iterator.flatMap(_._2.posterUrl).nextOption()
 
-  /** Longest non-empty synopsis across cinemas (different cinemas write
-   *  different-length blurbs; the longest tends to be the most complete). */
+  /** Longest non-empty synopsis across all sources. */
   def synopsis: Option[String] =
-    cinemaShowings.values.flatMap(_.synopsis).toSeq.sortBy(-_.length).headOption
+    data.values.flatMap(_.synopsis).toSeq.sortBy(-_.length).headOption
 
-  /** Longest non-empty cast string across cinemas. Same rationale as
-   *  `synopsis`. */
+  /** Longest non-empty cast string across all sources. */
   def cast: Option[String] =
-    cinemaShowings.values.flatMap(_.cast).toSeq.sortBy(-_.length).headOption
+    data.values.flatMap(_.cast).toSeq.sortBy(-_.length).headOption
 
-  /** First non-empty director with Multikino preferred. */
+  /** First non-empty director across sources in priority order. */
   def director: Option[String] =
-    prioritizedShowings.iterator.flatMap(_._2.director).nextOption()
+    prioritized.iterator.flatMap(_._2.director).nextOption()
 
-  /** First non-None runtime (cinemas tend to agree; if not, prefer Multikino). */
+  /** First non-None runtime across sources in priority order. */
   def runtimeMinutes: Option[Int] =
-    prioritizedShowings.iterator.flatMap(_._2.runtimeMinutes).nextOption()
+    prioritized.iterator.flatMap(_._2.runtimeMinutes).nextOption()
 
-  /** First non-None release year across cinemas. */
+  /** First non-None release year across sources in priority order. */
   def releaseYear: Option[Int] =
-    prioritizedShowings.iterator.flatMap(_._2.releaseYear).nextOption()
+    prioritized.iterator.flatMap(_._2.releaseYear).nextOption()
 
-  /** Production countries — union across cinemas, deduplicated
-   *  case-insensitively while preserving the priority-first order. Each
-   *  cinema spells names in its own way, so the same country might appear
-   *  twice ("USA" + "Stany Zjednoczone") if two cinemas disagree on
-   *  spelling — that's accepted; the dedup only catches exact-match dupes
-   *  modulo case. Multikino's JSON has no country field and contributes
-   *  an empty list (Apollo also returns empty when its `Producent:` line
-   *  is a studio name like "Zespół Autorów Filmowych „Kadr"" rather than
-   *  a country list). */
+  /** Production countries — union across sources, deduplicated
+   *  case-insensitively while preserving the priority-first order. Sources
+   *  spell country names in their own way, so the same country might appear
+   *  twice ("USA" + "Stany Zjednoczone") if two of them disagree on spelling
+   *  — that's accepted; the dedup only catches exact-match dupes modulo
+   *  case. */
   def countries: Seq[String] = {
     val seen = scala.collection.mutable.LinkedHashSet.empty[String]
-    prioritizedShowings.flatMap(_._2.countries).foreach { c =>
+    prioritized.flatMap(_._2.countries).foreach { c =>
       val key = c.toLowerCase
       if (!seen.exists(_.toLowerCase == key)) seen += c
     }
@@ -119,18 +150,19 @@ case class MovieRecord(
   }
 
   /** Cinema → film deep-link, when that cinema reports one. */
-  def filmUrlFor(cinema: Cinema): Option[String] = cinemaShowings.get(cinema).flatMap(_.filmUrl)
+  def filmUrlFor(cinema: Cinema): Option[String] =
+    cinemaData.get(cinema).flatMap(_.filmUrl)
 
   /** Cinema → showtimes (empty when that cinema isn't screening). */
   def showtimesFor(cinema: Cinema): Seq[Showtime] =
-    cinemaShowings.get(cinema).map(_.showtimes).getOrElse(Seq.empty)
+    cinemaData.get(cinema).map(_.showtimes).getOrElse(Seq.empty)
 
   /** Cinema-reported original/international title — first non-empty with
    *  Multikino preferred. Separate from `originalTitle` (the TMDB-resolved
    *  production-language title): this is what the cinema's own API exposed,
    *  used as a fallback hint when `reEnrich` triggers a fresh TMDB search. */
   def cinemaOriginalTitle: Option[String] =
-    prioritizedShowings.iterator.flatMap(_._2.originalTitle).nextOption()
+    prioritizedCinema.iterator.flatMap(_._2.originalTitle).nextOption()
 
   /** Display-time URL: validated stored URL if we have one, else an on-the-fly
    *  search URL (for legacy records that pre-date URL persistence). */

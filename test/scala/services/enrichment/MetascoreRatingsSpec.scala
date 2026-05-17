@@ -2,7 +2,7 @@ package services.enrichment
 
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 import clients.TmdbClient
-import models.MovieRecord
+import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, InProcessEventBus, MovieRecordCreated, TmdbResolved}
@@ -40,8 +40,8 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     metascore:     Option[Int]    = None
   ): MovieRecord =
     MovieRecord(
-      imdbId        = Some(imdbId), imdbRating = None, metascore = metascore,
-      originalTitle = None, tmdbId = Some(42),
+      imdbId        = Some(imdbId), metascore = metascore,
+      tmdbId        = Some(42),
       metacriticUrl = mcUrl
     )
 
@@ -175,11 +175,8 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val repo = new InMemoryMovieRepo(Seq(
       ("Harry Potter i Kamień filozoficzny", Some(2001), MovieRecord(
         imdbId        = Some("tt0241527"),
-        imdbRating    = None,
-        metascore     = None,
-        originalTitle = Some("Harry Potter and the Philosopher's Stone"),
         tmdbId        = Some(671),
-        metacriticUrl = None
+        data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Harry Potter and the Philosopher's Stone")))
       ))
     ))
     val cache = new CaffeineMovieCache(repo)

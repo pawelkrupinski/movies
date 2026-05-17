@@ -1,7 +1,7 @@
 package services.movies
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
-import models.{Cinema, CinemaMovie, CinemaScrape, CinemaShowings, MovieRecord}
+import models.{Cinema, CinemaMovie, CinemaScrape, MovieRecord, Source, SourceData}
 import play.api.Logging
 import services.cinemas.CountryNames
 
@@ -230,7 +230,7 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
 
   /** Apply one cinema's fresh scrape to the cache: for every CinemaMovie in
    *  `movies`, find-or-create the matching record and replace that cinema's
-   *  slot in `cinemaShowings`. After processing, prune the cinema's slot
+   *  slot in `data`. After processing, prune the cinema's slot
    *  from any record that previously held it but didn't appear this tick.
    *
    *  Variant redirect: when the cinema-reported `(title, year)` doesn't have
@@ -250,7 +250,7 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
    *
    *  Doesn't touch enrichment-side fields (imdbId, ratings, URLs, …) — the
    *  TMDB / IMDb / MC / RT / Filmweb stages own those and run independently.
-   *  Records whose `cinemaShowings` becomes empty are pruned daily by
+   *  Records whose cinema-side slots become empty are pruned daily by
    *  `UnscreenedCleanup`; a film that returns after the prune ran will
    *  re-pay the full enrichment cost on its next scrape. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)] = {
@@ -271,17 +271,20 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
       lockFor(cm.movie.title).synchronized {
         val primary = keyOf(cm.movie.title, cm.movie.releaseYear)
         val key     = redirectToExistingVariant(primary).getOrElse(primary)
-        val existing = Option(positive.getIfPresent(key))
-          .getOrElse(MovieRecord(imdbId = None, imdbRating = None, metascore = None, originalTitle = None))
-        val slot = CinemaShowings(
-          filmUrl        = cm.filmUrl,
-          posterUrl      = cm.posterUrl,
+        val existing = Option(positive.getIfPresent(key)).getOrElse(MovieRecord())
+        val slot = SourceData(
+          title          = Some(cm.movie.title),
+          originalTitle  = cm.movie.originalTitle,
           synopsis       = cm.synopsis,
           cast           = cm.cast,
           director       = cm.director,
-          runtimeMinutes = cm.movie.runtimeMinutes,
+          // Some cinema feeds surface runtime as a raw integer that lands as
+          // 0 when the upstream field is empty (CC's `length`, Multikino's
+          // `runningTime`) or when a parser regex matches "0 min" in
+          // unrelated text. Squash to None so a real reading from another
+          // cinema isn't outranked by a phantom zero in the merged view.
+          runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0),
           releaseYear    = cm.movie.releaseYear,
-          originalTitle  = cm.movie.originalTitle,
           // Fold every spelling/alias into a single canonical name per
           // CountryNames — "Stany Zjednoczone" / "USA" / "U.S.A." all
           // become "USA", "UK" / "Wielka Brytania" both become
@@ -289,6 +292,8 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
           // MovieRecord.countries union/dedup operates on consistent
           // strings.
           countries      = cm.movie.countries.map(CountryNames.canonical).distinct,
+          posterUrl      = cm.posterUrl,
+          filmUrl        = cm.filmUrl,
           showtimes      = cm.showtimes
         )
         val scrape = CinemaScrape(cinema, cm.movie.title, cm.movie.releaseYear)
@@ -296,8 +301,8 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
         // The raw cinema-reported title goes into `cinemaScrapes`; the
         // derived `cinemaTitles` view picks it up automatically.
         put(key, existing.copy(
-          cinemaScrapes  = existing.cinemaScrapes + scrape,
-          cinemaShowings = existing.cinemaShowings + (cinema -> slot)
+          cinemaScrapes = existing.cinemaScrapes + scrape,
+          data          = existing.data + ((cinema: Source) -> slot)
         ))
         (cm, key, isNew)
       }
@@ -308,9 +313,9 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
     val touched = resolved.iterator.map(_._2).toSet
     import scala.jdk.CollectionConverters._
     positive.asMap().asScala.iterator
-      .filter { case (k, e) => e.cinemaShowings.contains(cinema) && !touched.contains(k) }
+      .filter { case (k, e) => e.data.contains(cinema) && !touched.contains(k) }
       .foreach { case (k, e) =>
-        put(k, e.copy(cinemaShowings = e.cinemaShowings - cinema))
+        put(k, e.copy(data = e.data - cinema))
       }
 
     resolved

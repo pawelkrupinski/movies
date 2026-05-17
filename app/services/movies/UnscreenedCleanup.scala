@@ -8,9 +8,9 @@ import java.util.concurrent.TimeUnit
 import scala.util.Try
 
 /**
- * Daily tick: drop rows whose `cinemaShowings` map is empty. Those are films
- * that no cinema is currently showing — every cinema's scrape tick has
- * pruned its slot via `recordCinemaScrape`. Without this cleanup the cache
+ * Daily tick: drop rows that no cinema is currently showing — every cinema's
+ * scrape tick has pruned its slot via `recordCinemaScrape`, leaving an empty
+ * `cinemaData` view. Without this cleanup the cache
  * + Mongo grow forever, holding enrichment for thousands of films that
  * dropped out of all schedules months ago.
  *
@@ -38,7 +38,7 @@ class UnscreenedCleanup(cache: MovieCache) extends Stoppable with Logging {
    *  the count of rows removed. Public so the backfill script (and tests)
    *  can invoke a one-shot pass; the daily scheduler calls the same method. */
   def removeUnscreened(): Int = {
-    val orphans = cache.entries.collect { case (k, e) if e.cinemaShowings.isEmpty => k }
+    val orphans = cache.entries.collect { case (k, e) if e.cinemaData.isEmpty => k }
     if (orphans.nonEmpty)
       logger.info(s"Unscreened-row cleanup: dropping ${orphans.size} row(s) with no current screenings.")
     orphans.foreach(cache.invalidate)

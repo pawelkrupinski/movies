@@ -22,7 +22,7 @@ object UnscreenedRowsBackfill {
     if (!repo.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
 
     val before    = repo.findAll()
-    val orphans   = before.filter(_.record.cinemaShowings.isEmpty)
+    val orphans   = before.filter(_.record.cinemaData.isEmpty)
     println(s"${before.size} row(s) in Mongo; ${orphans.size} have no current screenings — dropping…\n")
 
     val Sample = 20

@@ -71,7 +71,7 @@ trait Wiring {
   lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient)
   lazy val movieService = new MovieService(movieCache, eventBus, tmdbClient)
   lazy val movieControllerService = new MovieControllerService(movieService)
-  // Daily tick that drops rows whose `cinemaShowings` is empty — i.e. films
+  // Daily tick that drops rows whose `cinemaData` is empty — i.e. films
   // that no cinema is currently showing. Without it the cache + Mongo grow
   // unbounded (every festival / anniversary / one-off screening leaves a
   // permanent row when its single cinema drops the listing).

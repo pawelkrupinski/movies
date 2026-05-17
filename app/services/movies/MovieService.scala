@@ -7,7 +7,7 @@ import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieRecordCreated
 import tools.DaemonExecutors
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
-import models.MovieRecord
+import models.{MovieRecord, Source, SourceData, Tmdb}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -254,24 +254,34 @@ class MovieService(
       // imdbId (even if None) so a stale id can't leak across a correction.
       val preserveImdbId = existing.exists(_.tmdbId.contains(hit.id))
       val resolvedImdbId = imdbId.orElse(if (preserveImdbId) existing.flatMap(_.imdbId) else None)
+      // Carry the cinema-side fields forward — `recordCinemaScrape` may have
+      // just landed a slot on this row, and the TMDB stage doesn't own
+      // cinema data. Without this, a fresh resolve wipes cinemaScrapes and
+      // every cinema's slot, and the row drops out of `toSchedules` until
+      // the next scrape tick repopulates it.
+      val carriedData = existing.map(_.data).getOrElse(Map.empty[Source, SourceData])
+      // Write a `SourceData(Tmdb)` slot from the search-hit shape: title +
+      // originalTitle + releaseYear. Richer fields (Polish synopsis,
+      // director, cast, runtime, countries, poster) are added in a later
+      // stage that calls `/movie/{id}` for the full record.
+      val existingTmdbSlot = carriedData.getOrElse(Tmdb, SourceData())
+      val tmdbSlot = existingTmdbSlot.copy(
+        title         = Some(hit.title).filter(_.nonEmpty).orElse(existingTmdbSlot.title),
+        originalTitle = hit.originalTitle.orElse(existingTmdbSlot.originalTitle),
+        releaseYear   = hit.releaseYear.orElse(existingTmdbSlot.releaseYear)
+      )
       val enr = MovieRecord(
         imdbId            = resolvedImdbId,
         imdbRating        = existing.flatMap(_.imdbRating),
         metascore         = existing.flatMap(_.metascore),
-        originalTitle     = hit.originalTitle,
         filmwebUrl        = existing.flatMap(_.filmwebUrl),
         filmwebRating     = existing.flatMap(_.filmwebRating),
         rottenTomatoes    = existing.flatMap(_.rottenTomatoes),
         tmdbId            = Some(hit.id),
         metacriticUrl     = existing.flatMap(_.metacriticUrl),
         rottenTomatoesUrl = existing.flatMap(_.rottenTomatoesUrl),
-        // Carry the cinema-side fields forward — `recordCinemaScrape` may
-        // have just landed a slot on this row, and the TMDB stage owns
-        // none of that data. Without this, a fresh resolve wipes
-        // cinemaShowings/cinemaScrapes and the row drops out of
-        // `toSchedules` until the next scrape tick repopulates it.
         cinemaScrapes     = existing.map(_.cinemaScrapes).getOrElse(Set.empty),
-        cinemaShowings    = existing.map(_.cinemaShowings).getOrElse(Map.empty)
+        data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
       )
       cache.put(key, enr)
       enr
@@ -320,7 +330,7 @@ class MovieService(
    *  refresh. */
   def retryUnresolvedTmdb(): Unit = {
     cache.clearNegatives()
-    // Pass each row's `cinemaShowings`-merged director + originalTitle as
+    // Pass each row's `data`-merged director + originalTitle as
     // hints. By the time the daily retry fires, the row has absorbed every
     // cinema's slot via `recordCinemaScrape`'s redirect — even if the cinema
     // that scraped FIRST didn't report a director, a later one might have,

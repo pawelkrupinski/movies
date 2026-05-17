@@ -1,6 +1,6 @@
 package integration
 
-import models.{CinemaShowings, Helios, MovieRecord, Multikino}
+import models.{Helios, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -52,13 +52,13 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       imdbId         = Some("tt0000001"),
       imdbRating     = Some(7.5),
       metascore      = Some(80),
-      originalTitle  = Some("Integration Test"),
       filmwebUrl     = Some("https://www.filmweb.pl/film/Test-1900-1"),
       filmwebRating  = Some(7.2),
       rottenTomatoes = Some(91),
       tmdbId            = Some(424242),
       metacriticUrl     = Some("https://www.metacritic.com/movie/integration-test"),
-      rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/integration_test")
+      rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/integration_test"),
+      data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Integration Test")))
     )
 
     repo.upsert(sentinelTitle, sentinelYear, toStore)
@@ -82,13 +82,7 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   it should "handle Enrichments with all-None optional fields" in {
     val title = "__integration-test-sparse__"
     val toStore = MovieRecord(
-      imdbId         = Some("tt0000002"),
-      imdbRating     = None,
-      metascore      = None,
-      originalTitle  = None,
-      filmwebUrl     = None,
-      filmwebRating  = None,
-      rottenTomatoes = None
+      imdbId         = Some("tt0000002")
     )
     repo.upsert(title, None, toStore)
     val found = repo.findAll().find(r => r.title == title && r.year.isEmpty)
@@ -105,58 +99,99 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     e.rottenTomatoesUrl shouldBe None
   }
 
-  // Cinema slots are persisted under cinemaShowings.<cinemaName>. Round-trip
+  // Cinema slots are persisted under sourceData.<cinemaName>. Round-trip
   // every Option field plus a co-production country list to confirm decode
   // matches encode for the per-cinema sub-document.
-  it should "round-trip a CinemaShowings slot including the production countries" in {
-    val title = "__integration-test-cinemashowings-country__"
+  it should "round-trip a SourceData slot including the production countries" in {
+    val title = "__integration-test-sourcedata-country__"
     val year  = Some(2026)
-    val slot  = CinemaShowings(
-      filmUrl        = Some("https://example/film"),
-      posterUrl      = Some("https://example/poster.jpg"),
+    val slot  = SourceData(
+      title          = Some(title),
+      originalTitle  = Some("Original"),
       synopsis       = Some("synopsis"),
       cast           = Some("cast list"),
       director       = Some("dir"),
       runtimeMinutes = Some(123),
       releaseYear    = Some(2025),
-      originalTitle  = Some("Original"),
       countries      = Seq("Polska", "Francja"),
+      posterUrl      = Some("https://example/poster.jpg"),
+      filmUrl        = Some("https://example/film"),
       showtimes      = Seq.empty
     )
     val toStore = MovieRecord(
-      imdbId         = Some("tt0000003"),
-      imdbRating     = None,
-      metascore      = None,
-      originalTitle  = None,
-      cinemaShowings = Map(Helios -> slot)
+      imdbId = Some("tt0000003"),
+      data   = Map[Source, SourceData](Helios -> slot)
     )
     repo.upsert(title, year, toStore)
 
     val found = repo.findAll().find(r => r.title == title && r.year == year)
     found should not be empty
     val e = found.get.record
-    e.cinemaShowings.keySet shouldBe Set(Helios)
-    e.cinemaShowings(Helios).countries shouldBe Seq("Polska", "Francja")
-    e.cinemaShowings(Helios).filmUrl shouldBe Some("https://example/film")
+    e.cinemaData.keySet shouldBe Set(Helios)
+    e.cinemaData(Helios).countries shouldBe Seq("Polska", "Francja")
+    e.cinemaData(Helios).filmUrl shouldBe Some("https://example/film")
     // Merged accessor surfaces the only cinema's countries.
     e.countries shouldBe Seq("Polska", "Francja")
   }
 
   it should "leave countries empty when a slot was written without them" in {
-    val title = "__integration-test-cinemashowings-no-country__"
-    val slot  = CinemaShowings(
-      filmUrl = None, posterUrl = None, synopsis = None, cast = None,
-      director = None, runtimeMinutes = None, releaseYear = None,
-      originalTitle = None, countries = Seq.empty, showtimes = Seq.empty
-    )
+    val title = "__integration-test-sourcedata-no-country__"
+    val slot  = SourceData()
     repo.upsert(title, None, MovieRecord(
-      imdbId = None, imdbRating = None, metascore = None, originalTitle = None,
-      cinemaShowings = Map(Multikino -> slot)
+      data = Map[Source, SourceData](Multikino -> slot)
     ))
     val found = repo.findAll().find(r => r.title == title && r.year.isEmpty)
     found should not be empty
-    found.get.record.cinemaShowings(Multikino).countries shouldBe Seq.empty
+    found.get.record.cinemaData(Multikino).countries shouldBe Seq.empty
     found.get.record.countries shouldBe Seq.empty
+  }
+
+  // Production Mongo carries rows written before the source-keyed `data` field
+  // existed — they use the legacy `cinemaShowings` sub-doc and a top-level
+  // `originalTitle` field for TMDB's value. Bypass `repo.upsert` and write a
+  // raw legacy-shape Document directly so we can prove the decoder still
+  // hydrates these correctly. The next upsert from the live app rewrites the
+  // row in the new shape and the legacy fields disappear.
+  it should "decode a legacy cinemaShowings/originalTitle Mongo row into the new data map" in {
+    import org.mongodb.scala.bson.{BsonArray, BsonInt32, BsonString, Document}
+    val title  = "__integration-test-legacy-shape__"
+    val year   = Some(2024)
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+      .getCollection("movies")
+    try {
+      val legacyShowings = Document(
+        Helios.displayName -> Document(
+          "synopsis"       -> BsonString("legacy synopsis"),
+          "director"       -> BsonString("legacy dir"),
+          "runtimeMinutes" -> BsonInt32(101),
+          "countries"      -> BsonArray.fromIterable(Seq(BsonString("Polska")))
+        )
+      )
+      val legacyDoc = Document(
+        "_id"            -> BsonString(s"__integration-test-legacy-shape__|2024"),
+        "title"          -> BsonString(title),
+        "year"           -> BsonInt32(2024),
+        "imdbId"         -> BsonString("tt9999999"),
+        "originalTitle"  -> BsonString("Legacy Original"),
+        "cinemaShowings" -> legacyShowings
+      )
+      Await.result(coll.insertOne(legacyDoc).toFuture(), 10.seconds)
+
+      val found = repo.findAll().find(r => r.title == title && r.year == year)
+      found should not be empty
+      val e = found.get.record
+      // Cinema slot decoded into `data` with Helios as the key.
+      e.cinemaData.keySet shouldBe Set(Helios)
+      e.cinemaData(Helios).synopsis shouldBe Some("legacy synopsis")
+      e.cinemaData(Helios).director shouldBe Some("legacy dir")
+      e.cinemaData(Helios).runtimeMinutes shouldBe Some(101)
+      e.cinemaData(Helios).countries shouldBe Seq("Polska")
+      // Top-level `originalTitle` field folded into a Tmdb SourceData slot,
+      // so the accessor still returns Some("Legacy Original").
+      e.originalTitle shouldBe Some("Legacy Original")
+      e.data.get(Tmdb).flatMap(_.originalTitle) shouldBe Some("Legacy Original")
+    } finally client.close()
   }
 
   // Regression for "Tom i Jerry: Przygoda w muzeum" / "Tom i jerry: przygoda w
@@ -173,9 +208,9 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       imdbId            = Some("tt0000010"),
       imdbRating        = Some(7.5),
       metascore         = Some(80),
-      originalTitle     = Some("Case Dedupe Test"),
       metacriticUrl     = Some("https://www.metacritic.com/movie/case-dedupe-test"),
-      rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/case_dedupe_test")
+      rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/case_dedupe_test"),
+      data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Case Dedupe Test")))
     )
     val withoutUrls = withUrls.copy(
       metacriticUrl     = None,

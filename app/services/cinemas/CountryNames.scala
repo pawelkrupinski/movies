@@ -11,7 +11,7 @@ package services.cinemas
  * Usage:
  *   - Parsers stay simple (return whatever the source said).
  *   - `MovieCache.recordCinemaScrape` calls `canonical` per entry when
- *     building the CinemaShowings slot, so stored data is already
+ *     building the SourceData slot, so stored data is already
  *     canonical and `MovieRecord.countries`' union/dedup operates on
  *     consistent strings.
  *   - `isPolish` is the dictionary-membership check used by Kino

@@ -116,7 +116,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
     cache.recordCinemaScrape(Multikino, Seq(multikinoMk))
 
     val key = cache.keyOf("Mortal Kombat 2", None)
-    cache.get(key).get.cinemaShowings.keySet shouldBe Set(Multikino)
+    cache.get(key).get.cinemaData.keySet shouldBe Set(Multikino)
 
     // Same code path the MovieRecordCreated-driven async wrapper invokes — bypasses
     // the worker pool for a deterministic single-thread reproduction.
@@ -130,7 +130,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
     // cache.put, which only re-folds cinemaTitles — the Multikino slot is
     // wiped. The view layer (MovieController.toSchedules) then drops this
     // row because allShowtimes is empty.
-    row.cinemaShowings.keySet shouldBe Set(Multikino)
+    row.cinemaData.keySet shouldBe Set(Multikino)
   }
 
   // ── Scrape-order regression: every ordering produces a single visible row ──
@@ -180,11 +180,11 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
         e.tmdbId.contains(931285) || e.imdbId.contains("tt17490712")
 
       val visibleRows = cache.snapshot().filter { case StoredMovieRecord(_, _, e) =>
-        isMk2(e) && e.cinemaShowings.nonEmpty
+        isMk2(e) && e.cinemaData.nonEmpty
       }
       visibleRows.size shouldBe 1
       val visible = visibleRows.head.record
-      visible.cinemaShowings.keySet shouldBe Set(Multikino, CinemaCityPoznanPlaza, Helios)
+      visible.cinemaData.keySet shouldBe Set(Multikino, CinemaCityPoznanPlaza, Helios)
     }
   }
 }

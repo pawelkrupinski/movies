@@ -1,6 +1,6 @@
 package models
 
-sealed abstract class Cinema(val displayName: String)
+sealed abstract class Cinema(val displayName: String) extends Source
 
 case object CinemaCityKinepolis extends Cinema("Cinema City Kinepolis")
 

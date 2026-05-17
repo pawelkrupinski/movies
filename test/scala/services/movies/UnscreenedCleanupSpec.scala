@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CinemaShowings, Helios, MovieRecord}
+import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -13,19 +13,12 @@ import org.scalatest.matchers.should.Matchers
  */
 class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
 
-  private val cinemaSlot = CinemaShowings(
-    filmUrl = None, posterUrl = None, synopsis = None, cast = None,
-    director = None, runtimeMinutes = None, releaseYear = None,
-    showtimes = Seq.empty
-  )
+  private val cinemaSlot = SourceData()
 
-  private def mkRecord(imdbId: String, cinemas: Map[models.Cinema, CinemaShowings]): MovieRecord =
+  private def mkRecord(imdbId: String, cinemas: Map[models.Cinema, SourceData]): MovieRecord =
     MovieRecord(
-      imdbId         = Some(imdbId),
-      imdbRating     = None,
-      metascore      = None,
-      originalTitle  = None,
-      cinemaShowings = cinemas
+      imdbId = Some(imdbId),
+      data   = cinemas.map { case (c, sd) => (c: Source) -> sd }
     )
 
   "removeUnscreened" should "delete rows whose cinemaShowings map is empty" in {

@@ -1,7 +1,7 @@
 package clients.enrichment
 
 import clients.TmdbClient
-import models.MovieRecord
+import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.{FilmwebClient, ImdbClient, MetacriticClient, RottenTomatoesClient}
@@ -51,14 +51,12 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
       MovieRecord(
         imdbId            = Some(imdbId),
         imdbRating        = imdbRating,
-        metascore         = None,
-        originalTitle     = originalTit,
         filmwebUrl        = fw.map(_.url),
         filmwebRating     = fw.flatMap(_.rating),
-        rottenTomatoes    = None,
         tmdbId            = Some(hit.id),
         metacriticUrl     = metacrUrl,
-        rottenTomatoesUrl = rtomatoeUrl
+        rottenTomatoesUrl = rtomatoeUrl,
+        data              = originalTit.map(o => Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some(o)))).getOrElse(Map.empty)
       )
     }
 
