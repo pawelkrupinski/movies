@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.FilmwebClient
-import services.enrichment.FilmwebClient.Candidate
+import services.enrichment.FilmwebClient.{Candidate, SearchHit}
 import tools.{GetOnlyHttpFetch, RealHttpFetch}
 
 class FilmwebClientSpec extends AnyFlatSpec with Matchers {
@@ -19,17 +19,22 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
 
   // ── parseSearch ─────────────────────────────────────────────────────────────
 
-  "parseSearch" should "extract film-type ids in the order Filmweb returned them" in {
+  "parseSearch" should "extract film- and serial-type ids in the order Filmweb returned them, skipping persons / users" in {
     val json =
       """{
-        |  "total": 3,
+        |  "total": 4,
         |  "searchHits": [
-        |    {"id": 10058855, "type": "film", "matchedTitle": "Sentimental Value"},
+        |    {"id": 10058855, "type": "film",   "matchedTitle": "Sentimental Value"},
         |    {"id": 2559,     "type": "person", "matchedTitle": "Stellan Skarsgård"},
-        |    {"id": 838929,   "type": "film", "matchedTitle": "Wartość sentymentalna"}
+        |    {"id": 838929,   "type": "film",   "matchedTitle": "Wartość sentymentalna"},
+        |    {"id": 10113677, "type": "serial", "matchedTitle": "Kicia Kocia w podróży"}
         |  ]
         |}""".stripMargin
-    client.parseSearch(json) shouldBe Seq(10058855, 838929)
+    client.parseSearch(json) shouldBe Seq(
+      SearchHit(10058855, "film"),
+      SearchHit(838929,   "film"),
+      SearchHit(10113677, "serial")
+    )
   }
 
   it should "return empty when search has no hits" in {
@@ -116,8 +121,9 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     title:         String = "",
     originalTitle: Option[String] = None,
     year:          Option[Int]    = Some(2024),
-    directors:     Set[String]    = Set.empty
-  ): Candidate = Candidate(id, title, originalTitle, year, directors)
+    directors:     Set[String]    = Set.empty,
+    kind:          String = "film"
+  ): Candidate = Candidate(id, kind, title, originalTitle, year, directors)
 
   "pickBest" should "accept an exact title match (case-insensitive)" in {
     val hits = Seq(candidate(id = 1, title = "Wartość sentymentalna", year = Some(2025)))
@@ -334,5 +340,29 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     )
     val fw = new FilmwebClient(new StubFetch(routes))
     fw.lookup("Belle", Some(2013), directors = Set("Christopher Nolan")) shouldBe None
+  }
+
+  // Some Polish children's "films" in cinemas are actually episodic content
+  // that Filmweb files under /serial/ (TV-series taxonomy) rather than
+  // /film/. The same `/info` / `/rating` endpoints serve both — the only
+  // difference is the canonical page URL prefix. Kicia Kocia w podróży was
+  // the trigger: Filmweb's serial entry is the only exact-title match, and
+  // dropping it (the prior film-only filter) left the matcher to settle
+  // for unrelated fuzzy film hits ("Nie ma duchów w mieszkaniu na Dobrej").
+  it should "match a serial-typed result and build a /serial/ URL" in {
+    val routes = Map(
+      "/live/search"          -> """{"searchHits":[
+        |{"id":10113677,"type":"serial","matchedTitle":"Kicia Kocia w podróży"},
+        |{"id":752725,"type":"film","matchedTitle":"Dobrze się kłamie w miłym towarzystwie"}
+        |]}""".stripMargin,
+      "/film/10113677/info"   -> """{"title":"Kicia Kocia w podróży","originalTitle":"Kicia Kocia w podróży","year":2026,"type":"serial"}""",
+      "/film/10113677/rating" -> """{"rate":6.7,"count":87}""",
+      "/film/752725/info"     -> """{"title":"Dobrze się kłamie w miłym towarzystwie","year":2016}"""
+    )
+    val fw = new FilmwebClient(new StubFetch(routes))
+    val r = fw.lookup("Kicia Kocia w podróży", Some(2026))
+    r should not be empty
+    r.get.url    shouldBe "https://www.filmweb.pl/serial/Kicia+Kocia+w+podr%C3%B3%C5%BCy-2026-10113677"
+    r.get.rating shouldBe Some(6.7)
   }
 }

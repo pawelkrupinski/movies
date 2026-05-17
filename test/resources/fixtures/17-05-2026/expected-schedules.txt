@@ -2109,10 +2109,10 @@ originalTitle:     Kicia Kocia w podróży
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     6.72414
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/serial/Kicia+Kocia+w+podr%C3%B3%C5%BCy-2026-10113677
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/13758-poranek-dla-dzieci-kicia-kocia-w-podrozy/
 cinemaScrapes:

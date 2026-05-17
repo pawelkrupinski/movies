@@ -62,8 +62,8 @@ class FilmwebClient(http: HttpFetch) {
     Try {
       val hits = search(query).take(MaxCandidates)
       // Step 1 (cheap): /info per candidate → title acceptance bar.
-      val infoCandidates = hits.flatMap(id =>
-        info(id).map(i => Candidate(id, i.title, i.originalTitle, i.year, Set.empty))
+      val infoCandidates = hits.flatMap(h =>
+        info(h.id).map(i => Candidate(h.id, h.kind, i.title, i.originalTitle, i.year, Set.empty))
       )
       // Step 2 (only when caller wants director verification): /preview per
       // candidate that already passed the title bar. Skipping unaccepted
@@ -75,13 +75,19 @@ class FilmwebClient(http: HttpFetch) {
           titleAccepted.map(c => c.copy(directors = preview(c.id).map(_.directors).getOrElse(Set.empty)))
         }
       pickBest(candidates, query, year, directors).flatMap { c =>
-        val url = canonicalUrl(c.id, c.title, c.year)
+        val url = canonicalUrl(c.id, c.kind, c.title, c.year)
         Some(FilmwebInfo(url, rating(c.id)))
       }
     }.toOption.flatten
 
-  /** Returns film ids in the order Filmweb ranks them. */
-  def search(title: String): Seq[Int] =
+  /** Returns search hits (id + kind) in the order Filmweb ranks them.
+   *  Both `film` and `serial` types are kept — some content cinemas screen
+   *  as a one-off feature is filed under `/serial/` on Filmweb (children's
+   *  episodic shows shown as a single screening, e.g. "Kicia Kocia w
+   *  podróży"). The shared `/api/v1/film/{id}/info`+`/rating` endpoints
+   *  serve both, so downstream handling is uniform; only the canonical
+   *  page URL prefix differs (`/film/` vs `/serial/`). */
+  def search(title: String): Seq[SearchHit] =
     parseSearch(http.get(s"$ApiBase/live/search?query=${urlEncode(title)}"))
 
   def info(id: Int): Option[FilmInfo] =
@@ -104,11 +110,11 @@ class FilmwebClient(http: HttpFetch) {
       .flatMap(m => Try(m.group(1).toInt).toOption)
       .flatMap(rating)
 
-  def parseSearch(body: String): Seq[Int] =
+  def parseSearch(body: String): Seq[SearchHit] =
     (Json.parse(body) \ "searchHits").asOpt[JsArray].map(_.value).getOrElse(Nil).flatMap { js =>
-      val isFilm = (js \ "type").asOpt[String].contains("film")
-      val id     = (js \ "id").asOpt[Int]
-      if (isFilm) id else None
+      val kind = (js \ "type").asOpt[String]
+      val id   = (js \ "id").asOpt[Int]
+      for { k <- kind if k == "film" || k == "serial"; i <- id } yield SearchHit(i, k)
     }.toSeq
 
   def parseInfo(body: String): Option[FilmInfo] = {
@@ -198,11 +204,18 @@ object FilmwebClient {
    *  user rating. */
   case class FilmwebInfo(url: String, rating: Option[Double])
 
-  /** One candidate distilled from /info + (optionally) /preview. `directors`
-   *  is empty when the caller didn't ask for verification — we then skip the
+  /** One search hit — id + Filmweb's content-type tag (`film` or `serial`).
+   *  The same `/api/v1/film/{id}/info` and `/rating` endpoints serve both,
+   *  so the type only matters when building the canonical page URL. */
+  case class SearchHit(id: Int, kind: String)
+
+  /** One candidate distilled from /info + (optionally) /preview. `kind`
+   *  is the `film`/`serial` tag from `SearchHit`. `directors` is empty
+   *  when the caller didn't ask for verification — we then skip the
    *  /preview HTTP entirely. */
   case class Candidate(
     id:            Int,
+    kind:          String,
     title:         String,
     originalTitle: Option[String],
     year:          Option[Int],
@@ -211,12 +224,13 @@ object FilmwebClient {
 
   /**
    * Build the canonical page URL the way Filmweb encodes it. The site replaces
-   * spaces with `+` and percent-encodes everything else.
+   * spaces with `+` and percent-encodes everything else. `kind` picks the
+   * URL segment: `film` → `/film/`, `serial` → `/serial/`.
    */
-  def canonicalUrl(id: Int, title: String, year: Option[Int]): String = {
+  def canonicalUrl(id: Int, kind: String, title: String, year: Option[Int]): String = {
     val slug = URLEncoder.encode(title, StandardCharsets.UTF_8).replace("%20", "+")
     val y    = year.map(_.toString).getOrElse("")
-    s"https://www.filmweb.pl/film/$slug-$y-$id"
+    s"https://www.filmweb.pl/$kind/$slug-$y-$id"
   }
 
   private def urlEncode(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
