@@ -1,6 +1,6 @@
 package scripts
 
-import org.mongodb.scala.MongoClient
+import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import services.movies.MongoMovieRepo
 import tools.Env
 

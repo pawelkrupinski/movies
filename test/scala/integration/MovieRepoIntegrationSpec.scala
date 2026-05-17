@@ -4,7 +4,7 @@ import models.{Helios, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.mongodb.scala.MongoClient
+import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import services.movies.{MongoMovieRepo, StoredMovieRecord}
 import tools.Env

@@ -1,6 +1,6 @@
 package scripts
 
-import org.mongodb.scala.MongoClient
+import org.mongodb.scala.{MongoClient, ObservableFuture}
 import org.mongodb.scala.bson.collection.immutable.Document
 import services.movies.MovieService
 import tools.Env

@@ -13,7 +13,7 @@ object DaemonExecutors {
   /** Fixed-size pool of `workers` daemon threads named `${nameBase}-${i}`. */
   def fixedPool(nameBase: String, workers: Int): ExecutorService = {
     val counter = new AtomicInteger(0)
-    Executors.newFixedThreadPool(workers, { r: Runnable =>
+    Executors.newFixedThreadPool(workers, { (r: Runnable) =>
       val t = new Thread(r, s"$nameBase-${counter.incrementAndGet()}")
       t.setDaemon(true)
       t

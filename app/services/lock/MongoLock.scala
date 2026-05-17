@@ -1,7 +1,7 @@
 package services.lock
 
 import com.mongodb.MongoWriteException
-import org.mongodb.scala.MongoCollection
+import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonDateTime, BsonString}
 import org.mongodb.scala.model.{Filters, UpdateOptions, Updates}

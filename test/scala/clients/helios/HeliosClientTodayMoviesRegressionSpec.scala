@@ -23,26 +23,26 @@ class HeliosClientTodayMoviesRegressionSpec extends AnyFlatSpec with Matchers {
       .filter(_.showtimes.exists(_.dateTime.toLocalDate == today))
       .map(_.movie.title)
 
-    "HeliosClient.fetch" should "return the exact expected movie titles for today from the recorded fixture" in {
+  "HeliosClient.fetch" should "return the exact expected movie titles for today from the recorded fixture" in {
 
-      fetchTodayTitles().toSet shouldBe Set(
-        "Billie Eilish - Hit Me Hard and Soft: The Tour Live",
-        "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D",
-        "Diabeł ubiera się u Prady 2",
-        "Drama",
-        "Michael",
-        "Mortal Kombat II",
-        "Mumia: Film Lee Cronina",
-        "Nawet myszy idą do nieba",
-        "Odrodzony jako galareta. Film: Łzy Morza Lazurowego",
-        "Projekt Hail Mary",
-        "Pucio",
-        "Sprawiedliwość owiec",
-        "Super Mario Galaxy Film",
-        "Top Gun 40. Rocznica",
-        "Top Gun: Maverick"
-      )
-    }
+    fetchTodayTitles().toSet shouldBe Set(
+      "Billie Eilish - Hit Me Hard and Soft: The Tour Live",
+      "Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D",
+      "Diabeł ubiera się u Prady 2",
+      "Drama",
+      "Michael",
+      "Mortal Kombat II",
+      "Mumia: Film Lee Cronina",
+      "Nawet myszy idą do nieba",
+      "Odrodzony jako galareta. Film: Łzy Morza Lazurowego",
+      "Projekt Hail Mary",
+      "Pucio",
+      "Sprawiedliwość owiec",
+      "Super Mario Galaxy Film",
+      "Top Gun 40. Rocznica",
+      "Top Gun: Maverick"
+    )
+  }
 
   it should "include all expected movies for today from the recorded Helios fixture" in {
     val titles = fetchTodayTitles().toSet

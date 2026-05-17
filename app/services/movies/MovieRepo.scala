@@ -11,7 +11,7 @@ case class StoredMovieRecord(title: String, year: Option[Int], record: MovieReco
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson._
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{MongoClient, MongoCollection}
+import org.mongodb.scala.{MongoClient, MongoCollection, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 import tools.Env
 

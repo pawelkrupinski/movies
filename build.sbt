@@ -4,7 +4,7 @@ organization := "com.example"
 
 version := "1.0-SNAPSHOT"
 
-scalaVersion := "2.13.16"
+scalaVersion := "3.3.7"
 
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
@@ -12,7 +12,7 @@ lazy val root = (project in file("."))
 // ── Versions ──────────────────────────────────────────────────────────────────
 
 val playVersion        = "3.0.8"
-val mongoDriverVersion = "5.1.1"
+val mongoDriverVersion = "5.7.0"
 
 // ── Dependencies ──────────────────────────────────────────────────────────────
 
@@ -45,6 +45,5 @@ scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
   "-unchecked",
-  "-Xlint",
-  "-Ywarn-unused:imports"
+  "-Wunused:imports"
 )

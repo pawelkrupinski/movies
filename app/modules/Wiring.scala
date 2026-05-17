@@ -80,7 +80,7 @@ trait Wiring {
   // ── Showtime aggregation ──────────────────────────────────────────────────
   lazy val showtimeCache = new ShowtimeCache(cinemaScrapers, eventBus, movieCache)
 
-  val controllerComponents: ControllerComponents
+  def controllerComponents: ControllerComponents
   def environmentMode: Mode
 
   // ── Controllers ───────────────────────────────────────────────────────────
