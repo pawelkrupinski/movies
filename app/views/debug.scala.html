@@ -141,14 +141,15 @@
           data-haystack="@{(title + " " + orig + " " + imdbId).toLowerCase}"
           data-title="@title"
           data-orig="@orig"
-          data-year="@year.map(_.toString).getOrElse("")"
+          data-key-year="@year.map(_.toString).getOrElse("")"
+          data-year="@e.releaseYear.map(_.toString).getOrElse("")"
           data-imdb="@imdbId"
           data-tmdb="@e.tmdbId.map(_.toString).getOrElse("")"
           data-imdbR="@e.imdbRating.map(_.toString).getOrElse("")"
           data-urls="@{Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten.mkString(" ")}">
         <td class="title"><a href="@FilmHref(e.displayTitle(title))" onclick="event.stopPropagation()">@title</a></td>
         <td class="orig">@if(orig.nonEmpty) { @orig } else { <span class="miss">—</span> }</td>
-        <td class="year">@year.map(_.toString).getOrElse("—")</td>
+        <td class="year">@e.releaseYear.map(_.toString).getOrElse("—")</td>
         <td class="id">
           @e.imdbId match {
             case Some(id) => { <a href="@{s"https://www.imdb.com/title/$id/"}" target="_blank" rel="noopener" onclick="event.stopPropagation()">@id</a> }
@@ -257,7 +258,11 @@
       const tr = btn.closest('tr');
       const params = new URLSearchParams();
       params.set('title', tr.dataset.title);
-      if (tr.dataset.year) params.set('year', tr.dataset.year);
+      // Re-enrich identifies the row by its cache-key year (which may be
+      // None when the row was created from a no-year scrape and TMDB hasn't
+      // re-keyed yet) — distinct from the resolved year shown in the
+      // visible column.
+      if (tr.dataset.keyYear) params.set('year', tr.dataset.keyYear);
       btn.disabled = true;
       tr.classList.add('reenriching');
       const res = await fetch('/debug/reenrich?' + params.toString(), { method: 'POST' });

@@ -115,21 +115,21 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
 
     cache.recordCinemaScrape(Multikino, Seq(multikinoMk))
 
-    val key = cache.keyOf("Mortal Kombat 2", None)
-    cache.get(key).get.cinemaData.keySet shouldBe Set(Multikino)
+    val originalKey = cache.keyOf("Mortal Kombat 2", None)
+    cache.get(originalKey).get.cinemaData.keySet shouldBe Set(Multikino)
 
     // Same code path the MovieRecordCreated-driven async wrapper invokes — bypasses
     // the worker pool for a deterministic single-thread reproduction.
     svc.reEnrichSync("Mortal Kombat 2", None)
 
-    val row = cache.get(key).get
+    // TMDB's release_date (2026-05-06) re-keys the no-year cinema scrape onto
+    // (title, Some(2026)) — `runTmdbStageSync` invalidates the original
+    // (title, None) key once a resolved year exists.
+    val resolvedKey = cache.keyOf("Mortal Kombat 2", Some(2026))
+    cache.get(originalKey) shouldBe None
+    val row = cache.get(resolvedKey).get
     row.tmdbId shouldBe Some(931285)
     row.imdbId shouldBe Some("tt17490712")
-    // Currently FAILS: runTmdbStageSync constructs a fresh MovieRecord(...)
-    // with the default empty cinemaShowings and writes it through
-    // cache.put, which only re-folds cinemaTitles — the Multikino slot is
-    // wiped. The view layer (MovieController.toSchedules) then drops this
-    // row because allShowtimes is empty.
     row.cinemaData.keySet shouldBe Set(Multikino)
   }
 

@@ -166,7 +166,7 @@ class MovieService(
    *  call themselves (see `scripts/EnrichmentBackfill` for the pattern). Does
    *  NOT publish bus events, so concurrent listeners don't double-fetch. */
   def reEnrichSync(title: String, year: Option[Int]): Option[MovieRecord] =
-    runTmdbStageSync(cache.keyOf(title, year))
+    runTmdbStageSync(cache.keyOf(title, year)).map(_._2)
 
   // ── TMDB stage ─────────────────────────────────────────────────────────────
 
@@ -211,16 +211,16 @@ class MovieService(
     directorHint:      Option[String] = None
   ): Unit =
     Try(runTmdbStageSync(key, originalTitleHint, directorHint)) match {
-      case Success(Some(movieRecord)) =>
+      case Success(Some((finalKey, movieRecord))) =>
         retryAttempts.remove(key)
         movieRecord.imdbId match {
           case Some(id) =>
-            bus.publish(TmdbResolved(key.cleanTitle, key.year, id))
-            logger.debug(s"TMDB stage: ${key.cleanTitle} (${key.year.getOrElse("?")}) → $id")
+            bus.publish(TmdbResolved(finalKey.cleanTitle, finalKey.year, id))
+            logger.debug(s"TMDB stage: ${finalKey.cleanTitle} (${finalKey.year.getOrElse("?")}) → $id")
           case None =>
-            val searchTitle = movieRecord.originalTitle.getOrElse(key.cleanTitle)
-            logger.debug(s"TMDB stage: ${key.cleanTitle} (${key.year.getOrElse("?")}) → tmdbId=${movieRecord.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
-            bus.publish(ImdbIdMissing(key.cleanTitle, key.year, searchTitle))
+            val searchTitle = movieRecord.originalTitle.getOrElse(finalKey.cleanTitle)
+            logger.debug(s"TMDB stage: ${finalKey.cleanTitle} (${finalKey.year.getOrElse("?")}) → tmdbId=${movieRecord.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
+            bus.publish(ImdbIdMissing(finalKey.cleanTitle, finalKey.year, searchTitle))
         }
       case Success(None)    =>
         cache.markMissing(key)
@@ -245,7 +245,7 @@ class MovieService(
     key:               CacheKey,
     originalTitleHint: Option[String] = None,
     directorHint:      Option[String] = None
-  ): Option[MovieRecord] =
+  ): Option[(CacheKey, MovieRecord)] =
     resolveTmdb(key.cleanTitle, key.year, originalTitleHint, directorHint).map { case (hit, imdbId) =>
       val existing = cache.get(key)
       // Preserve the previously-known `imdbId` when TMDB resolved the same
@@ -302,8 +302,23 @@ class MovieService(
         cinemaScrapes     = existing.map(_.cinemaScrapes).getOrElse(Set.empty),
         data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
       )
-      cache.put(key, enr)
-      enr
+      // Re-key the row by its resolved year when the cinema didn't supply
+      // one and TMDB did. The cache + Mongo are keyed by `(cleanTitle,
+      // year)`; without this, a no-year scrape that TMDB later attaches a
+      // year to stays pinned at `(title, None)` while the debug page,
+      // controller, and downstream consumers all see `(title, Some(YYYY))`
+      // via the resolved accessor. Cinema-supplied years are left
+      // untouched — if a cinema reports a year we trust that as the row's
+      // identity even when TMDB's year disagrees.
+      val targetKey =
+        if (key.year.isEmpty && enr.releaseYear.isDefined) cache.keyOf(key.cleanTitle, enr.releaseYear)
+        else key
+      if (targetKey != key) {
+        logger.debug(s"TMDB stage: re-keying '${key.cleanTitle}' (— → ${enr.releaseYear.get}) — cinemas didn't supply a year.")
+        cache.invalidate(key)
+      }
+      cache.put(targetKey, enr)
+      (targetKey, enr)
     }
 
   // IMDb / Filmweb / Metacritic / Rotten Tomatoes refresh logic lives in the
