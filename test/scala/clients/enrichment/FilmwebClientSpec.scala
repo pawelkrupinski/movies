@@ -232,6 +232,38 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     fw.lookup("Wartość sentymentalna", Some(2025)) shouldBe None
   }
 
+  // Production regression: "Cirque du Soleil: Kooza" was stored against
+  // `https://www.filmweb.pl/film/Asystent+wampira-2009-212254` — id 212254
+  // is "Asystent wampira" / "Cirque du Freak: The Vampire's Assistant"
+  // (2009), a completely different film. The row pre-dated the tightened
+  // matcher; the cheap rating-only refresh path left it untouched, so the
+  // wrong URL persisted. Filmweb's `live/search` ranks "Cirque du Freak"
+  // first for the query "Cirque du Soleil: Kooza" — the matchedTitle
+  // field is fuzzy across the shared "Cirque du" prefix. Today's matcher
+  // must reject every candidate (no canonical title or originalTitle
+  // equals or modifier-suffixes the query) and store None. MC and RT
+  // already return None for this film because their slug-probe / search-
+  // scrape paths require an exact-or-modifier title match from day one;
+  // this guards Filmweb against regressing back to the loose match.
+  it should "return None for 'Cirque du Soleil: Kooza' — Filmweb has no entry and the top fuzzy hit is unrelated" in {
+    val routes = Map(
+      "/live/search"      -> """{"searchHits":[
+        |  {"id":212254,"type":"film","matchedTitle":"Cirque du Freak: The Vampire's Assistant"},
+        |  {"id":743459,"type":"film","matchedTitle":"Juste la fin du monde"},
+        |  {"id":61,"type":"film","matchedTitle":"Les Couloirs du temps: Les visiteurs 2"},
+        |  {"id":650592,"type":"film","matchedTitle":"Cirque du Soleil: Dalekie światy"},
+        |  {"id":7895,"type":"film","matchedTitle":"Cet obscur objet du désir"}
+        |]}""".stripMargin,
+      "/film/212254/info" -> """{"title":"Asystent wampira","originalTitle":"Cirque du Freak: The Vampire's Assistant","year":2009}""",
+      "/film/743459/info" -> """{"title":"To tylko koniec świata","originalTitle":"Juste la fin du monde","year":2016}""",
+      "/film/61/info"     -> """{"title":"Goście, goście II - korytarz czasu","originalTitle":"Les Couloirs du temps: Les visiteurs 2","year":1998}""",
+      "/film/650592/info" -> """{"title":"Cirque du Soleil: Dalekie światy","originalTitle":"Cirque du Soleil: Worlds Away","year":2012}""",
+      "/film/7895/info"   -> """{"title":"Mroczny przedmiot pożądania","originalTitle":"Cet obscur objet du désir","year":1977}"""
+    )
+    val fw = new FilmwebClient(new StubFetch(routes))
+    fw.lookup("Cirque du Soleil: Kooza", Some(2008)) shouldBe None
+  }
+
   it should "pick the candidate whose canonical title matches and skip the search-noise ones" in {
     val routes = Map(
       "/live/search"          -> """{"searchHits":[
