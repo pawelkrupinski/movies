@@ -46,7 +46,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
       "Hopnięci",
       "Iron Maiden: Burning Ambition",
       "Karuppu",
-      "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas",
+      "O dziewczynie skaczącej przez czas",
       "Kurozając i świątynia świstaka",
       "La Traviata Verdiego z Arena di Verona",
       "Liga Mistrzów UEFA - Finał",
@@ -92,7 +92,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Hopnięci")                                                      shouldBe Some(104)
     runtimes("Iron Maiden: Burning Ambition")                                 shouldBe Some(105)
     runtimes("Karuppu")                                                       shouldBe Some(150)
-    runtimes("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")    shouldBe Some(98)
+    runtimes("O dziewczynie skaczącej przez czas")    shouldBe Some(98)
     runtimes("Kurozając i świątynia świstaka")                                shouldBe Some(88)
     runtimes("La Traviata Verdiego z Arena di Verona")                        shouldBe Some(160)
     runtimes("Liga Mistrzów UEFA - Finał")                                    shouldBe Some(140)
@@ -191,7 +191,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     posters("Hopnięci")                                                      shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7499D2R.jpg")
     posters("Iron Maiden: Burning Ambition")                                 shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8078S2R.jpg")
     posters("Karuppu")                                                       shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8203S2R.jpg")
-    posters("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")    shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8068S2R.jpg")
+    posters("O dziewczynie skaczącej przez czas")    shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8068S2R.jpg")
     posters("Kurozając i świątynia świstaka")                                shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7921D2R.jpg")
     posters("La Traviata Verdiego z Arena di Verona")                        shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8130S2R.jpg")
     posters("Liga Mistrzów UEFA - Finał")                                    shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8063O2R.jpg")
@@ -236,7 +236,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Hopnięci")                                                      shouldBe Some("https://www.cinema-city.pl/filmy/hopnieci/7499d2r")
     filmUrls("Iron Maiden: Burning Ambition")                                 shouldBe Some("https://www.cinema-city.pl/filmy/iron-maiden-burning-ambition/8078s2r")
     filmUrls("Karuppu")                                                       shouldBe Some("https://www.cinema-city.pl/filmy/karuppu/8203s2r")
-    filmUrls("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")    shouldBe Some("https://www.cinema-city.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas/8068s2r")
+    filmUrls("O dziewczynie skaczącej przez czas")    shouldBe Some("https://www.cinema-city.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas/8068s2r")
     filmUrls("Kurozając i świątynia świstaka")                                shouldBe Some("https://www.cinema-city.pl/filmy/kurozajac-i-swiatynia-swistaka/7921d2r")
     filmUrls("La Traviata Verdiego z Arena di Verona")                        shouldBe Some("https://www.cinema-city.pl/filmy/la-traviata-verdiego-z-arena-di-verona/8130s2r")
     filmUrls("Liga Mistrzów UEFA - Finał")                                    shouldBe Some("https://www.cinema-city.pl/filmy/liga-mistrzow-uefa-final/8063o2r")
@@ -281,7 +281,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     counts("Hopnięci")                                                      shouldBe 5
     counts("Iron Maiden: Burning Ambition")                                 shouldBe 14
     counts("Karuppu")                                                       shouldBe 3
-    counts("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")    shouldBe 2
+    counts("O dziewczynie skaczącej przez czas")    shouldBe 2
     counts("Kurozając i świątynia świstaka")                                shouldBe 30
     counts("La Traviata Verdiego z Arena di Verona")                        shouldBe 2
     counts("Liga Mistrzów UEFA - Finał")                                    shouldBe 1
@@ -378,7 +378,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
       "Hopnięci",
       "Iron Maiden: Burning Ambition",
       "Kicia Kocia w podróży",
-      "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas",
+      "O dziewczynie skaczącej przez czas",
       "Kurozając i świątynia świstaka",
       "La Traviata Verdiego z Arena di Verona",
       "Lars jest LOL",
@@ -420,7 +420,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Hopnięci")                                                      shouldBe Some(104)
     runtimes("Iron Maiden: Burning Ambition")                                 shouldBe Some(105)
     runtimes("Kicia Kocia w podróży")                                         shouldBe Some(45)
-    runtimes("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")    shouldBe Some(98)
+    runtimes("O dziewczynie skaczącej przez czas")    shouldBe Some(98)
     runtimes("Kurozając i świątynia świstaka")                                shouldBe Some(88)
     runtimes("La Traviata Verdiego z Arena di Verona")                        shouldBe Some(160)
     runtimes("Lars jest LOL")                                                 shouldBe Some(89)
@@ -461,7 +461,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     posters("Hopnięci")                                                      shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7499D2R.jpg")
     posters("Iron Maiden: Burning Ambition")                                 shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8078S2R.jpg")
     posters("Kicia Kocia w podróży")                                         shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7975O2R.jpg")
-    posters("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")    shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8068S2R.jpg")
+    posters("O dziewczynie skaczącej przez czas")    shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8068S2R.jpg")
     posters("Kurozając i świątynia świstaka")                                shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7921D2R.jpg")
     posters("La Traviata Verdiego z Arena di Verona")                        shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8130S2R.jpg")
     posters("Lars jest LOL")                                                 shouldBe Some("https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/6547D2R.jpg")
@@ -502,7 +502,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Hopnięci")                                                      shouldBe Some("https://www.cinema-city.pl/filmy/hopnieci/7499d2r")
     filmUrls("Iron Maiden: Burning Ambition")                                 shouldBe Some("https://www.cinema-city.pl/filmy/iron-maiden-burning-ambition/8078s2r")
     filmUrls("Kicia Kocia w podróży")                                         shouldBe Some("https://www.cinema-city.pl/filmy/kicia-kocia-w-podrozy/7975o2r")
-    filmUrls("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")    shouldBe Some("https://www.cinema-city.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas/8068s2r")
+    filmUrls("O dziewczynie skaczącej przez czas")    shouldBe Some("https://www.cinema-city.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas/8068s2r")
     filmUrls("Kurozając i świątynia świstaka")                                shouldBe Some("https://www.cinema-city.pl/filmy/kurozajac-i-swiatynia-swistaka/7921d2r")
     filmUrls("La Traviata Verdiego z Arena di Verona")                        shouldBe Some("https://www.cinema-city.pl/filmy/la-traviata-verdiego-z-arena-di-verona/8130s2r")
     filmUrls("Lars jest LOL")                                                 shouldBe Some("https://www.cinema-city.pl/filmy/lars-jest-lol/6547d2r")
@@ -543,7 +543,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     counts("Hopnięci")                                                      shouldBe 1
     counts("Iron Maiden: Burning Ambition")                                 shouldBe 7
     counts("Kicia Kocia w podróży")                                         shouldBe 2
-    counts("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")    shouldBe 2
+    counts("O dziewczynie skaczącej przez czas")    shouldBe 2
     counts("Kurozając i świątynia świstaka")                                shouldBe 29
     counts("La Traviata Verdiego z Arena di Verona")                        shouldBe 2
     counts("Lars jest LOL")                                                 shouldBe 1

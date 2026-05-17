@@ -18,7 +18,15 @@ object MultikinoParser {
     (Json.parse(json) \ "result").as[JsArray].value.map(parseFilm).toSeq
 
   private def parseFilm(film: JsValue): CinemaMovie = {
-    val title       = normaliseCase((film \ "filmTitle").as[String].replaceFirst("^Kino na obcasach:\\s*", ""))
+    val title       = normaliseCase((film \ "filmTitle").as[String]
+      .replaceFirst("^Kino na obcasach:\\s*", "")
+      // Animation retrospective programme. Multikino prepends the cycle
+      // name; the underlying films are widely-released anime that other
+      // cinemas list under their bare titles. Strip so the row merges
+      // with those cinemas instead of producing a Multikino-only variant
+      // that TMDB / Filmweb queries can't find ("Kolekcja Mamoru
+      // Hosody:" isn't part of any film's canonical title).
+      .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", ""))
     val multikinoId = (film \ "filmId").asOpt[String].filter(_.nonEmpty)
     val mxcId       = (film \ "movieXchangeCode").asOpt[String].filter(_.nonEmpty)
     val sessions    = (film \ "showingGroups").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)

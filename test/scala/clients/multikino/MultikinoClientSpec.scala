@@ -67,7 +67,6 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
       "Iron Maiden: Burning Ambition",
       "John Williams - A Tribute",
       "Klątwa doliny węży -  z autorską narracją Łony",
-      "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas",
       "Kosmiczny mecz",
       "Kurozając i Świątynia Świstaka",
       "LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC",
@@ -86,6 +85,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
       "NT Live: Playboy zachodniego świata",
       "NT Live: Wszyscy moi synowie",
       "Niesamowite przygody skarpetek 3. Ale kosmos!",
+      "O dziewczynie skaczącej przez czas",
       "Obsesja",
       "Odlot",
       "Odrodzony jako galareta. Film: Łzy Morza Lazurowego",
@@ -166,7 +166,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Iron Maiden: Burning Ambition")                                      shouldBe Some(106)
     runtimes("John Williams - A Tribute")                                          shouldBe Some(83)
     runtimes("Klątwa doliny węży -  z autorską narracją Łony")                     shouldBe Some(0)
-    runtimes("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")         shouldBe Some(98)
+    runtimes("O dziewczynie skaczącej przez czas")         shouldBe Some(98)
     runtimes("Kosmiczny mecz")                                                     shouldBe Some(0)
     runtimes("Kurozając i Świątynia Świstaka")                                     shouldBe Some(89)
     runtimes("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC")  shouldBe Some(0)
@@ -297,7 +297,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     posters("Iron Maiden: Burning Ambition")                                      shouldBe Some("https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/iron-maiden/ironmaiden.jpg?rev=a8cd80d50e264d7baef87d55f4b41156")
     posters("John Williams - A Tribute")                                          shouldBe Some("https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/john-williams/jwilliams_plakat.jpg?rev=c7d1daa261e2416da7adc8881c9a2801")
     posters("Klątwa doliny węży -  z autorską narracją Łony")                     shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/klatwa-doliny-wezy_plakat.jpg?rev=c58ea807e26643fb8bc1425578f746b0")
-    posters("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")         shouldBe Some("https://www.multikino.pl/-/media/multikino/images/wydarzenia/anime/o-dziewczynie-skaczacej-przez-czas-plakat2.jpg?rev=125e66df557f4228bf3605103ca217f9")
+    posters("O dziewczynie skaczącej przez czas")         shouldBe Some("https://www.multikino.pl/-/media/multikino/images/wydarzenia/anime/o-dziewczynie-skaczacej-przez-czas-plakat2.jpg?rev=125e66df557f4228bf3605103ca217f9")
     posters("Kosmiczny mecz")                                                     shouldBe Some("https://www.multikino.pl/-/media/multikino/images/kultowe-kino/kosmicznymecz96.jpg?rev=5cf7d42444434cff9f803083a634a9ee")
     posters("Kurozając i Świątynia Świstaka")                                     shouldBe Some("https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/kurozajac-i-swiatynia-swistaka/kurozajac_plakat.jpg?rev=8e07534364604957a7cfab295c1dc9ec")
     posters("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC")  shouldBe Some("https://www.multikino.pl/-/media/multikino/images/euro/2026/plakat_30maja.jpg?rev=b087764f339d4085af181aa6fc494509")
@@ -377,7 +377,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Iron Maiden: Burning Ambition")                                      shouldBe Some("https://www.multikino.pl/filmy/iron-maiden-burning-ambition")
     filmUrls("John Williams - A Tribute")                                          shouldBe Some("https://www.multikino.pl/filmy/john-williams-a-tribute")
     filmUrls("Klątwa doliny węży -  z autorską narracją Łony")                     shouldBe Some("https://www.multikino.pl/filmy/klatwa-doliny-wezy----z-autorska-narracja-ony")
-    filmUrls("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")         shouldBe Some("https://www.multikino.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas")
+    filmUrls("O dziewczynie skaczącej przez czas")         shouldBe Some("https://www.multikino.pl/filmy/kolekcja-mamoru-hosody-o-dziewczynie-skaczacej-przez-czas")
     filmUrls("Kosmiczny mecz")                                                     shouldBe Some("https://www.multikino.pl/filmy/kosmiczny-mecz")
     filmUrls("Kurozając i Świątynia Świstaka")                                     shouldBe Some("https://www.multikino.pl/filmy/kurozajac-i-swiatynia-swistaka")
     filmUrls("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC")  shouldBe Some("https://www.multikino.pl/filmy/liga-mistrzow-uefa-final-2026-30052026")
@@ -453,7 +453,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Iron Maiden: Burning Ambition").director                                      shouldBe Some("Malcolm Venville")
     byTitle("John Williams - A Tribute").director                                          shouldBe Some("Antony Hermus")
     byTitle("Klątwa doliny węży -  z autorską narracją Łony").director                     shouldBe Some("Marek Piestrak")
-    byTitle("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas").director         shouldBe Some("Mamoru Hosoda")
+    byTitle("O dziewczynie skaczącej przez czas").director         shouldBe Some("Mamoru Hosoda")
     byTitle("Kosmiczny mecz").director                                                     shouldBe Some("Joe Pytka")
     byTitle("Kurozając i Świątynia Świstaka").director                                     shouldBe Some("Benjamin Mousquet")
     byTitle("La Traviata Verdiego z Arena di Verona").director                             shouldBe Some("Michele Olcese, Francesco Ivan Ciampa")
@@ -536,7 +536,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     counts("Iron Maiden: Burning Ambition")                                      shouldBe 7
     counts("John Williams - A Tribute")                                          shouldBe 4
     counts("Klątwa doliny węży -  z autorską narracją Łony")                     shouldBe 1
-    counts("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas")         shouldBe 2
+    counts("O dziewczynie skaczącej przez czas")         shouldBe 2
     counts("Kosmiczny mecz")                                                     shouldBe 5
     counts("Kurozając i Świątynia Świstaka")                                     shouldBe 33
     counts("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC")  shouldBe 1

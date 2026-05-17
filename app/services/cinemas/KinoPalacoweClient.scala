@@ -148,6 +148,12 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
       val title     = rawTitle.split(" \\| ").head.trim
         .stripPrefix("Poranek dla dzieci: ")
         .stripPrefix("DKF Zamek: ")
+        // Andrzej Wajda retrospective programme — same films Kino Apollo
+        // lists with its own `Cykl „Wajda: re-wizje"` prefix (already
+        // handled by `TitleNormalizer.searchTitle`'s `CyklPrefix`). Strip
+        // the Pałacowe-shaped prefix here so both cinemas' screenings
+        // collapse onto the same canonical row instead of two.
+        .stripPrefix("WAJDA: re-wizje. ")
       val startDate = (entry \ "start_date").asOpt[String]
       val startTime = (entry \ "start_time").asOpt[String]
 

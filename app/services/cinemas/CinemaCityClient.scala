@@ -112,7 +112,17 @@ class CinemaCityClient(http: HttpFetch) {
         allFilms.get(filmId).map { info =>
           val details = detailsByFilmId.getOrElse(filmId, CinemaCityClient.Details.empty)
           CinemaMovie(
-            movie       = Movie(info.name.stripPrefix("Ladies Night - "), info.runtimeMinutes, info.releaseYear, countries = info.countries),
+            movie       = Movie(
+              info.name
+                .stripPrefix("Ladies Night - ")
+                // Animation retrospective — same prefix Multikino prepends.
+                // Strip here too so a Mamoru Hosoda screening doesn't
+                // produce a CC-specific row that nothing else merges with.
+                .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", ""),
+              info.runtimeMinutes,
+              info.releaseYear,
+              countries = info.countries
+            ),
             cinema      = cinema,
             posterUrl   = info.posterLink,
             filmUrl     = info.filmLink,

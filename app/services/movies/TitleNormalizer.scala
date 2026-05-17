@@ -39,7 +39,11 @@ object TitleNormalizer {
   // explicitly rather than via a general `^[^:]+:\s+` because real titles
   // routinely include colons ("Top Gun: Maverick", "Star Wars: A New
   // Hope"). Add new programmes here as cinemas introduce them.
-  private val ProgrammePrefix   = """(?i)^(?:Kino\s+bez\s+barier|Pokaz\s+sensorycznie\s+przyjazny):\s+""".r
+  private val ProgrammePrefix   =
+    ("""(?i)^(?:Kino\s+bez\s+barier|""" +
+     """Pokaz\s+sensorycznie\s+przyjazny|""" +
+     """Filmowe\s+Poranki|""" +
+     """Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]):\s+""").r
   // Trailing accessibility tag — "(AD)", "(AD + CC)", "(AD + CC + PJM)" or
   // a truncated variant where the closing paren got chopped during display
   // clipping. AD = Audio Description, CC = Closed Captions, PJM = Polish

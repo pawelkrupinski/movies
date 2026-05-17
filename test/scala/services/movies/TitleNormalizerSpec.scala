@@ -251,6 +251,14 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     apiQuery("Pokaz sensorycznie przyjazny: Delfinek i ja 2") shouldBe "Delfinek i ja 2"
   }
 
+  it should "strip the 'Filmowe Poranki:' prefix (Helios morning-screening programme)" in {
+    apiQuery("Filmowe Poranki: Świnka Peppa, cz. 2") shouldBe "Świnka Peppa, cz. 2"
+  }
+
+  it should "strip the 'Filmowe spotkania z psychoanalizą:' prefix (Rialto themed screening)" in {
+    apiQuery("Filmowe spotkania z psychoanalizą: dobry chłopiec") shouldBe "dobry chłopiec"
+  }
+
   it should "leave a title with a colon that isn't a programme prefix alone" in {
     apiQuery("Top Gun: Maverick") shouldBe "Top Gun: Maverick"
   }
