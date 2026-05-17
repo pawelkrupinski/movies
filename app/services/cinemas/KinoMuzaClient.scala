@@ -5,6 +5,7 @@ import org.jsoup.Jsoup
 import tools.{DaemonExecutors, HttpFetch}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters._
@@ -51,8 +52,23 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
     val ec = DaemonExecutors.boundedEC("kino-muza-details", maxConcurrent = 2)
     try {
       val futures = urls.map(url => Future(url -> Try(http.get(url)).toOption.flatMap(parseSynopsis))(ec))
-      Await.result(Future.sequence(futures)(implicitly, ec), 5.minutes).toMap
-    } finally ec.shutdown()
+      // Best-effort: when the whole upstream stalls (every URL hits its 30-s
+      // HTTP timeout, e.g. Muza dropping CI's datacenter IP), return what we
+      // have rather than failing the whole `fetch()`. The listing-page data
+      // (title, runtime, poster, showtimes) is still useful on its own; a
+      // film with no synopsis still renders.
+      Try(Await.result(Future.sequence(futures)(implicitly, ec), 2.minutes))
+        .getOrElse(Seq.empty)
+        .toMap
+    } finally {
+      ec.shutdown()
+      // Let in-flight 30-s HTTP timeouts settle their Future.onComplete
+      // callbacks BEFORE the underlying executor stops accepting Runnables —
+      // otherwise every still-running body's promise-resolution lands on a
+      // shut-down EC and logs RejectedExecutionException. 35 s covers a full
+      // HTTP timeout + slack.
+      ec.awaitTermination(35, TimeUnit.SECONDS)
+    }
   }
 
   // Muza's detail pages render the synopsis in the first `paragraph`-classed
