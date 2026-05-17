@@ -6,8 +6,21 @@ version := "1.0-SNAPSHOT"
 
 scalaVersion := "3.3.7"
 
+// Integration tests live in `it/scala/` and run under a separate sbt
+// configuration so CI can dispatch `sbt test` and `sbt IntegrationTest/test`
+// in parallel jobs. `extend Test` lets the integration specs reuse helpers
+// from `test/scala/` (`tools.TestWiring`, fakes, etc.) without duplicating.
+lazy val IntegrationTest = config("it") extend Test
+
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
+  .configs(IntegrationTest)
+  .settings(
+    inConfig(IntegrationTest)(Defaults.testSettings),
+    IntegrationTest / scalaSource       := baseDirectory.value / "it" / "scala",
+    IntegrationTest / resourceDirectory := baseDirectory.value / "it" / "resources",
+    IntegrationTest / parallelExecution := true,
+  )
 
 // ── Dependencies ──────────────────────────────────────────────────────────────
 
