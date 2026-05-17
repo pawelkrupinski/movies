@@ -1,4 +1,6 @@
 === 2026 TXT MOA CON IN JAPAN: LIVE VIEWING ===
+displayTitle:      2026 TXT MOA CON IN JAPAN: LIVE VIEWING
+cinemaTitles:      2026 TXT MOA CON IN JAPAN: LIVE VIEWING
 runtimeMinutes:    225
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8178O2R.jpg
@@ -23,6 +25,8 @@ showings:
   2026-05-24  Cinema City Kinepolis         14:00 Sala6 2D/NAP
 
 === 90. urodziny Pavarottiego ===
+displayTitle:      90. urodziny Pavarottiego
+cinemaTitles:      90. urodziny Pavarottiego
 runtimeMinutes:    95
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/pavarotti/pavarotti90_plakat.jpg?rev=10b0b0776a1740c3bc284f5e077c5434
@@ -48,6 +52,8 @@ showings:
   2026-06-14  Multikino Stary Browar        15:00 Sala 3 2D/NAP
 
 === 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona ===
+displayTitle:      90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona
+cinemaTitles:      90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona
 runtimeMinutes:    92
 releaseYear:       2025
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8131S2R.jpg
@@ -77,6 +83,8 @@ showings:
   2026-06-17  Cinema City Poznań Plaza      18:00 Sala 2 2D/NAP
 
 === Ale mam | ну мам | wersja ukraińska z ang. napisami ===
+displayTitle:      Ale mam | ну мам | wersja ukraińska z ang. napisami
+cinemaTitles:      Ale mam | ну мам | wersja ukraińska z ang. napisami
 runtimeMinutes:    90
 releaseYear:       2026
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/a1a0-v3-1x-062logo.jpg
@@ -101,6 +109,8 @@ showings:
   2026-05-24  Kino Rialto                   13:15 · 17:00
 
 === All You Need Is Kill ===
+displayTitle:      All You Need Is Kill
+cinemaTitles:      All You Need Is Kill
 runtimeMinutes:    83
 releaseYear:       2025
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/all-you-need-is-kill/allyouneediskill_plakat.jpg?rev=08b1e09f55e449e68afb83c40faed6e7
@@ -130,6 +140,8 @@ showings:
   2026-06-26  Kino Pałacowe                 18:45 Sala 1 - Kinowa
 
 === Arco ===
+displayTitle:      Arco
+cinemaTitles:      Arco
 runtimeMinutes:    88
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/ARCO_plakat.jpg
@@ -154,6 +166,8 @@ showings:
   2026-05-20  Kino Pałacowe                 19:30 Sala 1 - Kinowa
 
 === Arcybiskup Lefebvre – dlaczego? ===
+displayTitle:      Arcybiskup Lefebvre – dlaczego?
+cinemaTitles:      Arcybiskup Lefebvre – dlaczego?
 runtimeMinutes:    128
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Plakat_abp_dlaczego_2025_kino_Q-po-zmniejszeniu-200x288.jpg
@@ -178,6 +192,8 @@ showings:
   2026-05-18  Kino Malta Charlie Monroe     18:30 Sala Charlie
 
 === Art Beats: Lotto i Berenson - splecione losy. Śladami renesansowego mistrza ===
+displayTitle:      Art Beats: Lotto i Berenson - splecione losy. Śladami renesansowego mistrza
+cinemaTitles:      Art Beats: Lotto i Berenson - splecione losy. Śladami renesansowego mistrza
 runtimeMinutes:    80
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/lotto-plakat.jpg?rev=38a9f6140a1a4ffcab6674adfc953e0e
@@ -203,6 +219,8 @@ showings:
   2026-08-19  Multikino Stary Browar        12:30 Sala 7 2D/NAP
 
 === Art Beats: Nenufary Moneta - cuda z wody i światła ===
+displayTitle:      Art Beats: Nenufary Moneta - cuda z wody i światła
+cinemaTitles:      Art Beats: Nenufary Moneta - cuda z wody i światła
 runtimeMinutes:    95
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/monet-nenufary-plakat.jpg?rev=0ec23b8a082f4b7bb70c073696776d8a
@@ -228,6 +246,8 @@ showings:
   2026-06-17  Multikino Stary Browar        12:30 Sala 7 2D/NAP
 
 === Art Beats: Rafael. Młody geniusz ===
+displayTitle:      Art Beats: Rafael. Młody geniusz
+cinemaTitles:      Art Beats: Rafael. Młody geniusz
 runtimeMinutes:    80
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/rafael-plakat.jpg?rev=e127f4cbbb104fde8a20d94cf4ba7dc0
@@ -253,6 +273,8 @@ showings:
   2026-07-15  Multikino Stary Browar        12:30 Sala 7 2D/NAP
 
 === Athiradi ===
+displayTitle:      Athiradi
+cinemaTitles:      Athiradi
 runtimeMinutes:    157
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8204S2R.jpg
@@ -277,6 +299,8 @@ showings:
   2026-05-17  Cinema City Kinepolis         20:20 Sala1 2D/NAP
 
 === Audiencja - National Theatre Live 2026 ===
+displayTitle:      Audiencja - National Theatre Live 2026
+cinemaTitles:      Audiencja - National Theatre Live 2026
 runtimeMinutes:    165
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8213S2R.jpg
@@ -302,6 +326,8 @@ showings:
   2026-08-16  Cinema City Kinepolis         15:30 Sala5 2D/NAP
 
 === Bałtyk ===
+displayTitle:      Bałtyk
+cinemaTitles:      Bałtyk
 runtimeMinutes:    66
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/08/BALTYK-PLAKAT-W-KINACH-22.08-jpg-po-zmniejszeniu-200x288.jpg
@@ -326,6 +352,8 @@ showings:
   2026-05-19  Kino Malta Charlie Monroe     16:00 Sala Marilyn
 
 === Belle ===
+displayTitle:      Belle
+cinemaTitles:      Belle
 runtimeMinutes:    121
 releaseYear:       2021
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/BELLE_plakat_online_JavMgQC.jpg
@@ -350,6 +378,8 @@ showings:
   2026-06-03  Kino Pałacowe                 19:30 Sala 1 - Kinowa
 
 === Bez wyjścia ===
+displayTitle:      Bez wyjścia
+cinemaTitles:      Bez wyjścia
 runtimeMinutes:    139
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Bez-wyjscia_plakat_B1_HQ-po-zmniejszeniu-200x288.jpg
@@ -376,6 +406,8 @@ showings:
   2026-05-20  Kino Malta Charlie Monroe     18:10 Sala Marilyn
 
 === Bez znieczulenia ===
+displayTitle:      Bez znieczulenia
+cinemaTitles:      Bez znieczulenia
 runtimeMinutes:    125
 releaseYear:       1978
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/bez-zniecz-2-800x450.jpg
@@ -400,6 +432,8 @@ showings:
   2026-10-06  Kino Muza                     20:00 Sala 1
 
 === Billie Eilish - Hit Me Hard and Soft: The Tour ===
+displayTitle:      Billie Eilish - Hit Me Hard and Soft: The Tour
+cinemaTitles:      Billie Eilish - Hit Me Hard and Soft: The Tour | Billie Eilish – Hit Me Hard and Soft: The Tour
 runtimeMinutes:    105
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/billie-eilish/billie-eilish_plakat_cut.jpg?rev=25c4d4367da24664815b62a9c3b17741
@@ -449,6 +483,8 @@ showings:
   2026-05-21  Multikino Stary Browar        11:55 Sala 1 3D/NAP · 14:15 Sala 8 2D/NAP
 
 === Bluey w kinie: Kolekcja Zabawy z przyjaciółmi ===
+displayTitle:      Bluey w kinie: Kolekcja Zabawy z przyjaciółmi
+cinemaTitles:      Bluey w kinie: Kolekcja Zabawy z przyjaciółmi
 runtimeMinutes:    55
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/bluey/bluey_zabawazprzyjaciolmi_plakat2.jpg?rev=4a0380d5d9b54c4ba1959fbd958a05e6
@@ -477,6 +513,8 @@ showings:
   2026-05-21  Multikino Stary Browar        09:35 Sala 3 2D/DUB
 
 === Broken English ===
+displayTitle:      Broken English
+cinemaTitles:      Broken English
 runtimeMinutes:    96
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/broken-800x450.jpg
@@ -501,6 +539,8 @@ showings:
   2026-05-17  Kino Muza                     21:00 Sala 2
 
 === Brzezina ===
+displayTitle:      Brzezina
+cinemaTitles:      Brzezina
 runtimeMinutes:    99
 releaseYear:       1970
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/brzezina-1-800x450.jpg
@@ -525,6 +565,8 @@ showings:
   2026-07-14  Kino Muza                     20:30 Sala 1
 
 === Być kochaną ===
+displayTitle:      Być kochaną
+cinemaTitles:      Być kochaną
 runtimeMinutes:    105
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/Byc-kochana_-plakat-HQ-po-zmniejszeniu-200x288.jpg
@@ -549,6 +591,8 @@ showings:
   2026-05-20  Kino Malta Charlie Monroe     20:20 Sala Charlie
 
 === Był sobie śnieg ===
+displayTitle:      Był sobie śnieg
+cinemaTitles:      Był sobie śnieg
 runtimeMinutes:    128
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/byl-sobie-snieg-2-800x450.jpg
@@ -573,6 +617,8 @@ showings:
   2026-05-17  Kino Muza                     11:00 Sala 2
 
 === Camper ===
+displayTitle:      Camper
+cinemaTitles:      Camper
 runtimeMinutes:    77
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/CAMPER_PLAKAT-po-zmniejszeniu-200x288.jpg
@@ -597,6 +643,8 @@ showings:
   2026-05-20  Kino Malta Charlie Monroe     15:55 Sala Audrey
 
 === Caravaggio. Arcydzieła niepokornego geniusza ===
+displayTitle:      Caravaggio. Arcydzieła niepokornego geniusza
+cinemaTitles:      Caravaggio. Arcydzieła niepokornego geniusza
 runtimeMinutes:    100
 releaseYear:       2025
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/caravaggio_plakat.jpg?rev=743d8bdf88b64f9ea981dbbf1ef55121
@@ -627,6 +675,8 @@ showings:
   2026-06-24  Multikino Stary Browar        12:30 Sala 5 2D/NAP
 
 === Chronologia wody ===
+displayTitle:      Chronologia wody
+cinemaTitles:      Chronologia wody
 runtimeMinutes:    128
 releaseYear:       2025
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/04/CHRONOLOGIA-WODY-PLAKAT-PL-clean.jpg
@@ -662,6 +712,8 @@ showings:
   2026-05-27  Kino Pałacowe                 19:30 Sala 1 - Kinowa
 
 === Chłopiec na krańcach świata ===
+displayTitle:      Chłopiec na krańcach świata
+cinemaTitles:      Chłopiec na krańcach świata
 runtimeMinutes:    88
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Chopiec_na_krancach_swiata_PLAKAT_teaser.jpg
@@ -687,6 +739,8 @@ showings:
   2026-06-28  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Cirque du Soleil: Kooza ===
+displayTitle:      Cirque du Soleil: Kooza
+cinemaTitles:      Cirque du Soleil: Kooza
 runtimeMinutes:    90
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/img/import/4e7d682d-c594-4525-a0d9-6a0b2fd97021_cirque-du-soleil-kooza_posters_koo_full_2000x3000px_712px.png?rev=ecb26b3f261f45559f7c9bd2c71b1b22
@@ -714,6 +768,8 @@ showings:
   2026-07-16  Multikino Stary Browar        18:00 Sala 1 2D
 
 === Cirque du Soleil: Kurios - Gabinet osobliwości ===
+displayTitle:      Cirque du Soleil: Kurios - Gabinet osobliwości
+cinemaTitles:      Cirque du Soleil: Kurios - Gabinet osobliwości
 runtimeMinutes:    89
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/img/import/bba92643-7ded-4bb4-aa17-d9d7ec7a4df9_cirque-du-soleil-kurios---gabinet-osobliwosci_posters_kur_full_.png?rev=bfbf4ae611944a2a92962535709bcfe0
@@ -738,6 +794,8 @@ showings:
   2026-10-15  Multikino Stary Browar        18:00 Sala 1 2D
 
 === Człowiek z marmuru ===
+displayTitle:      Człowiek z marmuru
+cinemaTitles:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru
 runtimeMinutes:    153
 releaseYear:       1977
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png
@@ -770,6 +828,8 @@ showings:
   2026-06-30  Kino Malta Charlie Monroe     15:30 Sala Audrey
 
 === Diabeł ubiera się u Prady 2 ===
+displayTitle:      Diabeł ubiera się u Prady 2
+cinemaTitles:      Diabeł ubiera się u Prady 2 | Diabeł ubiera się u prady 2
 runtimeMinutes:    120
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/diabel-ubiera-sie-u-prady-2/diabelprada2_plakatoficial-cut.jpg?rev=6e854aefaa8e47c0b27446b60a57f68a
@@ -834,6 +894,8 @@ showings:
   2026-05-27  Kino Rialto                   15:45
 
 === Diabeł ubiera się u Prady 2 ukraiński dubbing ===
+displayTitle:      Diabeł ubiera się u Prady 2 ukraiński dubbing
+cinemaTitles:      Diabeł ubiera się u Prady 2 ukraiński dubbing
 runtimeMinutes:    119
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7795S2R2.jpg
@@ -862,6 +924,8 @@ showings:
   2026-05-21  Cinema City Poznań Plaza      20:10 Sala 5 2D/DUB
 
 === Drama ===
+displayTitle:      Drama
+cinemaTitles:      Drama
 runtimeMinutes:    106
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drama/drama-plakat-final-cut.jpg?rev=99e50bcc8ce449fab18d52c1caef4c08
@@ -922,6 +986,8 @@ showings:
   2026-05-21  Multikino Stary Browar        12:50 Sala 10 2D/NAP
 
 === Drugie życie ===
+displayTitle:      Drugie życie
+cinemaTitles:      Drugie życie
 runtimeMinutes:    0
 releaseYear:       2025
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/drugiezycie_plakat.jpg?rev=b3e62875d7b248b78e1a7d07fdf010d2
@@ -955,6 +1021,8 @@ showings:
   2026-06-25  Multikino Stary Browar        20:00 Sala 4 2D/NAP
 
 === Drzewo magii ===
+displayTitle:      Drzewo magii
+cinemaTitles:      Drzewo Magii | Drzewo magii
 runtimeMinutes:    110
 releaseYear:       2025
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drzewo-magii/drzewo-magii_plakat-glowny_plakat.jpg?rev=78ae4df57ddb40d98d5535803ff32357
@@ -1002,6 +1070,8 @@ showings:
   2026-06-01  Kino Apollo                   16:30 · 19:00
 
 === Dyyavol Nosyt' Prada 2 - UA ===
+displayTitle:      Dyyavol Nosyt' Prada 2 - UA
+cinemaTitles:      Dyyavol Nosyt' Prada 2 - UA 
 runtimeMinutes:    125
 releaseYear:       2026
 posterUrl:         https://movies.helios.pl/images/Diabelubierasieuprady2UA.jpg
@@ -1025,6 +1095,8 @@ showings:
   2026-05-17  Helios Posnania               12:50 Sala 1 2D/DUB
 
 === Dziecko z pyłu ===
+displayTitle:      Dziecko z pyłu
+cinemaTitles:      Dziecko z pyłu
 runtimeMinutes:    93
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/COD_STILL5-scaled-1920x1080-c-default-800x450.jpg
@@ -1051,6 +1123,8 @@ showings:
   2026-05-21  Kino Muza                     17:30 Sala 3
 
 === Erupcja ===
+displayTitle:      Erupcja
+cinemaTitles:      Erupcja
 runtimeMinutes:    71
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/erupcja.jpg?rev=66cbdeeffa9b41eca82059aab89bb588
@@ -1078,6 +1152,8 @@ showings:
   2026-05-21  Multikino Stary Browar        20:00 Sala 1 2D/NAP
 
 === Ex Machina ===
+displayTitle:      Ex Machina
+cinemaTitles:      Ex Machina
 runtimeMinutes:    108
 releaseYear:       2014
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/ExMachina_2.jpg
@@ -1102,6 +1178,8 @@ showings:
   2026-05-17  Kino Pałacowe                 17:00 Sala 1 - Kinowa
 
 === Fantastyczne zwierzęta i jak je znaleźć ===
+displayTitle:      Fantastyczne zwierzęta i jak je znaleźć
+cinemaTitles:      Fantastyczne zwierzęta i jak je znaleźć
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/fantastyczne-zwierzeta/fantastyczne_cz1_plakat.jpg?rev=1a4e976bba414fff9058bac59c8a86ae
@@ -1127,6 +1205,8 @@ showings:
   2026-07-08  Multikino Stary Browar        17:30 Sala 1 2D/DUB
 
 === Fantastyczne zwierzęta: Tajemnice Dumbledorea ===
+displayTitle:      Fantastyczne zwierzęta: Tajemnice Dumbledorea
+cinemaTitles:      Fantastyczne zwierzęta: Tajemnice Dumbledorea
 runtimeMinutes:    142
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/multikino_imported/imported_from_external_source/posterimage/pl-fnbst3-plakat-oficjalny-cut_f5cdf984c2.jpg?rev=0a9c0072657b4727ab2bce0e955867d2
@@ -1152,6 +1232,8 @@ showings:
   2026-07-22  Multikino Stary Browar        17:30 Sala 1 2D/DUB
 
 === Fantastyczne zwierzęta: zbrodnie grindelwalda ===
+displayTitle:      Fantastyczne zwierzęta: zbrodnie grindelwalda
+cinemaTitles:      Fantastyczne zwierzęta: zbrodnie grindelwalda
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/fantastyczne-zwierzeta/fantastyczne_cz2_plakat.jpg?rev=187efed51ce645569fb425ca6a669679
@@ -1177,6 +1259,8 @@ showings:
   2026-07-15  Multikino Stary Browar        17:30 Sala 1 2D/DUB
 
 === Father Mother Sister Brother ===
+displayTitle:      Father Mother Sister Brother
+cinemaTitles:      Father Mother Sister Brother | Father mother sister brother
 runtimeMinutes:    110
 releaseYear:       2025
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2025/12/FMSB-plakat-PL_HQ.jpg
@@ -1205,6 +1289,8 @@ showings:
   2026-05-20  Kino Bułgarska 19             20:20 Sala Thelma & Louise
 
 === Fałszerz stulecia ===
+displayTitle:      Fałszerz stulecia
+cinemaTitles:      Fałszerz stulecia
 runtimeMinutes:    128
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/falszerz-2-800x450.jpg
@@ -1229,6 +1315,8 @@ showings:
   2026-06-17  Kino Muza                     18:45 Sala 1
 
 === FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar ===
+displayTitle:      FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar
+cinemaTitles:      FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar
 runtimeMinutes:    98
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2025/12/baby-2-800x450.png
@@ -1253,6 +1341,8 @@ showings:
   2026-05-19  Kino Muza                     17:30 Sala 2
 
 === Filmowe Poranki: Świnka Peppa, cz. 2 ===
+displayTitle:      Filmowe Poranki: Świnka Peppa, cz. 2
+cinemaTitles:      Filmowe Poranki: Świnka Peppa, cz. 2
 runtimeMinutes:    54
 releaseYear:       —
 posterUrl:         https://img.helios.pl/pliki/film/filmowe-poranki-swinka-peppa/filmowe-poranki-swinka-peppa-plakat-83320.png
@@ -1277,6 +1367,8 @@ showings:
   2026-05-24  Helios Posnania               10:30 2D/DUB
 
 === Filmowe spotkania z psychoanalizą: dobry chłopiec ===
+displayTitle:      Filmowe spotkania z psychoanalizą: dobry chłopiec
+cinemaTitles:      Filmowe spotkania z psychoanalizą: dobry chłopiec
 runtimeMinutes:    110
 releaseYear:       2025
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dobry-chlopiec-plakat.jpg
@@ -1301,6 +1393,8 @@ showings:
   2026-05-24  Kino Rialto                   18:45
 
 === Follemente. W tym szaleństwie jest metoda ===
+displayTitle:      Follemente. W tym szaleństwie jest metoda
+cinemaTitles:      Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda
 runtimeMinutes:    —
 releaseYear:       —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg
@@ -1324,6 +1418,8 @@ showings:
   2026-06-08  Kino Apollo                   18:30
 
 === Giulietta i duchy ===
+displayTitle:      Giulietta i duchy
+cinemaTitles:      Giulietta i duchy
 runtimeMinutes:    139
 releaseYear:       1965
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/3-4-800x450.jpg
@@ -1351,6 +1447,8 @@ showings:
   2026-08-18  Kino Muza                     20:30 Sala 1
 
 === Guru ===
+displayTitle:      Guru
+cinemaTitles:      Guru
 runtimeMinutes:    126
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/guru-2-800x450.jpg
@@ -1375,6 +1473,8 @@ showings:
   2026-06-12  Kino Muza                     21:00 Sala 1
 
 === Gwiezdne Wojny: Mandalorian i Grogu - ukraiński dubbing ===
+displayTitle:      Gwiezdne Wojny: Mandalorian i Grogu - ukraiński dubbing
+cinemaTitles:      Gwiezdne Wojny: Mandalorian i Grogu - ukraiński dubbing
 runtimeMinutes:    132
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7667S2R3.jpg
@@ -1401,6 +1501,8 @@ showings:
   2026-05-24  Cinema City Poznań Plaza      17:00 Sala 2 2D/DUB
 
 === Głos Hind Rajab ===
+displayTitle:      Głos Hind Rajab
+cinemaTitles:      Głos Hind Rajab
 runtimeMinutes:    89
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Glos_Hind_Rajab-polski-plakat1-po-zmniejszeniu-200x288.jpg
@@ -1425,6 +1527,8 @@ showings:
   2026-05-20  Kino Malta Charlie Monroe     17:20 Sala Audrey
 
 === Głos z księżyca ===
+displayTitle:      Głos z księżyca
+cinemaTitles:      Głos z księżyca
 runtimeMinutes:    121
 releaseYear:       1990
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/2-5-800x450.jpg
@@ -1452,6 +1556,8 @@ showings:
   2026-08-25  Kino Muza                     20:30 Sala 1
 
 === Hamnet ===
+displayTitle:      Hamnet
+cinemaTitles:      Hamnet
 runtimeMinutes:    125
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2025/10/kadry-1-1-800x450.jpg
@@ -1479,6 +1585,8 @@ showings:
   2026-05-21  Kino Muza                     17:30 Sala 2
 
 === Harry Angel ===
+displayTitle:      Harry Angel
+cinemaTitles:      Harry Angel
 runtimeMinutes:    114
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/10/plakat-Harry-200x288.webp
@@ -1503,6 +1611,8 @@ showings:
   2026-05-17  Kino Malta Charlie Monroe     16:00 Sala Marilyn
 
 === Harry Potter i Czara ognia ===
+displayTitle:      Harry Potter i Czara ognia
+cinemaTitles:      Harry Potter i Czara ognia
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-czara-ognia-plakat.png?rev=af3507e8ea434b0dad8ffe759ae3c699
@@ -1527,6 +1637,8 @@ showings:
   2026-08-30  Multikino Stary Browar        17:15 Sala 3 2D/DUB
 
 === Harry Potter i Insygnia Śmierci cz. 1 ===
+displayTitle:      Harry Potter i Insygnia Śmierci cz. 1
+cinemaTitles:      Harry Potter i Insygnia Śmierci cz. 1
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-insygnia-1-plakat.png?rev=4bb3985b391c48bb8865e6ad3c792e81
@@ -1551,6 +1663,8 @@ showings:
   2026-09-02  Multikino Stary Browar        17:15 Sala 3 2D/DUB
 
 === Harry Potter i Insygnia Śmierci cz. 2 ===
+displayTitle:      Harry Potter i Insygnia Śmierci cz. 2
+cinemaTitles:      Harry Potter i Insygnia Śmierci cz. 2
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-insygnia-2-plakat.png?rev=02dfe6e3a9fb4f0db308efee9f943de2
@@ -1575,6 +1689,8 @@ showings:
   2026-09-03  Multikino Stary Browar        17:15 Sala 3 2D/DUB
 
 === Harry Potter i Kamień filozoficzny ===
+displayTitle:      Harry Potter i Kamień filozoficzny
+cinemaTitles:      Harry Potter i Kamień filozoficzny
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/harry-potter-i-kamien.jpg?rev=746ac80d53474907bcb22092c0f29d46
@@ -1605,6 +1721,8 @@ showings:
   2026-09-03  Multikino Stary Browar        14:00 Sala 3 2D/DUB
 
 === Harry Potter i Komnata Tajemnic ===
+displayTitle:      Harry Potter i Komnata Tajemnic
+cinemaTitles:      Harry Potter i Komnata Tajemnic
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/harry-potter-i-komnata.jpg?rev=2a3cdf37f6a241efa4b8cdb19164d545
@@ -1629,6 +1747,8 @@ showings:
   2026-08-28  Multikino Stary Browar        17:15 Sala 3 2D/DUB
 
 === Harry Potter i Książę Półkrwi ===
+displayTitle:      Harry Potter i Książę Półkrwi
+cinemaTitles:      Harry Potter i Książę Półkrwi
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-ksiaze-plakat.png?rev=44968ea3411d4cf6895a2305451256de
@@ -1653,6 +1773,8 @@ showings:
   2026-09-01  Multikino Stary Browar        17:15 Sala 3 2D/DUB
 
 === Harry Potter i Więzień Azkabanu ===
+displayTitle:      Harry Potter i Więzień Azkabanu
+cinemaTitles:      Harry Potter i Więzień Azkabanu
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/harry-potter-i-wiezien.jpg?rev=d9efdcb242c24a7a8f7eafe56cdb8878
@@ -1677,6 +1799,8 @@ showings:
   2026-08-29  Multikino Stary Browar        17:15 Sala 3 2D/DUB
 
 === Harry Potter i Zakon Feniksa ===
+displayTitle:      Harry Potter i Zakon Feniksa
+cinemaTitles:      Harry Potter i Zakon Feniksa
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-zakon-plakat.png?rev=cc1f0e4ef6e14bc684b712282bcabe91
@@ -1701,6 +1825,8 @@ showings:
   2026-08-31  Multikino Stary Browar        17:15 Sala 3 2D/DUB
 
 === Hopnięci ===
+displayTitle:      Hopnięci
+cinemaTitles:      Hopnięci
 runtimeMinutes:    0
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/hopnieci/hopnieci-plakat-final-cut.jpg?rev=9d1707945c83489aad3da15956eb50fa
@@ -1735,6 +1861,8 @@ showings:
   2026-05-21  Multikino Stary Browar        09:25 Sala 1 2D/DUB
 
 === Idź z duszą na dłoni ===
+displayTitle:      Idź z duszą na dłoni
+cinemaTitles:      Idź z duszą na dłoni
 runtimeMinutes:    113
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/idz-z-d-2-800x450.jpg
@@ -1759,6 +1887,8 @@ showings:
   2026-05-17  Kino Muza                     16:15 Sala 2
 
 === Iron Maiden: Burning Ambition ===
+displayTitle:      Iron Maiden: Burning Ambition
+cinemaTitles:      Iron Maiden: Burning Ambition
 runtimeMinutes:    106
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/iron-maiden/ironmaiden.jpg?rev=a8cd80d50e264d7baef87d55f4b41156
@@ -1811,6 +1941,8 @@ showings:
   2026-05-24  Helios Posnania               16:00 2D/NAP
 
 === John Williams - A Tribute ===
+displayTitle:      John Williams - A Tribute
+cinemaTitles:      John Williams - A Tribute
 runtimeMinutes:    83
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/john-williams/jwilliams_plakat.jpg?rev=c7d1daa261e2416da7adc8881c9a2801
@@ -1838,6 +1970,8 @@ showings:
   2026-08-29  Multikino Stary Browar        15:00 Sala 1 2D
 
 === Karuppu ===
+displayTitle:      Karuppu
+cinemaTitles:      Karuppu
 runtimeMinutes:    150
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8203S2R.jpg
@@ -1862,6 +1996,8 @@ showings:
   2026-05-17  Cinema City Kinepolis         19:30 Sala4 2D/NAP
 
 === Kicia Kocia ma braciszka ===
+displayTitle:      Kicia Kocia ma braciszka
+cinemaTitles:      Kicia Kocia ma braciszka
 runtimeMinutes:    45
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/Kicia-Kocia-ma-braciszka-PLAKAT-online-po-zmniejszeniu-200x288.jpg
@@ -1886,6 +2022,8 @@ showings:
   2026-05-17  Kino Malta Charlie Monroe     13:10 Sala Marilyn
 
 === Kicia Kocia w podróży ===
+displayTitle:      Kicia Kocia w podróży
+cinemaTitles:      Kicia Kocia w podróży
 runtimeMinutes:    45
 releaseYear:       2026
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Kicia_Kocia_w_podrozy_PLAKAT_B1.jpg
@@ -1910,6 +2048,8 @@ showings:
   2026-06-20  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Kino bez barier: Arco (AD ===
+displayTitle:      Kino bez barier: Arco (AD
+cinemaTitles:      Kino bez barier: Arco (AD + CC + PJM) | Kino bez barier: Arco (AD + CC)
 runtimeMinutes:    88
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_Arco.jpg
@@ -1935,6 +2075,8 @@ showings:
   2026-05-21  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
 === Kino bez barier: Błękitny szlak (AD ===
+displayTitle:      Kino bez barier: Błękitny szlak (AD
+cinemaTitles:      Kino bez barier: Błękitny szlak (AD + CC + PJM)
 runtimeMinutes:    85
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_bekitny_szlak.jpg
@@ -1960,6 +2102,8 @@ showings:
   2026-06-25  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
 === Kino bez barier: Drugie życie (AD ===
+displayTitle:      Kino bez barier: Drugie życie (AD
+cinemaTitles:      Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC)
 runtimeMinutes:    116
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_drugie_zycie2.jpg
@@ -1985,6 +2129,8 @@ showings:
   2026-06-16  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Kino bez barier: Freak Show (AD ===
+displayTitle:      Kino bez barier: Freak Show (AD
+cinemaTitles:      Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie | Kino bez barier: Freak Show (AD + CC)
 runtimeMinutes:    75
 releaseYear:       2026
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_post_063_05FcHgm.jpg
@@ -2010,6 +2156,8 @@ showings:
   2026-06-11  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
 === Kino bez barier: Milcząca przyjaciółka (AD ===
+displayTitle:      Kino bez barier: Milcząca przyjaciółka (AD
+cinemaTitles:      Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM) | Kino bez barier: Milcząca przyjaciółka (AD + CC)
 runtimeMinutes:    147
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_milczaca2.jpg
@@ -2035,6 +2183,8 @@ showings:
   2026-06-02  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Kino bez barier: Młode matki (AD ===
+displayTitle:      Kino bez barier: Młode matki (AD
+cinemaTitles:      Kino bez barier: Młode matki (AD + CC + PJM)
 runtimeMinutes:    95
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_mode_matki.jpg
@@ -2060,6 +2210,8 @@ showings:
   2026-05-28  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
 === Kino bez barier: Pieśni lasu (AD ===
+displayTitle:      Kino bez barier: Pieśni lasu (AD
+cinemaTitles:      Kino bez barier: Pieśni lasu (AD + CC + PJM)
 runtimeMinutes:    93
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_piesni_lasu.jpg
@@ -2084,6 +2236,8 @@ showings:
   2026-06-30  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Klątwa doliny węży -  z autorską narracją Łony ===
+displayTitle:      Klątwa doliny węży -  z autorską narracją Łony
+cinemaTitles:      Klątwa doliny węży -  z autorską narracją Łony
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/klatwa-doliny-wezy_plakat.jpg?rev=c58ea807e26643fb8bc1425578f746b0
@@ -2108,6 +2262,8 @@ showings:
   2026-06-01  Multikino Stary Browar        20:00 Sala 1 2D
 
 === Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego ===
+displayTitle:      Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego
+cinemaTitles:      Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego
 runtimeMinutes:    99
 releaseYear:       1987
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/klatwa-doliny-wezy-plakat1.jpg
@@ -2132,6 +2288,8 @@ showings:
   2026-05-27  Kino Rialto                   18:00
 
 === Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas ===
+displayTitle:      Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas
+cinemaTitles:      Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas
 runtimeMinutes:    98
 releaseYear:       2006
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/anime/o-dziewczynie-skaczacej-przez-czas-plakat2.jpg?rev=125e66df557f4228bf3605103ca217f9
@@ -2165,6 +2323,8 @@ showings:
   2026-06-14  Multikino Stary Browar        12:30 Sala 1 2D/NAP
 
 === Kopnęłabym cię, gdybym mogła ===
+displayTitle:      Kopnęłabym cię, gdybym mogła
+cinemaTitles:      Kopnęłabym cię, gdybym mogła
 runtimeMinutes:    113
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/KOPNELABYM-CIE_patroni-po-zmniejszeniu-200x288.jpg
@@ -2190,6 +2350,8 @@ showings:
   2026-05-21  Kino Malta Charlie Monroe     17:25 Sala Audrey
 
 === Kosmiczny mecz ===
+displayTitle:      Kosmiczny mecz
+cinemaTitles:      Kosmiczny mecz | Kosmiczny mecz. 30. Rocznica
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/kosmicznymecz96.jpg?rev=5cf7d42444434cff9f803083a634a9ee
@@ -2222,6 +2384,8 @@ showings:
   2026-07-29  Multikino Stary Browar        17:35 Sala 1 2D/DUB
 
 === Krajobraz po bitwie ===
+displayTitle:      Krajobraz po bitwie
+cinemaTitles:      Krajobraz po bitwie
 runtimeMinutes:    101
 releaseYear:       1970
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/krajobraz-3-800x450.jpg
@@ -2246,6 +2410,8 @@ showings:
   2026-09-01  Kino Muza                     20:30 Sala 1
 
 === Kronika wypadków miłosnych ===
+displayTitle:      Kronika wypadków miłosnych
+cinemaTitles:      Kronika wypadków miłosnych
 runtimeMinutes:    114
 releaseYear:       1985
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/kroniki-3-800x450.jpg
@@ -2270,6 +2436,8 @@ showings:
   2026-08-04  Kino Muza                     20:30 Sala 1
 
 === Kumotry ===
+displayTitle:      Kumotry
+cinemaTitles:      Kumotry
 runtimeMinutes:    70
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/KUMOTRY_plakat_filmweb.jpg
@@ -2294,6 +2462,8 @@ showings:
   2026-06-12  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
 === Kurozając i świątynia świstaka ===
+displayTitle:      Kurozając i świątynia świstaka
+cinemaTitles:      Kurozając i Świątynia Świstaka | Kurozając i świątynia świstaka
 runtimeMinutes:    89
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/kurozajac-i-swiatynia-swistaka/kurozajac_plakat.jpg?rev=8e07534364604957a7cfab295c1dc9ec
@@ -2347,6 +2517,8 @@ showings:
   2026-05-21  Multikino Stary Browar        11:00 Sala 3 2D/DUB · 13:10 Sala 3 2D/DUB · 15:20 Sala 3 2D/DUB · 17:30 Sala 3 2D/DUB
 
 === Kłopotliwy niedźwiedź ===
+displayTitle:      Kłopotliwy niedźwiedź
+cinemaTitles:      Kłopotliwy niedźwiedź
 runtimeMinutes:    90
 releaseYear:       2026
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/klopotliwy-niedzwiedz-800x450.jpg
@@ -2371,6 +2543,8 @@ showings:
   2026-05-17  Kino Muza                     11:15 Sala 1
 
 === La Grazia ===
+displayTitle:      La Grazia
+cinemaTitles:      La Grazia | La grazia
 runtimeMinutes:    131
 releaseYear:       2025
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/01/la-grazia-plakat-b1-lq_1.jpg
@@ -2400,6 +2574,8 @@ showings:
   2026-05-21  Kino Malta Charlie Monroe     20:30 Sala Charlie
 
 === La Traviata Verdiego z Arena di Verona ===
+displayTitle:      La Traviata Verdiego z Arena di Verona
+cinemaTitles:      La Traviata Verdiego z Arena di Verona
 runtimeMinutes:    160
 releaseYear:       2021
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/opera/latraviata2026_plakat.png?rev=d55bc88afb2b4c949d93ba3113f446ce
@@ -2430,6 +2606,8 @@ showings:
   2026-06-07  Cinema City Poznań Plaza      15:00 Sala 2 2D/NAP
 
 === Layla ===
+displayTitle:      Layla
+cinemaTitles:      Layla
 runtimeMinutes:    100
 releaseYear:       2024
 posterUrl:         https://www.kinomuza.pl/content/uploads/2025/10/lalyla-2-800x450.jpg
@@ -2457,6 +2635,8 @@ showings:
   2026-05-21  Kino Muza                     19:15 Sala 3
 
 === Left-Handed Girl. To była ręka... diabła! ===
+displayTitle:      Left-Handed Girl. To była ręka... diabła!
+cinemaTitles:      Left-Handed Girl. To była ręka... diabła!
 runtimeMinutes:    109
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/LEFT-HANDED-GIRL_PLAKAT-PL-jpg-200x288.jpg
@@ -2481,6 +2661,8 @@ showings:
   2026-05-17  Kino Malta Charlie Monroe     16:05 Sala Charlie
 
 === Liga Mistrzów UEFA - Finał ===
+displayTitle:      Liga Mistrzów UEFA - Finał
+cinemaTitles:      Liga Mistrzów UEFA - Finał
 runtimeMinutes:    140
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8063O2R.jpg
@@ -2511,6 +2693,8 @@ showings:
   2026-05-30  Helios Posnania               17:45 2D/ORG
 
 === LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC ===
+displayTitle:      LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC
+cinemaTitles:      LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/euro/2026/plakat_30maja.jpg?rev=b087764f339d4085af181aa6fc494509
@@ -2535,6 +2719,8 @@ showings:
   2026-05-30  Multikino Stary Browar        17:45 Sala 6 2D
 
 === Mandalorian i Grogu ===
+displayTitle:      Mandalorian i Grogu
+cinemaTitles:      Gwiezdne Wojny: Mandalorian i Grogu | Mandalorian & Grogu | Mandalorian i Grogu
 runtimeMinutes:    132
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/mandalorian-grogu/mandalorian-plakat-fin.jpg?rev=90e8fd31606f41a0b6393770f3fe36d1
@@ -2583,6 +2769,8 @@ showings:
   2026-06-01  Helios Posnania               18:30 2D/DUB
 
 === Maraton: Powrót do przyszłości ===
+displayTitle:      Maraton: Powrót do przyszłości
+cinemaTitles:      Maraton: Powrót do przyszłości
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
@@ -2607,6 +2795,8 @@ showings:
   2026-09-05  Multikino Stary Browar        17:00 Sala 6 2D/NAP
 
 === Maryja. Matka Papieża ===
+displayTitle:      Maryja. Matka Papieża
+cinemaTitles:      Maryja. Matka Papieża | Maryja. matka papieża
 runtimeMinutes:    80
 releaseYear:       2026
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/03/maryja-matka-papieza-scaled.jpg
@@ -2637,6 +2827,8 @@ showings:
   2026-05-20  Kino Malta Charlie Monroe     17:00 Sala Charlie
 
 === Matador ===
+displayTitle:      Matador
+cinemaTitles:      Matador
 runtimeMinutes:    106
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/jBBLDaF7j3EeTPkOwDPqdfSCWWk-200x288.jpg
@@ -2663,6 +2855,8 @@ showings:
   2026-05-20  Kino Malta Charlie Monroe     18:20 Sala Charlie
 
 === Mawka. Prawdziwy mit ===
+displayTitle:      Mawka. Prawdziwy mit
+cinemaTitles:      Mawka. Prawdziwy mit
 runtimeMinutes:    100
 releaseYear:       2026
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/untitled-1-copy.jpg
@@ -2687,6 +2881,8 @@ showings:
   2026-05-23  Kino Rialto                   13:00
 
 === Mi Amor ===
+displayTitle:      Mi Amor
+cinemaTitles:      Mi Amor
 runtimeMinutes:    113
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/mi-amor-1-800x450.jpg
@@ -2711,6 +2907,8 @@ showings:
   2026-06-14  Kino Muza                     21:00 Sala 1
 
 === Michael ===
+displayTitle:      Michael
+cinemaTitles:      Michael
 runtimeMinutes:    127
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/michael/michael-plakat-net-fin-cut.jpg?rev=50ffa68228ab41d0a9633db28bbd2b6e
@@ -2760,6 +2958,8 @@ showings:
   2026-05-21  Multikino Stary Browar        09:00 Sala 5 2D/NAP · 11:50 Sala 5 2D/NAP · 13:30 Sala 7 2D/NAP · 14:40 Sala 5 2D/NAP · 16:20 Sala 7 2D/NAP · 17:30 Sala 5 2D/NAP · 19:30 Sala 11 2D/NAP · 20:20 Sala 5 2D/NAP
 
 === Miejskie Święto Rowerowe: Pokaz filmu Cycling Cities ===
+displayTitle:      Miejskie Święto Rowerowe: Pokaz filmu Cycling Cities
+cinemaTitles:      Miejskie Święto Rowerowe: Pokaz filmu Cycling Cities
 runtimeMinutes:    84
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Cycling-Cities-pion.png
@@ -2784,6 +2984,8 @@ showings:
   2026-05-24  Kino Pałacowe                 16:00 Sala 2 - Audiowizualna
 
 === Milczenie owiec ===
+displayTitle:      Milczenie owiec
+cinemaTitles:      Milczenie owiec
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/milczenie-owiec-cut.jpg?rev=e42068650341416bb3c39e499ad5bc5b
@@ -2809,6 +3011,8 @@ showings:
   2026-06-15  Multikino Stary Browar        20:00 Sala 1 2D/NAP
 
 === Milcząca przyjaciółka ===
+displayTitle:      Milcząca przyjaciółka
+cinemaTitles:      Milcząca przyjaciółka
 runtimeMinutes:    147
 releaseYear:       2025
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/milczacaprzyjaciolka_plakat.jpg?rev=766542d25ae0462f97c32308cb1b7970
@@ -2861,6 +3065,8 @@ showings:
   2026-06-03  Kino Muza                     20:00 Sala 1
 
 === Miłość w czasach apokalipsy ===
+displayTitle:      Miłość w czasach apokalipsy
+cinemaTitles:      Miłość w czasach apokalipsy
 runtimeMinutes:    98
 releaseYear:       —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/04/milosc-w-czasach-apo_plakat-700x1050-1.jpg
@@ -2887,6 +3093,8 @@ showings:
   2026-05-18  Kino Malta Charlie Monroe     16:30 Sala Charlie
 
 === Miłość, która zostaje ===
+displayTitle:      Miłość, która zostaje
+cinemaTitles:      Miłość, która zostaje
 runtimeMinutes:    115
 releaseYear:       2025
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/03/Milosc-ktora-zostaje-B1.jpg
@@ -2915,6 +3123,8 @@ showings:
   2026-05-20  Kino Muza                     14:30 Sala 2
 
 === Mortal Kombat 2 ===
+displayTitle:      Mortal Kombat 2
+cinemaTitles:      Mortal Kombat 2 | Mortal Kombat II
 runtimeMinutes:    116
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2025/mortal-kombat-2/mortal-kombat-plakat-cut.jpg?rev=6157d952d8894de6993299b8ba475d50
@@ -2964,6 +3174,8 @@ showings:
   2026-05-21  Multikino Stary Browar        10:20 Sala 9 2D/DUB · 13:00 Sala 9 2D/NAP · 15:15 Sala 4 2D/NAP · 15:40 Sala 9 2D/DUB · 18:20 Sala 9 2D/DUB · 21:00 Sala 9 2D/NAP
 
 === Mortal Kombat II ukraiński dubbing ===
+displayTitle:      Mortal Kombat II ukraiński dubbing
+cinemaTitles:      Mortal Kombat II ukraiński dubbing
 runtimeMinutes:    116
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7478S2R1.jpg
@@ -2992,6 +3204,8 @@ showings:
   2026-05-21  Cinema City Poznań Plaza      17:20 Sala 5 2D/DUB
 
 === Moulin Rouge! ===
+displayTitle:      Moulin Rouge!
+cinemaTitles:      Moulin Rouge! – wersja oryginalna
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/moulinrouge_plakat.jpg?rev=8ca27e12f37248789e7785bd6c5bc786
@@ -3017,6 +3231,8 @@ showings:
   2026-05-20  Multikino Stary Browar        20:00 Sala 1 2D
 
 === Mumia: Film Lee Cronina ===
+displayTitle:      Mumia: Film Lee Cronina
+cinemaTitles:      Mumia: Film Lee Cronina
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/mumia/mumia_plakat_fin_cut.jpg?rev=c4702594b644437f91c4ba1c5c656aa2
@@ -3045,6 +3261,8 @@ showings:
   2026-05-21  Multikino Stary Browar        09:55 Sala 10 2D/NAP
 
 === Munch: miłość, duchy i wampirzyce ===
+displayTitle:      Munch: miłość, duchy i wampirzyce
+cinemaTitles:      Munch: miłość, duchy i wampirzyce
 runtimeMinutes:    90
 releaseYear:       2022
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/munch-plakat-b1.jpg
@@ -3069,6 +3287,8 @@ showings:
   2026-06-13  Kino Rialto                   15:30
 
 === Mów mi jimpa ===
+displayTitle:      Mów mi jimpa
+cinemaTitles:      Mów mi jimpa
 runtimeMinutes:    113
 releaseYear:       2025
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/mow-mi-jimpa-plakat-pl.jpg
@@ -3093,6 +3313,8 @@ showings:
   2026-05-26  Kino Rialto                   13:00
 
 === Młode matki ===
+displayTitle:      Młode matki
+cinemaTitles:      Młode matki
 runtimeMinutes:    104
 releaseYear:       2025
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/plakat-mlode-matki-700x1050.jpg
@@ -3118,6 +3340,8 @@ showings:
   2026-05-26  Kino Rialto                   15:30 · 18:00
 
 === Młodsza siostra ===
+displayTitle:      Młodsza siostra
+cinemaTitles:      Młodsza siostra
 runtimeMinutes:    106
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/mlodsza-siostra-1-800x450.jpg
@@ -3142,6 +3366,8 @@ showings:
   2026-06-13  Kino Muza                     19:00 Sala 1
 
 === Najbogatsza kobieta świata ===
+displayTitle:      Najbogatsza kobieta świata
+cinemaTitles:      Najbogatsza kobieta świata
 runtimeMinutes:    122
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/NAJBOGATSZA-KOBIETA-SWIATA_PLAKAT-po-zmniejszeniu-200x288.jpg
@@ -3166,6 +3392,8 @@ showings:
   2026-05-21  Kino Malta Charlie Monroe     16:45 Sala Charlie
 
 === Najstarsza osoba na świecie ===
+displayTitle:      Najstarsza osoba na świecie
+cinemaTitles:      Najstarsza osoba na świecie
 runtimeMinutes:    87
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/Najstarsza-osoba-2-800x450.jpg
@@ -3190,6 +3418,8 @@ showings:
   2026-05-17  Kino Muza                     15:30 Sala 1
 
 === Najświętsze serce ===
+displayTitle:      Najświętsze serce
+cinemaTitles:      Najświętsze serce
 runtimeMinutes:    92
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/najswietsze-serce/najswietsze-serce-plakat-cut.jpg?rev=d667cbf780564559b580203ed0485b40
@@ -3214,6 +3444,8 @@ showings:
   2026-05-18  Multikino Stary Browar        18:30 Sala 9 2D
 
 === Narodziny gwiazdy ===
+displayTitle:      Narodziny gwiazdy
+cinemaTitles:      Narodziny gwiazdy
 runtimeMinutes:    135
 releaseYear:       2018
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/3026S2R1.jpg
@@ -3241,6 +3473,8 @@ showings:
   2026-06-16  Cinema City Poznań Plaza      19:00 Sala 6 2D/NAP
 
 === Nie ma duchów w mieszkaniu na Dobrej ===
+displayTitle:      Nie ma duchów w mieszkaniu na Dobrej
+cinemaTitles:      Nie ma duchów w mieszkaniu na Dobrej
 runtimeMinutes:    90
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/NIE-MA-DUCHOW_PLAKAT-po-zmniejszeniu-200x288.jpg
@@ -3269,6 +3503,8 @@ showings:
   2026-05-21  Kino Malta Charlie Monroe     19:10 Sala Audrey
 
 === Nie oglądaj się teraz ===
+displayTitle:      Nie oglądaj się teraz
+cinemaTitles:      Nie oglądaj się teraz
 runtimeMinutes:    110
 releaseYear:       1973
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/Nie-oglądaj-się-teraz1-800x450.jpg
@@ -3293,6 +3529,8 @@ showings:
   2026-05-28  Kino Muza                     18:30 Sala 1
 
 === Niebezpieczne związki - National Theatre Live 2026 ===
+displayTitle:      Niebezpieczne związki - National Theatre Live 2026
+cinemaTitles:      Niebezpieczne związki - National Theatre Live 2026
 runtimeMinutes:    150
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8212S2R.jpg
@@ -3318,6 +3556,8 @@ showings:
   2026-07-12  Cinema City Kinepolis         15:00 Sala5 2D/NAP
 
 === Niedźwiedzica ===
+displayTitle:      Niedźwiedzica
+cinemaTitles:      Niedźwiedzica
 runtimeMinutes:    96
 releaseYear:       2026
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/niedzwiedzica-2-800x450.jpg
@@ -3342,6 +3582,8 @@ showings:
   2026-05-17  Kino Muza                     13:15 Sala 1
 
 === Niesamowite przygody skarpetek 2. Skarpetki górą! ===
+displayTitle:      Niesamowite przygody skarpetek 2. Skarpetki górą!
+cinemaTitles:      Niesamowite przygody skarpetek 2. Skarpetki górą!
 runtimeMinutes:    55
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Niesamowite-przygody-skarpetek-2.-Skarpetki-gora-B1-BEZ-PATRONOW-scaled.jpg
@@ -3366,6 +3608,8 @@ showings:
   2026-05-17  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Niesamowite przygody skarpetek 3. Ale ko ===
+displayTitle:      Niesamowite przygody skarpetek 3. Ale ko
+cinemaTitles:      Niesamowite przygody skarpetek 3. Ale ko
 runtimeMinutes:    55
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8188D2R.jpg
@@ -3390,6 +3634,8 @@ showings:
   2026-05-18  Cinema City Poznań Plaza      10:00 Sala 9 2D/DUB
 
 === Niesamowite przygody skarpetek 3. Ale kosmos! ===
+displayTitle:      Niesamowite przygody skarpetek 3. Ale kosmos!
+cinemaTitles:      Niesamowite przygody skarpetek 3. Ale kosmos!
 runtimeMinutes:    55
 releaseYear:       2026
 posterUrl:         https://img.helios.pl/pliki/film/niesamowite-przygody-skarpetek-3/niesamowite-przygody-skarpetek-3-plakat-34127.png
@@ -3430,6 +3676,8 @@ showings:
   2026-06-21  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Niewinni czarodzieje ===
+displayTitle:      Niewinni czarodzieje
+cinemaTitles:      Cykl „Wajda: re-wizje" - Niewinni czarodzieje / Innocent Sorcerers (1960) | Niewinni czarodzieje
 runtimeMinutes:    84
 releaseYear:       —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png
@@ -3456,6 +3704,8 @@ showings:
   2026-05-28  Kino Malta Charlie Monroe     18:00 Sala Audrey
 
 === NMF: Maraton Horrorów 19 czerwca 2026 ===
+displayTitle:      NMF: Maraton Horrorów 19 czerwca 2026
+cinemaTitles:      NMF: Maraton Horrorów 19 czerwca 2026
 runtimeMinutes:    444
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/maraton/horrory/czerwiec-2026/maratonhorrorow_190626_plakat.jpg?rev=82219b20b0c64fdf968d69b63add0c46
@@ -3480,6 +3730,8 @@ showings:
   2026-06-19  Multikino Stary Browar        22:00 Sala 6 2D/NAP
 
 === NMF: Noc Władcy Pierścieni (wersje rozszerzone) ===
+displayTitle:      NMF: Noc Władcy Pierścieni (wersje rozszerzone)
+cinemaTitles:      NMF: Noc Władcy Pierścieni (wersje rozszerzone)
 runtimeMinutes:    720
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/maraton/lotr/lotr_2026_plakat.jpg?rev=c5ca96212d114e9eb256e066a10b0b28
@@ -3504,6 +3756,8 @@ showings:
   2026-08-21  Multikino Stary Browar        22:00 Sala 6 2D/NAP
 
 === Noce Cabirii ===
+displayTitle:      Noce Cabirii
+cinemaTitles:      Noce Cabirii
 runtimeMinutes:    110
 releaseYear:       1957
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/2-2-800x450.jpg
@@ -3531,6 +3785,8 @@ showings:
   2026-08-04  Kino Muza                     18:15 Sala 1
 
 === Nomadland ===
+displayTitle:      Nomadland
+cinemaTitles:      Nomadland
 runtimeMinutes:    108
 releaseYear:       2020
 posterUrl:         https://www.kinomuza.pl/content/uploads/2021/02/1-12-800x450.jpg
@@ -3555,6 +3811,8 @@ showings:
   2026-05-26  Kino Muza                     20:00 Sala 1
 
 === Normal ===
+displayTitle:      Normal
+cinemaTitles:      Normal
 runtimeMinutes:    90
 releaseYear:       2025
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8129S2R.jpg
@@ -3583,6 +3841,8 @@ showings:
   2026-05-21  Cinema City Poznań Plaza      10:00 Sala 1 2D/NAP
 
 === Nowa fala ===
+displayTitle:      Nowa fala
+cinemaTitles:      Nowa fala
 runtimeMinutes:    105
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2025/11/3-7-800x450.jpg
@@ -3607,6 +3867,8 @@ showings:
   2026-06-12  Kino Muza                     19:00 Sala 1
 
 === NT Live: Audiencja ===
+displayTitle:      NT Live: Audiencja
+cinemaTitles:      NT Live: Audiencja
 runtimeMinutes:    180
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/teatr/audiencja/audience_plakat.jpg?rev=aff6a9407f624513b3a44c7871e97f7d
@@ -3631,6 +3893,8 @@ showings:
   2026-08-19  Multikino Stary Browar        19:00 Sala 2 2D/NAP
 
 === NT Live: Niebezpieczne związki ===
+displayTitle:      NT Live: Niebezpieczne związki
+cinemaTitles:      NT Live: Niebezpieczne związki
 runtimeMinutes:    150
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/teatr/niebezpieczne-zwiazki/niebezpiecznezwiazki_plakat.jpg?rev=eaa00fa62980438295bc9c57b914a338
@@ -3655,6 +3919,8 @@ showings:
   2026-07-15  Multikino Stary Browar        19:00 Sala 4 2D/NAP
 
 === NT Live: Playboy zachodniego świata ===
+displayTitle:      NT Live: Playboy zachodniego świata
+cinemaTitles:      NT Live: Playboy zachodniego świata
 runtimeMinutes:    150
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/teatr/playboy-zachodniego-swiata/playboy_plakat.jpg?rev=61b7db6ed64243cbb0fbb2d2ea71f81d
@@ -3682,6 +3948,8 @@ showings:
   2026-06-24  Multikino Stary Browar        19:00 Sala 1 2D/NAP
 
 === NT Live: Wszyscy moi synowie ===
+displayTitle:      NT Live: Wszyscy moi synowie
+cinemaTitles:      NT Live: Wszyscy moi synowie
 runtimeMinutes:    130
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/teatr/wszyscy-moi-synowie/allmysons_plakat.jpg?rev=7ce83f21ecca4f9e9e3081fe2864919a
@@ -3709,6 +3977,8 @@ showings:
   2026-05-27  Multikino Stary Browar        19:00 Sala 1 2D/NAP
 
 === O dziewczynie skaczącej przez czas ===
+displayTitle:      O dziewczynie skaczącej przez czas
+cinemaTitles:      O dziewczynie skaczącej przez czas
 runtimeMinutes:    98
 releaseYear:       2006
 posterUrl:         https://img.helios.pl/pliki/film/o-dziewczynie-skaczacej-przez-czas/o-dziewczynie-skaczacej-przez-czas-plakat-7957.jpg
@@ -3736,6 +4006,8 @@ showings:
   2026-06-24  Kino Pałacowe                 19:30 Sala 1 - Kinowa
 
 === Obcy ===
+displayTitle:      Obcy
+cinemaTitles:      Obcy
 runtimeMinutes:    122
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/obcy-1-800x450.jpg
@@ -3760,6 +4032,8 @@ showings:
   2026-06-11  Kino Muza                     19:00 Sala 1
 
 === Obsesja ===
+displayTitle:      Obsesja
+cinemaTitles:      Obsesja
 runtimeMinutes:    109
 releaseYear:       2025
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/obsesja/obsesja-plakat-fin.jpg?rev=0e43004367554ace94bab8ac67bd3742
@@ -3809,6 +4083,8 @@ showings:
   2026-05-21  Multikino Stary Browar        15:30 Sala 10 2D/NAP · 18:00 Sala 10 2D/NAP · 20:30 Sala 10 2D/NAP
 
 === Odlot ===
+displayTitle:      Odlot
+cinemaTitles:      Odlot
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
@@ -3834,6 +4110,8 @@ showings:
   2026-08-22  Multikino Stary Browar        12:50 Sala 1 3D/DUB
 
 === Odrodzony jako galareta. Film: Łzy Morza Lazurowego ===
+displayTitle:      Odrodzony jako galareta. Film: Łzy Morza Lazurowego
+cinemaTitles:      Odrodzony jako galareta. Film: Łzy Morza Lazurowego
 runtimeMinutes:    105
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8076S2R.jpg
@@ -3862,6 +4140,8 @@ showings:
   2026-05-21  Cinema City Kinepolis         16:20 Sala8 2D/NAP
 
 === On drive ===
+displayTitle:      On drive
+cinemaTitles:      On drive
 runtimeMinutes:    115
 releaseYear:       2026
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/on-drive-plakat2-1775591272.jpg
@@ -3886,6 +4166,8 @@ showings:
   2026-05-29  Kino Rialto                   18:30
 
 === Opętanie ===
+displayTitle:      Opętanie
+cinemaTitles:      Opętanie
 runtimeMinutes:    124
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/04/plw5syL13CNWIxGaqhuSOlLPUM2-200x288.jpg
@@ -3911,6 +4193,8 @@ showings:
   2026-05-20  Kino Malta Charlie Monroe     20:30 Sala Audrey
 
 === Orwell: 2 + 2 = 5 ===
+displayTitle:      Orwell: 2 + 2 = 5
+cinemaTitles:      Orwell: 2 + 2 = 5
 runtimeMinutes:    119
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/orwel-800x450.jpg
@@ -3935,6 +4219,8 @@ showings:
   2026-05-17  Kino Muza                     13:45 Sala 2
 
 === Osiem i pół ===
+displayTitle:      Osiem i pół
+cinemaTitles:      Osiem i pół
 runtimeMinutes:    138
 releaseYear:       1963
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/3-800x450.jpg
@@ -3962,6 +4248,8 @@ showings:
   2026-07-21  Kino Muza                     20:30 Sala 1
 
 === Ostatnia sesja w Paryżu ===
+displayTitle:      Ostatnia sesja w Paryżu
+cinemaTitles:      Ostatnia sesja w Paryżu | Ostatnia sesja w paryżu
 runtimeMinutes:    105
 releaseYear:       2025
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/03/ostatnia-sesja-w-paryzu-plakat-z-data-11.jpg
@@ -3995,6 +4283,8 @@ showings:
   2026-05-21  Kino Malta Charlie Monroe     18:45 Sala Charlie
 
 === Pan Nikt kontra Putin ===
+displayTitle:      Pan Nikt kontra Putin
+cinemaTitles:      Pan Nikt kontra Putin
 runtimeMinutes:    90
 releaseYear:       2025
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/02/Pan-NIKT-kontra-PUTIN-plakat-net-po-zmniejszeniu-200x288.jpg
@@ -4022,6 +4312,8 @@ showings:
   2026-05-21  Kino Malta Charlie Monroe     20:45 Sala Audrey
 
 === Perfect Days ===
+displayTitle:      Perfect Days
+cinemaTitles:      Perfect Days
 runtimeMinutes:    125
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2024/04/Perfect_Days_plakatPL_680x980_3mm_LQ-200x288.jpg
@@ -4046,6 +4338,8 @@ showings:
   2026-05-17  Kino Malta Charlie Monroe     17:35 Cafe
 
 === Pieniądze to wszystko ===
+displayTitle:      Pieniądze to wszystko
+cinemaTitles:      Pieniądze to wszystko
 runtimeMinutes:    96
 releaseYear:       2026
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-2-800x450.jpg
@@ -4070,6 +4364,8 @@ showings:
   2026-05-17  Kino Muza                     18:15 Sala 1
 
 === Pieśni lasu ===
+displayTitle:      Pieśni lasu
+cinemaTitles:      Pieśni lasu
 runtimeMinutes:    94
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/piesn-lasu-3-800x450.jpg
@@ -4094,6 +4390,8 @@ showings:
   2026-05-17  Kino Muza                     20:30 Sala 1
 
 === Playboy zachodniego świata - National Theatre Live 2026 ===
+displayTitle:      Playboy zachodniego świata - National Theatre Live 2026
+cinemaTitles:      Playboy zachodniego świata - National Theatre Live 2026
 runtimeMinutes:    150
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8211S2R.jpg
@@ -4119,6 +4417,8 @@ showings:
   2026-06-21  Cinema City Kinepolis         15:00 Sala5 2D/NAP
 
 === Poczta głosowa ===
+displayTitle:      Poczta głosowa
+cinemaTitles:      Poczta głosowa
 runtimeMinutes:    102
 releaseYear:       2024
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/poczta-glosowa-1-800x450.jpg
@@ -4143,6 +4443,8 @@ showings:
   2026-06-15  Kino Muza                     17:00 Sala 1
 
 === Pod skórą ===
+displayTitle:      Pod skórą
+cinemaTitles:      Pod skórą
 runtimeMinutes:    108
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2024/11/463315300_122193112556195240_4187623239888508464_n-200x288.jpg
@@ -4167,6 +4469,8 @@ showings:
   2026-05-21  Kino Malta Charlie Monroe     20:30 Sala Marilyn
 
 === Podziemny krąg ===
+displayTitle:      Podziemny krąg
+cinemaTitles:      Podziemny krąg
 runtimeMinutes:    0
 releaseYear:       1999
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/podziemny-krag_online_cut.jpg?rev=8b4016e21dd74d46a7dc788b826c7a8e
@@ -4209,6 +4513,8 @@ showings:
   2026-06-12  Kino Pałacowe                 21:00 Sala 1 - Kinowa
 
 === Pokaz sensorycznie przyjazny: Delfinek i ja 2 ===
+displayTitle:      Pokaz sensorycznie przyjazny: Delfinek i ja 2
+cinemaTitles:      Pokaz sensorycznie przyjazny: Delfinek i ja 2
 runtimeMinutes:    96
 releaseYear:       2025
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_delfinek_i_ja.jpg
@@ -4233,6 +4539,8 @@ showings:
   2026-06-11  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Posłani ===
+displayTitle:      Posłani
+cinemaTitles:      Posłani
 runtimeMinutes:    83
 releaseYear:       2026
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/123-2.jpg
@@ -4258,6 +4566,8 @@ showings:
   2026-05-19  Kino Bułgarska 19             16:40 Sala Thelma & Louise
 
 === Powrót do przyszłości ===
+displayTitle:      Powrót do przyszłości
+cinemaTitles:      Powrót do przyszłości
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/powrot-do-przyszlosci/bttf-1-plakat-cut2.jpg?rev=604aded5095847c2a0149a31a4f91d11
@@ -4287,6 +4597,8 @@ showings:
   2026-08-05  Multikino Stary Browar        17:30 Sala 1 2D/NAP
 
 === Powrót do przyszłości II ===
+displayTitle:      Powrót do przyszłości II
+cinemaTitles:      Powrót do przyszłości II
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/powrot-do-przyszlosci/bttf2-plakat-cut2.jpg?rev=be69cfb939234d949dfec4644c17885e
@@ -4316,6 +4628,8 @@ showings:
   2026-08-12  Multikino Stary Browar        17:30 Sala 1 2D/NAP
 
 === Powrót do przyszłości III ===
+displayTitle:      Powrót do przyszłości III
+cinemaTitles:      Powrót do przyszłości III
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/powrot-do-przyszlosci/bttf3-plakat-cut2.jpg?rev=7e089f9f6c1843a998fac58f33e21687
@@ -4347,6 +4661,8 @@ showings:
   2026-08-26  Multikino Stary Browar        17:30 Sala 1 2D/NAP
 
 === Projekt Hail Mary ===
+displayTitle:      Projekt Hail Mary
+cinemaTitles:      Projekt Hail Mary
 runtimeMinutes:    157
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/projekt-hail-mary/projekthailmary_plakat.jpg?rev=5dee71e5ec014e75a577f1e8055c4dbf
@@ -4396,6 +4712,8 @@ showings:
   2026-05-21  Multikino Stary Browar        10:10 Sala 7 2D/NAP
 
 === Przepis na morderstwo ===
+displayTitle:      Przepis na morderstwo
+cinemaTitles:      Przepis na morderstwo
 runtimeMinutes:    105
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7933S2R.jpg
@@ -4424,6 +4742,8 @@ showings:
   2026-05-21  Cinema City Kinepolis         21:00 Sala5 2D/NAP
 
 === Przeżyj to sam ===
+displayTitle:      Przeżyj to sam
+cinemaTitles:      Przeżyj to sam
 runtimeMinutes:    116
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/przezyj-to-sam-1-800x450.jpg
@@ -4448,6 +4768,8 @@ showings:
   2026-06-10  Kino Muza                     20:30 Sala 1
 
 === Pucio ===
+displayTitle:      Pucio
+cinemaTitles:      Pucio
 runtimeMinutes:    45
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/pucio/pucio-plakat.jpg?rev=5c59e10082a64578b39f13a3bf9616bd
@@ -4503,6 +4825,8 @@ showings:
   2026-06-14  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Romeo i Julia ===
+displayTitle:      Romeo i Julia
+cinemaTitles:      Romeo i Julia – wersja oryginalna
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/romeojulia_plakat.jpg?rev=fa911f8bb60b4b95bd7cb1861a8adf77
@@ -4528,6 +4852,8 @@ showings:
   2026-06-10  Multikino Stary Browar        20:00 Sala 1 2D
 
 === Romería ===
+displayTitle:      Romería
+cinemaTitles:      Romeria | Romería
 runtimeMinutes:    114
 releaseYear:       2025
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7807S2R.jpg
@@ -4581,6 +4907,8 @@ showings:
   2026-05-21  Kino Pałacowe                 16:15 Sala 2 - Audiowizualna · 20:00 Sala 1 - Kinowa
 
 === Rozmowa ===
+displayTitle:      Rozmowa
+cinemaTitles:      Rozmowa
 runtimeMinutes:    113
 releaseYear:       1974
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Reset-Rozmowa-1080x1080_zS7Plnr.png
@@ -4606,6 +4934,8 @@ showings:
   2026-06-08  Kino Pałacowe                 20:00 Sala 1 - Kinowa
 
 === Sabotażysta 5 ===
+displayTitle:      Sabotażysta 5
+cinemaTitles:      Sabotażysta 5
 runtimeMinutes:    —
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8186O2R.jpg
@@ -4645,6 +4975,8 @@ showings:
   2026-06-07  Cinema City Poznań Plaza      18:15 Sala 2 2D
 
 === Sirât ===
+displayTitle:      Sirât
+cinemaTitles:      Sirât
 runtimeMinutes:    120
 releaseYear:       2025
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2025/09/sirat-polski-plakat-1-scaled.jpg
@@ -4670,6 +5002,8 @@ showings:
   2026-05-21  Kino Bułgarska 19             20:30 Sala Thelma & Louise
 
 === Sny o słoniach ===
+displayTitle:      Sny o słoniach
+cinemaTitles:      Sny o słoniach
 runtimeMinutes:    99
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/sny-o-sloniach-1-800x450.jpg
@@ -4694,6 +5028,8 @@ showings:
   2026-05-17  Kino Muza                     18:45 Sala 2
 
 === SpoilerMaster Tour: Mikey i Nicky ===
+displayTitle:      SpoilerMaster Tour: Mikey i Nicky
+cinemaTitles:      SpoilerMaster Tour: Mikey i Nicky
 runtimeMinutes:    106
 releaseYear:       1976
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Mikey_i_Nicky-plakat.png
@@ -4718,6 +5054,8 @@ showings:
   2026-06-01  Kino Pałacowe                 19:00 Sala 1 - Kinowa
 
 === Sprawiedliwość owiec ===
+displayTitle:      Sprawiedliwość owiec
+cinemaTitles:      Sprawiedliwość owiec
 runtimeMinutes:    109
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/sprawiedliwosc-owiec/sprawiedliwoscowiec_plakat.jpg?rev=be0f91ffd2f248caaed986a915b760f8
@@ -4774,6 +5112,8 @@ showings:
   2026-05-21  Multikino Stary Browar        09:30 Sala 11 2D/DUB · 12:00 Sala 11 2D/DUB · 14:30 Sala 11 2D/DUB · 17:00 Sala 11 2D/DUB
 
 === Straszny film ===
+displayTitle:      Straszny film
+cinemaTitles:      Straszny film | Straszny film 
 runtimeMinutes:    0
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/straszny-film/straszny-film-plakat-net.jpg?rev=90bf6b7775c948f49f68a67c868d264b
@@ -4823,6 +5163,8 @@ showings:
   2026-06-07  Multikino Stary Browar        11:30 Sala 3 2D/DUB · 13:45 Sala 3 2D/NAP · 16:00 Sala 3 2D/DUB · 18:15 Sala 3 2D/NAP · 20:30 Sala 3 2D/NAP
 
 === Summer Wars ===
+displayTitle:      Summer Wars
+cinemaTitles:      Summer Wars
 runtimeMinutes:    114
 releaseYear:       2009
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1_sUMMER_Wars.jpg
@@ -4847,6 +5189,8 @@ showings:
   2026-06-17  Kino Pałacowe                 19:30 Sala 1 - Kinowa
 
 === Super Mario Galaxy Film ===
+displayTitle:      Super Mario Galaxy Film
+cinemaTitles:      Super Mario Galaxy Film
 runtimeMinutes:    100
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/super-mario-galaxy-film/super-mario-galaxy-film-plakat-final.jpg?rev=343089138a9844fb8f7d115642cf2862
@@ -4896,6 +5240,8 @@ showings:
   2026-05-21  Multikino Stary Browar        09:35 Sala 8 2D/DUB · 11:55 Sala 8 2D/DUB · 16:50 Sala 8 2D/DUB
 
 === Słodkie życie ===
+displayTitle:      Słodkie życie
+cinemaTitles:      Słodkie życie
 runtimeMinutes:    176
 releaseYear:       1960
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/3-3-800x450.jpg
@@ -4923,6 +5269,8 @@ showings:
   2026-08-11  Kino Muza                     20:30 Sala 1
 
 === Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego ===
+displayTitle:      Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego
+cinemaTitles:      Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego
 runtimeMinutes:    176
 releaseYear:       1960
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/slodkie-zycie-plakat-duzy.jpg
@@ -4947,6 +5295,8 @@ showings:
   2026-06-10  Kino Rialto                   18:00
 
 === Takie jest życie ===
+displayTitle:      Takie jest życie
+cinemaTitles:      Takie jest życie
 runtimeMinutes:    —
 releaseYear:       —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Takie-jest-zycie_B1-1-scaled.jpg
@@ -4973,6 +5323,8 @@ showings:
   2026-07-03  Kino Apollo                   17:30
 
 === The Amazing Digital Circus: Ostatni Akt ===
+displayTitle:      The Amazing Digital Circus: Ostatni Akt
+cinemaTitles:      The Amazing Digital Circus: Ostatni Akt
 runtimeMinutes:    93
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/tadc/tadc_plakat1.jpg?rev=6804403f06ff476592b3fb32300bcdf8
@@ -5000,6 +5352,8 @@ showings:
   2026-06-07  Multikino Stary Browar        10:00 Sala 6 2D/DUB · 12:15 Sala 6 2D/NAP · 14:30 Sala 6 2D/DUB · 16:45 Sala 6 2D/DUB · 19:00 Sala 6 2D/NAP · 21:15 Sala 6 2D/NAP
 
 === The Amazing Digital Circus: The Last Act ===
+displayTitle:      The Amazing Digital Circus: The Last Act
+cinemaTitles:      The Amazing Digital Circus: The Last Act
 runtimeMinutes:    93
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8150O2R.jpg
@@ -5033,6 +5387,8 @@ showings:
   2026-06-07  Cinema City Poznań Plaza      10:30 Sala 6 2D/DUB · 12:50 Sala 6 2D/DUB · 13:50 Sala 3 2D/NAP · 15:10 Sala 6 2D/DUB · 16:10 Sala 3 2D/NAP · 18:30 Sala 3 2D/NAP
 
 === The Amazing Digital Circus: The Last Act - dubbing - Event projekt ===
+displayTitle:      The Amazing Digital Circus: The Last Act - dubbing - Event projekt
+cinemaTitles:      The Amazing Digital Circus: The Last Act - dubbing - Event projekt
 runtimeMinutes:    93
 releaseYear:       —
 posterUrl:         https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg
@@ -5060,6 +5416,8 @@ showings:
   2026-06-07  Helios Posnania               14:00 2D/DUB
 
 === The Amazing Digital Circus: The Last Act - napisy - Event projekt ===
+displayTitle:      The Amazing Digital Circus: The Last Act - napisy - Event projekt
+cinemaTitles:      The Amazing Digital Circus: The Last Act - napisy - Event projekt
 runtimeMinutes:    93
 releaseYear:       —
 posterUrl:         https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg
@@ -5085,6 +5443,8 @@ showings:
   2026-06-05  Helios Posnania               17:00 2D/ORG
 
 === Tom i Jerry: Przygoda w muzeum ===
+displayTitle:      Tom i Jerry: Przygoda w muzeum
+cinemaTitles:      Tom i Jerry: Przygoda w muzeum | Tom i jerry: przygoda w muzeum
 runtimeMinutes:    100
 releaseYear:       2025
 posterUrl:         https://img.helios.pl/pliki/film/tom-i-jerry-przygoda-w-muzeum/tom-i-jerry-przygoda-w-muzeum-plakat-650.jpg
@@ -5115,6 +5475,8 @@ showings:
   2026-06-01  Helios Posnania               16:00 2D/DUB
 
 === Top Gun ===
+displayTitle:      Top Gun
+cinemaTitles:      Top Gun | Top Gun 40. Rocznica | Top Gun 40th Anniversary
 runtimeMinutes:    0
 releaseYear:       1986
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/top-gun-rocznica40.jpg?rev=9d8790a579a34b90a653b01fa16444c9
@@ -5163,6 +5525,8 @@ showings:
   2026-05-21  Cinema City Poznań Plaza      17:30 Sala 3 2D/NAP
 
 === Top Gun: Maverick ===
+displayTitle:      Top Gun: Maverick
+cinemaTitles:      Top Gun Maverick | Top Gun: Maverick
 runtimeMinutes:    130
 releaseYear:       2020
 posterUrl:         https://www.multikino.pl/-/media/multikino/multikino_imported/imported_from_external_source/posterimage/top-gun-maverick-plakat-finalny-cut_f040b47882.jpg?rev=973ff8b6bd434f0eb0e2aad7eef2a685
@@ -5198,6 +5562,8 @@ showings:
   2026-05-19  Multikino Stary Browar        19:25 Sala 1 2D/NAP
 
 === Van gogh. Pola zbóż i zachmurzone niebiosa ===
+displayTitle:      Van gogh. Pola zbóż i zachmurzone niebiosa
+cinemaTitles:      Van gogh. Pola zbóż i zachmurzone niebiosa
 runtimeMinutes:    85
 releaseYear:       2018
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/vangogh-plakat.jpg
@@ -5222,6 +5588,8 @@ showings:
   2026-05-30  Kino Rialto                   15:30
 
 === WAJDA: re-wizje. Człowiek z marmuru ===
+displayTitle:      WAJDA: re-wizje. Człowiek z marmuru
+cinemaTitles:      WAJDA: re-wizje. Człowiek z marmuru
 runtimeMinutes:    153
 releaseYear:       1977
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/czlowiek_z_marmuru_13_gallery.jpg
@@ -5246,6 +5614,8 @@ showings:
   2026-06-07  Kino Pałacowe                 16:00 Sala 1 - Kinowa
 
 === Wartość sentymentalna ===
+displayTitle:      Wartość sentymentalna
+cinemaTitles:      Wartość sentymentalna
 runtimeMinutes:    135
 releaseYear:       2025
 posterUrl:         https://img.helios.pl/pliki/film/wartosc-sentymentalna/wartosc-sentymentalna-plakat-66574.jpeg
@@ -5280,6 +5650,8 @@ showings:
   2026-05-21  Kino Pałacowe                 18:30 Sala 2 - Audiowizualna
 
 === Wałkonie ===
+displayTitle:      Wałkonie
+cinemaTitles:      Wałkonie
 runtimeMinutes:    103
 releaseYear:       1953
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/1-1-800x450.jpg
@@ -5307,6 +5679,8 @@ showings:
   2026-07-28  Kino Muza                     20:30 Sala 1
 
 === Werdykt ===
+displayTitle:      Werdykt
+cinemaTitles:      Werdykt
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/werdykt_plakat_cut.jpg?rev=433b248d041a4fed8dfc6fbed59f146c
@@ -5334,6 +5708,8 @@ showings:
   2026-06-06  Kino Apollo                   21:00
 
 === Werdykt - Kino Konesera ===
+displayTitle:      Werdykt - Kino Konesera
+cinemaTitles:      Werdykt - Kino Konesera
 runtimeMinutes:    89
 releaseYear:       —
 posterUrl:         https://img.helios.pl/pliki/film/werdykt/werdykt-plakat-27931.jpg
@@ -5358,6 +5734,8 @@ showings:
   2026-05-18  Helios Posnania               18:00 2D/NAP
 
 === Widmo wolności ===
+displayTitle:      Widmo wolności
+cinemaTitles:      Widmo wolności
 runtimeMinutes:    105
 releaseYear:       1974
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Widmo_wolnosci_1080_x_1080.jpg
@@ -5382,6 +5760,8 @@ showings:
   2026-05-17  Kino Pałacowe                 15:00 Sala 1 - Kinowa
 
 === Wielki Łuk ===
+displayTitle:      Wielki Łuk
+cinemaTitles:      Wielki Łuk
 runtimeMinutes:    106
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/wielki-luk-2-800x450.jpg
@@ -5406,6 +5786,8 @@ showings:
   2026-06-14  Kino Muza                     19:00 Sala 1
 
 === Wilcze dzieci ===
+displayTitle:      Wilcze dzieci
+cinemaTitles:      Wilcze dzieci
 runtimeMinutes:    117
 releaseYear:       2012
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Wilcze_dzieci_1x1.jpg
@@ -5430,6 +5812,8 @@ showings:
   2026-06-10  Kino Pałacowe                 19:30 Sala 1 - Kinowa
 
 === Windą na szafot ===
+displayTitle:      Windą na szafot
+cinemaTitles:      Windą na szafot
 runtimeMinutes:    90
 releaseYear:       1958
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/winda-1-800x450.jpg
@@ -5457,6 +5841,8 @@ showings:
   2026-06-16  Kino Muza                     18:00 Sala 1
 
 === Wolność po włosku ===
+displayTitle:      Wolność po włosku
+cinemaTitles:      Wolność po włosku
 runtimeMinutes:    117
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/04/wolnosc-po-w-3-800x450.jpg
@@ -5491,6 +5877,8 @@ showings:
   2026-05-27  Kino Muza                     15:00 Sala 1
 
 === Wpatrując się w słońce ===
+displayTitle:      Wpatrując się w słońce
+cinemaTitles:      Wpatrując się w słońce
 runtimeMinutes:    149
 releaseYear:       2025
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2025/12/1766741798010.jpg
@@ -5526,6 +5914,8 @@ showings:
   2026-05-21  Kino Muza                     16:15 Sala 1
 
 === Wszyscy moi synowie - National Theatre Live 2026 ===
+displayTitle:      Wszyscy moi synowie - National Theatre Live 2026
+cinemaTitles:      Wszyscy moi synowie - National Theatre Live 2026
 runtimeMinutes:    151
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8210S2R.jpg
@@ -5551,6 +5941,8 @@ showings:
   2026-05-24  Cinema City Kinepolis         15:00 Sala5 2D/NAP
 
 === Wszystko na sprzedaż ===
+displayTitle:      Wszystko na sprzedaż
+cinemaTitles:      Wszystko na sprzedaż
 runtimeMinutes:    94
 releaseYear:       1968
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/wszystko_na_sprzedaz_06_gallery-800x450.jpg
@@ -5575,6 +5967,8 @@ showings:
   2026-12-01  Kino Muza                     20:30 Sala 1
 
 === Wypadek fortepianowy ===
+displayTitle:      Wypadek fortepianowy
+cinemaTitles:      Wypadek fortepianowy
 runtimeMinutes:    88
 releaseYear:       2025
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/wypadek-fortepianowy-2-800x450.jpg
@@ -5599,6 +5993,8 @@ showings:
   2026-06-13  Kino Muza                     21:00 Sala 1
 
 === Wysokie i niskie tony ===
+displayTitle:      Wysokie i niskie tony
+cinemaTitles:      Wysokie i niskie tony
 runtimeMinutes:    103
 releaseYear:       2024
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2025/12/plakat-wysokie-i-niskie-tony.jpg
@@ -5623,6 +6019,8 @@ showings:
   2026-05-18  Kino Bułgarska 19             20:20 Sala Thelma & Louise
 
 === Władcy wszechświata ===
+displayTitle:      Władcy wszechświata
+cinemaTitles:      Władcy Wszechświata | Władcy wszechświata
 runtimeMinutes:    141
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7992S2R.jpg
@@ -5659,6 +6057,8 @@ showings:
   2026-06-07  Helios Posnania               12:00 2D/DUB · 16:30 2D/DUB · 20:00 2D/NAP
 
 === Yu-Gi-Oh! The Dark Side of Dimensions ===
+displayTitle:      Yu-Gi-Oh! The Dark Side of Dimensions
+cinemaTitles:      Yu-Gi-Oh! The Dark Side of Dimensions
 runtimeMinutes:    130
 releaseYear:       —
 posterUrl:         https://img.helios.pl/pliki/film/yu-gi-oh-the-dark-side-of-dimensions/yu-gi-oh-the-dark-side-of-dimensions-plakat-81113.jpg
@@ -5683,6 +6083,8 @@ showings:
   2026-05-17  Helios Posnania               15:30 2D/NAP
 
 === Za duży na bajki 3 ===
+displayTitle:      Za duży na bajki 3
+cinemaTitles:      Za duży na bajki 3
 runtimeMinutes:    0
 releaseYear:       2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/za-duzy-na-bajki-3/zaduzynabajki3_plakat.jpg?rev=9b8f08e7580848568d5657d0881b4a65
@@ -5717,6 +6119,8 @@ showings:
   2026-05-20  Multikino Stary Browar        09:00 Sala 7 2D
 
 === Zabawa w pochowanego 2 ===
+displayTitle:      Zabawa w pochowanego 2
+cinemaTitles:      Zabawa w pochowanego 2
 runtimeMinutes:    104
 releaseYear:       2026
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7998S2R.jpg
@@ -5745,6 +6149,8 @@ showings:
   2026-05-21  Cinema City Kinepolis         21:50 Sala9 2D/NAP
 
 === Zaplątani ===
+displayTitle:      Zaplątani
+cinemaTitles:      Zaplątani
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
@@ -5770,6 +6176,8 @@ showings:
   2026-08-23  Multikino Stary Browar        12:50 Sala 1 2D/DUB
 
 === Zaproszenie ===
+displayTitle:      Zaproszenie
+cinemaTitles:      Zaproszenie
 runtimeMinutes:    0
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
@@ -5794,6 +6202,8 @@ showings:
   2026-07-01  Multikino Stary Browar        19:00 Sala 6 2D/NAP
 
 === Zawieście czerwone latarnie ===
+displayTitle:      Zawieście czerwone latarnie
+cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | Zawieście czerwone latarnie
 runtimeMinutes:    0
 releaseYear:       1991
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/zawiecie_czerwone_laternie_plakat.jpg?rev=300dbab82eef4904a6bb9c1888bbea70
@@ -5825,6 +6235,8 @@ showings:
   2026-06-18  Multikino Stary Browar        20:00 Sala 4 2D/NAP
 
 === Zawieście czerwone latarnie | przed filmem wstęp prof. Marek hendrykowski ===
+displayTitle:      Zawieście czerwone latarnie | przed filmem wstęp prof. Marek hendrykowski
+cinemaTitles:      Zawieście czerwone latarnie | przed filmem wstęp prof. Marek hendrykowski
 runtimeMinutes:    125
 releaseYear:       1991
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg
@@ -5849,6 +6261,8 @@ showings:
   2026-05-25  Kino Rialto                   18:00
 
 === Zemsta Embriona ===
+displayTitle:      Zemsta Embriona
+cinemaTitles:      Zemsta Embriona
 runtimeMinutes:    89
 releaseYear:       1990
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/04/Zemsta-embriona-9-800x450.png
@@ -5874,6 +6288,8 @@ showings:
   2026-05-25  Kino Muza                     21:15 Sala 1
 
 === Ziemia obiecana ===
+displayTitle:      Ziemia obiecana
+cinemaTitles:      Ziemia obiecana
 runtimeMinutes:    179
 releaseYear:       1974
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/ziemia-o-3-800x450.jpg
@@ -5898,6 +6314,8 @@ showings:
   2026-11-03  Kino Muza                     20:00 Sala 1
 
 === Znaki pana śliwki ===
+displayTitle:      Znaki pana śliwki
+cinemaTitles:      Znaki Pana Śliwki | Znaki pana śliwki
 runtimeMinutes:    72
 releaseYear:       2025
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/04/ZNAKI-PANA-SLIWKI-POSTER.png
@@ -5944,6 +6362,8 @@ showings:
   2026-05-29  Kino Apollo                   20:30
 
 === Ścieżki życia ===
+displayTitle:      Ścieżki życia
+cinemaTitles:      Ścieżki życia
 runtimeMinutes:    115
 releaseYear:       —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/Sciezki_zycia_plakat_PL_HQ-po-zmniejszeniu-200x288.jpg
@@ -5969,6 +6389,8 @@ showings:
   2026-05-20  Kino Malta Charlie Monroe     16:10 Sala Marilyn
 
 === Żywot Briana ===
+displayTitle:      Żywot Briana
+cinemaTitles:      Cykl "Kultowa klasyka" - Żywot Briana / Life of Brian (1979)
 runtimeMinutes:    —
 releaseYear:       —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/03/KM_Zywot_briana_plakat-scaled.png
@@ -5992,6 +6414,8 @@ showings:
   2026-05-23  Kino Apollo                   20:15
 
 === Żywot Briana Grupy Monty Pythona ===
+displayTitle:      Żywot Briana Grupy Monty Pythona
+cinemaTitles:      Żywot Briana Grupy Monty Pythona. Wersja zremasterowana
 runtimeMinutes:    94
 releaseYear:       —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/ywot_briana_plakat.jpg?rev=9ec79149ee78480185000b354a311e71
@@ -6017,6 +6441,8 @@ showings:
   2026-06-27  Multikino Stary Browar        15:00 Sala 2 2D/NAP
 
 === Żądło ===
+displayTitle:      Żądło
+cinemaTitles:      Żądło
 runtimeMinutes:    129
 releaseYear:       1973
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/04/zadlo-1-800x450.jpg
@@ -6041,6 +6467,8 @@ showings:
   2026-05-19  Kino Muza                     20:00 Sala 1
 
 === ДИЯВОЛ НОСИТЬ ПРАДА 2 ===
+displayTitle:      ДИЯВОЛ НОСИТЬ ПРАДА 2
+cinemaTitles:      ДИЯВОЛ НОСИТЬ ПРАДА 2
 runtimeMinutes:    125
 releaseYear:       —
 posterUrl:         https://img.helios.pl/pliki/film/dyyavol-nosyt-prada-2-ua/dyyavol-nosyt-prada-2-ua-plakat-161.jpg

@@ -253,6 +253,20 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       enrichment.rottenTomatoesUrl shouldBe Some("https://www.rottentomatoes.com/m/the_devil_wears_prada_2")
       enrichment.filmwebUrl        shouldBe Some("https://www.filmweb.pl/film/Diabe%C5%82+ubiera+si%C4%99+u+Prady+2-2026-10083431")
 
+      // `displayTitle` is what `MovieController.toSchedules` writes into
+      // `Movie.title` — the canonical spelling chosen across every
+      // cinema's variant. Rialto reports "Diabeł ubiera się u **p**rady 2"
+      // (lowercase p); the five other cinemas all use "**P**rady".
+      // `TitleNormalizer.preferredDisplay` prefers the proper-cased Latin
+      // variant — if it regressed to the all-lowercase form, the home-page
+      // card would suddenly read "u prady".
+      enrichment.cinemaTitles shouldBe Set(
+        "Diabeł ubiera się u Prady 2",
+        "Diabeł ubiera się u prady 2"
+      )
+      enrichment.displayTitle(PradaTitle) shouldBe PradaTitle
+      regular.movie.title                 shouldBe enrichment.displayTitle(PradaTitle)
+
       // Provenance: one CinemaScrape per cinema that reported this row.
       // Year-divergence is intentional — Multikino + CharlieMonroe drop
       // the year, CC + Helios + Rialto carry it. The redirect in
@@ -298,6 +312,9 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       dubEnrichment.cinemaScrapes  shouldBe Set(
         CinemaScrape(Helios, "ДИЯВОЛ НОСИТЬ ПРАДА 2", None)
       )
+      // Only one cinema reports the dub, so `displayTitle` just returns
+      // that variant (preferredDisplay picks the single available form).
+      dubEnrichment.displayTitle("ДИЯВОЛ НОСИТЬ ПРАДА 2") shouldBe "ДИЯВОЛ НОСИТЬ ПРАДА 2"
 
       // No third Prada — only the regular Polish row and the Cyrillic dub
       // should exist. A third row means either a fold went sideways or a
@@ -353,6 +370,12 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       .sortBy(s => (s.cinema.displayName, s.title, s.year.getOrElse(Int.MinValue)))
       .map(sc => s"${sc.cinema.displayName} / ${sc.title} / ${sc.year.map(_.toString).getOrElse("—")}"))
       .getOrElse(Nil)
+    // `cinemaTitles` is the set of raw spellings each cinema reported.
+    // `displayTitle` is the picker's choice across that set — the
+    // canonical form that `MovieController.toSchedules` writes into
+    // `Movie.title` (and therefore the `=== TITLE ===` header above).
+    // Showing both makes the picker's behaviour explicit per film.
+    val cinemaTitles = e.map(_.cinemaTitles.toSeq.sorted).getOrElse(Nil)
     val showings = s.showings.sortBy(_._1).flatMap { case (date, byCinema) =>
       byCinema.sortBy(_.cinema.displayName).map { sht =>
         val slots = sht.showtimes.sortBy(_.dateTime).map { st =>
@@ -365,6 +388,8 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     }
     val lines = Seq(
       s"=== ${s.movie.title} ===",
+      s"displayTitle:      ${s.movie.title}",
+      s"cinemaTitles:      ${if (cinemaTitles.isEmpty) "—" else cinemaTitles.mkString(" | ")}",
       s"runtimeMinutes:    ${s.movie.runtimeMinutes.map(_.toString).getOrElse("—")}",
       s"releaseYear:       ${s.movie.releaseYear.map(_.toString).getOrElse("—")}",
       s"posterUrl:         ${s.posterUrl.getOrElse("—")}",
