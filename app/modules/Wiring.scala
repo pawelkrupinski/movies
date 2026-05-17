@@ -10,7 +10,7 @@ import services.cinemas._
 import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
 import services.movies._
-import tools.{Env, HttpFetch, RealHttpFetch}
+import tools.{HttpFetch, RealHttpFetch}
 
 trait Wiring {
   lazy val httoFetch: HttpFetch = new RealHttpFetch()
@@ -106,12 +106,6 @@ trait Wiring {
   eventBus.subscribe(metascoreRatings.onImdbIdMissing)
   eventBus.subscribe(filmwebRatings.onTmdbResolved)
   eventBus.subscribe(filmwebRatings.onImdbIdMissing)
-
-  // ── Boot-time wiring ──────────────────────────────────────────────────────
-  // Fail fast in production if the scraping key is missing — moved out of
-  // ShowtimeCache so the class stays construction-pure.
-  if (Env.get("SCRAPINGANT_KEY").isEmpty)
-    throw new RuntimeException("SCRAPINGANT_KEY must be set")
 
   // Start background work and register shutdown hooks. Order matters on stop:
   // every ratings service's stop() must drain its worker pool before the
