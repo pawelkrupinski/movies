@@ -6,7 +6,6 @@ import play.api.Mode
 import play.api.mvc.ControllerComponents
 import play.api.test.Helpers.stubControllerComponents
 import services.Stoppable
-import services.cinemas.ScrapingAntClient
 
 trait TestWiring extends Wiring {
   override val controllerComponents: ControllerComponents = stubControllerComponents()
@@ -23,13 +22,6 @@ trait TestWiring extends Wiring {
   // fingerprint via `RecordingHttpFetch.stableQueryFingerprint`), so
   // any non-empty string works.
   override lazy val tmdbClient: TmdbClient = new TmdbClient(httoFetch, apiKey = Some("test-api-key"))
-
-  // Bypass ScrapingAnt in tests — the production wiring reads SCRAPINGANT_KEY
-  // from .env.local, which routes Multikino's fetch through the real
-  // ScrapingAnt API even under FakeHttpFetch. Pass None so MultikinoClient
-  // falls back to the injected (Fake) HttpFetch, replaying the recorded
-  // fixture like every other cinema scraper.
-  override def multikinoScrapingAnt: Option[ScrapingAntClient] = None
 
   def quiesce(stoppables: Stoppable*): Unit =
     stoppables.foreach(_.stop())
