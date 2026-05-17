@@ -1,10 +1,10 @@
-FROM eclipse-temurin:21 AS build
+FROM eclipse-temurin:25 AS build
 WORKDIR /app
 
 # Install sbt
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
-    curl -fsSL "https://github.com/sbt/sbt/releases/download/v1.10.1/sbt-1.10.1.tgz" \
+    curl -fsSL "https://github.com/sbt/sbt/releases/download/v1.12.11/sbt-1.12.11.tgz" \
       | tar xz -C /usr/local --strip-components=1 && \
     rm -rf /var/lib/apt/lists/*
 
@@ -19,7 +19,7 @@ COPY conf/ conf/
 RUN sbt stage
 
 # ── Runtime image ─────────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app
