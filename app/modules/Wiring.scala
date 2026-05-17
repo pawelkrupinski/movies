@@ -27,11 +27,17 @@ trait Wiring {
   // list — adding a new cinema is a new entry here plus its scraper class.
   lazy val cinemaCityClient = new CinemaCityClient(httoFetch)
 
+  // Hoisted so test wiring can override without rebuilding the whole
+  // `cinemaScrapers` list. Reading SCRAPINGANT_KEY at the composition root
+  // is correct for production but pulls a real network dependency into any
+  // test that uses this wiring; tests override to `None`.
+  def multikinoScrapingAnt: Option[ScrapingAntClient] = MultikinoClient.scrapingAntFromEnv
+
   lazy val cinemaScrapers: Seq[CinemaScraper] = Seq(
     // MultikinoClient handles its own session warm-up + retry + optional
     // ScrapingAnt routing internally — pass the same `httoFetch` every
     // other client uses, and the env-derived ScrapingAnt option.
-    new MultikinoClient(httoFetch, MultikinoClient.scrapingAntFromEnv),
+    new MultikinoClient(httoFetch, multikinoScrapingAnt),
     new CharlieMonroeClient(httoFetch),
     new KinoPalacoweClient(httoFetch),
     new HeliosClient(httoFetch),

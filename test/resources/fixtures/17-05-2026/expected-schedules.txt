@@ -5872,7 +5872,7 @@ showings:
 === Werdykt ===
 displayTitle:      Werdykt
 cinemaTitles:      Werdykt
-runtimeMinutes:    —
+runtimeMinutes:    89
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/werdykt_plakat_cut.jpg?rev=433b248d041a4fed8dfc6fbed59f146c
@@ -5890,42 +5890,18 @@ metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        —
 cinemaFilmUrls:
+  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/werdykt-kino-konesera-2592
   Kino Apollo = https://kinoapollo.pl/kino/werdykt/
   Multikino Stary Browar = https://www.multikino.pl/filmy/werdykt
 cinemaScrapes:
+  Helios Posnania / Werdykt / —
   Kino Apollo / Werdykt / —
   Multikino Stary Browar / Werdykt / —
 showings:
+  2026-05-18  Helios Posnania               18:00 2D/NAP
   2026-06-04  Multikino Stary Browar        20:00 Sala 1 2D/NAP
   2026-06-05  Kino Apollo                   18:00 · 20:00
   2026-06-06  Kino Apollo                   21:00
-
-=== Werdykt - Kino Konesera ===
-displayTitle:      Werdykt - Kino Konesera
-cinemaTitles:      Werdykt - Kino Konesera
-runtimeMinutes:    89
-releaseYear:       —
-countries:         —
-posterUrl:         https://img.helios.pl/pliki/film/werdykt/werdykt-plakat-27931.jpg
-synopsis.length:   —
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
-cinemaFilmUrls:
-  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/werdykt-kino-konesera-2592
-cinemaScrapes:
-  Helios Posnania / Werdykt - Kino Konesera / —
-showings:
-  2026-05-18  Helios Posnania               18:00 2D/NAP
 
 === Widmo wolności ===
 displayTitle:      Widmo wolności
