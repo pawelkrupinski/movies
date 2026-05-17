@@ -413,6 +413,68 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     lines.mkString("\n")
   }
 
+  // Reproduction attempt: pre-fix Mongo data shows `ДИЯВОЛ НОСИТЬ ПРАДА 2`'s
+  // `cinemaScrapes` polluted with Latin "Diabeł ubiera się u Prady 2"
+  // entries from CC Kinepolis / CC Plaza / Helios / Multikino / Charlie
+  // Monroe / Rialto — including duplicate `(year=None, year=Some(2026))`
+  // tuples for the same cinema. With the cleanTitle-strict fold gate in
+  // place, no current code path should bleed across the Polish/Cyrillic
+  // rows; this case proves it across two scrape ticks back-to-back, which
+  // is when accumulation would normally show.
+  //
+  // The two-tick shape catches:
+  //   - re-scrape adding to existing `cinemaScrapes` for the wrong row,
+  //   - identity-gate fold firing on second-pass tmdbId hits,
+  //   - bus events from the second tick triggering a TMDB re-resolve
+  //     that lands on the wrong sibling.
+  //
+  // If this assertion ever fails, the bug is in current code; otherwise
+  // the user's production data is purely legacy folded state.
+  it should "keep the Cyrillic Prada row's cinemaScrapes clean across multiple scrape ticks" in new FixtureTestWiring("17-05-2026") {
+    // Two scrape ticks, both followed by an event drain so each tick's
+    // TMDB / *Ratings cascade fully settles before the next one starts.
+    //
+    // First tick is the canonical end-to-end pass. Second tick re-runs
+    // every scraper against the same fixtures — every (cinema, title,
+    // year) tuple is already in the row's `cinemaScrapes`, so
+    // `recordCinemaScrape`'s `isNew` check should suppress every bus
+    // event. If a regression makes the redirect cross cleanTitles, or
+    // the identity-gate fold misbehave on already-resolved rows, the
+    // Cyrillic row's `cinemaScrapes` accumulates Latin entries here.
+    runOneScrapeTick(cinemaScrapers, movieCache, eventBus)
+    drainServices()
+    // drainServices stops the worker pools — runOneScrapeTick on the
+    // second pass still works (it doesn't depend on the cascade, just
+    // publishes events). Bus listeners that try to dispatch to the
+    // already-shut-down pools will fail loudly via
+    // RejectedExecutionException → caught by `EventBus.publish` and
+    // logged; the cache state stays internally consistent regardless.
+    runOneScrapeTick(cinemaScrapers, movieCache, eventBus)
+
+    val cyrillicRow = movieCache.snapshot()
+      .find(_.title == "ДИЯВОЛ НОСИТЬ ПРАДА 2")
+      .getOrElse(fail("Cyrillic Prada row missing from cache after two scrape ticks"))
+
+    withClue(s"cinemaScrapes drift after second scrape tick: ${cyrillicRow.record.cinemaScrapes}\n") {
+      // Only Helios scrapes the Cyrillic title in any fixture, and only
+      // with year=None. Anything else here is cross-cleanTitle bleed.
+      cyrillicRow.record.cinemaScrapes shouldBe Set(
+        CinemaScrape(Helios, "ДИЯВОЛ НОСИТЬ ПРАДА 2", None)
+      )
+    }
+
+    // Conversely, the regular Polish row mustn't pick up the Cyrillic
+    // scrape either — same invariant from the other side.
+    val regularRow = movieCache.snapshot()
+      .find(_.title == PradaTitle)
+      .getOrElse(fail("regular Polish Prada row missing from cache after two scrape ticks"))
+    withClue(s"Polish row picked up Cyrillic scrape: ${regularRow.record.cinemaScrapes}\n") {
+      regularRow.record.cinemaScrapes
+        .map(_.title)
+        .foreach { t => t should not be "ДИЯВОЛ НОСИТЬ ПРАДА 2" }
+    }
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   /** Mirror of `ShowtimeCache.refreshOne`, sequenced for the test. Catches
