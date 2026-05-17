@@ -1,5 +1,6 @@
 package integration
 
+import org.scalatest.ParallelTestExecution
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.FilmwebClient
@@ -8,10 +9,18 @@ import tools.RealHttpFetch
 /**
  * Live test of FilmwebClient against the real (unauthenticated) Filmweb JSON API.
  * No API key needed — Filmweb's /api/v1 endpoints are open.
+ *
+ * `ParallelTestExecution` mixes in `OneInstancePerTest`, so the shared
+ * client lives on the companion (constructing `FilmwebClient` is cheap,
+ * but the principle matches the other live specs).
  */
-class FilmwebIntegrationSpec extends AnyFlatSpec with Matchers {
-
+object FilmwebIntegrationSpec {
   private val client = new FilmwebClient(new RealHttpFetch)
+}
+
+class FilmwebIntegrationSpec extends AnyFlatSpec with Matchers with ParallelTestExecution {
+
+  import FilmwebIntegrationSpec.client
 
   "FilmwebClient.lookup" should "resolve a recent Polish-titled film to a URL + rating" in {
     val fw = client.lookup("Wartość sentymentalna", Some(2025))
