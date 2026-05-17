@@ -18,6 +18,20 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
+            # Cache compiled classes + zinc incremental state so a no-source-
+            # change push (e.g. .yml-only tweaks) skips the ~30s cold compile.
+            # Key is the hash of every input that can affect the build output;
+            # any of them changing produces a fresh cache miss + fresh compile.
+            - uses: actions/cache@v4
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'conf/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
             - run: sbt test
               env:
                   SCRAPINGANT_KEY: ${{ secrets.SCRAPINGANT_KEY }}
