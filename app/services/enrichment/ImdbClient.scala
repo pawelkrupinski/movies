@@ -73,6 +73,7 @@ class ImdbClient(http: HttpFetch) {
     val stars     = namesFor("cast").take(MaxCastNames)
     val countries = (title \ "countriesOfOrigin" \ "countries").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       .flatMap(c => (c \ "text").asOpt[String]).filter(_.nonEmpty)
+    val poster = (title \ "primaryImage" \ "url").asOpt[String].filter(_.nonEmpty)
     ImdbClient.Details(
       rating         = rating,
       title          = titleText,
@@ -82,7 +83,8 @@ class ImdbClient(http: HttpFetch) {
       cast           = if (stars.nonEmpty)     Some(stars.mkString(", "))     else None,
       runtimeMinutes = runtimeS,
       releaseYear    = releaseYr,
-      countries      = countries
+      countries      = countries,
+      posterUrl      = poster
     )
   }
 
@@ -109,6 +111,7 @@ class ImdbClient(http: HttpFetch) {
         |    ratingsSummary{aggregateRating voteCount}
         |    plot{plotText{plainText}}
         |    countriesOfOrigin{countries{text}}
+        |    primaryImage{url}
         |    principalCredits{
         |      category{id}
         |      credits{name{nameText{text}}}
@@ -190,6 +193,7 @@ object ImdbClient {
     cast:           Option[String],
     runtimeMinutes: Option[Int],
     releaseYear:    Option[Int],
-    countries:      Seq[String]
+    countries:      Seq[String],
+    posterUrl:      Option[String]
   )
 }

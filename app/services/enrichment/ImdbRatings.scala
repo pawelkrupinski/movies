@@ -72,10 +72,10 @@ class ImdbRatings(cache: MovieCache, imdb: ImdbClient)
 
   /** Translate an `ImdbClient.Details` into a `SourceData` slot — only the
    *  content fields (synopsis, director, cast, runtime, year, countries,
-   *  title, originalTitle). Returns None when every content field is empty,
-   *  so a rating-only GraphQL response (the legacy `lookup` shape that
-   *  recorded fixtures replay) doesn't churn an empty slot onto the record.
-   *  Public for the refreshAll loop. */
+   *  poster, title, originalTitle). Returns None when every content field
+   *  is empty, so a rating-only GraphQL response (the legacy `lookup` shape
+   *  that recorded fixtures replay) doesn't churn an empty slot onto the
+   *  record. Public for the refreshAll loop. */
   private[services] def makeSlot(d: ImdbClient.Details): Option[SourceData] = {
     val slot = SourceData(
       title          = d.title,
@@ -88,11 +88,13 @@ class ImdbRatings(cache: MovieCache, imdb: ImdbClient)
       // IMDb's `countriesOfOrigin.text` is English ("United States",
       // "United Kingdom"); canonicalise via CountryNames so the merged
       // dedup operates on the same strings cinemas write.
-      countries      = d.countries.map(CountryNames.canonical).distinct
+      countries      = d.countries.map(CountryNames.canonical).distinct,
+      posterUrl      = d.posterUrl
     )
     val hasContent = slot.title.isDefined || slot.originalTitle.isDefined || slot.synopsis.isDefined ||
                      slot.cast.isDefined || slot.director.isDefined || slot.runtimeMinutes.isDefined ||
-                     slot.releaseYear.isDefined || slot.countries.nonEmpty
+                     slot.releaseYear.isDefined || slot.countries.nonEmpty ||
+                     slot.posterUrl.isDefined
     if (hasContent) Some(slot) else None
   }
 

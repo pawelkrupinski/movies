@@ -5521,7 +5521,7 @@ originalTitle:     The Amazing Digital Circus: The Last Act
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     0.0
+filmwebRating:     —
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_amazing_digital_circus_the_last_act
 filmwebUrl:        https://www.filmweb.pl/film/The+Amazing+Digital+Circus%3A+The+Last+Act-2026-10121762
@@ -5551,7 +5551,7 @@ originalTitle:     The Amazing Digital Circus: The Last Act
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     0.0
+filmwebRating:     —
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_amazing_digital_circus_the_last_act
 filmwebUrl:        https://www.filmweb.pl/film/The+Amazing+Digital+Circus%3A+The+Last+Act-2026-10121762
