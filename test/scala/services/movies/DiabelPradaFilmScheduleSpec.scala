@@ -8,6 +8,8 @@ import services.cinemas.CinemaScraper
 import services.events.{DomainEvent, MovieRecordCreated}
 import tools.FixtureTestWiring
 
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Paths}
 import java.time.{LocalDate, LocalDateTime}
 import scala.collection.mutable
 
@@ -302,6 +304,88 @@ class DiabelPradaFilmScheduleSpec extends AnyFlatSpec with Matchers {
       // cinema produced an unexpected variant.
       pradaSchedules should have size 2
     }
+
+    // ── Whole-corpus snapshot ─────────────────────────────────────────────
+    //
+    // Every other `FilmSchedule` gets the same depth of assertion that
+    // Prada gets above — every visible field, every cinemaFilmUrl, every
+    // enrichment value, every showtime with its room + format tokens.
+    // Inline literals for 214 movies × ~10 fields × N days × M slots
+    // would be unreadable, so the expected output is a checked-in
+    // snapshot file. The test renders the full corpus deterministically
+    // (titles sorted, cinemas sorted by display name, showtimes sorted
+    // by clock) and compares the result against the snapshot.
+    //
+    // When the snapshot doesn't exist (first run after a fresh fixture
+    // recording), the test writes it and fails loudly so the diff goes
+    // through code review before being trusted. To regenerate after a
+    // legitimate change: delete the file and re-run.
+    val snapshotPath = Paths.get("test/resources/fixtures/17-05-2026/expected-schedules.txt")
+    val actual = renderSchedules(schedules)
+    if (!Files.exists(snapshotPath)) {
+      Files.write(snapshotPath, actual.getBytes(StandardCharsets.UTF_8))
+      fail(s"Snapshot didn't exist — wrote ${snapshotPath}. Review the contents, commit, and re-run.")
+    }
+    val expected = new String(Files.readAllBytes(snapshotPath), StandardCharsets.UTF_8)
+    withClue(
+      s"Whole-corpus snapshot mismatch. To regenerate after an intentional change:\n" +
+        s"  rm $snapshotPath && sbt 'testOnly services.movies.DiabelPradaFilmScheduleSpec'\n"
+    ) {
+      actual shouldBe expected
+    }
+  }
+
+  /** Render every FilmSchedule into a deterministic multi-line block. One
+   *  block per film, separated by blank lines; films sorted alphabetically
+   *  by display title. Each block lists every field a viewer of the `/`
+   *  card would see (title, runtime, year, poster, synopsis size, cast,
+   *  director, per-cinema deep-links) plus every enrichment value (tmdbId,
+   *  imdbId, ratings, MC/RT/FW URLs, cinemaScrapes provenance) plus the
+   *  full per-(date, cinema) showtime list with room + format tokens. */
+  private def renderSchedules(schedules: Seq[FilmSchedule]): String =
+    schedules.sortBy(s => (s.movie.title.toLowerCase, s.movie.releaseYear)).map(renderOne).mkString("\n\n")
+
+  private def renderOne(s: FilmSchedule): String = {
+    val e = s.enrichment
+    val cinemaUrls = s.cinemaFilmUrls.sortBy(_._1.displayName)
+      .map { case (c, u) => s"${c.displayName} = $u" }
+    val scrapes = e.map(_.cinemaScrapes.toSeq
+      .sortBy(s => (s.cinema.displayName, s.title, s.year.getOrElse(Int.MinValue)))
+      .map(sc => s"${sc.cinema.displayName} / ${sc.title} / ${sc.year.map(_.toString).getOrElse("—")}"))
+      .getOrElse(Nil)
+    val showings = s.showings.sortBy(_._1).flatMap { case (date, byCinema) =>
+      byCinema.sortBy(_.cinema.displayName).map { sht =>
+        val slots = sht.showtimes.sortBy(_.dateTime).map { st =>
+          val room   = st.room.fold("")(r => s" $r")
+          val format = if (st.format.isEmpty) "" else s" ${st.format.mkString("/")}"
+          s"${st.dateTime.toLocalTime}$room$format"
+        }.mkString(" · ")
+        f"  $date  ${sht.cinema.displayName}%-28s  $slots"
+      }
+    }
+    val lines = Seq(
+      s"=== ${s.movie.title} ===",
+      s"runtimeMinutes:    ${s.movie.runtimeMinutes.map(_.toString).getOrElse("—")}",
+      s"releaseYear:       ${s.movie.releaseYear.map(_.toString).getOrElse("—")}",
+      s"posterUrl:         ${s.posterUrl.getOrElse("—")}",
+      s"synopsis.length:   ${s.synopsis.map(_.length.toString).getOrElse("—")}",
+      s"cast:              ${s.cast.getOrElse("—")}",
+      s"director:          ${s.director.getOrElse("—")}",
+      s"tmdbId:            ${e.flatMap(_.tmdbId).map(_.toString).getOrElse("—")}",
+      s"imdbId:            ${e.flatMap(_.imdbId).getOrElse("—")}",
+      s"originalTitle:     ${e.flatMap(_.originalTitle).getOrElse("—")}",
+      s"imdbRating:        ${e.flatMap(_.imdbRating).map(_.toString).getOrElse("—")}",
+      s"metascore:         ${e.flatMap(_.metascore).map(_.toString).getOrElse("—")}",
+      s"rottenTomatoes:    ${e.flatMap(_.rottenTomatoes).map(_.toString).getOrElse("—")}",
+      s"filmwebRating:     ${e.flatMap(_.filmwebRating).map(_.toString).getOrElse("—")}",
+      s"metacriticUrl:     ${e.flatMap(_.metacriticUrl).getOrElse("—")}",
+      s"rottenTomatoesUrl: ${e.flatMap(_.rottenTomatoesUrl).getOrElse("—")}",
+      s"filmwebUrl:        ${e.flatMap(_.filmwebUrl).getOrElse("—")}"
+    ) ++
+      (if (cinemaUrls.nonEmpty) Seq("cinemaFilmUrls:") ++ cinemaUrls.map("  " + _) else Seq("cinemaFilmUrls:    —")) ++
+      (if (scrapes.nonEmpty) Seq("cinemaScrapes:") ++ scrapes.map("  " + _) else Seq("cinemaScrapes:     —")) ++
+      Seq("showings:") ++ showings
+    lines.mkString("\n")
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
