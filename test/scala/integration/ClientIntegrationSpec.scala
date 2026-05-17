@@ -1,80 +1,90 @@
 package integration
 
-import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie}
+import models._
 import org.scalatest.ParallelTestExecution
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoBulgarskaClient, KinoMuzaClient, KinoPalacoweClient, MultikinoClient, RialtoClient}
-import tools.RealHttpFetch
+import services.cinemas.CinemaScraper
+import tools.TestWiring
+
+/**
+ * Real-network smoke for every cinema scraper. Sources the scrapers from
+ * production `Wiring` (via [[TestWiring]] — same wiring, just with
+ * controllerComponents / environmentMode stubs) so this spec exercises the
+ * exact construction graph the running app uses. A wiring-level regression
+ * (wrong fetch passed to a cinema, ScrapingAnt routing dropped, …) lands
+ * here as a real 401/403/timeout against the live cinema API.
+ *
+ * One explicit `it should "fetch films"` per cinema so each is individually
+ * click-runnable from the IDE.
+ *
+ * Per-cinema runtime strictness:
+ *   - `requireRuntime`  — every entry must have a runtime (default).
+ *   - `runtimeOptional` — Cinema City + Kino Bułgarska legitimately list a
+ *     few entries without a runtime (CC: `length: null` / "Czas
+ *     niepotwierdzony" on upcoming films; KB: "pokazy przedpremierowe").
+ *     Require ≥ 2/3.
+ *   - `runtimeNotParsed` — Kino Apollo's scraped layout doesn't expose
+ *     runtime at all, so only the base-shape (non-empty + at least one
+ *     showtime) is checked.
+ */
+object ClientIntegrationSpec {
+  // Singleton: `ParallelTestExecution` mixes in `OneInstancePerTest`, so a
+  // class-level `val wiring = new TestWiring {}` would build one Wiring per
+  // test — 10 simultaneous MongoMovieRepo connections, hydrations, etc.
+  // We just want one production-shaped graph shared across all parallel
+  // network probes.
+  private val wiring = new TestWiring {}
+}
 
 class ClientIntegrationSpec
   extends AnyFlatSpec
     with Matchers
     with ParallelTestExecution {
-  val fetch = new RealHttpFetch()
 
-  // Multikino blocks bare datacenter requests — use the production fetcher
-  // (homepage-cookie dance, plus ScrapingAnt fallback when SCRAPINGANT_KEY
-  // is set) instead of RealHttpFetch.
-  "MultikinoClient" should "fetch films" in {
+  import ClientIntegrationSpec.wiring
+
+  "Multikino"                should "fetch films" in requireRuntime(Multikino)
+  "Kino Malta Charlie Monroe" should "fetch films" in requireRuntime(CharlieMonroe)
+  "Kino Pałacowe"            should "fetch films" in requireRuntime(KinoPalacowe)
+  "Helios Posnania"          should "fetch films" in requireRuntime(Helios)
+  "Cinema City Plaza"        should "fetch films" in runtimeOptional(CinemaCityPoznanPlaza)
+  "Cinema City Kinepolis"    should "fetch films" in runtimeOptional(CinemaCityKinepolis)
+  "Kino Muza"                should "fetch films" in requireRuntime(KinoMuza)
+  "Kino Bułgarska 19"        should "fetch films" in runtimeOptional(KinoBulgarska)
+  "Kino Apollo"              should "fetch films" in requireNoRuntime(KinoApollo)
+  "Kino Rialto"              should "fetch films" in requireRuntime(Rialto)
+
+  private def requireRuntime(cinema: Cinema)    = runScraperFor(cinema, assertAllHaveRuntime)
+  private def runtimeOptional(cinema: Cinema)   = runScraperFor(cinema, assertMostHaveRuntime)
+  private def requireNoRuntime(cinema: Cinema)  = runScraperFor(cinema, _ => ()) // parser doesn't expose runtime
+
+  private def runScraperFor(cinema: Cinema, runtimeAssertion: Seq[CinemaMovie] => Unit): Unit = {
+    val scraper = scraperFor(cinema)
     RetryWithBackoff() {
-      assertAllHaveRuntime(new MultikinoClient(MultikinoClient.DefaultFetch).fetch()) }
+      val result = scraper.fetch()
+      withClue(s"${cinema.displayName}: ") {
+        assertBaseShape(result)
+        runtimeAssertion(result)
+      }
+    }
   }
 
-  "CharlieMonroeClient" should "fetch films" in {
-    RetryWithBackoff() { assertAllHaveRuntime(new CharlieMonroeClient(fetch).fetch()) }
-  }
+  private def scraperFor(cinema: Cinema): CinemaScraper =
+    wiring.cinemaScrapers.find(_.cinema == cinema)
+      .getOrElse(fail(s"No scraper wired for ${cinema.displayName}"))
 
-  "KinoPalacoweClient" should "fetch films" in {
-    RetryWithBackoff() { assertAllHaveRuntime(new KinoPalacoweClient(fetch).fetch()) }
-  }
-
-  "HeliosClient" should "fetch films" in {
-    RetryWithBackoff() { assertAllHaveRuntime(new HeliosClient().fetch()) }
-  }
-
-  // Cinema City lists upcoming films before their duration is published — e.g.
-  // "Sabotażysta 5" returns "length":null until the runtime is confirmed and
-  // the public film page literally shows "Czas niepotwierdzony". We keep these
-  // entries (they still have valid screenings and posters) and require only
-  // two-thirds of the catalogue to have a known runtime.
-  "CinemaCityClient Kinepolis" should "fetch films" in {
-    RetryWithBackoff() { assertMostHaveRuntime(new CinemaCityClient(fetch).fetch("1081", CinemaCityKinepolis)) }
-  }
-
-  "CinemaCityClient Plaza" should "fetch films" in {
-    RetryWithBackoff() { assertMostHaveRuntime(new CinemaCityClient(fetch).fetch("1078", CinemaCityPoznanPlaza)) }
-  }
-
-  "KinoMuzaClient" should "fetch films" in {
-    RetryWithBackoff() { assertAllHaveRuntime(new KinoMuzaClient(fetch).fetch()) }
-  }
-
-  "KinoBulgarskaClient" should "fetch films" in {
-    // Most films have a runtime, but the cinema occasionally lists
-    // preview-screening events ("pokazy przedpremierowe") that don't include
-    // one. Don't drop them — they're still real screenings.
-    RetryWithBackoff() { assertMostHaveRuntime(new KinoBulgarskaClient(fetch).fetch()) }
-  }
-
-  "RialtoClient" should "fetch films" in {
-    RetryWithBackoff() { assertAllHaveRuntime(new RialtoClient(fetch).fetch()) }
-  }
-
-  private def assertAllHaveRuntime(result: Seq[CinemaMovie]) = {
-    assertBaseShape(result)
+  private def assertAllHaveRuntime(result: Seq[CinemaMovie]): Unit =
     result.find(_.movie.runtimeMinutes.isEmpty) shouldBe empty
-  }
 
-  private def assertMostHaveRuntime(result: Seq[CinemaMovie]) = {
-    assertBaseShape(result)
+  private def assertMostHaveRuntime(result: Seq[CinemaMovie]): Unit = {
     val withRuntime = result.count(_.movie.runtimeMinutes.nonEmpty)
     withClue(s"only $withRuntime of ${result.size} movies have a runtime: ") {
       (withRuntime * 3) should be >= (result.size * 2)
     }
   }
 
-  private def assertBaseShape(result: Seq[CinemaMovie]) = {
+  private def assertBaseShape(result: Seq[CinemaMovie]): Unit = {
     result                      should not be empty
     result.flatMap(_.showtimes) should not be empty
   }

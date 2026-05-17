@@ -26,8 +26,20 @@ trait Wiring {
   // The only place that names a specific cinema. ShowtimeCache iterates the
   // list — adding a new cinema is a new entry here plus its scraper class.
   lazy val cinemaCityClient = new CinemaCityClient(httoFetch)
+  // Multikino's films API responds 401 to any direct datacenter request
+  // without a session cookie, so it gets its own session-handling fetch
+  // (`DefaultFetch` does the homepage warm-up + optional ScrapingAnt
+  // routing). Exposed as an overridable member so fixture tests can route
+  // it through their `FakeHttpFetch`; production must keep the default —
+  // swapping it back to the shared `httoFetch` is a silent prod-only
+  // regression (the FakeHttpFetch path stays green in unit tests).
+  // `ClientIntegrationSpec` sources every cinema scraper from this Wiring
+  // and hits the live cinema APIs, so a regression here surfaces as a 401
+  // there.
+  lazy val multikinoFetch: HttpFetch = MultikinoClient.DefaultFetch
+
   lazy val cinemaScrapers: Seq[CinemaScraper] = Seq(
-    new MultikinoClient(httoFetch),
+    new MultikinoClient(multikinoFetch),
     new CharlieMonroeClient(httoFetch),
     new KinoPalacoweClient(httoFetch),
     new HeliosClient(httoFetch),
