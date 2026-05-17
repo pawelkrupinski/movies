@@ -2,7 +2,7 @@ package services.movies
 
 import com.mongodb.MongoException
 import com.mongodb.client.model.ReplaceOptions
-import models.{Cinema, CinemaScrape, MovieRecord, Showtime, Source, SourceData, Tmdb}
+import models.{Cinema, MovieRecord, Showtime, Source, SourceData, Tmdb}
 
 /** One persisted (title, year) → MovieRecord row. Used as the return type
  *  of `MovieRepo.findAll` and `MovieCache.snapshot` so callers iterate
@@ -205,17 +205,6 @@ class MongoMovieRepo extends MovieRepo with Logging {
       "tmdbId"       -> e.tmdbId.map(org.mongodb.scala.bson.BsonInt32(_)).getOrElse(BsonNull()),
       "metacriticUrl"-> e.metacriticUrl.map(BsonString(_)).getOrElse(BsonNull()),
       "rottenTomatoesUrl" -> e.rottenTomatoesUrl.map(BsonString(_)).getOrElse(BsonNull()),
-      // cinemaScrapes: per-(cinema, title, year) provenance the cache uses to
-      // suppress redundant MovieRecordCreated events for tuples it has
-      // already seen, and the source of the derived `cinemaTitles` view.
-      // BsonArray of sub-documents. Sorted for stable Mongo diffs; empty
-      // array (not null) when the set is empty so decoding never has to
-      // disambiguate "missing field" from "no variants yet".
-      "cinemaScrapes" -> BsonArray.fromIterable(
-        e.cinemaScrapes.toSeq
-          .sortBy(s => (s.cinema.displayName, s.title, s.year.getOrElse(Int.MinValue)))
-          .map(encodeCinemaScrape)
-      ),
       // Per-source data — sub-document keyed by Source.displayName (cinema
       // displayNames + "TMDB" + "IMDB"). Replaces the old per-cinema
       // `cinemaShowings` sub-doc; the decoder still reads `cinemaShowings`
@@ -252,14 +241,6 @@ class MongoMovieRepo extends MovieRepo with Logging {
     s.filmUrl.foreach(u        => doc.put("filmUrl",        BsonString(u)))
     if (s.showtimes.nonEmpty)
       doc.put("showtimes", BsonArray.fromIterable(s.showtimes.map(encodeShowtime)))
-    doc
-  }
-
-  private def encodeCinemaScrape(s: CinemaScrape): BsonDocument = {
-    val doc = new BsonDocument()
-    doc.put("cinema", BsonString(s.cinema.displayName))
-    doc.put("title",  BsonString(s.title))
-    s.year.foreach(y => doc.put("year", BsonInt32(y)))
     doc
   }
 
@@ -310,32 +291,13 @@ class MongoMovieRepo extends MovieRepo with Logging {
           tmdbId         = d.get("tmdbId").flatMap(v => Try(v.asInt32().getValue).toOption),
           metacriticUrl  = d.get("metacriticUrl").flatMap(v => Try(v.asString().getValue).toOption),
           rottenTomatoesUrl = d.get("rottenTomatoesUrl").flatMap(v => Try(v.asString().getValue).toOption),
-          // Missing for rows that pre-date the provenance field; treat as
-          // Set.empty so the very next scrape tick re-publishes once and
-          // populates the set. The legacy `cinemaTitles` field, if present
-          // in Mongo, is ignored — `cinemaTitles` is now derived from
-          // `cinemaScrapes`, and the next write drops it from the doc.
-          cinemaScrapes = d.get("cinemaScrapes").flatMap(v => Try(decodeCinemaScrapes(v.asArray())).toOption).getOrElse(Set.empty),
-          data          = data
+          // Legacy fields (`cinemaScrapes`, `cinemaTitles`) on older docs are
+          // ignored — current isNew dedup and `cinemaTitles` derive from
+          // `data`. The next upsert rewrites the row without these fields.
+          data = data
         )
       )
     }
-
-  private def decodeCinemaScrapes(arr: BsonArray): Set[CinemaScrape] = {
-    val byName: Map[String, Cinema] = Cinema.all.map(c => c.displayName -> c).toMap
-    arr.getValues.asScala.iterator.flatMap { v =>
-      for {
-        sub      <- Try(v.asDocument()).toOption
-        cinemaN  <- Try(sub.get("cinema").asString().getValue).toOption
-        cinema   <- byName.get(cinemaN)
-        title    <- Try(sub.get("title").asString().getValue).toOption
-      } yield CinemaScrape(
-        cinema = cinema,
-        title  = title,
-        year   = Option(sub.get("year")).flatMap(v2 => Try(v2.asInt32().getValue).toOption)
-      )
-    }.toSet
-  }
 
   private def decodeSourceData(doc: BsonDocument): Map[Source, SourceData] =
     doc.entrySet().asScala.iterator.flatMap { entry =>

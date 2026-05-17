@@ -94,14 +94,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // InMemoryMovieRepo behind the cache) inherit the gate automatically;
   // there's no duplicate logic to maintain.
 
-  private def mkResolved(tmdbId: Int, scrapes: Set[CinemaScrape] = Set.empty,
-                        showings: Map[Cinema, SourceData] = Map.empty): MovieRecord =
+  private def mkResolved(tmdbId: Int,
+                         cinemaSlots: Map[Cinema, SourceData] = Map.empty): MovieRecord =
     MovieRecord(
       imdbId         = Some("tt-anything"),
       imdbRating     = Some(8.0),
       tmdbId         = Some(tmdbId),
-      cinemaScrapes  = scrapes,
-      data           = showings.map { case (c, sd) => (c: Source) -> sd } +
+      data           = cinemaSlots.map { case (c, sd) => (c: Source) -> sd } +
                        (Tmdb -> SourceData(originalTitle = Some("Original")))
     )
 
@@ -110,29 +109,31 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repo)
     val k1    = cache.keyOf("Viridiana", Some(1961))
     val k2    = cache.keyOf("Viridiana", Some(1962))
-    cache.put(k1, mkResolved(4497, scrapes = Set(CinemaScrape(KinoPalacowe, "Viridiana", Some(1961)))))
+    cache.put(k1, mkResolved(4497, cinemaSlots = Map(KinoPalacowe -> SourceData(title = Some("Viridiana"), releaseYear = Some(1961)))))
     repo.upserts.clear()
     repo.deletes.clear()
 
     // Second write at K2 with same tmdbId — should NOT create a row at K2.
-    cache.put(k2, mkResolved(4497, scrapes = Set(CinemaScrape(KinoPalacowe, "Viridiana", Some(1962)))))
+    cache.put(k2, mkResolved(4497, cinemaSlots = Map(KinoPalacowe -> SourceData(title = Some("Viridiana"), releaseYear = Some(1962)))))
 
     cache.get(k1) shouldBe defined
     cache.get(k2) shouldBe None
     cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Viridiana", Some(1961)))
   }
 
-  it should "union cinemaScrapes from the victim onto the canonical row" in {
+  it should "carry the victim's per-cinema slot onto the canonical row" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     val k1    = cache.keyOf("Viridiana", Some(1961))
     val k2    = cache.keyOf("Viridiana", Some(1962))
-    cache.put(k1, mkResolved(4497, scrapes = Set(CinemaScrape(KinoPalacowe, "Viridiana", Some(1961)))))
-    cache.put(k2, mkResolved(4497, scrapes = Set(CinemaScrape(KinoPalacowe, "Viridiana", Some(1962)))))
+    cache.put(k1, mkResolved(4497, cinemaSlots = Map(KinoPalacowe -> SourceData(title = Some("Viridiana"), releaseYear = Some(1961)))))
+    cache.put(k2, mkResolved(4497, cinemaSlots = Map(Helios       -> SourceData(title = Some("Viridiana"), releaseYear = Some(1962)))))
 
-    cache.get(k1).get.cinemaScrapes shouldBe Set(
-      CinemaScrape(KinoPalacowe, "Viridiana", Some(1961)),
-      CinemaScrape(KinoPalacowe, "Viridiana", Some(1962))
-    )
+    val canonical = cache.get(k1).get
+    canonical.cinemaData.keySet shouldBe Set(KinoPalacowe, Helios)
+    canonical.cinemaData(KinoPalacowe).title       shouldBe Some("Viridiana")
+    canonical.cinemaData(KinoPalacowe).releaseYear shouldBe Some(1961)
+    canonical.cinemaData(Helios).title             shouldBe Some("Viridiana")
+    canonical.cinemaData(Helios).releaseYear       shouldBe Some(1962)
   }
 
   it should "delete the victim from Mongo when the source key already held a row" in {
@@ -161,7 +162,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.put(k1, mkResolved(4497))
     repo.upserts.clear()
 
-    cache.put(k2, mkResolved(4497, scrapes = Set(CinemaScrape(KinoPalacowe, "Viridiana", Some(1962)))))
+    cache.put(k2, mkResolved(4497, cinemaSlots = Map(KinoPalacowe -> SourceData(title = Some("Viridiana"), releaseYear = Some(1962)))))
 
     val titles = repo.upserts.map { case (t, y, _) => (t, y) }
     titles should contain (("Viridiana", Some(1961)))
@@ -212,8 +213,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val latin    = cache.keyOf("Diabeł ubiera się u Prady 2", Some(2026))
     val cyrillic = cache.keyOf("ДИЯВОЛ НОСИТЬ ПРАДА 2",       Some(2026))
 
-    cache.put(latin,    mkResolved(928344, scrapes = Set(CinemaScrape(Multikino, "Diabeł ubiera się u Prady 2", Some(2026)))))
-    cache.put(cyrillic, mkResolved(928344, scrapes = Set(CinemaScrape(Helios,    "ДИЯВОЛ НОСИТЬ ПРАДА 2",       Some(2026)))))
+    cache.put(latin,    mkResolved(928344, cinemaSlots = Map(Multikino -> SourceData(title = Some("Diabeł ubiera się u Prady 2"), releaseYear = Some(2026)))))
+    cache.put(cyrillic, mkResolved(928344, cinemaSlots = Map(Helios    -> SourceData(title = Some("ДИЯВОЛ НОСИТЬ ПРАДА 2"),       releaseYear = Some(2026)))))
 
     cache.get(latin)    shouldBe defined
     cache.get(cyrillic) shouldBe defined
@@ -225,8 +226,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val regular = cache.keyOf("Diabeł ubiera się u Prady 2",                 Some(2026))
     val dub     = cache.keyOf("Diabeł ubiera się u Prady 2 ukraiński dubbing", Some(2026))
 
-    cache.put(regular, mkResolved(928344, scrapes = Set(CinemaScrape(CinemaCityPoznanPlaza, "Diabeł ubiera się u Prady 2",                Some(2026)))))
-    cache.put(dub,     mkResolved(928344, scrapes = Set(CinemaScrape(CinemaCityPoznanPlaza, "Diabeł ubiera się u Prady 2 ukraiński dubbing", Some(2026)))))
+    cache.put(regular, mkResolved(928344, cinemaSlots = Map(CinemaCityPoznanPlaza -> SourceData(title = Some("Diabeł ubiera się u Prady 2"),                releaseYear = Some(2026)))))
+    cache.put(dub,     mkResolved(928344, cinemaSlots = Map(CinemaCityPoznanPlaza -> SourceData(title = Some("Diabeł ubiera się u Prady 2 ukraiński dubbing"), releaseYear = Some(2026)))))
 
     cache.get(regular) shouldBe defined
     cache.get(dub)     shouldBe defined
@@ -468,8 +469,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.cinemaData.keySet shouldBe Set(Multikino, Helios)
     // Multikino's poster wins the merged view (priority rule).
     row.posterUrl shouldBe Some("multikino.jpg")
-    // Both raw titles are recorded in cinemaScrapes (and surfaced via the
-    // derived `cinemaTitles` view).
+    // Both raw titles are recorded in their per-cinema slot's `title` (and
+    // surfaced via the derived `cinemaTitles` view).
     row.cinemaTitles should contain allOf ("Top Gun: Maverick", "Top Gun Maverick")
   }
 
@@ -576,8 +577,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // Unicode letters: Cyrillic and Latin titles produce different normalised
   // forms, so the redirect filter can't merge them. No explicit cross-script
   // filter on `put` is needed — and `cinemaTitles` itself is derived from
-  // `cinemaScrapes`, so a Polish scrape onto a Polish row never gets a
-  // Cyrillic variant in its cinemaTitles to begin with.
+  // the per-cinema slot's `title`, so a Polish scrape onto a Polish row
+  // never gets a Cyrillic variant in its cinemaTitles to begin with.
 
   // Stop the flap loop where a year=None cinema title gets re-created every
   // tick. With `recordCinemaScrape`'s redirect, a fresh year=None scrape
@@ -603,7 +604,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Bez wyjścia", None)) shouldBe None
   }
 
-  it should "record the incoming raw cinema title in cinemaScrapes (and the derived cinemaTitles view)" in {
+  it should "record the incoming raw cinema title in the per-cinema slot (and the derived cinemaTitles view)" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     val survivor = MovieRecord(
       imdbId = Some("tt17490712"),

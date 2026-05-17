@@ -179,12 +179,12 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   // cleanTitle — making the Polish row look "missing" from the main page.
   "displayTitle" should "prefer the Latin / mixed-case variant over an all-caps Cyrillic one" in {
     val e = MovieRecord(
-      imdbId        = Some("tt33612209"),
-      tmdbId        = Some(1314481),
-      cinemaScrapes = Set(
-        CinemaScrape(Multikino,             "Diabeł ubiera się u Prady 2", Some(2026)),
-        CinemaScrape(CinemaCityPoznanPlaza, "Diabeł ubiera się u prady 2", Some(2026)),
-        CinemaScrape(Helios,                "ДИЯВОЛ НОСИТЬ ПРАДА 2",       Some(2026))
+      imdbId = Some("tt33612209"),
+      tmdbId = Some(1314481),
+      data = Map[Source, SourceData](
+        Multikino             -> SourceData(title = Some("Diabeł ubiera się u Prady 2"), releaseYear = Some(2026)),
+        CinemaCityPoznanPlaza -> SourceData(title = Some("Diabeł ubiera się u prady 2"), releaseYear = Some(2026)),
+        Helios                -> SourceData(title = Some("ДИЯВОЛ НОСИТЬ ПРАДА 2"),       releaseYear = Some(2026))
       )
     )
     e.displayTitle("Diabeł ubiera się u Prady 2") shouldBe "Diabeł ubiera się u Prady 2"
@@ -192,10 +192,10 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
 
   it should "still pick the proper-cased variant when only Latin forms compete" in {
     val e = MovieRecord(
-      cinemaScrapes = Set(
-        CinemaScrape(Multikino,             "Top Gun: Maverick", Some(2022)),
-        CinemaScrape(CinemaCityPoznanPlaza, "TOP GUN: MAVERICK", Some(2022)),
-        CinemaScrape(Helios,                "top gun: maverick", Some(2022))
+      data = Map[Source, SourceData](
+        Multikino             -> SourceData(title = Some("Top Gun: Maverick"), releaseYear = Some(2022)),
+        CinemaCityPoznanPlaza -> SourceData(title = Some("TOP GUN: MAVERICK"), releaseYear = Some(2022)),
+        Helios                -> SourceData(title = Some("top gun: maverick"), releaseYear = Some(2022))
       )
     )
     e.displayTitle("Top Gun: Maverick") shouldBe "Top Gun: Maverick"

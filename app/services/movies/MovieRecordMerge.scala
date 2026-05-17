@@ -18,8 +18,6 @@ import models.{MovieRecord, Source, SourceData}
  *     MC/RT/Filmweb URLs) come from the canonical. Both rows necessarily
  *     have the same tmdbId-derived data once they're identified as the
  *     same film; preferring the canonical avoids churn.
- *   - `cinemaScrapes` is unioned — every (cinema, raw title, raw year)
- *     provenance entry from both rows survives.
  *   - `data` is unioned per-source: when only one row has a slot for source
  *     S, that slot survives unchanged; when BOTH rows have a slot for the
  *     same source (the regression case — a cinema reports the film twice
@@ -38,10 +36,7 @@ import models.{MovieRecord, Source, SourceData}
 object MovieRecordMerge {
 
   def union(canonical: MovieRecord, victim: MovieRecord): MovieRecord =
-    canonical.copy(
-      cinemaScrapes = canonical.cinemaScrapes ++ victim.cinemaScrapes,
-      data          = mergeData(canonical.data, victim.data)
-    )
+    canonical.copy(data = mergeData(canonical.data, victim.data))
 
   private def mergeData(
     canonical: Map[Source, SourceData],

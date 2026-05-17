@@ -137,8 +137,9 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
   //
   // Steps 3 and 4 used to drive IdentityMerger explicitly to collapse the
   // three Mortal Kombat II rows into one. After the canonical-key fix in
-  // recordCinemaScrape + the cinemaScrapes provenance check, no extra rows
-  // are created at scrape time, so the merger isn't needed and was removed.
+  // recordCinemaScrape + the per-cinema slot provenance check, no extra
+  // rows are created at scrape time, so the merger isn't needed and was
+  // removed.
   // The remaining invariant — exactly one row carries the cinema slots,
   // regardless of which cinema scrapes first — is now enforced entirely by
   // the scrape layer + the bus-driven TMDB stage's sibling short-circuit.

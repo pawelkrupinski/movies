@@ -35,24 +35,18 @@ case class MovieRecord(
   metacriticUrl:     Option[String]   = None,
   rottenTomatoesUrl: Option[String]   = None,
 
-  // Every (cinema, raw title, raw year) tuple that has scraped into this
-  // record. Used by `recordCinemaScrape` to detect repeat scrapes — when a
-  // cinema reports the same `(title, year)` it reported last tick, no event
-  // is published (TMDB / IMDb / rating fetchers already did their work for
-  // this combination, so re-publishing would just churn no-op event
-  // dispatches across every listener). New scrape tuples — a freshly-seen
-  // cinema, a new title spelling, or a year correction — still emit so
-  // enrichment can pick up any context that wasn't present before. Also
-  // doubles as the source of `cinemaTitles`: every raw title is derived
-  // from the scrape tuples — no separately-stored Set is necessary.
-  cinemaScrapes:     Set[CinemaScrape] = Set.empty,
-
   // Per-source data from the most recent refresh. Cinemas contribute on
   // every scrape tick (their slot gets replaced wholesale, and dropped if
   // the film leaves their listings); `Tmdb`/`Imdb` slots come from the
   // enrichment pipeline (and are kept until something re-enriches the row).
   // Merged top-level values (posterUrl, synopsis, …) are computed on the
   // fly from this map — see the accessors below.
+  //
+  // `cinemaTitles` is derived from the cinema slots' `title` values —
+  // there's no separate per-tick provenance store, so a cinema that drops
+  // a film mid-rotation loses its title variant from the derived view.
+  // Acceptable trade-off: `displayTitle` falls back to the cache-key
+  // `cleanTitle` anchor when no slot has a better candidate.
   data:              Map[Source, SourceData] = Map.empty
 ) {
   def imdbUrl: Option[String] = imdbId.map(id => s"https://www.imdb.com/title/$id/")
@@ -66,9 +60,9 @@ case class MovieRecord(
   def cinemaData: Map[Cinema, SourceData] =
     data.collect { case (c: Cinema, sd) => c -> sd }
 
-  /** Derived view of every raw cinema-reported title that has scraped into
-   *  this record. */
-  def cinemaTitles: Set[String] = cinemaScrapes.map(_.title)
+  /** Derived view of every raw title currently reported by a cinema for
+   *  this record. Empty when no cinema is scraping. */
+  def cinemaTitles: Set[String] = cinemaData.values.flatMap(_.title).toSet
 
   // ── Merged top-level values derived from `data` ──────────────────────────
   //

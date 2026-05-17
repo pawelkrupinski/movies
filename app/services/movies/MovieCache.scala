@@ -1,7 +1,7 @@
 package services.movies
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
-import models.{Cinema, CinemaMovie, CinemaScrape, MovieRecord, Source, SourceData}
+import models.{Cinema, CinemaMovie, MovieRecord, Source, SourceData}
 import play.api.Logging
 import services.cinemas.CountryNames
 
@@ -311,14 +311,17 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
           filmUrl        = cm.filmUrl,
           showtimes      = cm.showtimes
         )
-        val scrape = CinemaScrape(cinema, cm.movie.title, cm.movie.releaseYear)
-        val isNew  = !existing.cinemaScrapes.contains(scrape)
-        // The raw cinema-reported title goes into `cinemaScrapes`; the
-        // derived `cinemaTitles` view picks it up automatically.
-        put(key, existing.copy(
-          cinemaScrapes = existing.cinemaScrapes + scrape,
-          data          = existing.data + ((cinema: Source) -> slot)
-        ))
+        // `isNew` controls whether to publish `MovieRecordCreated` to the bus.
+        // We dedup against the prior slot for this cinema — the same `(title,
+        // year)` reported tick after tick suppresses the event so downstream
+        // listeners don't churn. A pruned-then-re-listed scrape will re-emit
+        // (no prior slot to compare against), which is harmless since the
+        // listeners early-exit on already-resolved rows.
+        val priorSlot = existing.data.get(cinema)
+        val isNew = !priorSlot.exists(s =>
+          s.title.contains(cm.movie.title) && s.releaseYear == cm.movie.releaseYear
+        )
+        put(key, existing.copy(data = existing.data + ((cinema: Source) -> slot)))
         (cm, key, isNew)
       }
     }

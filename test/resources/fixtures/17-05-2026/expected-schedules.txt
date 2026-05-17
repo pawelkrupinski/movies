@@ -1055,8 +1055,8 @@ showings:
   2026-06-10  Helios Posnania               18:00 2D/NAP
   2026-06-25  Multikino Stary Browar        20:00 Sala 4 2D/NAP
 
-=== Drzewo magii ===
-displayTitle:      Drzewo magii
+=== Drzewo Magii ===
+displayTitle:      Drzewo Magii
 cinemaTitles:      Drzewo Magii | Drzewo magii
 runtimeMinutes:    110
 releaseYear:       2025
@@ -2122,7 +2122,7 @@ showings:
 
 === Kino bez barier: Arco (AD ===
 displayTitle:      Kino bez barier: Arco (AD
-cinemaTitles:      Kino bez barier: Arco (AD + CC + PJM) | Kino bez barier: Arco (AD + CC)
+cinemaTitles:      Kino bez barier: Arco (AD + CC + PJM)
 runtimeMinutes:    88
 releaseYear:       2025
 countries:         Francja
@@ -2144,7 +2144,6 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14334-kino-bez-barier-arco-ad-cc-pjm/
 cinemaScrapes:
   Kino Pałacowe / Kino bez barier: Arco (AD + CC + PJM) / 2025
-  Kino Pałacowe / Kino bez barier: Arco (AD + CC) / 2025
 showings:
   2026-05-21  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
@@ -2178,7 +2177,7 @@ showings:
 
 === Kino bez barier: Drugie życie (AD ===
 displayTitle:      Kino bez barier: Drugie życie (AD
-cinemaTitles:      Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC)
+cinemaTitles:      Kino bez barier: Drugie życie (AD + CC)
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
@@ -2199,14 +2198,13 @@ filmwebUrl:        https://www.filmweb.pl/film/Drugie+%C5%BCycie-2025-10088399
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14483-kino-bez-barier-drugie-zycie-ad-cc/
 cinemaScrapes:
-  Kino Pałacowe / Kino bez barier: Drugie życie (AD + CC + PJM) / 2025
   Kino Pałacowe / Kino bez barier: Drugie życie (AD + CC) / 2025
 showings:
   2026-06-16  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
 === Kino bez barier: Freak Show (AD ===
 displayTitle:      Kino bez barier: Freak Show (AD
-cinemaTitles:      Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie | Kino bez barier: Freak Show (AD + CC)
+cinemaTitles:      Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie
 runtimeMinutes:    75
 releaseYear:       2026
 countries:         Polska
@@ -2228,13 +2226,12 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14482-kino-bez-barier-freak-show-ad-cc-pjm/
 cinemaScrapes:
   Kino Pałacowe / Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie / 2026
-  Kino Pałacowe / Kino bez barier: Freak Show (AD + CC) / 2026
 showings:
   2026-06-11  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
 === Kino bez barier: Milcząca przyjaciółka (AD ===
 displayTitle:      Kino bez barier: Milcząca przyjaciółka (AD
-cinemaTitles:      Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM) | Kino bez barier: Milcząca przyjaciółka (AD + CC)
+cinemaTitles:      Kino bez barier: Milcząca przyjaciółka (AD + CC)
 runtimeMinutes:    147
 releaseYear:       2025
 countries:         Niemcy, Francja, Węgry
@@ -2255,7 +2252,6 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14479-kino-bez-barier-milczaca-przyjacioka-ad-cc/
 cinemaScrapes:
-  Kino Pałacowe / Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM) / 2025
   Kino Pałacowe / Kino bez barier: Milcząca przyjaciółka (AD + CC) / 2025
 showings:
   2026-06-02  Kino Pałacowe                 11:00 Sala 1 - Kinowa
@@ -2549,8 +2545,8 @@ cinemaScrapes:
 showings:
   2026-06-12  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
-=== Kurozając i świątynia świstaka ===
-displayTitle:      Kurozając i świątynia świstaka
+=== Kurozając i Świątynia Świstaka ===
+displayTitle:      Kurozając i Świątynia Świstaka
 cinemaTitles:      Kurozając i Świątynia Świstaka | Kurozając i świątynia świstaka
 runtimeMinutes:    89
 releaseYear:       2026
@@ -3232,8 +3228,8 @@ showings:
   2026-05-19  Kino Bułgarska 19             18:10 Sala Thelma & Louise
   2026-05-20  Kino Muza                     14:30 Sala 2
 
-=== Mortal Kombat 2 ===
-displayTitle:      Mortal Kombat 2
+=== Mortal Kombat II ===
+displayTitle:      Mortal Kombat II
 cinemaTitles:      Mortal Kombat 2 | Mortal Kombat II
 runtimeMinutes:    116
 releaseYear:       2026
@@ -6532,8 +6528,8 @@ cinemaScrapes:
 showings:
   2026-11-03  Kino Muza                     20:00 Sala 1
 
-=== Znaki pana śliwki ===
-displayTitle:      Znaki pana śliwki
+=== Znaki Pana Śliwki ===
+displayTitle:      Znaki Pana Śliwki
 cinemaTitles:      Znaki Pana Śliwki | Znaki pana śliwki
 runtimeMinutes:    72
 releaseYear:       2025

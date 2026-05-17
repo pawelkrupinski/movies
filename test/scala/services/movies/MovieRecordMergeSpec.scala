@@ -23,9 +23,8 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     imdbRating    = Some(8.0),
     metascore     = Some(75),
     tmdbId        = Some(42),
-    cinemaScrapes = Set(CinemaScrape(Multikino, "Foo", Some(2024))),
     data = Map[Source, SourceData](
-      Multikino -> slot("m.jpg"),
+      Multikino -> slot("m.jpg").copy(title = Some("Foo"), releaseYear = Some(2024)),
       Tmdb      -> SourceData(originalTitle = Some("Canonical"))
     )
   )
@@ -34,9 +33,8 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     imdbRating    = Some(1.0),
     metascore     = None,
     tmdbId        = Some(42),
-    cinemaScrapes  = Set(CinemaScrape(Helios, "Foo", None)),
     data = Map[Source, SourceData](
-      Helios -> slot("h.jpg"),
+      Helios -> slot("h.jpg").copy(title = Some("Foo")),
       Tmdb   -> SourceData(originalTitle = Some("Stale"))
     )
   )
@@ -50,12 +48,13 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     merged.tmdbId        shouldBe Some(42)
   }
 
-  it should "union cinemaScrapes from both rows" in {
+  it should "preserve each row's per-cinema title and release year on the merged record" in {
     val merged = MovieRecordMerge.union(canonical, victim)
-    merged.cinemaScrapes shouldBe Set(
-      CinemaScrape(Multikino, "Foo", Some(2024)),
-      CinemaScrape(Helios,    "Foo", None)
-    )
+    merged.cinemaData.keySet                    shouldBe Set(Multikino, Helios)
+    merged.cinemaData(Multikino).title          shouldBe Some("Foo")
+    merged.cinemaData(Multikino).releaseYear    shouldBe Some(2024)
+    merged.cinemaData(Helios).title             shouldBe Some("Foo")
+    merged.cinemaData(Helios).releaseYear       shouldBe None
   }
 
   // Disjoint cinemas: each cinema's slot lands intact, no merging needed.

@@ -267,18 +267,25 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       enrichment.displayTitle(PradaTitle) shouldBe PradaTitle
       regular.movie.title                 shouldBe enrichment.displayTitle(PradaTitle)
 
-      // Provenance: one CinemaScrape per cinema that reported this row.
-      // Year-divergence is intentional — Multikino + CharlieMonroe drop
-      // the year, CC + Helios + Rialto carry it. The redirect in
-      // `recordCinemaScrape` collapses all six onto one CacheKey.
-      enrichment.cinemaScrapes shouldBe Set(
-        CinemaScrape(CharlieMonroe,         "Diabeł ubiera się u Prady 2", None),
-        CinemaScrape(CinemaCityKinepolis,   "Diabeł ubiera się u Prady 2", Some(2026)),
-        CinemaScrape(Multikino,             "Diabeł ubiera się u Prady 2", None),
-        CinemaScrape(Rialto,                "Diabeł ubiera się u prady 2", Some(2026)),
-        CinemaScrape(Helios,                "Diabeł ubiera się u Prady 2", Some(2026)),
-        CinemaScrape(CinemaCityPoznanPlaza, "Diabeł ubiera się u Prady 2", Some(2026))
+      // Provenance: every cinema that reported this row contributes a slot
+      // in `cinemaData`. Year-divergence is intentional — Multikino +
+      // CharlieMonroe drop the year, CC + Helios + Rialto carry it. The
+      // redirect in `recordCinemaScrape` collapses all six onto one CacheKey.
+      enrichment.cinemaData.keySet shouldBe Set(
+        CharlieMonroe, CinemaCityKinepolis, Multikino, Rialto, Helios, CinemaCityPoznanPlaza
       )
+      enrichment.cinemaData(CharlieMonroe).title              shouldBe Some("Diabeł ubiera się u Prady 2")
+      enrichment.cinemaData(CharlieMonroe).releaseYear        shouldBe None
+      enrichment.cinemaData(CinemaCityKinepolis).title        shouldBe Some("Diabeł ubiera się u Prady 2")
+      enrichment.cinemaData(CinemaCityKinepolis).releaseYear  shouldBe Some(2026)
+      enrichment.cinemaData(Multikino).title                  shouldBe Some("Diabeł ubiera się u Prady 2")
+      enrichment.cinemaData(Multikino).releaseYear            shouldBe None
+      enrichment.cinemaData(Rialto).title                     shouldBe Some("Diabeł ubiera się u prady 2")
+      enrichment.cinemaData(Rialto).releaseYear               shouldBe Some(2026)
+      enrichment.cinemaData(Helios).title                     shouldBe Some("Diabeł ubiera się u Prady 2")
+      enrichment.cinemaData(Helios).releaseYear               shouldBe Some(2026)
+      enrichment.cinemaData(CinemaCityPoznanPlaza).title      shouldBe Some("Diabeł ubiera się u Prady 2")
+      enrichment.cinemaData(CinemaCityPoznanPlaza).releaseYear shouldBe Some(2026)
 
       // ── Cyrillic dub schedule (Helios's "ДИЯВОЛ НОСИТЬ ПРАДА 2") ─────────
       //
@@ -314,9 +321,9 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       val dubEnrichment = dub.enrichment.getOrElse(fail("dub schedule missing enrichment"))
       dubEnrichment.tmdbId         shouldBe Some(PradaTmdbId)
       dubEnrichment.imdbId         shouldBe Some(PradaImdbId)
-      dubEnrichment.cinemaScrapes  shouldBe Set(
-        CinemaScrape(Helios, "ДИЯВОЛ НОСИТЬ ПРАДА 2", None)
-      )
+      dubEnrichment.cinemaData.keySet              shouldBe Set(Helios)
+      dubEnrichment.cinemaData(Helios).title       shouldBe Some("ДИЯВОЛ НОСИТЬ ПРАДА 2")
+      dubEnrichment.cinemaData(Helios).releaseYear shouldBe None
       // Only one cinema reports the dub, so `displayTitle` just returns
       // that variant (preferredDisplay picks the single available form).
       dubEnrichment.displayTitle("ДИЯВОЛ НОСИТЬ ПРАДА 2") shouldBe "ДИЯВОЛ НОСИТЬ ПРАДА 2"
@@ -362,7 +369,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
    *  by display title. Each block lists every field a viewer of the `/`
    *  card would see (title, runtime, year, poster, synopsis size, cast,
    *  director, per-cinema deep-links) plus every enrichment value (tmdbId,
-   *  imdbId, ratings, MC/RT/FW URLs, cinemaScrapes provenance) plus the
+   *  imdbId, ratings, MC/RT/FW URLs, per-cinema slot provenance) plus the
    *  full per-(date, cinema) showtime list with room + format tokens. */
   private def renderSchedules(schedules: Seq[FilmSchedule]): String =
     schedules.sortBy(s => (s.movie.title.toLowerCase, s.movie.releaseYear)).map(renderOne).mkString("\n\n")
@@ -371,9 +378,11 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     val e = s.enrichment
     val cinemaUrls = s.cinemaFilmUrls.sortBy(_._1.displayName)
       .map { case (c, u) => s"${c.displayName} = $u" }
-    val scrapes = e.map(_.cinemaScrapes.toSeq
-      .sortBy(s => (s.cinema.displayName, s.title, s.year.getOrElse(Int.MinValue)))
-      .map(sc => s"${sc.cinema.displayName} / ${sc.title} / ${sc.year.map(_.toString).getOrElse("—")}"))
+    val scrapes = e.map(_.cinemaData.toSeq
+      .sortBy { case (c, sd) => (c.displayName, sd.title.getOrElse(""), sd.releaseYear.getOrElse(Int.MinValue)) }
+      .map { case (c, sd) =>
+        s"${c.displayName} / ${sd.title.getOrElse("—")} / ${sd.releaseYear.map(_.toString).getOrElse("—")}"
+      })
       .getOrElse(Nil)
     // `cinemaTitles` is the set of raw spellings each cinema reported.
     // `displayTitle` is the picker's choice across that set — the
@@ -420,33 +429,32 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   }
 
   // Reproduction attempt: pre-fix Mongo data shows `ДИЯВОЛ НОСИТЬ ПРАДА 2`'s
-  // `cinemaScrapes` polluted with Latin "Diabeł ubiera się u Prady 2"
+  // per-cinema slots polluted with Latin "Diabeł ubiera się u Prady 2"
   // entries from CC Kinepolis / CC Plaza / Helios / Multikino / Charlie
-  // Monroe / Rialto — including duplicate `(year=None, year=Some(2026))`
-  // tuples for the same cinema. With the cleanTitle-strict fold gate in
-  // place, no current code path should bleed across the Polish/Cyrillic
-  // rows; this case proves it across two scrape ticks back-to-back, which
-  // is when accumulation would normally show.
+  // Monroe / Rialto. With the cleanTitle-strict fold gate in place, no
+  // current code path should bleed across the Polish/Cyrillic rows; this
+  // case proves it across two scrape ticks back-to-back, which is when
+  // accumulation would normally show.
   //
   // The two-tick shape catches:
-  //   - re-scrape adding to existing `cinemaScrapes` for the wrong row,
+  //   - re-scrape adding cinema slots to the wrong row,
   //   - identity-gate fold firing on second-pass tmdbId hits,
   //   - bus events from the second tick triggering a TMDB re-resolve
   //     that lands on the wrong sibling.
   //
   // If this assertion ever fails, the bug is in current code; otherwise
   // the user's production data is purely legacy folded state.
-  it should "keep the Cyrillic Prada row's cinemaScrapes clean across multiple scrape ticks" in new FixtureTestWiring("17-05-2026") {
+  it should "keep the Cyrillic Prada row's cinema slots clean across multiple scrape ticks" in new FixtureTestWiring("17-05-2026") {
     // Two scrape ticks, both followed by an event drain so each tick's
     // TMDB / *Ratings cascade fully settles before the next one starts.
     //
     // First tick is the canonical end-to-end pass. Second tick re-runs
     // every scraper against the same fixtures — every (cinema, title,
-    // year) tuple is already in the row's `cinemaScrapes`, so
-    // `recordCinemaScrape`'s `isNew` check should suppress every bus
-    // event. If a regression makes the redirect cross cleanTitles, or
-    // the identity-gate fold misbehave on already-resolved rows, the
-    // Cyrillic row's `cinemaScrapes` accumulates Latin entries here.
+    // year) tuple is unchanged, so `recordCinemaScrape`'s `isNew` check
+    // should suppress every bus event. If a regression makes the redirect
+    // cross cleanTitles, or the identity-gate fold misbehave on already-
+    // resolved rows, the Cyrillic row's cinema slots pick up Latin
+    // entries here.
     runOneScrapeTick(cinemaScrapers, movieCache, eventBus)
     drainServices()
     // drainServices stops the worker pools — runOneScrapeTick on the
@@ -461,12 +469,12 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       .find(_.title == "ДИЯВОЛ НОСИТЬ ПРАДА 2")
       .getOrElse(fail("Cyrillic Prada row missing from cache after two scrape ticks"))
 
-    withClue(s"cinemaScrapes drift after second scrape tick: ${cyrillicRow.record.cinemaScrapes}\n") {
+    withClue(s"cinema slot drift after second scrape tick: ${cyrillicRow.record.cinemaData}\n") {
       // Only Helios scrapes the Cyrillic title in any fixture, and only
       // with year=None. Anything else here is cross-cleanTitle bleed.
-      cyrillicRow.record.cinemaScrapes shouldBe Set(
-        CinemaScrape(Helios, "ДИЯВОЛ НОСИТЬ ПРАДА 2", None)
-      )
+      cyrillicRow.record.cinemaData.keySet shouldBe Set(Helios)
+      cyrillicRow.record.cinemaData(Helios).title       shouldBe Some("ДИЯВОЛ НОСИТЬ ПРАДА 2")
+      cyrillicRow.record.cinemaData(Helios).releaseYear shouldBe None
     }
 
     // Conversely, the regular Polish row mustn't pick up the Cyrillic
@@ -474,9 +482,9 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     val regularRow = movieCache.snapshot()
       .find(_.title == PradaTitle)
       .getOrElse(fail("regular Polish Prada row missing from cache after two scrape ticks"))
-    withClue(s"Polish row picked up Cyrillic scrape: ${regularRow.record.cinemaScrapes}\n") {
-      regularRow.record.cinemaScrapes
-        .map(_.title)
+    withClue(s"Polish row picked up Cyrillic title: ${regularRow.record.cinemaData}\n") {
+      regularRow.record.cinemaData.values
+        .flatMap(_.title)
         .foreach { t => t should not be "ДИЯВОЛ НОСИТЬ ПРАДА 2" }
     }
   }

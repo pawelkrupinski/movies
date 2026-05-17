@@ -257,9 +257,9 @@ class MovieService(
       val resolvedImdbId = imdbId.orElse(if (preserveImdbId) existing.flatMap(_.imdbId) else None)
       // Carry the cinema-side fields forward — `recordCinemaScrape` may have
       // just landed a slot on this row, and the TMDB stage doesn't own
-      // cinema data. Without this, a fresh resolve wipes cinemaScrapes and
-      // every cinema's slot, and the row drops out of `toSchedules` until
-      // the next scrape tick repopulates it.
+      // cinema data. Without this, a fresh resolve wipes every cinema's
+      // slot and the row drops out of `toSchedules` until the next scrape
+      // tick repopulates it.
       val carriedData = existing.map(_.data).getOrElse(Map.empty[Source, SourceData])
       // Fetch the full TMDB record in a single round-trip so the SourceData
       // (Tmdb) slot carries the Polish synopsis, director, cast, runtime,
@@ -299,7 +299,6 @@ class MovieService(
         tmdbId            = Some(hit.id),
         metacriticUrl     = existing.flatMap(_.metacriticUrl),
         rottenTomatoesUrl = existing.flatMap(_.rottenTomatoesUrl),
-        cinemaScrapes     = existing.map(_.cinemaScrapes).getOrElse(Set.empty),
         data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
       )
       // Re-key the row by its resolved year when the cinema didn't supply
