@@ -1,22 +1,26 @@
 @import models.MovieRecord
 @(enrichment: Option[MovieRecord], fallbackTitle: String)
+@* `onclick="event.stopPropagation()"` on each pill so a click in the debug
+   page's data row navigates to the rating page without also toggling that
+   row's expanded-details panel. Harmless on /film and / where the parent
+   isn't click-to-expand. *@
 @enrichment.map { e =>
   <div class="ratings">
     @e.imdbRating.map { r =>
-      <a href="@e.imdbUrl" target="_blank" rel="noopener" class="rating-imdb" title="IMDb">
+      <a href="@e.imdbUrl" target="_blank" rel="noopener" class="rating-imdb" title="IMDb" onclick="event.stopPropagation()">
         <span class="rating-imdb-label">IMDb</span><span class="rating-imdb-value">@{f"$r%.1f"}</span>
       </a>
     }
     @e.metascore.map { m =>
-      <a href="@e.metacriticHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-meta" title="Metacritic">@m</a>
+      <a href="@e.metacriticHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-meta" title="Metacritic" onclick="event.stopPropagation()">@m</a>
     }
     @e.rottenTomatoes.map { rt =>
-      <a href="@e.rottenTomatoesHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-rt @if(rt >= 60) {fresh} else {rotten}" title="Rotten Tomatoes">
+      <a href="@e.rottenTomatoesHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-rt @if(rt >= 60) {fresh} else {rotten}" title="Rotten Tomatoes" onclick="event.stopPropagation()">
         <span class="rating-rt-label">RT</span><span class="rating-rt-value">@rt%</span>
       </a>
     }
     @e.filmwebRating.map { r =>
-      <a href="@e.filmwebHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-fw" title="Filmweb">
+      <a href="@e.filmwebHref(fallbackTitle)" target="_blank" rel="noopener" class="rating-fw" title="Filmweb" onclick="event.stopPropagation()">
         <span class="rating-fw-label">FW</span><span class="rating-fw-value">@{f"$r%.1f"}</span>
       </a>
     }
