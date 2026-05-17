@@ -1,6 +1,7 @@
 package services.movies
 
 import play.api.Logging
+import services.Stoppable
 import tools.DaemonExecutors
 
 import java.util.concurrent.TimeUnit
@@ -23,7 +24,7 @@ import scala.util.Try
  * `stop()` is registered as a shutdown hook). Per CLAUDE.md, the class
  * never self-subscribes or self-schedules.
  */
-class UnscreenedCleanup(cache: MovieCache) extends Logging {
+class UnscreenedCleanup(cache: MovieCache) extends Stoppable with Logging {
 
   private val scheduler = DaemonExecutors.scheduler("unscreened-cleanup")
 

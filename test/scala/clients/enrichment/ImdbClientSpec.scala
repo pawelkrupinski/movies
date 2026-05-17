@@ -3,11 +3,11 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.ImdbClient
-import tools.GetOnlyHttpFetch
+import tools.{GetOnlyHttpFetch, RealHttpFetch}
 
 class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
-  private val client = new ImdbClient()
+  private val client = new ImdbClient(new RealHttpFetch)
 
   "parseRating" should "extract the aggregateRating from the GraphQL response" in {
     val body = """{"data":{"title":{"ratingsSummary":{"aggregateRating":7.0,"voteCount":16966}}}}"""

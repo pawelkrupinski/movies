@@ -1,0 +1,47 @@
+<!doctype html>
+<html class="no-js" lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Rotten Tomatoes: Movies | TV Shows | Movie Trailers | Reviews - Maintenance in Progress</title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Place favicon.ico in the root directory -->
+  <style>
+    .navbar.navbar-rt {
+        font-family: "Franklin Gothic FS","Helvetica Neue",Helvetica,Arial,sans-serif;
+        background-color: #FA320A;
+        border-radius: 0;
+        margin: 0 auto;
+    }   
+    .navbar.navbar-rt .navbar-brand {
+        height: auto;
+        width: 36%;
+    }
+    body {
+        text-align: center;
+    }
+    #header-rt-logo {
+        display: block;
+    }
+    .rt-logo {
+        width: 260px;
+        margin: auto auto;
+        display: block;
+        text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+    <div id="navbar" class="navbar navbar-rt" role="navigation">    
+        <a id="header-rt-logo" href="https://www.rottentomatoes.com/">
+            <img class="rt-logo" src="https://images.fandango.com/cms/assets/68ffa860-b30f-11ed-9d20-83ee649e98bd--rotten-logo-ko-322x100.png">
+        </a>
+    </div>
+  <!-- Add your site or application content here -->
+  <h1>Maintenance in progress</h1>
+
+</body>
+
+</html>

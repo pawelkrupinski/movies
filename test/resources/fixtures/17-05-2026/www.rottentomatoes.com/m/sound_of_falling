@@ -1,0 +1,4360 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" xmlns="http://www.w3.org/1999/xhtml" prefix="fb: http://www.facebook.com/2008/fbml og: http://opengraphprotocol.org/schema/">
+    <head prefix="og: http://ogp.me/ns# flixstertomatoes: http://ogp.me/ns/apps/flixstertomatoes#">
+
+        
+            <script>
+                const encodedData = sessionStorage.getItem('oneTrustSyncData');
+                let id, token;
+
+                if (encodedData) {
+                    try {
+                        const oneTrustSyncData = JSON.parse(atob(encodedData));
+                        id = oneTrustSyncData?.id;
+                        token = oneTrustSyncData?.token;
+                    } catch (e) {}
+                }
+
+                if (id && token) {
+                    var OneTrust = {
+                        dataSubjectParams: {
+                            id,
+                            isAnonymous: false,
+                            token
+                        }
+                    };
+                }
+            </script>
+            
+            <script
+                charset="UTF-8"
+                crossorigin="anonymous"
+                data-domain-script="01978557-1604-76a7-ad7c-18216757cf52"
+                integrity="sha384-ZSwMA1OqSOznvxMtYdWlw0CUYqxpHjUOjfz9IcOnQUXvWoX7QfD7wjN7tgv+SpLT"
+                src="https://cdn.cookielaw.org/consent/01978557-1604-76a7-ad7c-18216757cf52/otSDKStub.js"
+                type="text/javascript"
+            >
+            </script>
+            <script type="text/javascript">
+                function OptanonWrapper() {
+                    if (OnetrustActiveGroups.includes('7')) {
+                        document.querySelector('search-results-nav-manager')?.setAlgoliaInsightUserToken?.();
+                    }
+                }
+            </script>
+            
+
+            
+                <script
+                    ccpa-opt-out-ids="USP"
+                    ccpa-opt-out-geo="US"
+                    ccpa-opt-out-lspa="false"
+                    charset="UTF-8"
+                    src="https://cdn.cookielaw.org/opt-out/otCCPAiab.js"
+                    type="text/javascript"
+                >
+                </script>
+            
+        
+
+        
+            
+            <script src="/assets/pizza-pie/javascripts/bundles/roma/rt-common.js?single"></script>
+            
+        
+
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="shortcut icon" sizes="76x76" type="image/x-icon" href="https://www.rottentomatoes.com/assets/pizza-pie/images/favicon.ico" />
+
+        
+
+        
+    
+        
+    
+<title>Sound of Falling | Rotten Tomatoes</title>
+
+
+    <meta name="description" content="Discover reviews, ratings, and trailers for Sound of Falling on Rotten Tomatoes. Stay updated with critic and audience scores today!" />
+
+    <meta name="twitter:card" content="summary" />
+
+    <meta name="twitter:image" content="https://resizing.flixster.com/RX1kAJ9bmO4ay1sOsKLZlG9Cfts=/206x305/v2/https://resizing.flixster.com/ep0noWpvD4Cm3y5Rwj_OvsrTpWg=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzU3YjI1MzVhLTQ0ZTctNDdkMC04YjQyLTdhMTZmYzA3NmE1Zi5qcGc=" />
+
+    <meta name="twitter:title" content="Sound of Falling | Rotten Tomatoes" />
+
+    <meta name="twitter:text:title" content="Sound of Falling | Rotten Tomatoes" />
+
+    <meta name="twitter:description" content="Discover reviews, ratings, and trailers for Sound of Falling on Rotten Tomatoes. Stay updated with critic and audience scores today!" />
+
+
+
+    <meta property="og:site_name" content="Rotten Tomatoes" />
+
+    <meta property="og:title" content="Sound of Falling | Rotten Tomatoes" />
+
+    <meta property="og:description" content="Discover reviews, ratings, and trailers for Sound of Falling on Rotten Tomatoes. Stay updated with critic and audience scores today!" />
+
+    <meta property="og:type" content="video.movie" />
+
+    <meta property="og:url" content="https://www.rottentomatoes.com/m/sound_of_falling" />
+
+    <meta property="og:image" content="https://resizing.flixster.com/RX1kAJ9bmO4ay1sOsKLZlG9Cfts=/206x305/v2/https://resizing.flixster.com/ep0noWpvD4Cm3y5Rwj_OvsrTpWg=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzU3YjI1MzVhLTQ0ZTctNDdkMC04YjQyLTdhMTZmYzA3NmE1Zi5qcGc=" />
+
+    <meta property="og:locale" content="en_US" />
+
+
+
+    <link rel="canonical" href="https://www.rottentomatoes.com/m/sound_of_falling" />
+
+
+<script>
+    var dataLayer = dataLayer || [];
+    var RottenTomatoes = RottenTomatoes || {};
+    RottenTomatoes.dtmData = {"customerId":"","loggedInStatus":"","rtVersion":3.1,"webVersion":"node","emsID":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","pageName":"rt | movies | overview | Sound of Falling","titleGenre":"Drama","titleId":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","titleName":"Sound of Falling","titleType":"Movie"};
+    dataLayer.push({"customerId":"","loggedInStatus":"","rtVersion":3.1,"webVersion":"node","emsID":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","pageName":"rt | movies | overview | Sound of Falling","titleGenre":"Drama","titleId":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","titleName":"Sound of Falling","titleType":"Movie"});
+</script>
+
+
+    <script id="mps-page-integration">
+        window.mpscall = {"cag[certified_fresh]":"0","cag[fresh_rotten]":"rotten","cag[genre]":"Drama","cag[movieshow]":"Sound of Falling","cag[release]":"Jan 16, 2026","cag[score]":"null","cag[urlid]":"/sound_of_falling","cat":"movie|movie_page","field[env]":"production","field[rtid]":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","title":"Sound of Falling","type":"movie_page","site":"rottentomatoes-web"};
+        var mpsopts={'host':'app.mps.vsnt.net', 'updatecorrelator':1};
+        var mps=mps||{};mps._ext=mps._ext||{};mps._adsheld=[];mps._queue=mps._queue||{};mps._queue.mpsloaded=mps._queue.mpsloaded||[];mps._queue.mpsinit=mps._queue.mpsinit||[];mps._queue.gptloaded=mps._queue.gptloaded||[];mps._queue.adload=mps._queue.adload||[];mps._queue.adclone=mps._queue.adclone||[];mps._queue.adview=mps._queue.adview||[];mps._queue.refreshads=mps._queue.refreshads||[];mps.__timer=Date.now||function(){return+new Date};mps.__intcode="v2";if(typeof mps.getAd!="function")mps.getAd=function(adunit){if(typeof adunit!="string")return false;var slotid="mps-getad-"+adunit.replace(/\W/g,"");if(!mps._ext||!mps._ext.loaded){mps._queue.gptloaded.push(function(){typeof mps._gptfirst=="function"&&mps._gptfirst(adunit,slotid);mps.insertAd("#"+slotid,adunit)});mps._adsheld.push(adunit)}return'<div id="'+slotid+'" class="mps-wrapper" data-mps-fill-slot="'+adunit+'"></div>'};
+    </script>
+    <script src="//app.mps.vsnt.net/fetch/ext/load-rottentomatoes-web.js?nowrite=2" id="mps-load"></script>
+
+
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"Movie","actor":[{"@type":"Person","name":"Hanna Heckt","sameAs":"https://www.rottentomatoes.com/celebrity/hanna_heckt","image":"https://images.fandango.com/cms/assets/b0cefeb0-b6a8-11ed-81d8-51a487a38835--poster-default-thumbnail.jpg"},{"@type":"Person","name":"Lena Urzendowsky","sameAs":"https://www.rottentomatoes.com/celebrity/lena_urzendowsky","image":"https://resizing.flixster.com/6Z0YwdWRFeMurRKoRAxYt2afttI=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/838621_v9_ba.jpg"},{"@type":"Person","name":"Susanne Wuest","sameAs":"https://www.rottentomatoes.com/celebrity/susanne_wuest","image":"https://resizing.flixster.com/DD3H2jkBDfn_qGpY6Cx1SS4PFQQ=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/494815_v9_bb.jpg"},{"@type":"Person","name":"Luise Heyer","sameAs":"https://www.rottentomatoes.com/celebrity/luise_heyer","image":"https://resizing.flixster.com/-DfpQqaw0wTXjUJR-b5q5zG0YMQ=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/643794_v9_ba.jpg"},{"@type":"Person","name":"Lea Drinda","sameAs":"https://www.rottentomatoes.com/celebrity/lea_drinda","image":"https://resizing.flixster.com/OIizU0jX_Ga2TvVPJS_RbNyMhW0=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/1302084_v9_ba.jpg"}],"aggregateRating":{"@type":"AggregateRating","bestRating":"100","description":"The Tomatometer rating – based on the published opinions of hundreds of film and television critics – is a trusted measurement of movie and TV programming quality for millions of moviegoers. It represents the percentage of professional critic reviews that are positive for a given film or television show.","name":"Tomatometer","ratingCount":89,"ratingValue":"94","reviewCount":89,"worstRating":"0"},"dateCreated":"2026-01-16","director":[{"@type":"Person","name":"Mascha Schilinski","sameAs":"https://www.rottentomatoes.com/celebrity/mascha_schilinski","image":"https://images.fandango.com/cms/assets/b0cefeb0-b6a8-11ed-81d8-51a487a38835--poster-default-thumbnail.jpg"}],"description":"Discover reviews, ratings, and trailers for Sound of Falling on Rotten Tomatoes. Stay updated with critic and audience scores today!","genre":["Drama"],"image":"https://resizing.flixster.com/ep0noWpvD4Cm3y5Rwj_OvsrTpWg=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzU3YjI1MzVhLTQ0ZTctNDdkMC04YjQyLTdhMTZmYzA3NmE1Zi5qcGc=","name":"Sound of Falling","url":"https://www.rottentomatoes.com/m/sound_of_falling","video":{"@type":"VideoObject","thumbnailUrl":"https://statcdn.fandango.com/MPX/image/NBCU_Fandango/439/951/thumb_3B1734AB-9397-4BF1-A77C-24F650ACA0C8.jpg","name":"Sound of Falling: Trailer 1","duration":"1:42","sourceOrganization":"MPX","uploadDate":"2025-12-10T06:29:28","description":"","contentUrl":"https://www.rottentomatoes.com/m/sound_of_falling/videos/M7t6f1X7n6Bk"}}</script>
+
+
+        <link rel="manifest" href="https://www.rottentomatoes.com/assets/pizza-pie/manifest/manifest.json" />
+
+        <link rel="apple-touch-icon" href="https://www.rottentomatoes.com/assets/pizza-pie/head-assets/images/apple-touch-icon-60.jpg" />
+        <link rel="apple-touch-icon" sizes="152x152" href="https://www.rottentomatoes.com/assets/pizza-pie/head-assets/images/apple-touch-icon-152.jpg" />
+        <link rel="apple-touch-icon" sizes="167x167" href="https://www.rottentomatoes.com/assets/pizza-pie/head-assets/images/apple-touch-icon-167.jpg" />
+        <link rel="apple-touch-icon" sizes="180x180" href="https://www.rottentomatoes.com/assets/pizza-pie/head-assets/images/apple-touch-icon-180.jpg" />
+
+        
+            <!-- iOS Smart Banner -->
+            <meta name="apple-itunes-app" content="app-id=6673916573">
+        
+
+        
+        
+
+        
+        <meta name="google-site-verification" content="VPPXtECgUUeuATBacnqnCm4ydGO99reF-xgNklSbNbc" />
+
+        
+        <meta name="msvalidate.01" content="034F16304017CA7DCF45D43850915323" />
+        <meta name="theme-color" content="#FA320A">
+
+        <!-- DNS prefetch -->
+        <meta http-equiv="x-dns-prefetch-control" content="on">
+        
+            <link rel="dns-prefetch" href="//www.rottentomatoes.com" />
+        
+        
+            <link rel="preconnect" href="//www.rottentomatoes.com" />
+        
+
+        
+    
+            <link rel="stylesheet" href="/assets/pizza-pie/stylesheets/bundles/layouts/default.21df3aa7883.css" />
+
+            
+        
+
+    <link rel="preload" href="/assets/pizza-pie/stylesheets/bundles/pages/movie.a4b337bdfc6.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+
+
+        <script>
+            window.RottenTomatoes = {};
+            window.RTLocals = {};
+            window.nunjucksPrecompiled = {};
+            window.__RT__ = {};
+        </script>
+
+        
+            
+            <script src="https://cdn.jwplayer.com/libraries/U8MHzHHR.js"></script>
+            <script src="https://sb.scorecardresearch.com/c2/plugins/streamingtag_plugin_jwplayer.js"></script>
+        
+
+        
+        
+    </head>
+    
+    <body
+        class="body no-touch js-mptd-layout"
+        data-AdsGlobalSkinTakeoverManager="body"
+        data-SearchResultsNavManager="body"
+    >
+        <cookie-manager></cookie-manager>
+        <device-inspection-manager endpoint="https://www.rottentomatoes.com/napi/device/inspection"></device-inspection-manager>
+        <user-activity-manager></user-activity-manager>
+        <user-identity-manager></user-identity-manager>
+        <ad-unit-manager></ad-unit-manager>
+
+        <auth-initiate-manager
+    data-ArtiManager="authInitiateManager"
+    data-WatchlistButtonManager="authInitiateManager:createAccount"
+>
+</auth-initiate-manager>
+<auth-profile-manager data-AuthInitiateManager="authProfileManager"></auth-profile-manager>
+<auth-validation-manager data-AuthInitiateManager="authValidation"></auth-validation-manager>
+<overlay-base
+    data-AuthInitiateManager="overlayBase:close"
+    data-AuthProfileManager="overlayBase"
+    data-PagePollsIndexManager="authOverlay:close"
+    hidden
+>
+    <overlay-flows data-AuthInitiateManager="overlayFlows" data-AuthProfileManager="overlayFlows" slot="content">
+        <action-icon
+            slot="close"
+            class="auth-overlay__icon-button auth-overlay__icon-button--close"
+            aria-label="Close"
+            data-qa="close-overlay-btn"
+            icon="close"
+        ></action-icon>
+
+    </overlay-flows>
+</overlay-base>
+
+<notification-alert data-AuthInitiateManager="authSuccess" animate hidden>
+    <rt-icon icon="checkmark-circle-filled"></rt-icon>
+    <span>Signed in</span>
+</notification-alert>
+
+<div id="auth-templates" data-AuthInitiateManager="authTemplates">
+    <template slot="screens" id="account-create-username-screen">
+  <account-create-username-screen data-qa="account-create-username-screen">
+    <input-label slot="input-username" state="default" data-qa="username-input-label">
+      <label slot="label" for="create-username-input">Username</label>
+      <input slot="input" id="create-username-input" type="text" placeholder="Username" data-qa="username-input"/>
+    </input-label>
+    <rt-button slot="btn-continue" data-qa="continue-btn" disabled type="cta-large">
+      Continue
+    </rt-button>
+    <rt-text class="terms-and-policies" slot="terms-and-policies" size="0.75">
+      By joining, you agree to the <rt-link href="https://www.rottentomatoes.com/policies/terms-and-policies" target="_blank" data-qa="terms-policies-link">Terms and Policies</rt-link> and
+      the <rt-link href="https://www.versantprivacy.com/privacy" target="_blank" data-qa="privacy-policy-link">Privacy Policy</rt-link> and to receive email from 
+      <rt-link href="//www.fandango.com/about-us" target="_blank" data-qa="about-fandango-link">Fandango Media Brands</rt-link>.
+    </rt-text>
+  </account-create-username-screen>
+</template>
+
+    <template slot="screens" id="account-email-change-success-screen">
+  <account-email-change-success-screen data-qa="login-create-success-screen">
+    <rt-text slot="message" size="1.5" style="--fontWeight: var(--franklinGothicDemi);">Email change successful</rt-text>
+    <rt-text slot="submessage">You are signed out for your security. </br> Please sign in again.</rt-text>
+    <img slot="icon" src="/assets/pizza-pie/images/icons/cognito-success.3a3d5f32fab.svg" width="111" height="105" />
+  </account-email-change-success-screen>
+</template>
+
+    <template slot="screens" id="account-verifying-email-screen">
+  <account-verifying-email-screen data-qa="account-verifying-email-screen">
+    <img slot="icon" src="/assets/pizza-pie/images/icons/cognito-auth-verify.e74a69e9a77.svg" alt="email" />
+    <rt-text slot="status"> Verifying your email... </rt-text>
+    <rt-button
+      type="cta-large"
+      href="/?authFlowScreen=loginStartScreen"
+      slot="retry-link"
+      size="0.875"
+      style="--fontWeight: var(--franklinGothicMedium);"
+      data-qa="retry-link"
+    >
+      Retry
+    </rt-button>
+    <rt-text slot="terms-and-policies" size="0.75">
+      By continuing, you agree to the 
+      <rt-link href="https://www.rottentomatoes.com/policies/terms-and-policies" target="_blank" data-qa="terms-policies-link" style="--textColor: var(--blueLink);">Terms and Policies</rt-link> 
+      and the 
+      <rt-link href="https://www.versantprivacy.com/privacy" target="_blank" data-qa="privacy-policy-link" style="--textColor: var(--blueLink);">Privacy Policy</rt-link> 
+      and to receive email from 
+      <rt-link href="//www.fandango.com/about-us" target="_blank" data-qa="about-fandango-link" style="--textColor: var(--blueLink);">Fandango Media Brands</rt-link>.
+    </rt-text>
+  </account-verifying-email-screen>
+</template>
+    <template slot="screens" id="cognito-loading">
+    <div>
+        <loading-spinner id="cognito-auth-loading-spinner"></loading-spinner>
+        <style>
+            #cognito-auth-loading-spinner {
+                font-size: 2rem;
+                transform: translate(calc(100% - 1em), 250px);
+                width: 50%;
+            }
+        </style>
+    </div>
+</template>
+
+    <template slot="screens" id="login-check-email-screen">
+  <login-check-email-screen data-qa="login-check-email-screen" email="user@email.com">
+    <rt-text slot="got-email-message" size="0.875">
+      Didn't you get the email?
+    </rt-text>
+    <rt-button slot="resend-email-link" size="0.875" type="cta-large" data-qa="resend-email-link">
+      Resend email
+    </rt-button>
+    <rt-link context="label" slot="trouble-login-link" size="0.875" href="/reset-client" data-qa="reset-link">Having trouble logging in?</rt-link>
+
+    <rt-text class="terms-and-policies" slot="terms-and-policies" size="0.75">
+      By continuing, you agree to the
+      <rt-link href="https://www.rottentomatoes.com/policies/terms-and-policies" target="_blank" data-qa="terms-policies-link" style="--textColor: var(--blueLink);">Terms and Policies</rt-link>
+      and the
+      <rt-link href="https://www.versantprivacy.com/privacy" target="_blank" data-qa="privacy-policy-link" style="--textColor: var(--blueLink);">Privacy Policy</rt-link>
+      and to receive email from
+      <rt-link href="//www.fandango.com/about-us" target="_blank" data-qa="about-fandango-link" style="--textColor: var(--blueLink);">Fandango Media Brands</rt-link>.
+    </rt-text>
+  </login-check-email-screen>
+</template>
+
+    <template slot="screens" id="login-error-screen">
+    <login-error-screen data-qa="login-error">
+        <rt-text slot="header" size="1.5" context="heading" data-qa="header">
+            Something went wrong...
+        </rt-text>
+        <rt-text slot="description-1" size="1" context="label" data-qa="description1">
+            Please try again.
+        </rt-text>
+        <img slot="image" src="/assets/pizza-pie/images/icons/cognito-error.c55e509a7fd.svg" />
+        <rt-text hidden slot="description-2" size="1" context="label" data-qa="description2"></rt-text>
+        <rt-link slot="cta-link" hidden context="label" size="0.875" data-qa="retry-link">Retry</rt-link>
+    </login-error-screen>
+</template>
+
+    <template slot="screens" id="login-enter-password-screen">
+  <login-enter-password-screen data-qa="login-enter-password-screen">
+    <rt-text slot="title" size="1.5" style="--fontWeight: var(--franklinGothicMedium);">
+      Welcome back!
+    </rt-text>
+    <rt-text slot="username" data-qa="user-email">
+      username@email.com
+    </rt-text>
+    <input slot="username-hidden" type="email" autocomplete="username" class="hide"></input>
+    <input-label slot="input-password" state="default" data-qa="password-input-label">
+      <label slot="label" for="pass">Password</label>
+      <input slot="input" id="pass" type="password" name="password" placeholder="Password" autocomplete="current-password" data-qa="password-input"></input>
+    </input-label>
+    <rt-button disabled slot="continue-button" type="cta-large" data-qa="continue-btn">
+      Continue
+    </rt-button>
+    <rt-button slot="email-login-button" theme="light" shape="pill" data-qa="send-email-btn">
+      Send email to verify
+    </rt-button>
+    <rt-link slot="forgot-password-link" context="label" size="0.875" data-qa="forgot-password-link">Forgot password</rt-link>
+    <rt-text class="terms-and-policies" slot="terms-and-policies" size="0.75">
+      By continuing, you agree to the
+      <rt-link href="https://www.rottentomatoes.com/policies/terms-and-policies" target="_blank" data-qa="terms-policies-link" style="--textColor: var(--blueLink);">Terms and Policies</rt-link>
+      and the
+      <rt-link href="https://www.versantprivacy.com/privacy" target="_blank" data-qa="privacy-policy-link" style="--textColor: var(--blueLink);">Privacy Policy</rt-link>
+      and to receive email from
+      <rt-link href="//www.fandango.com/about-us" target="_blank" data-qa="about-fandango-link" style="--textColor: var(--blueLink);">Fandango Media Brands</rt-link>.
+    </rt-text>
+  </login-enter-password-screen>
+</template>
+
+    <template slot="screens" id="login-start-screen">
+  <login-start-screen data-qa="login-start-screen">
+    <input-label
+      slot="input-email"
+      state="default"
+      data-qa="email-input-label"
+    >
+      <label slot="label" for="login-email-input">Email address</label>
+      <input
+        slot="input"
+        autocomplete="username"
+        id="login-email-input"
+        placeholder="Email address"
+        type="email"
+        data-qa="email-input"
+      />
+    </input-label>
+    <input class="hide" type="password"></input>
+    <rt-button disabled slot="email-login-button" type="cta-large" data-qa="continue-btn">
+      Continue
+    </rt-button>
+    <rt-button
+      slot="google-login-button"
+      shape="pill" theme="light" style="--buttonHeight: 52px; --borderRadius: 32px;"
+      data-qa="google-login-btn" data-type="google"
+    >
+      <div class="social-login-btn-content">
+        <img height="16px" width="16px" src="/assets/pizza-pie/images/vendor/google/google_logo.28d9eb28faa.svg" />
+        Continue with Google
+      </div>
+    </rt-button>
+    <rt-button
+      slot="apple-login-button"
+      shape="pill" theme="light" style="--buttonHeight: 52px; --borderRadius: 32px;"
+      data-qa="apple-login-btn" data-type="apple"
+    >
+      <div class="social-login-btn-content">
+        <rt-icon size-pixel="20" icon="apple" style="--topPosition: 3%"></rt-icon>
+        Continue with apple
+      </div>
+    </rt-button>
+    <rt-link slot="reset-link" class="reset-link" context="label" size="0.875" href="/reset-client" data-qa="reset-link">
+      Having trouble logging in?
+    </rt-link>
+    <rt-text class="terms-and-policies" slot="terms-and-policies" size="0.75">
+      By continuing, you agree to the
+      <rt-link href="https://www.rottentomatoes.com/policies/terms-and-policies" target="_blank" data-qa="terms-policies-link" style="--textColor: var(--blueLink);">Terms and Policies</rt-link>
+      and the
+      <rt-link href="https://www.versantprivacy.com/privacy" target="_blank" data-qa="privacy-policy-link" style="--textColor: var(--blueLink);">Privacy Policy</rt-link>
+      and to receive email from
+      <rt-link href="//www.fandango.com/about-us" target="_blank" data-qa="about-fandango-link" style="--textColor: var(--blueLink);">Fandango Media Brands</rt-link>.
+    </rt-text>
+  </login-start-screen>
+</template>
+
+    <template slot="screens" id="login-success-screen">
+  <login-success-screen data-qa="login-success-screen">
+    <rt-text slot="status" size="1.5">
+      Login successful!
+    </rt-text>
+    <img slot="icon" src="/assets/pizza-pie/images/icons/cognito-success.3a3d5f32fab.svg" width="111" height="105" />
+  </login-success-screen>
+</template>
+    <template slot="screens" id="cognito-opt-in-us">
+  <auth-optin-screen data-qa="auth-opt-in-screen">
+    <div slot="newsletter-text">
+      <h2 class="cognito-optin-form__header unset">Let's keep in touch!</h2>
+    </div>
+    <img slot="image" class="image" src="https://images.fandango.com/cms/assets/97c33f00-313f-11ee-9aaf-6762c75465cf--newsletter.png" alt="Rotten Tomatoes Newsletter">>
+    <h2 slot="sub-title" class="subTitle unset">Sign up for the Rotten Tomatoes newsletter to get weekly updates on:</h2>
+    <ul slot="options">
+      <li class="icon-item">Upcoming Movies and TV shows</li>
+      <li class="icon-item">Rotten Tomatoes Podcast</li>
+      <li class="icon-item">Media News + More</li>
+    </ul>
+    <rt-button slot="opt-in-button" data-qa="auth-opt-in-screen-opt-in-btn">
+      Sign me up
+    </rt-button>
+    <rt-button slot="opt-out-button" class="button--outline" data-qa="auth-opt-in-screen-opt-out-btn">
+      No thanks
+    </rt-button>
+    <p slot="foot-note">
+      By clicking "Sign Me Up," you are agreeing to receive occasional emails and communications from Fandango Media (Fandango, Vudu, and Rotten Tomatoes) and consenting to Fandango's 
+      <a href="https://www.versantprivacy.com/privacy" class="optin-link" target="_blank" rel="noopener" data-qa="auth-name-screen-privacy-policy-link">Privacy Policy</a>
+      and 
+      <a href="https://www.rottentomatoes.com/policies/terms-and-policies" class="optin-link" target="_blank" rel="noopener" data-qa="auth-name-screen-privacy-policy-link">Terms and Policies</a>.
+      Please allow 10 business days for your account to reflect your preferences.
+    </p>
+  </auth-optin-screen>
+</template>
+    <template slot="screens" id="cognito-opt-in-foreign">
+  <auth-optin-screen data-qa="auth-opt-in-screen">
+    <div slot="newsletter-text">
+      <h2 class="cognito-optin-form__header unset">Let's keep in touch!</h2>
+    </div>
+    <img slot="image" class="image" src="https://images.fandango.com/cms/assets/97c33f00-313f-11ee-9aaf-6762c75465cf--newsletter.png" alt="Rotten Tomatoes Newsletter">>
+    <h2 slot="sub-title" class="subTitle unset">Sign up for the Rotten Tomatoes newsletter to get weekly updates on:</h2>
+    <ul slot="options">
+      <li class="icon-item">Upcoming Movies and TV shows</li>
+      <li class="icon-item">Rotten Tomatoes Podcast</li>
+      <li class="icon-item">Media News + More</li>
+    </ul>
+    <rt-button slot="opt-in-button" data-qa="auth-opt-in-screen-opt-in-btn">
+      Sign me up
+    </rt-button>
+    <rt-button slot="opt-out-button" class="button--outline" data-qa="auth-opt-in-screen-opt-out-btn">
+      No thanks
+    </rt-button>
+  </auth-optin-screen>
+</template>
+    <template slot="screens" id="cognito-opt-in-success">
+    <auth-verify-screen>
+        <rt-icon icon="checkmark-circle-filled" slot="icon"></rt-icon>
+        <p class="h3" slot="status">OK, got it!</p>
+    </auth-verify-screen>
+</template>
+
+</div>
+
+
+        <div id="emptyPlaceholder"></div> 
+
+        
+            
+            <script ASYNC src="//assets.adobedtm.com/launch-EN549327edc13e414a9beb5d61bfd9aac6.min.js"></script>
+            
+        
+
+        <div id="main" class="container rt-layout__body">
+            <a href="#main-page-content" class="skip-link">Skip to Main Content</a>
+
+            
+                <mobile-android-banner env="production" hidden></mobile-android-banner>
+                <rt-app-manager></rt-app-manager>
+                <overlay-base
+                    data-RtAppManager="overlayBase:close"
+                    hidden
+                >
+                    <rt-app-modal-content slot="content">
+                        <action-icon
+                            slot="btn-close"
+                            aria-label="Close"
+                            icon="close"
+                            data-RtAppManager="btnClose:click"
+                        ></action-icon>
+                        <rt-button slot="btn-download" type="cta-large" href="/device/app">
+                            DOWNLOAD THE APP
+                        </rt-button>
+                        <rt-button slot="btn-continue" type="cta-secondary-large" data-RtAppManager="btnContinue:click">
+                            CONTINUE IN BROWSER
+                        </rt-button>
+                    </rt-app-modal-content>
+                </overlay-base>
+            
+
+            <div id="header_and_leaderboard">
+                <div id="top_leaderboard_wrapper" class="leaderboard_wrapper ">
+                    <ad-unit hidden unit-display="desktop" unit-type="topbanner" adjust-height>
+                        <div slot="ad-inject"></div>
+                    </ad-unit>
+
+                    <ad-unit hidden unit-display="mobile" unit-type="mbanner">
+                        <div slot="ad-inject"></div>
+                    </ad-unit>
+                </div>
+            </div>
+            
+
+  <rt-header-manager></rt-header-manager>
+
+  <rt-header
+    aria-label="navigation bar"
+    class="navbar"
+    data-qa="header-nav-bar"
+    data-AdsGlobalNavTakeoverManager="header"
+    id="header-main"
+    skeleton="panel"
+    
+  >
+
+  
+  <button
+    aria-label="Open aRTi"
+    class="arti-mobile"
+    data-ArtiManager="btnArti:click"
+    data-SearchResultsNavManager="btnArti"
+    slot="arti-mobile"
+  >
+    <img
+      alt="arti"
+      src="/assets/pizza-pie/images/arti.041d204c4a4.svg"
+    />
+  </button>
+  
+
+    <div slot="mobile-header-nav" data-SearchResultsNavManager="mobileHeaderNavWrap">
+        <rt-button
+          id="mobile-header-nav-btn"
+          data-MobileHeaderNav="opener"
+          theme="transparent"
+          style="--buttonPadding: 0 4px 0 10px; --textColor: var(--white);"
+        >
+          <rt-icon icon="hamburger-menu" image ></rt-icon>
+        </rt-button>
+
+        <mobile-header-nav id="mobile-header-nav">
+                        <rt-img
+              slot="logo-image"
+              alt="Rotten Tomatoes"
+              fetchpriority="high"
+              src="/assets/pizza-pie/images/rt-tomato-logo.20c3bdbc97b.svg"
+            ></rt-img>
+            <div slot="menus-css"></div>
+            <div slot="menus"></div>
+        </mobile-header-nav>
+    </div>
+
+  <a
+    class="logo-wrap"
+    data-AdsGlobalNavTakeoverManager="logoLink"
+    data-SearchResultsNavManager="rtNavLogo"
+    href="/"
+    id="navbar"
+    slot="logo"
+  >
+    <img
+      alt="Rotten Tomatoes"
+      data-qa="header-logo"
+      data-AdsGlobalNavTakeoverManager="logo"
+      src="/assets/pizza-pie/images/rtlogo.9b892cff3fd.png"
+      fetchpriority="high"
+    />
+
+    <div class="hide">
+      <ad-unit hidden unit-display="desktop,mobile" unit-type="logorepeat" unit-targeting="ploc=rtlogo;">
+        <div slot="ad-inject"></div>
+      </ad-unit>
+    </div>
+  </a>
+
+  <search-results-nav-manager
+    
+      arti-search-nav-enabled="true"
+    
+  >
+    
+  </search-results-nav-manager>
+
+  <search-results-nav
+    data-adobe-id="global-nav-search"
+    data-SearchResultsNavManager="search"
+    slot="search"
+    skeleton="chip"
+  >
+    <search-results-controls
+      data-SearchResultsNavManager="searchControls"
+      slot="controls"
+    >
+      <input
+        aria-label="Search"
+        data-AdsGlobalNavTakeoverManager="searchInput"
+        data-SearchResultsNavManager="inputText:click,input,keydown"
+        data-qa="search-input"
+        placeholder="Search"
+        slot="search-input"
+        type="text"
+      />
+      <rt-button
+        class="search-clear"
+        data-qa="search-clear"
+        data-AdsGlobalNavTakeoverManager="searchClearBtn"
+        data-SearchResultsNavManager="clearBtn:click"
+        hidden
+        slot="search-clear"
+        theme="transparent"
+      >
+        <rt-icon icon="close" size-pixel="20"></rt-icon>
+      </rt-button>
+      <rt-link
+        class="search-submit"
+        aria-label="Submit search"
+        data-qa="search-submit"
+        data-AdsGlobalNavTakeoverManager="searchSubmitBtn"
+        data-SearchResultsNavManager="submitBtn:click"
+        href="/search"
+        slot="search-submit"
+      >
+        <rt-icon icon="search" size-pixel="16"></rt-icon>
+      </rt-link>
+      <rt-button
+        class="search-cancel"
+        data-qa="search-cancel"
+        data-AdsGlobalNavTakeoverManager="searchCancelBtn"
+        data-SearchResultsNavManager="cancelBtn:click"
+        hidden
+        size="0.875"
+        slot="search-cancel"
+        theme="transparent"
+      >
+        Cancel
+      </rt-button>
+    </search-results-controls>
+
+    <search-results
+      aria-expanded="false"
+      data-SearchResultsNavManager="searchResults"
+      hidden
+      slot="results"
+    >
+    </search-results>
+  </search-results-nav>
+
+  <ul slot="nav-links">
+    <li>
+      <a
+        href="/about"
+        data-qa="header:link-whats-tmeter"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        About Rotten Tomatoes&reg;
+      </a>
+    </li>
+    <li>
+      <a
+        href="/critics"
+        data-qa="header:link-critics-home"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        Critics
+      </a>
+    </li>
+    <li data-RtHeaderManager="loginLink">
+      <ul>
+        <li>
+          <button
+            id="masthead-show-login-btn"
+            class="js-cognito-signin button--link"
+            data-AuthInitiateManager="btnSignIn:click"
+            data-qa="header:login-btn"
+            data-AdsGlobalNavTakeoverManager="text"
+          >
+            Login/signup
+          </button>
+        </li>
+      </ul>
+    </li>
+    <li class="hide" data-RtHeaderManager="userItem:keydown,keyup,mouseenter" data-qa="header:user">
+      <a
+        class="masthead-user-link"
+        data-RtHeaderManager="navUserlink:focus"
+        data-UserIdentityManager="profileLink"
+        rel="nofollow"
+        data-qa="user-profile-link"
+      >
+        <p
+          data-AdsGlobalNavTakeoverManager="text"
+          data-RtHeaderManager="navUserFirstName"
+          data-qa="user-profile-name"
+        ></p>
+        <rt-icon
+          data-AdsGlobalNavTakeoverManager="text"
+          icon="dropdown-arrow-down"
+          image
+        >
+        </rt-icon>
+      </a>
+      <rt-header-user-info
+        class="hide"
+        data-RtHeaderManager="userInfo:focusout,mouseleave"
+      >
+        <a
+          data-qa="user-stats-profile-pic"
+          data-UserIdentityManager="profileLink"
+          rel="nofollow"
+          slot="image-expanded"
+          tabindex="-1"
+        >
+          <rt-img alt="" src="" style="width:40px; height:40px;"></rt-img>
+        </a>
+        <a
+          slot="full-name"
+          data-UserIdentityManager="profileLink"
+          rel="nofollow"
+          class="username"
+          data-qa="user-stats-name"
+        ></a>
+        <a
+          slot="wts"
+          data-UserIdentityManager="watchlistLink"
+          rel="nofollow"
+          class="wts-count-block"
+          data-qa="user-stats-wts"
+        >
+          <rt-icon icon="add" data-qa="user-stats-ratings-count"></rt-icon>
+          <span class="count" data-qa="user-stats-wts-count"></span>
+          &nbsp;Wants to See
+        </a>
+        <a
+          slot="rating"
+          data-UserIdentityManager="ratingsLink"
+          rel="nofollow"
+          class="rating-count-block"
+          data-qa="user-stats-ratings"
+        >
+          <rt-icon icon="star-filled" data-qa="user-stats-ratings-count"></rt-icon>
+          <span class="count"></span>
+          &nbsp;Reviews
+        </a>
+
+        <a
+          slot="profile-link"
+          data-UserIdentityManager="profileLink"
+          rel="nofollow"
+          class="dropdown-link"
+          data-qa="user-stats-profile-link"
+        >Profile</a>
+        <a
+          slot="account-link"
+          data-UserIdentityManager="accountLink"
+          rel="nofollow"
+          class="dropdown-link"
+          data-qa="user-stats-account-link"
+        >Account</a>
+        <a
+          slot="logout-link"
+          class="dropdown-link"
+          data-RtHeaderManager="logoutLink:click"
+          data-qa="user-stats-logout-link"
+        >Log Out</a>
+      </rt-header-user-info>
+    </li>
+  </ul>
+
+  <rt-header-nav slot="nav-dropdowns">
+    
+      <button
+        aria-label="Open aRTi"
+        class="arti-desktop"
+        data-ArtiManager="btnArti:click"
+        slot="arti-desktop"
+      >
+        <img
+          alt="arti"
+          src="/assets/pizza-pie/images/arti.041d204c4a4.svg"
+        />
+  </button>
+    
+    <rt-header-nav-item slot="movies" data-qa="masthead:movies-dvds">
+      <a
+        class="unset"
+        slot="link"
+        href="/browse/movies_in_theaters/sort:popular"
+        data-qa="masthead:movies-dvds-link"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        Movies
+      </a>
+      <rt-header-nav-item-dropdown aria-expanded="false" slot="dropdown" data-qa="movies-menu">
+        <rt-header-nav-item-dropdown-list slot="column" data-qa="header-movies-in-theaters">
+          <p slot="title" class="h4" data-qa="movies-in-theaters-main-link"><a class="unset" href="/browse/movies_in_theaters/sort:popular">Movies in theaters</a></p>
+          <ul slot="links">
+            <li data-qa="in-theaters-item">
+              <a href="/browse/movies_in_theaters/sort:newest" data-qa="opening-this-week-link">Opening This Week</a>
+            </li>
+            <li data-qa="in-theaters-item">
+              <a href="/browse/movies_in_theaters/sort:top_box_office" data-qa="top-box-office-link">Top Box Office</a>
+            </li>
+            <li data-qa="in-theaters-item">
+              <a href="/browse/movies_coming_soon/" data-qa="coming-soon-link">Coming Soon to Theaters</a>
+            </li>
+            <li data-qa="in-theaters-item">
+              <a href="/browse/movies_in_theaters/critics:certified_fresh~sort:popular" data-qa="certified-fresh-link">Certified Fresh Movies</a>
+            </li>
+          </ul>
+        </rt-header-nav-item-dropdown-list>
+        <rt-header-nav-item-dropdown-list slot="column" data-qa="header-on-dvd-streaming">
+          <p slot="title" class="h4" data-qa="dvd-streaming-main-link"><a class="unset" href="/browse/movies_at_home">Movies at Home</a></p>
+          <ul slot="links" data-curation="rt-nav-movies-at-home">
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/affiliates:fandango-at-home" data-qa="fandango-at-home-link">Fandango at Home</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/affiliates:netflix" data-qa="netflix-link">Netflix</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/affiliates:apple-tv-plus" data-qa="apple-tv-link">Apple TV</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/affiliates:prime-video" data-qa="prime-video-link">Prime Video</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/sort:popular" data-qa="most-popular-streaming-movies-link">Most Popular Streaming movies</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home/critics:certified_fresh" data-qa="certified-fresh-movies-link">Certified Fresh movies</a>
+            </li>
+            
+            <li data-qa="movies-at-home-item">
+              <a href="/browse/movies_at_home" data-qa="browse-all-link">Browse all</a>
+            </li>
+            
+          </ul>
+        </rt-header-nav-item-dropdown-list>
+        <rt-header-nav-item-dropdown-list slot="column" data-qa="header-movies-more">
+          <p slot="title" class="h4">More</p>
+          <ul slot="links">
+            <li data-qa="what-to-watch-item">
+                <a href="https://editorial.rottentomatoes.com/rt-hub/what-to-watch" class="what-to-watch" data-qa="what-to-watch-link">What to Watch<rt-badge>New</rt-badge></a>
+            </li>
+          </ul>
+        </rt-header-nav-item-dropdown-list>
+        
+          <rt-header-nav-item-dropdown-list slot="column" cfp>
+            <p slot="title" class="h4">Certified fresh picks</p>
+            <ul slot="links" class="cfp-wrap" data-qa="header-certified-fresh-picks" data-curation="rt-nav-list-cf-picks">
+              
+                <li data-qa="cert-fresh-item">
+                  
+                  <a class="cfp-tile" href="/m/obsession_2025" data-qa="cert-fresh-link">
+    <tile-dynamic data-qa="tile">
+        <rt-img
+            alt="Obsession poster image"
+            slot="image"
+            src="https://resizing.flixster.com/MmXITF0Ld-fXJ90F8cwstnffd7Y=/206x305/v2/https://resizing.flixster.com/gON9XpuNNXWAANbcZJH4R24js50=/fit-in/180x240/v2/https://resizing.flixster.com/wciPMzUm5zbBhWKN24eGdoRfK8I=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzBlZDNhZmI5LTM3N2EtNGIyZC1iZTA5LTU0NzUyY2M2ZGYyYi5qcGc="
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption" data-track="scores">
+            <div class="score-wrap">
+                <score-icon-critics
+                    certified
+                    sentiment="positive"
+                    size="1"
+                ></score-icon-critics>
+                <rt-text class="critics-score" size="1" context="label">94%</rt-text>
+            </div>
+            <span class="p--small">Obsession</span>
+            <span class="sr-only">Link to Obsession</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+              
+                <li data-qa="cert-fresh-item">
+                  
+                  <a class="cfp-tile" href="/m/the_sheep_detectives" data-qa="cert-fresh-link">
+    <tile-dynamic data-qa="tile">
+        <rt-img
+            alt="The Sheep Detectives poster image"
+            slot="image"
+            src="https://resizing.flixster.com/pCWXteTP2zOUbqdkEuXkEDzIq7s=/206x305/v2/https://resizing.flixster.com/WlohGr2kfLIsOkSU9LZg6vSkv1s=/fit-in/180x240/v2/https://resizing.flixster.com/LviGdc9-5BykrMyhX1oGyU-HhXE=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzYzNjA4ZWQ1LTE1M2UtNGI2Mi05NTJlLWM0ZTg2NWM5ODJhNC5qcGc="
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption" data-track="scores">
+            <div class="score-wrap">
+                <score-icon-critics
+                    certified
+                    sentiment="positive"
+                    size="1"
+                ></score-icon-critics>
+                <rt-text class="critics-score" size="1" context="label">94%</rt-text>
+            </div>
+            <span class="p--small">The Sheep Detectives</span>
+            <span class="sr-only">Link to The Sheep Detectives</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+              
+                <li data-qa="cert-fresh-item">
+                  
+                  <a class="cfp-tile" href="/m/silent_friend" data-qa="cert-fresh-link">
+    <tile-dynamic data-qa="tile">
+        <rt-img
+            alt="Silent Friend poster image"
+            slot="image"
+            src="https://resizing.flixster.com/VYcvg6m93nQteD9XlbbDK0pYDnk=/206x305/v2/https://resizing.flixster.com/u1_juuFd9Mhl1Xb6vjmWjbuqQ3I=/fit-in/180x240/v2/https://resizing.flixster.com/Jc2c994NAhOMQnOL8ijhj7NUpq8=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzY3ZGYzMmQzLWZiZTktNDg3Ny1iNTMzLWM2MmE2NGE5ODc3Ni5qcGc="
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption" data-track="scores">
+            <div class="score-wrap">
+                <score-icon-critics
+                    certified
+                    sentiment="positive"
+                    size="1"
+                ></score-icon-critics>
+                <rt-text class="critics-score" size="1" context="label">95%</rt-text>
+            </div>
+            <span class="p--small">Silent Friend</span>
+            <span class="sr-only">Link to Silent Friend</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+            </ul>
+          </rt-header-nav-item-dropdown-list>
+        
+      </rt-header-nav-item-dropdown>
+    </rt-header-nav-item>
+
+    <rt-header-nav-item slot="tv" data-qa="masthead:tv">
+      <a
+        class="unset"
+        slot="link"
+        href="/browse/tv_series_browse/sort:popular"
+        data-qa="masthead:tv-link"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        Tv shows
+      </a>
+      <rt-header-nav-item-dropdown aria-expanded="false" slot="dropdown" data-qa="tv-menu">
+        
+          <rt-header-nav-item-dropdown-list slot="column" data-qa="header-tv-list1">
+            <p slot="title" class="h4" data-curation="rt-hp-text-list-3">
+              New TV Tonight
+            </p>
+            <ul slot="links" class="score-list-wrap">
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/dutton_ranch/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >83%</rt-text>
+        
+    </div>
+    <span>
+        
+            Dutton Ranch: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/off_campus/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >95%</rt-text>
+        
+    </div>
+    <span>
+        
+            Off Campus: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/good_omens/s03" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >61%</rt-text>
+        
+    </div>
+    <span>
+        
+            Good Omens: Season 3
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/rivals_2024/s02" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >100%</rt-text>
+        
+    </div>
+    <span>
+        
+            Rivals: Season 2
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/devil_may_cry/s02" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >100%</rt-text>
+        
+    </div>
+    <span>
+        
+            Devil May Cry: Season 2
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/nemesis_2026/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >90%</rt-text>
+        
+    </div>
+    <span>
+        
+            Nemesis: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/everyone_is_doing_great/s02" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="empty"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score-empty"
+            context="label"
+            size="1"
+            style="--textColor: var(--grayLight4); --lineHeight: 1; --letterSpacing: 0.2em;" 
+        >--</rt-text>
+        
+    </div>
+    <span>
+        
+            Everyone Is Doing Great: Season 2
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/on_the_roam/s02" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="empty"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score-empty"
+            context="label"
+            size="1"
+            style="--textColor: var(--grayLight4); --lineHeight: 1; --letterSpacing: 0.2em;" 
+        >--</rt-text>
+        
+    </div>
+    <span>
+        
+            On the Roam: Season 2
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/welcome_to_wrexham/s05" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="empty"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score-empty"
+            context="label"
+            size="1"
+            style="--textColor: var(--grayLight4); --lineHeight: 1; --letterSpacing: 0.2em;" 
+        >--</rt-text>
+        
+    </div>
+    <span>
+        
+            Welcome to Wrexham: Season 5
+        
+    </span>
+</a>
+                </li>
+              
+            </ul>
+            <a
+              class="a--short"
+              data-qa="tv-list1-view-all-link"
+              href="/browse/tv_series_browse/sort:newest"
+              slot="view-all-link"
+            >
+                View All
+            </a>
+          </rt-header-nav-item-dropdown-list>
+        
+
+        
+          <rt-header-nav-item-dropdown-list slot="column" data-qa="header-tv-list2">
+            <p slot="title" class="h4" data-curation="rt-hp-text-list-2">
+              Most Popular TV on RT
+            </p>
+            <ul slot="links" class="score-list-wrap">
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/off_campus/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >95%</rt-text>
+        
+    </div>
+    <span>
+        
+            Off Campus: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/widows_bay/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >97%</rt-text>
+        
+    </div>
+    <span>
+        
+            Widow&#39;s Bay: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/legends_2026/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >96%</rt-text>
+        
+    </div>
+    <span>
+        
+            Legends: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/the_boys_2019/s05" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >97%</rt-text>
+        
+    </div>
+    <span>
+        
+            The Boys: Season 5
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/lord_of_the_flies/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="true"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >92%</rt-text>
+        
+    </div>
+    <span>
+        
+            Lord of the Flies: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/from/s04" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >100%</rt-text>
+        
+    </div>
+    <span>
+        
+            From: Season 4
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/the_chestnut_man/s02" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >100%</rt-text>
+        
+    </div>
+    <span>
+        
+            The Chestnut Man: Season 2
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/nemesis_2026/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >90%</rt-text>
+        
+    </div>
+    <span>
+        
+            Nemesis: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/the_dark_wizard/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >100%</rt-text>
+        
+    </div>
+    <span>
+        
+            The Dark Wizard: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+                <li data-qa="list-item">
+                  <a class="score-list-item" href="/tv/mia/s01" data-qa="list-item-link">
+    <div class="score-wrap">
+        <score-icon-critics
+            certified="false"
+            sentiment="positive"
+            size="1"
+        ></score-icon-critics>
+        
+        <rt-text
+            class="critics-score"
+            context="label"
+            size="1"
+            style="--lineHeight: 1; --letterSpacing: 0.016em;"
+        >62%</rt-text>
+        
+    </div>
+    <span>
+        
+            M.I.A.: Season 1
+        
+    </span>
+</a>
+                </li>
+              
+            </ul>
+            <a
+              class="a--short"
+              data-qa="tv-list2-view-all-link"
+              href="/browse/tv_series_browse/sort:popular?"
+              slot="view-all-link"
+            >
+                View All
+            </a>
+          </rt-header-nav-item-dropdown-list>
+        
+
+        <rt-header-nav-item-dropdown-list slot="column" data-qa="header-tv-more">
+          <p slot="title" class="h4">More</p>
+          <ul slot="links">
+            <li>
+              <a href="https://editorial.rottentomatoes.com/rt-hub/what-to-watch/" class="what-to-watch" data-qa="what-to-watch-link-tv">
+                What to Watch<rt-badge>New</rt-badge>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/sort:popular" data-qa="tv-best-link">
+                <span>Best TV Shows</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/sort:popular" data-qa="tv-popular-link">
+                <span>Most Popular TV</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/affiliates:fandango-at-home" data-qa="tv-fandango-at-home-link">
+                <span>Fandango at Home</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/affiliates:paramount-plus" data-qa="tv-paramount-link">
+                <span>Paramount+</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/affiliates:netflix" data-qa="tv-netflix-link">
+                <span>Netflix</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/affiliates:prime-video" data-qa="tv-prime-video-link">
+                <span>Prime Video</span>
+              </a>
+            </li>
+            <li>
+              <a href="/browse/tv_series_browse/affiliates:apple-tv-plus" data-qa="tv-apple-tv-plus-link">
+                <span>Apple TV</span>
+              </a>
+            </li>
+          </ul>
+        </rt-header-nav-item-dropdown-list>
+
+        
+          <rt-header-nav-item-dropdown-list slot="column" cfp data-qa="header-certified-fresh-pick">
+            <p slot="title" class="h4">
+              Certified fresh pick
+            </p>
+            <ul slot="links" class="cfp-wrap" data-curation="rt-nav-list-cf-picks">
+              <li>
+                
+                <a class="cfp-tile" href="/tv/dutton_ranch/s01" data-qa="cert-fresh-link">
+    <tile-dynamic data-qa="tile">
+        <rt-img
+            alt="Dutton Ranch: Season 1 poster image"
+            slot="image"
+            src="https://resizing.flixster.com/BiFH3RmFe5yUvsdK2VNKLF-VbLQ=/206x305/v2/https://resizing.flixster.com/JDUmBey-aCJ4fOxPLqvAqKt4E6k=/fit-in/180x240/v2/https://resizing.flixster.com/zdTJrBU9iOLnZTyJtD2z0h-PBg4=/ems.cHJkLWVtcy1hc3NldHMvdHZzZWFzb24vNzllODQwMGMtMmVmOC00YzYwLTk4OWUtZjZmMTU3NjRjNDk4LmpwZw=="
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption" data-track="scores">
+            <div class="score-wrap">
+                <score-icon-critics
+                    certified
+                    sentiment="positive"
+                    size="1"
+                ></score-icon-critics>
+                <rt-text class="critics-score" size="1" context="label">83%</rt-text>
+            </div>
+            <span class="p--small">Dutton Ranch: Season 1</span>
+            <span class="sr-only">Link to Dutton Ranch: Season 1</span>
+        </div>
+    </tile-dynamic>
+</a>
+              </li>
+            </ul>
+          </rt-header-nav-item-dropdown-list>
+        
+      </rt-header-nav-item-dropdown>
+    </rt-header-nav-item>
+
+    <rt-header-nav-item slot="shop">
+      <a class="unset"
+          id="appLink"
+          slot="link"
+          href="https://editorial.rottentomatoes.com/article/app/"
+          target="_blank"
+          data-qa="masthead:app-link"
+          data-AdsGlobalNavTakeoverManager="text"
+      >
+          RT App
+          <temporary-display
+            slot="temporary-display"
+            key="app"
+            element="#appLink"
+            event="click"
+          >
+            <rt-badge hidden>New</rt-badge>
+          </temporary-display>
+      </a>
+    </rt-header-nav-item>
+
+    <rt-header-nav-item slot="news" data-qa="masthead:news">
+      <a
+        class="unset"
+        slot="link"
+        href="https://editorial.rottentomatoes.com"
+        data-qa="masthead:news-link"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        News
+      </a>
+      <rt-header-nav-item-dropdown aria-expanded="false" slot="dropdown" data-qa="news-menu">
+        <rt-header-nav-item-dropdown-list slot="column" data-qa="header-news-columns">
+          <p slot="title" class="h4">Columns</p>
+          <ul slot="links">
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/all-time-lists/" data-pageheader="All-Time Lists" data-qa="column-link">
+                All-Time Lists
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/binge-guide/" data-pageheader="Binge Guide" data-qa="column-link">
+                Binge Guide
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/comics-on-tv/" data-pageheader="Comics on TV" data-qa="column-link">
+                Comics on TV
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/countdown/" data-pageheader="Countdown" data-qa="column-link">
+                Countdown
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/five-favorite-films/" data-pageheader="Five Favorite Films" data-qa="column-link">
+                Five Favorite Films
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/video-interviews/" data-pageheader="Video Interviews" data-qa="column-link">
+                Video Interviews
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/weekend-box-office/" data-pageheader="Weekend Box Office" data-qa="column-link"
+              >Weekend Box Office
+            </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/weekly-ketchup/" data-pageheader="Weekly Ketchup" data-qa="column-link">
+                Weekly Ketchup
+              </a>
+            </li>
+            <li data-qa="column-item">
+              <a href="https://editorial.rottentomatoes.com/what-to-watch/" data-pageheader="What to Watch" data-qa="column-link">
+                What to Watch
+              </a>
+            </li>
+          </ul>
+        </rt-header-nav-item-dropdown-list>
+
+        
+          <rt-header-nav-item-dropdown-list slot="column" data-qa="header-news-guides">
+            <p slot="title" class="h4">Guides</p>
+            <ul slot="links" class="news-wrap">
+              
+                <li data-qa="guides-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/guide/cannes-2026-movies-ranking/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="Cannes 2026 Movies Ranked by Tomatometer poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2026/05/TEENAGE-SEX-thumb.jpg"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>Cannes 2026 Movies Ranked by Tomatometer</p>
+            <span class="sr-only">Link to Cannes 2026 Movies Ranked by Tomatometer</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+                <li data-qa="guides-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/guide/best-new-horror-movies-2026/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="Best New Horror Movies of 2026 poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2026/04/OBSESSION-THUMB.jpg"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>Best New Horror Movies of 2026</p>
+            <span class="sr-only">Link to Best New Horror Movies of 2026</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+            </ul>
+            <a
+              class="a--short"
+              data-qa="guides-view-all-link"
+              href="https://editorial.rottentomatoes.com/countdown/"
+              slot="view-all-link"
+            >
+              View All
+            </a>
+          </rt-header-nav-item-dropdown-list>
+        
+
+        
+          <rt-header-nav-item-dropdown-list slot="column" data-qa="header-news-hubs">
+            <p slot="title" class="h4">Hubs</p>
+            <ul slot="links" class="news-wrap">
+              
+                <li data-qa="hubs-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/rt-hub/awards-tour/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="Awards Tour poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2023/12/RT_AwardsTour_Thumbnail_600x314.jpg"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>Awards Tour</p>
+            <span class="sr-only">Link to Awards Tour</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+                <li data-qa="hubs-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/rt-hub/what-to-watch/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="What to Watch: In Theaters and On Streaming poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2023/05/RT_WTW_Generic_2023_Thumbnail_600x314_021623.jpg"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>What to Watch: In Theaters and On Streaming</p>
+            <span class="sr-only">Link to What to Watch: In Theaters and On Streaming</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+            </ul>
+            <a
+              class="a--short"
+              data-qa="hubs-view-all-link"
+              href="https://editorial.rottentomatoes.com/rt-hubs/"
+              slot="view-all-link"
+            >
+              View All
+            </a>
+          </rt-header-nav-item-dropdown-list>
+        
+
+        
+          <rt-header-nav-item-dropdown-list slot="column" data-qa="header-news-rt-news">
+            <p slot="title" class="h4">RT News</p>
+            <ul slot="links" class="news-wrap">
+              
+                <li data-qa="rt-news-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/article/2026-cannes-film-festival-recap/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="Cannes Ketchup &#8211; Day 3: Asghar Farhadi&#8217;s <em>Parallel Tales</em> Earns a Rotten Reception poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2026/05/Cannes_2026_Recap-Asghar_Farhadi.jpg"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>Cannes Ketchup &#8211; Day 3: Asghar Farhadi&#8217;s <em>Parallel Tales</em> Earns a Rotten Reception</p>
+            <span class="sr-only">Link to Cannes Ketchup &#8211; Day 3: Asghar Farhadi&#8217;s <em>Parallel Tales</em> Earns a Rotten Reception</span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+                <li data-qa="rt-news-item">
+                  <a class="news-tile" href="https://editorial.rottentomatoes.com/article/rt-cfca-team-up-to-provide-grants-for-critics-attending-tiff-2025-2/" data-qa="news-link">
+    <tile-dynamic
+        data-qa="tile"
+        orientation="landscape"
+    >
+        <rt-img
+            alt="Rotten Tomatoes to Provide Grants for Critics Attending TIFF 2026  poster image"
+            slot="image"
+            src="https://editorial.rottentomatoes.com/wp-content/uploads/2026/05/RT_Critics_TiffGrant_Thumbnail_600x314_V5b.jpg"
+            loading="lazy"
+        ></rt-img>
+        <div slot="caption">
+            <p>Rotten Tomatoes to Provide Grants for Critics Attending TIFF 2026 </p>
+            <span class="sr-only">Link to Rotten Tomatoes to Provide Grants for Critics Attending TIFF 2026 </span>
+        </div>
+    </tile-dynamic>
+</a>
+                </li>
+              
+            </ul>
+            <a
+              class="a--short"
+              data-qa="rt-news-view-all-link"
+              href="https://editorial.rottentomatoes.com/news/"
+              slot="view-all-link"
+            >
+              View All
+            </a>
+          </rt-header-nav-item-dropdown-list>
+        
+      </rt-header-nav-item-dropdown>
+    </rt-header-nav-item>
+
+    <rt-header-nav-item slot="showtimes">
+      <a
+        class="unset"
+        slot="link"
+        href="https://www.fandango.com/movies-in-theaters?a=13036"
+        target="_blank"
+        rel="noopener"
+        data-qa="masthead:tickets-showtimes-link"
+        data-AdsGlobalNavTakeoverManager="text"
+      >
+        Showtimes
+      </a>
+    </rt-header-nav-item>
+  </rt-header-nav>
+
+</rt-header>
+
+<ads-global-nav-takeover-manager></ads-global-nav-takeover-manager>
+<section class="trending-bar">
+  
+
+  <ad-unit hidden id="trending_bar_ad" unit-display="desktop" unit-type="trendinggraphic">
+    <div slot="ad-inject"></div>
+  </ad-unit>
+  <div id="trending-bar-start" class="trending-list-wrap" data-qa="trending-bar">
+    <ul class="list-inline trending-bar__list" data-curation="rt-nav-trending"
+      data-qa="trending-bar-list">
+      <li class="trending-bar__header">Trending on RT</li>
+      
+      <li><a class="trending-bar__link" href="https://editorial.rottentomatoes.com/article/seen-on-screen-podcast-a-celebration-of-universal-stories/"  data-qa="trending-bar-item"> Seen on the Screen </a></li>
+      
+      <li><a class="trending-bar__link" href="https://editorial.rottentomatoes.com/article/app/"  data-qa="trending-bar-item"> Rotten Tomatoes App  </a></li>
+      
+      <li><a class="trending-bar__link" href="https://editorial.rottentomatoes.com/article/2026-cannes-film-festival-recap/"  data-qa="trending-bar-item"> Cannes 2026 </a></li>
+      
+      <li><a class="trending-bar__link" href="https://editorial.rottentomatoes.com/article/rt-cfca-team-up-to-provide-grants-for-critics-attending-tiff-2025-2/"  data-qa="trending-bar-item"> Critics Grant Program  </a></li>
+      
+    </ul>
+    <div class="trending-bar__social" data-qa="trending-bar-social-list">
+      <social-media-icons theme="light" size="14px"></social-media-icons>
+    </div>
+  </div>
+</section>
+
+
+
+
+            <main
+                id="main_container"
+                class="container rt-layout__content"
+            >
+                <div id="main-page-content">
+                    <toast-notification
+                        aria-live="polite"
+                        data-WatchlistButtonManager="notification"
+                        data-ProfilesCriticPageManager="notification"
+                        data-ProfilesPublicationPageManager="notification"
+                        data-ProfilesUserPageManager="notification"
+                        hidden
+                    >
+                        <rt-icon slot="icon" icon="error-filled" image size-pixel="16"></rt-icon>
+                        <rt-text slot="message" context="label" size="0.875"></rt-text>
+                        <rt-button slot="close" theme="transparent">
+                            <rt-icon icon="close" image size-pixel="16"></rt-icon>
+                        </rt-button>
+                    </toast-notification>
+
+                    
+    
+                    
+
+    <div id="movie-overview" data-HeroModulesManager="overviewWrap">
+        <watchlist-button-manager></watchlist-button-manager>
+
+        <div
+            id="hero-wrap"
+            data-AdUnitManager="heroWrap"
+            data-AdsMediaScorecardManager="heroWrap"
+            data-HeroModulesManager="heroWrap"
+        >
+            
+                <div
+  aria-labelledby="media-hero-label"
+  class="media-hero-wrap"
+  skeleton="panel"
+  data-adobe-id="media-hero"
+  data-qa="section:media-hero"
+  data-HeroModulesManager="mediaHeroWrap"
+>
+  <h1 class="unset" id="media-hero-label">
+    <sr-text> Sound of Falling  </sr-text>
+  </h1>
+
+  <media-hero
+    average-color-hsl="24, 42%, 15%"
+    media-type="Movie"
+    scroll-y="0"
+    scroll-y-start="0"
+    data-AdsMediaScorecardManager="mediaHero"
+    data-HeroModulesManager="mediaHero:collapse"
+  >
+    <rt-button
+      slot="iconic-video-cta"
+      theme="transparent"
+      data-content-type="PROMO"
+      data-ems-id="ffbd2600-9c11-42ad-a36c-0b4b6f46c266"
+      data-mpx-id="2474361411897"
+      data-public-id="M7t6f1X7n6Bk"
+      data-title="Sound of Falling"
+      data-type="Movie"
+      data-VideoPlayerOverlayManager="btnVideo:click"
+    ><sr-text>Play trailer</sr-text></rt-button>
+
+    <rt-text slot="iconic-video-runtime" size="0.75">1:42</rt-text>
+
+    <rt-img
+      slot="iconic"
+      alt="Main image for Sound of Falling"
+      fallback-theme="iconic"
+      fetchpriority="high"
+      src="https://resizing.flixster.com/OLyUGRiyHhc_DB2PlZ42QHwFwkQ=/375x210/v2/https://statcdn.fandango.com/MPX/image/NBCU_Fandango/439/951/thumb_3B1734AB-9397-4BF1-A77C-24F650ACA0C8.jpg,https://resizing.flixster.com/kSw09Dxnnq4NfqTDCpoPDQpv-bQ=/620x336/v2/https://statcdn.fandango.com/MPX/image/NBCU_Fandango/439/951/thumb_3B1734AB-9397-4BF1-A77C-24F650ACA0C8.jpg"
+    ></rt-img>
+
+    
+      <img
+        slot="poster"
+        alt="Poster for "
+        fetchpriority="high"
+        src="https://resizing.flixster.com/tVB7TVA4rmDgT12JbYiX2WdeyLU=/68x102/v2/https://resizing.flixster.com/ep0noWpvD4Cm3y5Rwj_OvsrTpWg=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzU3YjI1MzVhLTQ0ZTctNDdkMC04YjQyLTdhMTZmYzA3NmE1Zi5qcGc="
+      />
+    
+
+    <rt-text slot="title" size="1.25,1.75" context="heading">Sound of Falling</rt-text>
+    <rt-text slot="episode-title" size="1,1.5" context="label"></rt-text>
+
+    
+      <rt-text slot="metadata-prop" context="label" size="0.875">Jan 2026</rt-text>
+    
+      <rt-text slot="metadata-prop" context="label" size="0.875">2h 29m</rt-text>
+    
+
+    
+      <rt-text slot="metadata-genre" size="0.875">Drama</rt-text>
+    
+
+    <rt-button
+      slot="trailer-cta"
+      shape="pill"
+      theme="light"
+      data-content-type="PROMO"
+      data-ems-id="ffbd2600-9c11-42ad-a36c-0b4b6f46c266"
+      data-mpx-id="2474361411897"
+      data-public-id="M7t6f1X7n6Bk"
+      data-title="Sound of Falling"
+      data-type="Movie"
+      data-VideoPlayerOverlayManager="btnVideo:click"
+    >
+      <rt-icon icon="play-filled" size-pixel="16"></rt-icon> <sr-text>Play</sr-text> Trailer
+    </rt-button>
+
+    <watchlist-button
+      slot="watchlist-cta"
+      ems-id="ffbd2600-9c11-42ad-a36c-0b4b6f46c266"
+      media-type="Movie"
+      media-title="Sound of Falling"
+      state="unchecked"
+      theme="transparent-lighttext"
+      data-HeroModulesManager="mediaHeroWatchlistBtn"
+      data-WatchlistButtonManager="watchlistButton:click"
+    >
+      <span slot="text">Watchlist</span>
+    </watchlist-button>
+
+    <watchlist-button
+      slot="mobile-watchlist-cta"
+      ems-id="ffbd2600-9c11-42ad-a36c-0b4b6f46c266"
+      media-type="Movie"
+      media-title="Sound of Falling"
+      state="unchecked"
+      data-HeroModulesManager="mediaHeroWatchlistBtn"
+      data-WatchlistButtonManager="watchlistButton:click"
+    ></watchlist-button>
+
+    <div slot="desktop-videos" data-HeroModulesManager="mediaHeroVideos"></div>
+
+    <rt-button
+        slot="collapsed-primary-cta"
+        hidden
+        shape="pill"
+        theme="simplified"
+        data-AdsMediaScorecardManager="collapsedPrimaryCta"
+        data-HeroModulesManager="mediaHeroCta:click"
+    ></rt-button>
+
+    <watchlist-button
+      slot="collapsed-watchlist-cta"
+      ems-id="ffbd2600-9c11-42ad-a36c-0b4b6f46c266"
+      media-type="Movie"
+      media-title="Sound of Falling"
+      state="unchecked"
+      theme="transparent-lighttext"
+      data-HeroModulesManager="mediaHeroWatchlistBtn"
+      data-WatchlistButtonManager="watchlistButton:click"
+    >
+      <span slot="text">Watchlist</span>
+    </watchlist-button>
+
+    <score-icon-critics slot="collapsed-critics-icon" size="2.5"></score-icon-critics>
+    <rt-text slot="collapsed-critics-score" context="label" size="1.375"></rt-text>
+    <rt-link slot="collapsed-critics-link" size="small"></rt-link>
+    <rt-text slot="collapsed-critics-label" size="0.75">Tomatometer</rt-text>
+
+    <score-icon-audience slot="collapsed-audience-icon" size="2.5"></score-icon-audience>
+    <rt-text slot="collapsed-audience-score" context="label" size="1.375"></rt-text>
+    <rt-link slot="collapsed-audience-link" size="small"></rt-link>
+    <rt-text slot="collapsed-audience-label" size="0.75">Popcornmeter</rt-text>
+  </media-hero>
+
+  <script id="media-hero-json" data-json="mediaHero" type="application/json">
+    {"averageColorHsl":"24, 42%, 15%","iconic":{"srcDesktop":"https://resizing.flixster.com/kSw09Dxnnq4NfqTDCpoPDQpv-bQ=/620x336/v2/https://statcdn.fandango.com/MPX/image/NBCU_Fandango/439/951/thumb_3B1734AB-9397-4BF1-A77C-24F650ACA0C8.jpg","srcMobile":"https://resizing.flixster.com/OLyUGRiyHhc_DB2PlZ42QHwFwkQ=/375x210/v2/https://statcdn.fandango.com/MPX/image/NBCU_Fandango/439/951/thumb_3B1734AB-9397-4BF1-A77C-24F650ACA0C8.jpg"},"content":{"episodeTitle":"","metadataGenres":["Drama"],"metadataProps":["Jan 2026","2h 29m"],"posterSrc":"https://resizing.flixster.com/tVB7TVA4rmDgT12JbYiX2WdeyLU=/68x102/v2/https://resizing.flixster.com/ep0noWpvD4Cm3y5Rwj_OvsrTpWg=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzU3YjI1MzVhLTQ0ZTctNDdkMC04YjQyLTdhMTZmYzA3NmE1Zi5qcGc=","title":"Sound of Falling","primaryVideo":{"contentType":"PROMO","durationInSeconds":"102.644","mpxId":"2474361411897","publicId":"M7t6f1X7n6Bk","thumbnail":{"url":"https://statcdn.fandango.com/MPX/image/NBCU_Fandango/439/951/thumb_3B1734AB-9397-4BF1-A77C-24F650ACA0C8.jpg"},"title":"Sound of Falling: Trailer 1","runtime":"1:42"}}}
+  </script>
+</div>
+
+            
+
+            <hero-modules-manager>
+                <script data-json="vanity" type="application/json">{"emsId":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","href":"/m/sound_of_falling","lifecycleWindow":{},"title":"Sound of Falling","type":"movie","value":"sound_of_falling","parents":[],"mediaType":"Movie"}</script>
+            </hero-modules-manager>
+        </div>
+
+        <div id="main-wrap">
+            <div id="modules-wrap" data-curation="drawer">
+                
+                    
+
+                    <div class="media-scorecard no-border" data-adobe-id="media-scorecard" data-qa="section:media-scorecard">
+    <media-scorecard
+        hide-audience-score="false"
+        skeleton="panel"
+        data-AdsMediaScorecardManager="mediaScorecard"
+        data-HeroModulesManager="mediaScorecard"
+    >
+        <rt-img
+            alt="poster image"
+            loading="lazy"
+            slot="poster-image"
+            src="https://resizing.flixster.com/RX1kAJ9bmO4ay1sOsKLZlG9Cfts=/206x305/v2/https://resizing.flixster.com/ep0noWpvD4Cm3y5Rwj_OvsrTpWg=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzU3YjI1MzVhLTQ0ZTctNDdkMC04YjQyLTdhMTZmYzA3NmE1Zi5qcGc="
+        ></rt-img>
+        <rt-button slot="critics-score-icon" data-MediaScorecardManager="overlayOpen:click" theme="transparent">
+        <score-icon-critics
+            certified="true"
+            sentiment="POSITIVE"
+            size="2.5"
+        ></score-icon-critics>
+        </rt-button>
+        <rt-text
+            slot="critics-score"
+            context="label"
+            role="button"
+            size="1.375"
+            data-MediaScorecardManager="overlayOpen:click"
+        >94%</rt-text>
+        <rt-text
+            slot="critics-score-type"
+            class="critics-score-type"
+            role="button"
+            size="0.75"
+            data-MediaScorecardManager="overlayOpen:click"
+        >Tomatometer</rt-text>
+        <rt-link slot="critics-reviews" size="small" href="/m/sound_of_falling/reviews">
+            89 Reviews
+        </rt-link>
+
+        <rt-button slot="audience-score-icon" data-MediaScorecardManager="overlayOpen:click" theme="transparent">
+            <score-icon-audience
+                certified="false"
+                size="2.5"
+                sentiment="POSITIVE"
+            ></score-icon-audience>
+        </rt-button>
+        <rt-text
+            slot="audience-score"
+            context="label"
+            role="button"
+            size="1.375"
+            data-MediaScorecardManager="overlayOpen:click"
+        >60%</rt-text>
+        <rt-text
+            slot="audience-score-type"
+            class="audience-score-type"
+            role="button"
+            size="0.75"
+            data-MediaScorecardManager="overlayOpen:click"
+        >Popcornmeter</rt-text>
+        <rt-link slot="audience-reviews" size="small" href="/m/sound_of_falling/reviews/all-audience">
+            50+ Ratings
+        </rt-link>
+
+        <div slot="description" data-AdsMediaScorecardManager="description">
+            <drawer-more max-lines="2" skeleton="panel" status="closed" style="--display: flex; gap: 4px;">
+                <rt-text slot="content" size="1">
+                    Over the course of a century, as four girls from different time periods experience their youth on a German farm, their lives become intertwined until time seems to dissolve.
+                </rt-text>
+                <rt-link slot="cta-open">
+                    <rt-icon icon="chevron-down" image></rt-icon>
+                </rt-link>
+                <rt-link slot="cta-close">
+                    <rt-icon icon="chevron-up" image></rt-icon>
+                </rt-link>
+            </drawer-more>
+        </div>
+
+        
+    </media-scorecard>
+
+    <media-scorecard-manager
+        average-tomatometer-enabled="true"
+    >
+        <script
+            id="media-scorecard-json"
+            data-json="mediaScorecard"
+            type="application/json"
+        >
+            {"audienceScore":{"certifiedFresh":"none","isActivelyModerated":false,"averageRating":"3.3","bandedRatingCount":"50+ Ratings","likedCount":30,"notLikedCount":20,"reviewCount":14,"score":"60","scoreType":"ALL","sentiment":"POSITIVE","certified":false,"reviewsPageUrl":"/m/sound_of_falling/reviews/all-audience","scorePercent":"60%","title":"Popcornmeter"},"criticsScore":{"averageRating":"8.20","certified":true,"likedCount":84,"notLikedCount":5,"ratingCount":89,"reviewCount":89,"score":"94","sentiment":"POSITIVE","reviewsPageUrl":"/m/sound_of_falling/reviews","scorePercent":"94%","title":"Tomatometer"},"criticReviewHref":"/critics/self-submission/movie/ffbd2600-9c11-42ad-a36c-0b4b6f46c266","description":"Over the course of a century, as four girls from different time periods experience their youth on a German farm, their lives become intertwined until time seems to dissolve.","hideAudienceScore":false,"overlay":{"audienceAll":{"certifiedFresh":"none","isActivelyModerated":false,"averageRating":"3.3","bandedRatingCount":"50+ Ratings","likedCount":30,"notLikedCount":20,"reviewCount":14,"score":"60","scoreType":"ALL","sentiment":"POSITIVE","certified":false,"reviewsPageUrl":"/m/sound_of_falling/reviews/all-audience","scorePercent":"60%","title":"Popcornmeter","scoreLinkUrl":"/m/sound_of_falling/reviews/all-audience"},"audienceTitle":"Popcornmeter","audienceVerified":{"certifiedFresh":"none","bandedRatingCount":"Fewer than 50 Verified Ratings","likedCount":4,"notLikedCount":0,"reviewCount":1,"scoreType":"VERIFIED","certified":false,"reviewsPageUrl":"/m/sound_of_falling/reviews/verified-audience","title":"Popcornmeter","scoreLinkUrl":"/m/sound_of_falling/reviews/verified-audience"},"criticsAll":{"averageRating":"8.20","certified":true,"likedCount":84,"notLikedCount":5,"ratingCount":89,"reviewCount":89,"score":"94","sentiment":"POSITIVE","reviewsPageUrl":"/m/sound_of_falling/reviews","scorePercent":"94%","title":"Tomatometer","scoreLinkUrl":"/m/sound_of_falling/reviews/all-critics","scoreLinkText":"89 Reviews"},"criticsTitle":"Tomatometer","criticsTop":{"certified":true,"likedCount":30,"notLikedCount":0,"ratingCount":30,"reviewCount":30,"score":"100","sentiment":"POSITIVE","reviewsPageUrl":"/m/sound_of_falling/reviews","scorePercent":"100%","title":"Tomatometer","scoreLinkUrl":"/m/sound_of_falling/reviews/top-critics","scoreLinkText":"30 Top Critic Reviews"},"hasAudienceAll":true,"hasAudienceVerified":false,"hasCriticsAll":true,"hasCriticsTop":true,"mediaType":"Movie","showScoreDetailsAudience":true,"learnMoreUrl":"https://editorial.rottentomatoes.com/article/introducing-verified-audience-score/"},"primaryImageUrl":"https://resizing.flixster.com/RX1kAJ9bmO4ay1sOsKLZlG9Cfts=/206x305/v2/https://resizing.flixster.com/ep0noWpvD4Cm3y5Rwj_OvsrTpWg=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzU3YjI1MzVhLTQ0ZTctNDdkMC04YjQyLTdhMTZmYzA3NmE1Zi5qcGc="}
+        </script>
+    </media-scorecard-manager>
+</div>
+
+
+                    
+                
+                    
+
+                    <section class="modules-nav" data-ModulesNavigationManager="navWrap">
+    <modules-navigation-manager></modules-navigation-manager>
+
+    <nav>
+        <modules-navigation-carousel
+            skeleton="panel"
+            data-ModulesNavigationManager="navCarousel"
+        >
+            
+                
+            
+                
+            
+                
+                    <a slot="tile" href="#where-to-watch">
+                        <rt-tab data-ModulesNavigationManager="navTab">Where to Watch</rt-tab>
+                    </a>
+                
+            
+                
+                    <a slot="tile" href="#what-to-know">
+                        <rt-tab data-ModulesNavigationManager="navTab">What to Know</rt-tab>
+                    </a>
+                
+            
+                
+            
+                
+            
+                
+                    <a slot="tile" href="#critics-reviews">
+                        <rt-tab data-ModulesNavigationManager="navTab">Reviews</rt-tab>
+                    </a>
+                
+            
+                
+            
+                
+            
+                
+                    <a slot="tile" href="#cast-and-crew">
+                        <rt-tab data-ModulesNavigationManager="navTab">Cast &amp; Crew</rt-tab>
+                    </a>
+                
+            
+                
+                    <a slot="tile" href="#videos">
+                        <rt-tab data-ModulesNavigationManager="navTab">Videos</rt-tab>
+                    </a>
+                
+            
+                
+                    <a slot="tile" href="#photos">
+                        <rt-tab data-ModulesNavigationManager="navTab">Photos</rt-tab>
+                    </a>
+                
+            
+                
+            
+                
+            
+                
+                    <a slot="tile" href="#media-info">
+                        <rt-tab data-ModulesNavigationManager="navTab">Media Info</rt-tab>
+                    </a>
+                
+            
+        </modules-navigation-carousel>
+    </nav>
+</section>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="where-to-watch"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="where-to-watch-label"
+  class="where-to-watch"
+  data-adobe-id="where-to-watch"
+  data-qa="section:where-to-watch"
+>
+  <div class="header-wrap">
+    <h2 class="unset" id="where-to-watch-label">
+      <rt-text
+        context="heading"
+        size="1.25"
+        style="--textTransform: capitalize;"
+      >Where to Watch</rt-text>
+    </h2>
+    <h3 class="unset">
+      <rt-text
+        context="heading"
+        size="0.75"
+        style="--textColor: var(--grayDark4); --letterSpacing: 1px; --textTransform: capitalize;"
+      >
+        Sound of Falling
+      </rt-text>
+    </h3>
+  </div>
+
+  <where-to-watch-manager>
+    <script id="where-to-watch-json" data-json="whereToWatch" type="application/json">
+        {"affiliates":[{"icon":"fandango-at-home","url":"https://athome.fandango.com/content/browse/details/Sound-of-Falling/4866516?cmp=rt_where_to_watch","isSponsoredLink":false,"text":"Fandango at Home"}],"affiliatesText":"Buy Sound of Falling on Fandango at Home.","director":"Mascha Schilinski","hasShowtimes":false,"justWatchMediaType":"movie","showtimesUrl":"https://www.fandango.com/sound-of-falling-2025-243705/movie-overview?a=13036","releaseYear":"2025","tarsSlug":"rt-affiliates-sort-order","title":"Sound of Falling"}
+    </script>
+  </where-to-watch-manager>
+
+  <div hidden data-WhereToWatchManager="jwContainer"></div>
+  <div hidden data-WhereToWatchManager="w2wContainer">
+    <carousel-slider
+      data-curation="rt-affiliates-sort-order"
+      gap="15px"
+      skeleton="panel"
+      tile-width="80px"
+      exclude-page-indicators
+    >
+      
+      
+        <where-to-watch-meta
+          affiliate="fandango-at-home"
+          data-qa="affiliate-item"
+          href="https://athome.fandango.com/content/browse/details/Sound-of-Falling/4866516?cmp=rt_where_to_watch"
+          is-sponsored-link="false"
+          skeleton="panel"
+          slot="tile"
+        >
+          <where-to-watch-bubble
+            image="fandango-at-home"
+            slot="bubble"
+            tabindex="-1"
+          ></where-to-watch-bubble>
+          <span slot="license">Fandango at Home</span>
+          <span slot="coverage"></span>
+        </where-to-watch-meta>
+      
+    </carousel-slider>
+
+    <p class="affiliates-text">Buy Sound of Falling on Fandango at Home. </p>
+  </div>
+</section>
+
+</div>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="what-to-know"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="what-to-know-label"
+  class="what-to-know"
+  data-adobe-id="what-to-know"
+  data-qa="section:what-to-know"
+>
+  <div class="header-wrap">
+    <rt-text context="heading" size="0.75" style="--textColor: var(--grayDark4); --letterSpacing: 1px;--textTransform: capitalize;">
+      Sound of Falling
+    </rt-text>
+    <h2 class="unset" id="what-to-know-label">
+      <rt-text context="heading" size="1.25" style="--textTransform: capitalize;">What to Know</rt-text>
+    </h2>
+  </div>
+
+  <div class="content">
+    
+    
+
+    
+      <div id="critics-consensus" class="consensus">
+        <rt-text context="heading">
+          <score-icon-critics
+            certified="true"
+            sentiment="POSITIVE"
+            size="1"
+          ></score-icon-critics>
+          Critics Consensus
+        </rt-text>
+        <p>Exquisitely well-crafted and laced with mordant humor, <em>Sound of Falling</em> is a haunting generational drama that announces Mascha Schillinski as a world-class directorial talent.</p>
+        <a href="/m/sound_of_falling/reviews">Read Critics Reviews</a>
+      </div>
+    
+
+    
+
+    
+  </div>
+</section>
+
+</div>
+
+
+                    
+                
+                    
+
+                    <ad-unit
+  hidden
+  unit-display="mobile"
+  unit-type="interscroller"
+  no-retry
+  data-AdUnitManager="adUnit:interscrollerinstantiated"
+>
+  <aside slot="ad-inject" class="center mobile-interscroller"></aside>
+</ad-unit>
+
+
+                    
+                
+                    
+
+                    <ad-unit hidden unit-display="desktop" unit-type="opbannerone">
+  <div slot="ad-inject" class="banner-ad"></div>
+</ad-unit>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="critics-reviews"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="critics-reviews-label"
+  class="critics-reviews"
+  data-adobe-id="critics-reviews"
+  data-qa="section:critics-reviews"
+>
+  <div class="header-wrap">
+    <h2 class="unset" id="critics-reviews-label">
+      <rt-text size="1.25" context="heading" data-qa="title">Critics Reviews</rt-text>
+    </h2>
+    <rt-button
+      arialabel="Critics Reviews"
+      class=""
+      data-qa="view-all-link"
+      href="/m/sound_of_falling/reviews"
+      shape="pill"
+      size="0.875"
+      style="--buttonPadding: 6px 24px;--backgroundColor: var(--grayLight1);--borderColor: transparent;--letterSpacing: 1px;"
+      theme="light"
+    >
+      View More
+    </rt-button>
+  </div>
+
+  <div class="content-wrap">
+    <media-critic-reviews-manager>
+      <script data-json="props" type="application/json">{
+        "links": {
+          "flagCriticReview": "https://fandango.az1.qualtrics.com/jfe/form/SV_3NMwx66TSe9KAfz"
+        }
+      }</script>
+    </media-critic-reviews-manager>
+    <carousel-slider tile-width="332px" skeleton="panel" data-qa="carousel">
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          approved-critic
+          
+          top-critic
+          
+        >
+          <rt-link slot="avatar-icon" href="https://www.rottentomatoes.com/critic/ty-burr">
+            
+              <avatar-icon display-name="Ty Burr" icon="https://resizing.flixster.com/oM0NQW0UguJEI1fyjiQ-4Vb07jg=/38x51/v1.YzsxNTA3O2c7MjA2MTA7MjA0ODszODs1MQ" initials="TB"></avatar-icon>
+            
+          </rt-link>
+          <rt-link slot="name" href="https://www.rottentomatoes.com/critic/ty-burr">
+            Ty Burr
+          </rt-link>
+          <rt-text slot="publication" size="0.875">
+            Ty Burr&#39;s Watch List (Substack)
+          </rt-text>
+          <span slot="timestamp">Apr 24</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span>4/4</span>
+          </div>
+          
+            <span slot="review">Schilinski’s second feature film is a stunner and a harbinger of major work ahead.</span>
+            <rt-link slot="review-link" context="link" href="https://www.tyburrswatchlist.com/what-to-watch-pillion-sound-of-falling-the-christophers-miroirs-no-2/" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            theme="transparent"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="6lK1mEZp"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          
+          approved-publication
+          
+          top-publication
+        >
+          <rt-link slot="avatar-icon" href="https://www.rottentomatoes.com/critic/danny-leigh">
+            
+              <avatar-icon display-name="Danny Leigh" initials="DL"></avatar-icon>
+            
+          </rt-link>
+          <rt-link slot="name" href="https://www.rottentomatoes.com/critic/danny-leigh">
+            Danny Leigh
+          </rt-link>
+          <rt-text slot="publication" size="0.875">
+            Financial Times
+          </rt-text>
+          <span slot="timestamp">Mar 9</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span>4/5</span>
+          </div>
+          
+            <span slot="review">Director Mascha Schilinski’s jagged, heady film is a dark collage of girlhood through time, most clearly held together by a setting in the same farmhouse in Altmark, north-east Germany.</span>
+            <rt-link slot="review-link" context="link" href="https://www.ft.com/content/00e0ce5c-6c11-46a2-8b2a-b33b63cf8ef4" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            theme="transparent"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="Ovl4PQlz"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          
+          approved-publication
+          
+          top-publication
+        >
+          <rt-link slot="avatar-icon" href="https://www.rottentomatoes.com/critic/catherine-wheatley">
+            
+              <avatar-icon display-name="Catherine Wheatley" initials="CW"></avatar-icon>
+            
+          </rt-link>
+          <rt-link slot="name" href="https://www.rottentomatoes.com/critic/catherine-wheatley">
+            Catherine Wheatley
+          </rt-link>
+          <rt-text slot="publication" size="0.875">
+            Sight &amp; Sound
+          </rt-text>
+          <span slot="timestamp">Mar 6</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span></span>
+          </div>
+          
+            <span slot="review">Mascha Schilinski’s fragmentary look into the lives of four generations of German women – each affected by violence and abuse in different ways – is as unsettling as it is breathtaking.
+
+</span>
+            <rt-link slot="review-link" context="link" href="https://www.bfi.org.uk/sight-and-sound/reviews/sound-falling-theres-no-escape-from-patriarchy-this-exquisitely-crafted-tale-german-women-through-time" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            theme="transparent"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="J4yzB3yP"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          approved-critic
+          approved-publication
+          
+          
+        >
+          <rt-link slot="avatar-icon" href="https://www.rottentomatoes.com/critic/james-marsh">
+            
+              <avatar-icon display-name="James Marsh" icon="https://resizing.flixster.com/4iO7dMxM6tnkn0IdXlGonTokaOI=/128x128/v1.YzszNTY4O2o7MjA2MTA7MjA0ODszMDA7MzAw" initials="JM"></avatar-icon>
+            
+          </rt-link>
+          <rt-link slot="name" href="https://www.rottentomatoes.com/critic/james-marsh">
+            James Marsh
+          </rt-link>
+          <rt-text slot="publication" size="0.875">
+            South China Morning Post
+          </rt-text>
+          <span slot="timestamp">May 5</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span>4/5</span>
+          </div>
+          
+            <span slot="review">Often resembling a ghost story in how figures from each era linger in the corridors and courtyards of the farmstead long after they have passed, the film is a challenging, beautiful and technically ambitious exploration of generational trauma</span>
+            <rt-link slot="review-link" context="link" href="https://www.scmp.com/lifestyle/entertainment/article/3352359/sound-falling-movie-review-cannes-jury-prize-winner-beautiful-tale-trauma" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            theme="transparent"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="krLnAXyw"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          approved-critic
+          
+          
+          
+        >
+          <rt-link slot="avatar-icon" href="https://www.rottentomatoes.com/critic/sarah-vincent">
+            
+              <avatar-icon display-name="Sarah Vincent" icon="https://resizing.flixster.com/o8-zS6RyvRFcsOcQD7AAcDUCLpQ=/128x128/v1.YzsxMDAwMDAzMDI4O2o7MjA2MTk7MjA0ODsxMjYzOzE1Nzg" initials="SV"></avatar-icon>
+            
+          </rt-link>
+          <rt-link slot="name" href="https://www.rottentomatoes.com/critic/sarah-vincent">
+            Sarah Vincent
+          </rt-link>
+          <rt-text slot="publication" size="0.875">
+            Sarah G Vincent Views
+          </rt-text>
+          <span slot="timestamp">May 3</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span></span>
+          </div>
+          
+            <span slot="review">&quot;Sound of Falling&quot; is definitely well made, but maybe too artsy fartsy for the average moviegoer or even cinephile.</span>
+            <rt-link slot="review-link" context="link" href="https://sarahgvincentviews.com/movies/sound-of-falling/" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            theme="transparent"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="yxp3jNOy"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+        <review-card-critic
+          slot="tile"
+          fixed-size
+          
+          approved-publication
+          
+          
+        >
+          <rt-link slot="avatar-icon" href="https://www.rottentomatoes.com/critic/john-serba">
+            
+              <avatar-icon display-name="John Serba" initials="JS"></avatar-icon>
+            
+          </rt-link>
+          <rt-link slot="name" href="https://www.rottentomatoes.com/critic/john-serba">
+            John Serba
+          </rt-link>
+          <rt-text slot="publication" size="0.875">
+            Decider
+          </rt-text>
+          <span slot="timestamp">Apr 28</span>
+          <div slot="rating">
+            <score-icon-critics size="1.5" sentiment="POSITIVE"></score-icon-critics>
+            <span></span>
+          </div>
+          
+            <span slot="review">Sound of Falling is an exquisitely conceptualized and realized near-triumph that leaves us with an overwhelming, almost unshakable sense of sadness. You won’t soon forget it.</span>
+            <rt-link slot="review-link" context="link" href="https://decider.com/2026/04/27/sound-of-falling-stream-it-or-skip-it/" target="_blank">
+              Go to Full Review
+            </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            theme="transparent"
+            data-MediaCriticsReviewsManager="optionsMenuBtn:click"
+            data-encrypted-publication-id="RyRMqqld"
+          ><rt-icon icon="more"></rt-icon></rt-button>
+        </review-card-critic>
+      
+      <tile-view-more
+        aspect="fill"
+        background="mediaHero"
+        slot="tile"
+      >
+        <rt-button
+          href="/m/sound_of_falling/reviews"
+          shape="pill"
+          theme="transparent-lighttext"
+        >
+          Read all reviews
+        </rt-button>
+      </tile-view-more>
+    </carousel-slider>
+  </div>
+
+  <div data-MediaCriticsReviewsManager="renderOptionsMenu"></div>
+</section>
+
+</div>
+
+
+                    
+                
+                    
+
+                    
+
+<section
+  aria-labelledby="audience-reviews-label"
+  class="audience-reviews"
+  data-adobe-id="audience-reviews"
+  data-qa="section:audience-reviews"
+>
+  <div class="header-wrap">
+    <h2 class="unset" id="audience-reviews-label">
+      <rt-text size="1.25" context="heading" data-qa="title">Audience Reviews</rt-text>
+    </h2>
+    <rt-button
+      arialabel="Audience Reviews"
+      class=""
+      data-qa="view-all-link"
+      href="/m/sound_of_falling/reviews/all-audience"
+      shape="pill"
+      size="0.875"
+      style="--buttonPadding: 6px 24px;--backgroundColor: var(--grayLight1);--borderColor: transparent;--letterSpacing: 1px;"
+      theme="light"
+    >
+      View More
+    </rt-button>
+  </div>
+
+  <div class="content-wrap">
+    <media-audience-reviews-manager>
+      <script type="application/json" data-json="reviewsData">{"audienceScore":{"certifiedFresh":"none","reviewCount":14,"score":"60","sentiment":"POSITIVE","certified":false,"scorePercent":"60%"},"criticsScore":{"certified":true,"score":"94","sentiment":"POSITIVE","scorePercent":"94%"},"reviews":[{"avatarIcon":"fandango","avatarInitials":"GE","displayDate":"Feb 9","displayName":"Ghederick Eshmont","isVerified":true,"profileLink":"","rating":5,"ratingRange":"Rated 5/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 5 out of 5 stars","ratingId":"d6d9dc0b-b3e3-4bae-baea-db26a61c036b","review":"A brilliant film, but not an ounce of fun to be had, a tragic charring story of generational abuse","isFandangoReview":true,"user":{"encryptedUserId":"69qs2eI5zt4GSEVfzmh6Bfxoi33cX7hDMtAgfjGS22cWQt5BhOEI7BFmmcLWh8qI8QhBKFggcm1cPLi2NIE9u7QSbQhkvs1bhEXhY9CNoIwo","realm":"Fandango","initials":"RT","displayName":"R T"}},{"avatarIcon":"https://images.fandango.com/cms/assets/f381ec80-2f51-11f0-8321-2b978811c524--rt-app-profileavatar-neon-fresh.png","avatarInitials":"LK","displayDate":"May 2","displayName":"Liubov K.","isVerified":false,"profileHandle":"shpingalette","profileLink":"/profiles/user/4p3FqQh7QUD2cABfq4cg7iN9HoocXNiKaIdbuOLtNNc13tE2h1Ei5PHNNcwGFvdIbmsDqH66cKDtY2s43uvOuNDtwoiPVI6QF4OfNKu7aIPe","rating":5,"ratingRange":"Rated 5/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 5 out of 5 stars","ratingId":"3c737e5a-8c98-4b32-84f0-da34e19134ba","review":"It’s like a beautiful and terrifying dream, slowly gets under your skin and becomes unforgettable. A pure art. ","isFandangoReview":false,"user":{"encryptedUserId":"4p3FqQh7QUD2cABfq4cg7iN9HoocXNiKaIdbuOLtNNc13tE2h1Ei5PHNNcwGFvdIbmsDqH66cKDtY2s43uvOuNDtwoiPVI6QF4OfNKu7aIPe","realm":"RT","familyName":"Kupriyanova","givenName":"Liubov","fullName":"Liubov Kupriyanova","profileImage":"https://images.fandango.com/cms/assets/f381ec80-2f51-11f0-8321-2b978811c524--rt-app-profileavatar-neon-fresh.png","profileHandle":"shpingalette","background":null,"initials":"LK","displayName":"Liubov K"}},{"avatarIcon":"","avatarInitials":"HD","displayDate":"Apr 27","displayName":"Henry D","isVerified":false,"profileHandle":"Henry_Domke","profileLink":"/profiles/user/Od5s7euM0u0oSDXUk9i3PuMEsddcj8UoQhqoi0dtMMcdotNBIjQipPfWWcERFpGHXLcdxFmmc9gsGoijghBmtONiRLhBjiL3tQJF2Ou85F8e","rating":4,"ratingRange":"Rated 4/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 4 out of 5 stars","ratingId":"f0671bb1-6240-476d-93ca-1b90d610210c","review":"Immersive and dreamlike, with the experiences of girls and women floating and drifting through generations on a family farm in Germany. The settings and people felt completely real. The film captured fear and fascination about death, but also the small rhythms of daily life and playfulness. Even though the story moved across many years, it felt surprisingly cohesive.","isFandangoReview":false,"user":{"encryptedUserId":"Od5s7euM0u0oSDXUk9i3PuMEsddcj8UoQhqoi0dtMMcdotNBIjQipPfWWcERFpGHXLcdxFmmc9gsGoijghBmtONiRLhBjiL3tQJF2Ou85F8e","realm":"RT","familyName":"Domke","givenName":"Henry","fullName":"Henry Domke","profileImage":null,"profileHandle":"Henry_Domke","background":null,"initials":"HD","displayName":"Henry D"}},{"avatarIcon":"","avatarInitials":"DM","displayDate":"Apr 18","displayName":"David M","isVerified":false,"profileHandle":"macleodds","profileLink":"/profiles/user/oE9sneCewu8aujmumvhJ9Io2hPPcJPTpYu92sJmHmmc7Xt15tvkFEXfYYcm2hGpIdmSwYcbbcRXcE3f6dF7OHLjIk6upwukPuD9FX3SEah2d","rating":1,"ratingRange":"Rated 1/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 1 out of 5 stars","ratingId":"44f7ada7-c68f-45f6-befd-6809654964f6","review":"Nihilism for the sake of nihilism, angst run amok.","isFandangoReview":false,"user":{"encryptedUserId":"oE9sneCewu8aujmumvhJ9Io2hPPcJPTpYu92sJmHmmc7Xt15tvkFEXfYYcm2hGpIdmSwYcbbcRXcE3f6dF7OHLjIk6upwukPuD9FX3SEah2d","realm":"RT","familyName":"MacLeod","givenName":"David","fullName":"David MacLeod","profileImage":null,"profileHandle":"macleodds","background":null,"initials":"DM","displayName":"David M"}},{"avatarIcon":"","avatarInitials":"ML","displayDate":"Apr 12","displayName":"Maarit L","isVerified":false,"profileHandle":"Komedienne","profileLink":"/profiles/user/XjWhdoCQ3iXAfVOFWBfdOiGdfVVcN5F8oSdquM1tOOcNotEXue4cvoteecdDu73Sd6SzPI11c8AT78cAOIa7up5ugGtn5cY4FobU7khkLupd","rating":3.5,"ratingRange":"Rated 3.5/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 3.5 out of 5 stars","ratingId":"4ff1fc78-8ce9-42f9-9c91-de6b2399d0a6","review":"The film required a great deal of thought from the viewer. It made the audience meet the characters on a personal level, and the director used interesting cinematic techniques to achieve this. ","isFandangoReview":false,"user":{"encryptedUserId":"XjWhdoCQ3iXAfVOFWBfdOiGdfVVcN5F8oSdquM1tOOcNotEXue4cvoteecdDu73Sd6SzPI11c8AT78cAOIa7up5ugGtn5cY4FobU7khkLupd","realm":"RT","familyName":"Laukkanen","givenName":"Maarit","fullName":"Maarit Laukkanen","profileImage":null,"profileHandle":"Komedienne","background":null,"initials":"ML","displayName":"Maarit L"}},{"avatarIcon":"","avatarInitials":"TO","displayDate":"Mar 18","displayName":"Tim O","isVerified":false,"profileHandle":"Fustyoaks","profileLink":"/profiles/user/WMnsdkFYjUB1HkmtYWhmpCk1uPPcDxUdohmeIJoSzzcgKtNWInOfAms00cMYhdjhnbURjI66c8nS0MF9msxQhvVFwGhwWF37I8NHRQt8qF9n","rating":1.5,"ratingRange":"Rated 1.5/5 Stars &bull;&nbsp;","ratingRangeA11y":"Rated 1.5 out of 5 stars","ratingId":"557e0567-0006-4dac-b738-8c72fd953031","review":"I really didn’t enjoy this film and found it hard to stay engaged. There is no plot to speak of and the various scenes involving different characters weave inexplicably without ever connecting. There are some interesting and engaging moments but the narrative is never fully realised and the sum is much less than the parts. I know that some viewers have loved this film but I found it dull and impenetrable. \n","isFandangoReview":false,"user":{"encryptedUserId":"WMnsdkFYjUB1HkmtYWhmpCk1uPPcDxUdohmeIJoSzzcgKtNWInOfAms00cMYhdjhnbURjI66c8nS0MF9msxQhvVFwGhwWF37I8NHRQt8qF9n","realm":"RT","familyName":"Oakley","givenName":"Tim","fullName":"Tim Oakley","profileImage":null,"profileHandle":"Fustyoaks","background":null,"initials":"TO","displayName":"Tim O"}}],"reviewsUrl":"/m/sound_of_falling/reviews/all-audience","title":"Sound of Falling","vanity":{"emsId":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","href":"/m/sound_of_falling","lifecycleWindow":{},"title":"Sound of Falling","type":"movie","value":"sound_of_falling","parents":[],"mediaType":"Movie"},"viewMoreText":"View More"}</script>
+      <script type="application/json" data-json="links">{
+        "codeOfConduct": "https://editorial.rottentomatoes.com/otg-article/community-code-of-conduct/"
+      }</script>
+    </media-audience-reviews-manager>
+
+    <carousel-slider tile-width="332px" skeleton="panel" data-qa="carousel">
+      
+        <review-card-audience slot="tile" verified-review fixed-size>
+          <rt-link slot="avatar-icon" href="">
+            <avatar-icon
+              display-name="Ghederick Eshmont"
+              icon="fandango"
+              initials="GE"
+              data-user="Ghederick Eshmont"
+              data-MediaAudienceReviewsManager=verifiedUser:click
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="Ghederick Eshmont"
+            href=""
+            data-MediaAudienceReviewsManager=verifiedUser:click
+          >
+            Ghederick Eshmont
+          </rt-link>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="Ghederick Eshmont"
+            data-rating-id="d6d9dc0b-b3e3-4bae-baea-db26a61c036b"
+            data-reviewer-id="69qs2eI5zt4GSEVfzmh6Bfxoi33cX7hDMtAgfjGS22cWQt5BhOEI7BFmmcLWh8qI8QhBKFggcm1cPLi2NIE9u7QSbQhkvs1bhEXhY9CNoIwo"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="69qs2eI5zt4GSEVfzmh6Bfxoi33cX7hDMtAgfjGS22cWQt5BhOEI7BFmmcLWh8qI8QhBKFggcm1cPLi2NIE9u7QSbQhkvs1bhEXhY9CNoIwo"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">Feb 9</span>
+          <rating-stars-group slot="rating" score="5"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">A brilliant film, but not an ounce of fun to be had, a tragic charring story of generational abuse</span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="d6d9dc0b-b3e3-4bae-baea-db26a61c036b"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+        <review-card-audience slot="tile"  fixed-size>
+          <rt-link slot="avatar-icon" href="/profiles/user/4p3FqQh7QUD2cABfq4cg7iN9HoocXNiKaIdbuOLtNNc13tE2h1Ei5PHNNcwGFvdIbmsDqH66cKDtY2s43uvOuNDtwoiPVI6QF4OfNKu7aIPe">
+            <avatar-icon
+              display-name="Liubov K."
+              icon="https://images.fandango.com/cms/assets/f381ec80-2f51-11f0-8321-2b978811c524--rt-app-profileavatar-neon-fresh.png"
+              initials="LK"
+              data-user="Liubov K."
+              
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="Liubov K."
+            href="/profiles/user/4p3FqQh7QUD2cABfq4cg7iN9HoocXNiKaIdbuOLtNNc13tE2h1Ei5PHNNcwGFvdIbmsDqH66cKDtY2s43uvOuNDtwoiPVI6QF4OfNKu7aIPe"
+            
+          >
+            Liubov K.
+          </rt-link>
+          
+            <span slot="user-handle">@shpingalette</span>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="Liubov K."
+            data-rating-id="3c737e5a-8c98-4b32-84f0-da34e19134ba"
+            data-reviewer-id="4p3FqQh7QUD2cABfq4cg7iN9HoocXNiKaIdbuOLtNNc13tE2h1Ei5PHNNcwGFvdIbmsDqH66cKDtY2s43uvOuNDtwoiPVI6QF4OfNKu7aIPe"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="4p3FqQh7QUD2cABfq4cg7iN9HoocXNiKaIdbuOLtNNc13tE2h1Ei5PHNNcwGFvdIbmsDqH66cKDtY2s43uvOuNDtwoiPVI6QF4OfNKu7aIPe"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">May 2</span>
+          <rating-stars-group slot="rating" score="5"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">It’s like a beautiful and terrifying dream, slowly gets under your skin and becomes unforgettable. A pure art. </span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="3c737e5a-8c98-4b32-84f0-da34e19134ba"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+        <review-card-audience slot="tile"  fixed-size>
+          <rt-link slot="avatar-icon" href="/profiles/user/Od5s7euM0u0oSDXUk9i3PuMEsddcj8UoQhqoi0dtMMcdotNBIjQipPfWWcERFpGHXLcdxFmmc9gsGoijghBmtONiRLhBjiL3tQJF2Ou85F8e">
+            <avatar-icon
+              display-name="Henry D"
+              icon=""
+              initials="HD"
+              data-user="Henry D"
+              
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="Henry D"
+            href="/profiles/user/Od5s7euM0u0oSDXUk9i3PuMEsddcj8UoQhqoi0dtMMcdotNBIjQipPfWWcERFpGHXLcdxFmmc9gsGoijghBmtONiRLhBjiL3tQJF2Ou85F8e"
+            
+          >
+            Henry D
+          </rt-link>
+          
+            <span slot="user-handle">@Henry_Domke</span>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="Henry D"
+            data-rating-id="f0671bb1-6240-476d-93ca-1b90d610210c"
+            data-reviewer-id="Od5s7euM0u0oSDXUk9i3PuMEsddcj8UoQhqoi0dtMMcdotNBIjQipPfWWcERFpGHXLcdxFmmc9gsGoijghBmtONiRLhBjiL3tQJF2Ou85F8e"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="Od5s7euM0u0oSDXUk9i3PuMEsddcj8UoQhqoi0dtMMcdotNBIjQipPfWWcERFpGHXLcdxFmmc9gsGoijghBmtONiRLhBjiL3tQJF2Ou85F8e"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">Apr 27</span>
+          <rating-stars-group slot="rating" score="4"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">Immersive and dreamlike, with the experiences of girls and women floating and drifting through generations on a family farm in Germany. The settings and people felt completely real. The film captured fear and fascination about death, but also the small rhythms of daily life and playfulness. Even though the story moved across many years, it felt surprisingly cohesive.</span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="f0671bb1-6240-476d-93ca-1b90d610210c"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+        <review-card-audience slot="tile"  fixed-size>
+          <rt-link slot="avatar-icon" href="/profiles/user/oE9sneCewu8aujmumvhJ9Io2hPPcJPTpYu92sJmHmmc7Xt15tvkFEXfYYcm2hGpIdmSwYcbbcRXcE3f6dF7OHLjIk6upwukPuD9FX3SEah2d">
+            <avatar-icon
+              display-name="David M"
+              icon=""
+              initials="DM"
+              data-user="David M"
+              
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="David M"
+            href="/profiles/user/oE9sneCewu8aujmumvhJ9Io2hPPcJPTpYu92sJmHmmc7Xt15tvkFEXfYYcm2hGpIdmSwYcbbcRXcE3f6dF7OHLjIk6upwukPuD9FX3SEah2d"
+            
+          >
+            David M
+          </rt-link>
+          
+            <span slot="user-handle">@macleodds</span>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="David M"
+            data-rating-id="44f7ada7-c68f-45f6-befd-6809654964f6"
+            data-reviewer-id="oE9sneCewu8aujmumvhJ9Io2hPPcJPTpYu92sJmHmmc7Xt15tvkFEXfYYcm2hGpIdmSwYcbbcRXcE3f6dF7OHLjIk6upwukPuD9FX3SEah2d"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="oE9sneCewu8aujmumvhJ9Io2hPPcJPTpYu92sJmHmmc7Xt15tvkFEXfYYcm2hGpIdmSwYcbbcRXcE3f6dF7OHLjIk6upwukPuD9FX3SEah2d"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">Apr 18</span>
+          <rating-stars-group slot="rating" score="1"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">Nihilism for the sake of nihilism, angst run amok.</span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="44f7ada7-c68f-45f6-befd-6809654964f6"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+        <review-card-audience slot="tile"  fixed-size>
+          <rt-link slot="avatar-icon" href="/profiles/user/XjWhdoCQ3iXAfVOFWBfdOiGdfVVcN5F8oSdquM1tOOcNotEXue4cvoteecdDu73Sd6SzPI11c8AT78cAOIa7up5ugGtn5cY4FobU7khkLupd">
+            <avatar-icon
+              display-name="Maarit L"
+              icon=""
+              initials="ML"
+              data-user="Maarit L"
+              
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="Maarit L"
+            href="/profiles/user/XjWhdoCQ3iXAfVOFWBfdOiGdfVVcN5F8oSdquM1tOOcNotEXue4cvoteecdDu73Sd6SzPI11c8AT78cAOIa7up5ugGtn5cY4FobU7khkLupd"
+            
+          >
+            Maarit L
+          </rt-link>
+          
+            <span slot="user-handle">@Komedienne</span>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="Maarit L"
+            data-rating-id="4ff1fc78-8ce9-42f9-9c91-de6b2399d0a6"
+            data-reviewer-id="XjWhdoCQ3iXAfVOFWBfdOiGdfVVcN5F8oSdquM1tOOcNotEXue4cvoteecdDu73Sd6SzPI11c8AT78cAOIa7up5ugGtn5cY4FobU7khkLupd"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="XjWhdoCQ3iXAfVOFWBfdOiGdfVVcN5F8oSdquM1tOOcNotEXue4cvoteecdDu73Sd6SzPI11c8AT78cAOIa7up5ugGtn5cY4FobU7khkLupd"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">Apr 12</span>
+          <rating-stars-group slot="rating" score="3.5"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">The film required a great deal of thought from the viewer. It made the audience meet the characters on a personal level, and the director used interesting cinematic techniques to achieve this. </span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="4ff1fc78-8ce9-42f9-9c91-de6b2399d0a6"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+        <review-card-audience slot="tile"  fixed-size>
+          <rt-link slot="avatar-icon" href="/profiles/user/WMnsdkFYjUB1HkmtYWhmpCk1uPPcDxUdohmeIJoSzzcgKtNWInOfAms00cMYhdjhnbURjI66c8nS0MF9msxQhvVFwGhwWF37I8NHRQt8qF9n">
+            <avatar-icon
+              display-name="Tim O"
+              icon=""
+              initials="TO"
+              data-user="Tim O"
+              
+            ></avatar-icon>
+          </rt-link>
+          <rt-link slot="name"
+            data-user="Tim O"
+            href="/profiles/user/WMnsdkFYjUB1HkmtYWhmpCk1uPPcDxUdohmeIJoSzzcgKtNWInOfAms00cMYhdjhnbURjI66c8nS0MF9msxQhvVFwGhwWF37I8NHRQt8qF9n"
+            
+          >
+            Tim O
+          </rt-link>
+          
+            <span slot="user-handle">@Fustyoaks</span>
+          
+          <rt-button
+            slot="options-menu"
+            data-MediaAudienceReviewsManager="optionsMenuBtn:click"
+            data-display-name="Tim O"
+            data-rating-id="557e0567-0006-4dac-b738-8c72fd953031"
+            data-reviewer-id="WMnsdkFYjUB1HkmtYWhmpCk1uPPcDxUdohmeIJoSzzcgKtNWInOfAms00cMYhdjhnbURjI66c8nS0MF9msxQhvVFwGhwWF37I8NHRQt8qF9n"
+            theme="transparent"
+            data-UserIdentityManager="hideFromSelf"
+            data-author-id="WMnsdkFYjUB1HkmtYWhmpCk1uPPcDxUdohmeIJoSzzcgKtNWInOfAms00cMYhdjhnbURjI66c8nS0MF9msxQhvVFwGhwWF37I8NHRQt8qF9n"
+            class="hide"
+          >
+            <rt-icon icon="more"></rt-icon>
+          </rt-button>
+          <span slot="timestamp">Mar 18</span>
+          <rating-stars-group slot="rating" score="1.5"></rating-stars-group>
+          
+            <drawer-more
+              slot="review"
+              max-lines="3"
+              status="closed"
+            >
+              <span slot="content">I really didn’t enjoy this film and found it hard to stay engaged. There is no plot to speak of and the various scenes involving different characters weave inexplicably without ever connecting. There are some interesting and engaging moments but the narrative is never fully realised and the sum is much less than the parts. I know that some viewers have loved this film but I found it dull and impenetrable. 
+</span>
+            </drawer-more>
+            <rt-link
+              slot="review-link"
+              context="link"
+              data-MediaAudienceReviewsManager="btnFullReview:click"
+              data-rating-id="557e0567-0006-4dac-b738-8c72fd953031"
+            >
+              See more
+            </rt-link>
+          
+        </review-card-audience>
+      
+      <tile-view-more
+        aspect="fill"
+        background="mediaHero"
+        slot="tile"
+      >
+        <rt-button
+          href="/m/sound_of_falling/reviews/all-audience"
+          shape="pill"
+          theme="transparent-lighttext"
+        >
+          Read all reviews
+        </rt-button>
+      </tile-view-more>
+    </carousel-slider>
+  </div>
+
+  <div data-MediaAudienceReviewsManager="renderOptionsMenu"></div>
+  <div data-MediaAudienceReviewsManager="renderReview"></div>
+  <div data-MediaAudienceReviewsManager="renderVerifiedUser"></div>
+  <div data-MediaAudienceReviewsManager="renderReportReview"></div>
+</section>
+
+
+
+                    
+                
+                    
+
+                    <section
+  aria-labelledby="rate-and-review-label"
+  class="rate-and-review"
+  data-adobe-id="rate-and-review"
+  data-qa="section:rate-and-review"
+>
+  <div
+    id="rate-and-review-module"
+    class="dom-anchor"
+    data-ModulesNavigationManager="domAnchor"
+    data-RateAndReviewModuleManager="moduleAnchor"
+  ></div>
+  <rate-and-review-module-manager>
+    <script data-json="rateAndReviewModule" type="application/json">{"communityWatch2026Q1Enabled":true,"emsId":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","isActivelyModerated":false,"mediaType":"movie","releaseDate":"","title":"Sound of Falling"}</script>
+  </rate-and-review-module-manager>
+
+  <div class="header-wrap">
+    <rt-text
+      context="heading"
+      size="0.75"
+      style="--textColor: #62686F; --letterSpacing: 1px; --textTransform: capitalize;"
+    >
+      Sound of Falling
+    </rt-text>
+    <h2 class="unset" id="rate-and-review-label">
+      <rt-text size="1.25" context="heading">My Rating</rt-text>
+    </h2>
+  </div>
+
+  <div class="content" data-RateAndReviewModuleManager="moduleContent">
+    <rate-and-review-module
+      data-RateAndReviewModuleManager="rateAndReviewModule"
+      skeleton="panel"
+      status="unrated"
+    >
+      <rating-stars-group
+        data-RateAndReviewModuleManager="stars:changed"
+        data-RateAndReviewOverlayManager="moduleStars"
+        aria-labelledby="ratingStarsLabel"
+        is-selectable
+        size="2.75,2"
+        slot="rating">
+      </rating-stars-group>
+      <rating-descriptions
+        context="label"
+        data-RateAndReviewModuleManager="ratingDescriptions"
+        size="1"
+        slot="description"
+        hidden></rating-descriptions>
+      <drawer-more max-lines="2" slot="review-quote" status="closed">
+        <rt-text
+          data-RateAndReviewModuleManager="userReview"
+          data-RateAndReviewOverlayManager="moduleReview"
+          size="0.875"
+          slot="content"
+        ></rt-text>
+        <rt-link slot="cta-open" size="0.875" context="label">Read More</rt-link>
+        <rt-link slot="cta-close" size="0.875" context="label">Read Less</rt-link>
+      </drawer-more>
+
+      <rt-button
+        data-RateAndReviewModuleManager="writeReviewBtn:click"
+        shape="pill"
+        size="1"
+        slot="cta-review"
+      > WRITE A REVIEW </rt-button>
+      <rt-button
+        data-RateAndReviewModuleManager="editReviewBtn:click"
+        shape="pill"
+        size="1"
+        slot="cta-edit"
+      > EDIT REVIEW </rt-button>
+      <rt-button
+        data-RateAndReviewModuleManager="rateBtn:click"
+        size="1"
+        slot="cta-rate"
+        theme="transparent"
+      > POST RATING </rt-button>
+    </rate-and-review-module>
+  </div>
+
+  <rate-and-review-overlay-manager data-RateAndReviewModuleManager="overlayManager:error,success">
+    <script type="application/json" data-json="props">{
+        "links": {
+            "codeOfConduct":"https://editorial.rottentomatoes.com/otg-article/community-code-of-conduct/",
+            "fandangoBrands":"//www.fandango.com/about-us",
+            "privacyPolicy":"https://www.versantprivacy.com/privacy",
+            "termsAndPolicies":"https://www.rottentomatoes.com/policies/terms-and-policies"
+        }
+    }</script>
+  </rate-and-review-overlay-manager>
+</section>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="cast-and-crew"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="cast-and-crew-label"
+  class="cast-and-crew"
+  data-adobe-id="cast-and-crew"
+  data-qa="section:cast-and-crew"
+>
+  <div class="header-wrap">
+    <h2 class="unset" id="cast-and-crew-label">
+      <rt-text size="1.25" context="heading" data-qa="title">Cast & Crew</rt-text>
+    </h2>
+    <rt-button
+      arialabel="Cast and Crew"
+      data-qa="view-all-link"
+      href="/m/sound_of_falling/cast-and-crew"
+      shape="pill"
+      size="0.875"
+      style="--buttonPadding: 6px 24px;--backgroundColor: var(--grayLight1);--borderColor: transparent;--letterSpacing: 1px;"
+      theme="light"
+    >
+      View All
+    </rt-button>
+  </div>
+
+  <div class="content-wrap">
+      
+      
+    <a href="/celebrity/mascha_schilinski" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="Mascha Schilinski thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="none"
+            ></rt-img>
+            <div slot="inset-text" aria-label="Mascha Schilinski, Director">
+                <p class="name" data-qa="person-name">Mascha Schilinski</p>
+                <p class="role" data-qa="person-role">Director</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+    <a href="/celebrity/hanna_heckt" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="Hanna Heckt thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="none"
+            ></rt-img>
+            <div slot="inset-text" aria-label="Hanna Heckt, Alma">
+                <p class="name" data-qa="person-name">Hanna Heckt</p>
+                <p class="role" data-qa="person-role">Alma</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+    <a href="/celebrity/lena_urzendowsky" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="Lena Urzendowsky thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="https://resizing.flixster.com/6Z0YwdWRFeMurRKoRAxYt2afttI=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/838621_v9_ba.jpg"
+            ></rt-img>
+            <div slot="inset-text" aria-label="Lena Urzendowsky, Angelika">
+                <p class="name" data-qa="person-name">Lena Urzendowsky</p>
+                <p class="role" data-qa="person-role">Angelika</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+    <a href="/celebrity/susanne_wuest" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="Susanne Wuest thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="https://resizing.flixster.com/DD3H2jkBDfn_qGpY6Cx1SS4PFQQ=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/494815_v9_bb.jpg"
+            ></rt-img>
+            <div slot="inset-text" aria-label="Susanne Wuest, Emma">
+                <p class="name" data-qa="person-name">Susanne Wuest</p>
+                <p class="role" data-qa="person-role">Emma</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+    <a href="/celebrity/luise_heyer" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="Luise Heyer thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="https://resizing.flixster.com/-DfpQqaw0wTXjUJR-b5q5zG0YMQ=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/643794_v9_ba.jpg"
+            ></rt-img>
+            <div slot="inset-text" aria-label="Luise Heyer, Christa">
+                <p class="name" data-qa="person-name">Luise Heyer</p>
+                <p class="role" data-qa="person-role">Christa</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+    <a href="/celebrity/lea_drinda" data-qa="person-item">
+        <tile-dynamic skeleton="panel">
+            <rt-img 
+                alt="Lea Drinda thumbnail image" 
+                aria-hidden="true"
+                loading="lazy" 
+                slot="image" 
+                src="https://resizing.flixster.com/OIizU0jX_Ga2TvVPJS_RbNyMhW0=/100x120/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/1302084_v9_ba.jpg"
+            ></rt-img>
+            <div slot="inset-text" aria-label="Lea Drinda, Erika">
+                <p class="name" data-qa="person-name">Lea Drinda</p>
+                <p class="role" data-qa="person-role">Erika</p>
+            </div>
+        </tile-dynamic>
+    </a>
+
+  </div>
+
+</section>
+
+</div>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="videos"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="videos-carousel-label"
+  class="videos-carousel"
+  data-adobe-id="videos-carousel"
+  data-qa="section:videos-carousel"
+>
+  <div class="header-wrap">
+    <div class="link-wrap">
+      <h2 class="unset" data-qa="videos-section-title" id="videos-carousel-label">
+        <rt-text size="1.25" context="heading">Videos</rt-text>
+      </h2>
+      <rt-button
+        arialabel=" videos"
+        data-qa="videos-view-all-link"
+        href="/m/sound_of_falling/videos"
+        shape="pill"
+        size="0.875"
+        style="--buttonPadding: 6px 24px;--backgroundColor: var(--grayLight1);--borderColor: transparent;--letterSpacing: 1px;"
+        theme="light"
+      >
+        View All
+      </rt-button>
+    </div>
+    <h3 class="unset">
+      <rt-text
+        context="heading"
+        size="0.75"
+        style="--letterSpacing: 1px; --textColor: var(--grayDark4); --textTransform: capitalize;">
+        Sound of Falling
+      </rt-text>
+    </h3>
+  </div>
+
+  <carousel-slider
+    tile-width="80%,240px"
+    data-VideosCarouselManager="carousel"
+    skeleton="panel"
+    data-qa="videos-carousel"
+  >
+    
+        <tile-video
+          skeleton="panel"
+          slot="tile"
+          data-qa="video-item"
+        >
+          <rt-img
+            slot="image"
+            fallback-theme="iconic"
+            loading=""
+            src="https://resizing.flixster.com/KbxR1z9cMrfwSMt9p685LKB7t_s=/270x160/v2/https://statcdn.fandango.com/MPX/image/NBCU_Fandango/439/951/thumb_3B1734AB-9397-4BF1-A77C-24F650ACA0C8.jpg"
+            alt="Sound of Falling: Trailer 1"
+          ></rt-img>
+          <rt-button
+            theme="transparent"
+            data-ems-id="ffbd2600-9c11-42ad-a36c-0b4b6f46c266"
+            data-mpx-id="2474361411897"
+            data-public-id="M7t6f1X7n6Bk"
+            data-type="Movie"
+            data-VideoPlayerOverlayManager="btnVideo:click"
+            slot="image-action"
+            data-qa="video-trailer-play-btn"
+          >
+            <span class="sr-only">Sound of Falling: Trailer 1</span>
+          </rt-button>
+
+          <drawer-more slot="caption" max-lines="2" status="closed">
+            <rt-text slot="content" size="1" context="label" data-qa="video-item-title">Sound of Falling: Trailer 1</rt-text>
+          </drawer-more>
+
+          <rt-badge
+            slot="image-inset-label"
+            theme="gray"
+          >
+            1:42
+          </rt-badge>
+        </tile-video>
+    
+      <tile-view-more
+        aspect="landscape"
+        background="mediaHero"
+        slot="tile"
+      >
+        <rt-button
+          href="/m/sound_of_falling/videos"
+          shape="pill"
+          theme="transparent-lighttext"
+        >
+          View more videos
+        </rt-button>
+      </tile-view-more>
+  </carousel-slider>
+</section>
+
+</div>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="photos"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="photos-carousel-label"
+  class="photos-carousel"
+  data-adobe-id="photos-carousel"
+  data-qa="section:photos-carousel"
+>
+  <div class="header-wrap">
+    <div class="link-wrap">
+      <h2 class="unset" id="photos-carousel-label">
+        <rt-text size="1.25" context="heading">Photos</rt-text>
+      </h2>
+      <rt-button
+        arialabel="Sound of Falling photos"
+        data-qa="photos-view-all-link"
+        href="/m/sound_of_falling/pictures"
+        shape="pill"
+        size="0.875"
+        style="--buttonPadding: 6px 24px;--backgroundColor: var(--grayLight1);--borderColor: transparent;--letterSpacing: 1px;"
+        theme="light"
+      >
+        View All
+      </rt-button>
+    </div>
+    <h3 class="unset">
+      <rt-text
+        context="label"
+        size="0.75"
+        style="--textColor: var(--grayDark4);"
+      >
+        Sound of Falling
+      </rt-text>
+    </h3>
+  </div>
+
+  <carousel-slider
+    tile-width="80%,240px"
+    skeleton="panel"
+  >
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading=""
+            src="https://resizing.flixster.com/pWrUpP1kjBfyR029fDH_yaqIU20=/fit-in/352x330/v2/https://resizing.flixster.com/OF7z81jwB1LCdpTS-7UzfIO8q-M=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzY4M2IyYTcyLWM0NGUtNGI2NC04YTUzLTdmMGIzNTgyZGFiYS5qcGc=,https://resizing.flixster.com/_GDYhHqXsT0Gsy4rRL7xVu8UZLk=/fit-in/705x460/v2/https://resizing.flixster.com/OF7z81jwB1LCdpTS-7UzfIO8q-M=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzY4M2IyYTcyLWM0NGUtNGI2NC04YTUzLTdmMGIzNTgyZGFiYS5qcGc="
+            alt="Sound of Falling photo 1"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading=""
+            src="https://resizing.flixster.com/JIwcroDNL6T9ZYFoLX7-F6_OZwE=/fit-in/352x330/v2/https://resizing.flixster.com/QT-lR7hlHEzU54UN5LAdUZDOe84=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2FjMWI2MTQ2LTUxMjktNDNkNS05NzEyLTA3MTQ4N2M1YWU5ZS5qcGc=,https://resizing.flixster.com/SFxYyJMUTpG1Mwoxax0WSKGWdes=/fit-in/705x460/v2/https://resizing.flixster.com/QT-lR7hlHEzU54UN5LAdUZDOe84=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2FjMWI2MTQ2LTUxMjktNDNkNS05NzEyLTA3MTQ4N2M1YWU5ZS5qcGc="
+            alt="Sound of Falling photo 2"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading=""
+            src="https://resizing.flixster.com/nOqJoBoXX7mL47o_6zyBFoljEdE=/fit-in/352x330/v2/https://resizing.flixster.com/u-k2OfpD-9KmoGbLF4GKkv5GagQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzNjMzc1NmRlLTVjMWEtNGFiMi1hZGFmLWQwZjFiZmMzMGVhZi5qcGc=,https://resizing.flixster.com/q-_uQeqAmZI93ixDAR6k98j753U=/fit-in/705x460/v2/https://resizing.flixster.com/u-k2OfpD-9KmoGbLF4GKkv5GagQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzNjMzc1NmRlLTVjMWEtNGFiMi1hZGFmLWQwZjFiZmMzMGVhZi5qcGc="
+            alt="Sound of Falling photo 3"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading=""
+            src="https://resizing.flixster.com/vWl3Qlc-UmySqhd8yE2uvh-BPrs=/fit-in/352x330/v2/https://resizing.flixster.com/9BoizO5KSjov4eXRaGJqJue-JvE=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2UyZTU2NDdkLTA0OWYtNDBmYy1hZDNlLWQ2NmQ1NTY0NTVmZi5qcGc=,https://resizing.flixster.com/zW16kq0ZBO4ZpEfv9saVqFWI-28=/fit-in/705x460/v2/https://resizing.flixster.com/9BoizO5KSjov4eXRaGJqJue-JvE=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2UyZTU2NDdkLTA0OWYtNDBmYy1hZDNlLWQ2NmQ1NTY0NTVmZi5qcGc="
+            alt="Sound of Falling photo 4"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading=""
+            src="https://resizing.flixster.com/PY6kGLTduZCox8_mnoOpSMSmAxg=/fit-in/352x330/v2/https://resizing.flixster.com/jZh9iUdjhS9Q23v6x8r4Ab0E6Q8=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2JlNzU3MzlkLTEzZmYtNGQ3MC04ZmY1LTg5MGRlOGIwZWVlOC5qcGc=,https://resizing.flixster.com/Pk87dhXBM_g0V471BYz7C8kqfQ0=/fit-in/705x460/v2/https://resizing.flixster.com/jZh9iUdjhS9Q23v6x8r4Ab0E6Q8=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2JlNzU3MzlkLTEzZmYtNGQ3MC04ZmY1LTg5MGRlOGIwZWVlOC5qcGc="
+            alt="Sound of Falling photo 5"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading="lazy"
+            src="https://resizing.flixster.com/mM0n7Qxajrg-Mx1O6fX7Zsirh_A=/fit-in/352x330/v2/https://resizing.flixster.com/blax7ZaehV08dEvBXK_AA37dwTs=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2U5YzYwYjlmLTI4YTQtNGEyYy1iYjkxLWQwNTA5M2NjZjc4NC5qcGc=,https://resizing.flixster.com/O6W2ewkodJYRIiWlmNk62isBgVU=/fit-in/705x460/v2/https://resizing.flixster.com/blax7ZaehV08dEvBXK_AA37dwTs=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2U5YzYwYjlmLTI4YTQtNGEyYy1iYjkxLWQwNTA5M2NjZjc4NC5qcGc="
+            alt="Sound of Falling photo 6"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading="lazy"
+            src="https://resizing.flixster.com/XkblaPDTjHm6DiHSsd3epKAJcJA=/fit-in/352x330/v2/https://resizing.flixster.com/V6QEAu7Co5ACD3iYtW6pmIf2wOw=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2Q1N2I0YjMxLTdkNjQtNDU0ZC05MDJmLTEyOTc2YmIxNmNiNC5qcGc=,https://resizing.flixster.com/a3NNo9E3LDocjObWJSkq0YQf_bU=/fit-in/705x460/v2/https://resizing.flixster.com/V6QEAu7Co5ACD3iYtW6pmIf2wOw=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2Q1N2I0YjMxLTdkNjQtNDU0ZC05MDJmLTEyOTc2YmIxNmNiNC5qcGc="
+            alt="Sound of Falling photo 7"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading="lazy"
+            src="https://resizing.flixster.com/k81Jnfy3cjETW_3qJeETKcCUwBA=/fit-in/352x330/v2/https://resizing.flixster.com/sWVCNWkZgLCx1ezTuDGvpC82XB8=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzgzNDhhMjQ5LTI4MGItNDM5Ni1iYTJmLTNkMGJiMWZjOTYyYy5wbmc=,https://resizing.flixster.com/zrwTXLIRWgZ6p9GapOFPlocPUe8=/fit-in/705x460/v2/https://resizing.flixster.com/sWVCNWkZgLCx1ezTuDGvpC82XB8=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzgzNDhhMjQ5LTI4MGItNDM5Ni1iYTJmLTNkMGJiMWZjOTYyYy5wbmc="
+            alt="Sound of Falling photo 8"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only"></span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading="lazy"
+            src="https://resizing.flixster.com/Q4yw232lHksUqtS6uygc_IWK7d8=/fit-in/352x330/v2/https://resizing.flixster.com/ep0noWpvD4Cm3y5Rwj_OvsrTpWg=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzU3YjI1MzVhLTQ0ZTctNDdkMC04YjQyLTdhMTZmYzA3NmE1Zi5qcGc=,https://resizing.flixster.com/cGSJoyLEzvfYO8clfx5W6MafxN4=/fit-in/705x460/v2/https://resizing.flixster.com/ep0noWpvD4Cm3y5Rwj_OvsrTpWg=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzU3YjI1MzVhLTQ0ZTctNDdkMC04YjQyLTdhMTZmYzA3NmE1Zi5qcGc="
+            alt="Sound of Falling photo 9"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-photo
+        data-PhotosCarouselManager="tilePhoto:click"
+        slot="tile"
+        skeleton="panel"
+      >
+        <span class="sr-only">Sound of Falling (2025)</span>
+        
+          
+        
+          <rt-img
+            slot="image"
+            loading="lazy"
+            src="https://resizing.flixster.com/1bSKLhIUfd342DvLtwav2dUMEY4=/fit-in/352x330/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p30204208_p_v8_ab.jpg,https://resizing.flixster.com/m4_PAXynJMkk7OWPVqnzdeP-9fQ=/fit-in/705x460/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p30204208_p_v8_ab.jpg"
+            alt="Sound of Falling (2025)"
+          ></rt-img>
+      </tile-photo>
+    
+      <tile-view-more
+        aspect="square,landscape"
+        background="mediaHero"
+        slot="tile"
+      >
+        <rt-button
+          href="/m/sound_of_falling/pictures"
+          shape="pill"
+          theme="transparent-lighttext"
+          aria-label="View more Sound of Falling photos"
+        >
+          View more photos
+        </rt-button>
+      </tile-view-more>
+  </carousel-slider>
+
+  <photos-carousel-manager>
+    <script
+      id="photosCarousel"
+      type="application/json"
+      hidden
+    >
+        {"title":"Sound of Falling","images":[{"aspectRatio":"ASPECT_RATIO_4_3","height":"3112","width":"4096","imageUrl":"https://resizing.flixster.com/_GDYhHqXsT0Gsy4rRL7xVu8UZLk=/fit-in/705x460/v2/https://resizing.flixster.com/OF7z81jwB1LCdpTS-7UzfIO8q-M=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzY4M2IyYTcyLWM0NGUtNGI2NC04YTUzLTdmMGIzNTgyZGFiYS5qcGc=","imageUrlMobile":"https://resizing.flixster.com/pWrUpP1kjBfyR029fDH_yaqIU20=/fit-in/352x330/v2/https://resizing.flixster.com/OF7z81jwB1LCdpTS-7UzfIO8q-M=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzY4M2IyYTcyLWM0NGUtNGI2NC04YTUzLTdmMGIzNTgyZGFiYS5qcGc=","imageLoading":""},{"aspectRatio":"ASPECT_RATIO_4_3","height":"3112","width":"4096","imageUrl":"https://resizing.flixster.com/SFxYyJMUTpG1Mwoxax0WSKGWdes=/fit-in/705x460/v2/https://resizing.flixster.com/QT-lR7hlHEzU54UN5LAdUZDOe84=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2FjMWI2MTQ2LTUxMjktNDNkNS05NzEyLTA3MTQ4N2M1YWU5ZS5qcGc=","imageUrlMobile":"https://resizing.flixster.com/JIwcroDNL6T9ZYFoLX7-F6_OZwE=/fit-in/352x330/v2/https://resizing.flixster.com/QT-lR7hlHEzU54UN5LAdUZDOe84=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2FjMWI2MTQ2LTUxMjktNDNkNS05NzEyLTA3MTQ4N2M1YWU5ZS5qcGc=","imageLoading":""},{"aspectRatio":"ASPECT_RATIO_4_3","height":"3112","width":"4096","imageUrl":"https://resizing.flixster.com/q-_uQeqAmZI93ixDAR6k98j753U=/fit-in/705x460/v2/https://resizing.flixster.com/u-k2OfpD-9KmoGbLF4GKkv5GagQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzNjMzc1NmRlLTVjMWEtNGFiMi1hZGFmLWQwZjFiZmMzMGVhZi5qcGc=","imageUrlMobile":"https://resizing.flixster.com/nOqJoBoXX7mL47o_6zyBFoljEdE=/fit-in/352x330/v2/https://resizing.flixster.com/u-k2OfpD-9KmoGbLF4GKkv5GagQ=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzNjMzc1NmRlLTVjMWEtNGFiMi1hZGFmLWQwZjFiZmMzMGVhZi5qcGc=","imageLoading":""},{"aspectRatio":"ASPECT_RATIO_4_3","height":"3112","width":"4096","imageUrl":"https://resizing.flixster.com/zW16kq0ZBO4ZpEfv9saVqFWI-28=/fit-in/705x460/v2/https://resizing.flixster.com/9BoizO5KSjov4eXRaGJqJue-JvE=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2UyZTU2NDdkLTA0OWYtNDBmYy1hZDNlLWQ2NmQ1NTY0NTVmZi5qcGc=","imageUrlMobile":"https://resizing.flixster.com/vWl3Qlc-UmySqhd8yE2uvh-BPrs=/fit-in/352x330/v2/https://resizing.flixster.com/9BoizO5KSjov4eXRaGJqJue-JvE=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2UyZTU2NDdkLTA0OWYtNDBmYy1hZDNlLWQ2NmQ1NTY0NTVmZi5qcGc=","imageLoading":""},{"aspectRatio":"ASPECT_RATIO_4_3","height":"3112","width":"4096","imageUrl":"https://resizing.flixster.com/Pk87dhXBM_g0V471BYz7C8kqfQ0=/fit-in/705x460/v2/https://resizing.flixster.com/jZh9iUdjhS9Q23v6x8r4Ab0E6Q8=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2JlNzU3MzlkLTEzZmYtNGQ3MC04ZmY1LTg5MGRlOGIwZWVlOC5qcGc=","imageUrlMobile":"https://resizing.flixster.com/PY6kGLTduZCox8_mnoOpSMSmAxg=/fit-in/352x330/v2/https://resizing.flixster.com/jZh9iUdjhS9Q23v6x8r4Ab0E6Q8=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2JlNzU3MzlkLTEzZmYtNGQ3MC04ZmY1LTg5MGRlOGIwZWVlOC5qcGc=","imageLoading":""},{"aspectRatio":"ASPECT_RATIO_4_3","height":"3112","width":"4096","imageUrl":"https://resizing.flixster.com/O6W2ewkodJYRIiWlmNk62isBgVU=/fit-in/705x460/v2/https://resizing.flixster.com/blax7ZaehV08dEvBXK_AA37dwTs=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2U5YzYwYjlmLTI4YTQtNGEyYy1iYjkxLWQwNTA5M2NjZjc4NC5qcGc=","imageUrlMobile":"https://resizing.flixster.com/mM0n7Qxajrg-Mx1O6fX7Zsirh_A=/fit-in/352x330/v2/https://resizing.flixster.com/blax7ZaehV08dEvBXK_AA37dwTs=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2U5YzYwYjlmLTI4YTQtNGEyYy1iYjkxLWQwNTA5M2NjZjc4NC5qcGc=","imageLoading":"lazy"},{"aspectRatio":"ASPECT_RATIO_4_3","height":"3112","width":"4096","imageUrl":"https://resizing.flixster.com/a3NNo9E3LDocjObWJSkq0YQf_bU=/fit-in/705x460/v2/https://resizing.flixster.com/V6QEAu7Co5ACD3iYtW6pmIf2wOw=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2Q1N2I0YjMxLTdkNjQtNDU0ZC05MDJmLTEyOTc2YmIxNmNiNC5qcGc=","imageUrlMobile":"https://resizing.flixster.com/XkblaPDTjHm6DiHSsd3epKAJcJA=/fit-in/352x330/v2/https://resizing.flixster.com/V6QEAu7Co5ACD3iYtW6pmIf2wOw=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzL2Q1N2I0YjMxLTdkNjQtNDU0ZC05MDJmLTEyOTc2YmIxNmNiNC5qcGc=","imageLoading":"lazy"},{"aspectRatio":"ASPECT_RATIO_4_3","height":"3112","width":"4096","imageUrl":"https://resizing.flixster.com/zrwTXLIRWgZ6p9GapOFPlocPUe8=/fit-in/705x460/v2/https://resizing.flixster.com/sWVCNWkZgLCx1ezTuDGvpC82XB8=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzgzNDhhMjQ5LTI4MGItNDM5Ni1iYTJmLTNkMGJiMWZjOTYyYy5wbmc=","imageUrlMobile":"https://resizing.flixster.com/k81Jnfy3cjETW_3qJeETKcCUwBA=/fit-in/352x330/v2/https://resizing.flixster.com/sWVCNWkZgLCx1ezTuDGvpC82XB8=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzgzNDhhMjQ5LTI4MGItNDM5Ni1iYTJmLTNkMGJiMWZjOTYyYy5wbmc=","imageLoading":"lazy"},{"aspectRatio":"ASPECT_RATIO_2_3","height":"4000","width":"2700","imageUrl":"https://resizing.flixster.com/cGSJoyLEzvfYO8clfx5W6MafxN4=/fit-in/705x460/v2/https://resizing.flixster.com/ep0noWpvD4Cm3y5Rwj_OvsrTpWg=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzU3YjI1MzVhLTQ0ZTctNDdkMC04YjQyLTdhMTZmYzA3NmE1Zi5qcGc=","imageUrlMobile":"https://resizing.flixster.com/Q4yw232lHksUqtS6uygc_IWK7d8=/fit-in/352x330/v2/https://resizing.flixster.com/ep0noWpvD4Cm3y5Rwj_OvsrTpWg=/ems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzU3YjI1MzVhLTQ0ZTctNDdkMC04YjQyLTdhMTZmYzA3NmE1Zi5qcGc=","imageLoading":"lazy"},{"aspectRatio":"ASPECT_RATIO_2_3","caption":"Sound of Falling (2025)","height":"1440","width":"960","imageUrl":"https://resizing.flixster.com/m4_PAXynJMkk7OWPVqnzdeP-9fQ=/fit-in/705x460/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p30204208_p_v8_ab.jpg","imageUrlMobile":"https://resizing.flixster.com/1bSKLhIUfd342DvLtwav2dUMEY4=/fit-in/352x330/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p30204208_p_v8_ab.jpg","imageLoading":"lazy"}],"picturesPageUrl":"/m/sound_of_falling/pictures"}
+    </script>
+  </photos-carousel-manager>
+</section>
+
+</div>
+
+
+                    
+                
+                    
+
+                    <ad-unit hidden unit-display="mobile" unit-type="mboxadtwo" show-ad-link>
+  <div slot="ad-inject" class="rectangle_ad mobile center"></div>
+</ad-unit>
+
+
+                    
+                
+                    
+
+                    <ad-unit hidden unit-display="desktop" unit-type="opbannertwo">
+  <div slot="ad-inject" class="banner-ad"></div>
+</ad-unit>
+
+
+                    
+                
+                    
+
+                    <div
+  class="modules-layout"
+  tabindex="-1"
+  data-ModulesNavigationManager="content:focusin"
+>
+  
+    <div
+      id="media-info"
+      class="dom-anchor"
+      data-ModulesNavigationManager="domAnchor"
+    ></div>
+  
+
+  
+<section
+  aria-labelledby="media-info-label"
+  class="media-info"
+  data-adobe-id="media-info"
+  data-qa="section:media-info"
+>
+  <div class="header-wrap">
+    <h2 class="unset" id="media-info-label">
+      <rt-text
+        context="heading"
+        size="1.25"
+        style="--textTransform: capitalize;"
+        data-qa="title"
+      >
+        Movie Info
+      </rt-text>
+    </h2>
+  </div>
+
+  <div class="content-wrap">
+    
+      <div class="synopsis-wrap">
+        <rt-text class="key" size="0.875" data-qa="synopsis-label">Synopsis</rt-text>
+        <rt-text data-qa="synopsis-value">Over the course of a century, as four girls from different time periods experience their youth on a German farm, their lives become intertwined until time seems to dissolve.</rt-text>
+      </div>
+    
+
+    <dl>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Director</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-link href="/celebrity/mascha_schilinski" data-qa="item-value">Mascha Schilinski</rt-link>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Producer</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-link href="/celebrity/lucas_schmidt" data-qa="item-value">Lucas Schmidt</rt-link><rt-text class="delimiter">, </rt-text>
+          
+            <rt-link href="/celebrity/lasse_scharpen" data-qa="item-value">Lasse Scharpen</rt-link>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Screenwriter</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-link href="/celebrity/mascha_schilinski" data-qa="item-value">Mascha Schilinski</rt-link><rt-text class="delimiter">, </rt-text>
+          
+            <rt-link href="/celebrity/louise_peter" data-qa="item-value">Louise Peter</rt-link><rt-text class="delimiter">, </rt-text>
+          
+            <rt-link href="/celebrity/louise_peter" data-qa="item-value">Louise Peter</rt-link><rt-text class="delimiter">, </rt-text>
+          
+            <rt-link href="/celebrity/mascha_schilinski" data-qa="item-value">Mascha Schilinski</rt-link>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Distributor</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-text data-qa="item-value">MUBI</rt-text>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Production Co</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-text data-qa="item-value">ZDF</rt-text><rt-text class="delimiter">, </rt-text>
+          
+            <rt-text data-qa="item-value">Studio Zentral</rt-text>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Genre</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-link href="/browse/movies_in_theaters/genres:drama" data-qa="item-value">Drama</rt-link>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Original Language</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-text data-qa="item-value">German</rt-text>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Release Date (Theaters)</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-text data-qa="item-value">Jan 16, 2026, Limited</rt-text>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Box Office (Gross USA)</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-text data-qa="item-value">$86.4K</rt-text>
+          
+        </dd>
+      </div>
+      
+      <div class="category-wrap" data-qa="item">
+        <dt class="key">
+          <rt-text class="key" size="0.875" data-qa="item-label">Runtime</rt-text>
+        </dt>
+        <dd data-qa="item-value-group">
+          
+            <rt-text data-qa="item-value">2h 29m</rt-text>
+          
+        </dd>
+      </div>
+      
+    </dl>
+  </div>
+</section>
+
+</div>
+
+
+                    
+                
+            </div>
+
+            <div id="sidebar-wrap">
+    <div data-adobe-id="discovery-sidebar" data-DiscoverySidebarManager="sticky">
+        <discovery-sidebar-manager no-hero="false">
+            <script data-json="props" type="application/json">{"vanity":{"emsId":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","href":"/m/sound_of_falling","lifecycleWindow":{},"title":"Sound of Falling","type":"movie","value":"sound_of_falling","parents":[],"mediaType":"Movie"}}</script>
+        </discovery-sidebar-manager>
+
+        <div data-DiscoverySidebarManager="renderSidebar:focusin" skeleton="panel"></div>
+        <style>
+            div[data-DiscoverySidebarManager][skeleton] {
+                min-height: 600px;
+            }
+        </style>
+
+        
+
+        <ad-unit
+            data-DiscoverySidebarManager="ad:instantiated"
+            unit-display="desktop"
+            unit-type="topmulti"
+            show-ad-link
+        >
+            <div slot="ad-inject"></div>
+        </ad-unit>
+    </div>
+</div>
+
+
+            <script id="curation-json" type="application/json">{"emsId":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","hasShowtimes":false,"rtId":"900095206","type":"movie"}</script>
+
+        </div>
+    </div>
+
+    
+<tool-tip data-MediaScorecardManager="tipCritics" hidden>
+    <rt-button slot="btn-close" data-MediaScorecardManager="tipCriticsClose:click" theme="transparent">
+        <rt-icon icon="close" image="true"></rt-icon>
+    </rt-button>
+    <div data-MediaScorecardManager="tipCriticsContent"></div>
+</tool-tip>
+
+<tool-tip data-MediaScorecardManager="tipAudience" hidden>
+    <rt-button slot="btn-close" data-MediaScorecardManager="tipAudienceClose:click" theme="transparent">
+        <rt-icon icon="close" image="true"></rt-icon>
+    </rt-button>
+    <div data-MediaScorecardManager="tipAudienceContent"></div>
+</tool-tip>
+
+<tool-tip data-MediaScorecardManager="tipAverageRating" hidden>
+    <rt-button slot="btn-close" data-MediaScorecardManager="tipAverageRatingClose:click" theme="transparent">
+        <rt-icon icon="close" image="true"></rt-icon>
+    </rt-button>
+    <div data-MediaScorecardManager="tipAverageRatingContent"></div>
+</tool-tip>
+
+<overlay-base data-MediaScorecardManager="overlay:close" hidden>
+    <!-- do not remove content slot preset -->
+    <div slot="content"></div>
+</overlay-base>
+
+    <overlay-base
+    data-PhotosCarouselManager="overlayBase:close"
+    hidden
+    >
+    <photos-carousel-overlay
+        data-PhotosCarouselManager="photosOverlay:sliderBtnClick"
+        slot="content"
+    >
+        <rt-button
+            data-PhotosCarouselManager="closeBtn:click"
+            slot="close-btn"
+            theme="transparent"
+        >
+            <rt-icon icon="close"></rt-icon>
+        </rt-button>
+    </photos-carousel-overlay>
+</overlay-base>
+
+    <overlay-base
+    data-RateAndReviewOverlayManager="overlayBase:close"
+    hidden
+    no-click-outside
+>
+    <div slot="content"></div>
+</overlay-base>
+
+<bottom-sheet-modal
+    data-RateAndReviewModuleManager="moderationInfoModal"
+    full-height
+    style="--maxHeightOffset: 90px;"
+    hidden
+>
+    <community-watch-content slot="content">
+    <rt-text slot="title" context="heading" size="1.25">Community Watch</rt-text>
+    <rt-text slot="text" style="--textColor: #62686F; --lineHeight: 1.5;">
+        "<span data-RateAndReviewModuleManager="moderationInfoTitle"></span>" is under
+        <rt-link href="/faq" context="label" target="_blank">Community Watch</rt-link>.
+        Please write a review for your rating to count toward the Popcornmeter.
+    </rt-text>
+    <rt-button
+        data-RateAndReviewModuleManager="moderationInfoBtn:click"
+        type="cta-large"
+        slot="button"
+        size="1"
+    >Write a review</rt-button>
+    </community-watch-content>
+</bottom-sheet-modal>
+<bottom-sheet-modal
+    data-RateAndReviewModuleManager="moderationSubmitModal"
+    full-height
+    style="--maxHeightOffset: 90px;"
+    hidden
+>
+    <community-watch-content slot="content">
+    <rt-text slot="title" context="heading" size="1.25">Thanks for your submission!</rt-text>
+    <rt-text slot="text" style="--textColor: #62686F; --lineHeight: 1.5;">
+        Your review is awaiting approval. Once accepted, your review will get its big debut
+        in the Popcornmeter. Visit
+        <rt-link href="/faq" context="label" target="_blank">FAQ</rt-link>
+        to learn more about Community Watch.
+    </rt-text>
+    <rt-button
+        data-RateAndReviewModuleManager="moderationSubmitBtn:click"
+        type="cta-large"
+        slot="button"
+        size="1"
+    >Got it</rt-button>
+    </community-watch-content>
+</bottom-sheet-modal>
+
+<toast-notification data-RateAndReviewOverlayManager="toast" aria-live="polite" hidden>
+    <rt-icon slot="icon" icon="checkmark-circle-filled" image size-pixel="16"></rt-icon>
+    <rt-text
+        slot="message"
+        data-RateAndReviewOverlayManager="toastMessage"
+        context="label"
+        size="0.875"
+    >- -</rt-text>
+    <rt-button slot="close" theme="transparent">
+        <rt-icon icon="close" image size-pixel="16"></rt-icon>
+    </rt-button>
+</toast-notification>
+
+    <overlay-base
+    data-JwPlayerManager="overlayBase:close"
+    data-VideoPlayerOverlayManager="overlayBase:close,open"
+    hidden
+>
+    <video-player-overlay
+        class="video-overlay-wrap"
+        data-qa="video-overlay"
+        data-VideoPlayerOverlayManager="videoPlayerOverlay:unmute"
+        slot="content"
+    >
+        <rt-button
+            data-JwPlayerManager="unmuteBtn:click"
+            slot="unmute-btn"
+            theme="light"
+        >
+            <rt-icon icon="volume-mute-fill"></rt-icon>
+            &ensp; Tap to Unmute
+        </rt-button>
+        <div slot="header">
+            <button
+                class="unset transparent"
+                data-VideoPlayerOverlayManager="btnOverlayClose:click"
+                data-qa="video-close-btn"
+            >
+                <rt-icon icon="close">
+                    <span class="sr-only">Close video</span>
+                </rt-icon>
+            </button>
+            <a class="cta-btn header-cta button hide">See Details</a>
+        </div>
+
+        <div slot="content"></div>
+
+        <a slot="footer" class="cta-btn footer-cta button hide">See Details</a>
+    </video-player-overlay>
+</overlay-base>
+
+<div id="video-overlay-centered-wrap" data-VideoPlayerOverlayManager="centeredWrap">
+    <div id="video-overlay-player" data-VideoPlayerOverlayManager="player" hidden></div>
+    
+</div>
+
+<video-player-overlay-manager
+    jw-player-2026-q2-enabled="false"
+></video-player-overlay-manager>
+<jw-player-manager
+    data-AdsVideoSpotlightManager="jwPlayerManager:playlistItem,ready,remove"
+    data-VideoPlayerOverlayManager="jwPlayerManager:playlistItem,pause,ready,relatedClose,relatedOpen,remove"
+>
+</jw-player-manager>
+
+
+    <ads-media-scorecard-manager></ads-media-scorecard-manager>
+
+                </div>
+
+                <back-to-top hidden></back-to-top>
+            </main>
+
+            <ad-unit hidden unit-display="desktop" unit-type="bottombanner">
+                <div slot="ad-inject" class="sleaderboard_wrapper"></div>
+            </ad-unit>
+
+            <ads-global-skin-takeover-manager></ads-global-skin-takeover-manager>
+
+            <footer-manager></footer-manager>
+<footer class="footer container" data-PagePicturesManager="footer">
+    
+        <mobile-app-desktop-footer env="production" hidden></mobile-app-desktop-footer>
+    
+
+    <div class="footer__content-desktop-block" data-qa="footer:section">
+        <div class="footer__content-group">
+            <ul class="footer__links-list">
+                <li class="footer__links-list-item">
+                    <a href="/help_desk" data-qa="footer:link-helpdesk">Help</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="/about" data-qa="footer:link-about">About Rotten Tomatoes</a>
+                </li>
+                <li id="footer-feedback" class="footer__links-list-item" data-qa="footer-feedback-desktop">
+                    
+                </li>
+            </ul>
+        </div>
+        <div class="footer__content-group">
+            <ul class="footer__links-list">
+                <li class="footer__links-list-item">
+                    <a href="/critics/criteria" data-qa="footer:link-critic-submission">Critic Submission</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="/help_desk/licensing" data-qa="footer:link-licensing">Licensing</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="https://www.versantmedia.com/" target="_blank" rel="noopener" data-qa="footer:link-ads">Advertise With Us</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="//www.fandango.com/careers" target="_blank" rel="noopener" data-qa="footer:link-careers">Careers</a>
+                </li>
+            </ul>
+        </div>
+        <div class="footer__content-group footer__newsletter-block">
+            <p class="h3 footer__content-group-title">
+                <rt-icon icon="mail-filled" size-pixel="20" style="fill:#fff"></rt-icon>&ensp;Join the Newsletter
+            </p>
+            <p class="footer__newsletter-copy">Get the freshest reviews, news, and more delivered right to your inbox!</p>
+            <rt-button shape="pill" data-FooterManager="btnNewsLetter:click" data-qa="footer-newsletter-desktop">
+                Join The Newsletter
+            </rt-button>
+            <a data-FooterManager="linkNewsLetter" class= "button footer__newsletter-btn hide" target="_blank" rel="noopener">
+                Join The Newsletter
+            </a>
+        </div>
+        <div class="footer__content-group footer__social-block" data-qa="footer:social">
+            <p class="h3 footer__content-group-title">Follow Us</p>
+            <social-media-icons theme="light" size="20px"></social-media-icons>
+        </div>
+    </div>
+
+    <div class="footer__content-mobile-block" data-qa="mfooter:section">
+        <div class="footer__content-group">
+            <div class="mobile-app-cta-wrap">
+                
+                <mobile-app-cta
+                    env="production"
+                    showandroid="true"
+                    showios="true"
+                    hidden
+                ></mobile-app-cta>
+            </div>
+
+            <p class="footer__copyright-legal" data-qa="mfooter:copyright">
+                <rt-text size="0.75">Copyright &copy; Fandango. All rights reserved.</rt-text>
+            </p>
+            <p>
+                <rt-button shape="pill" data-FooterManager="btnNewsLetter:click" data-qa="footer-newsletter-mobile"
+                    >Join The Newsletter</rt-button>
+            </p>
+            <a
+                data-FooterManager="linkNewsLetter"
+                class= "button footer__newsletter-btn hide"
+                target="_blank"
+                rel="noopener"
+            >Join The Newsletter</a>
+
+            <ul class="footer__links-list list-inline">
+                <li class="footer__links-list-item">
+                    <a href="https://www.versantprivacy.com/privacy/cookies#accordionheader3" target="_blank" rel="noopener" data-qa="mfooter:link-adChoices">Ad Choices</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="https://www.versantprivacy.com/privacy" target="_blank" rel="noopener" data-qa="mfooter:link-privacy-policy">
+                        Privacy Policy
+                    </a>
+                </li>
+                <li class="footer__links-list-item">
+                    <img data-FooterManager="iconCCPA" src="https://images.fandango.com/cms/assets/266533e0-7afb-11ed-83f2-4f600722b564--privacyoptions.svg" class="footer__ccpa-icon" loading="lazy" alt="CCPA icon" />
+                    <!-- OneTrust Cookies Settings button start -->
+                    <a href="javascript:void(0)" id="ot-sdk-btn" class="ot-sdk-show-settings mobile" data-qa="footer-cookie-settings-mobile">Cookie Settings</a>
+                    <!-- OneTrust Cookies Settings button end -->
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="https://www.versantprivacy.com/privacy/california-consumer-privacy-act" target="_blank" rel="noopener" data-qa="mfooter:link-california-notice">CA Notice</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="https://www.rottentomatoes.com/policies/terms-and-policies" data-qa="mfooter:link-terms-policies">Terms and Policies</a>
+                </li>
+                <li class="footer__links-list-item">
+                    <a href="/faq#accessibility" data-qa="mfooter:link-accessibility">Accessibility</a>
+                </li>
+                <li id="footer-feedback-mobile" class="footer__links-list-item" data-qa="footer-feedback-mobile">
+                    
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer__copyright">
+        <ul class="footer__links-list list-inline list-inline--separator" data-qa="footer:links-list-privacy">
+            <li class="footer__links-list-item version" data-qa="footer:version">
+                <span>V3.1</span>
+            </li>
+            <li class="footer__links-list-item">
+                <a href="https://www.versantprivacy.com/privacy/cookies#accordionheader3" target="_blank" rel="noopener" data-qa="footer:link-adChoices">Ad Choices</a>
+            </li>
+            <li class="footer__links-list-item">
+                <a href="https://www.versantprivacy.com/privacy" target="_blank" rel="noopener" data-qa="footer:link-privacy-policy">
+                    Privacy Policy
+                </a>
+            </li>
+            <li class="footer__links-list-item">
+                <img data-FooterManager="iconCCPA" src="https://images.fandango.com/cms/assets/266533e0-7afb-11ed-83f2-4f600722b564--privacyoptions.svg" class="footer__ccpa-icon" loading="lazy" alt="CCPA icon" />
+                <!-- OneTrust Cookies Settings button start -->
+                <a href="javascript:void(0)" id="ot-sdk-btn" class="ot-sdk-show-settings" data-qa="footer-cookie-settings-desktop">Cookie Settings</a>
+                <!-- OneTrust Cookies Settings button end -->
+            </li>
+            <li class="footer__links-list-item">
+                <a href="https://www.versantprivacy.com/privacy/california-consumer-privacy-act" target="_blank" rel="noopener" data-qa="footer:link-california-notice">CA Notice</a>
+            </li>
+            <li class="footer__links-list-item">
+                <a href="https://www.rottentomatoes.com/policies/terms-and-policies" data-qa="footer:link-terms-policies">Terms and Policies</a>
+            </li>
+            <li class="footer__links-list-item">
+                <a href="/faq#accessibility" data-qa="footer:link-accessibility">Accessibility</a>
+            </li>
+        </ul>
+        <span class="footer__copyright-legal" data-qa="footer:copyright">
+            Copyright &copy; Fandango. A
+            <a href="https://versantmedia.com/" target="_blank" rel="noopener" data-qa="footer:link-nbcuniversal">
+                Versant Media
+            </a> company. All rights reserved.
+        </span>
+    </div>
+</footer>
+
+        </div>
+
+        
+        <iframe-container
+            hidden
+            data-ArtiManager="iframeContainer:close,resize"
+            data-iframe-src="https://arti.rottentomatoes.com?theme=iframe"
+            theme="widget"
+        >
+            <span slot="logo"><img src="/assets/pizza-pie/images/arti.041d204c4a4.svg" alt="Logo"></img><span>beta</span></span>
+            <rt-button
+                aria-label="New chat"
+                data-ArtiManager="btnNewChat:click"
+                id="artiNewChatButton"
+                slot="opt-btns"
+                theme="transparent"
+                title="New chat"
+            >
+                <rt-icon icon="new-chat" size-pixel="20" image></rt-icon>
+            </rt-button>
+        </iframe-container>
+        <arti-manager data-SearchResultsNavManager="artiManager"></arti-manager>
+        
+
+        
+    
+        <script type="text/javascript">
+      (function (root) {
+        /* -- Data -- */
+        root.RottenTomatoes || (root.RottenTomatoes = {});
+root.RottenTomatoes.context || (root.RottenTomatoes.context = {});
+root.RottenTomatoes.context.resetCookies = ["AMCVS_8CF467C25245AE3F0A490D4C%40AdobeOrg","AMCV_8CF467C25245AE3F0A490D4C%40AdobeOrg","WRIgnore","WRUIDAWS","__CT_Data","__gads","_admrla","_awl","_cs_c","_cs_id","_cs_mk","_cs_s","_fbp","_ga","_gat_gtmTracker","_gid","aam_uuid","akamai_generated_location","auth_token","auth_user","auth_client","check","cognito","fblo_326803741017","fbm_326803741017","fbsr_326803741017","gpv_Page","id_token","is_auth","loginPlatform","mbox","notice_behavior","optimizelyBuckets","optimizelyEndUserId","optimizelyPendingLogEvents","optimizelySegments","s_cc","s_dayslastvisit","s_dayslastvisit_s","s_invisit","s_prevPage","s_sq","s_vnum","cognito","fbm_326803741017","fbsr_326803741017","id_token","JSESSIONID","QSI_HistorySession","QSI_SI_8up4dWDOtjAg0hn_intercept","_ALGOLIA","__Host-color-scheme","__Host-theme-options","__host_color_scheme","__host_theme_options","_cb","_cb_ls","_cb_svref","_chartbeat2","_chartbeat4","_chartbeat5","_sp_id.47f3","_sp_ses.47f3","_v__chartbeat3","adops_master_kvs","akacd_RTReplatform","algoliaUT","cognito","cl_duid","fbsr_326803741017","id_token","mps_uuid","session_id","_admrla","_awl","_ga","_gid","aam_uuid","cognito","fbm_326803741017","id_token","_cb","_cb_ls","_cb_svref","_chartbeat2","adops_master_kvs","cognito","id_token","krg_crb","krg_uid","mps_uuid"];
+root.RottenTomatoes.context.video = {"file":"https:\u002F\u002Flink.theplatform.com\u002Fs\u002FNGweTC\u002Fmedia\u002FAAJ5_LLSjvxQ?formats=MPEG-DASH+widevine,M3U+appleHlsEncryption,M3U+none,MPEG-DASH+none,MPEG4,MP3","type":"hls","description":"Kara (Eliza Scanlen) gives birth.","image":"https:\u002F\u002Fstatcdn.fandango.com\u002FMPX\u002Fimage\u002FNBCU_Fandango\u002F729\u002F906\u002Fthumb_424F3B39-DC62-4D4D-836F-7F7D6FB2D12E.jpg","isRedBand":false,"mediaid":"1974301763580","mpxId":"1974301763580","publicId":"AAJ5_LLSjvxQ","title":"Old: Official Clip - Giving Birth","default":false,"label":"0","duration":"3:18","durationInSeconds":"198.24","emsMediaType":"Movie","emsId":"0b633a54-bb3c-45f5-904c-23de15bb2eb7","overviewPageUrl":"\u002Fm\u002Fold","videoPageUrl":"\u002Fm\u002Fold\u002Fvideos\u002FAAJ5_LLSjvxQ","videoType":"CLIP","adobeDataLayer":{"content":{"id":"fandango_1974301763580","length":"198.24","type":"vod","player_name":"jw","sdk_version":"web: 6.51.0","channel":"movie","originator":"universal pictures","name":"old: official clip - giving birth","rating":"not adult","stream_type":"video"},"media_params":{"genre":"horror, mystery & thriller, drama","show_type":2}},"comscore":{"labelmapping":"c3=\"rottentomatoes.com\", ns_st_st=\"Rotten Tomatoes\", ns_st_pu=\"Universal Pictures\", ns_st_pr=\"Old\", ns_st_sn=\"*null\", ns_st_en=\"*null\", ns_st_ge=\"Horror,Mystery & Thriller,Drama\", ns_st_ia=\"0\", ns_st_ce=\"0\", ns_st_ddt=\"2021\", ns_st_tdt=\"2021\""},"thumbnail":"https:\u002F\u002Fresizing.flixster.com\u002FQZakSlViSscAE7eml9Ohtev9S2g=\u002F270x160\u002Fv2\u002Fhttps:\u002F\u002Fstatcdn.fandango.com\u002FMPX\u002Fimage\u002FNBCU_Fandango\u002F729\u002F906\u002Fthumb_424F3B39-DC62-4D4D-836F-7F7D6FB2D12E.jpg"};
+root.RottenTomatoes.context.videoClipsJson = {"count":19};
+root.RottenTomatoes.criticPage = {"vanity":"florence-epstein","type":"movies","typeDisplayName":"Movie","totalReviews":"","criticID":"28050"};
+root.RottenTomatoes.context.review = {"mediaType":"movie","title":"Catch That Kid","emsId":"49cbacbd-2bb9-304e-9f5b-809425140617","type":"all-critics","sort":undefined,"reviewsCount":0,"pageInfo":undefined,"reviewerDefaultImg":"https:\u002F\u002Fimages.fandango.com\u002Fcms\u002Fassets\u002F5b6ff500-1663-11ec-ae31-05a670d2d590--rtactordefault.png","reviewerDefaultImgWidth":"100"};
+root.RottenTomatoes.context.useCursorPagination = true;
+root.RottenTomatoes.context.verifiedTooltip = undefined;
+root.RottenTomatoes.context.layout = {"header":{"movies":{"moviesAtHome":{"tarsSlug":"rt-nav-movies-at-home","linkList":[{"header":"Fandango at Home","slug":"fandango-at-home-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Faffiliates:fandango-at-home"},{"header":"Netflix","slug":"netflix-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Faffiliates:netflix"},{"header":"Apple TV","slug":"apple-tv-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Faffiliates:apple-tv-plus"},{"header":"Prime Video","slug":"prime-video-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Faffiliates:prime-video"},{"header":"Most Popular Streaming movies","slug":"most-popular-streaming-movies-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Fsort:popular"},{"header":"Certified Fresh movies","slug":"certified-fresh-movies-link","url":"\u002Fbrowse\u002Fmovies_at_home\u002Fcritics:certified_fresh"},{"header":"Browse all","slug":"browse-all-link","url":"\u002Fbrowse\u002Fmovies_at_home"}]}},"editorial":{"guides":{"posts":[{"ID":290302,"author":944,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2026\u002F05\u002FTEENAGE-SEX-thumb.jpg"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fguide\u002Fcannes-2026-movies-ranking\u002F","status":"publish","title":"Cannes 2026 Movies Ranked by Tomatometer","type":"guide"},{"ID":282182,"author":944,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2026\u002F04\u002FOBSESSION-THUMB.jpg"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fguide\u002Fbest-new-horror-movies-2026\u002F","status":"publish","title":"Best New Horror Movies of 2026","type":"guide"}],"title":"Guides","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fcountdown\u002F"},"hubs":{"posts":[{"ID":140214,"author":12,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2023\u002F12\u002FRT_AwardsTour_Thumbnail_600x314.jpg"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Frt-hub\u002Fawards-tour\u002F","status":"publish","title":"Awards Tour","type":"rt-hub"},{"ID":237626,"author":12,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2023\u002F05\u002FRT_WTW_Generic_2023_Thumbnail_600x314_021623.jpg"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Frt-hub\u002Fwhat-to-watch\u002F","status":"publish","title":"What to Watch: In Theaters and On Streaming","type":"rt-hub"}],"title":"Hubs","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Frt-hubs\u002F"},"news":{"posts":[{"ID":290387,"author":822,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2026\u002F05\u002FCannes_2026_Recap-Asghar_Farhadi.jpg"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002F2026-cannes-film-festival-recap\u002F","status":"publish","title":"Cannes Ketchup &#8211; Day 3: Asghar Farhadi&#8217;s \u003Cem\u003EParallel Tales\u003C\u002Fem\u003E Earns a Rotten Reception","type":"article"},{"ID":290430,"author":7,"featured_image":{"source":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fwp-content\u002Fuploads\u002F2026\u002F05\u002FRT_Critics_TiffGrant_Thumbnail_600x314_V5b.jpg"},"link":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002Frt-cfca-team-up-to-provide-grants-for-critics-attending-tiff-2025-2\u002F","status":"publish","title":"Rotten Tomatoes to Provide Grants for Critics Attending TIFF 2026 ","type":"article"}],"title":"RT News","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Fnews\u002F"}},"trendingTarsSlug":"rt-nav-trending","trending":[{"header":"Seen on the Screen","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002Fseen-on-screen-podcast-a-celebration-of-universal-stories\u002F"},{"header":"Rotten Tomatoes App ","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002Fapp\u002F"},{"header":"Cannes 2026","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002F2026-cannes-film-festival-recap\u002F"},{"header":"Critics Grant Program ","url":"https:\u002F\u002Feditorial.rottentomatoes.com\u002Farticle\u002Frt-cfca-team-up-to-provide-grants-for-critics-attending-tiff-2025-2\u002F"}],"certifiedMedia":{"certifiedFreshTvSeason":{"header":null,"media":{"url":"\u002Ftv\u002Fdutton_ranch\u002Fs01","name":"Dutton Ranch: Season 1","score":83,"posterImg":"https:\u002F\u002Fresizing.flixster.com\u002FBiFH3RmFe5yUvsdK2VNKLF-VbLQ=\u002F206x305\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FJDUmBey-aCJ4fOxPLqvAqKt4E6k=\u002Ffit-in\u002F180x240\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FzdTJrBU9iOLnZTyJtD2z0h-PBg4=\u002Fems.cHJkLWVtcy1hc3NldHMvdHZzZWFzb24vNzllODQwMGMtMmVmOC00YzYwLTk4OWUtZjZmMTU3NjRjNDk4LmpwZw=="},"tarsSlug":"rt-nav-list-cf-picks"},"certifiedFreshMovieInTheater":{"header":null,"media":{"url":"\u002Fm\u002Fobsession_2025","name":"Obsession","score":94,"posterImg":"https:\u002F\u002Fresizing.flixster.com\u002FMmXITF0Ld-fXJ90F8cwstnffd7Y=\u002F206x305\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FgON9XpuNNXWAANbcZJH4R24js50=\u002Ffit-in\u002F180x240\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FwciPMzUm5zbBhWKN24eGdoRfK8I=\u002Fems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzBlZDNhZmI5LTM3N2EtNGIyZC1iZTA5LTU0NzUyY2M2ZGYyYi5qcGc="}},"certifiedFreshMovieInTheater4":{"header":null,"media":{"url":"\u002Fm\u002Fthe_sheep_detectives","name":"The Sheep Detectives","score":94,"posterImg":"https:\u002F\u002Fresizing.flixster.com\u002FpCWXteTP2zOUbqdkEuXkEDzIq7s=\u002F206x305\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FWlohGr2kfLIsOkSU9LZg6vSkv1s=\u002Ffit-in\u002F180x240\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FLviGdc9-5BykrMyhX1oGyU-HhXE=\u002Fems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzYzNjA4ZWQ1LTE1M2UtNGI2Mi05NTJlLWM0ZTg2NWM5ODJhNC5qcGc="}},"certifiedFreshMovieAtHome":{"header":null,"media":{"url":"\u002Fm\u002Fsilent_friend","name":"Silent Friend","score":95,"posterImg":"https:\u002F\u002Fresizing.flixster.com\u002FVYcvg6m93nQteD9XlbbDK0pYDnk=\u002F206x305\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002Fu1_juuFd9Mhl1Xb6vjmWjbuqQ3I=\u002Ffit-in\u002F180x240\u002Fv2\u002Fhttps:\u002F\u002Fresizing.flixster.com\u002FJc2c994NAhOMQnOL8ijhj7NUpq8=\u002Fems.cHJkLWVtcy1hc3NldHMvbW92aWVzLzY3ZGYzMmQzLWZiZTktNDg3Ny1iNTMzLWM2MmE2NGE5ODc3Ni5qcGc="}},"tarsSlug":"rt-nav-list-cf-picks"},"tvLists":{"newTvTonight":{"tarsSlug":"rt-hp-text-list-3","title":"New TV Tonight","shows":[{"title":"Dutton Ranch: Season 1","tomatometer":{"tomatometer":83,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Fdutton_ranch\u002Fs01"},{"title":"Off Campus: Season 1","tomatometer":{"tomatometer":95,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Foff_campus\u002Fs01"},{"title":"Good Omens: Season 3","tomatometer":{"tomatometer":61,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Fgood_omens\u002Fs03"},{"title":"Rivals: Season 2","tomatometer":{"tomatometer":100,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Frivals_2024\u002Fs02"},{"title":"Devil May Cry: Season 2","tomatometer":{"tomatometer":100,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Fdevil_may_cry\u002Fs02"},{"title":"Nemesis: Season 1","tomatometer":{"tomatometer":90,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Fnemesis_2026\u002Fs01"},{"title":"Everyone Is Doing Great: Season 2","tomatometer":{"tomatometer":null,"sentiment":"empty","certified":false},"tvPageUrl":"\u002Ftv\u002Feveryone_is_doing_great\u002Fs02"},{"title":"On the Roam: Season 2","tomatometer":{"tomatometer":null,"sentiment":"empty","certified":false},"tvPageUrl":"\u002Ftv\u002Fon_the_roam\u002Fs02"},{"title":"Welcome to Wrexham: Season 5","tomatometer":{"tomatometer":null,"sentiment":"empty","certified":false},"tvPageUrl":"\u002Ftv\u002Fwelcome_to_wrexham\u002Fs05"}]},"mostPopularTvOnRt":{"tarsSlug":"rt-hp-text-list-2","title":"Most Popular TV on RT","shows":[{"title":"Off Campus: Season 1","tomatometer":{"tomatometer":95,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Foff_campus\u002Fs01"},{"title":"Widow's Bay: Season 1","tomatometer":{"tomatometer":97,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Fwidows_bay\u002Fs01"},{"title":"Legends: Season 1","tomatometer":{"tomatometer":96,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Flegends_2026\u002Fs01"},{"title":"The Boys: Season 5","tomatometer":{"tomatometer":97,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Fthe_boys_2019\u002Fs05"},{"title":"Lord of the Flies: Season 1","tomatometer":{"tomatometer":92,"sentiment":"positive","certified":true},"tvPageUrl":"\u002Ftv\u002Flord_of_the_flies\u002Fs01"},{"title":"From: Season 4","tomatometer":{"tomatometer":100,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Ffrom\u002Fs04"},{"title":"The Chestnut Man: Season 2","tomatometer":{"tomatometer":100,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Fthe_chestnut_man\u002Fs02"},{"title":"Nemesis: Season 1","tomatometer":{"tomatometer":90,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Fnemesis_2026\u002Fs01"},{"title":"The Dark Wizard: Season 1","tomatometer":{"tomatometer":100,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Fthe_dark_wizard\u002Fs01"},{"title":"M.I.A.: Season 1","tomatometer":{"tomatometer":62,"sentiment":"positive","certified":false},"tvPageUrl":"\u002Ftv\u002Fmia\u002Fs01"}]}}}};
+root.RottenTomatoes.thirdParty = {"chartBeat":{"auth":"64558","domain":"rottentomatoes.com"},"mpx":{"accountPid":"NGweTC","playerPid":"y__7B0iQTi4P","playerPidPDK6":"pdk6_y__7B0iQTi4P","accountId":"2474312077"},"algoliaSearch":{"aId":"79FRDP12PN","sId":"175588f6e5f8319b27702e4cc4013561"},"cognito":{"upId":"us-west-2_4L0ZX4b1U","clientId":"7pu48v8i2n25t4vhes0edck31c"}};
+root.RottenTomatoes.serviceWorker = {"isServiceWokerOn":true};
+root.__RT__ || (root.__RT__ = {});
+root.__RT__.featureFlags = {"adsCarouselHP":false,"adsCarouselHPSlug":"rt-sponsored-carousel-list-disney-plus","adsCarouselOP":false,"adsCarouselOPSlug":"rt-sponsored-carousel-list-disney-plus","adsMockDLP":false,"adsPages":"none","adsSponsoredOverrideOP":true,"adsSponsoredOverrideOPSlugs":"rt-sponsored-override-op-starz","adsVideoSpotlightHP":false,"artiEnabled":true,"artiSearchNavEnabled":true,"authVerboseLogs":false,"avgTomatometer2025Q4Enabled":true,"bypassCriticValidationEnabled":false,"codeOfConductText2026Q1Enabled":true,"communityWatch2026Q1Enabled":true,"criticPublicationProfile2026Q1Enabled":false,"editorialApiDisabled":false,"jwPlayer2026Q2Enabled":false,"kalshi2026Q1Enabled":false,"legacyBridge":true,"logVerboseEnabled":false,"mobileAppAndroid":"https:\u002F\u002Fplay.google.com\u002Fstore\u002Fapps\u002Fdetails?id=com.rottentomatoes.android","mobileAppIos":"https:\u002F\u002Fapps.apple.com\u002Fus\u002Fapp\u002Frotten-tomatoes-movies-tv\u002Fid6673916573","mobileAppIosMeta":"app-id=6673916573","profilesFeaturesEnabled":true,"removeFetcherSessionStorage":true,"trafficAndroidEnabled":true,"trafficSafariEnabled":true,"versantMpsEnabled":true};
+root.RottenTomatoes.context.adsMockDLP = false;
+root.RottenTomatoes.context.req = {"params":{"vanity":"sound_of_falling"},"query":{},"route":{},"url":"\u002Fm\u002Fsound_of_falling","secure":false,"buildVersion":undefined};
+root.RottenTomatoes.context.config = {};
+root.BK = {"PageName":"http:\u002F\u002Fwww.rottentomatoes.com\u002Fm\u002Fsound_of_falling","SiteID":37528,"SiteSection":"movie","MovieId":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","MovieTitle":"Sound of Falling"};
+root.RottenTomatoes.dtmData = {"customerId":"","loggedInStatus":"","rtVersion":3.1,"webVersion":"node","emsID":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","lifeCycleWindow":undefined,"pageName":"rt | movies | overview | Sound of Falling","titleGenre":"Drama","titleId":"ffbd2600-9c11-42ad-a36c-0b4b6f46c266","titleName":"Sound of Falling","titleType":"Movie"};
+root.RottenTomatoes.context.gptSite = "movie";
+
+      }(this));
+    </script>
+
+        <script fetchpriority="high" src="/assets/pizza-pie/javascripts/bundles/roma/preload.1b32677e53f.js"></script>
+
+        <script  src="/assets/pizza-pie/javascripts/bundles/roma/vendors.a4cc402b78a.js"></script>
+
+        <script  src="/assets/pizza-pie/javascripts/bundles/roma/default.395605b0563.js"></script>
+
+        
+            <script
+                async
+                data-SearchResultsNavManager="script:load"
+                src="https://cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js">
+            </script>
+            <script  src="/assets/pizza-pie/javascripts/templates/roma/searchNav.482648261fd.js"></script>
+            <script  src="/assets/pizza-pie/javascripts/bundles/roma/searchNav.cc2d169cacf.js"></script>
+        
+        
+
+    <script  src="/assets/pizza-pie/javascripts/templates/pages/movie/index.69bce17fb27.js"></script>
+
+    <script  src="/assets/pizza-pie/javascripts/bundles/pages/movie/index.08f1a921a8f.js"></script>
+
+
+        
+            
+            <script>
+                if (window.mps && typeof window.mps.writeFooter === 'function') {
+                    window.mps.writeFooter();
+                }
+            </script>
+            
+        
+
+        
+            
+            <script>
+                window._satellite && _satellite.pageBottom();
+            </script>
+            
+        
+    </body>
+</html>

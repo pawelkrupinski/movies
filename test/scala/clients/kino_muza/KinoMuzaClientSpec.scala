@@ -107,7 +107,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
       "Wszystko na sprzedaż",
       "Wypadek fortepianowy",
       "Yanuni",
-      "Zemsta Embriona | najlepsze z najgorszych",
+      "Zemsta Embriona",
       "Ziemia obiecana",
       "Znaki Pana Śliwki",
       "Ślady",
@@ -194,7 +194,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Wszystko na sprzedaż")                               shouldBe Some(94)
     runtimes("Wypadek fortepianowy")                               shouldBe Some(88)
     runtimes("Yanuni")                                             shouldBe Some(112)
-    runtimes("Zemsta Embriona | najlepsze z najgorszych")          shouldBe Some(89)
+    runtimes("Zemsta Embriona")          shouldBe Some(89)
     runtimes("Ziemia obiecana")                                    shouldBe Some(179)
     runtimes("Znaki Pana Śliwki")                                  shouldBe Some(72)
     runtimes("Ślady")                                              shouldBe Some(85)
@@ -279,7 +279,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Wszystko na sprzedaż").movie.releaseYear                               shouldBe Some(1968)
     byTitle("Wypadek fortepianowy").movie.releaseYear                               shouldBe Some(2025)
     byTitle("Yanuni").movie.releaseYear                                             shouldBe Some(2025)
-    byTitle("Zemsta Embriona | najlepsze z najgorszych").movie.releaseYear          shouldBe Some(1990)
+    byTitle("Zemsta Embriona").movie.releaseYear          shouldBe Some(1990)
     byTitle("Ziemia obiecana").movie.releaseYear                                    shouldBe Some(1974)
     byTitle("Znaki Pana Śliwki").movie.releaseYear                                  shouldBe Some(2025)
     byTitle("Ślady").movie.releaseYear                                              shouldBe Some(2026)
@@ -364,7 +364,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Wszystko na sprzedaż").movie.country shouldBe Some("Polska")
     byTitle("Wypadek fortepianowy").movie.country shouldBe Some("Francja")
     byTitle("Yanuni").movie.country shouldBe Some("Austria, Brazylia, USA, Kanada, Niemcy")
-    byTitle("Zemsta Embriona | najlepsze z najgorszych").movie.country shouldBe Some("USA")
+    byTitle("Zemsta Embriona").movie.country shouldBe Some("USA")
     byTitle("Ziemia obiecana").movie.country shouldBe Some("Polska")
     byTitle("Znaki Pana Śliwki").movie.country shouldBe Some("Polska")
     byTitle("Ślady").movie.country shouldBe Some("Ukraina, Polska")
@@ -450,7 +450,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     posters("Wszystko na sprzedaż")                               shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/02/wszystko_na_sprzedaz_06_gallery-800x450.jpg")
     posters("Wypadek fortepianowy")                               shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/05/wypadek-fortepianowy-2-800x450.jpg")
     posters("Yanuni")                                             shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/03/yanuni-2-800x450.jpg")
-    posters("Zemsta Embriona | najlepsze z najgorszych")          shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/04/Zemsta-embriona-9-800x450.png")
+    posters("Zemsta Embriona")          shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/04/Zemsta-embriona-9-800x450.png")
     posters("Ziemia obiecana")                                    shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/02/ziemia-o-3-800x450.jpg")
     posters("Znaki Pana Śliwki")                                  shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/04/znaki-p-3-800x450.jpg")
     posters("Ślady")                                              shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/03/traces-4-2048x1152-1-800x450.jpg")
@@ -536,7 +536,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Wszystko na sprzedaż")                               shouldBe Some("https://www.kinomuza.pl/movie/wszystko-na-sprzedaz/")
     filmUrls("Wypadek fortepianowy")                               shouldBe Some("https://www.kinomuza.pl/movie/wypadek-fortepianowy/")
     filmUrls("Yanuni")                                             shouldBe Some("https://www.kinomuza.pl/movie/yanuni/")
-    filmUrls("Zemsta Embriona | najlepsze z najgorszych")          shouldBe Some("https://www.kinomuza.pl/movie/zemsta-embriona/")
+    filmUrls("Zemsta Embriona")          shouldBe Some("https://www.kinomuza.pl/movie/zemsta-embriona/")
     filmUrls("Ziemia obiecana")                                    shouldBe Some("https://www.kinomuza.pl/movie/ziemia-obiecana/")
     filmUrls("Znaki Pana Śliwki")                                  shouldBe Some("https://www.kinomuza.pl/movie/znaki-pana-sliwki/")
     filmUrls("Ślady")                                              shouldBe Some("https://www.kinomuza.pl/movie/slady/")
@@ -621,7 +621,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Wszystko na sprzedaż").director shouldBe Some("Andrzej Wajda")
     byTitle("Wypadek fortepianowy").director shouldBe Some("Quentin Dupieux")
     byTitle("Yanuni").director shouldBe Some("Richard Ladkani")
-    byTitle("Zemsta Embriona | najlepsze z najgorszych").director shouldBe Some("Francis Teri")
+    byTitle("Zemsta Embriona").director shouldBe Some("Francis Teri")
     byTitle("Ziemia obiecana").director shouldBe Some("Andrzej Wajda")
     byTitle("Znaki Pana Śliwki").director shouldBe Some("Urszula Morga, Bartosz Mikołajczyk")
     byTitle("Ślady").director shouldBe Some("Alisa Kovalenko, Marysia Nikitiuk")
@@ -707,7 +707,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     counts("Wszystko na sprzedaż")                               shouldBe 1
     counts("Wypadek fortepianowy")                               shouldBe 1
     counts("Yanuni")                                             shouldBe 2
-    counts("Zemsta Embriona | najlepsze z najgorszych")          shouldBe 2
+    counts("Zemsta Embriona")          shouldBe 2
     counts("Ziemia obiecana")                                    shouldBe 1
     counts("Znaki Pana Śliwki")                                  shouldBe 6
     counts("Ślady")                                              shouldBe 1

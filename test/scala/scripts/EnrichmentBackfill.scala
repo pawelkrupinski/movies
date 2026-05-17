@@ -5,6 +5,7 @@ import models.MovieRecord
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieService, StoredMovieRecord}
 import services.events.{EventBus, InProcessEventBus}
+import tools.RealHttpFetch
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -42,11 +43,11 @@ object EnrichmentBackfill {
     // now live in their dedicated ratings classes; the script invokes them
     // directly per row so a single backfill pass covers everything.
     val cache       = new CaffeineMovieCache(repo)
-    val tmdb        = new TmdbClient()
-    val imdbRatings = new ImdbRatings(cache, new ImdbClient())
-    val mcRatings   = new MetascoreRatings(cache, tmdb, new MetacriticClient())
-    val rtRatings   = new RottenTomatoesRatings(cache, tmdb, new RottenTomatoesClient())
-    val fwRatings   = new FilmwebRatings(cache, tmdb, new FilmwebClient())
+    val tmdb        = new TmdbClient(new RealHttpFetch)
+    val imdbRatings = new ImdbRatings(cache, new ImdbClient(new RealHttpFetch))
+    val mcRatings   = new MetascoreRatings(cache, tmdb, new MetacriticClient(new RealHttpFetch))
+    val rtRatings   = new RottenTomatoesRatings(cache, tmdb, new RottenTomatoesClient(new RealHttpFetch))
+    val fwRatings   = new FilmwebRatings(cache, tmdb, new FilmwebClient(new RealHttpFetch))
     val service = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val rows = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))

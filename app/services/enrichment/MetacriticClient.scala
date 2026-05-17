@@ -26,7 +26,7 @@ import scala.util.Try
  *      whose canonical slug deviates from MC's published convention (subtitle
  *      stripped, year suffix appended, etc.).
  */
-class MetacriticClient(http: HttpFetch = new RealHttpFetch()) {
+class MetacriticClient(http: HttpFetch) {
   import MetacriticClient._
 
   /** Canonical movie page (validated 200) or None. `year` is the FILM's

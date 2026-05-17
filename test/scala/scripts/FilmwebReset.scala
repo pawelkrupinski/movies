@@ -4,6 +4,7 @@ import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.events.InProcessEventBus
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieService, StoredMovieRecord}
+import tools.RealHttpFetch
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -41,8 +42,8 @@ object FilmwebReset {
       sys.exit(1)
     }
 
-    val tmdb    = new TmdbClient()
-    val filmweb = new FilmwebClient()
+    val tmdb    = new TmdbClient(new RealHttpFetch)
+    val filmweb = new FilmwebClient(new RealHttpFetch)
 
     // ── Phase 1: snapshot, then wipe FW fields on every row ────────────────
     //

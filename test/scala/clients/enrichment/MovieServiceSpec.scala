@@ -3,6 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.MovieService
+import tools.RealHttpFetch
 
 class MovieServiceSpec extends AnyFlatSpec with Matchers {
 
@@ -67,7 +68,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
 
   private def svc(seed: (String, Option[Int], MovieRecord)*): MovieService = {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(seed))
-    new MovieService(cache, new InProcessEventBus(), new TmdbClient(apiKey = None))
+    new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
   }
 
   private val pradyEnrichment = MovieRecord(

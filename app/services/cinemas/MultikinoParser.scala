@@ -4,7 +4,6 @@ import models.{CinemaMovie, Movie, Multikino, Showtime}
 import play.api.libs.json._
 
 import java.time.LocalDateTime
-import scala.util.Try
 
 /**
  * Pure JSON → `CinemaMovie` transformation for the Multikino API response.

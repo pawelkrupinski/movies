@@ -1,14 +1,14 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie, KinoMuza, Movie, Showtime}
+import models._
 import org.jsoup.Jsoup
-import tools.{HttpFetch, RealHttpFetch}
+import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class KinoMuzaClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScraper {
+class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
 
   val cinema: Cinema = KinoMuza
   private val RepertoireUrl = "https://www.kinomuza.pl/repertuar/"
@@ -26,12 +26,20 @@ class KinoMuzaClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScrape
   private val RuntimePat = """(\d+)’""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
 
+  // Strip the "| najlepsze z najgorszych" series tag Muza appends to films
+  // featured in that recurring programme — same film, regular title in the
+  // rest of the corpus.
+  private val SeriesSuffix = """(?i)\s*\|\s*najlepsze\s+z\s+najgorszych\s*$""".r
+
+  private def cleanTitle(raw: String): String =
+    SeriesSuffix.replaceFirstIn(raw, "").trim
+
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val doc      = Jsoup.parse(html)
     val previews = doc.select("#movies .preview").asScala
 
     previews.flatMap { preview =>
-      val title    = Option(preview.selectFirst(".preview-title")).map(_.text().trim).filter(_.nonEmpty)
+      val title    = Option(preview.selectFirst(".preview-title")).map(_.text().trim).map(cleanTitle).filter(_.nonEmpty)
       val filmUrl  = Option(preview.selectFirst("a[href*=/movie/]")).map(_.attr("href"))
       val posterUrl = Option(preview.selectFirst("img[data-src]")).map(_.attr("data-src"))
       val infoHtml  = Option(preview.selectFirst(".f1-bold p")).map(_.html()).getOrElse("")

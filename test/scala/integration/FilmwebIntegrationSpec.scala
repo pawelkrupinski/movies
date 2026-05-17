@@ -3,6 +3,7 @@ package integration
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.FilmwebClient
+import tools.RealHttpFetch
 
 /**
  * Live test of FilmwebClient against the real (unauthenticated) Filmweb JSON API.
@@ -10,7 +11,7 @@ import services.enrichment.FilmwebClient
  */
 class FilmwebIntegrationSpec extends AnyFlatSpec with Matchers {
 
-  private val client = new FilmwebClient()
+  private val client = new FilmwebClient(new RealHttpFetch)
 
   "FilmwebClient.lookup" should "resolve a recent Polish-titled film to a URL + rating" in {
     val fw = client.lookup("Wartość sentymentalna", Some(2025))

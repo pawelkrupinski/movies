@@ -19,7 +19,7 @@ import scala.util.Try
  * of the IMDb data provided by this API is not allowed". This is the same
  * licensing they apply to all their unofficial APIs.
  */
-class ImdbClient(http: HttpFetch = new RealHttpFetch()) {
+class ImdbClient(http: HttpFetch) {
   import ImdbClient._
 
   /** Live IMDb rating, or None when unrated / unknown / network blip. */

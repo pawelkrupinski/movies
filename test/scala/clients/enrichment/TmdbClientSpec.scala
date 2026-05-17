@@ -3,10 +3,11 @@ package clients.enrichment
 import clients.TmdbClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import tools.RealHttpFetch
 
 class TmdbClientSpec extends AnyFlatSpec with Matchers {
 
-  private val client = new TmdbClient()
+  private val client = new TmdbClient(new RealHttpFetch)
 
   "parseSearchResults" should "extract id, title, year, popularity from a TMDB search response" in {
     val json =

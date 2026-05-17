@@ -1,15 +1,15 @@
 package services.cinemas
 
-import models.{CharlieMonroe, Cinema, CinemaMovie, Movie, Showtime}
+import models._
 import org.jsoup.Jsoup
 import play.api.libs.json._
-import tools.{HttpFetch, RealHttpFetch}
+import tools.HttpFetch
 
 import java.time.{LocalDateTime, ZonedDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class CharlieMonroeClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScraper {
+class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
 
   val cinema: Cinema = CharlieMonroe
   private val PageUrl = "https://kinomalta.pl/seanse"

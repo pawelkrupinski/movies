@@ -17,7 +17,7 @@ import scala.util.Try
  *
  * Requires TMDB_API_KEY (free, register at https://www.themoviedb.org/settings/api).
  */
-class TmdbClient(http: HttpFetch = new RealHttpFetch(), apiKey: => Option[String] = TmdbClient.ApiKey) {
+class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey) {
 
   import TmdbClient.{ApiBase, urlEncode}
 

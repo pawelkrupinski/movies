@@ -1,6 +1,7 @@
 package services.enrichment
 
 import play.api.Logging
+import services.Stoppable
 import services.movies.{CacheKey, MovieCache}
 import tools.DaemonExecutors
 
@@ -34,7 +35,7 @@ abstract class PeriodicCacheRefresher(
   startupDelaySeconds: Long,
   refreshHours:        Long,
   protected val cache: MovieCache
-) extends Logging {
+) extends Stoppable with Logging {
 
   private val worker           = DaemonExecutors.fixedPool(s"$name-stage", workers)
   private val refreshScheduler = DaemonExecutors.scheduler(s"$name-refresh")
@@ -72,11 +73,16 @@ abstract class PeriodicCacheRefresher(
     )
   }
 
-  /** Drain the worker pool so in-flight upserts hit Mongo before the repo
-   *  closes its client. */
+  /** Drain the worker pool so in-flight URL discovery + rating scrapes
+   *  finish before the caller moves on. Waits for the queue to drain
+   *  rather than capping at a fixed window — the bounded cap was
+   *  returning before real-network per-row work finished, so recording
+   *  scripts saw no MC / RT / FW fixtures captured. Play's lifecycle
+   *  has its own deadline on top, so production's worst-case shutdown
+   *  is still bounded. */
   def stop(): Unit = {
     worker.shutdown()
     refreshScheduler.shutdown()
-    worker.awaitTermination(15, TimeUnit.SECONDS)
+    while (!worker.isTerminated) worker.awaitTermination(1, TimeUnit.HOURS)
   }
 }

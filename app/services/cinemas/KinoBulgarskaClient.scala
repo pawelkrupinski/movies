@@ -1,15 +1,15 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie, KinoBulgarska, Movie, Showtime}
+import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.{HttpFetch, RealHttpFetch}
+import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class KinoBulgarskaClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScraper {
+class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
 
   val cinema: Cinema = KinoBulgarska
   private val PageUrl = "http://kinobulgarska19.pl/repertuar"

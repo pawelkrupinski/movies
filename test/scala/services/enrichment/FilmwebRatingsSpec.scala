@@ -1,13 +1,12 @@
 package services.enrichment
 
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
-
 import clients.TmdbClient
 import models.{CinemaShowings, MovieRecord, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{EventBus, InProcessEventBus, MovieRecordCreated, TmdbResolved}
-import tools.GetOnlyHttpFetch
+import tools.{GetOnlyHttpFetch, RealHttpFetch}
 import tools.Eventually.eventually
 
 /**
@@ -38,7 +37,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   /** TmdbClient with no API key — every method short-circuits to None / empty
    *  without making a network call. Used by tests whose path doesn't exercise
    *  URL discovery (i.e. row already has a filmwebUrl). */
-  private val disabledTmdb = new TmdbClient(apiKey = None)
+  private val disabledTmdb = new TmdbClient(new RealHttpFetch, apiKey = None)
 
   private def mkEnrichment(
     imdbId:        String,

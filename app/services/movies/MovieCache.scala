@@ -115,12 +115,29 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
     negative.getIfPresent(key) != null
 
   /** Persist a row at `key`. **Identity gate**: when `e` carries a `tmdbId`
-   *  AND a different cache key already holds that same tmdbId, the write is
-   *  folded onto that canonical row instead of creating a duplicate — the
-   *  victim's cinema-side data is unioned in via `MovieRecordMerge.union`,
-   *  the source key is dropped from both cache and repo. tmdbId is the
-   *  identity signal: two CacheKeys with the same tmdbId are the same film
-   *  regardless of any year-divergence or title-spelling differences.
+   *  AND a cache key with the SAME normalised cleanTitle already holds that
+   *  same tmdbId, the write is folded onto that canonical row instead of
+   *  creating a duplicate — the victim's cinema-side data is unioned in via
+   *  `MovieRecordMerge.union`, the source key is dropped from both cache and
+   *  repo.
+   *
+   *  Identity check: **same `tmdbId` AND same normalised `cleanTitle`**.
+   *  This narrows the gate to the *year-divergence* case ("Viridiana"
+   *  Some(1961) vs Some(1962), "Diabeł ubiera się u Prady 2" None vs
+   *  Some(2026)) — the films TMDB tells us are one row but cinemas have
+   *  reported with different years. Rows that share a tmdbId but have a
+   *  genuinely different cleanTitle — Polish/Latin "Diabeł ubiera się u
+   *  Prady 2" vs Cyrillic "ДИЯВОЛ НОСИТЬ ПРАДА 2" vs the explicit
+   *  Ukrainian-dubbed listing "Diabeł ubiera się u Prady 2 ukraiński
+   *  dubbing" — are intentionally kept as separate cards. They target
+   *  separate audiences and folding them would force one variant's display
+   *  title to be hidden.
+   *
+   *  The rest of the cache (`redirectToExistingVariant`,
+   *  `hasResolvedSiblingByTitle`, `MovieService.sisterRowMatch`) already
+   *  enforces the same per-cleanTitle separation via normalised-cleanTitle
+   *  comparison — this gate is the one remaining bridge that needed an
+   *  explicit guard.
    *
    *  This is the only persist path in the codebase — `MovieRepo.upsert` is
    *  called from nowhere else — so the gate is the chokepoint that prevents
@@ -142,10 +159,19 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
     repo.upsert(key.cleanTitle, key.year, e)
   }
 
+  /** Find an existing cache key carrying the same tmdbId as `excluding`,
+   *  filtered to candidates whose normalised cleanTitle matches
+   *  `excluding`'s. Different-cleanTitle candidates are intentionally
+   *  invisible here — see the `put` docstring above. */
   private def siblingKeyByTmdb(tid: Int, excluding: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
+    val target = MovieService.normalize(excluding.cleanTitle)
     positive.asMap().asScala.iterator
-      .find { case (k, v) => k != excluding && v.tmdbId.contains(tid) }
+      .find { case (k, v) =>
+        k != excluding &&
+        v.tmdbId.contains(tid) &&
+        MovieService.normalize(k.cleanTitle) == target
+      }
       .map(_._1)
   }
 

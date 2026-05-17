@@ -2,6 +2,7 @@ package services.movies
 
 import clients.TmdbClient
 import play.api.Logging
+import services.Stoppable
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieRecordCreated, TmdbResolved}
 import tools.DaemonExecutors
 
@@ -33,7 +34,7 @@ class MovieService(
   cache: MovieCache,
   bus:   EventBus,
   tmdb:  TmdbClient
-) extends Logging {
+) extends Stoppable with Logging {
 
   // Active or queued TMDB-stage lookups, so we don't dispatch the same key
   // twice. (The IMDb stage doesn't dedup — it's idempotent and cheap.)
@@ -81,13 +82,24 @@ class MovieService(
   }
 
   /** Drain the queue so in-flight upserts hit Mongo before `MovieRepo`
-   *  closes its client. The caller (`AppLoader`) must register this so that
-   *  Play runs the repo's close hook strictly *after* this returns. */
+   *  closes its client AND every TmdbResolved / ImdbIdMissing event the
+   *  in-flight tasks would publish has fired (downstream listeners
+   *  dispatch synchronously on this worker's thread). The caller
+   *  (`AppLoader`) registers this hook so Play runs the repo's close
+   *  strictly *after* this returns.
+   *
+   *  Waits for the whole queue to drain, not a fixed 15-s window — a
+   *  fixed cap was returning before TMDB lookups against real upstreams
+   *  finished, so downstream `*Ratings` pools got drained while
+   *  `runTmdbStage` was still queueing tasks against them. Play's
+   *  lifecycle still has its own deadline, so production is unaffected
+   *  in the happy path; the bound is "every task runs to completion or
+   *  the JVM is force-killed by the lifecycle". */
   def stop(): Unit = {
     worker.shutdown()
     retryScheduler.shutdown()
     tmdbRetryScheduler.shutdown()
-    worker.awaitTermination(15, TimeUnit.SECONDS)
+    while (!worker.isTerminated) worker.awaitTermination(1, TimeUnit.HOURS)
   }
 
   // ── Event listeners ───────────────────────────────────────────────────────

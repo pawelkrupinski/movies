@@ -34,7 +34,7 @@ import scala.util.Try
  * structured-data signal for the Tomatometer percentage and is more stable
  * than scraping the visual scoreboard markup.
  */
-class RottenTomatoesClient(http: HttpFetch = new RealHttpFetch()) {
+class RottenTomatoesClient(http: HttpFetch) {
   import RottenTomatoesClient._
 
   /** Canonical movie page (validated 200) or None. `year` is the FILM's

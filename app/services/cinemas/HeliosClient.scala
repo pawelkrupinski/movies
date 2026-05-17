@@ -1,8 +1,8 @@
 package services.cinemas
 
-import services.cinemas.HeliosNuxt.{BaseUrl, BookingBase, CinemaSourceId, cleanTitle}
-import models.{Cinema, CinemaMovie, Helios, Movie, Showtime}
+import models._
 import play.api.libs.json._
+import services.cinemas.HeliosNuxt.{BaseUrl, BookingBase, CinemaSourceId, cleanTitle}
 import tools.{HeliosFetch, HttpFetch}
 
 import java.time.format.DateTimeFormatter

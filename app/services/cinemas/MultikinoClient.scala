@@ -13,7 +13,7 @@ import java.net.{CookieManager, CookiePolicy, URI}
  * production, Multikino blocks datacenter IPs) or to a direct `HttpClient`
  * with a one-shot homepage-then-API retry for cookie acquisition.
  */
-class MultikinoClient(http: HttpFetch = MultikinoClient.DefaultFetch) extends CinemaScraper {
+class MultikinoClient(http: HttpFetch) extends CinemaScraper {
   val cinema: Cinema = Multikino
   def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(http.get(MultikinoClient.ApiUrl))
 }

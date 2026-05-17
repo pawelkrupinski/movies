@@ -1,7 +1,7 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie, KinoApollo, Movie, Showtime}
-import tools.{HttpFetch, RealHttpFetch}
+import models._
+import tools.HttpFetch
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, LocalTime}
@@ -21,7 +21,7 @@ import scala.util.Try
  *   5. Poster     — `<img>` to a WordPress media URL
  *   6. "Kup bilet" button (same booking URL as the time link)
  */
-class KinoApolloClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScraper {
+class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
 
   val cinema: Cinema = KinoApollo
   // Production redirects from /kino to /kino/ — request the canonical-shaped URL

@@ -1,14 +1,13 @@
 package services.enrichment
 
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo, MovieService}
-
 import clients.TmdbClient
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieRecordCreated, TmdbResolved}
-import tools.HttpFetch
+import services.events.{DomainEvent, InProcessEventBus, MovieRecordCreated, TmdbResolved}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepo, MovieService}
 import tools.Eventually.eventually
+import tools.HttpFetch
 
 import scala.collection.mutable
 
@@ -71,8 +70,6 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     bus.subscribe { case e: TmdbResolved => seen.append(e) }
 
     val cache       = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val imdb        = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
-    val imdbRatings = new ImdbRatings(cache, imdb)
     val svc   = new MovieService(cache, bus, tmdbStub())
 
     // The async path goes through `reEnrich` → worker pool → runTmdbStage,
@@ -338,7 +335,9 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   it should "match a donor whose cleanTitle aligns with self's MovieRecordCreated.originalTitle hint" in {
     // Donor's cleanTitle is "Belle"; self comes through the MovieRecordCreated event
     // with a Polish title that doesn't match, but with `originalTitle="Belle"`
-    // from the cinema's API.
+    // from the cinema's API. The sister-row alias match donates the donor's
+    // tmdbId/imdbId — the new "Polski Tytuł" row gets the same enrichment
+    // without a fresh TMDB call.
     val donor = MovieRecord(
       imdbId = Some("tt13651628"), imdbRating = None, metascore = None,
       originalTitle = None,
@@ -363,11 +362,15 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     bus.publish(MovieRecordCreated("Polski Tytuł", None, Some("Belle")))
 
     eventually(resolved.size shouldBe 1)
-    // The TMDB stage resolves "Polski Tytuł" to tmdbId=776305, which the
-    // donor "Belle" already holds — `MovieCache.put`'s identity gate folds
-    // the new row onto the donor, so the data lives on the donor key.
-    // "Polski Tytuł" must not survive as a separate row.
-    cache.get(cache.keyOf("Polski Tytuł", None)) shouldBe None
+    // Both rows survive: the identity gate only folds when cleanTitles
+    // match (so Cyrillic vs Latin variants, regular vs explicit-dub
+    // variants, and Polish vs English titles of the same film all stay
+    // as distinct cards for their distinct audiences). Each gets the
+    // shared tmdbId/imdbId from the sister-row donation, so a single
+    // TMDB call wasn't burned and downstream enrichment chains off both.
+    val polski = cache.get(cache.keyOf("Polski Tytuł", None)).get
+    polski.tmdbId shouldBe Some(776305)
+    polski.imdbId shouldBe Some("tt13651628")
     val donorRow = cache.get(cache.keyOf("Belle", Some(2021))).get
     donorRow.tmdbId shouldBe Some(776305)
     donorRow.imdbId shouldBe Some("tt13651628")

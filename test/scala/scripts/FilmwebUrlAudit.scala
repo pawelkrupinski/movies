@@ -3,6 +3,7 @@ package scripts
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, StoredMovieRecord}
+import tools.RealHttpFetch
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -41,8 +42,8 @@ object FilmwebUrlAudit {
       sys.exit(1)
     }
     val cache   = new CaffeineMovieCache(repo)
-    val tmdb    = new TmdbClient()
-    val filmweb = new FilmwebClient()
+    val tmdb    = new TmdbClient(new RealHttpFetch)
+    val filmweb = new FilmwebClient(new RealHttpFetch)
     val ratings = new FilmwebRatings(cache, tmdb, filmweb)
 
     val candidates = repo.findAll()

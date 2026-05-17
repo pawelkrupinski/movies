@@ -1,6 +1,8 @@
 package clients.tools
 
 import services.cinemas.MultikinoClient
+import tools.RealHttpFetch
+
 import java.nio.file.{Files, Paths}
 
 object WriteMultikino extends App {
@@ -13,5 +15,5 @@ object WriteMultikino extends App {
   Files.write(dest, json.getBytes("UTF-8"))
 
   println(s"Recorded ${json.length} bytes → $dest")
-  new MultikinoClient().fetch().foreach(m => println(s"${m.movie.title} (${m.showtimes.size} showtimes)"))
+  new MultikinoClient(new RealHttpFetch()).fetch().foreach(m => println(s"${m.movie.title} (${m.showtimes.size} showtimes)"))
 }

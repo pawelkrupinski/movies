@@ -1,6 +1,7 @@
 package services.enrichment
 
 import play.api.Logging
+import services.Stoppable
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, ImdbIdResolved}
 import services.movies.MovieCache
 import tools.DaemonExecutors
@@ -20,7 +21,7 @@ import scala.util.Try
  * Async — runs on its own worker pool so the publisher (the TMDB stage
  * worker) isn't blocked on IMDb. Lifecycle owned by `AppLoader`.
  */
-class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends Logging {
+class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends Stoppable with Logging {
 
   // IMDb's suggestion endpoint is fast; one or two workers is plenty for the
   // event-driven path (TmdbResolved fans out hundreds of events at startup but
@@ -37,15 +38,25 @@ class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends
    *  the row imdbId-less than guess a wrong id. */
   val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
     case ImdbIdMissing(title, year, searchTitle) =>
-      worker.execute(() => resolve(title, year, searchTitle))
+      worker.execute(() => resolve(title, year, searchTitle, publishEvent = true))
   }
 
-  /** Synchronous resolution — public for tests/scripts. Production goes
-   *  through the `onImdbIdMissing` listener. */
-  private[services] def resolveSync(title: String, year: Option[Int], searchTitle: String): Unit =
-    resolve(title, year, searchTitle)
+  /** Synchronous resolution — public for tests/scripts. Doesn't publish
+   *  `ImdbIdResolved` on the bus: sync callers (e.g.
+   *  `Wiring.fullySyncOne`) drive the downstream `*Ratings.refreshOneSync`
+   *  themselves on the calling thread, so publishing would just create
+   *  noisy `RejectedExecutionException` warnings on listener pools that
+   *  the caller has already shut down. Production goes through
+   *  `onImdbIdMissing` which does publish. */
+  def resolveSync(title: String, year: Option[Int], searchTitle: String): Unit =
+    resolve(title, year, searchTitle, publishEvent = false)
 
-  private def resolve(title: String, year: Option[Int], searchTitle: String): Unit = {
+  private def resolve(
+    title:        String,
+    year:         Option[Int],
+    searchTitle:  String,
+    publishEvent: Boolean
+  ): Unit = {
     val key = cache.keyOf(title, year)
     cache.get(key).foreach { row =>
       if (row.imdbId.isDefined) {
@@ -58,17 +69,22 @@ class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends
           // putIfPresent so a concurrent `cache.invalidate` happening between
           // event publish and id resolution can't resurrect the row.
           val wrote = cache.putIfPresent(key, _.copy(imdbId = Some(id)))
-          if (wrote) bus.publish(ImdbIdResolved(title, year, id))
+          if (wrote && publishEvent) bus.publish(ImdbIdResolved(title, year, id))
         case None =>
           logger.debug(s"IMDb search returned no match for ${key.cleanTitle} (${key.year.getOrElse("?")}) [search='$searchTitle']")
       }
     }
   }
 
-  /** Drain the worker pool — `AppLoader` registers this so `MovieRepo`
-   *  closes its client strictly after in-flight writes have landed. */
+  /** Drain the worker pool so in-flight ImdbIdResolved publishes (and
+   *  their downstream listener dispatches into `ImdbRatings.worker`)
+   *  have fired before the caller moves on. Waits for the queue to
+   *  drain, not a fixed 15-s window — the bounded cap was returning
+   *  before real-network suggestion lookups finished and
+   *  `cascadeDrainOrder`'s next entry was shutting down a pool that
+   *  still had inbound work coming. */
   def stop(): Unit = {
     worker.shutdown()
-    worker.awaitTermination(15, TimeUnit.SECONDS)
+    while (!worker.isTerminated) worker.awaitTermination(1, TimeUnit.HOURS)
   }
 }

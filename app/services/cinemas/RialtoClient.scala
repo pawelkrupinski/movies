@@ -1,14 +1,14 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie, Movie, Rialto, Showtime}
+import models._
 import org.jsoup.Jsoup
-import tools.{HttpFetch, RealHttpFetch}
+import tools.HttpFetch
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class RialtoClient(http: HttpFetch = new RealHttpFetch()) extends CinemaScraper {
+class RialtoClient(http: HttpFetch) extends CinemaScraper {
 
   val cinema: Cinema = Rialto
   private val RepertoireUrl = "https://www.kinorialto.poznan.pl/repertuar/"

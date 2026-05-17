@@ -2,6 +2,7 @@ package scripts
 
 import services.enrichment.MetacriticClient
 import services.movies.{MongoMovieRepo, StoredMovieRecord}
+import tools.RealHttpFetch
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
@@ -33,7 +34,7 @@ object MetascoreBackfill {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
     }
-    val mc = new MetacriticClient()
+    val mc = new MetacriticClient(new RealHttpFetch)
 
     val rows = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
     val withUrl = rows.count(_.record.metacriticUrl.isDefined)

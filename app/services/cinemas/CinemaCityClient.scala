@@ -2,12 +2,12 @@ package services.cinemas
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
-import tools.{HttpFetch, RealHttpFetch}
+import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.util.Try
 
-class CinemaCityClient(http: HttpFetch = new RealHttpFetch()) {
+class CinemaCityClient(http: HttpFetch) {
 
   private val BaseApiUrl = "https://www.cinema-city.pl/pl/data-api-service/v1/quickbook/10103"
   private val FarFuture  = "2027-01-01"

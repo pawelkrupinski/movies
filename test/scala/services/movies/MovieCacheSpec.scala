@@ -198,6 +198,41 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(k2) shouldBe defined
   }
 
+  // Rows with the same tmdbId but a different cleanTitle stay separate.
+  // TMDB's identity says "same film", but cinemas surface these as distinct
+  // listings for distinct audiences:
+  //   - Polish/Latin original vs Cyrillic Ukrainian-language listing
+  //     ("Diabeł ubiera się u Prady 2" vs "ДИЯВОЛ НОСИТЬ ПРАДА 2").
+  //   - Original vs explicitly-labelled dub variant ("Diabeł ubiera się u
+  //     Prady 2" vs "Diabeł ubiera się u Prady 2 ukraiński dubbing", both
+  //     listed at the same cinema with their own showtimes).
+  // Folding them would force one card's display title to be hidden. Each
+  // variant gets its own row, its own per-cinema slot, and its own card.
+  it should "NOT fold rows with the same tmdbId when their cleanTitles differ (cross-script)" in {
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val latin    = cache.keyOf("Diabeł ubiera się u Prady 2", Some(2026))
+    val cyrillic = cache.keyOf("ДИЯВОЛ НОСИТЬ ПРАДА 2",       Some(2026))
+
+    cache.put(latin,    mkResolved(928344, scrapes = Set(CinemaScrape(Multikino, "Diabeł ubiera się u Prady 2", Some(2026)))))
+    cache.put(cyrillic, mkResolved(928344, scrapes = Set(CinemaScrape(Helios,    "ДИЯВОЛ НОСИТЬ ПРАДА 2",       Some(2026)))))
+
+    cache.get(latin)    shouldBe defined
+    cache.get(cyrillic) shouldBe defined
+    cache.snapshot().map(_.title).toSet shouldBe Set("Diabeł ubiera się u Prady 2", "ДИЯВОЛ НОСИТЬ ПРАДА 2")
+  }
+
+  it should "NOT fold rows with the same tmdbId when their cleanTitles differ (suffix variants)" in {
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val regular = cache.keyOf("Diabeł ubiera się u Prady 2",                 Some(2026))
+    val dub     = cache.keyOf("Diabeł ubiera się u Prady 2 ukraiński dubbing", Some(2026))
+
+    cache.put(regular, mkResolved(928344, scrapes = Set(CinemaScrape(CinemaCityPoznanPlaza, "Diabeł ubiera się u Prady 2",                Some(2026)))))
+    cache.put(dub,     mkResolved(928344, scrapes = Set(CinemaScrape(CinemaCityPoznanPlaza, "Diabeł ubiera się u Prady 2 ukraiński dubbing", Some(2026)))))
+
+    cache.get(regular) shouldBe defined
+    cache.get(dub)     shouldBe defined
+  }
+
   it should "be a no-op when the same key is re-written (regular update, not a fold)" in {
     val repo  = new InMemoryMovieRepo()
     val cache = new CaffeineMovieCache(repo)

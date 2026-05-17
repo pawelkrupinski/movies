@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.FilmwebClient
 import services.enrichment.FilmwebClient.Candidate
-import tools.GetOnlyHttpFetch
+import tools.{GetOnlyHttpFetch, RealHttpFetch}
 
 class FilmwebClientSpec extends AnyFlatSpec with Matchers {
 
@@ -15,7 +15,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
         .getOrElse(throw new RuntimeException(s"HTTP 404 for $url"))
   }
 
-  private val client = new FilmwebClient()
+  private val client = new FilmwebClient(new RealHttpFetch)
 
   // ── parseSearch ─────────────────────────────────────────────────────────────
 

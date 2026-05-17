@@ -2,6 +2,7 @@ package scripts
 
 import services.enrichment.RottenTomatoesClient
 import services.movies.{MongoMovieRepo, StoredMovieRecord}
+import tools.RealHttpFetch
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -47,7 +48,7 @@ object RottenTomatoesBackfill {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
     }
-    val rt = new RottenTomatoesClient()
+    val rt = new RottenTomatoesClient(new RealHttpFetch)
 
     val rows = repo.findAll().sortBy(r => (r.title.toLowerCase, r.year))
     val bogusUrlCount = rows.count(_.record.rottenTomatoesUrl.exists(_.endsWith(BogusUrlSuffix)))

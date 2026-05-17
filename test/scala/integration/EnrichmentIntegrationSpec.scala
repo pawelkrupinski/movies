@@ -4,7 +4,7 @@ import clients.TmdbClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.ImdbClient
-import tools.Env
+import tools.{Env, RealHttpFetch}
 
 /**
  * Live test of the enrichment pipeline against real TMDB + IMDb GraphQL.
@@ -20,8 +20,8 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers {
 
   assume(Env.get("TMDB_API_KEY").isDefined, "TMDB_API_KEY not set")
 
-  private val tmdb = new TmdbClient()
-  private val imdb = new ImdbClient()
+  private val tmdb = new TmdbClient(new RealHttpFetch)
+  private val imdb = new ImdbClient(new RealHttpFetch)
 
   // Films that appear in the current site data, picked for variety: a sequel,
   // an upcoming blockbuster, a Polish-language art-house piece, and a 1960s

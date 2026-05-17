@@ -1,7 +1,8 @@
 @import models.{Cinema, CinemaShowings, MovieRecord, Showtime}
+@import services.movies.StoredMovieRecord
 @import controllers.FilmHref
 @import java.time.format.DateTimeFormatter
-@(rows: Seq[(String, Option[Int], MovieRecord)])
+@(rows: Seq[StoredMovieRecord])
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -129,7 +130,10 @@
     </tr>
   </thead>
   <tbody>
-    @for(((title, year, e), idx) <- rows.zipWithIndex) {
+    @for((row, idx) <- rows.zipWithIndex) {
+      @defining(row.title) { title =>
+      @defining(row.year)  { year =>
+      @defining(row.record) { e =>
       @defining(e.originalTitle.getOrElse("")) { orig =>
       @defining(e.imdbId.getOrElse(""))        { imdbId =>
       <tr class="data"
@@ -170,6 +174,9 @@
       <tr class="details hidden" data-row-id="r@idx">
         <td colspan="8">@debugDetails(title, year, e)</td>
       </tr>
+      }
+      }
+      }
       }
       }
     }

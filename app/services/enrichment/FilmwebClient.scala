@@ -36,7 +36,7 @@ import scala.util.Try
  *      URL (CLAUDE.md: "Never persist Metacritic or Rotten Tomatoes search
  *      URLs"; the same rationale applies to Filmweb).
  */
-class FilmwebClient(http: HttpFetch = new RealHttpFetch()) {
+class FilmwebClient(http: HttpFetch) {
   import FilmwebClient._
 
   /** Best-effort lookup. Returns None when no candidate clears the title +

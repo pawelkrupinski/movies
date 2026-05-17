@@ -4,11 +4,12 @@ import clients.TmdbClient
 import models.{CinemaShowings, Helios, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.test.{FakeRequest, Helpers}
+import play.api.Mode
 import play.api.test.Helpers._
-import play.api.{Environment, Mode}
+import play.api.test.{FakeRequest, Helpers}
 import services.events.InProcessEventBus
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo, MovieService}
+import tools.RealHttpFetch
 
 import java.time.LocalDateTime
 
@@ -36,11 +37,12 @@ class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
     )
     val repo  = new InMemoryMovieRepo(Seq((title, year, record)))
     val cache = new CaffeineMovieCache(repo)
-    val svc   = new MovieService(cache, new InProcessEventBus(), new TmdbClient(apiKey = None))
+    val svc   = new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
+    val movieControllerService   = new MovieControllerService(svc)
     new MovieController(
       cc           = Helpers.stubControllerComponents(),
-      movieService = svc,
-      env          = Environment.simple(mode = Mode.Test)
+      movieControllerService = movieControllerService,
+      environment          = Mode.Test
     )
   }
 

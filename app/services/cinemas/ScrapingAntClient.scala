@@ -2,8 +2,7 @@ package services.cinemas
 
 import play.api.Logging
 
-import java.net.URI
-import java.net.URLEncoder
+import java.net.{URI, URLEncoder}
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.nio.charset.StandardCharsets
 import scala.concurrent.duration._

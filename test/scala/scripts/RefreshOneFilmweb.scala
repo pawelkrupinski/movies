@@ -3,6 +3,7 @@ package scripts
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo}
+import tools.RealHttpFetch
 
 /** Force a one-row Filmweb refresh for `(title, year)`. Used after wiring
  *  `onImdbIdMissing` on Filmweb so existing rows that were missed at first
@@ -14,7 +15,7 @@ object RefreshOneFilmweb {
     val repo  = new MongoMovieRepo()
     if (!repo.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
     val cache   = new CaffeineMovieCache(repo)
-    val ratings = new FilmwebRatings(cache, new TmdbClient(), new FilmwebClient())
+    val ratings = new FilmwebRatings(cache, new TmdbClient(new RealHttpFetch), new FilmwebClient(new RealHttpFetch))
 
     def show(label: String): Unit =
       repo.findAll().find(r => r.title == title && r.year == year).foreach { r =>

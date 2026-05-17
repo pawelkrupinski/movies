@@ -2,11 +2,12 @@ package services.movies
 
 import clients.TmdbClient
 import clients.tools.FakeHttpFetch
+import controllers.MovieControllerService
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
-import services.events.{EventBus, InProcessEventBus, MovieRecordCreated}
+import services.events.{InProcessEventBus, MovieRecordCreated}
 import tools.GetOnlyHttpFetch
 
 /**
@@ -149,13 +150,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       // fixture showtime so every showtime is in the future — if the film
       // still vanishes from the schedule output, the bug is in the
       // read path itself, not in the data.
-      import controllers.MovieController
-      import play.api.{Environment, Mode}
-      val ctrl = new MovieController(
-        cc           = play.api.test.Helpers.stubControllerComponents(),
-        movieService = svc,
-        env          = Environment.simple(mode = Mode.Test)
-      )
+      val ctrl = new MovieControllerService(svc)
       val firstShowtime: java.time.LocalDateTime =
         cache.snapshot().filter(r => isPrada(r.record))
           .flatMap(_.record.cinemaShowings.values.flatMap(_.showtimes.map(_.dateTime)))
