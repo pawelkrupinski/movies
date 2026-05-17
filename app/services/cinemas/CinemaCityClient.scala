@@ -31,7 +31,7 @@ class CinemaCityClient(http: HttpFetch) {
       filmLink:       Option[String],
       runtimeMinutes: Option[Int],
       releaseYear:    Option[Int],
-      country:        Option[String]
+      countries:      Seq[String]
     )
 
     val allFilms  = collection.mutable.Map[String, FilmInfo]()
@@ -56,7 +56,7 @@ class CinemaCityClient(http: HttpFetch) {
               // String and the field stayed None for every film.
               releaseYear    = (film \ "releaseYear").asOpt[String].flatMap(s => Try(s.toInt).toOption)
                 .orElse((film \ "releaseYear").asOpt[Int]),
-              country        = None   // filled in below from the per-film details page
+              countries      = Seq.empty   // filled in below from the per-film details page
             )
           }
         }
@@ -89,18 +89,18 @@ class CinemaCityClient(http: HttpFetch) {
     // Per-film details page fetch — country isn't in the film-events JSON,
     // but the public film page carries it in a `<p>Produkcja: …</p>` line
     // (countries comma-separated, optionally followed by the release year).
-    // Fetched in parallel; a failed fetch or missing line leaves country=None
-    // for that film and the rest of the row stays usable.
-    val countryByFilmId: Map[String, Option[String]] = {
+    // Fetched in parallel; a failed fetch or missing line leaves countries
+    // empty for that film and the rest of the row stays usable.
+    val countriesByFilmId: Map[String, Seq[String]] = {
       val pending = allFilms.toSeq.flatMap { case (id, info) =>
         info.filmLink.map { link => id -> http.getAsync(link) }
       }
       pending.map { case (id, fut) =>
-        id -> Try(fut.join()).toOption.flatMap(parseCountry)
+        id -> Try(fut.join()).toOption.map(parseCountries).getOrElse(Seq.empty)
       }.toMap
     }
     allFilms.foreach { case (id, info) =>
-      countryByFilmId.get(id).flatten.foreach(c => allFilms.update(id, info.copy(country = Some(c))))
+      countriesByFilmId.get(id).filter(_.nonEmpty).foreach(cs => allFilms.update(id, info.copy(countries = cs)))
     }
 
     allEvents
@@ -109,7 +109,7 @@ class CinemaCityClient(http: HttpFetch) {
       .flatMap { case (filmId, slots) =>
         allFilms.get(filmId).map { info =>
           CinemaMovie(
-            movie       = Movie(info.name.stripPrefix("Ladies Night - "), info.runtimeMinutes, info.releaseYear, country = info.country),
+            movie       = Movie(info.name.stripPrefix("Ladies Night - "), info.runtimeMinutes, info.releaseYear, countries = info.countries),
             cinema      = cinema,
             posterUrl   = info.posterLink,
             filmUrl     = info.filmLink,
@@ -135,9 +135,9 @@ class CinemaCityClient(http: HttpFetch) {
   private val ProductionLineRe = """<p>Produkcja:\s*([^<]+?)\s*</p>""".r
   private val TrailingYearRe   = """\s+\d{4}\s*$""".r
 
-  private[cinemas] def parseCountry(html: String): Option[String] =
+  private[cinemas] def parseCountries(html: String): Seq[String] =
     ProductionLineRe.findFirstMatchIn(html).map { m =>
       TrailingYearRe.replaceFirstIn(m.group(1), "").trim
-    }.filter(_.nonEmpty)
+    }.filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
 }
 

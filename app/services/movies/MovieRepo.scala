@@ -244,7 +244,8 @@ class MongoMovieRepo extends MovieRepo with Logging {
     s.runtimeMinutes.foreach(n => doc.put("runtimeMinutes", BsonInt32(n)))
     s.releaseYear.foreach(n    => doc.put("releaseYear",    BsonInt32(n)))
     s.originalTitle.foreach(t  => doc.put("originalTitle",  BsonString(t)))
-    s.country.foreach(t        => doc.put("country",        BsonString(t)))
+    if (s.countries.nonEmpty)
+      doc.put("countries", BsonArray.fromIterable(s.countries.map(BsonString(_))))
     doc.put("showtimes", BsonArray.fromIterable(s.showtimes.map(encodeShowtime)))
     doc
   }
@@ -341,7 +342,15 @@ class MongoMovieRepo extends MovieRepo with Logging {
       runtimeMinutes = int32("runtimeMinutes"),
       releaseYear    = int32("releaseYear"),
       originalTitle  = str("originalTitle"),
-      country        = str("country"),
+      // Forward shape is `countries: BsonArray`. Older rows have
+      // `country: BsonString` (sometimes comma-separated) — comma-split for
+      // backward compat. The next scrape tick rewrites the slot with the
+      // new shape and the legacy field drops out.
+      countries      = Option(doc.get("countries")).flatMap(v => Try(v.asArray()).toOption)
+                         .map(_.getValues.asScala.toSeq.flatMap(v => Try(v.asString().getValue).toOption))
+                         .getOrElse(
+                           str("country").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+                         ),
       showtimes      = showtimes
     )
   }

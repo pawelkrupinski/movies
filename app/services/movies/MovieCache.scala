@@ -3,6 +3,7 @@ package services.movies
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.{Cinema, CinemaMovie, CinemaScrape, CinemaShowings, MovieRecord}
 import play.api.Logging
+import services.cinemas.CountryNames
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 
@@ -281,7 +282,13 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
           runtimeMinutes = cm.movie.runtimeMinutes,
           releaseYear    = cm.movie.releaseYear,
           originalTitle  = cm.movie.originalTitle,
-          country        = cm.movie.country,
+          // Fold every spelling/alias into a single canonical name per
+          // CountryNames — "Stany Zjednoczone" / "USA" / "U.S.A." all
+          // become "USA", "UK" / "Wielka Brytania" both become
+          // "Wielka Brytania". Stored data is canonical so the merged
+          // MovieRecord.countries union/dedup operates on consistent
+          // strings.
+          countries      = cm.movie.countries.map(CountryNames.canonical).distinct,
           showtimes      = cm.showtimes
         )
         val scrape = CinemaScrape(cinema, cm.movie.title, cm.movie.releaseYear)

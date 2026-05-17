@@ -100,12 +100,23 @@ case class MovieRecord(
   def releaseYear: Option[Int] =
     prioritizedShowings.iterator.flatMap(_._2.releaseYear).nextOption()
 
-  /** Production country (or co-production list) — first non-None cinema in
-   *  priority order. Cinemas that don't parse a country (Multikino, Cinema
-   *  City, Charlie Monroe, Kino Apollo) contribute None and are skipped, so
-   *  whichever cinema does carry one fills the merged value. */
-  def country: Option[String] =
-    prioritizedShowings.iterator.flatMap(_._2.country).nextOption()
+  /** Production countries — union across cinemas, deduplicated
+   *  case-insensitively while preserving the priority-first order. Each
+   *  cinema spells names in its own way, so the same country might appear
+   *  twice ("USA" + "Stany Zjednoczone") if two cinemas disagree on
+   *  spelling — that's accepted; the dedup only catches exact-match dupes
+   *  modulo case. Multikino's JSON has no country field and contributes
+   *  an empty list (Apollo also returns empty when its `Producent:` line
+   *  is a studio name like "Zespół Autorów Filmowych „Kadr"" rather than
+   *  a country list). */
+  def countries: Seq[String] = {
+    val seen = scala.collection.mutable.LinkedHashSet.empty[String]
+    prioritizedShowings.flatMap(_._2.countries).foreach { c =>
+      val key = c.toLowerCase
+      if (!seen.exists(_.toLowerCase == key)) seen += c
+    }
+    seen.toSeq
+  }
 
   /** Cinema → film deep-link, when that cinema reports one. */
   def filmUrlFor(cinema: Cinema): Option[String] = cinemaShowings.get(cinema).flatMap(_.filmUrl)

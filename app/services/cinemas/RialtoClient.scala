@@ -71,7 +71,7 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
     director:       Option[String],
     runtimeMinutes: Option[Int]     = None,
     releaseYear:    Option[Int]     = None,
-    country:        Option[String]  = None
+    countries:      Seq[String]     = Seq.empty
   )
 
   def fetch(): Seq[CinemaMovie] = {
@@ -93,7 +93,7 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
                                 .sortBy(_.dateTime)
         if (allShowtimes.isEmpty) None
         else Some(CinemaMovie(
-          movie     = Movie(primary.title, primary.runtimeMinutes, primary.releaseYear, country = primary.country),
+          movie     = Movie(primary.title, primary.runtimeMinutes, primary.releaseYear, countries = primary.countries),
           cinema    = Rialto,
           posterUrl = primary.posterUrl,
           filmUrl   = Some(primary.eventUrl),
@@ -122,8 +122,8 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
         val posterUrl = Option(block.selectFirst(".list-item-image img[src], .image img[src]"))
                           .map(_.attr("src"))
 
-        val (synopsis, director, runtime, year, country) = Option(block.selectFirst("span.text")) match {
-          case None => (None, None, None, None, None)
+        val (synopsis, director, runtime, year, countries) = Option(block.selectFirst("span.text")) match {
+          case None => (None, None, None, None, Seq.empty[String])
           case Some(span) =>
             val lines    = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
             val dir      = lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim)
@@ -139,15 +139,16 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
             // countries). Strip the optional trailing comma left from the
             // "..Niemcy, 2026" form.
             val countryPat = """(?s)^(.+?)\s*,?\s+(?:19|20)\d{2}\b""".r
-            val ctry = lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase.startsWith("reż"))
+            val cs = lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase.startsWith("reż"))
               .flatMap(l => countryPat.findFirstMatchIn(l).map(_.group(1).trim))
-              .map(_.stripSuffix(","))
-              .map(_.trim)
+              .map(_.stripSuffix(",").trim)
               .filter(_.nonEmpty)
-            (Option(synText).filter(_.nonEmpty), dir, rt, yr, ctry)
+              .toSeq
+              .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+            (Option(synText).filter(_.nonEmpty), dir, rt, yr, cs)
         }
 
-        FilmEntry(title, eventUrl, posterUrl, synopsis, director, runtime, year, country)
+        FilmEntry(title, eventUrl, posterUrl, synopsis, director, runtime, year, countries)
       }
     }
 

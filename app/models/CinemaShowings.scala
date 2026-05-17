@@ -24,10 +24,10 @@ case class CinemaShowings(
   // The cinema's own English/international title — captured because `reEnrich`
   // uses it as a TMDB-search hint for films whose Polish title resolves poorly.
   originalTitle:  Option[String]   = None,
-  // Production country (or comma-separated list when co-produced). Each
-  // cinema spells country names in its own way — "USA" vs "Stany Zjednoczone",
-  // "Wielka Brytania" vs "UK" — so we keep the cinema's verbatim string and
-  // let the merged-record accessor pick whichever cinema actually carries it.
-  country:        Option[String]   = None,
+  // Production countries — one entry per country, kept verbatim per cinema.
+  // Each source spells names in its own way ("USA" vs "Stany Zjednoczone",
+  // "Wielka Brytania" vs "UK"); the merged-record accessor on `MovieRecord`
+  // unions across cinemas in priority order.
+  countries:      Seq[String]      = Seq.empty,
   showtimes:      Seq[Showtime]
 )

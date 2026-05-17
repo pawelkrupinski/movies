@@ -63,14 +63,13 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
     directors("Słodkie życie")               shouldBe Some("Federico Fellini")
   }
 
-  it should "extract country (one or many) from each film page" in {
-    val countries = results.map(m => m.movie.title -> m.movie.country).toMap
-    countries("Chłopiec na krańcach świata") shouldBe Some("Polska")
-    // Multi-country co-productions are joined with ", ".
-    countries("Giulietta i duchy")           shouldBe Some("Włochy, Francja")
-    countries("Głos z księżyca")             shouldBe Some("Włochy")
-    countries("Osiem i pół")                 shouldBe Some("Włochy, Francja")
-    countries("Słodkie życie")               shouldBe Some("Włochy, Francja")
+  it should "extract countries (one or many) from each film page" in {
+    val countries = results.map(m => m.movie.title -> m.movie.countries).toMap
+    countries("Chłopiec na krańcach świata") shouldBe Seq("Polska")
+    countries("Giulietta i duchy")           shouldBe Seq("Włochy", "Francja")
+    countries("Głos z księżyca")             shouldBe Seq("Włochy")
+    countries("Osiem i pół")                 shouldBe Seq("Włochy", "Francja")
+    countries("Słodkie życie")               shouldBe Seq("Włochy", "Francja")
   }
 
   it should "extract release year from each film page" in {

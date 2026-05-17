@@ -331,9 +331,9 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
   private def cinemaMovie(title: String, cinema: Cinema, year: Option[Int] = Some(2026),
                           poster: Option[String] = None, showtimes: Seq[Showtime] = Seq.empty,
-                          country: Option[String] = None): CinemaMovie =
+                          countries: Seq[String] = Seq.empty): CinemaMovie =
     CinemaMovie(
-      movie     = Movie(title = title, releaseYear = year, country = country),
+      movie     = Movie(title = title, releaseYear = year, countries = countries),
       cinema    = cinema,
       posterUrl = poster,
       filmUrl   = None,
@@ -426,41 +426,63 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.cinemaTitles should contain allOf ("Top Gun: Maverick", "Top Gun Maverick")
   }
 
-  // Five of the cinema clients (Helios, Rialto, KinoBulgarska, KinoMuza,
-  // KinoPalacowe) parse a production-country string from their sources but
-  // until this change CinemaShowings dropped it on the floor — the value was
-  // populated on Movie.country, then thrown away when the slot was built.
-  // Persisting it lets a downstream view show "USA, Polska" without having to
-  // re-scrape, and lets the merged MovieRecord.country surface whichever
-  // cinema actually reported one (Multikino-priority, skipping cinemas that
-  // never carry the field).
-  it should "store production country per cinema slot and expose it on the merged record" in {
+  // Most cinema clients parse a production-country list from their sources
+  // but until this change CinemaShowings dropped it on the floor — the value
+  // was populated on Movie.countries, then thrown away when the slot was
+  // built. Persisting it lets a downstream view show "USA, Polska" without
+  // re-scraping, and lets the merged MovieRecord.countries surface a union
+  // across cinemas in priority order (Multikino first).
+  it should "store production countries per cinema slot and union them on the merged record" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.recordCinemaScrape(Multikino, Seq(
-      cinemaMovie("Top Gun: Maverick", Multikino, Some(2022), country = None)
+      cinemaMovie("Top Gun: Maverick", Multikino, Some(2022), countries = Seq.empty)
     ))
     cache.recordCinemaScrape(Helios, Seq(
-      cinemaMovie("Top Gun Maverick", Helios, Some(2022), country = Some("USA"))
+      cinemaMovie("Top Gun Maverick", Helios, Some(2022), countries = Seq("USA"))
     ))
 
     val row = cache.get(cache.keyOf("Top Gun: Maverick", Some(2022))).get
-    row.cinemaShowings(Multikino).country shouldBe None
-    row.cinemaShowings(Helios).country    shouldBe Some("USA")
-    // Multikino has the slot but no country; Helios fills in.
-    row.country shouldBe Some("USA")
+    row.cinemaShowings(Multikino).countries shouldBe Seq.empty
+    row.cinemaShowings(Helios).countries    shouldBe Seq("USA")
+    // Multikino has the slot but no countries; Helios fills in.
+    row.countries shouldBe Seq("USA")
   }
 
-  it should "prefer Multikino's country over other cinemas' on the merged record" in {
+  it should "union countries across cinemas in priority order on the merged record" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
-    // Hypothetical: a future Multikino enrichment fills country directly.
     cache.recordCinemaScrape(Multikino, Seq(
-      cinemaMovie("Foo", Multikino, Some(2026), country = Some("Polska"))
+      cinemaMovie("Foo", Multikino, Some(2026), countries = Seq("Polska"))
     ))
     cache.recordCinemaScrape(Helios, Seq(
-      cinemaMovie("Foo", Helios, Some(2026), country = Some("USA"))
+      // Helios brings a co-production country Multikino doesn't have; the
+      // union picks up both, Multikino-first.
+      cinemaMovie("Foo", Helios, Some(2026), countries = Seq("Polska", "USA"))
     ))
 
-    cache.get(cache.keyOf("Foo", Some(2026))).get.country shouldBe Some("Polska")
+    cache.get(cache.keyOf("Foo", Some(2026))).get.countries shouldBe Seq("Polska", "USA")
+  }
+
+  // Without a canonical mapping, the same country spelt different ways
+  // by different cinemas would surface as both in the merged view ("USA"
+  // *and* "Stany Zjednoczone"). The cache folds every alias to a single
+  // canonical name per `CountryNames` on the way into storage.
+  it should "canonicalise country spellings on the way into the cache" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Bar", Multikino, Some(2026), countries = Seq("Stany Zjednoczone", "UK"))
+    ))
+    cache.recordCinemaScrape(Helios, Seq(
+      cinemaMovie("Bar", Helios, Some(2026), countries = Seq("USA", "Wielka Brytania", "francja"))
+    ))
+
+    val row = cache.get(cache.keyOf("Bar", Some(2026))).get
+    // Per-cinema slot already stores canonical names — `Stany Zjednoczone`
+    // folded to `USA`, `UK` folded to `Wielka Brytania`.
+    row.cinemaShowings(Multikino).countries shouldBe Seq("USA", "Wielka Brytania")
+    row.cinemaShowings(Helios).countries    shouldBe Seq("USA", "Wielka Brytania", "Francja")
+    // Merged union sees the same canonical strings from both cinemas, so
+    // dedup collapses them to one entry each.
+    row.countries shouldBe Seq("USA", "Wielka Brytania", "Francja")
   }
 
   it should "preserve enrichment-side fields when only cinema data changes" in {

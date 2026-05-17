@@ -147,13 +147,13 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   // page in parallel, parses the line, and falls back to None when the
   // fixture isn't present or the line isn't there.
 
-  it should "parse the country from the per-film details page when available" in {
-    val countries = kinepolis.map(m => m.movie.title -> m.movie.country).toMap
-    countries("Kurozając i świątynia świstaka") shouldBe Some("Belgia, Francja, USA")
-    countries("Diabeł ubiera się u Prady 2")    shouldBe Some("USA")
-    // Films whose details-page fixture isn't captured fall back to None,
-    // which is the right behaviour in prod when a fetch fails too.
-    countries("Mortal Kombat II")               shouldBe None
+  it should "parse the countries from the per-film details page when available" in {
+    val countries = kinepolis.map(m => m.movie.title -> m.movie.countries).toMap
+    countries("Kurozając i świątynia świstaka") shouldBe Seq("Belgia", "Francja", "USA")
+    countries("Diabeł ubiera się u Prady 2")    shouldBe Seq("USA")
+    // Films whose details-page fixture isn't captured fall back to an empty
+    // list, which is the right behaviour in prod when a fetch fails too.
+    countries("Mortal Kombat II")               shouldBe Seq.empty
   }
 
   // ─── Kinepolis: poster URLs ───────────────────────────────────────────────

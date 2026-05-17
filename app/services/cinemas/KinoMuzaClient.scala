@@ -54,14 +54,16 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
         .filter(_.nonEmpty)
       // Line 1, if present, is the country list. Skip it if it instead carries a
       // year/runtime token (some entries omit the country line entirely).
-      val country   = infoLines.lift(1)
+      // Split on "," for co-productions ("Polska, Niemcy" → two entries).
+      val countries = infoLines.lift(1)
         .filterNot(_.matches(".*\\b(?:19|20)\\d{2}\\b.*"))
         .filterNot(_.matches(".*\\d+\\s*[\\u2019'].*"))
         .filter(_.nonEmpty)
+        .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
       val runtimeMinutes = RuntimePat.findFirstMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption)
       val releaseYear    = YearPat.findAllMatchIn(infoText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption
 
-      title.map { t =>
+      title.map { title =>
         val showtimes = preview.select(".table-row").asScala.flatMap { row =>
           val dateOpt = Option(row.selectFirst(".day")).flatMap(el => parseDate(el.text()))
           val items   = row.select(".ticket-list-item").asScala
@@ -85,7 +87,7 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
         }.toSeq.distinctBy(_.dateTime)
 
         CinemaMovie(
-          movie     = Movie(t, runtimeMinutes, releaseYear, country = country),
+          movie     = Movie(title, runtimeMinutes, releaseYear, countries = countries),
           cinema    = KinoMuza,
           posterUrl = posterUrl,
           filmUrl   = filmUrl,

@@ -26,29 +26,14 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
   // CSRF-token suffix elsewhere on the page can't masquerade as the year/runtime.
   private val MetaPat = """reż\.\s+([^<]+?)\s*(19\d{2}|20\d{2})\s*[,.]\s*(\d+)['’]""".r.unanchored
 
-  // Polish country names. When at least one chunk between the director and the
-  // year matches this set, we use it to partition co-director names (which
-  // don't match) from countries. Without this, "reż. A, B, Polska 2025"
-  // couldn't tell whether B is a co-director or the second country.
-  private val CountryNames: Set[String] = Set(
-    "Polska", "USA", "Niemcy", "Francja", "Włochy", "Hiszpania", "Belgia", "Maroko",
-    "Łotwa", "Węgry", "Dania", "Norwegia", "Czechy", "Republika Czeska", "Irlandia",
-    "Wielka Brytania", "Inne", "Holandia", "Szwecja", "Finlandia", "Szwajcaria",
-    "Austria", "Portugalia", "Rosja", "Turcja", "Ukraina", "Białoruś", "Litwa",
-    "Estonia", "Słowacja", "Rumunia", "Bułgaria", "Grecja", "Indie", "Pakistan",
-    "Japonia", "Chiny", "Korea Południowa", "Korea Północna", "Iran", "Izrael",
-    "Brazylia", "Argentyna", "Australia", "Kanada", "Meksyk", "Nowa Zelandia",
-    "Egipt", "RPA", "Korea"
-  )
-
   private case class FilmMeta(
     director:    Option[String],
-    country:     Option[String],
+    countries:   Seq[String],
     releaseYear: Option[Int],
     runtime:     Option[Int]
   )
 
-  private val EmptyMeta = FilmMeta(None, None, None, None)
+  private val EmptyMeta = FilmMeta(None, Seq.empty, None, None)
 
   private def fetchFilmMeta(filmUrl: String): FilmMeta =
     Try(http.get(filmUrl)).toOption.flatMap(parseFilmMeta).getOrElse(EmptyMeta)
@@ -61,7 +46,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
     MetaPat.findFirstMatchIn(Jsoup.parse(html).text().replace("\u00a0", " ")).map { m =>
       val parts = m.group(1).trim.stripSuffix(",").trim
         .split(",").map(_.trim).filter(_.nonEmpty).toList
-      val (countries, others) = parts.partition(CountryNames.contains)
+      val (countries, others) = parts.partition(CountryNames.isPolish)
       val (directorParts, countryParts) =
         if (countries.nonEmpty) (others, countries)
         // No known country matched — fall back to the simple "last chunk is the
@@ -69,7 +54,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
         else (parts.dropRight(1), parts.takeRight(1))
       FilmMeta(
         director    = Some(directorParts.mkString(", ")).filter(_.nonEmpty),
-        country     = Some(countryParts.mkString(", ")).filter(_.nonEmpty),
+        countries   = countryParts,
         releaseYear = Try(m.group(2).toInt).toOption,
         runtime     = Try(m.group(3).toInt).toOption.filter(n => n >= 30 && n <= 300)
       )
@@ -99,7 +84,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
             title          = title,
             runtimeMinutes = meta.runtime,
             releaseYear    = meta.releaseYear,
-            country        = meta.country
+            countries      = meta.countries
           ),
           cinema    = KinoPalacowe,
           posterUrl = first.posterUrl,

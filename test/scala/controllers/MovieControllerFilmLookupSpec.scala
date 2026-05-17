@@ -31,7 +31,7 @@ class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
       cinemaShowings = Map(Helios -> CinemaShowings(
         filmUrl        = None, posterUrl = None, synopsis = None, cast = None,
         director       = None, runtimeMinutes = None,
-        releaseYear    = year, originalTitle = None, country = None,
+        releaseYear    = year, originalTitle = None, countries = Seq.empty,
         showtimes      = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
       ))
     )

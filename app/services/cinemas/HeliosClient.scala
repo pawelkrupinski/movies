@@ -90,7 +90,7 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
     premiereWorld: Option[java.time.LocalDate],
     posterUrl:     Option[String],
     slug:          Option[String],
-    country:       Option[String]
+    countries:     Seq[String]
   )
 
   private def parseApiMovieBody(body: String): Option[ApiMovieInfo] =
@@ -112,7 +112,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
                             .flatMap(_.asOpt[String])
                             .filter(_.startsWith("http")),
           slug          = (js \ "slug").asOpt[String].filter(_.nonEmpty),
-          country       = (js \ "country").asOpt[String].map(_.trim).filter(_.nonEmpty)
+          countries     = (js \ "country").asOpt[String].map(_.trim).filter(_.nonEmpty)
+                            .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
         )
       }
     }
@@ -150,7 +151,7 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
           releaseYear    = restInfo.flatMap(_.year),
           premierePl     = restInfo.flatMap(_.premierePl),
           premiereWorld  = restInfo.flatMap(_.premiereWorld),
-          country        = restInfo.flatMap(_.country)
+          countries      = restInfo.map(_.countries).getOrElse(cm.movie.countries)
         ),
         posterUrl = restInfo.flatMap(_.posterUrl).orElse(cm.posterUrl),
         synopsis  = restInfo.flatMap(_.description),
@@ -178,7 +179,7 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
               releaseYear    = info.year,
               premierePl     = info.premierePl,
               premiereWorld  = info.premiereWorld,
-              country        = info.country
+              countries      = info.countries
             ),
             cinema    = Helios,
             posterUrl = info.posterUrl,

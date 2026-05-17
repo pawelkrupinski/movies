@@ -67,6 +67,14 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
   // cycle uses `Czas trwania: /running time: NN'` (apostrophe / U+2019 minute
   // mark instead of "min"). Both share the same span prefix.
   private val RuntimePat   = """Czas trwania:\s*</span>[^0-9]*(\d+)\s*(?:min|['’])""".r
+  // Apollo's `Producent:` field carries two different things depending on
+  // page layout:
+  //   - Modern films (Drzewo Magii): `Producent:</span> Francja, USA, … | 2026`
+  //   - Wajda cycle: `Producent:</span> Zespół Autorów Filmowych „Kadr"`
+  // The second form is a *studio*, not countries. Resolve by splitting on
+  // "," and only accepting the line as countries when every part is in
+  // `CountryNames.Polish`.
+  private val ProducentPat = """Producent:\s*</span>\s*([^<|]+)""".r
   // Director — only the modern-film layout exposes a structured `Reżyseria:`
   // line; Wajda cycle pages don't carry per-film director info (it's the
   // cycle's namesake). Anchor on `Reżyseria:` followed by an `<a>` wrapper.
@@ -86,7 +94,7 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
       movies.map { m =>
         val meta = m.filmUrl.flatMap(metas.get).getOrElse(EmptyDetailMeta)
         m.copy(
-          movie    = m.movie.copy(runtimeMinutes = meta.runtime),
+          movie    = m.movie.copy(runtimeMinutes = meta.runtime, countries = meta.countries),
           synopsis = meta.synopsis.orElse(m.synopsis),
           director = meta.director.orElse(m.director),
           cast     = meta.cast.orElse(m.cast)
@@ -96,13 +104,14 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
   }
 
   case class DetailMeta(
-    runtime:  Option[Int],
-    synopsis: Option[String],
-    director: Option[String],
-    cast:     Option[String]
+    runtime:   Option[Int],
+    synopsis:  Option[String],
+    director:  Option[String],
+    cast:      Option[String],
+    countries: Seq[String]
   )
 
-  private val EmptyDetailMeta = DetailMeta(None, None, None, None)
+  private val EmptyDetailMeta = DetailMeta(None, None, None, None, Seq.empty)
 
   private def fetchDetails(urls: Seq[String]): Map[String, DetailMeta] = {
     val pool = Executors.newFixedThreadPool(5)
@@ -129,12 +138,23 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
     val firstEditorHtml = Option(doc.select("div.elementor-widget-text-editor div.elementor-widget-container").first())
       .map(_.html()).getOrElse("")
     DetailMeta(
-      runtime  = parseRuntime(html),
-      synopsis = parseSynopsis(html),
-      director = DirectorPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty),
-      cast     = CastPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim.stripSuffix(",").trim).filter(_.nonEmpty)
+      runtime   = parseRuntime(html),
+      synopsis  = parseSynopsis(html),
+      director  = DirectorPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty),
+      cast      = CastPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim.stripSuffix(",").trim).filter(_.nonEmpty),
+      countries = parseCountries(html)
     )
   }
+
+  // Producent: in the page header (a sibling heading widget — not inside the
+  // first text-editor). Split on `,` and only commit to the values as
+  // countries when every part is a recognised Polish country name; otherwise
+  // the line is a studio ("Zespół Autorów Filmowych „Kadr"") and we leave
+  // countries empty.
+  def parseCountries(html: String): Seq[String] =
+    ProducentPat.findFirstMatchIn(html).map { m =>
+      m.group(1).trim.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+    }.filter(_.forall(CountryNames.isPolish)).getOrElse(Seq.empty)
 
   def parseRuntime(html: String): Option[Int] =
     RuntimePat.findFirstMatchIn(html).flatMap(m => Try(m.group(1).toInt).toOption)

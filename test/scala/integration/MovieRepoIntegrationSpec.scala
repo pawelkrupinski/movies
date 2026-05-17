@@ -108,7 +108,7 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
   // Cinema slots are persisted under cinemaShowings.<cinemaName>. Round-trip
   // every Option field plus a co-production country list to confirm decode
   // matches encode for the per-cinema sub-document.
-  it should "round-trip a CinemaShowings slot including the production country" in {
+  it should "round-trip a CinemaShowings slot including the production countries" in {
     val title = "__integration-test-cinemashowings-country__"
     val year  = Some(2026)
     val slot  = CinemaShowings(
@@ -120,7 +120,7 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
       runtimeMinutes = Some(123),
       releaseYear    = Some(2025),
       originalTitle  = Some("Original"),
-      country        = Some("Polska, Francja"),
+      countries      = Seq("Polska", "Francja"),
       showtimes      = Seq.empty
     )
     val toStore = MovieRecord(
@@ -136,18 +136,18 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     found should not be empty
     val e = found.get.record
     e.cinemaShowings.keySet shouldBe Set(Helios)
-    e.cinemaShowings(Helios).country shouldBe Some("Polska, Francja")
+    e.cinemaShowings(Helios).countries shouldBe Seq("Polska", "Francja")
     e.cinemaShowings(Helios).filmUrl shouldBe Some("https://example/film")
-    // Merged accessor surfaces the only cinema's country.
-    e.country shouldBe Some("Polska, Francja")
+    // Merged accessor surfaces the only cinema's countries.
+    e.countries shouldBe Seq("Polska", "Francja")
   }
 
-  it should "leave country=None decoded as None when a slot was written without it" in {
+  it should "leave countries empty when a slot was written without them" in {
     val title = "__integration-test-cinemashowings-no-country__"
     val slot  = CinemaShowings(
       filmUrl = None, posterUrl = None, synopsis = None, cast = None,
       director = None, runtimeMinutes = None, releaseYear = None,
-      originalTitle = None, country = None, showtimes = Seq.empty
+      originalTitle = None, countries = Seq.empty, showtimes = Seq.empty
     )
     repo.upsert(title, None, MovieRecord(
       imdbId = None, imdbRating = None, metascore = None, originalTitle = None,
@@ -155,8 +155,8 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     ))
     val found = repo.findAll().find(r => r.title == title && r.year.isEmpty)
     found should not be empty
-    found.get.record.cinemaShowings(Multikino).country shouldBe None
-    found.get.record.country shouldBe None
+    found.get.record.cinemaShowings(Multikino).countries shouldBe Seq.empty
+    found.get.record.countries shouldBe Seq.empty
   }
 
   // Regression for "Tom i Jerry: Przygoda w muzeum" / "Tom i jerry: przygoda w

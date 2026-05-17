@@ -6,6 +6,7 @@ import play.api.libs.json._
 import tools.HttpFetch
 
 import java.time.{LocalDateTime, ZonedDateTime}
+import java.util.concurrent.Executors
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -14,7 +15,45 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
   val cinema: Cinema = CharlieMonroe
   private val PageUrl = "https://kinomalta.pl/seanse"
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
+  // Per-film detail page carries production countries in a
+  //   `<span class="wpmoly … meta label">Kraj:&nbsp;</span><span … meta value">
+  //    <a …>Country</a><a …>Other</a></span>`
+  // block (one `<a>` per country for co-productions). The listing doesn't
+  // expose it, so we fetch each film page in parallel and gracefully fall
+  // back to an empty list on any failure.
+  private val CountryAnchorPat =
+    """(?s)class="wpmoly[^"]*meta label[^"]*">Kraj:.*?class="wpmoly[^"]*meta value[^"]*">(.*?)</span>""".r
+  private val AnchorTextPat    = """<a[^>]*>([^<]+)</a>""".r
+
+  def fetch(): Seq[CinemaMovie] = {
+    val movies = parseHtml(http.get(PageUrl))
+    val urls   = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val countries = fetchCountries(urls)
+      movies.map { m =>
+        val cs = m.filmUrl.flatMap(countries.get).getOrElse(Seq.empty)
+        if (cs.isEmpty) m else m.copy(movie = m.movie.copy(countries = cs))
+      }
+    }
+  }
+
+  private def fetchCountries(urls: Seq[String]): Map[String, Seq[String]] = {
+    val pool = Executors.newFixedThreadPool(5)
+    try urls
+      .map(url => url -> pool.submit[Seq[String]](() => fetchCountriesFor(url)))
+      .map { case (url, f) => url -> f.get() }
+      .toMap
+    finally pool.shutdown()
+  }
+
+  private def fetchCountriesFor(detailUrl: String): Seq[String] =
+    Try(http.get(detailUrl)).toOption.map(parseCountries).getOrElse(Seq.empty)
+
+  def parseCountries(html: String): Seq[String] =
+    CountryAnchorPat.findFirstMatchIn(html).toSeq.flatMap { m =>
+      AnchorTextPat.findAllMatchIn(m.group(1)).map(_.group(1).trim).filter(_.nonEmpty).toSeq
+    }
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(html)

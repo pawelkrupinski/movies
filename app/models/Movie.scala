@@ -8,8 +8,11 @@ case class Movie(
   releaseYear:    Option[Int]       = None,
   premierePl:     Option[LocalDate] = None,
   premiereWorld:  Option[LocalDate] = None,
-  // Production country (or comma-separated list when several co-produce).
-  country:        Option[String]    = None,
+  // Production countries — one entry per country, in the order the source
+  // listed them. Each cinema spells names in its own way ("USA" vs "Stany
+  // Zjednoczone", "Wielka Brytania" vs "UK") so this stays verbatim per
+  // cinema; the merge logic on `MovieRecord` unifies across cinemas.
+  countries:      Seq[String]       = Seq.empty,
   // English/international release title when the cinema's API exposes it
   // (Multikino does for niche international shows — Cirque du Soleil, opera,
   // English-language docs). Used as a TMDB-search fallback for titles whose

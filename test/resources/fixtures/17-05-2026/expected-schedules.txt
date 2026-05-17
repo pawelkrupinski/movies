@@ -3,6 +3,7 @@ displayTitle:      2026 TXT MOA CON IN JAPAN: LIVE VIEWING
 cinemaTitles:      2026 TXT MOA CON IN JAPAN: LIVE VIEWING
 runtimeMinutes:    225
 releaseYear:       2026
+countries:         Korea Południowa
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8178O2R.jpg
 synopsis.length:   —
 cast:              —
@@ -29,6 +30,7 @@ displayTitle:      90. urodziny Pavarottiego
 cinemaTitles:      90. urodziny Pavarottiego
 runtimeMinutes:    95
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/pavarotti/pavarotti90_plakat.jpg?rev=10b0b0776a1740c3bc284f5e077c5434
 synopsis.length:   1777
 cast:              Andrea Bocelli, Jonathan Tetelman, Placido Domingo, Jose Carreras, Angela Gheorghiu,  Il Volo, Stjepan Hauser
@@ -56,6 +58,7 @@ displayTitle:      90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona
 cinemaTitles:      90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona
 runtimeMinutes:    92
 releaseYear:       2025
+countries:         Włochy
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8131S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -87,6 +90,7 @@ displayTitle:      Ale mam | ну мам | wersja ukraińska z ang. napisami
 cinemaTitles:      Ale mam | ну мам | wersja ukraińska z ang. napisami
 runtimeMinutes:    90
 releaseYear:       2026
+countries:         Ukraina
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/a1a0-v3-1x-062logo.jpg
 synopsis.length:   2541
 cast:              —
@@ -113,6 +117,7 @@ displayTitle:      All You Need Is Kill
 cinemaTitles:      All You Need Is Kill
 runtimeMinutes:    83
 releaseYear:       2025
+countries:         Japonia
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/all-you-need-is-kill/allyouneediskill_plakat.jpg?rev=08b1e09f55e449e68afb83c40faed6e7
 synopsis.length:   755
 cast:              —
@@ -144,6 +149,7 @@ displayTitle:      Arco
 cinemaTitles:      Arco
 runtimeMinutes:    88
 releaseYear:       2025
+countries:         Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/ARCO_plakat.jpg
 synopsis.length:   112
 cast:              —
@@ -170,6 +176,7 @@ displayTitle:      Arcybiskup Lefebvre – dlaczego?
 cinemaTitles:      Arcybiskup Lefebvre – dlaczego?
 runtimeMinutes:    128
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Plakat_abp_dlaczego_2025_kino_Q-po-zmniejszeniu-200x288.jpg
 synopsis.length:   279
 cast:              —
@@ -196,6 +203,7 @@ displayTitle:      Art Beats: Lotto i Berenson - splecione losy. Śladami renesa
 cinemaTitles:      Art Beats: Lotto i Berenson - splecione losy. Śladami renesansowego mistrza
 runtimeMinutes:    80
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/lotto-plakat.jpg?rev=38a9f6140a1a4ffcab6674adfc953e0e
 synopsis.length:   1221
 cast:              Alessandro Sperduti
@@ -223,6 +231,7 @@ displayTitle:      Art Beats: Nenufary Moneta - cuda z wody i światła
 cinemaTitles:      Art Beats: Nenufary Moneta - cuda z wody i światła
 runtimeMinutes:    95
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/monet-nenufary-plakat.jpg?rev=0ec23b8a082f4b7bb70c073696776d8a
 synopsis.length:   811
 cast:              Elisa Lasowski
@@ -250,6 +259,7 @@ displayTitle:      Art Beats: Rafael. Młody geniusz
 cinemaTitles:      Art Beats: Rafael. Młody geniusz
 runtimeMinutes:    80
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/rafael-plakat.jpg?rev=e127f4cbbb104fde8a20d94cf4ba7dc0
 synopsis.length:   609
 cast:              —
@@ -277,6 +287,7 @@ displayTitle:      Athiradi
 cinemaTitles:      Athiradi
 runtimeMinutes:    157
 releaseYear:       2026
+countries:         Indie
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8204S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -303,6 +314,7 @@ displayTitle:      Audiencja - National Theatre Live 2026
 cinemaTitles:      Audiencja - National Theatre Live 2026
 runtimeMinutes:    165
 releaseYear:       2026
+countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8213S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -330,6 +342,7 @@ displayTitle:      Bałtyk
 cinemaTitles:      Bałtyk
 runtimeMinutes:    66
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/08/BALTYK-PLAKAT-W-KINACH-22.08-jpg-po-zmniejszeniu-200x288.jpg
 synopsis.length:   273
 cast:              —
@@ -356,6 +369,7 @@ displayTitle:      Belle
 cinemaTitles:      Belle
 runtimeMinutes:    121
 releaseYear:       2021
+countries:         Japonia
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/BELLE_plakat_online_JavMgQC.jpg
 synopsis.length:   113
 cast:              —
@@ -382,6 +396,7 @@ displayTitle:      Bez wyjścia
 cinemaTitles:      Bez wyjścia
 runtimeMinutes:    139
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Bez-wyjscia_plakat_B1_HQ-po-zmniejszeniu-200x288.jpg
 synopsis.length:   283
 cast:              —
@@ -410,6 +425,7 @@ displayTitle:      Bez znieczulenia
 cinemaTitles:      Bez znieczulenia
 runtimeMinutes:    125
 releaseYear:       1978
+countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/bez-zniecz-2-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -436,6 +452,7 @@ displayTitle:      Billie Eilish - Hit Me Hard and Soft: The Tour
 cinemaTitles:      Billie Eilish - Hit Me Hard and Soft: The Tour | Billie Eilish – Hit Me Hard and Soft: The Tour
 runtimeMinutes:    105
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/billie-eilish/billie-eilish_plakat_cut.jpg?rev=25c4d4367da24664815b62a9c3b17741
 synopsis.length:   420
 cast:              Billie Eilish, Finneas O'Connell
@@ -487,6 +504,7 @@ displayTitle:      Bluey w kinie: Kolekcja Zabawy z przyjaciółmi
 cinemaTitles:      Bluey w kinie: Kolekcja Zabawy z przyjaciółmi
 runtimeMinutes:    55
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/bluey/bluey_zabawazprzyjaciolmi_plakat2.jpg?rev=4a0380d5d9b54c4ba1959fbd958a05e6
 synopsis.length:   379
 cast:              —
@@ -517,6 +535,7 @@ displayTitle:      Broken English
 cinemaTitles:      Broken English
 runtimeMinutes:    96
 releaseYear:       2025
+countries:         Wielka Brytania
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/broken-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -543,6 +562,7 @@ displayTitle:      Brzezina
 cinemaTitles:      Brzezina
 runtimeMinutes:    99
 releaseYear:       1970
+countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/brzezina-1-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -569,6 +589,7 @@ displayTitle:      Być kochaną
 cinemaTitles:      Być kochaną
 runtimeMinutes:    105
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/Byc-kochana_-plakat-HQ-po-zmniejszeniu-200x288.jpg
 synopsis.length:   273
 cast:              —
@@ -595,6 +616,7 @@ displayTitle:      Był sobie śnieg
 cinemaTitles:      Był sobie śnieg
 runtimeMinutes:    128
 releaseYear:       2025
+countries:         Austria
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/byl-sobie-snieg-2-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -621,6 +643,7 @@ displayTitle:      Camper
 cinemaTitles:      Camper
 runtimeMinutes:    77
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/CAMPER_PLAKAT-po-zmniejszeniu-200x288.jpg
 synopsis.length:   288
 cast:              —
@@ -647,6 +670,7 @@ displayTitle:      Caravaggio. Arcydzieła niepokornego geniusza
 cinemaTitles:      Caravaggio. Arcydzieła niepokornego geniusza
 runtimeMinutes:    100
 releaseYear:       2025
+countries:         Wielka Brytania
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/caravaggio_plakat.jpg?rev=743d8bdf88b64f9ea981dbbf1ef55121
 synopsis.length:   1611
 cast:              —
@@ -679,6 +703,7 @@ displayTitle:      Chronologia wody
 cinemaTitles:      Chronologia wody
 runtimeMinutes:    128
 releaseYear:       2025
+countries:         USA, Francja, Łotwa
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/04/CHRONOLOGIA-WODY-PLAKAT-PL-clean.jpg
 synopsis.length:   356
 cast:              —
@@ -716,6 +741,7 @@ displayTitle:      Chłopiec na krańcach świata
 cinemaTitles:      Chłopiec na krańcach świata
 runtimeMinutes:    88
 releaseYear:       2025
+countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Chopiec_na_krancach_swiata_PLAKAT_teaser.jpg
 synopsis.length:   120
 cast:              —
@@ -743,6 +769,7 @@ displayTitle:      Cirque du Soleil: Kooza
 cinemaTitles:      Cirque du Soleil: Kooza
 runtimeMinutes:    90
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/img/import/4e7d682d-c594-4525-a0d9-6a0b2fd97021_cirque-du-soleil-kooza_posters_koo_full_2000x3000px_712px.png?rev=ecb26b3f261f45559f7c9bd2c71b1b22
 synopsis.length:   469
 cast:              Cirque du Soleil
@@ -772,6 +799,7 @@ displayTitle:      Cirque du Soleil: Kurios - Gabinet osobliwości
 cinemaTitles:      Cirque du Soleil: Kurios - Gabinet osobliwości
 runtimeMinutes:    89
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/img/import/bba92643-7ded-4bb4-aa17-d9d7ec7a4df9_cirque-du-soleil-kurios---gabinet-osobliwosci_posters_kur_full_.png?rev=bfbf4ae611944a2a92962535709bcfe0
 synopsis.length:   599
 cast:              Cirque du Soleil
@@ -798,6 +826,7 @@ displayTitle:      Człowiek z marmuru
 cinemaTitles:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru
 runtimeMinutes:    153
 releaseYear:       1977
+countries:         Polska
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png
 synopsis.length:   1212
 cast:              Krystyna Janda, Jerzy Radziwiłowicz, Tadeusz Łomnicki
@@ -833,6 +862,7 @@ displayTitle:      Diabeł ubiera się u Prady 2
 cinemaTitles:      Diabeł ubiera się u Prady 2 | Diabeł ubiera się u prady 2
 runtimeMinutes:    120
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/diabel-ubiera-sie-u-prady-2/diabelprada2_plakatoficial-cut.jpg?rev=6e854aefaa8e47c0b27446b60a57f68a
 synopsis.length:   1006
 cast:              Anne Hathaway, Meryl Streep, Stanley Tucci, Emily Blunt
@@ -899,6 +929,7 @@ displayTitle:      Diabeł ubiera się u Prady 2 ukraiński dubbing
 cinemaTitles:      Diabeł ubiera się u Prady 2 ukraiński dubbing
 runtimeMinutes:    119
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7795S2R2.jpg
 synopsis.length:   —
 cast:              —
@@ -929,6 +960,7 @@ displayTitle:      Drama
 cinemaTitles:      Drama
 runtimeMinutes:    106
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drama/drama-plakat-final-cut.jpg?rev=99e50bcc8ce449fab18d52c1caef4c08
 synopsis.length:   668
 cast:              Robert Pattinson , Zendaya, Alana Haim, Hailey Gates
@@ -991,6 +1023,7 @@ displayTitle:      Drugie życie
 cinemaTitles:      Drugie życie
 runtimeMinutes:    0
 releaseYear:       2025
+countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/drugiezycie_plakat.jpg?rev=b3e62875d7b248b78e1a7d07fdf010d2
 synopsis.length:   1353
 cast:              —
@@ -1027,6 +1060,7 @@ displayTitle:      Drzewo magii
 cinemaTitles:      Drzewo Magii | Drzewo magii
 runtimeMinutes:    110
 releaseYear:       2025
+countries:         Wielka Brytania, USA, Francja
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drzewo-magii/drzewo-magii_plakat-glowny_plakat.jpg?rev=78ae4df57ddb40d98d5535803ff32357
 synopsis.length:   1271
 cast:              Andrew Garfield („Sztuka pięknego życia”), Claire Foy (serial „The Crown”) Rebecca Ferguson („Diuna”), Nicola Coughlan (serial „Brigertonowie”), Jessica Gunning (serial „Reniferek”)
@@ -1077,6 +1111,7 @@ displayTitle:      Dyyavol Nosyt' Prada 2 - UA
 cinemaTitles:      Dyyavol Nosyt' Prada 2 - UA 
 runtimeMinutes:    125
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://movies.helios.pl/images/Diabelubierasieuprady2UA.jpg
 synopsis.length:   270
 cast:              Стенлі Туччі, Емілі Блант, Меріл Стріп, Енн Гетевей, Кеннет Брана
@@ -1102,6 +1137,7 @@ displayTitle:      Dziecko z pyłu
 cinemaTitles:      Dziecko z pyłu
 runtimeMinutes:    93
 releaseYear:       2025
+countries:         Polska, Wietnam, Szwecja, Czechy, Katar
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/COD_STILL5-scaled-1920x1080-c-default-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -1130,6 +1166,7 @@ displayTitle:      Erupcja
 cinemaTitles:      Erupcja
 runtimeMinutes:    71
 releaseYear:       —
+countries:         2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/erupcja.jpg?rev=66cbdeeffa9b41eca82059aab89bb588
 synopsis.length:   220
 cast:              Charli XCX, Lena Góra, Will Madden, Jeremy O. Harris
@@ -1159,6 +1196,7 @@ displayTitle:      Ex Machina
 cinemaTitles:      Ex Machina
 runtimeMinutes:    108
 releaseYear:       2014
+countries:         Wielka Brytania, USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/ExMachina_2.jpg
 synopsis.length:   113
 cast:              —
@@ -1185,6 +1223,7 @@ displayTitle:      Fantastyczne zwierzęta i jak je znaleźć
 cinemaTitles:      Fantastyczne zwierzęta i jak je znaleźć
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/fantastyczne-zwierzeta/fantastyczne_cz1_plakat.jpg?rev=1a4e976bba414fff9058bac59c8a86ae
 synopsis.length:   163
 cast:              Eddie Redmayne, Katherine Waterston, Dan Fogler, Colin Farrell
@@ -1212,6 +1251,7 @@ displayTitle:      Fantastyczne zwierzęta: Tajemnice Dumbledorea
 cinemaTitles:      Fantastyczne zwierzęta: Tajemnice Dumbledorea
 runtimeMinutes:    142
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/multikino_imported/imported_from_external_source/posterimage/pl-fnbst3-plakat-oficjalny-cut_f5cdf984c2.jpg?rev=0a9c0072657b4727ab2bce0e955867d2
 synopsis.length:   608
 cast:              Eddie Redmayne, Jude Law, Mads Mikkelsen, Ezra Miller
@@ -1239,6 +1279,7 @@ displayTitle:      Fantastyczne zwierzęta: zbrodnie grindelwalda
 cinemaTitles:      Fantastyczne zwierzęta: zbrodnie grindelwalda
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/fantastyczne-zwierzeta/fantastyczne_cz2_plakat.jpg?rev=187efed51ce645569fb425ca6a669679
 synopsis.length:   123
 cast:              —
@@ -1266,6 +1307,7 @@ displayTitle:      Father Mother Sister Brother
 cinemaTitles:      Father Mother Sister Brother | Father mother sister brother
 runtimeMinutes:    110
 releaseYear:       2025
+countries:         USA
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2025/12/FMSB-plakat-PL_HQ.jpg
 synopsis.length:   302
 cast:              —
@@ -1296,6 +1338,7 @@ displayTitle:      Fałszerz stulecia
 cinemaTitles:      Fałszerz stulecia
 runtimeMinutes:    128
 releaseYear:       2025
+countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/falszerz-2-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -1322,6 +1365,7 @@ displayTitle:      FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar
 cinemaTitles:      FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar
 runtimeMinutes:    98
 releaseYear:       2025
+countries:         Niemcy
 posterUrl:         https://www.kinomuza.pl/content/uploads/2025/12/baby-2-800x450.png
 synopsis.length:   —
 cast:              —
@@ -1348,6 +1392,7 @@ displayTitle:      Filmowe Poranki: Świnka Peppa, cz. 2
 cinemaTitles:      Filmowe Poranki: Świnka Peppa, cz. 2
 runtimeMinutes:    54
 releaseYear:       —
+countries:         —
 posterUrl:         https://img.helios.pl/pliki/film/filmowe-poranki-swinka-peppa/filmowe-poranki-swinka-peppa-plakat-83320.png
 synopsis.length:   —
 cast:              —
@@ -1374,6 +1419,7 @@ displayTitle:      Filmowe spotkania z psychoanalizą: dobry chłopiec
 cinemaTitles:      Filmowe spotkania z psychoanalizą: dobry chłopiec
 runtimeMinutes:    110
 releaseYear:       2025
+countries:         Polska, Wielka Brytania
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dobry-chlopiec-plakat.jpg
 synopsis.length:   1612
 cast:              —
@@ -1400,6 +1446,7 @@ displayTitle:      Follemente. W tym szaleństwie jest metoda
 cinemaTitles:      Cykl "Zawsze Ósmego" - Follemente. W tym szaleństwie jest metoda
 runtimeMinutes:    97
 releaseYear:       —
+countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg
 synopsis.length:   584
 cast:              —
@@ -1426,6 +1473,7 @@ displayTitle:      Giulietta i duchy
 cinemaTitles:      Giulietta i duchy
 runtimeMinutes:    139
 releaseYear:       1965
+countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/3-4-800x450.jpg
 synopsis.length:   113
 cast:              —
@@ -1455,6 +1503,7 @@ displayTitle:      Guru
 cinemaTitles:      Guru
 runtimeMinutes:    126
 releaseYear:       2025
+countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/guru-2-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -1481,6 +1530,7 @@ displayTitle:      Gwiezdne Wojny: Mandalorian i Grogu - ukraiński dubbing
 cinemaTitles:      Gwiezdne Wojny: Mandalorian i Grogu - ukraiński dubbing
 runtimeMinutes:    132
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7667S2R3.jpg
 synopsis.length:   —
 cast:              —
@@ -1509,6 +1559,7 @@ displayTitle:      Głos Hind Rajab
 cinemaTitles:      Głos Hind Rajab
 runtimeMinutes:    89
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Glos_Hind_Rajab-polski-plakat1-po-zmniejszeniu-200x288.jpg
 synopsis.length:   278
 cast:              —
@@ -1535,6 +1586,7 @@ displayTitle:      Głos z księżyca
 cinemaTitles:      Głos z księżyca
 runtimeMinutes:    121
 releaseYear:       1990
+countries:         Włochy
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/2-5-800x450.jpg
 synopsis.length:   110
 cast:              —
@@ -1564,6 +1616,7 @@ displayTitle:      Hamnet
 cinemaTitles:      Hamnet
 runtimeMinutes:    125
 releaseYear:       2025
+countries:         Wielka Brytania
 posterUrl:         https://www.kinomuza.pl/content/uploads/2025/10/kadry-1-1-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -1593,6 +1646,7 @@ displayTitle:      Harry Angel
 cinemaTitles:      Harry Angel
 runtimeMinutes:    114
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/10/plakat-Harry-200x288.webp
 synopsis.length:   275
 cast:              —
@@ -1619,6 +1673,7 @@ displayTitle:      Harry Potter i Czara ognia
 cinemaTitles:      Harry Potter i Czara ognia
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-czara-ognia-plakat.png?rev=af3507e8ea434b0dad8ffe759ae3c699
 synopsis.length:   122
 cast:              Daniel Radcliffe, Rupert Grint, Emma Watson
@@ -1645,6 +1700,7 @@ displayTitle:      Harry Potter i Insygnia Śmierci cz. 1
 cinemaTitles:      Harry Potter i Insygnia Śmierci cz. 1
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-insygnia-1-plakat.png?rev=4bb3985b391c48bb8865e6ad3c792e81
 synopsis.length:   153
 cast:              Daniel Radcliffe, Rupert Grint, Emma Watson, Ralph Fiennes
@@ -1671,6 +1727,7 @@ displayTitle:      Harry Potter i Insygnia Śmierci cz. 2
 cinemaTitles:      Harry Potter i Insygnia Śmierci cz. 2
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-insygnia-2-plakat.png?rev=02dfe6e3a9fb4f0db308efee9f943de2
 synopsis.length:   88
 cast:              Daniel Radcliffe, Rupert Grint, Emma Watson, Ralph Fiennes
@@ -1697,6 +1754,7 @@ displayTitle:      Harry Potter i Kamień filozoficzny
 cinemaTitles:      Harry Potter i Kamień filozoficzny
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/harry-potter-i-kamien.jpg?rev=746ac80d53474907bcb22092c0f29d46
 synopsis.length:   113
 cast:              Daniel Radcliffe, Rupert Grint, Emma Watson, Maggie Smith
@@ -1729,6 +1787,7 @@ displayTitle:      Harry Potter i Komnata Tajemnic
 cinemaTitles:      Harry Potter i Komnata Tajemnic
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/harry-potter-i-komnata.jpg?rev=2a3cdf37f6a241efa4b8cdb19164d545
 synopsis.length:   136
 cast:              Daniel Radcliffe, Rupert Grint, Emma Watson
@@ -1755,6 +1814,7 @@ displayTitle:      Harry Potter i Książę Półkrwi
 cinemaTitles:      Harry Potter i Książę Półkrwi
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-ksiaze-plakat.png?rev=44968ea3411d4cf6895a2305451256de
 synopsis.length:   70
 cast:              Daniel Radcliffe, Emma Watson, Rupert Grint, Matthew Lewis
@@ -1781,6 +1841,7 @@ displayTitle:      Harry Potter i Więzień Azkabanu
 cinemaTitles:      Harry Potter i Więzień Azkabanu
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/harry-potter-i-wiezien.jpg?rev=d9efdcb242c24a7a8f7eafe56cdb8878
 synopsis.length:   83
 cast:              Daniel Radcliffe, Rupert Grint, Emma Watson
@@ -1807,6 +1868,7 @@ displayTitle:      Harry Potter i Zakon Feniksa
 cinemaTitles:      Harry Potter i Zakon Feniksa
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-zakon-plakat.png?rev=cc1f0e4ef6e14bc684b712282bcabe91
 synopsis.length:   125
 cast:              Emma Watson, Rupert Grint, Daniel Radcliffe, Ralph Fiennes
@@ -1833,6 +1895,7 @@ displayTitle:      Hopnięci
 cinemaTitles:      Hopnięci
 runtimeMinutes:    0
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/hopnieci/hopnieci-plakat-final-cut.jpg?rev=9d1707945c83489aad3da15956eb50fa
 synopsis.length:   542
 cast:              —
@@ -1869,6 +1932,7 @@ displayTitle:      Idź z duszą na dłoni
 cinemaTitles:      Idź z duszą na dłoni
 runtimeMinutes:    113
 releaseYear:       2025
+countries:         Francja, Palestyna, Iran
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/idz-z-d-2-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -1895,6 +1959,7 @@ displayTitle:      Iron Maiden: Burning Ambition
 cinemaTitles:      Iron Maiden: Burning Ambition
 runtimeMinutes:    106
 releaseYear:       2026
+countries:         USA, Wielka Brytania
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/iron-maiden/ironmaiden.jpg?rev=a8cd80d50e264d7baef87d55f4b41156
 synopsis.length:   574
 cast:              —
@@ -1949,6 +2014,7 @@ displayTitle:      John Williams - A Tribute
 cinemaTitles:      John Williams - A Tribute
 runtimeMinutes:    83
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/john-williams/jwilliams_plakat.jpg?rev=c7d1daa261e2416da7adc8881c9a2801
 synopsis.length:   435
 cast:              John Williams, Duńska Narodowa Orkiestra Symfoniczna, Anna Agafia Egholm, Christine Nonbo Anderson
@@ -1978,6 +2044,7 @@ displayTitle:      Karuppu
 cinemaTitles:      Karuppu
 runtimeMinutes:    150
 releaseYear:       2026
+countries:         Indie
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8203S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -2004,6 +2071,7 @@ displayTitle:      Kicia Kocia ma braciszka
 cinemaTitles:      Kicia Kocia ma braciszka
 runtimeMinutes:    45
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/Kicia-Kocia-ma-braciszka-PLAKAT-online-po-zmniejszeniu-200x288.jpg
 synopsis.length:   281
 cast:              —
@@ -2030,6 +2098,7 @@ displayTitle:      Kicia Kocia w podróży
 cinemaTitles:      Kicia Kocia w podróży
 runtimeMinutes:    45
 releaseYear:       2026
+countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Kicia_Kocia_w_podrozy_PLAKAT_B1.jpg
 synopsis.length:   115
 cast:              —
@@ -2056,6 +2125,7 @@ displayTitle:      Kino bez barier: Arco (AD
 cinemaTitles:      Kino bez barier: Arco (AD + CC + PJM) | Kino bez barier: Arco (AD + CC)
 runtimeMinutes:    88
 releaseYear:       2025
+countries:         Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_Arco.jpg
 synopsis.length:   115
 cast:              —
@@ -2083,6 +2153,7 @@ displayTitle:      Kino bez barier: Błękitny szlak (AD
 cinemaTitles:      Kino bez barier: Błękitny szlak (AD + CC + PJM)
 runtimeMinutes:    85
 releaseYear:       2025
+countries:         Brazylia, Meksyk, Holandia
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_bekitny_szlak.jpg
 synopsis.length:   114
 cast:              —
@@ -2110,6 +2181,7 @@ displayTitle:      Kino bez barier: Drugie życie (AD
 cinemaTitles:      Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC)
 runtimeMinutes:    116
 releaseYear:       2025
+countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_drugie_zycie2.jpg
 synopsis.length:   120
 cast:              —
@@ -2137,6 +2209,7 @@ displayTitle:      Kino bez barier: Freak Show (AD
 cinemaTitles:      Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie | Kino bez barier: Freak Show (AD + CC)
 runtimeMinutes:    75
 releaseYear:       2026
+countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_post_063_05FcHgm.jpg
 synopsis.length:   114
 cast:              —
@@ -2164,6 +2237,7 @@ displayTitle:      Kino bez barier: Milcząca przyjaciółka (AD
 cinemaTitles:      Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM) | Kino bez barier: Milcząca przyjaciółka (AD + CC)
 runtimeMinutes:    147
 releaseYear:       2025
+countries:         Niemcy, Francja, Węgry
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_milczaca2.jpg
 synopsis.length:   117
 cast:              —
@@ -2191,6 +2265,7 @@ displayTitle:      Kino bez barier: Młode matki (AD
 cinemaTitles:      Kino bez barier: Młode matki (AD + CC + PJM)
 runtimeMinutes:    95
 releaseYear:       2025
+countries:         Belgia, Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_mode_matki.jpg
 synopsis.length:   120
 cast:              —
@@ -2218,6 +2293,7 @@ displayTitle:      Kino bez barier: Pieśni lasu (AD
 cinemaTitles:      Kino bez barier: Pieśni lasu (AD + CC + PJM)
 runtimeMinutes:    93
 releaseYear:       2025
+countries:         Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_piesni_lasu.jpg
 synopsis.length:   110
 cast:              —
@@ -2244,6 +2320,7 @@ displayTitle:      Klątwa doliny węży -  z autorską narracją Łony
 cinemaTitles:      Klątwa doliny węży -  z autorską narracją Łony
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/klatwa-doliny-wezy_plakat.jpg?rev=c58ea807e26643fb8bc1425578f746b0
 synopsis.length:   281
 cast:              Roman Wilhelmi, Krzysztof Kolberger, Henryk Bista, Leon Niemczyk
@@ -2270,6 +2347,7 @@ displayTitle:      Klątwa doliny węży | autorska audiodeskrypcja łony |przed
 cinemaTitles:      Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego
 runtimeMinutes:    99
 releaseYear:       1987
+countries:         Polska, ZSRR
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/klatwa-doliny-wezy-plakat1.jpg
 synopsis.length:   749
 cast:              —
@@ -2296,6 +2374,7 @@ displayTitle:      Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas
 cinemaTitles:      Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas
 runtimeMinutes:    98
 releaseYear:       2006
+countries:         Japonia
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/anime/o-dziewczynie-skaczacej-przez-czas-plakat2.jpg?rev=125e66df557f4228bf3605103ca217f9
 synopsis.length:   506
 cast:              Riisa Naka, Mitsutaka Itakura, Takuya Ishida, Ayami Kakiuchi
@@ -2331,6 +2410,7 @@ displayTitle:      Kopnęłabym cię, gdybym mogła
 cinemaTitles:      Kopnęłabym cię, gdybym mogła
 runtimeMinutes:    113
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/12/KOPNELABYM-CIE_patroni-po-zmniejszeniu-200x288.jpg
 synopsis.length:   273
 cast:              —
@@ -2358,6 +2438,7 @@ displayTitle:      Kosmiczny mecz
 cinemaTitles:      Kosmiczny mecz | Kosmiczny mecz. 30. Rocznica
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/kosmicznymecz96.jpg?rev=5cf7d42444434cff9f803083a634a9ee
 synopsis.length:   136
 cast:              Michael Jordan, Wayne Knight, Theresa Randle, Manner Washington
@@ -2392,6 +2473,7 @@ displayTitle:      Krajobraz po bitwie
 cinemaTitles:      Krajobraz po bitwie
 runtimeMinutes:    101
 releaseYear:       1970
+countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/krajobraz-3-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -2418,6 +2500,7 @@ displayTitle:      Kronika wypadków miłosnych
 cinemaTitles:      Kronika wypadków miłosnych
 runtimeMinutes:    114
 releaseYear:       1985
+countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/kroniki-3-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -2444,6 +2527,7 @@ displayTitle:      Kumotry
 cinemaTitles:      Kumotry
 runtimeMinutes:    70
 releaseYear:       2025
+countries:         Polska, Niemcy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/KUMOTRY_plakat_filmweb.jpg
 synopsis.length:   120
 cast:              —
@@ -2470,6 +2554,7 @@ displayTitle:      Kurozając i świątynia świstaka
 cinemaTitles:      Kurozając i Świątynia Świstaka | Kurozając i świątynia świstaka
 runtimeMinutes:    89
 releaseYear:       2026
+countries:         Belgia, Francja, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/kurozajac-i-swiatynia-swistaka/kurozajac_plakat.jpg?rev=8e07534364604957a7cfab295c1dc9ec
 synopsis.length:   526
 cast:              —
@@ -2525,6 +2610,7 @@ displayTitle:      Kłopotliwy niedźwiedź
 cinemaTitles:      Kłopotliwy niedźwiedź
 runtimeMinutes:    90
 releaseYear:       2026
+countries:         USA, Kanada, Wielka Brytania
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/klopotliwy-niedzwiedz-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -2551,6 +2637,7 @@ displayTitle:      La Grazia
 cinemaTitles:      La Grazia | La grazia
 runtimeMinutes:    131
 releaseYear:       2025
+countries:         Włochy
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/01/la-grazia-plakat-b1-lq_1.jpg
 synopsis.length:   284
 cast:              —
@@ -2582,6 +2669,7 @@ displayTitle:      La Traviata Verdiego z Arena di Verona
 cinemaTitles:      La Traviata Verdiego z Arena di Verona
 runtimeMinutes:    160
 releaseYear:       2021
+countries:         Włochy
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/opera/latraviata2026_plakat.png?rev=d55bc88afb2b4c949d93ba3113f446ce
 synopsis.length:   1466
 cast:              Sonya Yoncheva, Vittorio Grigolo, George Petean
@@ -2614,6 +2702,7 @@ displayTitle:      Layla
 cinemaTitles:      Layla
 runtimeMinutes:    100
 releaseYear:       2024
+countries:         Wielka Brytania
 posterUrl:         https://www.kinomuza.pl/content/uploads/2025/10/lalyla-2-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -2643,6 +2732,7 @@ displayTitle:      Left-Handed Girl. To była ręka... diabła!
 cinemaTitles:      Left-Handed Girl. To była ręka... diabła!
 runtimeMinutes:    109
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/LEFT-HANDED-GIRL_PLAKAT-PL-jpg-200x288.jpg
 synopsis.length:   282
 cast:              —
@@ -2669,6 +2759,7 @@ displayTitle:      Liga Mistrzów UEFA - Finał
 cinemaTitles:      Liga Mistrzów UEFA - Finał
 runtimeMinutes:    140
 releaseYear:       2026
+countries:         -
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8063O2R.jpg
 synopsis.length:   —
 cast:              —
@@ -2701,6 +2792,7 @@ displayTitle:      LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arse
 cinemaTitles:      LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/euro/2026/plakat_30maja.jpg?rev=b087764f339d4085af181aa6fc494509
 synopsis.length:   65
 cast:              —
@@ -2727,6 +2819,7 @@ displayTitle:      Mandalorian i Grogu
 cinemaTitles:      Gwiezdne Wojny: Mandalorian i Grogu | Mandalorian & Grogu | Mandalorian i Grogu
 runtimeMinutes:    132
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/mandalorian-grogu/mandalorian-plakat-fin.jpg?rev=90e8fd31606f41a0b6393770f3fe36d1
 synopsis.length:   681
 cast:              Pedro Pascal, Sigourney Weaver, Jeremy Allen White
@@ -2777,6 +2870,7 @@ displayTitle:      Maraton: Powrót do przyszłości
 cinemaTitles:      Maraton: Powrót do przyszłości
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
 synopsis.length:   —
 cast:              —
@@ -2803,6 +2897,7 @@ displayTitle:      Maryja. Matka Papieża
 cinemaTitles:      Maryja. Matka Papieża | Maryja. matka papieża
 runtimeMinutes:    80
 releaseYear:       2026
+countries:         Polska
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/03/maryja-matka-papieza-scaled.jpg
 synopsis.length:   291
 cast:              —
@@ -2835,6 +2930,7 @@ displayTitle:      Matador
 cinemaTitles:      Matador
 runtimeMinutes:    106
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/jBBLDaF7j3EeTPkOwDPqdfSCWWk-200x288.jpg
 synopsis.length:   283
 cast:              —
@@ -2863,6 +2959,7 @@ displayTitle:      Mawka. Prawdziwy mit
 cinemaTitles:      Mawka. Prawdziwy mit
 runtimeMinutes:    100
 releaseYear:       2026
+countries:         Ukraina
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/untitled-1-copy.jpg
 synopsis.length:   465
 cast:              —
@@ -2889,6 +2986,7 @@ displayTitle:      Mi Amor
 cinemaTitles:      Mi Amor
 runtimeMinutes:    113
 releaseYear:       2025
+countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/mi-amor-1-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -2915,6 +3013,7 @@ displayTitle:      Michael
 cinemaTitles:      Michael
 runtimeMinutes:    127
 releaseYear:       2026
+countries:         USA, Wielka Brytania
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/michael/michael-plakat-net-fin-cut.jpg?rev=50ffa68228ab41d0a9633db28bbd2b6e
 synopsis.length:   828
 cast:              Colman Domingo, Jaafar Jackson, Juliano Valdi
@@ -2966,6 +3065,7 @@ displayTitle:      Miejskie Święto Rowerowe: Pokaz filmu Cycling Cities
 cinemaTitles:      Miejskie Święto Rowerowe: Pokaz filmu Cycling Cities
 runtimeMinutes:    84
 releaseYear:       2025
+countries:         Niemcy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Cycling-Cities-pion.png
 synopsis.length:   120
 cast:              —
@@ -2992,6 +3092,7 @@ displayTitle:      Milczenie owiec
 cinemaTitles:      Milczenie owiec
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/milczenie-owiec-cut.jpg?rev=e42068650341416bb3c39e499ad5bc5b
 synopsis.length:   594
 cast:              Anthony Hopkins, Jodie Foster, Ted Levine, Kasi Lemmons
@@ -3019,6 +3120,7 @@ displayTitle:      Milcząca przyjaciółka
 cinemaTitles:      Milcząca przyjaciółka
 runtimeMinutes:    147
 releaseYear:       2025
+countries:         Niemcy, Francja, Węgry
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/milczacaprzyjaciolka_plakat.jpg?rev=766542d25ae0462f97c32308cb1b7970
 synopsis.length:   1589
 cast:              Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth
@@ -3074,6 +3176,7 @@ displayTitle:      Miłość w czasach apokalipsy
 cinemaTitles:      Miłość w czasach apokalipsy
 runtimeMinutes:    100
 releaseYear:       —
+countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/04/milosc-w-czasach-apo_plakat-700x1050-1.jpg
 synopsis.length:   1268
 cast:              —
@@ -3103,6 +3206,7 @@ displayTitle:      Miłość, która zostaje
 cinemaTitles:      Miłość, która zostaje
 runtimeMinutes:    115
 releaseYear:       2025
+countries:         Islandia, Dania, Szwecja, Francja
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/03/Milosc-ktora-zostaje-B1.jpg
 synopsis.length:   329
 cast:              —
@@ -3133,6 +3237,7 @@ displayTitle:      Mortal Kombat 2
 cinemaTitles:      Mortal Kombat 2 | Mortal Kombat II
 runtimeMinutes:    116
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2025/mortal-kombat-2/mortal-kombat-plakat-cut.jpg?rev=6157d952d8894de6993299b8ba475d50
 synopsis.length:   420
 cast:              Karl Urban, Adeline Rudolph, Lewis Tan, Jessica McNamee
@@ -3184,6 +3289,7 @@ displayTitle:      Mortal Kombat II ukraiński dubbing
 cinemaTitles:      Mortal Kombat II ukraiński dubbing
 runtimeMinutes:    116
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7478S2R1.jpg
 synopsis.length:   —
 cast:              —
@@ -3214,6 +3320,7 @@ displayTitle:      Moulin Rouge!
 cinemaTitles:      Moulin Rouge! – wersja oryginalna
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/moulinrouge_plakat.jpg?rev=8ca27e12f37248789e7785bd6c5bc786
 synopsis.length:   78
 cast:              Nicole Kidman, Ewan McGregor, John Leguizamo, Jim Broadbent
@@ -3241,6 +3348,7 @@ displayTitle:      Mumia: Film Lee Cronina
 cinemaTitles:      Mumia: Film Lee Cronina
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/mumia/mumia_plakat_fin_cut.jpg?rev=c4702594b644437f91c4ba1c5c656aa2
 synopsis.length:   200
 cast:              Jack Reynor, Laia Costa, May Calamawy, Natalie Grace
@@ -3271,6 +3379,7 @@ displayTitle:      Munch: miłość, duchy i wampirzyce
 cinemaTitles:      Munch: miłość, duchy i wampirzyce
 runtimeMinutes:    90
 releaseYear:       2022
+countries:         Wielka Brytania, Włochy
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/munch-plakat-b1.jpg
 synopsis.length:   942
 cast:              —
@@ -3297,6 +3406,7 @@ displayTitle:      Mów mi jimpa
 cinemaTitles:      Mów mi jimpa
 runtimeMinutes:    113
 releaseYear:       2025
+countries:         Australia, Finlandia, Holandia
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/mow-mi-jimpa-plakat-pl.jpg
 synopsis.length:   457
 cast:              —
@@ -3323,6 +3433,7 @@ displayTitle:      Młode matki
 cinemaTitles:      Młode matki
 runtimeMinutes:    104
 releaseYear:       2025
+countries:         Belgia, Francja
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/plakat-mlode-matki-700x1050.jpg
 synopsis.length:   1540
 cast:              —
@@ -3350,6 +3461,7 @@ displayTitle:      Młodsza siostra
 cinemaTitles:      Młodsza siostra
 runtimeMinutes:    106
 releaseYear:       2025
+countries:         Francja, Niemcy
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/mlodsza-siostra-1-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -3376,6 +3488,7 @@ displayTitle:      Najbogatsza kobieta świata
 cinemaTitles:      Najbogatsza kobieta świata
 runtimeMinutes:    122
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/NAJBOGATSZA-KOBIETA-SWIATA_PLAKAT-po-zmniejszeniu-200x288.jpg
 synopsis.length:   286
 cast:              —
@@ -3402,6 +3515,7 @@ displayTitle:      Najstarsza osoba na świecie
 cinemaTitles:      Najstarsza osoba na świecie
 runtimeMinutes:    87
 releaseYear:       2025
+countries:         USA
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/Najstarsza-osoba-2-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -3428,6 +3542,7 @@ displayTitle:      Najświętsze serce
 cinemaTitles:      Najświętsze serce
 runtimeMinutes:    92
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/najswietsze-serce/najswietsze-serce-plakat-cut.jpg?rev=d667cbf780564559b580203ed0485b40
 synopsis.length:   1169
 cast:              —
@@ -3454,6 +3569,7 @@ displayTitle:      Narodziny gwiazdy
 cinemaTitles:      Narodziny gwiazdy
 runtimeMinutes:    135
 releaseYear:       2018
+countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/3026S2R1.jpg
 synopsis.length:   —
 cast:              —
@@ -3483,6 +3599,7 @@ displayTitle:      Nie ma duchów w mieszkaniu na Dobrej
 cinemaTitles:      Nie ma duchów w mieszkaniu na Dobrej
 runtimeMinutes:    90
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/NIE-MA-DUCHOW_PLAKAT-po-zmniejszeniu-200x288.jpg
 synopsis.length:   272
 cast:              —
@@ -3513,6 +3630,7 @@ displayTitle:      Nie oglądaj się teraz
 cinemaTitles:      Nie oglądaj się teraz
 runtimeMinutes:    110
 releaseYear:       1973
+countries:         Wielka Brytania, Włochy
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/Nie-oglądaj-się-teraz1-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -3539,6 +3657,7 @@ displayTitle:      Niebezpieczne związki - National Theatre Live 2026
 cinemaTitles:      Niebezpieczne związki - National Theatre Live 2026
 runtimeMinutes:    150
 releaseYear:       2026
+countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8212S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -3566,6 +3685,7 @@ displayTitle:      Niedźwiedzica
 cinemaTitles:      Niedźwiedzica
 runtimeMinutes:    96
 releaseYear:       2026
+countries:         Norwegia, Niemcy
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/niedzwiedzica-2-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -3592,6 +3712,7 @@ displayTitle:      Niesamowite przygody skarpetek 2. Skarpetki górą!
 cinemaTitles:      Niesamowite przygody skarpetek 2. Skarpetki górą!
 runtimeMinutes:    55
 releaseYear:       2025
+countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Niesamowite-przygody-skarpetek-2.-Skarpetki-gora-B1-BEZ-PATRONOW-scaled.jpg
 synopsis.length:   112
 cast:              —
@@ -3618,6 +3739,7 @@ displayTitle:      Niesamowite przygody skarpetek 3. Ale ko
 cinemaTitles:      Niesamowite przygody skarpetek 3. Ale ko
 runtimeMinutes:    55
 releaseYear:       2026
+countries:         Polska
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8188D2R.jpg
 synopsis.length:   —
 cast:              —
@@ -3644,6 +3766,7 @@ displayTitle:      Niesamowite przygody skarpetek 3. Ale kosmos!
 cinemaTitles:      Niesamowite przygody skarpetek 3. Ale kosmos!
 runtimeMinutes:    55
 releaseYear:       2026
+countries:         Polska, Portugalia
 posterUrl:         https://img.helios.pl/pliki/film/niesamowite-przygody-skarpetek-3/niesamowite-przygody-skarpetek-3-plakat-34127.png
 synopsis.length:   775
 cast:              —
@@ -3686,6 +3809,7 @@ displayTitle:      Niewinni czarodzieje
 cinemaTitles:      Cykl „Wajda: re-wizje" - Niewinni czarodzieje / Innocent Sorcerers (1960) | Niewinni czarodzieje
 runtimeMinutes:    84
 releaseYear:       —
+countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png
 synopsis.length:   1244
 cast:              Tadeusz Łomnicki, Krystyna Stypułkowska, Roman Polański
@@ -3715,6 +3839,7 @@ displayTitle:      NMF: Maraton Horrorów 19 czerwca 2026
 cinemaTitles:      NMF: Maraton Horrorów 19 czerwca 2026
 runtimeMinutes:    444
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/maraton/horrory/czerwiec-2026/maratonhorrorow_190626_plakat.jpg?rev=82219b20b0c64fdf968d69b63add0c46
 synopsis.length:   556
 cast:              —
@@ -3741,6 +3866,7 @@ displayTitle:      NMF: Noc Władcy Pierścieni (wersje rozszerzone)
 cinemaTitles:      NMF: Noc Władcy Pierścieni (wersje rozszerzone)
 runtimeMinutes:    720
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/maraton/lotr/lotr_2026_plakat.jpg?rev=c5ca96212d114e9eb256e066a10b0b28
 synopsis.length:   1237
 cast:              —
@@ -3767,6 +3893,7 @@ displayTitle:      Noce Cabirii
 cinemaTitles:      Noce Cabirii
 runtimeMinutes:    110
 releaseYear:       1957
+countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/2-2-800x450.jpg
 synopsis.length:   115
 cast:              —
@@ -3796,6 +3923,7 @@ displayTitle:      Nomadland
 cinemaTitles:      Nomadland
 runtimeMinutes:    108
 releaseYear:       2020
+countries:         USA
 posterUrl:         https://www.kinomuza.pl/content/uploads/2021/02/1-12-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -3822,6 +3950,7 @@ displayTitle:      Normal
 cinemaTitles:      Normal
 runtimeMinutes:    90
 releaseYear:       2025
+countries:         Kanada, USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8129S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -3852,6 +3981,7 @@ displayTitle:      Nowa fala
 cinemaTitles:      Nowa fala
 runtimeMinutes:    105
 releaseYear:       2025
+countries:         Francja, USA
 posterUrl:         https://www.kinomuza.pl/content/uploads/2025/11/3-7-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -3878,6 +4008,7 @@ displayTitle:      NT Live: Audiencja
 cinemaTitles:      NT Live: Audiencja
 runtimeMinutes:    180
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/teatr/audiencja/audience_plakat.jpg?rev=aff6a9407f624513b3a44c7871e97f7d
 synopsis.length:   908
 cast:              —
@@ -3904,6 +4035,7 @@ displayTitle:      NT Live: Niebezpieczne związki
 cinemaTitles:      NT Live: Niebezpieczne związki
 runtimeMinutes:    150
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/teatr/niebezpieczne-zwiazki/niebezpiecznezwiazki_plakat.jpg?rev=eaa00fa62980438295bc9c57b914a338
 synopsis.length:   684
 cast:              —
@@ -3930,6 +4062,7 @@ displayTitle:      NT Live: Playboy zachodniego świata
 cinemaTitles:      NT Live: Playboy zachodniego świata
 runtimeMinutes:    150
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/teatr/playboy-zachodniego-swiata/playboy_plakat.jpg?rev=61b7db6ed64243cbb0fbb2d2ea71f81d
 synopsis.length:   607
 cast:              —
@@ -3959,6 +4092,7 @@ displayTitle:      NT Live: Wszyscy moi synowie
 cinemaTitles:      NT Live: Wszyscy moi synowie
 runtimeMinutes:    130
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/teatr/wszyscy-moi-synowie/allmysons_plakat.jpg?rev=7ce83f21ecca4f9e9e3081fe2864919a
 synopsis.length:   795
 cast:              —
@@ -3988,6 +4122,7 @@ displayTitle:      O dziewczynie skaczącej przez czas
 cinemaTitles:      O dziewczynie skaczącej przez czas
 runtimeMinutes:    98
 releaseYear:       2006
+countries:         Japonia
 posterUrl:         https://img.helios.pl/pliki/film/o-dziewczynie-skaczacej-przez-czas/o-dziewczynie-skaczacej-przez-czas-plakat-7957.jpg
 synopsis.length:   114
 cast:              —
@@ -4017,6 +4152,7 @@ displayTitle:      Obcy
 cinemaTitles:      Obcy
 runtimeMinutes:    122
 releaseYear:       2025
+countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/obcy-1-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -4043,6 +4179,7 @@ displayTitle:      Obsesja
 cinemaTitles:      Obsesja
 runtimeMinutes:    109
 releaseYear:       2025
+countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/obsesja/obsesja-plakat-fin.jpg?rev=0e43004367554ace94bab8ac67bd3742
 synopsis.length:   382
 cast:              Michael Johnston, Inde Navarrette, Cooper Tomlinson, Megan Lawless, Andy Richter
@@ -4094,6 +4231,7 @@ displayTitle:      Odlot
 cinemaTitles:      Odlot
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
 synopsis.length:   183
 cast:              Edward Asner, Christopher Plummer, Jordan Nagai, Bob Peterson
@@ -4121,6 +4259,7 @@ displayTitle:      Odrodzony jako galareta. Film: Łzy Morza Lazurowego
 cinemaTitles:      Odrodzony jako galareta. Film: Łzy Morza Lazurowego
 runtimeMinutes:    105
 releaseYear:       2026
+countries:         Japonia
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8076S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -4151,6 +4290,7 @@ displayTitle:      On drive
 cinemaTitles:      On drive
 runtimeMinutes:    115
 releaseYear:       2026
+countries:         Ukraina
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/on-drive-plakat2-1775591272.jpg
 synopsis.length:   918
 cast:              —
@@ -4177,6 +4317,7 @@ displayTitle:      Opętanie
 cinemaTitles:      Opętanie
 runtimeMinutes:    124
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/04/plw5syL13CNWIxGaqhuSOlLPUM2-200x288.jpg
 synopsis.length:   278
 cast:              —
@@ -4204,6 +4345,7 @@ displayTitle:      Orwell: 2 + 2 = 5
 cinemaTitles:      Orwell: 2 + 2 = 5
 runtimeMinutes:    119
 releaseYear:       2025
+countries:         Francja, USA
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/orwel-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -4230,6 +4372,7 @@ displayTitle:      Osiem i pół
 cinemaTitles:      Osiem i pół
 runtimeMinutes:    138
 releaseYear:       1963
+countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/3-800x450.jpg
 synopsis.length:   115
 cast:              —
@@ -4259,6 +4402,7 @@ displayTitle:      Ostatnia sesja w Paryżu
 cinemaTitles:      Ostatnia sesja w Paryżu | Ostatnia sesja w paryżu
 runtimeMinutes:    105
 releaseYear:       2025
+countries:         Francja
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/03/ostatnia-sesja-w-paryzu-plakat-z-data-11.jpg
 synopsis.length:   337
 cast:              —
@@ -4294,6 +4438,7 @@ displayTitle:      Pan Nikt kontra Putin
 cinemaTitles:      Pan Nikt kontra Putin
 runtimeMinutes:    90
 releaseYear:       2025
+countries:         Dania, Czechy
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/02/Pan-NIKT-kontra-PUTIN-plakat-net-po-zmniejszeniu-200x288.jpg
 synopsis.length:   277
 cast:              —
@@ -4323,6 +4468,7 @@ displayTitle:      Perfect Days
 cinemaTitles:      Perfect Days
 runtimeMinutes:    125
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2024/04/Perfect_Days_plakatPL_680x980_3mm_LQ-200x288.jpg
 synopsis.length:   274
 cast:              —
@@ -4349,6 +4495,7 @@ displayTitle:      Pieniądze to wszystko
 cinemaTitles:      Pieniądze to wszystko
 runtimeMinutes:    96
 releaseYear:       2026
+countries:         Irlandia, Dania
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-2-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -4375,6 +4522,7 @@ displayTitle:      Pieśni lasu
 cinemaTitles:      Pieśni lasu
 runtimeMinutes:    94
 releaseYear:       2025
+countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/piesn-lasu-3-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -4401,6 +4549,7 @@ displayTitle:      Playboy zachodniego świata - National Theatre Live 2026
 cinemaTitles:      Playboy zachodniego świata - National Theatre Live 2026
 runtimeMinutes:    150
 releaseYear:       2026
+countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8211S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -4428,6 +4577,7 @@ displayTitle:      Poczta głosowa
 cinemaTitles:      Poczta głosowa
 runtimeMinutes:    102
 releaseYear:       2024
+countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/poczta-glosowa-1-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -4454,6 +4604,7 @@ displayTitle:      Pod skórą
 cinemaTitles:      Pod skórą
 runtimeMinutes:    108
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2024/11/463315300_122193112556195240_4187623239888508464_n-200x288.jpg
 synopsis.length:   270
 cast:              —
@@ -4480,6 +4631,7 @@ displayTitle:      Podziemny krąg
 cinemaTitles:      Podziemny krąg
 runtimeMinutes:    0
 releaseYear:       1999
+countries:         Niemcy, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/podziemny-krag_online_cut.jpg?rev=8b4016e21dd74d46a7dc788b826c7a8e
 synopsis.length:   279
 cast:              Edward Norton, Brad Pitt, Helena Bonham Carter, Meat Loaf
@@ -4524,6 +4676,7 @@ displayTitle:      Pokaz sensorycznie przyjazny: Delfinek i ja 2
 cinemaTitles:      Pokaz sensorycznie przyjazny: Delfinek i ja 2
 runtimeMinutes:    96
 releaseYear:       2025
+countries:         Turcja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_delfinek_i_ja.jpg
 synopsis.length:   120
 cast:              —
@@ -4550,6 +4703,7 @@ displayTitle:      Posłani
 cinemaTitles:      Posłani
 runtimeMinutes:    83
 releaseYear:       2026
+countries:         Polska
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/123-2.jpg
 synopsis.length:   277
 cast:              —
@@ -4577,6 +4731,7 @@ displayTitle:      Powrót do przyszłości
 cinemaTitles:      Powrót do przyszłości
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/powrot-do-przyszlosci/bttf-1-plakat-cut2.jpg?rev=604aded5095847c2a0149a31a4f91d11
 synopsis.length:   156
 cast:              Michael J. Fox, Christopher Lloyd, Lea Thompson, Crispin Glover
@@ -4608,6 +4763,7 @@ displayTitle:      Powrót do przyszłości II
 cinemaTitles:      Powrót do przyszłości II
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/powrot-do-przyszlosci/bttf2-plakat-cut2.jpg?rev=be69cfb939234d949dfec4644c17885e
 synopsis.length:   111
 cast:              Michael J. Fox, Christopher Lloyd, Lea Thompson, Tom Wilson
@@ -4639,6 +4795,7 @@ displayTitle:      Powrót do przyszłości III
 cinemaTitles:      Powrót do przyszłości III
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/powrot-do-przyszlosci/bttf3-plakat-cut2.jpg?rev=7e089f9f6c1843a998fac58f33e21687
 synopsis.length:   126
 cast:              Michael J. Fox, Christopher Lloyd, Elisabeth Shue, Mary Steenburgen
@@ -4672,6 +4829,7 @@ displayTitle:      Projekt Hail Mary
 cinemaTitles:      Projekt Hail Mary
 runtimeMinutes:    157
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/projekt-hail-mary/projekthailmary_plakat.jpg?rev=5dee71e5ec014e75a577f1e8055c4dbf
 synopsis.length:   689
 cast:              Ryan Gosling, Milana Vayntrub, Liz Kingsman
@@ -4723,6 +4881,7 @@ displayTitle:      Przepis na morderstwo
 cinemaTitles:      Przepis na morderstwo
 runtimeMinutes:    105
 releaseYear:       2026
+countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7933S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -4753,6 +4912,7 @@ displayTitle:      Przeżyj to sam
 cinemaTitles:      Przeżyj to sam
 runtimeMinutes:    116
 releaseYear:       2025
+countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/przezyj-to-sam-1-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -4779,6 +4939,7 @@ displayTitle:      Pucio
 cinemaTitles:      Pucio
 runtimeMinutes:    45
 releaseYear:       2026
+countries:         Polska, Anna Błaszczyk, Dominik Litwiniak
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/pucio/pucio-plakat.jpg?rev=5c59e10082a64578b39f13a3bf9616bd
 synopsis.length:   1325
 cast:              Małgorzata Socha, Grzegorz Turnau, Artur Barciś
@@ -4836,6 +4997,7 @@ displayTitle:      Romeo i Julia
 cinemaTitles:      Romeo i Julia – wersja oryginalna
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/romeojulia_plakat.jpg?rev=fa911f8bb60b4b95bd7cb1861a8adf77
 synopsis.length:   417
 cast:              Leonardo DiCaprio, Claire Danes, John Leguizamo, Harold Perrineau
@@ -4863,6 +5025,7 @@ displayTitle:      Romería
 cinemaTitles:      Romeria | Romería
 runtimeMinutes:    114
 releaseYear:       2025
+countries:         Hiszpania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7807S2R.jpg
 synopsis.length:   353
 cast:              —
@@ -4918,6 +5081,7 @@ displayTitle:      Rozmowa
 cinemaTitles:      Rozmowa
 runtimeMinutes:    113
 releaseYear:       1974
+countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Reset-Rozmowa-1080x1080_zS7Plnr.png
 synopsis.length:   114
 cast:              —
@@ -4945,6 +5109,7 @@ displayTitle:      Sabotażysta 5
 cinemaTitles:      Sabotażysta 5
 runtimeMinutes:    —
 releaseYear:       2026
+countries:         Polska
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8186O2R.jpg
 synopsis.length:   —
 cast:              —
@@ -4986,6 +5151,7 @@ displayTitle:      Sirât
 cinemaTitles:      Sirât
 runtimeMinutes:    120
 releaseYear:       2025
+countries:         Hiszpania, Francja
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2025/09/sirat-polski-plakat-1-scaled.jpg
 synopsis.length:   346
 cast:              —
@@ -5013,6 +5179,7 @@ displayTitle:      Sny o słoniach
 cinemaTitles:      Sny o słoniach
 runtimeMinutes:    99
 releaseYear:       2025
+countries:         USA
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/sny-o-sloniach-1-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -5039,6 +5206,7 @@ displayTitle:      SpoilerMaster Tour: Mikey i Nicky
 cinemaTitles:      SpoilerMaster Tour: Mikey i Nicky
 runtimeMinutes:    106
 releaseYear:       1976
+countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Mikey_i_Nicky-plakat.png
 synopsis.length:   119
 cast:              —
@@ -5065,6 +5233,7 @@ displayTitle:      Sprawiedliwość owiec
 cinemaTitles:      Sprawiedliwość owiec
 runtimeMinutes:    109
 releaseYear:       2026
+countries:         Irlandia, Wielka Brytania, Niemcy, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/sprawiedliwosc-owiec/sprawiedliwoscowiec_plakat.jpg?rev=be0f91ffd2f248caaed986a915b760f8
 synopsis.length:   785
 cast:              Julia Louis-Dreyfus, Hugh Jackman, Molly Gordon, Nicholas Galitzine
@@ -5123,6 +5292,7 @@ displayTitle:      Straszny film
 cinemaTitles:      Straszny film | Straszny film 
 runtimeMinutes:    0
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/straszny-film/straszny-film-plakat-net.jpg?rev=90bf6b7775c948f49f68a67c868d264b
 synopsis.length:   353
 cast:              —
@@ -5174,6 +5344,7 @@ displayTitle:      Summer Wars
 cinemaTitles:      Summer Wars
 runtimeMinutes:    114
 releaseYear:       2009
+countries:         Japonia
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1_sUMMER_Wars.jpg
 synopsis.length:   119
 cast:              —
@@ -5200,6 +5371,7 @@ displayTitle:      Super Mario Galaxy Film
 cinemaTitles:      Super Mario Galaxy Film
 runtimeMinutes:    100
 releaseYear:       2026
+countries:         Japonia, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/super-mario-galaxy-film/super-mario-galaxy-film-plakat-final.jpg?rev=343089138a9844fb8f7d115642cf2862
 synopsis.length:   632
 cast:              —
@@ -5251,6 +5423,7 @@ displayTitle:      Słodkie życie
 cinemaTitles:      Słodkie życie
 runtimeMinutes:    176
 releaseYear:       1960
+countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/3-3-800x450.jpg
 synopsis.length:   114
 cast:              —
@@ -5280,6 +5453,7 @@ displayTitle:      Słodkie życie | przed filmem wykład prof. Marka hendrykows
 cinemaTitles:      Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego
 runtimeMinutes:    176
 releaseYear:       1960
+countries:         Francja, Włochy
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/slodkie-zycie-plakat-duzy.jpg
 synopsis.length:   1278
 cast:              —
@@ -5306,6 +5480,7 @@ displayTitle:      Takie jest życie
 cinemaTitles:      Takie jest życie
 runtimeMinutes:    —
 releaseYear:       —
+countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Takie-jest-zycie_B1-1-scaled.jpg
 synopsis.length:   831
 cast:              —
@@ -5335,6 +5510,7 @@ displayTitle:      The Amazing Digital Circus: Ostatni Akt
 cinemaTitles:      The Amazing Digital Circus: Ostatni Akt
 runtimeMinutes:    93
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/tadc/tadc_plakat1.jpg?rev=6804403f06ff476592b3fb32300bcdf8
 synopsis.length:   593
 cast:              Lizzie Freeman, Michael Kovach, Marissa Lenti, Ashley Nichols
@@ -5364,6 +5540,7 @@ displayTitle:      The Amazing Digital Circus: The Last Act
 cinemaTitles:      The Amazing Digital Circus: The Last Act
 runtimeMinutes:    93
 releaseYear:       2026
+countries:         USA, Australia
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8150O2R.jpg
 synopsis.length:   —
 cast:              —
@@ -5399,6 +5576,7 @@ displayTitle:      The Amazing Digital Circus: The Last Act - dubbing - Event pr
 cinemaTitles:      The Amazing Digital Circus: The Last Act - dubbing - Event projekt
 runtimeMinutes:    93
 releaseYear:       —
+countries:         —
 posterUrl:         https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg
 synopsis.length:   —
 cast:              —
@@ -5428,6 +5606,7 @@ displayTitle:      The Amazing Digital Circus: The Last Act - napisy - Event pro
 cinemaTitles:      The Amazing Digital Circus: The Last Act - napisy - Event projekt
 runtimeMinutes:    93
 releaseYear:       —
+countries:         —
 posterUrl:         https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg
 synopsis.length:   —
 cast:              —
@@ -5455,6 +5634,7 @@ displayTitle:      Tom i Jerry: Przygoda w muzeum
 cinemaTitles:      Tom i Jerry: Przygoda w muzeum | Tom i jerry: przygoda w muzeum
 runtimeMinutes:    100
 releaseYear:       2025
+countries:         Chiny, USA
 posterUrl:         https://img.helios.pl/pliki/film/tom-i-jerry-przygoda-w-muzeum/tom-i-jerry-przygoda-w-muzeum-plakat-650.jpg
 synopsis.length:   1087
 cast:              —
@@ -5487,6 +5667,7 @@ displayTitle:      Top Gun
 cinemaTitles:      Top Gun | Top Gun 40. Rocznica | Top Gun 40th Anniversary
 runtimeMinutes:    0
 releaseYear:       1986
+countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/top-gun-rocznica40.jpg?rev=9d8790a579a34b90a653b01fa16444c9
 synopsis.length:   383
 cast:              Tom Cruise, Kelly McGillis, Val Kilmer, Anthony Edwards
@@ -5537,6 +5718,7 @@ displayTitle:      Top Gun: Maverick
 cinemaTitles:      Top Gun Maverick | Top Gun: Maverick
 runtimeMinutes:    130
 releaseYear:       2020
+countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/multikino_imported/imported_from_external_source/posterimage/top-gun-maverick-plakat-finalny-cut_f040b47882.jpg?rev=973ff8b6bd434f0eb0e2aad7eef2a685
 synopsis.length:   539
 cast:              —
@@ -5574,6 +5756,7 @@ displayTitle:      Van gogh. Pola zbóż i zachmurzone niebiosa
 cinemaTitles:      Van gogh. Pola zbóż i zachmurzone niebiosa
 runtimeMinutes:    85
 releaseYear:       2018
+countries:         Włochy
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/vangogh-plakat.jpg
 synopsis.length:   1019
 cast:              —
@@ -5600,6 +5783,7 @@ displayTitle:      WAJDA: re-wizje. Człowiek z marmuru
 cinemaTitles:      WAJDA: re-wizje. Człowiek z marmuru
 runtimeMinutes:    153
 releaseYear:       1977
+countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/czlowiek_z_marmuru_13_gallery.jpg
 synopsis.length:   112
 cast:              —
@@ -5626,6 +5810,7 @@ displayTitle:      Wartość sentymentalna
 cinemaTitles:      Wartość sentymentalna
 runtimeMinutes:    135
 releaseYear:       2025
+countries:         Norwegia, Niemcy, Dania
 posterUrl:         https://img.helios.pl/pliki/film/wartosc-sentymentalna/wartosc-sentymentalna-plakat-66574.jpeg
 synopsis.length:   286
 cast:              —
@@ -5662,6 +5847,7 @@ displayTitle:      Wałkonie
 cinemaTitles:      Wałkonie
 runtimeMinutes:    103
 releaseYear:       1953
+countries:         Włochy, Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/1-1-800x450.jpg
 synopsis.length:   119
 cast:              —
@@ -5691,6 +5877,7 @@ displayTitle:      Werdykt
 cinemaTitles:      Werdykt
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/werdykt_plakat_cut.jpg?rev=433b248d041a4fed8dfc6fbed59f146c
 synopsis.length:   800
 cast:              Vicky Krieps, Jim Sheridan, John Connors, Colm Meaney
@@ -5721,6 +5908,7 @@ displayTitle:      Werdykt - Kino Konesera
 cinemaTitles:      Werdykt - Kino Konesera
 runtimeMinutes:    89
 releaseYear:       —
+countries:         —
 posterUrl:         https://img.helios.pl/pliki/film/werdykt/werdykt-plakat-27931.jpg
 synopsis.length:   —
 cast:              —
@@ -5747,6 +5935,7 @@ displayTitle:      Widmo wolności
 cinemaTitles:      Widmo wolności
 runtimeMinutes:    105
 releaseYear:       1974
+countries:         Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Widmo_wolnosci_1080_x_1080.jpg
 synopsis.length:   112
 cast:              —
@@ -5773,6 +5962,7 @@ displayTitle:      Wielki Łuk
 cinemaTitles:      Wielki Łuk
 runtimeMinutes:    106
 releaseYear:       2025
+countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/wielki-luk-2-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -5799,6 +5989,7 @@ displayTitle:      Wilcze dzieci
 cinemaTitles:      Wilcze dzieci
 runtimeMinutes:    117
 releaseYear:       2012
+countries:         Japonia
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Wilcze_dzieci_1x1.jpg
 synopsis.length:   117
 cast:              —
@@ -5825,6 +6016,7 @@ displayTitle:      Windą na szafot
 cinemaTitles:      Windą na szafot
 runtimeMinutes:    90
 releaseYear:       1958
+countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/winda-1-800x450.jpg
 synopsis.length:   120
 cast:              —
@@ -5854,6 +6046,7 @@ displayTitle:      Wolność po włosku
 cinemaTitles:      Wolność po włosku
 runtimeMinutes:    117
 releaseYear:       2025
+countries:         Francja, Włochy
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/04/wolnosc-po-w-3-800x450.jpg
 synopsis.length:   116
 cast:              —
@@ -5890,6 +6083,7 @@ displayTitle:      Wpatrując się w słońce
 cinemaTitles:      Wpatrując się w słońce
 runtimeMinutes:    149
 releaseYear:       2025
+countries:         Niemcy
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2025/12/1766741798010.jpg
 synopsis.length:   312
 cast:              —
@@ -5927,6 +6121,7 @@ displayTitle:      Wszyscy moi synowie - National Theatre Live 2026
 cinemaTitles:      Wszyscy moi synowie - National Theatre Live 2026
 runtimeMinutes:    151
 releaseYear:       2026
+countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8210S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -5954,6 +6149,7 @@ displayTitle:      Wszystko na sprzedaż
 cinemaTitles:      Wszystko na sprzedaż
 runtimeMinutes:    94
 releaseYear:       1968
+countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/wszystko_na_sprzedaz_06_gallery-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -5980,6 +6176,7 @@ displayTitle:      Wypadek fortepianowy
 cinemaTitles:      Wypadek fortepianowy
 runtimeMinutes:    88
 releaseYear:       2025
+countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/wypadek-fortepianowy-2-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -6006,6 +6203,7 @@ displayTitle:      Wysokie i niskie tony
 cinemaTitles:      Wysokie i niskie tony
 runtimeMinutes:    103
 releaseYear:       2024
+countries:         Francja
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2025/12/plakat-wysokie-i-niskie-tony.jpg
 synopsis.length:   326
 cast:              —
@@ -6032,6 +6230,7 @@ displayTitle:      Władcy wszechświata
 cinemaTitles:      Władcy Wszechświata | Władcy wszechświata
 runtimeMinutes:    141
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7992S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -6070,6 +6269,7 @@ displayTitle:      Yu-Gi-Oh! The Dark Side of Dimensions
 cinemaTitles:      Yu-Gi-Oh! The Dark Side of Dimensions
 runtimeMinutes:    130
 releaseYear:       —
+countries:         —
 posterUrl:         https://img.helios.pl/pliki/film/yu-gi-oh-the-dark-side-of-dimensions/yu-gi-oh-the-dark-side-of-dimensions-plakat-81113.jpg
 synopsis.length:   —
 cast:              —
@@ -6096,6 +6296,7 @@ displayTitle:      Za duży na bajki 3
 cinemaTitles:      Za duży na bajki 3
 runtimeMinutes:    0
 releaseYear:       2026
+countries:         Polska
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/za-duzy-na-bajki-3/zaduzynabajki3_plakat.jpg?rev=9b8f08e7580848568d5657d0881b4a65
 synopsis.length:   680
 cast:              Maciej Karaś, Amelia Fijałkowska, Patryka Siemek, Karolina Gruszka
@@ -6132,6 +6333,7 @@ displayTitle:      Zabawa w pochowanego 2
 cinemaTitles:      Zabawa w pochowanego 2
 runtimeMinutes:    104
 releaseYear:       2026
+countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7998S2R.jpg
 synopsis.length:   —
 cast:              —
@@ -6162,6 +6364,7 @@ displayTitle:      Zaplątani
 cinemaTitles:      Zaplątani
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
 synopsis.length:   142
 cast:              Mandy Moore, Zachary Levi, Donna Murphy, Ron Perlman
@@ -6189,6 +6392,7 @@ displayTitle:      Zaproszenie
 cinemaTitles:      Zaproszenie
 runtimeMinutes:    0
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/wkrotce_1_plakat.jpg?rev=4671625446e74c9aa1a2bfee37296ea3
 synopsis.length:   —
 cast:              —
@@ -6215,10 +6419,11 @@ displayTitle:      Zawieście czerwone latarnie
 cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | Zawieście czerwone latarnie
 runtimeMinutes:    0
 releaseYear:       1991
+countries:         Chiny, Hongkong
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/zawiecie_czerwone_laternie_plakat.jpg?rev=300dbab82eef4904a6bb9c1888bbea70
 synopsis.length:   1908
 cast:              —
-director:          Yimou Zhang, Hongkong
+director:          Yimou Zhang
 tmdbId:            10404
 imdbId:            tt0101640
 originalTitle:     大红灯笼高高挂
@@ -6249,6 +6454,7 @@ displayTitle:      Zawieście czerwone latarnie | przed filmem wstęp prof. Mare
 cinemaTitles:      Zawieście czerwone latarnie | przed filmem wstęp prof. Marek hendrykowski
 runtimeMinutes:    125
 releaseYear:       1991
+countries:         Chiny, Hongkong, Tajwan
 posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg
 synopsis.length:   1930
 cast:              —
@@ -6275,6 +6481,7 @@ displayTitle:      Zemsta Embriona
 cinemaTitles:      Zemsta Embriona
 runtimeMinutes:    89
 releaseYear:       1990
+countries:         USA
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/04/Zemsta-embriona-9-800x450.png
 synopsis.length:   —
 cast:              —
@@ -6302,6 +6509,7 @@ displayTitle:      Ziemia obiecana
 cinemaTitles:      Ziemia obiecana
 runtimeMinutes:    179
 releaseYear:       1974
+countries:         Polska
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/ziemia-o-3-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -6328,6 +6536,7 @@ displayTitle:      Znaki pana śliwki
 cinemaTitles:      Znaki Pana Śliwki | Znaki pana śliwki
 runtimeMinutes:    72
 releaseYear:       2025
+countries:         Polska
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/04/ZNAKI-PANA-SLIWKI-POSTER.png
 synopsis.length:   1173
 cast:              —
@@ -6377,6 +6586,7 @@ displayTitle:      Ścieżki życia
 cinemaTitles:      Ścieżki życia
 runtimeMinutes:    115
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/11/Sciezki_zycia_plakat_PL_HQ-po-zmniejszeniu-200x288.jpg
 synopsis.length:   264
 cast:              —
@@ -6404,6 +6614,7 @@ displayTitle:      Żywot Briana
 cinemaTitles:      Cykl "Kultowa klasyka" - Żywot Briana / Life of Brian (1979)
 runtimeMinutes:    94
 releaseYear:       —
+countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/03/KM_Zywot_briana_plakat-scaled.png
 synopsis.length:   1706
 cast:              —
@@ -6430,6 +6641,7 @@ displayTitle:      Żywot Briana Grupy Monty Pythona
 cinemaTitles:      Żywot Briana Grupy Monty Pythona. Wersja zremasterowana
 runtimeMinutes:    94
 releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/ywot_briana_plakat.jpg?rev=9ec79149ee78480185000b354a311e71
 synopsis.length:   1338
 cast:              Graham Chapman, John Cleese, Terry Gilliam, Eric Idle
@@ -6457,6 +6669,7 @@ displayTitle:      Żądło
 cinemaTitles:      Żądło
 runtimeMinutes:    129
 releaseYear:       1973
+countries:         USA
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/04/zadlo-1-800x450.jpg
 synopsis.length:   —
 cast:              —
@@ -6483,6 +6696,7 @@ displayTitle:      ДИЯВОЛ НОСИТЬ ПРАДА 2
 cinemaTitles:      ДИЯВОЛ НОСИТЬ ПРАДА 2
 runtimeMinutes:    125
 releaseYear:       —
+countries:         —
 posterUrl:         https://img.helios.pl/pliki/film/dyyavol-nosyt-prada-2-ua/dyyavol-nosyt-prada-2-ua-plakat-161.jpg
 synopsis.length:   —
 cast:              —

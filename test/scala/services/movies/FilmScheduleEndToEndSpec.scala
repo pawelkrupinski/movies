@@ -392,6 +392,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       s"cinemaTitles:      ${if (cinemaTitles.isEmpty) "—" else cinemaTitles.mkString(" | ")}",
       s"runtimeMinutes:    ${s.movie.runtimeMinutes.map(_.toString).getOrElse("—")}",
       s"releaseYear:       ${s.movie.releaseYear.map(_.toString).getOrElse("—")}",
+      s"countries:         ${if (s.movie.countries.isEmpty) "—" else s.movie.countries.mkString(", ")}",
       s"posterUrl:         ${s.posterUrl.getOrElse("—")}",
       s"synopsis.length:   ${s.synopsis.map(_.length.toString).getOrElse("—")}",
       s"cast:              ${s.cast.getOrElse("—")}",

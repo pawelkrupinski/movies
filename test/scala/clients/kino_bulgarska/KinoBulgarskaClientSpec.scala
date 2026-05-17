@@ -76,15 +76,15 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
   // ── Production country ───────────────────────────────────────────────────
 
   it should "return correct production country for every movie" in {
-    byTitle("Chronologia wody").movie.country             shouldBe Some("USA")
-    byTitle("Father mother sister brother").movie.country shouldBe Some("USA")
-    byTitle("La grazia").movie.country                    shouldBe Some("Włochy")
-    byTitle("Maryja. matka papieża").movie.country        shouldBe Some("Polska")
-    byTitle("Miłość w czasach apokalipsy").movie.country  shouldBe Some("Kanada")
-    byTitle("Na rauszu").movie.country                    shouldBe Some("Dania")
-    byTitle("Ostatnia sesja w paryżu").movie.country      shouldBe Some("Francja")
-    byTitle("Sirât").movie.country                        shouldBe Some("Hiszpania, Francja")
-    byTitle("Wpatrując się w słońce").movie.country       shouldBe Some("Niemcy")
+    byTitle("Chronologia wody").movie.countries             shouldBe Seq("USA")
+    byTitle("Father mother sister brother").movie.countries shouldBe Seq("USA")
+    byTitle("La grazia").movie.countries                    shouldBe Seq("Włochy")
+    byTitle("Maryja. matka papieża").movie.countries        shouldBe Seq("Polska")
+    byTitle("Miłość w czasach apokalipsy").movie.countries  shouldBe Seq("Kanada")
+    byTitle("Na rauszu").movie.countries                    shouldBe Seq("Dania")
+    byTitle("Ostatnia sesja w paryżu").movie.countries      shouldBe Seq("Francja")
+    byTitle("Sirât").movie.countries                        shouldBe Seq("Hiszpania", "Francja")
+    byTitle("Wpatrując się w słońce").movie.countries       shouldBe Seq("Niemcy")
   }
 
   // ── Poster URLs ───────────────────────────────────────────────────────────

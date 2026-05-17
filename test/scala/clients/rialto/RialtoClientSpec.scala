@@ -91,20 +91,20 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
   // ── Production country ────────────────────────────────────────────────────
 
   it should "return correct production country for every movie" in {
-    byTitle("Ale mam | ну мам | wersja ukraińska z ang. napisami").movie.country shouldBe Some("Ukraina")
-    byTitle("Człowiek z marmuru").movie.country shouldBe Some("Polska")
-    byTitle("Diabeł ubiera się u prady 2").movie.country shouldBe Some("USA")
-    byTitle("Filmowe spotkania z psychoanalizą: dobry chłopiec").movie.country shouldBe Some("Polska, Wielka Brytania")
-    byTitle("Mavka. Prawdziwy mit").movie.country shouldBe Some("Ukraina")
-    byTitle("Modigliani: portret odarty z legendy").movie.country shouldBe Some("Włochy")
-    byTitle("Munch: miłość, duchy i wampirzyce").movie.country shouldBe Some("Wielka Brytania, Włochy")
-    byTitle("Młode matki").movie.country shouldBe Some("Belgia, Francja")
-    byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").movie.country shouldBe Some("Polska, Portugalia")
-    byTitle("Sprawiedliwość owiec").movie.country shouldBe Some("Irlandia, Niemcy, USA, Wielka Brytania")
-    byTitle("Szepty lasu").movie.country shouldBe Some("Polska")
-    byTitle("Top gun | 40 rocznica").movie.country shouldBe Some("USA")
-    byTitle("Van gogh. Pola zbóż i zachmurzone niebiosa").movie.country shouldBe Some("Włochy")
-    byTitle("Znaki pana śliwki").movie.country shouldBe Some("Polska")
+    byTitle("Ale mam | ну мам | wersja ukraińska z ang. napisami").movie.countries shouldBe Seq("Ukraina")
+    byTitle("Człowiek z marmuru").movie.countries shouldBe Seq("Polska")
+    byTitle("Diabeł ubiera się u prady 2").movie.countries shouldBe Seq("USA")
+    byTitle("Filmowe spotkania z psychoanalizą: dobry chłopiec").movie.countries shouldBe Seq("Polska", "Wielka Brytania")
+    byTitle("Mavka. Prawdziwy mit").movie.countries shouldBe Seq("Ukraina")
+    byTitle("Modigliani: portret odarty z legendy").movie.countries shouldBe Seq("Włochy")
+    byTitle("Munch: miłość, duchy i wampirzyce").movie.countries shouldBe Seq("Wielka Brytania", "Włochy")
+    byTitle("Młode matki").movie.countries shouldBe Seq("Belgia", "Francja")
+    byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").movie.countries shouldBe Seq("Polska", "Portugalia")
+    byTitle("Sprawiedliwość owiec").movie.countries shouldBe Seq("Irlandia", "Niemcy", "USA", "Wielka Brytania")
+    byTitle("Szepty lasu").movie.countries shouldBe Seq("Polska")
+    byTitle("Top gun | 40 rocznica").movie.countries shouldBe Seq("USA")
+    byTitle("Van gogh. Pola zbóż i zachmurzone niebiosa").movie.countries shouldBe Seq("Włochy")
+    byTitle("Znaki pana śliwki").movie.countries shouldBe Seq("Polska")
   }
 
   // ── Poster URLs ───────────────────────────────────────────────────────────
