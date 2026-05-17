@@ -156,6 +156,25 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     countries("Mortal Kombat II")               shouldBe Seq.empty
   }
 
+  // ─── Kinepolis: synopsis / cast / director (from filmDetails JS blob) ─────
+  //
+  // CC's per-film page embeds a `var filmDetails = { ... };` JSON object that
+  // carries the cast, directors, and Polish-language synopsis — the same
+  // shape the in-page React widget renders. We pull those fields out of the
+  // same fetch that supplies countries.
+
+  it should "parse director / cast / synopsis from the per-film details page" in {
+    val byTitle = kinepolis.map(m => m.movie.title -> m).toMap
+    val prada   = byTitle("Diabeł ubiera się u Prady 2")
+    prada.director shouldBe Some("David Frankel")
+    prada.cast     shouldBe Some("Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci")
+    prada.synopsis.exists(_.startsWith("Wśród wielu niesamowitych filmów")) shouldBe true
+    // Detail-page fixture absent → these fields stay None.
+    byTitle("Mortal Kombat II").director shouldBe None
+    byTitle("Mortal Kombat II").cast     shouldBe None
+    byTitle("Mortal Kombat II").synopsis shouldBe None
+  }
+
   // ─── Kinepolis: poster URLs ───────────────────────────────────────────────
 
   it should "return correct poster URL for every film" in {

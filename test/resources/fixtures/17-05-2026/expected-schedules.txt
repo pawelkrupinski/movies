@@ -5,8 +5,8 @@ runtimeMinutes:    225
 releaseYear:       2026
 countries:         Korea Południowa
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8178O2R.jpg
-synopsis.length:   —
-cast:              —
+synopsis.length:   700
+cast:              TXT
 director:          —
 tmdbId:            1685309
 imdbId:            tt42204634
@@ -61,8 +61,8 @@ releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8131S2R.jpg
 synopsis.length:   —
-cast:              —
-director:          —
+cast:              Andrea Bocelli, José Carreras, Plácido Domingo, Il Volo, Jonathan Tetelman, Hauser
+director:          Luigi Antonini (reżyser), Matteo Parmeggiani (dyrygent)
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -289,9 +289,9 @@ runtimeMinutes:    157
 releaseYear:       2026
 countries:         Indie
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8204S2R.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   587
+cast:              Vineeth Sreenivasan, Basil Joseph, Tovino Thomas, Darshana Rajendran, Zarin Shihab, Riya Shibu, Arya Salim
+director:          Arun Anirudhan
 tmdbId:            1510767
 imdbId:            tt38721131
 originalTitle:     അതിരടി
@@ -316,9 +316,9 @@ runtimeMinutes:    165
 releaseYear:       2026
 countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8213S2R.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   919
+cast:              Helen Mirren
+director:          Stephen Daldry
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -931,9 +931,9 @@ runtimeMinutes:    119
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7795S2R2.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   411
+cast:              Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci
+director:          David Frankel
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -963,7 +963,7 @@ releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drama/drama-plakat-final-cut.jpg?rev=99e50bcc8ce449fab18d52c1caef4c08
 synopsis.length:   668
-cast:              Robert Pattinson , Zendaya, Alana Haim, Hailey Gates
+cast:              Robert Pattinson, Zendaya Coleman, Alana Haim, Hailey Gates
 director:          Kristoffer Borgli 
 tmdbId:            1325734
 imdbId:            tt33071426
@@ -1168,8 +1168,8 @@ runtimeMinutes:    71
 releaseYear:       2026
 countries:         2026
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/erupcja.jpg?rev=66cbdeeffa9b41eca82059aab89bb588
-synopsis.length:   220
-cast:              Charli XCX, Lena Góra, Will Madden, Jeremy O. Harris
+synopsis.length:   378
+cast:              Lena Góra, Charli XCX, Will Madden, Jeremy O. Harris, Agata Trzebuchowska
 director:          Pete Ohs
 tmdbId:            1337592
 imdbId:            tt33712666
@@ -1532,9 +1532,9 @@ runtimeMinutes:    132
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7667S2R3.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   277
+cast:              Pedro Pascal, Sigourney Weaver, Jeremy Allen White
+director:          Jon Favreau
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -1961,8 +1961,8 @@ runtimeMinutes:    106
 releaseYear:       2026
 countries:         USA, Wielka Brytania
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/iron-maiden/ironmaiden.jpg?rev=a8cd80d50e264d7baef87d55f4b41156
-synopsis.length:   574
-cast:              —
+synopsis.length:   582
+cast:              Steve Harris, Bruce Dickinson, Nicko McBrain, Adrian Smith, Dave Murray
 director:          Malcolm Venville
 tmdbId:            1642859
 imdbId:            tt36163614
@@ -2046,9 +2046,9 @@ runtimeMinutes:    150
 releaseYear:       2026
 countries:         Indie
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8203S2R.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   357
+cast:              Prakash Raj, Kaali Venkat, TRISHA KRISHNAN, Yogi Babu, Suriya, RJ Balaji, Indrans, Mansoor Ali Khan, Swasika Vijay
+director:          RJ Balaji
 tmdbId:            1367220
 imdbId:            tt33988385
 originalTitle:     கருப்பு
@@ -2671,7 +2671,7 @@ runtimeMinutes:    160
 releaseYear:       2021
 countries:         Włochy
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/opera/latraviata2026_plakat.png?rev=d55bc88afb2b4c949d93ba3113f446ce
-synopsis.length:   1466
+synopsis.length:   1492
 cast:              Sonya Yoncheva, Vittorio Grigolo, George Petean
 director:          Michele Olcese, Francesco Ivan Ciampa
 tmdbId:            —
@@ -2761,7 +2761,7 @@ runtimeMinutes:    140
 releaseYear:       2026
 countries:         -
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8063O2R.jpg
-synopsis.length:   —
+synopsis.length:   466
 cast:              —
 director:          —
 tmdbId:            —
@@ -3123,7 +3123,7 @@ releaseYear:       2025
 countries:         Niemcy, Francja, Węgry
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/milczacaprzyjaciolka_plakat.jpg?rev=766542d25ae0462f97c32308cb1b7970
 synopsis.length:   1589
-cast:              Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth
+cast:              Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth, Martin W
 director:          Ildikó Enyedi
 tmdbId:            1168719
 imdbId:            tt27811632
@@ -3240,7 +3240,7 @@ releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2025/mortal-kombat-2/mortal-kombat-plakat-cut.jpg?rev=6157d952d8894de6993299b8ba475d50
 synopsis.length:   420
-cast:              Karl Urban, Adeline Rudolph, Lewis Tan, Jessica McNamee
+cast:              KARL URBAN, ADELINE RUDOLPH, LEWIS TAN, JESSICA MCNAMEE, JOSH LAWSON, TADANOBU ASANO, MEHCAD BROOKS, LUDI LIN, DAMON HERRIMAN, TATI GABRIELLE, MARTYN FORD, CHIN HAN, JOE TASLIM, HIROYUKI SANADA, DESMOND CHIAM, ANA THU NGUYEN, MAX HUANG, C.J. BLOOMFI
 director:          Simon McQuoid
 tmdbId:            931285
 imdbId:            tt17490712
@@ -3291,9 +3291,9 @@ runtimeMinutes:    116
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7478S2R1.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   321
+cast:              KARL URBAN, ADELINE RUDOLPH, LEWIS TAN, JESSICA MCNAMEE, JOSH LAWSON, TADANOBU ASANO, MEHCAD BROOKS, LUDI LIN, DAMON HERRIMAN, TATI GABRIELLE, MARTYN FORD, CHIN HAN, JOE TASLIM, HIROYUKI SANADA, DESMOND CHIAM, ANA THU NGUYEN, MAX HUANG, C.J. BLOOMFI
+director:          SIMON MCQUOID
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -3571,9 +3571,9 @@ runtimeMinutes:    135
 releaseYear:       2018
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/3026S2R1.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   665
+cast:              Lady Gaga, Bradley Cooper, Sam Elliott
+director:          Bradley Cooper
 tmdbId:            332562
 imdbId:            tt1517451
 originalTitle:     A Star Is Born
@@ -3659,9 +3659,9 @@ runtimeMinutes:    150
 releaseYear:       2026
 countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8212S2R.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   652
+cast:              Lesley Manville, Aidan Turner, Monica Barbaro
+director:          Marianne Elliott
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -3741,9 +3741,9 @@ runtimeMinutes:    55
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8188D2R.jpg
-synopsis.length:   —
+synopsis.length:   599
 cast:              —
-director:          —
+director:          Paweł Wendorff, Elżbieta Wąsik; Jarosław Szyszko, Barbara Koniecka, Mateusz Kmieć, Natalia Bartska-Kmieć
 tmdbId:            1646671
 imdbId:            —
 originalTitle:     Niesamowite przygody skarpetek 3. Ale kosmos!
@@ -3952,19 +3952,19 @@ runtimeMinutes:    90
 releaseYear:       2025
 countries:         Kanada, USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8129S2R.jpg
-synopsis.length:   —
-cast:              —
-director:          —
-tmdbId:            1317149
-imdbId:            tt31514146
-originalTitle:     I Swear
-imdbRating:        8.4
-metascore:         70
-rottenTomatoes:    97
-filmwebRating:     8.11394
-metacriticUrl:     https://www.metacritic.com/movie/i-swear
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/i_swear_2025
-filmwebUrl:        https://www.filmweb.pl/film/I+Swear-2025-10088817
+synopsis.length:   430
+cast:              Bob Odenkirk, Lena Headey, Henry Winkler
+director:          Ben Wheatley
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/normal/8129s2r
 cinemaScrapes:
@@ -4261,9 +4261,9 @@ runtimeMinutes:    105
 releaseYear:       2026
 countries:         Japonia
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8076S2R.jpg
-synopsis.length:   —
+synopsis.length:   778
 cast:              —
-director:          —
+director:          Yasuhito Kikuchi
 tmdbId:            1363974
 imdbId:            tt38650409
 originalTitle:     劇場版 転生したらスライムだった件 蒼海の涙編
@@ -4551,9 +4551,9 @@ runtimeMinutes:    150
 releaseYear:       2026
 countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8211S2R.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   618
+cast:              Nicola Coughlan, Siobhán McSweeney, Éanna Hardwicke
+director:          Caitríona McLaughlin
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -4883,9 +4883,9 @@ runtimeMinutes:    105
 releaseYear:       2026
 countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7933S2R.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   539
+cast:              Glen Powell, Margaret Qualley, Jessica Henwick
+director:          John Patton Ford
 tmdbId:            467905
 imdbId:            tt4357198
 originalTitle:     How to Make a Killing
@@ -5027,8 +5027,8 @@ runtimeMinutes:    114
 releaseYear:       2025
 countries:         Hiszpania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7807S2R.jpg
-synopsis.length:   353
-cast:              —
+synopsis.length:   954
+cast:              Tristán Ulloa, Sara Casasnovas, Miryam Gallego
 director:          Carla Simón
 tmdbId:            1182861
 imdbId:            tt32538648
@@ -5111,7 +5111,7 @@ runtimeMinutes:    —
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8186O2R.jpg
-synopsis.length:   —
+synopsis.length:   482
 cast:              —
 director:          —
 tmdbId:            —
@@ -5236,7 +5236,7 @@ releaseYear:       2026
 countries:         Irlandia, Wielka Brytania, Niemcy, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/sprawiedliwosc-owiec/sprawiedliwoscowiec_plakat.jpg?rev=be0f91ffd2f248caaed986a915b760f8
 synopsis.length:   785
-cast:              Julia Louis-Dreyfus, Hugh Jackman, Molly Gordon, Nicholas Galitzine
+cast:              Nicholas Galitzine, Molly Gordon, Julia Louis-Dreyfus, Bryan Cranston, Chris O’Dowd, Regina Hall, Patrick Stewart, Hong Chau, Emma Thompson, Tosin Cole, Kobna Holdbrook-Smith, Conleth Hill i Mandeep Dhillon
 director:          Kyle Balda
 tmdbId:            1301421
 imdbId:            tt32565993
@@ -5295,8 +5295,8 @@ releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/straszny-film/straszny-film-plakat-net.jpg?rev=90bf6b7775c948f49f68a67c868d264b
 synopsis.length:   353
-cast:              —
-director:          —
+cast:              Anna Faris, Sydney Park, Lochlyn Munro
+director:          Michael Tiddes
 tmdbId:            4247
 imdbId:            tt0175142
 originalTitle:     Scary Movie
@@ -5542,9 +5542,9 @@ runtimeMinutes:    93
 releaseYear:       2026
 countries:         USA, Australia
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8150O2R.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   712
+cast:              Lizzie Freeman, Michael Kovach, Amanda Hufford, Marissa Lenti, Sean Chiplock, Ashley Nichols
+director:          Gooseworx
 tmdbId:            1667198
 imdbId:            tt38692727
 originalTitle:     The Amazing Digital Circus: The Last Act
@@ -5669,8 +5669,9 @@ runtimeMinutes:    110
 releaseYear:       1986
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/top-gun-rocznica40.jpg?rev=9d8790a579a34b90a653b01fa16444c9
-synopsis.length:   383
-cast:              Tom Cruise, Kelly McGillis, Val Kilmer, Anthony Edwards
+synopsis.length:   535
+cast:              Tom Cruise, Tom Skerritt, Kelly McGillis, Val Kilmer, 
+Anthony Edwards, Tim Robbins
 director:          Tony Scott
 tmdbId:            744
 imdbId:            tt0092099
@@ -5720,8 +5721,8 @@ runtimeMinutes:    130
 releaseYear:       2020
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/multikino_imported/imported_from_external_source/posterimage/top-gun-maverick-plakat-finalny-cut_f040b47882.jpg?rev=973ff8b6bd434f0eb0e2aad7eef2a685
-synopsis.length:   539
-cast:              —
+synopsis.length:   745
+cast:              Tom Cruise, Val Kilmer, Miles Teller, Jennifer Connelly, Monica Barbaro, Jay Ellis
 director:          Joseph Kosinski
 tmdbId:            361743
 imdbId:            tt1745960
@@ -6123,9 +6124,9 @@ runtimeMinutes:    151
 releaseYear:       2026
 countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8210S2R.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   920
+cast:              Bryan Cranston, Marianne Jean-Baptiste, Paapa Essiedu, Tom Glynn-Carney, Hayley Squires
+director:          Ivo Van Hove
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -6232,9 +6233,9 @@ runtimeMinutes:    141
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7992S2R.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   395
+cast:              Nicholas Galitzine, Camila, MendesIdris Elba
+director:          Travis Knight
 tmdbId:            454639
 imdbId:            tt0427340
 originalTitle:     Masters of the Universe
@@ -6299,7 +6300,7 @@ releaseYear:       2026
 countries:         Polska
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/za-duzy-na-bajki-3/zaduzynabajki3_plakat.jpg?rev=9b8f08e7580848568d5657d0881b4a65
 synopsis.length:   680
-cast:              Maciej Karaś, Amelia Fijałkowska, Patryka Siemek, Karolina Gruszka
+cast:              Maciej Karaś, Patryk Siemek, Amelia Fijałkowska, Karolina Gruszka, Dorota Kolak, Paweł Domagała
 director:          Kristoffer Rus
 tmdbId:            1484486
 imdbId:            —
@@ -6335,9 +6336,9 @@ runtimeMinutes:    104
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7998S2R.jpg
-synopsis.length:   —
-cast:              —
-director:          —
+synopsis.length:   183
+cast:              Samara Weaving, Kathryn Newton, Elijah Wood
+director:          Matt Bettinelli-Olpin, Tyler Gillett
 tmdbId:            1266127
 imdbId:            tt33978029
 originalTitle:     Ready or Not: Here I Come

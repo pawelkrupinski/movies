@@ -86,21 +86,23 @@ class CinemaCityClient(http: HttpFetch) {
       }
     }
 
-    // Per-film details page fetch — country isn't in the film-events JSON,
-    // but the public film page carries it in a `<p>Produkcja: …</p>` line
-    // (countries comma-separated, optionally followed by the release year).
-    // Fetched in parallel; a failed fetch or missing line leaves countries
-    // empty for that film and the rest of the row stays usable.
-    val countriesByFilmId: Map[String, Seq[String]] = {
+    // Per-film details page fetch — neither country nor cast/director/synopsis
+    // are in the film-events JSON, but the public film page embeds a
+    // `var filmDetails = { ... }` JSON blob with all of them plus the
+    // production-country line. Fetched in parallel; a failed fetch or
+    // missing field leaves the row's content fields empty (the rest of
+    // the row stays usable).
+    val detailsByFilmId: Map[String, CinemaCityClient.Details] = {
       val pending = allFilms.toSeq.flatMap { case (id, info) =>
         info.filmLink.map { link => id -> http.getAsync(link) }
       }
       pending.map { case (id, fut) =>
-        id -> Try(fut.join()).toOption.map(parseCountries).getOrElse(Seq.empty)
+        id -> Try(fut.join()).toOption.map(CinemaCityClient.parseDetails).getOrElse(CinemaCityClient.Details.empty)
       }.toMap
     }
     allFilms.foreach { case (id, info) =>
-      countriesByFilmId.get(id).filter(_.nonEmpty).foreach(cs => allFilms.update(id, info.copy(countries = cs)))
+      detailsByFilmId.get(id).filter(_.countries.nonEmpty)
+        .foreach(d => allFilms.update(id, info.copy(countries = d.countries)))
     }
 
     allEvents
@@ -108,14 +110,15 @@ class CinemaCityClient(http: HttpFetch) {
       .toSeq
       .flatMap { case (filmId, slots) =>
         allFilms.get(filmId).map { info =>
+          val details = detailsByFilmId.getOrElse(filmId, CinemaCityClient.Details.empty)
           CinemaMovie(
             movie       = Movie(info.name.stripPrefix("Ladies Night - "), info.runtimeMinutes, info.releaseYear, countries = info.countries),
             cinema      = cinema,
             posterUrl   = info.posterLink,
             filmUrl     = info.filmLink,
-            synopsis    = None,
-            cast        = None,
-            director    = None,
+            synopsis    = details.synopsis,
+            cast        = details.cast,
+            director    = details.director,
             showtimes   = slots.toSeq.map { case (_, dateTime, bookingUrl, room, format) =>
               Showtime(dateTime, bookingUrl, room, format)
             }.sortBy(_.dateTime),
@@ -124,20 +127,58 @@ class CinemaCityClient(http: HttpFetch) {
         }
       }
   }
+}
 
-  // ── Country parser ────────────────────────────────────────────────────────
-  //
-  // The film page renders a single Polish-language line:
-  //   <p>Produkcja: Belgia, Francja, USA 2026</p>
-  // …where the country list (comma-separated when co-produced) is followed
-  // by an optional release year. Strip the trailing year if it's there;
-  // surrounding whitespace gets trimmed.
+object CinemaCityClient {
+
+  /** Per-film metadata parsed from the public film page. Countries used to
+   *  live in a `<p>Produkcja: …</p>` line; cast/director/synopsis come from
+   *  the page's embedded `var filmDetails = {…}` JSON blob, which carries
+   *  the same shape the in-page React component renders from. */
+  case class Details(
+    synopsis:  Option[String],
+    cast:      Option[String],
+    director:  Option[String],
+    countries: Seq[String]
+  )
+
+  object Details {
+    val empty: Details = Details(None, None, None, Seq.empty)
+  }
+
+  // Embedded JS object: `var filmDetails = { ... };`. Single-line, JSON-valued.
+  // The `(?s)` flag lets `.*?` span newlines if a future page wraps the
+  // value; today it's a single line.
+  private val FilmDetailsRe = """(?s)var\s+filmDetails\s*=\s*(\{.*?\})\s*;""".r
+
+  // Fallback production-country line — `var filmDetails.releaseCountry` is
+  // a single string ("USA"), while the page also renders a longer
+  // `<p>Produkcja: Belgia, Francja, USA 2026</p>` line that's more reliable
+  // for co-productions. We prefer that line; if it's missing we fall back
+  // to `releaseCountry`.
   private val ProductionLineRe = """<p>Produkcja:\s*([^<]+?)\s*</p>""".r
   private val TrailingYearRe   = """\s+\d{4}\s*$""".r
 
-  private[cinemas] def parseCountries(html: String): Seq[String] =
+  /** Parse the film-details page. Public for the spec. */
+  def parseDetails(html: String): Details = {
+    val js  = FilmDetailsRe.findFirstMatchIn(html).flatMap(m => Try(Json.parse(m.group(1))).toOption)
+    val cast      = js.flatMap(j => (j \ "cast").asOpt[String]).filter(_.nonEmpty)
+    val director  = js.flatMap(j => (j \ "directors").asOpt[String]).filter(_.nonEmpty)
+    val synopsis  = js.flatMap(j => (j \ "synopsis").asOpt[String]).filter(_.nonEmpty)
+      .map(_.replaceAll("&nbsp;", " ").replaceAll("\\s+", " ").trim)
+    val countries = parseCountries(html)
+      .orElse(js.flatMap(j => (j \ "releaseCountry").asOpt[String]).filter(_.nonEmpty)
+        .map(s => s.split(",").map(_.trim).filter(_.nonEmpty).toSeq))
+      .getOrElse(Seq.empty)
+    Details(synopsis = synopsis, cast = cast, director = director, countries = countries)
+  }
+
+  /** Extract production-country list from the `<p>Produkcja: …</p>` line.
+   *  Returns None when the line is absent so the caller can decide whether
+   *  to fall back to `filmDetails.releaseCountry`. */
+  private[cinemas] def parseCountries(html: String): Option[Seq[String]] =
     ProductionLineRe.findFirstMatchIn(html).map { m =>
       TrailingYearRe.replaceFirstIn(m.group(1), "").trim
-    }.filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+    }.filter(_.nonEmpty).map(_.split(",").map(_.trim).filter(_.nonEmpty).toSeq)
 }
 
