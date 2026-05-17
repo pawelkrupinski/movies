@@ -33,10 +33,32 @@ object TitleNormalizer {
   private val AnniversarySuffix = """(?i)\s*[-–—|.]?\s*\d+(?:st|nd|rd|th)?\.?\s*(?:anniversary|rocznica)\s*$""".r
   private val RestoredSuffix    = """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""".r
   private val WersjaSuffix      = """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""".r
+  // Cinema programme prefixes — fixed-string labels cinemas prepend to a
+  // film title to indicate accessibility / sensory-friendly / themed
+  // screenings. The colon-and-space delimiter is the giveaway. Listed
+  // explicitly rather than via a general `^[^:]+:\s+` because real titles
+  // routinely include colons ("Top Gun: Maverick", "Star Wars: A New
+  // Hope"). Add new programmes here as cinemas introduce them.
+  private val ProgrammePrefix   = """(?i)^(?:Kino\s+bez\s+barier|Pokaz\s+sensorycznie\s+przyjazny):\s+""".r
+  // Trailing accessibility tag — "(AD)", "(AD + CC)", "(AD + CC + PJM)" or
+  // a truncated variant where the closing paren got chopped during display
+  // clipping. AD = Audio Description, CC = Closed Captions, PJM = Polish
+  // Sign Language. Anchored on "(AD" so we don't strip random parens.
+  private val AccessibilityTag  = """(?i)\s*\(\s*AD\b[^)]*\)?\s*$""".r
 
   /** Strip cinema decoration (anniversary, restored, Cykl prefix, bilingual
-   *  postfix, remaster suffix). Display titles intentionally keep these — only
-   *  used for grouping and external-API lookups.
+   *  postfix, remaster suffix). Display titles intentionally keep these —
+   *  used for cache-key grouping and as the base form external-API lookups
+   *  build on (via `apiQuery`).
+   *
+   *  Accessibility-programme decoration (Kino bez barier, Pokaz
+   *  sensorycznie, "(AD + CC + PJM)") is deliberately NOT stripped here so
+   *  cache keys preserve the cinema's distinction between a regular and an
+   *  accessibility screening of the same film (different filmUrls, different
+   *  showtimes — should remain separate rows). The stripping happens in
+   *  `apiQuery` below, used only by external resolvers (TMDB / Filmweb /
+   *  MC / RT / IMDb) where we want "Kino bez barier: Freak Show (AD)" to
+   *  query as just "Freak Show".
    */
   def searchTitle(display: String): String = {
     val a = CyklPrefix.replaceFirstIn(display, "")
@@ -45,6 +67,19 @@ object TitleNormalizer {
     val d = AnniversarySuffix.replaceFirstIn(c, "")
     val e = RestoredSuffix.replaceFirstIn(d, "")
     WersjaSuffix.replaceFirstIn(e, "").trim
+  }
+
+  /** Everything `searchTitle` strips PLUS the accessibility-programme
+   *  prefix and the trailing accessibility tag. Used by every external-API
+   *  resolver so a row whose cinema-reported title is "Kino bez barier:
+   *  Freak Show (AD + CC + PJM)" queries upstream as just "Freak Show" —
+   *  same canonical film, found cleanly instead of via a director-walk
+   *  fallback onto a different film by the same director.
+   */
+  def apiQuery(display: String): String = {
+    val stripped = ProgrammePrefix.replaceFirstIn(display, "")
+    val tagless  = AccessibilityTag.replaceFirstIn(stripped, "")
+    searchTitle(tagless)
   }
 
   // Conditional cleanups for merging — applied only when another title in

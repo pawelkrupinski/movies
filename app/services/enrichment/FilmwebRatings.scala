@@ -2,7 +2,7 @@ package services.enrichment
 
 import clients.TmdbClient
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
-import services.movies.{CacheKey, MovieCache}
+import services.movies.{CacheKey, MovieCache, MovieService}
 
 import scala.util.{Failure, Success, Try}
 
@@ -143,7 +143,11 @@ class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient
   // URL-discovery path) and `auditOneSync` (one-off backfill that compares
   // the freshly-resolved URL against what's already stored).
   private def resolveUrl(key: CacheKey, e: models.MovieRecord): Option[FilmwebClient.FilmwebInfo] = {
-    val linkTitle = key.cleanTitle
+    // Strip accessibility-programme decoration before hitting Filmweb —
+    // "Kino bez barier: Freak Show (AD)" queries upstream as just
+    // "Freak Show". Cache key keeps the full form so this row stays
+    // distinct from the DKF / regular screening of the same film.
+    val linkTitle = MovieService.apiQuery(key.cleanTitle)
     val details   = e.tmdbId.flatMap(tmdb.details)
     val fallback  = e.originalTitle
       .orElse(details.flatMap(_.englishTitle))

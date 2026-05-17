@@ -205,4 +205,61 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
   it should "prefer 'Top Gun: Maverick' regardless of input order" in {
     preferredDisplay(Seq("Top Gun: Maverick", "Top Gun Maverick")) shouldBe Some("Top Gun: Maverick")
   }
+
+  // ── searchTitle vs apiQuery ───────────────────────────────────────────────
+  //
+  // searchTitle backs the cache key — it MUST keep accessibility-programme
+  // decoration so "Arco" (DKF screening) and "Kino bez barier: Arco (AD)"
+  // (accessibility screening) stay as separate cache rows with separate
+  // showtimes. apiQuery is the more aggressive form used by every external-
+  // API resolver (TMDB, Filmweb, MC, RT, IMDb), so the resolver sees the
+  // bare film title and resolves cleanly. The DKF row and the accessibility
+  // row both resolve to the same TMDB id / FW URL while staying as distinct
+  // cache rows that aggregate their cinema's two screenings separately.
+
+  import TitleNormalizer.{searchTitle, apiQuery}
+
+  "searchTitle" should "leave the 'Kino bez barier:' programme prefix intact (cache-key boundary)" in {
+    // Cache key must differ from a plain "Freak Show" row (or a DKF "Arco"
+    // row from the same cinema) so both rows live — each with its own
+    // filmUrl + showtimes. apiQuery handles the stripping for the external
+    // lookups below. The trailing " + CC + PJM)" gets clipped by the
+    // existing `PlusSuffix` stripper (pre-existing behaviour), leaving a
+    // truncated "(AD" — fine for cache-key purposes, the bare "Freak
+    // Show" form happens in apiQuery.
+    searchTitle("Kino bez barier: Freak Show (AD + CC + PJM)") shouldBe
+      "Kino bez barier: Freak Show (AD"
+  }
+
+  "apiQuery" should "strip the 'Kino bez barier:' programme prefix" in {
+    apiQuery("Kino bez barier: Freak Show") shouldBe "Freak Show"
+  }
+
+  it should "strip the trailing accessibility tag '(AD + CC + PJM)'" in {
+    apiQuery("Freak Show (AD + CC + PJM)") shouldBe "Freak Show"
+  }
+
+  it should "strip a truncated accessibility tag '(AD' (display-clipping artefact)" in {
+    apiQuery("Freak Show (AD") shouldBe "Freak Show"
+  }
+
+  it should "strip both prefix and suffix in one pass" in {
+    apiQuery("Kino bez barier: Freak Show (AD + CC + PJM)") shouldBe "Freak Show"
+  }
+
+  it should "strip the 'Pokaz sensorycznie przyjazny:' prefix for sensory-friendly screenings" in {
+    apiQuery("Pokaz sensorycznie przyjazny: Delfinek i ja 2") shouldBe "Delfinek i ja 2"
+  }
+
+  it should "leave a title with a colon that isn't a programme prefix alone" in {
+    apiQuery("Top Gun: Maverick") shouldBe "Top Gun: Maverick"
+  }
+
+  it should "leave a title with parens that aren't an accessibility tag alone" in {
+    apiQuery("Annie (2014)") shouldBe "Annie (2014)"
+  }
+
+  it should "still apply searchTitle's decoration strippers (anniversary etc.)" in {
+    apiQuery("Top Gun 40th Anniversary") shouldBe "Top Gun"
+  }
 }

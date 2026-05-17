@@ -2,7 +2,7 @@ package services.enrichment
 
 import clients.TmdbClient
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
-import services.movies.{CacheKey, MovieCache}
+import services.movies.{CacheKey, MovieCache, MovieService}
 
 import scala.util.{Failure, Success, Try}
 
@@ -68,8 +68,12 @@ class MetascoreRatings(
   // index the film).
   private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[String] =
     e.tmdbId.flatMap { tmdbId =>
-      val linkTitle  = e.originalTitle.getOrElse(key.cleanTitle)
-      val mcFallback = if (linkTitle != key.cleanTitle) Some(key.cleanTitle) else None
+      // `apiQuery` strips accessibility-programme decoration so an "Kino
+      // bez barier: Arco (AD)" row queries MC as just "Arco". Cache key
+      // stays decorated so the accessibility screening keeps its own row.
+      val cleanLookup = MovieService.apiQuery(key.cleanTitle)
+      val linkTitle   = e.originalTitle.getOrElse(cleanLookup)
+      val mcFallback  = if (linkTitle != cleanLookup) Some(cleanLookup) else None
       val details    = tmdb.details(tmdbId)
       val year       = details.flatMap(_.releaseYear)
 

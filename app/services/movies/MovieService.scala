@@ -223,7 +223,12 @@ class MovieService(
             bus.publish(TmdbResolved(finalKey.cleanTitle, finalKey.year, id))
             logger.debug(s"TMDB stage: ${finalKey.cleanTitle} (${finalKey.year.getOrElse("?")}) → $id")
           case None =>
-            val searchTitle = movieRecord.originalTitle.getOrElse(finalKey.cleanTitle)
+            // IMDb's suggestion endpoint sees the cleaned-up form when TMDB
+            // didn't ship an originalTitle, so accessibility-decorated rows
+            // ("Kino bez barier: Freak Show (AD)") query IMDb as just
+            // "Freak Show". TMDB's originalTitle, when present, is already
+            // canonical and doesn't need stripping.
+            val searchTitle = movieRecord.originalTitle.getOrElse(MovieService.apiQuery(finalKey.cleanTitle))
             logger.debug(s"TMDB stage: ${finalKey.cleanTitle} (${finalKey.year.getOrElse("?")}) → tmdbId=${movieRecord.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
             bus.publish(ImdbIdMissing(finalKey.cleanTitle, finalKey.year, searchTitle))
         }
@@ -427,8 +432,14 @@ class MovieService(
     def viaTmdb(hit: TmdbClient.SearchResult): (TmdbClient.SearchResult, Option[String]) =
       hit -> tmdb.imdbId(hit.id)
 
+    // sisterRowMatch reads the cache, which is keyed by `searchTitle`-form
+    // cleanTitle — `title` already has that shape. tmdb.search hits the
+    // external API; strip the accessibility-programme decoration so an
+    // "Kino bez barier: Freak Show (AD)" row queries TMDB as "Freak Show"
+    // and resolves to the right film instead of falling through to a
+    // director-walk false positive onto a different film by the same director.
     sisterRowMatch(title, year, originalTitle)
-      .orElse(verifyByDirector(tmdb.search(title, year), director).map(viaTmdb))
+      .orElse(verifyByDirector(tmdb.search(MovieService.apiQuery(title), year), director).map(viaTmdb))
       .orElse(directorWalk(director, year).map(viaTmdb))
   }
 
@@ -562,4 +573,11 @@ object MovieService {
   // hits the base film). See `TitleNormalizer.searchTitle` for the full
   // list and why each anchor is shaped the way it is.
   def searchTitle(display: String): String = TitleNormalizer.searchTitle(display)
+
+  /** Aggressive stripping for external-API queries — `searchTitle` plus the
+   *  accessibility-programme decoration (Kino bez barier, Pokaz sensorycznie,
+   *  "(AD + CC + PJM)"). See `TitleNormalizer.apiQuery` for the rationale:
+   *  cache keys preserve the accessibility row's identity, but the upstream
+   *  resolver should see the bare film title. */
+  def apiQuery(display: String): String = TitleNormalizer.apiQuery(display)
 }

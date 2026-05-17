@@ -154,16 +154,16 @@ posterUrl:         https://kinopalacowe.pl/media/gallery/lg/ARCO_plakat.jpg
 synopsis.length:   112
 cast:              —
 director:          Ugo Bienvenu
-tmdbId:            804370
-imdbId:            tt14883538
-originalTitle:     Arco
-imdbRating:        7.3
-metascore:         72
-rottenTomatoes:    93
-filmwebRating:     6.87039
-metacriticUrl:     https://www.metacritic.com/movie/arco
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/arco
-filmwebUrl:        https://www.filmweb.pl/film/Arco-2025-10079941
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14271-dkf-zamek-arco/
 cinemaScrapes:
@@ -2130,16 +2130,16 @@ posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_Arco.
 synopsis.length:   115
 cast:              —
 director:          Ugo Bienvenu
-tmdbId:            804370
-imdbId:            tt14883538
-originalTitle:     Arco
-imdbRating:        7.3
-metascore:         72
-rottenTomatoes:    93
-filmwebRating:     6.87039
-metacriticUrl:     https://www.metacritic.com/movie/arco
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/arco
-filmwebUrl:        https://www.filmweb.pl/film/Arco-2025-10079941
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14334-kino-bez-barier-arco-ad-cc-pjm/
 cinemaScrapes:
@@ -2212,16 +2212,16 @@ posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_post_063_
 synopsis.length:   114
 cast:              —
 director:          Łukasz Ronduda, Filip Pawlak
-tmdbId:            1396045
+tmdbId:            —
 imdbId:            —
-originalTitle:     Powiedz mi, co czujesz
+originalTitle:     —
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     6.01064
+filmwebRating:     —
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        https://www.filmweb.pl/film/Powiedz+mi%2C+co+czujesz-2026-10065024
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14482-kino-bez-barier-freak-show-ad-cc-pjm/
 cinemaScrapes:
@@ -2239,16 +2239,16 @@ posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_milcz
 synopsis.length:   117
 cast:              —
 director:          Ildikó Enyedi
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+tmdbId:            1168719
+imdbId:            tt27811632
+originalTitle:     Silent Friend
+imdbRating:        7.5
+metascore:         90
+rottenTomatoes:    95
+filmwebRating:     7.11675
+metacriticUrl:     https://www.metacritic.com/movie/silent-friend
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/silent_friend
+filmwebUrl:        https://www.filmweb.pl/film/Milcz%C4%85ca+przyjaci%C3%B3%C5%82ka-2025-10089999
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14479-kino-bez-barier-milczaca-przyjacioka-ad-cc/
 cinemaScrapes:
@@ -2266,16 +2266,16 @@ posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_mode_
 synopsis.length:   120
 cast:              —
 director:          Jean-Pierre Dardenne i Luc Dardenne
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+tmdbId:            1242015
+imdbId:            tt32909489
+originalTitle:     Jeunes mères
+imdbRating:        7.0
+metascore:         80
+rottenTomatoes:    95
+filmwebRating:     6.47826
+metacriticUrl:     https://www.metacritic.com/movie/young-mothers
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/jeunes_meres
+filmwebUrl:        https://www.filmweb.pl/film/M%C5%82ode+matki-2025-10075956
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14335-kino-bez-barier-mode-matki-ad-cc-pjm/
 cinemaScrapes:
