@@ -34,12 +34,17 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
     }
   }
 
-  // Detail-page fetch — concurrent across films, 5 workers per CLAUDE.md's
-  // rate-limit guidance for undocumented services. Failed fetches map to
-  // None silently so a flaky detail page doesn't drop the whole row from
-  // the repertoire.
+  // Detail-page fetch — concurrent across films. Two workers, not the 5
+  // CLAUDE.md mentions for undocumented services: Muza is a small Poznań
+  // cinema, not a production API, and 5 simultaneous requests at scrape
+  // start trips their burst limiter — subsequent requests stall past our
+  // 30-s timeout and every synopsis comes back None for that tick. Two
+  // workers still finishes ~50 detail pages well inside the 5-minute
+  // scrape window while staying gentle. Failed fetches map to None
+  // silently so a flaky detail page doesn't drop the whole row from the
+  // repertoire.
   private def fetchSynopses(urls: Seq[String]): Map[String, Option[String]] = {
-    val pool = Executors.newFixedThreadPool(5)
+    val pool = Executors.newFixedThreadPool(2)
     try urls
       .map(url => url -> pool.submit[Option[String]](() =>
         Try(http.get(url)).toOption.flatMap(parseSynopsis)
