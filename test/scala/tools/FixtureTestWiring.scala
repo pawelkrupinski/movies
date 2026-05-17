@@ -4,7 +4,6 @@ import clients.tools.FakeHttpFetch
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import play.api.test.Helpers.stubControllerComponents
-import services.cinemas.ScrapingAntClient
 import services.movies.InMemoryMovieRepo
 
 class FixtureTestWiring(val fixture: String) extends TestWiring {
@@ -13,10 +12,10 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   override val controllerComponents: ControllerComponents = stubControllerComponents()
   override def environmentMode: Mode = Mode.Test
 
-  // Bypass ScrapingAnt so MultikinoClient falls back to the injected
-  // FakeHttpFetch and replays the recorded fixture. The base `TestWiring`
-  // keeps ScrapingAnt routing wired — `ClientIntegrationSpec` shares that
-  // wiring and needs ScrapingAnt to bypass Multikino's datacenter-IP
-  // block when hitting the live API.
-  override def multikinoScrapingAnt: Option[ScrapingAntClient] = None
+  // Route Multikino through the same `FakeHttpFetch` as every other cinema —
+  // single override point. The base `TestWiring` inherits production's
+  // `MultikinoClient.fetchFor(httoFetch)` so `ClientIntegrationSpec`'s
+  // live-network smoke still goes through ScrapingAnt and isn't blocked
+  // by Multikino's datacenter-IP guard.
+  override lazy val multikinoFetch: HttpFetch = httoFetch
 }

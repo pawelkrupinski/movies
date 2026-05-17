@@ -10,6 +10,6 @@ import tools.RealHttpFetch
  *  bespoke recording code here. */
 object WriteMultikino extends App {
   private val fetch  = new RecordingHttpFetch("multikino", new RealHttpFetch())
-  private val client = new MultikinoClient(fetch, MultikinoClient.scrapingAntFromEnv)
+  private val client = new MultikinoClient(MultikinoClient.fetchFor(fetch))
   client.fetch().foreach(m => println(s"${m.movie.title} (${m.showtimes.size} showtimes)"))
 }
