@@ -58,11 +58,7 @@ class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends
     publishEvent: Boolean
   ): Unit = {
     val key = cache.keyOf(title, year)
-    cache.get(key).foreach { row =>
-      if (row.imdbId.isDefined) {
-        // Stale event — another resolver beat us to it.
-        return
-      }
+    cache.get(key).filter(_.imdbId.isEmpty).foreach { _ =>
       Try(imdb.findId(searchTitle, year)).toOption.flatten match {
         case Some(id) =>
           logger.info(s"IMDb id resolved via search: ${key.cleanTitle} (${key.year.getOrElse("?")}) → $id")

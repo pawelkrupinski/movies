@@ -3,7 +3,7 @@ package modules
 import clients.TmdbClient
 import controllers.{HealthController, MovieController, MovieControllerService}
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
-import play.api.{Environment, Mode}
+import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{ShowtimeCache, Stoppable}
 import services.cinemas._

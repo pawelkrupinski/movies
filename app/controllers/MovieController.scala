@@ -2,13 +2,10 @@ package controllers
 
 import models._
 import play.api.mvc._
-import play.api.{Environment, Mode}
+import play.api.Mode
 import services.movies.{MovieService, StoredMovieRecord, TitleNormalizer}
 
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, LocalDateTime, ZoneId}
-import scala.util.Try
 
 case class CinemaShowtimes(cinema: Cinema, showtimes: Seq[Showtime])
 

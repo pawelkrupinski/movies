@@ -5,7 +5,7 @@ import services.cinemas.CountryNames
 import services.movies.{CacheKey, MovieCache}
 import services.events.{DomainEvent, ImdbIdResolved, TmdbResolved}
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Try}
 
 /**
  * IMDb rating maintenance — the IMDb side of the `*Ratings` pattern.

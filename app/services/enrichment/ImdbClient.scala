@@ -1,7 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
-import tools.{HttpFetch, RealHttpFetch}
+import tools.HttpFetch
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets

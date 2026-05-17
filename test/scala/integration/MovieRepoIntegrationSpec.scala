@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
-import services.movies.{MongoMovieRepo, StoredMovieRecord}
+import services.movies.MongoMovieRepo
 import tools.Env
 
 import scala.concurrent.Await

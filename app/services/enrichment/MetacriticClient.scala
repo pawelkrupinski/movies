@@ -2,7 +2,7 @@ package services.enrichment
 
 import org.jsoup.Jsoup
 import services.enrichment.scraping.JsonLdAggregateRating
-import tools.{HttpFetch, RealHttpFetch, TextNormalization}
+import tools.{HttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets

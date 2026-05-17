@@ -3,7 +3,7 @@ package services.enrichment
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{EventBus, ImdbIdMissing, ImdbIdResolved, InProcessEventBus}
+import services.events.{ImdbIdMissing, ImdbIdResolved, InProcessEventBus}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 import tools.HttpFetch
 import tools.Eventually.eventually

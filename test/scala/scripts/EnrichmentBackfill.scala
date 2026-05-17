@@ -4,12 +4,11 @@ import clients.TmdbClient
 import models.MovieRecord
 import services.enrichment.{FilmwebClient, FilmwebRatings, ImdbClient, ImdbRatings, MetacriticClient, MetascoreRatings, RottenTomatoesClient, RottenTomatoesRatings}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieService, StoredMovieRecord}
-import services.events.{EventBus, InProcessEventBus}
+import services.events.InProcessEventBus
 import tools.RealHttpFetch
 
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
-import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 

@@ -141,7 +141,7 @@ object KinoBulgarskaClient {
 
   def normalizeTitle(raw: String): String = {
     val stripped = SuffixPats.foldLeft(raw)((acc, p) => p.replaceFirstIn(acc, ""))
-    if (stripped.isEmpty) stripped else stripped.head.toUpper + stripped.tail.toLowerCase
+    if (stripped.isEmpty) stripped else s"${stripped.head.toUpper}${stripped.tail.toLowerCase}"
   }
 }
 

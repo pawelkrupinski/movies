@@ -62,7 +62,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // a plain `get` with any variant finds the row.
 
   import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
-  import services.events.{EventBus, InProcessEventBus}
+  import services.events.InProcessEventBus
   import clients.TmdbClient
   import models.{MovieRecord, Source, SourceData, Tmdb}
 

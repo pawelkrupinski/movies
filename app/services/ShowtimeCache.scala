@@ -1,6 +1,5 @@
 package services
 
-import models.{Cinema, CinemaMovie}
 import play.api.Logging
 import services.cinemas.CinemaScraper
 import services.movies.MovieCache

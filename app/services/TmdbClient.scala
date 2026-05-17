@@ -1,7 +1,7 @@
 package clients
 
 import play.api.libs.json._
-import tools.{Env, HttpFetch, RealHttpFetch}
+import tools.{Env, HttpFetch}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets

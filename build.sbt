@@ -41,9 +41,17 @@ Test / resourceDirectory :=
 
 // ── Compiler options ──────────────────────────────────────────────────────────
 
+// Play's sbt plugin already sets -deprecation and -unchecked; only add
+// what it doesn't supply. Twirl-generated .scala.html files trip
+// -Wunused:imports with false positives (the template parameter / import
+// is used by the rendered HTML, not by code the compiler can see), so
+// silence that category for them.
 scalacOptions ++= Seq(
-  "-deprecation",
   "-feature",
-  "-unchecked",
-  "-Wunused:imports"
+  "-Wunused:imports",
+  // Twirl rewrites the source position of generated-code warnings back to
+  // the .scala.html origin, but the warnings come out without a parseable
+  // category — filter them by source path. `app/views/` only contains
+  // Twirl templates, so silencing the whole tree is safe.
+  "-Wconf:src=.*views/.*:silent"
 )

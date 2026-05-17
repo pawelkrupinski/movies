@@ -6,7 +6,7 @@ import clients.TmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{EventBus, InProcessEventBus}
+import services.events.InProcessEventBus
 import tools.HttpFetch
 
 import scala.collection.mutable

@@ -5,7 +5,7 @@ import clients.TmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{EventBus, InProcessEventBus, MovieRecordCreated, TmdbResolved}
+import services.events.{InProcessEventBus, MovieRecordCreated, TmdbResolved}
 import tools.{GetOnlyHttpFetch, RealHttpFetch}
 import tools.Eventually.eventually
 

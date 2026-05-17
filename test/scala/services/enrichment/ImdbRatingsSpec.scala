@@ -5,7 +5,7 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.{EventBus, ImdbIdResolved, InProcessEventBus, MovieRecordCreated, TmdbResolved}
+import services.events.{ImdbIdResolved, InProcessEventBus, MovieRecordCreated, TmdbResolved}
 import tools.{Eventually, HttpFetch}
 import Eventually.eventually
 
