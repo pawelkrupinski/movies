@@ -31,6 +31,13 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
     val uri  = new URI(url)
     val path = uri.getPath.stripPrefix("/")
     val base = s"$fixtureRoot/${uri.getHost}/$path"
+    // Some fixtures (Rialto) were recorded under URLs with trailing slashes
+    // and use the hidden-file-inside-directory convention (`wydarzenie/.NNN`);
+    // others (Apollo detail pages) want the slash stripped so the fixture
+    // can sit at the parent level (`kino/<slug>.content` alongside other
+    // slugs in `kino/`). Try both forms — slashed base first (preserves
+    // existing fixtures), then slash-stripped base.
+    val trimmedBase = base.stripSuffix("/")
     // Match `RecordingHttpFetch.fileFor`: try the query-fingerprinted
     // form first so search-style endpoints (TMDB `/3/search/movie?query=…`,
     // Filmweb `/api/v1/live/search?query=…`) find the per-query file
@@ -50,8 +57,16 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
       base,
       s"$base.html",
       s"$base.json",
-      s"$base.content"
-    )
+      s"$base.content",
+      s"$trimmedBase$key",
+      s"$trimmedBase$key.html",
+      s"$trimmedBase$key.json",
+      s"$trimmedBase$key.content",
+      trimmedBase,
+      s"$trimmedBase.html",
+      s"$trimmedBase.json",
+      s"$trimmedBase.content"
+    ).distinct
     candidates
       .map(Paths.get(_))
       .find(p => Files.exists(p) && Files.isRegularFile(p))

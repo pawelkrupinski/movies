@@ -187,15 +187,85 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     poster.get                   should not include "208x300"
   }
 
-  // ── Fields the listing page does not expose ───────────────────────────────
+  // ── filmUrl + detail-page metadata ────────────────────────────────────────
 
-  it should "leave director, cast, synopsis and filmUrl empty (not surfaced on the listing page)" in {
-    results.foreach { cm =>
-      cm.director shouldBe None
-      cm.cast     shouldBe None
-      cm.synopsis shouldBe None
-      cm.filmUrl  shouldBe None
-    }
+  it should "pick up the per-film detail-page URL for filmUrl" in {
+    byTitle("Znaki Pana Śliwki").filmUrl shouldBe Some("https://kinoapollo.pl/kino/znaki-pana-sliwki/")
+    byTitle("Milcząca przyjaciółka").filmUrl shouldBe Some("https://kinoapollo.pl/kino/milczaca-przyjaciolka/")
+    byTitle("Miłość w czasach apokalipsy").filmUrl shouldBe Some("https://kinoapollo.pl/kino/milosc-w-czasach-apokalipsy/")
+  }
+
+  // "Drzewo Magii" merges three event variants (regular run, pre-premiere
+  // screening, children's-day screening), each with its own detail-page
+  // slug. The pick should be the canonical `/kino/drzewo-magii/` rather
+  // than `/kino/drzewo-magii-seans-przedpremierowy/` or
+  // `/kino/dzien-dziecka-w-apollo-drzewo-magii/` — otherwise enrichment
+  // chases a sub-page whose Czas-trwania heading is for the *variant*
+  // event, not the film.
+  it should "prefer the canonical detail-page slug when variants are merged" in {
+    byTitle("Drzewo Magii").filmUrl shouldBe Some("https://kinoapollo.pl/kino/drzewo-magii/")
+  }
+
+  // ── Runtime via detail-page fetch ─────────────────────────────────────────
+
+  // The listing layout doesn't expose runtime — the fetch chases each film's
+  // "Czytaj opis" link to the detail page and reads `Czas trwania: NN min.`
+  // from the Elementor heading. Only one detail fixture is recorded here
+  // (`znaki-pana-sliwki.content`); every other film's detail fetch raises
+  // `FileNotFoundException` and the runtime stays `None`, which is exactly
+  // the graceful-degradation contract used in production when a detail page
+  // is transiently unreachable.
+  it should "extract runtimeMinutes for the film whose detail page is in the fixture" in {
+    byTitle("Znaki Pana Śliwki").movie.runtimeMinutes shouldBe Some(72)
+  }
+
+  it should "leave runtimeMinutes None when the detail-page fetch fails" in {
+    byTitle("Milcząca przyjaciółka").movie.runtimeMinutes shouldBe None
+  }
+
+  it should "extract runtimeMinutes from the Wajda-cycle 'NN minutes' format" in {
+    // Cycle pages render runtime as `Czas trwania: /running time: 84'`
+    // (apostrophe minute mark) rather than `NN min.`. The runtime regex
+    // matches both forms.
+    byTitle("Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)")
+      .movie.runtimeMinutes shouldBe Some(84)
+  }
+
+  // ── Director / cast / synopsis from the detail page ───────────────────────
+
+  it should "extract Reżyseria and Obsada from a modern-layout detail page" in {
+    // Drzewo Magii's detail page carries the modern layout:
+    //   `Reżyseria: <a>Ben Gregor</a>` + `Obsada: <a>name1, …</a>`.
+    val drzewo = byTitle("Drzewo Magii")
+    drzewo.director shouldBe Some("Ben Gregor")
+    drzewo.cast     should not be empty
+    drzewo.cast.get should startWith ("Andrew Garfield")
+  }
+
+  it should "extract obsada/cast from the Wajda-cycle layout (no director field)" in {
+    // Cycle pages don't carry a structured `Reżyseria:` line (the director
+    // is implicit in the cycle name) but do carry `<strong>obsada/cast:</strong>`.
+    val niewinni = byTitle("Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)")
+    niewinni.director shouldBe None
+    niewinni.cast     shouldBe Some("Tadeusz Łomnicki, Krystyna Stypułkowska, Roman Polański")
+  }
+
+  it should "extract a synopsis paragraph from the detail page" in {
+    // Modern-layout: takes the first text-editor paragraph(s), drops the
+    // trailing `Oryginalny tytuł:` / `Reżyseria:` / `Obsada:` metadata line.
+    val drzewo = byTitle("Drzewo Magii").synopsis
+    drzewo                            should not be empty
+    drzewo.get                        should startWith ("Polly i Tim")
+    drzewo.get                        should not include "Reżyseria:"
+    drzewo.get                        should not include "Obsada:"
+    drzewo.get                        should not include "Oryginalny tytuł:"
+  }
+
+  it should "leave director / cast / synopsis None when the detail page is unreachable" in {
+    val milczaca = byTitle("Milcząca przyjaciółka")
+    milczaca.director shouldBe None
+    milczaca.cast     shouldBe None
+    milczaca.synopsis shouldBe None
   }
 
   it should "produce showtimes with no room and no format" in {
