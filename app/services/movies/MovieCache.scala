@@ -62,6 +62,7 @@ trait MovieCache {
   private[services] def markMissing(key: CacheKey): Unit
   private[services] def clearNegatives(): Unit
   private[services] def invalidate(key: CacheKey): Unit
+  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, value: MovieRecord): Unit
   private[services] def entries: Seq[(CacheKey, MovieRecord)]
 }
 
@@ -253,6 +254,28 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
   private[services] def invalidate(key: CacheKey): Unit = {
     positive.invalidate(key)
     repo.delete(key.cleanTitle, key.year)
+  }
+
+  /** Atomically rename a row from `oldKey` to `newKey` and write `value` at
+   *  the new key. Held under the per-cleanTitle lock that
+   *  `recordCinemaScrape` also acquires, so a concurrent scrape can
+   *  never observe the cache in the empty window between the
+   *  invalidate and the put — without this, a year=2026 scrape that
+   *  lands mid-rekey sees no sibling for "Straszny film" and creates
+   *  a phantom row at (Some(2026)) while the rekey settles at
+   *  (Some(2000)), producing two rows for the same Polish title.
+   *
+   *  Both keys must share the same cleanTitle (same lock). Used by the
+   *  TMDB stage when a no-year scrape's resolved year promotes the row
+   *  to a year-keyed identity.
+   */
+  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, value: MovieRecord): Unit = {
+    require(MovieService.normalize(oldKey.cleanTitle) == MovieService.normalize(newKey.cleanTitle),
+      s"rekey requires same normalised cleanTitle: ${oldKey.cleanTitle} vs ${newKey.cleanTitle}")
+    lockFor(oldKey.cleanTitle).synchronized {
+      if (oldKey != newKey) invalidate(oldKey)
+      put(newKey, value)
+    }
   }
 
   /** Apply one cinema's fresh scrape to the cache: for every CinemaMovie in

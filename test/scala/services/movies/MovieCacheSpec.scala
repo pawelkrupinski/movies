@@ -702,6 +702,69 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // Regression: the user-visible "Straszny film appears twice" bug. Helios
+  // / Multikino scrape "Straszny film" with year=None; CC reports year=2026.
+  // The Helios row gets created at key (None) and the TMDB stage starts
+  // running. The TMDB stage's re-key path is two non-atomic steps —
+  // `cache.invalidate(oldKey)` then `cache.put(newKey, …)`. If CC's
+  // recordCinemaScrape fires AFTER the invalidate but BEFORE the put,
+  // CC's `redirectToExistingVariant` sees no sibling row for "Straszny
+  // film" and creates a phantom row at (Some(2026)). The TMDB stage
+  // then puts at (Some(2000)) and we end up with TWO rows for the same
+  // Polish title — one resolved to the 2000 Wayans Bros. film (which no
+  // cinema actually screens), one resolved to the 2026 reboot. The fix:
+  // the TMDB stage's re-key must hold the same per-title lock that
+  // `recordCinemaScrape` holds — exposed here as `cache.rekey`.
+  it should "not create a phantom row when a TMDB-stage re-key races a concurrent recordCinemaScrape" in {
+    val title = "Straszny film"
+    val iterations = 100
+    for (_ <- 1 to iterations) {
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+
+      // Initial state: Helios scraped no-year. Row at (None).
+      cache.recordCinemaScrape(Helios, Seq(cinemaMovie(title, Helios, year = None)))
+
+      val keyNone   = cache.keyOf(title, None)
+      val key2000   = cache.keyOf(title, Some(2000))
+      val resolved  = MovieRecord(
+        tmdbId = Some(4247),
+        imdbId = Some("tt0175142"),
+        data   = Map[Source, SourceData](Tmdb -> SourceData(title = Some("Scary Movie"), releaseYear = Some(2000)))
+      )
+
+      val latch = new java.util.concurrent.CountDownLatch(1)
+      val ec    = tools.DaemonExecutors.virtualThreadEC("rekey-race")
+
+      // Thread A: TMDB stage's re-key. Atomic via `cache.rekey` — single
+      // operation, holds the per-title lock for its full duration.
+      val tmdbStage = scala.concurrent.Future {
+        latch.await()
+        cache.rekey(keyNone, key2000, resolved)
+      }(ec)
+      // Thread B: a concurrent cinema scrape with year=2026. Contends for
+      // the same lock — must either see the old (None) row (before the
+      // re-key) and redirect onto it, or see the new (Some(2000)) row
+      // (after the re-key) and redirect onto that. Either way: one row.
+      val ccScrape = scala.concurrent.Future {
+        latch.await()
+        cache.recordCinemaScrape(CinemaCityPoznanPlaza, Seq(
+          cinemaMovie(title, CinemaCityPoznanPlaza, year = Some(2026))
+        ))
+      }(ec)
+
+      latch.countDown()
+      scala.concurrent.Await.ready(
+        scala.concurrent.Future.sequence(Seq(tmdbStage, ccScrape))(implicitly, ec),
+        scala.concurrent.duration.Duration.Inf
+      )
+      ec.shutdown()
+
+      withClue(s"snapshot after iteration: ${cache.snapshot().map(r => s"(${r.title}, ${r.year}, tmdb=${r.record.tmdbId.getOrElse("—")})").mkString(", ")} ") {
+        cache.snapshot().size shouldBe 1
+      }
+    }
+  }
+
   it should "NOT redirect across scripts — Cyrillic and Latin normalise differently" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.put(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026)),

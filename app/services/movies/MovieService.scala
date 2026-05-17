@@ -322,11 +322,16 @@ class MovieService(
       val targetKey =
         if (key.year.isEmpty && enr.releaseYear.isDefined) cache.keyOf(key.cleanTitle, enr.releaseYear)
         else key
-      if (targetKey != key) {
+      if (targetKey != key)
         logger.debug(s"TMDB stage: re-keying '${key.cleanTitle}' (— → ${enr.releaseYear.get}) — cinemas didn't supply a year.")
-        cache.invalidate(key)
-      }
-      cache.put(targetKey, enr)
+      // `cache.rekey` holds the same per-cleanTitle lock that
+      // `recordCinemaScrape` acquires, so a concurrent cinema scrape can
+      // never observe the cache mid-rekey (empty for this title). Without
+      // it, a year=2026 cinema scrape that lands between the invalidate
+      // and the put sees no sibling and creates a phantom (Some(year))
+      // row while the rekey settles at the wrong year — the
+      // "Straszny film" twins regression.
+      cache.rekey(key, targetKey, enr)
       (targetKey, enr)
     }
 
