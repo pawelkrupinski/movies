@@ -156,9 +156,24 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
   }
 
   private def persist(key: CacheKey, e: MovieRecord): Unit = {
-    positive.put(key, e)
-    repo.upsert(key.cleanTitle, key.year, e)
+    val clean = withoutZeroRatings(e)
+    positive.put(key, clean)
+    repo.upsert(key.cleanTitle, key.year, clean)
   }
+
+  // Rating sources occasionally hand us a literal zero — MC/RT search pages
+  // that surface 0% for an unrated title, Filmweb's API for a film with no
+  // votes yet, IMDb GraphQL for a brand-new entry. Zero isn't a real rating;
+  // persisting it would render a misleading "0/10" badge. Squash to None at
+  // the single write boundary so neither Caffeine nor Mongo holds the
+  // phantom score. Applied to every write (`persist` and `putIfPresent`),
+  // so any future caller automatically inherits the rule.
+  private def withoutZeroRatings(e: MovieRecord): MovieRecord = e.copy(
+    imdbRating     = e.imdbRating.filter(_ > 0.0),
+    metascore      = e.metascore.filter(_ > 0),
+    filmwebRating  = e.filmwebRating.filter(_ > 0.0),
+    rottenTomatoes = e.rottenTomatoes.filter(_ > 0)
+  )
 
   /** Find an existing cache key carrying the same tmdbId as `excluding`,
    *  filtered to candidates whose normalised cleanTitle matches
@@ -205,7 +220,7 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
    *  concurrent updates to other fields. */
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean = {
     val updated = positive.asMap().computeIfPresent(key, new java.util.function.BiFunction[CacheKey, MovieRecord, MovieRecord] {
-      override def apply(k: CacheKey, current: MovieRecord): MovieRecord = updater(current)
+      override def apply(k: CacheKey, current: MovieRecord): MovieRecord = withoutZeroRatings(updater(current))
     })
     if (updated != null) {
       repo.updateIfPresent(key.cleanTitle, key.year, updated)

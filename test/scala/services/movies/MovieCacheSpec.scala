@@ -246,6 +246,54 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     repo.deletes shouldBe empty
   }
 
+  // Rating sources occasionally hand us a literal zero — Metacritic / RT
+  // search pages that return 0% for an unrated title, Filmweb's API for
+  // a film with no votes yet, IMDb GraphQL for a brand-new entry. Zero
+  // isn't a real rating; persisting it would render a misleading "0/10"
+  // badge in the UI. Squash to None at the cache write boundary so neither
+  // the in-memory positive cache nor Mongo holds a false zero.
+  "put" should "squash zero ratings to None on the way into the cache" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val key   = cache.keyOf("Unrated", Some(2026))
+
+    cache.put(key, MovieRecord(
+      imdbId         = Some("tt0"),
+      imdbRating     = Some(0.0),
+      metascore      = Some(0),
+      filmwebRating  = Some(0.0),
+      rottenTomatoes = Some(0)
+    ))
+
+    val cached = cache.get(key).get
+    cached.imdbRating     shouldBe None
+    cached.metascore      shouldBe None
+    cached.filmwebRating  shouldBe None
+    cached.rottenTomatoes shouldBe None
+
+    // Same guarantee on the write-through path: Mongo never sees the zero.
+    val (_, _, persisted) = repo.upserts.last
+    persisted.imdbRating     shouldBe None
+    persisted.metascore      shouldBe None
+    persisted.filmwebRating  shouldBe None
+    persisted.rottenTomatoes shouldBe None
+  }
+
+  "putIfPresent" should "squash zero ratings produced by the updater to None" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val key   = cache.keyOf("Unrated", Some(2026))
+    cache.put(key, mkEnrichment("tt0", rating = Some(7.5)))
+
+    // A rating fetcher returns a zero for a row that previously had a real
+    // value — the cached row should reset to None, not keep the stale 7.5
+    // (the updater explicitly wrote Some(0.0), which is what it observed).
+    cache.putIfPresent(key, _.copy(imdbRating = Some(0.0), metascore = Some(0)))
+
+    val row = cache.get(key).get
+    row.imdbRating shouldBe None
+    row.metascore  shouldBe None
+  }
+
   "invalidate" should "remove from both positive cache and repo" in {
     val repo  = new InMemoryMovieRepo()
     val cache = new CaffeineMovieCache(repo)
