@@ -9,26 +9,21 @@ scalaVersion := "3.3.7"
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
 
-// ── Versions ──────────────────────────────────────────────────────────────────
-
-val playVersion        = "3.0.8"
-val mongoDriverVersion = "5.7.0"
-
 // ── Dependencies ──────────────────────────────────────────────────────────────
 
 libraryDependencies ++= Seq(
 
   // MongoDB official Scala driver
-  "org.mongodb.scala" %% "mongo-scala-driver" % mongoDriverVersion,
+  "org.mongodb.scala" %% "mongo-scala-driver" % "5.7.0",
 
   // HTML parsing
-  "org.jsoup" % "jsoup" % "1.17.2",
+  "org.jsoup" % "jsoup" % "1.22.2",
 
   // In-memory caching
-  "com.github.ben-manes.caffeine" % "caffeine" % "3.1.8",
+  "com.github.ben-manes.caffeine" % "caffeine" % "3.2.4",
 
   // Testing
-  "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test
+  "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test
 )
 
 // ── Test layout ───────────────────────────────────────────────────────────────
