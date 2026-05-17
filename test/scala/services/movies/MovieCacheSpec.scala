@@ -364,6 +364,41 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.metascore  shouldBe Some(70)    // concurrent update preserved
   }
 
+  // The audit-clobber regression: a separate process (FilmwebUrlAudit) writes
+  // `filmwebUrl=None` to Mongo. Meanwhile the running app's in-memory cache
+  // still has the stale URL — its next hourly rating tick reads the cache,
+  // calls `putIfPresent(_.copy(filmwebRating=newRating))`, and the write-
+  // through MUST NOT carry the stale `filmwebUrl` along and clobber the
+  // audit's None. Only `filmwebRating` changed in this update; only
+  // `filmwebRating` should be persisted.
+  it should "only persist the fields the updater actually changed, leaving repo-side edits to other fields intact" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val key   = cache.keyOf("Audit Race", Some(2024))
+
+    // Cache state: stale filmwebUrl + old rating. Mongo gets the same on
+    // initial put (write-through).
+    cache.put(key, mkEnrichment("tt1").copy(
+      filmwebUrl    = Some("https://www.filmweb.pl/film/Wrong-2024-99999"),
+      filmwebRating = Some(7.0)
+    ))
+
+    // Out-of-band Mongo edit (mirrors what FilmwebUrlAudit does in a
+    // separate process). Cache doesn't know — its in-memory snapshot
+    // still has the stale URL.
+    repo.dropFilmwebUrl("Audit Race", Some(2024))
+
+    // Running app's rating tick: cache still has the stale URL, the
+    // updater bumps just the rating.
+    cache.putIfPresent(key, _.copy(filmwebRating = Some(7.5)))
+
+    // Mongo's audit-applied filmwebUrl=None MUST stay None — the cache
+    // write only $set the field that changed (`filmwebRating`).
+    val mongoRow = repo.findAll().find(_.title == "Audit Race").get.record
+    mongoRow.filmwebUrl    shouldBe None
+    mongoRow.filmwebRating shouldBe Some(7.5)
+  }
+
   // ── recordCinemaScrape: per-cinema slot management ─────────────────────────
   //
   // Each cinema's scrape tick lands a full snapshot of its current showings.

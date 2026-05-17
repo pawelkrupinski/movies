@@ -1,11 +1,12 @@
 package services.movies
 
 import com.mongodb.MongoException
-import com.mongodb.client.model.ReplaceOptions
-import models.MovieRecord
-import org.mongodb.scala.bson.BsonNull
-import org.mongodb.scala.model.Filters
+import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
+import models.{MovieRecord, Source, SourceData}
+import org.mongodb.scala.bson.{BsonDateTime, BsonNull}
+import org.mongodb.scala.model.{Filters, Updates}
 import org.mongodb.scala.{MongoClient, MongoCollection, ObservableFuture, SingleObservableFuture}
+import org.bson.conversions.Bson
 import play.api.Logging
 import tools.Env
 
@@ -47,8 +48,15 @@ trait MovieRepo {
    *  true on update, false when no row matched (concurrent delete, or the
    *  row never existed). Used by the cache's `putIfPresent` so a rating
    *  write that races against a concurrent `cache.invalidate` can't
-   *  resurrect the row by upserting it back into existence. */
-  def updateIfPresent(title: String, year: Option[Int], e: MovieRecord): Boolean
+   *  resurrect the row by upserting it back into existence.
+   *
+   *  Writes only the fields where `before` and `after` differ — via
+   *  `$set`/`$unset` per `MovieRecordPatch`. An out-of-band Mongo edit
+   *  to a field this updater didn't touch (e.g. `FilmwebUrlAudit`
+   *  clearing `filmwebUrl` while a stale-cache rating tick concurrently
+   *  bumps `filmwebRating`) is therefore preserved instead of being
+   *  clobbered by a full-doc replace. */
+  def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean
 
   /** Release any underlying resources. No-op when nothing to release. */
   def close(): Unit
@@ -137,14 +145,15 @@ class MongoMovieRepo extends MovieRepo with Logging {
     }
   }
 
-  def updateIfPresent(title: String, year: Option[Int], e: MovieRecord): Boolean = coll match {
+  def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = coll match {
     case None => false
     case Some(c) =>
-      val id   = docId(title, year)
-      val dto  = StoredMovieDto.fromDomain(id, title, year, e, Instant.now())
-      val opts = new ReplaceOptions().upsert(false)
+      val id    = docId(title, year)
+      val patch = MovieRecordPatch.diff(before, after)
+      val update = patchToUpdate(patch)
+      val opts   = new UpdateOptions().upsert(false)
       Try {
-        val result = Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
+        val result = Await.result(c.updateOne(Filters.eq("_id", id), update, opts).toFuture(), 10.seconds)
         result.getMatchedCount > 0
       }.recover {
         case ex: Throwable if isClusterClosed(ex) => false
@@ -152,6 +161,36 @@ class MongoMovieRepo extends MovieRepo with Logging {
           logger.warn(s"MovieRepo.updateIfPresent($title, $year) failed: ${ex.getMessage}")
           false
       }.getOrElse(false)
+  }
+
+  // Translate a `MovieRecordPatch` into a `$set`/`$unset` Mongo update. Each
+  // scalar field gets its own atom; the `data` map gets per-source
+  // `sourceData.<sourceName>` paths so a Tmdb-only refresh doesn't touch a
+  // cinema's slot and vice versa. `updatedAt` always bumps so write tracking
+  // works even when the patch is otherwise empty (the row was touched).
+  private def patchToUpdate(p: MovieRecordPatch): Bson = {
+    val atoms = scala.collection.mutable.ListBuffer.empty[Bson]
+    def scalar[A](field: String, u: FieldUpdate[A], toBson: A => org.bson.BsonValue): Unit = u match {
+      case FieldUpdate.NoChange => ()
+      case FieldUpdate.Unset    => atoms += Updates.unset(field)
+      case FieldUpdate.SetTo(v) => atoms += Updates.set(field, toBson(v))
+    }
+    scalar("imdbId",            p.imdbId,            (s: String) => new org.mongodb.scala.bson.BsonString(s))
+    scalar("imdbRating",        p.imdbRating,        (d: Double) => new org.mongodb.scala.bson.BsonDouble(d))
+    scalar("metascore",         p.metascore,         (i: Int)    => new org.mongodb.scala.bson.BsonInt32(i))
+    scalar("filmwebUrl",        p.filmwebUrl,        (s: String) => new org.mongodb.scala.bson.BsonString(s))
+    scalar("filmwebRating",     p.filmwebRating,     (d: Double) => new org.mongodb.scala.bson.BsonDouble(d))
+    scalar("rottenTomatoes",    p.rottenTomatoes,    (i: Int)    => new org.mongodb.scala.bson.BsonInt32(i))
+    scalar("tmdbId",            p.tmdbId,            (i: Int)    => new org.mongodb.scala.bson.BsonInt32(i))
+    scalar("metacriticUrl",     p.metacriticUrl,     (s: String) => new org.mongodb.scala.bson.BsonString(s))
+    scalar("rottenTomatoesUrl", p.rottenTomatoesUrl, (s: String) => new org.mongodb.scala.bson.BsonString(s))
+    p.data.foreach {
+      case (source, FieldUpdate.SetTo(sd)) => atoms += Updates.set(s"sourceData.${source.displayName}", sd)
+      case (source, FieldUpdate.Unset)     => atoms += Updates.unset(s"sourceData.${source.displayName}")
+      case (_, FieldUpdate.NoChange)       => ()
+    }
+    atoms += Updates.set("updatedAt", BsonDateTime(Instant.now().toEpochMilli))
+    Updates.combine(atoms.toSeq*)
   }
 
   def close(): Unit = clientOpt.foreach(_.close())

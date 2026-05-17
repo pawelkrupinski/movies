@@ -219,11 +219,20 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Logging {
    *  slow network call, and now wants to update one field doesn't clobber
    *  concurrent updates to other fields. */
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean = {
+    // Capture both `before` and `after` inside the Caffeine compute lock so
+    // the pair is atomic. The repo write below uses the pair to compute a
+    // per-field diff — out-of-band Mongo edits to fields the updater didn't
+    // touch (e.g. `FilmwebUrlAudit` clearing `filmwebUrl` while we're
+    // bumping `filmwebRating`) survive the write.
+    val before  = new java.util.concurrent.atomic.AtomicReference[MovieRecord]()
     val updated = positive.asMap().computeIfPresent(key, new java.util.function.BiFunction[CacheKey, MovieRecord, MovieRecord] {
-      override def apply(k: CacheKey, current: MovieRecord): MovieRecord = withoutZeroRatings(updater(current))
+      override def apply(k: CacheKey, current: MovieRecord): MovieRecord = {
+        before.set(current)
+        withoutZeroRatings(updater(current))
+      }
     })
     if (updated != null) {
-      repo.updateIfPresent(key.cleanTitle, key.year, updated)
+      repo.updateIfPresent(key.cleanTitle, key.year, before.get(), updated)
       true
     } else false
   }

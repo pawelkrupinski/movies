@@ -34,13 +34,21 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
     upserts.append((t, y, e))
   }
 
-  def updateIfPresent(t: String, y: Option[Int], e: MovieRecord): Boolean = {
+  def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = {
     val id = idOf(t, y)
-    if (store.contains(id)) {
-      store.put(id, StoredMovieRecord(t, y, e))
-      upserts.append((t, y, e))
-      true
-    } else false
+    store.get(id) match {
+      case None => false
+      case Some(stored) =>
+        // Mirror production's `$set`/`$unset` semantics: only the fields where
+        // `before` and `after` differ get overwritten; everything else keeps
+        // whatever the current store has. Tests for the audit-clobber race
+        // depend on this.
+        val patch  = MovieRecordPatch.diff(before, after)
+        val merged = patch.applyTo(stored.record)
+        store.put(id, StoredMovieRecord(t, y, merged))
+        upserts.append((t, y, merged))
+        true
+    }
   }
 
   def delete(t: String, y: Option[Int]): Unit = {
@@ -49,6 +57,16 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
   }
 
   def close(): Unit = ()
+
+  /** Out-of-band edit: drop the `filmwebUrl` + `filmwebRating` for the row.
+   *  Used by tests that simulate `FilmwebUrlAudit` mutating Mongo while a
+   *  running cache holds stale values. */
+  def dropFilmwebUrl(t: String, y: Option[Int]): Unit = {
+    val id = idOf(t, y)
+    store.get(id).foreach { s =>
+      store.put(id, s.copy(record = s.record.copy(filmwebUrl = None, filmwebRating = None)))
+    }
+  }
 
   private def idOf(t: String, y: Option[Int]): String =
     s"${MovieService.normalize(t)}|${y.map(_.toString).getOrElse("")}"
