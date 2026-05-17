@@ -70,7 +70,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       "Top Gun 40. Rocznica",
       "Top Gun: Maverick",
       "Wartość sentymentalna",
-      "Werdykt - Kino Konesera",
+      "Werdykt",
       "Władcy wszechświata",
       "Yu-Gi-Oh! The Dark Side of Dimensions",
       "Za duży na bajki 3",
@@ -125,7 +125,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     runtimes("Top Gun 40. Rocznica")                                        shouldBe Some(110)
     runtimes("Top Gun: Maverick")                                           shouldBe Some(130)
     runtimes("Wartość sentymentalna")                                       shouldBe Some(135)
-    runtimes("Werdykt - Kino Konesera")                                     shouldBe Some(89)
+    runtimes("Werdykt")                                     shouldBe Some(89)
     runtimes("Władcy wszechświata")                                         shouldBe Some(141)
     runtimes("Yu-Gi-Oh! The Dark Side of Dimensions")                       shouldBe Some(130)
     runtimes("Za duży na bajki 3")                                          shouldBe Some(90)
@@ -282,7 +282,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     posters("Top Gun 40. Rocznica")           shouldBe Some("https://img.helios.pl/pliki/film/top-gun-40-rocznica/top-gun-40-rocznica-plakat-48731.jpg")
     posters("Top Gun: Maverick")              shouldBe Some("https://img.helios.pl/pliki/film/top-gun-maverick/top-gun-maverick-plakat.jpg")
     posters("Wartość sentymentalna")          shouldBe Some("https://img.helios.pl/pliki/film/wartosc-sentymentalna/wartosc-sentymentalna-plakat-66574.jpeg")
-    posters("Werdykt - Kino Konesera")        shouldBe Some("https://img.helios.pl/pliki/film/werdykt/werdykt-plakat-27931.jpg")
+    posters("Werdykt")        shouldBe Some("https://img.helios.pl/pliki/film/werdykt/werdykt-plakat-27931.jpg")
     posters("Władcy wszechświata")            shouldBe Some("https://img.helios.pl/pliki/film/wladcy-wszechswiata/wladcy-wszechswiata-plakat-895.jpg")
     posters("Yu-Gi-Oh! The Dark Side of Dimensions") shouldBe
       Some("https://img.helios.pl/pliki/film/yu-gi-oh-the-dark-side-of-dimensions/yu-gi-oh-the-dark-side-of-dimensions-plakat-81113.jpg")
@@ -369,7 +369,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     counts("Top Gun 40. Rocznica")                                        shouldBe 7
     counts("Top Gun: Maverick")                                           shouldBe 4
     counts("Wartość sentymentalna")                                       shouldBe 1
-    counts("Werdykt - Kino Konesera")                                     shouldBe 1
+    counts("Werdykt")                                     shouldBe 1
     counts("Władcy wszechświata")                                         shouldBe 9
     counts("Yu-Gi-Oh! The Dark Side of Dimensions")                       shouldBe 2
     counts("Za duży na bajki 3")                                          shouldBe 3
