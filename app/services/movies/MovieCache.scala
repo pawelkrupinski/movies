@@ -62,7 +62,16 @@ trait MovieCache {
   private[services] def markMissing(key: CacheKey): Unit
   private[services] def clearNegatives(): Unit
   private[services] def invalidate(key: CacheKey): Unit
-  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, value: MovieRecord): Unit
+  /** Run `body` under the per-normalised-title lock. Any read-modify-write
+   *  across the cache's surface for keys sharing this `cleanTitle` must
+   *  happen inside this block to be serialised against `recordCinemaScrape`,
+   *  `rekey`, and other concurrent operations on the same title. */
+  private[services] def withTitleLock[A](cleanTitle: String)(body: => A): A
+  /** Move a row from `oldKey` to `newKey`. The `update` function receives
+   *  the CURRENT state at `oldKey` (under the per-title lock) and returns
+   *  the record to write at `newKey` — so a concurrent cinema-slot write
+   *  that landed before `update` runs is visible to it. */
+  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord): Unit
   private[services] def entries: Seq[(CacheKey, MovieRecord)]
 }
 
@@ -97,6 +106,13 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
   private val titleLocks = new ConcurrentHashMap[String, AnyRef]()
   private def lockFor(rawTitle: String): AnyRef =
     titleLocks.computeIfAbsent(MovieService.normalize(rawTitle), _ => new Object())
+
+  /** The lock that serialises every read-modify-write on rows whose
+   *  normalised cleanTitle matches `cleanTitle`. Reentrant (JVM
+   *  `synchronized`), so a body that itself calls `rekey` or
+   *  `recordCinemaScrape` for the same title doesn't self-deadlock. */
+  private[services] def withTitleLock[A](cleanTitle: String)(body: => A): A =
+    lockFor(cleanTitle).synchronized(body)
 
   // Per-tmdbId locks for the `put` identity gate (see below). Serialises the
   // "is there already a row with this tmdbId?" check + the resulting fold,
@@ -256,25 +272,35 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
     repo.delete(key.cleanTitle, key.year)
   }
 
-  /** Atomically rename a row from `oldKey` to `newKey` and write `value` at
-   *  the new key. Held under the per-cleanTitle lock that
-   *  `recordCinemaScrape` also acquires, so a concurrent scrape can
-   *  never observe the cache in the empty window between the
-   *  invalidate and the put — without this, a year=2026 scrape that
-   *  lands mid-rekey sees no sibling for "Straszny film" and creates
-   *  a phantom row at (Some(2026)) while the rekey settles at
-   *  (Some(2000)), producing two rows for the same Polish title.
+  /** Atomically rename a row from `oldKey` to `newKey`, computing the new
+   *  value from the row's CURRENT state at `oldKey`. Both the read and
+   *  the write happen under the per-cleanTitle lock that
+   *  `recordCinemaScrape` also acquires — so:
+   *
+   *    1. A concurrent scrape can never observe the cache in the empty
+   *       window between the invalidate and the put. Without this, a
+   *       year=2026 scrape that lands mid-rekey would see no sibling
+   *       for "Straszny film" and create a phantom row at (Some(2026))
+   *       while the rekey settles at (Some(2000)) — two rows for the
+   *       same Polish title.
+   *    2. A cinema slot that was written under the same title-lock
+   *       just before the rekey acquired it is visible to `update`,
+   *       so the new record carries it forward. Without this, the
+   *       rekey would overwrite the just-written slot with stale data
+   *       the caller captured before the lock — losing the slot
+   *       entirely.
    *
    *  Both keys must share the same cleanTitle (same lock). Used by the
    *  TMDB stage when a no-year scrape's resolved year promotes the row
-   *  to a year-keyed identity.
-   */
-  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, value: MovieRecord): Unit = {
+   *  to a year-keyed identity. */
+  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord): Unit = {
     require(MovieService.normalize(oldKey.cleanTitle) == MovieService.normalize(newKey.cleanTitle),
       s"rekey requires same normalised cleanTitle: ${oldKey.cleanTitle} vs ${newKey.cleanTitle}")
-    lockFor(oldKey.cleanTitle).synchronized {
+    withTitleLock(oldKey.cleanTitle) {
+      val current = Option(positive.getIfPresent(oldKey)).getOrElse(MovieRecord())
+      val updated = update(current)
       if (oldKey != newKey) invalidate(oldKey)
-      put(newKey, value)
+      put(newKey, updated)
     }
   }
 
@@ -322,7 +348,7 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
       // cinema can't create a duplicate row at a different `(title, year)`
       // key while we're between the redirect check and the put. Different
       // films don't contend.
-      lockFor(cm.movie.title).synchronized {
+      withTitleLock(cm.movie.title) {
         val primary = keyOf(cm.movie.title, cm.movie.releaseYear)
         val key     = redirectToExistingVariant(primary).getOrElse(primary)
         val existing = Option(positive.getIfPresent(key)).getOrElse(MovieRecord())

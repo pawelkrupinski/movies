@@ -766,7 +766,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       // operation, holds the per-title lock for its full duration.
       val tmdbStage = scala.concurrent.Future {
         latch.await()
-        cache.rekey(keyNone, key2000, resolved)
+        cache.rekey(keyNone, key2000, _ => resolved)
       }(ec)
       // Thread B: a concurrent cinema scrape with year=2026. Contends for
       // the same lock — must either see the old (None) row (before the
@@ -788,6 +788,77 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
       withClue(s"snapshot after iteration: ${cache.snapshot().map(r => s"(${r.title}, ${r.year}, tmdb=${r.record.tmdbId.getOrElse("—")})").mkString(", ")} ") {
         cache.snapshot().size shouldBe 1
+      }
+    }
+  }
+
+  // Regression: CI flakily reported "Władcy wszechświata" missing one of
+  // its CC slots after a fixture-driven scrape tick. The race:
+  //
+  //   1. CC Plaza's recordCinemaScrape runs. For Władcy it acquires
+  //      lockFor("Władcy"), writes its slot at the row's current key,
+  //      releases the lock. The `touched` set captures THAT key.
+  //   2. Before CC Plaza's prune loop iterates the cache, an
+  //      asynchronously-running TMDB stage (triggered by an earlier
+  //      cinema's event) rekeys the row from its current key to a
+  //      year-keyed sibling, carrying CC Plaza's slot along.
+  //   3. CC Plaza's prune iterates the cache. It finds the row at the
+  //      NEW key with a CC Plaza slot, but the NEW key isn't in
+  //      `touched` (which holds the OLD key). The prune drops CC Plaza's
+  //      slot — a slot that was just written this same tick.
+  //
+  // Fix: identify "touched" by `SourceData` reference, not by cache key.
+  // `cache.rekey` preserves slot references verbatim across the move,
+  // so the prune correctly recognises just-written slots even after a
+  // concurrent rekey.
+  it should "not drop a cinema's slot when a concurrent rekey moves the row between slot-write and prune" in {
+    val title      = "Władcy wszechświata"
+    val iterations = 200
+    for (_ <- 1 to iterations) {
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+      // Seed: row at (Władcy, None) from a no-year scrape.
+      cache.recordCinemaScrape(Multikino, Seq(cinemaMovie(title, Multikino, None)))
+
+      val latch = new java.util.concurrent.CountDownLatch(1)
+      val ec    = tools.DaemonExecutors.virtualThreadEC("prune-rekey-race")
+
+      // Thread A: CC Plaza scrape. Lands on (None) via redirect, then
+      // enters the prune loop. The buggy path: between the per-movie
+      // write and the prune iteration, thread B rekeys the row, so
+      // when the prune scans the cache it finds CC Plaza's slot at a
+      // key not in its `touched` set and drops it.
+      val ccScrape = scala.concurrent.Future {
+        latch.await()
+        cache.recordCinemaScrape(CinemaCityPoznanPlaza, Seq(
+          cinemaMovie(title, CinemaCityPoznanPlaza, year = None)
+        ))
+      }(ec)
+      // Thread B: rekey (None) → (Some(2026)). The updater reads the
+      // row's CURRENT state under the title lock — mirrors
+      // `MovieService.runTmdbStageSync`'s carry-forward shape — so CC
+      // Plaza's just-written slot is visible if it landed first.
+      val rekey = scala.concurrent.Future {
+        latch.await()
+        cache.rekey(cache.keyOf(title, None), cache.keyOf(title, Some(2026)),
+          current => current.copy(tmdbId = Some(454639))
+        )
+      }(ec)
+
+      latch.countDown()
+      scala.concurrent.Await.ready(
+        scala.concurrent.Future.sequence(Seq(ccScrape, rekey))(implicitly, ec),
+        scala.concurrent.duration.Duration.Inf
+      )
+      ec.shutdown()
+
+      // The CC Plaza slot must end up somewhere in the cache —
+      // whichever key the row eventually settles on after the rekey
+      // and scrape interleave. Without slot-identity prune, the slot
+      // is dropped in races where the rekey lands between CC Plaza's
+      // write and its prune.
+      val ccPlazaSlots = cache.snapshot().flatMap(_.record.data.get(CinemaCityPoznanPlaza))
+      withClue(s"snapshot: ${cache.snapshot().map(r => s"(${r.year}, data=${r.record.data.keys.map(_.displayName).mkString(",")})").mkString(" | ")} ") {
+        ccPlazaSlots should not be empty
       }
     }
   }

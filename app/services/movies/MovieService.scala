@@ -257,82 +257,88 @@ class MovieService(
     directorHint:      Option[String] = None
   ): Option[(CacheKey, MovieRecord)] =
     resolveTmdb(key.cleanTitle, key.year, originalTitleHint, directorHint).map { case (hit, imdbId) =>
-      val existing = cache.get(key)
-      // Preserve the previously-known `imdbId` when TMDB resolved the same
-      // film (same `tmdbId`) but momentarily dropped the cross-reference —
-      // happens for very recent releases and occasional TMDB data hiccups.
-      // When TMDB resolves to a DIFFERENT `tmdbId` we accept the new film's
-      // imdbId (even if None) so a stale id can't leak across a correction.
-      val preserveImdbId = existing.exists(_.tmdbId.contains(hit.id))
-      val resolvedImdbId = imdbId.orElse(if (preserveImdbId) existing.flatMap(_.imdbId) else None)
-      // Carry the cinema-side fields forward — `recordCinemaScrape` may have
-      // just landed a slot on this row, and the TMDB stage doesn't own
-      // cinema data. Without this, a fresh resolve wipes every cinema's
-      // slot and the row drops out of `toSchedules` until the next scrape
-      // tick repopulates it.
-      val carriedData = existing.map(_.data).getOrElse(Map.empty[Source, SourceData])
-      // Fetch the full TMDB record in a single round-trip so the SourceData
-      // (Tmdb) slot carries the Polish synopsis, director, cast, runtime,
-      // year, countries and poster — not just the search-hit-shape fields.
-      // On a fetch failure we fall back to the search-hit-shape so the row
-      // at least keeps title + originalTitle + year going forward.
-      val existingTmdbSlot = carriedData.getOrElse(Tmdb, SourceData())
-      val tmdbSlot = tmdb.fullDetails(hit.id) match {
-        case Some(d) => SourceData(
-          title          = d.title.orElse(Some(hit.title).filter(_.nonEmpty)).orElse(existingTmdbSlot.title),
-          originalTitle  = d.originalTitle.orElse(hit.originalTitle).orElse(existingTmdbSlot.originalTitle),
-          synopsis       = d.synopsis.orElse(existingTmdbSlot.synopsis),
-          cast           = d.cast.orElse(existingTmdbSlot.cast),
-          director       = d.director.orElse(existingTmdbSlot.director),
-          runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
-          releaseYear    = d.releaseYear.orElse(hit.releaseYear).orElse(existingTmdbSlot.releaseYear),
-          // Canonicalise TMDB's English country names ("United States of
-          // America" → "USA") so the merged-record dedup operates on the
-          // same strings cinemas already write.
-          countries      = if (d.countries.nonEmpty) d.countries.map(CountryNames.canonical).distinct
-                           else existingTmdbSlot.countries,
-          posterUrl      = d.posterUrl.orElse(existingTmdbSlot.posterUrl)
+      // The slow HTTP fetch happens OUTSIDE the title lock so concurrent
+      // cinema scrapes for the same title aren't blocked for its duration.
+      val detailsOpt = tmdb.fullDetails(hit.id)
+      // Read → modify → write under the per-title lock so a cinema scrape's
+      // freshly-written slot, landing just before this thread enters the
+      // critical section, is visible to the carry-forward below — and so
+      // the rekey's invalidate→put sequence can't leave any window for a
+      // concurrent scrape to see no sibling and spawn a phantom row (the
+      // "Straszny film" twins regression).
+      cache.withTitleLock(key.cleanTitle) {
+        val existing = cache.get(key)
+        // Preserve the previously-known `imdbId` when TMDB resolved the same
+        // film (same `tmdbId`) but momentarily dropped the cross-reference —
+        // happens for very recent releases and occasional TMDB data hiccups.
+        // When TMDB resolves to a DIFFERENT `tmdbId` we accept the new film's
+        // imdbId (even if None) so a stale id can't leak across a correction.
+        val preserveImdbId = existing.exists(_.tmdbId.contains(hit.id))
+        val resolvedImdbId = imdbId.orElse(if (preserveImdbId) existing.flatMap(_.imdbId) else None)
+        // Carry the cinema-side fields forward — `recordCinemaScrape` may have
+        // just landed a slot on this row, and the TMDB stage doesn't own
+        // cinema data. Without this, a fresh resolve wipes every cinema's
+        // slot and the row drops out of `toSchedules` until the next scrape
+        // tick repopulates it.
+        val carriedData = existing.map(_.data).getOrElse(Map.empty[Source, SourceData])
+        // Fetch the full TMDB record in a single round-trip so the SourceData
+        // (Tmdb) slot carries the Polish synopsis, director, cast, runtime,
+        // year, countries and poster — not just the search-hit-shape fields.
+        // On a fetch failure we fall back to the search-hit-shape so the row
+        // at least keeps title + originalTitle + year going forward.
+        val existingTmdbSlot = carriedData.getOrElse(Tmdb, SourceData())
+        val tmdbSlot = detailsOpt match {
+          case Some(d) => SourceData(
+            title          = d.title.orElse(Some(hit.title).filter(_.nonEmpty)).orElse(existingTmdbSlot.title),
+            originalTitle  = d.originalTitle.orElse(hit.originalTitle).orElse(existingTmdbSlot.originalTitle),
+            synopsis       = d.synopsis.orElse(existingTmdbSlot.synopsis),
+            cast           = d.cast.orElse(existingTmdbSlot.cast),
+            director       = d.director.orElse(existingTmdbSlot.director),
+            runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
+            releaseYear    = d.releaseYear.orElse(hit.releaseYear).orElse(existingTmdbSlot.releaseYear),
+            // Canonicalise TMDB's English country names ("United States of
+            // America" → "USA") so the merged-record dedup operates on the
+            // same strings cinemas already write.
+            countries      = if (d.countries.nonEmpty) d.countries.map(CountryNames.canonical).distinct
+                             else existingTmdbSlot.countries,
+            posterUrl      = d.posterUrl.orElse(existingTmdbSlot.posterUrl)
+          )
+          case None => existingTmdbSlot.copy(
+            title         = Some(hit.title).filter(_.nonEmpty).orElse(existingTmdbSlot.title),
+            originalTitle = hit.originalTitle.orElse(existingTmdbSlot.originalTitle),
+            releaseYear   = hit.releaseYear.orElse(existingTmdbSlot.releaseYear)
+          )
+        }
+        val enr = MovieRecord(
+          imdbId            = resolvedImdbId,
+          imdbRating        = existing.flatMap(_.imdbRating),
+          metascore         = existing.flatMap(_.metascore),
+          filmwebUrl        = existing.flatMap(_.filmwebUrl),
+          filmwebRating     = existing.flatMap(_.filmwebRating),
+          rottenTomatoes    = existing.flatMap(_.rottenTomatoes),
+          tmdbId            = Some(hit.id),
+          metacriticUrl     = existing.flatMap(_.metacriticUrl),
+          rottenTomatoesUrl = existing.flatMap(_.rottenTomatoesUrl),
+          data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
         )
-        case None => existingTmdbSlot.copy(
-          title         = Some(hit.title).filter(_.nonEmpty).orElse(existingTmdbSlot.title),
-          originalTitle = hit.originalTitle.orElse(existingTmdbSlot.originalTitle),
-          releaseYear   = hit.releaseYear.orElse(existingTmdbSlot.releaseYear)
-        )
+        // Re-key the row by its resolved year when the cinema didn't supply
+        // one and TMDB did. The cache + Mongo are keyed by `(cleanTitle,
+        // year)`; without this, a no-year scrape that TMDB later attaches a
+        // year to stays pinned at `(title, None)` while the debug page,
+        // controller, and downstream consumers all see `(title, Some(YYYY))`
+        // via the resolved accessor. Cinema-supplied years are left
+        // untouched — if a cinema reports a year we trust that as the row's
+        // identity even when TMDB's year disagrees.
+        val targetKey =
+          if (key.year.isEmpty && enr.releaseYear.isDefined) cache.keyOf(key.cleanTitle, enr.releaseYear)
+          else key
+        if (targetKey != key) {
+          logger.debug(s"TMDB stage: re-keying '${key.cleanTitle}' (— → ${enr.releaseYear.get}) — cinemas didn't supply a year.")
+          cache.invalidate(key)
+        }
+        cache.put(targetKey, enr)
+        (targetKey, enr)
       }
-      val enr = MovieRecord(
-        imdbId            = resolvedImdbId,
-        imdbRating        = existing.flatMap(_.imdbRating),
-        metascore         = existing.flatMap(_.metascore),
-        filmwebUrl        = existing.flatMap(_.filmwebUrl),
-        filmwebRating     = existing.flatMap(_.filmwebRating),
-        rottenTomatoes    = existing.flatMap(_.rottenTomatoes),
-        tmdbId            = Some(hit.id),
-        metacriticUrl     = existing.flatMap(_.metacriticUrl),
-        rottenTomatoesUrl = existing.flatMap(_.rottenTomatoesUrl),
-        data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
-      )
-      // Re-key the row by its resolved year when the cinema didn't supply
-      // one and TMDB did. The cache + Mongo are keyed by `(cleanTitle,
-      // year)`; without this, a no-year scrape that TMDB later attaches a
-      // year to stays pinned at `(title, None)` while the debug page,
-      // controller, and downstream consumers all see `(title, Some(YYYY))`
-      // via the resolved accessor. Cinema-supplied years are left
-      // untouched — if a cinema reports a year we trust that as the row's
-      // identity even when TMDB's year disagrees.
-      val targetKey =
-        if (key.year.isEmpty && enr.releaseYear.isDefined) cache.keyOf(key.cleanTitle, enr.releaseYear)
-        else key
-      if (targetKey != key)
-        logger.debug(s"TMDB stage: re-keying '${key.cleanTitle}' (— → ${enr.releaseYear.get}) — cinemas didn't supply a year.")
-      // `cache.rekey` holds the same per-cleanTitle lock that
-      // `recordCinemaScrape` acquires, so a concurrent cinema scrape can
-      // never observe the cache mid-rekey (empty for this title). Without
-      // it, a year=2026 cinema scrape that lands between the invalidate
-      // and the put sees no sibling and creates a phantom (Some(year))
-      // row while the rekey settles at the wrong year — the
-      // "Straszny film" twins regression.
-      cache.rekey(key, targetKey, enr)
-      (targetKey, enr)
     }
 
   // IMDb / Filmweb / Metacritic / Rotten Tomatoes refresh logic lives in the
