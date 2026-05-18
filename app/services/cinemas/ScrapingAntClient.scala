@@ -76,12 +76,18 @@ object ScrapingAntClient extends Logging {
    *  scored as bot-suspicious by a cinema's WAF, picking a different
    *  country gives us a fresh IP pool that hasn't been flagged yet.
    *
+   *  The list is exactly the European entries from ScrapingAnt's supported
+   *  country enum (see docs.scrapingant.com/proxy-settings). Anything
+   *  outside that set returns 422 ("proxy_country is not a valid
+   *  enumeration member") — so the previous, larger list (at/be/dk/fi/…)
+   *  silently burned half the retry budget on 422s. Stick to the enum.
+   *
    *  `pl` is deliberately omitted: it was the first pool that started
    *  returning 423 from multikino.pl, so until it cools off we don't
    *  spend retries hitting a known-bad pool. Easy to re-add later.
    */
   val EuropeanCountries: Vector[String] =
-    Vector("de", "fr", "nl", "gb", "it", "es", "at", "be", "cz", "dk", "fi", "ie", "no", "pt", "se", "ch")
+    Vector("cz", "de", "es", "fr", "gb", "it", "nl")
 
   /** Random pick from `EuropeanCountries`. Used as the `proxyCountry`
    *  thunk so each ScrapingAnt request rolls a fresh country and the
