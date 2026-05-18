@@ -53,17 +53,16 @@ object MultikinoClient {
    */
   def fetchFor(direct: HttpFetch): HttpFetch =
     Env.get("SCRAPINGANT_KEY")
-      .map(k => new ScrapingAntFetch(new ScrapingAntClient(scrapingAntHttpClient, k, proxyCountry = ProxyCountry), HomeUrl))
+      .map(k => new ScrapingAntFetch(
+        new ScrapingAntClient(scrapingAntHttpClient, k, proxyCountry = () => ScrapingAntClient.randomEuropean()),
+        HomeUrl
+      ))
       .getOrElse(direct)
 
-  // `proxy_country` for the ScrapingAnt route. The PL datacenter pool started
-  // returning 423 ("Our browser was detected by target site") on every
-  // retry — same IP class flagged on each attempt, so the in-client
-  // exponential backoff couldn't recover. Picking a different country picks
-  // a different IP pool that hasn't been scored yet. Multikino's API isn't
-  // geo-fenced — the response shape is identical regardless of origin
-  // country. Revisit if `de` itself starts getting blocked.
-  private val ProxyCountry = "de"
+  // The `proxyCountry` thunk fires per ScrapingAnt request — including
+  // each in-client retry attempt — so a single 423 from one pool moves
+  // the next attempt to a different pool. The cinema's API isn't
+  // geo-fenced; we just need to keep dodging IP-class blocks.
 
   // ScrapingAnt has its own cookie-carryover protocol (read `Set-Cookie`
   // off the homepage response, pass via `&cookies=`) that needs raw

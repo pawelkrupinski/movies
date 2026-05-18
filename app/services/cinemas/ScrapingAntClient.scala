@@ -7,6 +7,7 @@ import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.nio.charset.StandardCharsets
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
+import scala.util.Random
 
 /**
  * Thin wrapper around ScrapingAnt's general-purpose proxy API. Encapsulates
@@ -24,7 +25,7 @@ import scala.jdk.CollectionConverters._
  * `browser=false` keeps the response raw — the headless-browser mode wraps
  * JSON in `<pre>`, costs more credits, and gets caught by anti-bot detection.
  */
-class ScrapingAntClient(httpClient: HttpClient, key: String, proxyCountry: String = "pl") {
+class ScrapingAntClient(httpClient: HttpClient, key: String, proxyCountry: () => String = () => "pl") {
   import ScrapingAntClient._
 
   /** GET `targetUrl` via ScrapingAnt, carrying cookies harvested from a first
@@ -52,7 +53,7 @@ class ScrapingAntClient(httpClient: HttpClient, key: String, proxyCountry: Strin
 
   private def request(targetUrl: String, extraParams: String) =
     HttpRequest.newBuilder()
-      .uri(URI.create(s"$Endpoint?url=${urlEncode(targetUrl)}&proxy_country=$proxyCountry&browser=false$extraParams"))
+      .uri(URI.create(s"$Endpoint?url=${urlEncode(targetUrl)}&proxy_country=${proxyCountry()}&browser=false$extraParams"))
       .header("x-api-key", key)
       .header("Accept", "application/json, text/plain, */*")
       .GET()
@@ -69,6 +70,26 @@ class ScrapingAntClient(httpClient: HttpClient, key: String, proxyCountry: Strin
 
 object ScrapingAntClient extends Logging {
   private val Endpoint              = "https://api.scrapingant.com/v2/general"
+
+  /** ScrapingAnt-supported European proxy pools we cycle through to evade
+   *  per-pool anti-bot blocks. When one country's datacenter range gets
+   *  scored as bot-suspicious by a cinema's WAF, picking a different
+   *  country gives us a fresh IP pool that hasn't been flagged yet.
+   *
+   *  `pl` is deliberately omitted: it was the first pool that started
+   *  returning 423 from multikino.pl, so until it cools off we don't
+   *  spend retries hitting a known-bad pool. Easy to re-add later.
+   */
+  val EuropeanCountries: Vector[String] =
+    Vector("de", "fr", "nl", "gb", "it", "es", "at", "be", "cz", "dk", "fi", "ie", "no", "pt", "se", "ch")
+
+  /** Random pick from `EuropeanCountries`. Used as the `proxyCountry`
+   *  thunk so each ScrapingAnt request rolls a fresh country and the
+   *  in-client retry loop naturally tries different pools on failure.
+   */
+  def randomEuropean(): String =
+    EuropeanCountries(Random.nextInt(EuropeanCountries.length))
+
   // Total worst-case wait with 5 attempts × 2s exponential backoff:
   //   2s + 4s + 8s + 16s = 30s of sleeping across 5 calls.
   // Long enough to let the free-tier concurrency counter (HTTP 409) flush
