@@ -215,6 +215,13 @@
   }
   .nav-tab:hover { background: #3a3a6e; color: #fff; }
   .nav-tab.active { background: #3a3a6e; color: #fff; }
+  /* Favourites tab renders as a yellow star instead of text — matches the
+     fav-star colour used on listing-card and film-page poster buttons so
+     the whole "favourite" idea is visually consistent. Slightly larger
+     than the text tabs so the glyph reads cleanly at the navbar height. */
+  .nav-tab-fav { color: #ffd24a; font-size: 1.05rem; line-height: 1; padding: .2rem .55rem; }
+  .nav-tab-fav:hover { color: #ffd24a; background: #3a3a6e; }
+  .nav-tab-fav.active { color: #ffd24a; background: #3a3a6e; }
   .navbar-search-date { margin-left: auto; order: 2; }
   .navbar-cinema-controls { order: 3; }
   /* Desktop: Filtry follows Kina (cinema-controls) at the far right. */
