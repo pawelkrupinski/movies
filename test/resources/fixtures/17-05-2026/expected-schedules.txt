@@ -6,7 +6,7 @@ releaseYear:       2026
 countries:         Korea Południowa
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8178O2R.jpg
 synopsis.length:   700
-cast:              TXT
+cast:              Txt
 director:          —
 tmdbId:            1685309
 imdbId:            tt42204634
@@ -3177,7 +3177,7 @@ releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2025/mortal-kombat-2/mortal-kombat-plakat-cut.jpg?rev=6157d952d8894de6993299b8ba475d50
 synopsis.length:   420
-cast:              KARL URBAN, ADELINE RUDOLPH, LEWIS TAN, JESSICA MCNAMEE, JOSH LAWSON, TADANOBU ASANO, MEHCAD BROOKS, LUDI LIN, DAMON HERRIMAN, TATI GABRIELLE, MARTYN FORD, CHIN HAN, JOE TASLIM, HIROYUKI SANADA, DESMOND CHIAM, ANA THU NGUYEN, MAX HUANG, C.J. BLOOMFI
+cast:              Karl Urban, Adeline Rudolph, Lewis Tan, Jessica Mcnamee, Josh Lawson, Tadanobu Asano, Mehcad Brooks, Ludi Lin, Damon Herriman, Tati Gabrielle, Martyn Ford, Chin Han, Joe Taslim, Hiroyuki Sanada, Desmond Chiam, Ana Thu Nguyen, Max Huang
 director:          Simon McQuoid
 tmdbId:            931285
 imdbId:            tt17490712
@@ -3229,8 +3229,8 @@ releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7478S2R1.jpg
 synopsis.length:   321
-cast:              KARL URBAN, ADELINE RUDOLPH, LEWIS TAN, JESSICA MCNAMEE, JOSH LAWSON, TADANOBU ASANO, MEHCAD BROOKS, LUDI LIN, DAMON HERRIMAN, TATI GABRIELLE, MARTYN FORD, CHIN HAN, JOE TASLIM, HIROYUKI SANADA, DESMOND CHIAM, ANA THU NGUYEN, MAX HUANG, C.J. BLOOMFI
-director:          SIMON MCQUOID
+cast:              Karl Urban, Adeline Rudolph, Lewis Tan, Jessica Mcnamee, Josh Lawson, Tadanobu Asano, Mehcad Brooks, Ludi Lin, Damon Herriman, Tati Gabrielle, Martyn Ford, Chin Han, Joe Taslim, Hiroyuki Sanada, Desmond Chiam, Ana Thu Nguyen, Max Huang
+director:          Simon Mcquoid
 tmdbId:            —
 imdbId:            —
 originalTitle:     —

@@ -1,0 +1,62 @@
+package tools
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+class TextNormalizationSpec extends AnyFlatSpec with Matchers {
+
+  "titleCaseIfAllCaps" should "leave properly-cased strings alone" in {
+    TextNormalization.titleCaseIfAllCaps("Karl Urban")  shouldBe "Karl Urban"
+    TextNormalization.titleCaseIfAllCaps("Anne Hathaway, Meryl Streep") shouldBe "Anne Hathaway, Meryl Streep"
+  }
+
+  it should "leave mixed-case strings alone even if mostly uppercase" in {
+    // A single lowercase letter is enough signal that the source already
+    // cased the string and we shouldn't second-guess.
+    TextNormalization.titleCaseIfAllCaps("MARTYN Ford") shouldBe "MARTYN Ford"
+  }
+
+  it should "title-case an ALL CAPS comma-list of names" in {
+    TextNormalization.titleCaseIfAllCaps("KARL URBAN, ADELINE RUDOLPH, LEWIS TAN") shouldBe
+      "Karl Urban, Adeline Rudolph, Lewis Tan"
+  }
+
+  it should "preserve dotted initials when title-casing" in {
+    // "C.J." reads as the start of a fresh word after each dot, so each
+    // initial letter stays uppercase.
+    TextNormalization.titleCaseIfAllCaps("C.J. BLOOMFIELD")  shouldBe "C.J. Bloomfield"
+    TextNormalization.titleCaseIfAllCaps("F.B.I. AGENT")     shouldBe "F.B.I. Agent"
+  }
+
+  it should "handle apostrophes and hyphens" in {
+    TextNormalization.titleCaseIfAllCaps("O'BRIEN")    shouldBe "O'Brien"
+    TextNormalization.titleCaseIfAllCaps("MARY-ANN")   shouldBe "Mary-Ann"
+  }
+
+  it should "return empty input unchanged" in {
+    TextNormalization.titleCaseIfAllCaps("") shouldBe ""
+  }
+
+  // ── dropTrailingPartialNameIfLong ──────────────────────────────────────────
+
+  "dropTrailingPartialNameIfLong" should "leave short strings alone" in {
+    TextNormalization.dropTrailingPartialNameIfLong("Karl Urban, Meryl Streep") shouldBe
+      "Karl Urban, Meryl Streep"
+  }
+
+  it should "strip the trailing partial name when the cast string is at Cinema City's truncation length" in {
+    // Exact production case: Cinema City's filmDetails JSON caps at ~232
+    // chars and `C.J. BLOOMFI` is "C.J. Bloomfield" cut mid-word.
+    val truncated = "KARL URBAN, ADELINE RUDOLPH, LEWIS TAN, JESSICA MCNAMEE, JOSH LAWSON, " +
+      "TADANOBU ASANO, MEHCAD BROOKS, LUDI LIN, DAMON HERRIMAN, TATI GABRIELLE, MARTYN FORD, " +
+      "CHIN HAN, JOE TASLIM, HIROYUKI SANADA, DESMOND CHIAM, ANA THU NGUYEN, MAX HUANG, C.J. BLOOMFI"
+    TextNormalization.dropTrailingPartialNameIfLong(truncated) should endWith ("MAX HUANG")
+    TextNormalization.dropTrailingPartialNameIfLong(truncated) should not include "BLOOMFI"
+  }
+
+  it should "leave the input alone when there's no comma to cut on (single-name suspected truncation)" in {
+    // 240 chars of one word — no comma to fall back on; preserve and move on.
+    val noComma = "A" * 240
+    TextNormalization.dropTrailingPartialNameIfLong(noComma) shouldBe noComma
+  }
+}

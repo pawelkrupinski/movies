@@ -5,7 +5,7 @@ import models.{Cinema, CinemaMovie, MovieRecord, Source, SourceData}
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, TextNormalization}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.util.Try
@@ -356,8 +356,14 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
           title          = Some(cm.movie.title),
           originalTitle  = cm.movie.originalTitle,
           synopsis       = cm.synopsis,
-          cast           = cm.cast,
-          director       = cm.director,
+          // Normalise cast at the write boundary: Cinema City returns
+          // ALL CAPS comma-lists hard-capped at ~232 chars (the trailing
+          // name is sliced mid-word by the upstream JSON field). Drop
+          // the truncated tail first, then Title-Case the result.
+          // Applied here rather than per-cinema so any future source
+          // that ships ALL CAPS or truncates inherits the fix.
+          cast           = cm.cast.map(s => TextNormalization.titleCaseIfAllCaps(TextNormalization.dropTrailingPartialNameIfLong(s))),
+          director       = cm.director.map(TextNormalization.titleCaseIfAllCaps),
           // Some cinema feeds surface runtime as a raw integer that lands as
           // 0 when the upstream field is empty (CC's `length`, Multikino's
           // `runningTime`) or when a parser regex matches "0 min" in
