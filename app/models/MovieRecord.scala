@@ -108,6 +108,23 @@ case class MovieRecord(
   def posterUrl: Option[String] =
     prioritized.iterator.flatMap(_._2.posterUrl).nextOption()
 
+  /** First non-empty trailer URL across cinema sources in priority order.
+   *  Cinema-only: Tmdb / Imdb slots currently don't carry trailers. */
+  def trailerUrl: Option[String] =
+    prioritized.iterator.flatMap(_._2.trailerUrl).nextOption()
+
+  /** Every distinct trailer URL across cinema sources, in source-priority
+   *  order. Same cinema giving the same URL across slots collapses; URL
+   *  shapes that differ but point to the same video are NOT collapsed here
+   *  (different cinemas occasionally surface YouTube / Vimeo links with
+   *  different query params), the view layer collapses by embed URL via
+   *  `TrailerEmbed.embedUrlFor`. */
+  def trailerUrls: Seq[String] = {
+    val seen = scala.collection.mutable.LinkedHashSet.empty[String]
+    prioritized.foreach { case (_, sd) => sd.trailerUrl.foreach(seen.add) }
+    seen.toSeq
+  }
+
   /** Longest non-empty synopsis across all sources. */
   def synopsis: Option[String] =
     data.values.flatMap(_.synopsis).toSeq.sortBy(-_.length).headOption
