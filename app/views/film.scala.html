@@ -110,8 +110,11 @@
       margin: 0 .5rem .4rem 0;
       cursor: pointer;
     }
-    .trailer-link:hover,
-    .trailer-link.active { background: #5a5a9e; color: #fff; }
+    .trailer-link:hover { background: #5a5a9e; color: #fff; }
+    /* Active = the trailer whose player is currently open. Distinct from
+       the hover colour so the "what's playing" pill stays visible at a
+       glance even when the cursor is elsewhere. */
+    .trailer-link.active { background: #aad4ff; color: #1a1a2e; }
     .showtimes-section { margin-top: 2rem; }
     /* Sizes scaled up vs the listing-page card variant of these classes. */
     .date-group .date-label {
@@ -211,7 +214,7 @@
   @defining(film.enrichment.toSeq.flatMap(_.trailerUrls).flatMap(TrailerEmbed.embedUrlFor).distinct) { embedUrls =>
     @if(embedUrls.nonEmpty) {
       <div class="trailer-section">
-        <div class="trailer-heading">@if(embedUrls.size == 1){Zwiastun}else{Zwiastuny}</div>
+        <div class="trailer-heading">Zwiastuny</div>
         <div>
           @for((url, idx) <- embedUrls.zipWithIndex) {
             <button type="button" class="trailer-link" onclick="playTrailer(this, '@url')">Zwiastun @{idx + 1}</button>
@@ -232,9 +235,18 @@
         function playTrailer(btn, url) {
           const frame  = document.getElementById('trailer-frame');
           const iframe = document.getElementById('trailer-iframe');
-          // Append autoplay=1 (works for both YouTube and Vimeo). Use the
-          // right separator depending on whether the embed URL already has
-          // a query string.
+          // Re-clicking the currently-active button stops the video
+          // (clear src) and hides the player slot. Clearing src is what
+          // actually stops playback — display:none alone keeps audio
+          // playing in some browsers.
+          if (btn.classList.contains('active')) {
+            iframe.src = '';
+            frame.style.display = 'none';
+            btn.classList.remove('active');
+            return;
+          }
+          // First open or switch trailer: set src + autoplay, show slot,
+          // move the active marker to this button.
           const sep = url.includes('?') ? '&' : '?';
           iframe.src = url + sep + 'autoplay=1';
           frame.style.display = '';
