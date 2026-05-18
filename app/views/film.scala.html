@@ -151,6 +151,11 @@
     .cinema-label-link { color: #66aadd; text-decoration: none; }
     .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
   </style>
+  @* Shared showtime-pill styles — `.badge-time`, `.badge-fmt`, and the
+     hover-revealed `.fav-star` rules. Same partial the listing / kina /
+     favourites pages load via `_sharedStyles`, so a pill on the film page
+     looks identical to the listing's. *@
+  @_pillStyles()
   @_ratingStyles()
 </head>
 <body>
