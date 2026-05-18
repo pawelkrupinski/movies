@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25 AS build
+FROM eclipse-temurin:21 AS build
 WORKDIR /app
 
 # Install sbt
@@ -19,23 +19,21 @@ COPY conf/ conf/
 RUN sbt stage
 
 # ── Runtime image ─────────────────────────────────────────────────────────────
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:21-jre
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app
 COPY --from=build /app/target/universal/stage .
 EXPOSE 9000
-# `--sun-misc-unsafe-memory-access=allow`: Scala 3.3.7's LazyVals runtime
-# helper still calls `sun.misc.Unsafe.objectFieldOffset`; JDK 24+'s default
-# warns on every such call. The 3.3 LTS line hasn't backported the
-# VarHandle migration that landed in 3.4+, so until the next Scala LTS
-# adopts it (or we move off 3.3) the warning is noise — `allow` silences
-# it. `warn` is the default; `deny` would block the call.
+# Temporarily reverted to Java 21 to isolate Java 25's non-heap footprint
+# as the OOM trigger on the 512 MB Fly machine. The
+# `--sun-misc-unsafe-memory-access=allow` flag (Scala 3.3.7's LazyVals
+# helper, JDK 24+ deprecation noise) is JDK 24+-only and would crash the
+# JVM on launch, so it's dropped while we're on 21.
 CMD exec bin/movies \
     -Dplay.http.secret.key="${APPLICATION_SECRET}" \
     -Dplay.server.http.address=0.0.0.0 \
     -Dhttp.address=0.0.0.0 \
     -Dpidfile.path=/dev/null \
     -J-Xmx256m \
-    -J-Xms128m \
-    -J--sun-misc-unsafe-memory-access=allow
+    -J-Xms128m
