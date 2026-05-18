@@ -136,24 +136,23 @@
   .card:hover .fav-poster-btn { opacity: 1; }
   .fav-poster-btn.is-fav { opacity: 1; color: #ffd24a; }
   /* Per-screening favourite star: lives inside each .badge-time pill. The
-     star ALWAYS occupies its natural width so the row's wrap calculation
-     reserves space for it — without that, hovering the last pill in a row
-     would expand the pill mid-line and push it onto the next row, jumping
-     under the cursor. `visibility: hidden` keeps the box in layout but
-     paints nothing. On hover it dims in (yellow at low alpha); once
-     toggled it stays full-yellow regardless of hover. */
+     star takes no space at rest — the pill stays compact. On hover it
+     slides in and the pill expands. Once toggled it stays visible
+     full-yellow regardless of hover. (Trade-off: when a non-favourited
+     pill sits right at a wrap boundary, hovering can push it onto the
+     next line. Avoiding that without permanently reserving width would
+     need JS row-detection — held off for now.) */
   .fav-star {
-    visibility: hidden;
-    display: inline-block;
+    display: none;
     margin-left: 4px;
     font-size: .85em;
     line-height: 1;
     cursor: pointer;
     user-select: none;
   }
-  .badge-time:hover .fav-star { visibility: visible; color: rgba(255,210,74,.55); }
+  .badge-time:hover .fav-star { display: inline-block; color: rgba(255,210,74,.55); }
   .fav-star.is-fav,
-  .badge-time:hover .fav-star.is-fav { visibility: visible; color: #ffd24a; }
+  .badge-time:hover .fav-star.is-fav { display: inline-block; color: #ffd24a; }
   .dropdown-panel {
     position: absolute;
     top: calc(100% + 6px);
