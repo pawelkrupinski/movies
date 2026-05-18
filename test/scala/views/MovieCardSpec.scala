@@ -26,4 +26,12 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
     rendered                          should include ("Brak plakatu")
     rendered                          should include ("display:none")
   }
+
+  // The whole-movie favourites star (drives /ulubione + the visual yellow
+  // state). Lives next to the existing hide button on the poster.
+  it should "render a poster-overlay favourite button wired to toggleFavMovie" in {
+    val rendered = views.html._movieCard(movie, None)(Html("")).body
+    rendered                          should include ("fav-poster-btn")
+    rendered                          should include ("toggleFavMovie(this)")
+  }
 }

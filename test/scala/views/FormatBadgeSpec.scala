@@ -78,4 +78,23 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
     html should include ("""data-format=""""")
     html should include ("""data-format="2D"""")
   }
+
+  // ── Per-screening favourite star + data-screening-id ──────────────────────
+
+  it should "carry a stable data-screening-id and an inline fav-star on each badge" in {
+    val showtimes = Seq(
+      Showtime(baseTime, Some("https://example.com/a"), Some("Sala 1"), List("2D")),
+    )
+    val html = views.html._filmCards(Seq(schedule(showtimes))).body
+    // Per-pill star (clickable inside the <a>; the JS handler stops the
+    // booking-link navigation when toggled).
+    html should include ("""class="fav-star"""")
+    html should include ("""toggleFavScreening(event, this)""")
+    // ID format: "title|cinema|ISO-datetime" — uniquely identifies a
+    // screening across reruns and is the localStorage key.
+    html should include (s"""data-screening-id="Test movie|${Helios.displayName}|$baseTime"""")
+    // `data-time` is the JS indexer's read site for the from-hour filter —
+    // necessary because the leading fav-star span shifted `firstChild`.
+    html should include ("""data-time="18:00"""")
+  }
 }

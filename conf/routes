@@ -2,6 +2,7 @@
 GET     /                           controllers.MovieController.index()
 GET     /film                       controllers.MovieController.film(title: String)
 GET     /kina                       controllers.MovieController.kina()
+GET     /ulubione                   controllers.MovieController.favourites()
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
 GET     /debug                      controllers.MovieController.debug()

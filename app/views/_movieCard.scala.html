@@ -4,6 +4,7 @@
 <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" onclick="hideFilm(this)" title="Ukryj film">✕</button>
+    <button type="button" class="fav-poster-btn" onclick="toggleFavMovie(this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</button>
     <a href="@FilmHref(movie.title)" style="display:block;height:100%">
       @posterUrl match {
         case Some(url) => {

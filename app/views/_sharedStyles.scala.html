@@ -114,6 +114,43 @@
     display: flex; align-items: center; justify-content: center;
   }
   .card:hover .hide-btn { opacity: 1; }
+  /* Favourite-the-whole-movie button: mirror of .hide-btn (top-left, larger
+     star). Hidden by default and revealed on card hover; once a movie is
+     marked favourite, the star turns yellow and stays visible permanently. */
+  .fav-poster-btn {
+    position: absolute;
+    top: 6px; left: 6px;
+    z-index: 10;
+    background: rgba(0,0,0,.55);
+    border: none;
+    color: #fff;
+    border-radius: 50%;
+    width: 26px; height: 26px;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s, color .15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .card:hover .fav-poster-btn { opacity: 1; }
+  .fav-poster-btn.is-fav { opacity: 1; color: #ffd24a; }
+  /* Per-screening favourite star: lives inside each .badge-time pill. Empty
+     (transparent) by default; on hover of the pill it dims in so the user
+     sees the affordance; once toggled it turns yellow and stays. */
+  .fav-star {
+    display: inline-block;
+    margin-right: 3px;
+    font-size: .85em;
+    line-height: 1;
+    color: transparent;
+    cursor: pointer;
+    transition: color .12s;
+    user-select: none;
+  }
+  .badge-time:hover .fav-star { color: rgba(255,210,74,.45); }
+  .fav-star.is-fav,
+  .badge-time:hover .fav-star.is-fav { color: #ffd24a; }
   .dropdown-panel {
     position: absolute;
     top: calc(100% + 6px);

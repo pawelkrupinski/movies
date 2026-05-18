@@ -136,7 +136,16 @@ class MovieController( cc: ControllerComponents,
                      ) extends AbstractController(cc) {
 
   def index(): Action[AnyContent] = Action { request =>
-    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode))
+    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, favouritesMode = false))
+  }
+
+  // Same data as `/`; the `favouritesMode` flag tells the client to apply
+  // a localStorage-backed filter that hides every movie / screening not
+  // marked as a favourite. The server is intentionally not involved in
+  // reading favourites — the storage is per-browser and never shipped to
+  // the server.
+  def favourites(): Action[AnyContent] = Action { request =>
+    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, favouritesMode = true))
   }
 
   // Permissive robots.txt — link-preview scrapers (Facebook's

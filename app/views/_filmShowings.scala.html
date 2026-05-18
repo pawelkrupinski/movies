@@ -28,17 +28,25 @@
         </div>
         <div>
           @for(slot <- cinemaShowtimes.showtimes) {
-            @defining(slot.room.map(r => Html(s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""")).getOrElse(Html(""))) { roomAttr =>
-            @defining(slot.format.filterNot(commonToks.contains).mkString(" ")) { stripped =>
-            @defining(if (stripped.isEmpty) Html("") else Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(stripped)}</span>""")) { fmtBadge =>
-            @defining(slot.format.mkString(" ")) { fmtAttr =>
-              @slot.bookingUrl match {
-                case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr data-format="@fmtAttr">@{slot.dateTime.toLocalTime}@fmtBadge</a> }
-                case None      => { <span class="badge-time"@roomAttr data-format="@fmtAttr">@{slot.dateTime.toLocalTime}@fmtBadge</span> }
+            @* Pre-compute every attribute in a single Scala block — Twirl's
+               nested `@defining` chains hit a pathological case in Scala 3's
+               typer when the closure depth gets too deep, so build the badge
+               attribute string upfront and emit a single tag. *@
+            @{
+              val tokens     = slot.format.filterNot(commonToks.contains).mkString(" ")
+              val fmtBadge   = if (tokens.isEmpty) "" else s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(tokens)}</span>"""
+              val roomAttr   = slot.room.map(r => s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""").getOrElse("")
+              val fmtAttr    = slot.format.mkString(" ")
+              val time       = slot.dateTime.toLocalTime.toString
+              val screening  = s"${film.movie.title}|${cinemaShowtimes.cinema.displayName}|${slot.dateTime}"
+              val star       = """<span class="fav-star" onclick="toggleFavScreening(event, this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</span>"""
+              val attrs      = s"""$roomAttr data-format="${play.twirl.api.HtmlFormat.escape(fmtAttr)}" data-screening-id="${play.twirl.api.HtmlFormat.escape(screening)}" data-time="$time""""
+              val body       = s"$star$time$fmtBadge"
+              val tag        = slot.bookingUrl match {
+                case Some(url) => s"""<a href="${play.twirl.api.HtmlFormat.escape(url)}" class="badge-time" target="_blank"$attrs>$body</a>"""
+                case None      => s"""<span class="badge-time"$attrs>$body</span>"""
               }
-            }
-            }
-            }
+              Html(tag)
             }
           }
         </div>
