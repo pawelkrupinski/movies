@@ -154,7 +154,12 @@
   .badge-time:hover .fav-star { display: inline-block; color: rgba(255,210,74,.55); }
   .fav-star.is-fav,
   .badge-time:hover .fav-star.is-fav { display: inline-block; color: #ffd24a; }
-  .badge-time.needs-star-room { padding-right: calc(.5em + 14px); }
+  /* Invisible right-margin (not padding) — the pill's visible bounds stay
+     identical, but the wrap calculator sees the box as ~18 px wider,
+     which forces this pill onto the next line. End result: the user
+     never sees the pill grow, only sees it sit on its own line so the
+     hover-expansion has room. */
+  .badge-time.needs-star-room { margin-right: 18px; }
   .dropdown-panel {
     position: absolute;
     top: calc(100% + 6px);
