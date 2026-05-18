@@ -36,6 +36,6 @@ CMD exec bin/movies \
     -Dplay.server.http.address=0.0.0.0 \
     -Dhttp.address=0.0.0.0 \
     -Dpidfile.path=/dev/null \
-    -J-Xmx400m \
+    -J-Xmx256m \
     -J-Xms128m \
     -J--sun-misc-unsafe-memory-access=allow
