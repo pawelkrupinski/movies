@@ -32,5 +32,10 @@ case class SourceData(
   posterUrl:      Option[String]  = None,
   // Cinema-only: empty for `Tmdb` / `Imdb` slots.
   filmUrl:        Option[String]  = None,
+  // Cinema-only: a video URL the cinema's own page surfaces for the film,
+  // most commonly a YouTube watch / embed link. Other shapes (vimeo, raw
+  // mp4, brightcove) are accepted verbatim; the view layer normalises to
+  // an embed URL at display time via `TrailerEmbed.embedUrlFor`.
+  trailerUrl:     Option[String]  = None,
   showtimes:      Seq[Showtime]   = Seq.empty
 )

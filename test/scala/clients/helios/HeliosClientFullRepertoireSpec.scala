@@ -663,4 +663,24 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     val first = byTitle("Mortal Kombat II").showtimes.head
     first.dateTime shouldBe LocalDateTime.of(2026, 5, 13, 13, 30)
   }
+
+  // ── Trailers ──────────────────────────────────────────────────────────────
+  //
+  // Helios' REST `trailers: [<url>]` ships a mix of YouTube /embed/ URLs and
+  // self-hosted `movies.helios.pl/images/<id>` URLs (a CDN wrapper that's not
+  // an embeddable video page). Only YouTube URLs reach the cache —
+  // canonicalised to `watch?v=<id>` for the view to reshape to /embed/.
+
+  it should "extract YouTube trailers and canonicalise them to watch URLs" in {
+    byTitle("Obsesja").trailerUrl shouldBe
+      Some("https://www.youtube.com/watch?v=T1s2hVar3f0")
+    byTitle("Kurozając i Świątynia Świstaka").trailerUrl shouldBe
+      Some("https://www.youtube.com/watch?v=dExv55xsVEg")
+  }
+
+  it should "drop non-YouTube (helios.pl-hosted) trailer URLs" in {
+    // Projekt Hail Mary's `trailers` is `["https://movies.helios.pl/images/82fwdwQX1kI"]`
+    // — not an embeddable page, so trailerUrl stays None for the cache + view.
+    byTitle("Projekt Hail Mary").trailerUrl shouldBe None
+  }
 }

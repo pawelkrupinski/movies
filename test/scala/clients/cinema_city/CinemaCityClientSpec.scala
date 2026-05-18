@@ -175,6 +175,20 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Mortal Kombat II").synopsis shouldBe None
   }
 
+  // CC's `var filmDetails = {…}` JSON carries a `videoLink` field with the
+  // film's YouTube trailer URL (escaped slashes in the JSON). We canonicalise
+  // to a `watch?v=…` URL and store that; the view normalises to /embed/ at
+  // render time. Detail-page fixture absent ⇒ trailerUrl stays None.
+
+  it should "parse trailerUrl from the per-film details page's videoLink" in {
+    val byTitle = kinepolis.map(m => m.movie.title -> m).toMap
+    byTitle("Diabeł ubiera się u Prady 2").trailerUrl shouldBe
+      Some("https://www.youtube.com/watch?v=aavScEADaDc")
+    byTitle("Kurozając i świątynia świstaka").trailerUrl shouldBe
+      Some("https://www.youtube.com/watch?v=0vkZBpvqh88")
+    byTitle("Mortal Kombat II").trailerUrl shouldBe None
+  }
+
   // ─── Kinepolis: poster URLs ───────────────────────────────────────────────
 
   it should "return correct poster URL for every film" in {

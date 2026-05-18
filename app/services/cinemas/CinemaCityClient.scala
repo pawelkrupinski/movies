@@ -132,7 +132,8 @@ class CinemaCityClient(http: HttpFetch) {
             showtimes   = slots.toSeq.map { case (_, dateTime, bookingUrl, room, format) =>
               Showtime(dateTime, bookingUrl, room, format)
             }.sortBy(_.dateTime),
-            externalIds = Map("cc" -> filmId)
+            externalIds = Map("cc" -> filmId),
+            trailerUrl  = details.trailerUrl
           )
         }
       }
@@ -146,14 +147,15 @@ object CinemaCityClient {
    *  the page's embedded `var filmDetails = {…}` JSON blob, which carries
    *  the same shape the in-page React component renders from. */
   case class Details(
-    synopsis:  Option[String],
-    cast:      Option[String],
-    director:  Option[String],
-    countries: Seq[String]
+    synopsis:   Option[String],
+    cast:       Option[String],
+    director:   Option[String],
+    countries:  Seq[String],
+    trailerUrl: Option[String]
   )
 
   object Details {
-    val empty: Details = Details(None, None, None, Seq.empty)
+    val empty: Details = Details(None, None, None, Seq.empty, None)
   }
 
   // Embedded JS object: `var filmDetails = { ... };`. Single-line, JSON-valued.
@@ -180,7 +182,21 @@ object CinemaCityClient {
       .orElse(js.flatMap(j => (j \ "releaseCountry").asOpt[String]).filter(_.nonEmpty)
         .map(s => s.split(",").map(_.trim).filter(_.nonEmpty).toSeq))
       .getOrElse(Seq.empty)
-    Details(synopsis = synopsis, cast = cast, director = director, countries = countries)
+    // Trailer: `filmDetails.videoLink` is a single YouTube watch URL when the
+    // film has a trailer. `mediaList[].url` for `type=="Video"` is the same
+    // URL surfaced under the media-gallery shape; we read it as a fallback
+    // for films where `videoLink` is empty but a Video entry exists.
+    val videoLink = js.flatMap(j => (j \ "videoLink").asOpt[String]).filter(_.nonEmpty)
+    val mediaVideo = js.flatMap { j =>
+      (j \ "mediaList").asOpt[JsArray].flatMap(_.value
+        .find(m => (m \ "type").asOpt[String].contains("Video"))
+        .flatMap(m => (m \ "url").asOpt[String])
+        .filter(_.nonEmpty))
+    }
+    val trailerUrl = videoLink.orElse(mediaVideo)
+      .flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
+        .map(id => s"https://www.youtube.com/watch?v=$id"))
+    Details(synopsis = synopsis, cast = cast, director = director, countries = countries, trailerUrl = trailerUrl)
   }
 
   /** Extract production-country list from the `<p>Produkcja: …</p>` line.

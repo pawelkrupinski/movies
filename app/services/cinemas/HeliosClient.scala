@@ -90,7 +90,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
     premiereWorld: Option[java.time.LocalDate],
     posterUrl:     Option[String],
     slug:          Option[String],
-    countries:     Seq[String]
+    countries:     Seq[String],
+    trailerUrl:    Option[String]
   )
 
   private def parseApiMovieBody(body: String): Option[ApiMovieInfo] =
@@ -113,7 +114,16 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
                             .filter(_.startsWith("http")),
           slug          = (js \ "slug").asOpt[String].filter(_.nonEmpty),
           countries     = (js \ "country").asOpt[String].map(_.trim).filter(_.nonEmpty)
-                            .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+                            .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+          // Helios ships `trailers: [<youtube embed URL>]`. Take the first
+          // entry; for non-embed YouTube URLs (live API has been seen to mix
+          // both shapes) we re-canonicalise to the watch URL and let the
+          // view layer convert back to /embed/ via TrailerEmbed.
+          trailerUrl    = (js \ "trailers").asOpt[JsArray]
+                            .flatMap(_.value.headOption).flatMap(_.asOpt[String])
+                            .filter(_.nonEmpty)
+                            .flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
+                              .map(id => s"https://www.youtube.com/watch?v=$id"))
         )
       }
     }
@@ -153,11 +163,12 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
           premiereWorld  = restInfo.flatMap(_.premiereWorld),
           countries      = restInfo.map(_.countries).getOrElse(cm.movie.countries)
         ),
-        posterUrl = restInfo.flatMap(_.posterUrl).orElse(cm.posterUrl),
-        synopsis  = restInfo.flatMap(_.description),
-        cast      = restInfo.flatMap(_.cast),
-        director  = restInfo.flatMap(_.director),
-        showtimes = cm.showtimes.map(enrichShowtime(_, rest))
+        posterUrl  = restInfo.flatMap(_.posterUrl).orElse(cm.posterUrl),
+        synopsis   = restInfo.flatMap(_.description),
+        cast       = restInfo.flatMap(_.cast),
+        director   = restInfo.flatMap(_.director),
+        trailerUrl = restInfo.flatMap(_.trailerUrl).orElse(cm.trailerUrl),
+        showtimes  = cm.showtimes.map(enrichShowtime(_, rest))
       )
     }
 
@@ -184,10 +195,11 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
             cinema    = Helios,
             posterUrl = info.posterUrl,
             filmUrl   = info.slug.map(s => s"$BaseUrl/filmy/$s"),
-            synopsis  = info.description,
-            cast      = info.cast,
-            director  = info.director,
-            showtimes = screenings.toSeq.flatMap(restShowtime(_, rest)).distinct.sortBy(_.dateTime)
+            synopsis   = info.description,
+            cast       = info.cast,
+            director   = info.director,
+            trailerUrl = info.trailerUrl,
+            showtimes  = screenings.toSeq.flatMap(restShowtime(_, rest)).distinct.sortBy(_.dateTime)
           ))
       }
       .filter(_.showtimes.nonEmpty)

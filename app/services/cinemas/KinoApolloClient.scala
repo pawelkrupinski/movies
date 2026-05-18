@@ -85,6 +85,12 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
   //   - Wajda cycle:   `<strong>obsada/cast:</strong> name1, name2, …`
   // Both end at the first subsequent `<` (closing tag, line break, …).
   private val CastPat      = """(?:>\s*Obsada:\s*<a[^>]*>|<strong>obsada/cast:</strong>\s*)([^<]+)""".r
+  // YouTube trailer URL — Apollo's video widget embeds the trailer via an
+  // Elementor button block whose `data-settings="..."` attribute contains
+  // a JSON object with `youtube_url`. The whole attribute is HTML-escaped
+  // (`&quot;` for `"`) and the URL's slashes are JSON-escaped (`\/`).
+  // Captured form: `youtube_url&quot;:&quot;http:\/\/youtube.com\/...&quot;`.
+  private val YouTubeUrlPat = """youtube_url&quot;:&quot;([^"&]+)&quot;""".r
 
   def fetch(): Seq[CinemaMovie] = {
     val movies = parseHtml(http.get(PageUrl))
@@ -95,24 +101,26 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
       movies.map { m =>
         val meta = m.filmUrl.flatMap(metas.get).getOrElse(EmptyDetailMeta)
         m.copy(
-          movie    = m.movie.copy(runtimeMinutes = meta.runtime, countries = meta.countries),
-          synopsis = meta.synopsis.orElse(m.synopsis),
-          director = meta.director.orElse(m.director),
-          cast     = meta.cast.orElse(m.cast)
+          movie      = m.movie.copy(runtimeMinutes = meta.runtime, countries = meta.countries),
+          synopsis   = meta.synopsis.orElse(m.synopsis),
+          director   = meta.director.orElse(m.director),
+          cast       = meta.cast.orElse(m.cast),
+          trailerUrl = meta.trailerUrl.orElse(m.trailerUrl)
         )
       }
     }
   }
 
   case class DetailMeta(
-    runtime:   Option[Int],
-    synopsis:  Option[String],
-    director:  Option[String],
-    cast:      Option[String],
-    countries: Seq[String]
+    runtime:    Option[Int],
+    synopsis:   Option[String],
+    director:   Option[String],
+    cast:       Option[String],
+    countries:  Seq[String],
+    trailerUrl: Option[String]
   )
 
-  private val EmptyDetailMeta = DetailMeta(None, None, None, None, Seq.empty)
+  private val EmptyDetailMeta = DetailMeta(None, None, None, None, Seq.empty, None)
 
   private def fetchDetails(urls: Seq[String]): Map[String, DetailMeta] = {
     val ec = DaemonExecutors.virtualThreadEC("kino-apollo-details")
@@ -138,13 +146,23 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
     val firstEditorHtml = Option(doc.select("div.elementor-widget-text-editor div.elementor-widget-container").first())
       .map(_.html()).getOrElse("")
     DetailMeta(
-      runtime   = parseRuntime(html),
-      synopsis  = parseSynopsis(html),
-      director  = DirectorPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty),
-      cast      = CastPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim.stripSuffix(",").trim).filter(_.nonEmpty),
-      countries = parseCountries(html)
+      runtime    = parseRuntime(html),
+      synopsis   = parseSynopsis(html),
+      director   = DirectorPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty),
+      cast       = CastPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim.stripSuffix(",").trim).filter(_.nonEmpty),
+      countries  = parseCountries(html),
+      trailerUrl = parseTrailer(html)
     )
   }
+
+  /** YouTube trailer URL from the Elementor button block. Returns the
+   *  canonical `youtube.com/watch?v=ID` form when the captured URL parses
+   *  as a YouTube video; otherwise None. */
+  def parseTrailer(html: String): Option[String] =
+    YouTubeUrlPat.findFirstMatchIn(html)
+      .map(_.group(1).replace("\\/", "/"))
+      .flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
+        .map(id => s"https://www.youtube.com/watch?v=$id"))
 
   // Producent: in the page header (a sibling heading widget — not inside the
   // first text-editor). Split on `,` and only commit to the values as

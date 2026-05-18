@@ -27,19 +27,28 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
   // CSRF-token suffix elsewhere on the page can't masquerade as the year/runtime.
   private val MetaPat = """reż\.\s+([^<]+?)\s*(19\d{2}|20\d{2})\s*[,.]\s*(\d+)['’]""".r.unanchored
 
+  // Trailer link — Pałacowe embeds the YouTube watch URL in the film page's
+  // gallery: `<a class="gallery__movie ..." href="https://www.youtube.com/watch?v=…">`.
+  // Other unrelated YouTube channel links also appear on the page (banner,
+  // footer); the gallery class is what distinguishes the trailer's anchor.
+  private val TrailerPat = """<a[^>]*class="gallery__movie[^"]*"[^>]*href="(https?://(?:www\.)?(?:youtube\.com|youtu\.be|player\.vimeo\.com|vimeo\.com)/[^"]+)"""".r
+
   private case class FilmMeta(
     director:    Option[String],
     countries:   Seq[String],
     releaseYear: Option[Int],
-    runtime:     Option[Int]
+    runtime:     Option[Int],
+    trailerUrl:  Option[String]
   )
 
-  private val EmptyMeta = FilmMeta(None, Seq.empty, None, None)
+  private val EmptyMeta = FilmMeta(None, Seq.empty, None, None, None)
 
   private def fetchFilmMeta(filmUrl: String): FilmMeta =
     Try(http.get(filmUrl)).toOption.flatMap(parseFilmMeta).getOrElse(EmptyMeta)
 
-  private def parseFilmMeta(html: String): Option[FilmMeta] =
+  private def parseFilmMeta(html: String): Option[FilmMeta] = {
+    val trailer = parseTrailer(html)
+    val metaFromLine =
     // Strip HTML first \u2014 the meta line is sometimes split across <span> tags
     //   "re\u017c. <span>Carla Sim\u00f3n, </span><span>Hiszpania 2025, 114'</span>"
     // which makes `[^<]+?` in MetaPat fail to cross the tag boundary. Also
@@ -57,9 +66,28 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
         director    = Some(directorParts.mkString(", ")).filter(_.nonEmpty),
         countries   = countryParts,
         releaseYear = Try(m.group(2).toInt).toOption,
-        runtime     = Try(m.group(3).toInt).toOption.filter(n => n >= 30 && n <= 300)
+        runtime     = Try(m.group(3).toInt).toOption.filter(n => n >= 30 && n <= 300),
+        trailerUrl  = trailer
       )
     }
+    // The reż./year/runtime line is the primary signal, but a film page can
+    // still carry a trailer without it (some pages truncate the meta block).
+    // Surface a trailer-only meta in that case so the trailer reaches the
+    // cache anyway.
+    metaFromLine.orElse(trailer.map(t => EmptyMeta.copy(trailerUrl = Some(t))))
+  }
+
+  /** Pałacowe trailer URL parsed from the film page's gallery anchor.
+   *  Returns the canonical `youtube.com/watch?v=ID` form when the captured
+   *  URL parses as a YouTube video; vimeo URLs (a few pages use them) are
+   *  passed through unchanged for the view layer's TrailerEmbed to handle. */
+  def parseTrailer(html: String): Option[String] =
+    TrailerPat.findFirstMatchIn(html).map(_.group(1))
+      .flatMap { url =>
+        services.movies.TrailerEmbed.youTubeId(url)
+          .map(id => s"https://www.youtube.com/watch?v=$id")
+          .orElse(services.movies.TrailerEmbed.vimeoId(url).map(_ => url))
+      }
 
   def fetch(): Seq[CinemaMovie] = {
     val entries = fetchAllEntries()
@@ -89,10 +117,11 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
           cinema    = KinoPalacowe,
           posterUrl = first.posterUrl,
           filmUrl   = first.filmUrl,
-          synopsis  = first.synopsis,
-          cast      = None,
-          director  = meta.director,
-          showtimes = sorted.map(entry => Showtime(entry.dateTime, entry.bookingUrl, entry.room))
+          synopsis   = first.synopsis,
+          cast       = None,
+          director   = meta.director,
+          showtimes  = sorted.map(entry => Showtime(entry.dateTime, entry.bookingUrl, entry.room)),
+          trailerUrl = meta.trailerUrl
         )
       }
   }

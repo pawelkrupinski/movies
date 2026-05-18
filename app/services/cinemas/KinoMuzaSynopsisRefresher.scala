@@ -10,20 +10,29 @@ import java.util.concurrent.TimeUnit
 import scala.util.{Failure, Success, Try}
 
 /**
- * Periodic background job that fills in missing Kino Muza synopses one row
- * at a time. The 5-minute scrape (`KinoMuzaClient.fetch`) only loads the
- * listing page — per-film synopses live on detail pages
- * (`https://www.kinomuza.pl/movie/<slug>/`) and fetching 80+ of them every
- * tick trips Muza's burst limiter, leaving the whole batch empty. This
- * refresher takes a slower, steadier pass: one detail page per tick, far
- * below the rate that triggers the limiter.
+ * Periodic background job that fills in missing Kino Muza synopses (and
+ * trailers) one row at a time. The 5-minute scrape (`KinoMuzaClient.fetch`)
+ * only loads the listing page — per-film synopses and YouTube embed iframes
+ * live on detail pages (`https://www.kinomuza.pl/movie/<slug>/`) and
+ * fetching 80+ of them every tick trips Muza's burst limiter, leaving the
+ * whole batch empty. This refresher takes a slower, steadier pass: one
+ * detail page per tick, far below the rate that triggers the limiter.
+ *
+ * Synopsis + trailer share the same per-row fetch — Muza ships both on the
+ * same detail page, so doing them together costs one HTTP request per
+ * candidate instead of two.
  *
  * Empty-string sentinel for "tried, nothing found": when Muza's detail
  * page parses cleanly but holds no synopsis paragraph, the slot's
  * `synopsis` field is set to `Some("")` — so the candidate filter
  * (`synopsis.isEmpty`, which matches `None` only) doesn't pick it up
- * again. A failed HTTP request leaves `synopsis = None` so the row stays
- * in the queue and the next tick retries.
+ * again. Trailer URLs have no analogous sentinel — a film without a
+ * trailer iframe just keeps `trailerUrl = None` forever, which is what we
+ * want (no display, no retry needed since the page rarely sprouts a
+ * trailer post-release).
+ *
+ * A failed HTTP request leaves both fields untouched so the row stays in
+ * the queue and the next tick retries.
  *
  * Lifecycle owned by `Wiring` (`start()` schedules the periodic tick;
  * `stop()` shuts the scheduler down). Per CLAUDE.md the class never
@@ -64,8 +73,10 @@ class KinoMuzaSynopsisRefresher(
             // row out of the candidate filter on subsequent ticks even when
             // Muza's page has no synopsis paragraph.
             val synopsis = client.parseSynopsis(html).getOrElse("")
-            writeSynopsis(key, synopsis)
-            logger.debug(s"KinoMuza synopsis: ${key.cleanTitle} (${synopsis.length} chars)")
+            val trailer  = client.parseTrailer(html)
+            writeSlot(key, synopsis, trailer)
+            logger.debug(s"KinoMuza synopsis+trailer: ${key.cleanTitle} (${synopsis.length} chars" +
+                         trailer.map(_ => ", trailer").getOrElse("") + ")")
           case Failure(ex) =>
             // Transient fetch failure (timeout, rate limit) — leave the
             // slot's synopsis None so the next tick retries.
@@ -81,10 +92,18 @@ class KinoMuzaSynopsisRefresher(
   private def needsSynopsis(slot: SourceData): Boolean =
     slot.synopsis.isEmpty && slot.filmUrl.isDefined
 
-  private def writeSynopsis(key: services.movies.CacheKey, synopsis: String): Unit =
+  private def writeSlot(key: services.movies.CacheKey, synopsis: String, trailer: Option[String]): Unit =
     cache.putIfPresent(key, current =>
       current.data.get(KinoMuza) match {
-        case Some(s) => current.copy(data = current.data + ((KinoMuza: Source) -> s.copy(synopsis = Some(synopsis))))
+        case Some(s) =>
+          val updated = s.copy(
+            synopsis   = Some(synopsis),
+            // Don't overwrite a trailer URL the listing-scrape's `parseHtml`
+            // path might already have populated (none today, but keep the
+            // refresher idempotent against future schema changes).
+            trailerUrl = trailer.orElse(s.trailerUrl)
+          )
+          current.copy(data = current.data + ((KinoMuza: Source) -> updated))
         case None    => current  // Muza slot dropped between read and write — leave alone.
       }
     )

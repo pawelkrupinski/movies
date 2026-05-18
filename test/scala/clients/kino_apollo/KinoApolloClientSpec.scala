@@ -273,4 +273,29 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     all.exists(_.room.isDefined)  shouldBe false
     all.exists(_.format.nonEmpty) shouldBe false
   }
+
+  // ── Trailers ──────────────────────────────────────────────────────────────
+  //
+  // Apollo's Elementor button block embeds a YouTube URL via a JSON-in-HTML
+  // `data-settings` attribute (`{"youtube_url":"…"}` with `&quot;` for the
+  // quotes and `\/` for the slashes). We canonicalise to a `watch?v=…` form
+  // and store that; the view layer reshapes to /embed/ at render time.
+  //
+  // The "znaki pana sliwki" fixture's `youtube_url` is an `http://youtube.com`
+  // (no scheme upgrade, no `www.`) — that's how Apollo's CMS shipped the URL.
+  // We accept that shape because `TrailerEmbed.youTubeId` doesn't care about
+  // scheme or `www.` prefix.
+
+  it should "extract YouTube trailer URLs from detail-page Elementor blocks" in {
+    byTitle("Znaki Pana Śliwki").trailerUrl shouldBe
+      Some("https://www.youtube.com/watch?v=VJflATrYhU0")
+    byTitle("Drzewo Magii").trailerUrl shouldBe
+      Some("https://www.youtube.com/watch?v=gzRz4XpyKCY")
+    byTitle("Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)").trailerUrl shouldBe
+      Some("https://www.youtube.com/watch?v=RYlitj4DpgE")
+  }
+
+  it should "leave trailerUrl None when the detail page is unreachable" in {
+    byTitle("Milcząca przyjaciółka").trailerUrl shouldBe None
+  }
 }

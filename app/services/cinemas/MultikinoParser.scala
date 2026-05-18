@@ -2,6 +2,7 @@ package services.cinemas
 
 import models.{CinemaMovie, Movie, Multikino, Showtime}
 import play.api.libs.json._
+import services.movies.TrailerEmbed
 
 import java.time.LocalDateTime
 
@@ -59,7 +60,17 @@ object MultikinoParser {
       cast        = (film \ "cast").asOpt[String].filter(_.nonEmpty),
       director    = (film \ "director").asOpt[String].filter(_.nonEmpty),
       showtimes   = sessions.flatMap(parseSession).toSeq,
-      externalIds = (multikinoId.map("mk" -> _) ++ mxcId.map("mxc" -> _)).toMap
+      externalIds = (multikinoId.map("mk" -> _) ++ mxcId.map("mxc" -> _)).toMap,
+      // Multikino's API exposes `trailers: [<url>]` on films that have one
+      // (alongside `hasTrailer` which sometimes stays true even after the
+      // array empties out — only the array entries are usable). Take the
+      // first entry; only commit when it parses as a YouTube URL we can
+      // embed.
+      trailerUrl  = (film \ "trailers").asOpt[JsArray]
+                      .flatMap(_.value.headOption).flatMap(_.asOpt[String])
+                      .filter(_.nonEmpty)
+                      .flatMap(u => TrailerEmbed.youTubeId(u)
+                        .map(id => s"https://www.youtube.com/watch?v=$id"))
     )
   }
 

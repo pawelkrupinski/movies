@@ -211,4 +211,25 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
   it should "leave plain titles untouched apart from sentence-casing" in {
     KinoBulgarskaClient.normalizeTitle("CHRONOLOGIA WODY") shouldBe "Chronologia wody"
   }
+
+  // ── Trailers ──────────────────────────────────────────────────────────────
+  //
+  // Bulgarska's per-film page embeds the YouTube trailer in an oEmbed
+  // `<iframe class="..." src="https://www.youtube.com/embed/<id>?…">`. The
+  // client canonicalises to a `watch?v=<id>` URL and the view reshapes back
+  // to /embed/ at render time.
+  //
+  // Detail-page fixtures recorded for 4 of the 9 films in the repertuar
+  // fixture. The other 5 detail pages aren't recorded, so their trailerUrl
+  // stays None (the parallel fetch swallows the FileNotFoundException).
+
+  it should "extract YouTube trailers from per-film detail pages" in {
+    byTitle("Chronologia wody").trailerUrl shouldBe Some("https://www.youtube.com/watch?v=H-ok8moY5QA")
+    byTitle("Miłość w czasach apokalipsy").trailerUrl shouldBe Some("https://www.youtube.com/watch?v=QCxhy4UO5pc")
+  }
+
+  it should "leave trailerUrl None when the detail page is unavailable" in {
+    // Maryja. matka papieża has no detail-page fixture → trailerUrl stays None.
+    byTitle("Maryja. matka papieża").trailerUrl shouldBe None
+  }
 }

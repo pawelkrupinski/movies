@@ -49,6 +49,20 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
     if (paragraphs.isEmpty) None else Some(paragraphs.mkString("\n\n"))
   }
 
+  /** Trailer URL from a Muza detail page. Muza embeds the YouTube trailer
+   *  via `<iframe class="embed-responsive-item" src="https://www.youtube
+   *  .com/embed/<id>?…">`. Returns the canonical `watch?v=<id>` form; the
+   *  view layer reshapes back to `/embed/` at render time via
+   *  `TrailerEmbed.embedUrlFor`. Public so the refresher can drive the
+   *  per-row fetch through the same parser. */
+  def parseTrailer(html: String): Option[String] = {
+    val doc = Jsoup.parse(html)
+    val src = Option(doc.selectFirst("iframe.embed-responsive-item")).map(_.attr("src")).filter(_.nonEmpty)
+    src.flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
+      .map(id => s"https://www.youtube.com/watch?v=$id")
+      .orElse(services.movies.TrailerEmbed.vimeoId(u).map(_ => u)))
+  }
+
   private val RuntimePat = """(\d+)’""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
 

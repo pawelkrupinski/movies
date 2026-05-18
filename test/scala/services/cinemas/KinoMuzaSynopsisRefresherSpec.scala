@@ -113,4 +113,32 @@ class KinoMuzaSynopsisRefresherSpec extends AnyFlatSpec with Matchers {
 
     refresher.refreshOne() shouldBe false
   }
+
+  // ── Trailers ──────────────────────────────────────────────────────────────
+  //
+  // Muza's detail page embeds a YouTube `<iframe class="embed-responsive-item"
+  // src="https://www.youtube.com/embed/<id>?…">`. The refresher runs the
+  // same per-row fetch that pulls the synopsis and writes both fields back.
+
+  it should "also extract and store the trailer URL on the same detail-page fetch" in {
+    val cache     = buildCache(Seq(cinemaMovie("Dziecko z pyłu", "https://www.kinomuza.pl/movie/dziecko-z-pylu/")))
+    val refresher = new KinoMuzaSynopsisRefresher(cache, new KinoMuzaClient(new FakeHttpFetch("kino-muza")), new FakeHttpFetch("kino-muza"))
+
+    refresher.refreshOne() shouldBe true
+
+    val slot = cache.get(cache.keyOf("Dziecko z pyłu", Some(2026))).get.data(KinoMuza)
+    slot.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=h9r7lx9yDXk")
+    // Synopsis lands on the same tick, untouched.
+    slot.synopsis   should not be empty
+  }
+
+  it should "leave the trailer slot None when the detail page has no embed iframe" in {
+    val cache     = buildCache(Seq(cinemaMovie("Pieniądze to wszystko", "https://www.kinomuza.pl/movie/pieniadze-to-wszystko/")))
+    val refresher = new KinoMuzaSynopsisRefresher(cache, new KinoMuzaClient(new FakeHttpFetch("kino-muza")), new FakeHttpFetch("kino-muza"))
+
+    refresher.refreshOne() shouldBe true
+
+    val slot = cache.get(cache.keyOf("Pieniądze to wszystko", Some(2026))).get.data(KinoMuza)
+    slot.trailerUrl shouldBe None
+  }
 }

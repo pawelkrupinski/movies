@@ -148,4 +148,23 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
       Showtime(LocalDateTime.of(2026, 7, 17, 18, 0), Some("https://ckzamek.bilety24.pl/kup-bilety/?id=924779"), Some("Sala 1 - Kinowa"), Nil),
     )
   }
+
+  // ── Trailers ──────────────────────────────────────────────────────────────
+  //
+  // Pałacowe embeds the YouTube watch URL in a `<a class="gallery__movie …">`
+  // anchor on the film page. Among the 5 fixture films, only Chłopiec na
+  // krańcach świata's page carries that anchor; the four Fellini-cycle pages
+  // don't.
+
+  it should "extract a canonical youtube watch URL from the film page" in {
+    byTitle("Chłopiec na krańcach świata").trailerUrl shouldBe
+      Some("https://www.youtube.com/watch?v=MNwsZzIFF3s")
+  }
+
+  it should "leave trailerUrl None when the film page has no trailer anchor" in {
+    byTitle("Słodkie życie").trailerUrl   shouldBe None
+    byTitle("Osiem i pół").trailerUrl     shouldBe None
+    byTitle("Giulietta i duchy").trailerUrl shouldBe None
+    byTitle("Głos z księżyca").trailerUrl shouldBe None
+  }
 }

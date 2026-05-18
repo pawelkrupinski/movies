@@ -3,9 +3,11 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{DaemonExecutors, HttpFetch}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -13,6 +15,13 @@ class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
 
   val cinema: Cinema = KinoBulgarska
   private val PageUrl = "http://kinobulgarska19.pl/repertuar"
+
+  // Trailer embed — per-film detail pages render the YouTube trailer in a
+  // `<iframe class="..." src="https://www.youtube.com/embed/ID?...">` block
+  // (a WordPress oEmbed wrapper). Anchor on the `youtube.com/embed/` or
+  // `youtu.be/` host to skip unrelated iframes (analytics, share widgets).
+  private val TrailerIframePat =
+    """<iframe[^>]+src="(https?://(?:www\.)?(?:youtube\.com|youtu\.be|player\.vimeo\.com|vimeo\.com)/[^"]+)"""".r
 
   private val PolishMonths = Map(
     "stycznia" -> 1, "lutego" -> 2, "marca" -> 3, "kwietnia" -> 4,
@@ -64,7 +73,38 @@ class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
       }
     }.getOrElse((None, Seq.empty, None, None))
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
+  def fetch(): Seq[CinemaMovie] = {
+    val movies     = parseHtml(http.get(PageUrl))
+    val trailerByUrl = fetchTrailers(movies.flatMap(_.filmUrl).distinct)
+    movies.map(cm => cm.copy(trailerUrl = cm.filmUrl.flatMap(trailerByUrl.get).flatten))
+  }
+
+  /** Fetch every film's detail page in parallel and pluck the trailer URL.
+   *  Failures (404, network, missing fixture) leave that URL absent from
+   *  the result map — the row keeps its None trailer, the rest of the
+   *  movie is unaffected. */
+  private def fetchTrailers(urls: Seq[String]): Map[String, Option[String]] = {
+    if (urls.isEmpty) return Map.empty
+    val ec = DaemonExecutors.virtualThreadEC("kino-bulgarska-trailers")
+    try {
+      val futures = urls.map { url =>
+        Future(url -> Try(http.get(url)).toOption.flatMap(parseTrailer))(ec)
+      }
+      Await.result(Future.sequence(futures)(implicitly, ec), 1.minute).toMap
+    } finally ec.shutdown()
+  }
+
+  /** Trailer URL parsed from a Bulgarska film page. Returns the canonical
+   *  `youtube.com/watch?v=ID` form when the iframe holds a YouTube video;
+   *  vimeo URLs are passed through unchanged for the view layer's
+   *  TrailerEmbed to reshape. Public for unit tests. */
+  def parseTrailer(html: String): Option[String] =
+    TrailerIframePat.findFirstMatchIn(html).map(_.group(1))
+      .flatMap { url =>
+        services.movies.TrailerEmbed.youTubeId(url)
+          .map(id => s"https://www.youtube.com/watch?v=$id")
+          .orElse(services.movies.TrailerEmbed.vimeoId(url).map(_ => url))
+      }
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val doc            = Jsoup.parse(html)

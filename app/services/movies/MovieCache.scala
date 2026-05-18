@@ -374,6 +374,7 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
           countries      = cm.movie.countries.map(CountryNames.canonical).distinct,
           posterUrl      = cm.posterUrl,
           filmUrl        = cm.filmUrl,
+          trailerUrl     = cm.trailerUrl,
           showtimes      = cm.showtimes
         )
         // `isNew` controls whether to publish `MovieRecordCreated` to the bus.
