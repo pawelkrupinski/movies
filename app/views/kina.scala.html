@@ -48,8 +48,11 @@
           visible: true,
           // Pre-parse each badge's format Set + numeric minutes-since-midnight
           // for the from-hour filter; never re-read dataset on filter.
+          // `data-time` is the canonical clock injected by the template — the
+          // pill body now also carries a trailing `.fav-star` <span>, so
+          // reading the time off `firstChild.textContent` is fragile.
           badges:  [...group.querySelectorAll('.badge-time')].map(b => {
-            const t = (b.firstChild ? b.firstChild.textContent : '').trim();
+            const t = (b.dataset.time || '').trim();
             const colon = t.indexOf(':');
             const timeMin = colon > 0
               ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10)
@@ -162,6 +165,10 @@
     }
 
     updateCounter(visibleCount, showtimeCount);
+    // Pills now share the listing-card shape — including the hover-expanding
+    // fav-star — so /kina needs the same end-of-row pre-wrap pass to keep
+    // hover from jumping a pill onto the next line.
+    scheduleReflow();
   }
 
   function sortSection(section, earlyMap) {

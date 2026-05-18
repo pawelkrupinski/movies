@@ -1,5 +1,17 @@
-@import controllers.{CinemaSchedule, DateFormatter}
+@import controllers.{CinemaSchedule, CinemaShowtimes, FilmSchedule}
 @(cinemas: Seq[CinemaSchedule])
+@*
+   /kina renders one section per cinema, with that cinema's films as cards.
+   Each card's interior is "showings, grouped by date → slots". That's the
+   same shape `_filmShowings` already emits — we just feed it a per-cinema
+   `FilmSchedule` (one cinema, the films's slots only) and ask it to skip
+   the inner cinema-label since the section header already names it.
+
+   This keeps the badge HTML, the per-screening favourite star, and the
+   end-of-row wrap behaviour identical to the listing card and film page —
+   one source of truth for "what a pill looks like" lives in
+   `_filmShowings`.
+*@
 @for(cs <- cinemas) {
 <div class="cinema-section mb-5" data-cinema="@cs.cinema.displayName">
   <h5 class="cinema-section-title px-1 mb-3">@cs.cinema.displayName</h5>
@@ -7,30 +19,19 @@
     @for(film <- cs.movies) {
     <div class="col" data-title="@film.movie.title">
       @_movieCard(film.movie, film.posterUrl, film.enrichment) {
-        @defining(film.showings.flatMap(_._2.map(_.format.toSet)).filter(_.nonEmpty)) { allFmts =>
-        @defining(if (allFmts.isEmpty) Set.empty[String] else allFmts.reduce(_ intersect _)) { commonToks =>
-        @for((date, showtimes) <- film.showings) {
-          <div class="date-group" data-date="@date">
-            <div class="date-label">@DateFormatter.format(date)</div>
-            <div>
-              @for(slot <- showtimes) {
-                @defining(slot.room.map(r => Html(s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""")).getOrElse(Html(""))) { roomAttr =>
-                @defining(slot.format.filterNot(commonToks.contains).mkString(" ")) { stripped =>
-                @defining(if (stripped.isEmpty) Html("") else Html(s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(stripped)}</span>""")) { fmtBadge =>
-                @defining(slot.format.mkString(" ")) { fmtAttr =>
-                  @slot.bookingUrl match {
-                    case Some(url) => { <a href="@url" class="badge-time" target="_blank"@roomAttr data-format="@fmtAttr">@{slot.dateTime.toLocalTime}@fmtBadge</a> }
-                    case None      => { <span class="badge-time"@roomAttr data-format="@fmtAttr">@{slot.dateTime.toLocalTime}@fmtBadge</span> }
-                  }
-                }
-                }
-                }
-                }
-              }
-            </div>
-          </div>
-        }
-        }
+        @defining(FilmSchedule(
+          movie          = film.movie,
+          posterUrl      = film.posterUrl,
+          synopsis       = None,
+          cast           = None,
+          director       = None,
+          cinemaFilmUrls = film.filmUrl.map(cs.cinema -> _).toSeq,
+          showings       = film.showings.map { case (date, slots) =>
+                             (date, Seq(CinemaShowtimes(cs.cinema, slots)))
+                           },
+          enrichment     = film.enrichment
+        )) { fs =>
+          @_filmShowings(fs, showCinemaHeaders = false)
         }
       }
     </div>
