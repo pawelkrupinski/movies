@@ -234,7 +234,6 @@
         const containerRight = group.getBoundingClientRect().right;
         for (let i = 0; i < badges.length; i++) {
           const b = badges[i];
-          if (b.classList.contains('needs-star-room')) continue;
           // Favourited pills already have the star permanently visible, so
           // their full width is already in the wrap calc — skip.
           const star = b.querySelector('.fav-star');
@@ -243,8 +242,19 @@
           const rect = b.getBoundingClientRect();
           const isEndOfRow = !next || next.getBoundingClientRect().top > rect.top;
           if (!isEndOfRow) continue;
-          if (containerRight - rect.right < _STAR_WIDTH_PX) {
-            b.classList.add('needs-star-room');
+          if (containerRight - rect.right >= _STAR_WIDTH_PX) continue;
+          // Push the would-jump pill onto its own row by adding the margin
+          // to the PREVIOUS sibling on the same row — that way the 18 px
+          // hangs off the right edge of the old row (past `containerRight`,
+          // so invisible) and the would-jump pill drops cleanly to the next
+          // row with no leading gap. If there's no previous same-row pill
+          // (this one is alone on its row), we can't prevent the jump
+          // without visible side-effects — accept it for the degenerate
+          // case.
+          const prev = badges[i - 1];
+          if (prev && prev.getBoundingClientRect().top === rect.top
+              && !prev.classList.contains('needs-star-room')) {
+            prev.classList.add('needs-star-room');
             changed = true;
           }
         }
