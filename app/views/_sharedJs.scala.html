@@ -499,6 +499,13 @@
     const noFilms = document.getElementById('no-films');
     const counter = document.getElementById('film-counter');
     if (visibleCount === 0) {
+      // On /ulubione with no favourites stored at all, point the user at
+      // the action instead of saying the catalogue is empty.
+      const onFavPage   = typeof IS_FAVOURITES_PAGE !== 'undefined' && IS_FAVOURITES_PAGE;
+      const noFavsAtAll = onFavPage && getFavMovies().length === 0 && getFavScreenings().length === 0;
+      noFilms.textContent = noFavsAtAll
+        ? 'Brak ulubionych. Dodaj ulubione filmy lub seanse na innych stronach.'
+        : 'Brak repertuaru.';
       noFilms.style.display = '';
       counter.style.display = 'none';
     } else {
