@@ -1,26 +1,32 @@
 package services.cinemas
 
 import models.{Cinema, CinemaMovie, Multikino}
-import tools.{Env, HttpFetch}
+import tools.{Env, FallbackHttpFetch, HttpFetch}
 
 import java.net.http.HttpClient
 import java.net.{CookieManager, CookiePolicy}
+import java.time.Duration
 
 /**
  * Multikino fetches `microservice/showings/cinemas/0011/films` and hands the
- * JSON to [[MultikinoParser]]. Whether the call goes through ScrapingAnt
- * (production, where Multikino blocks datacenter IPs) or directly
- * (`RealHttpFetch` locally, `FakeHttpFetch` in tests) is a decision made
- * once at the composition root — `MultikinoClient.fetchFor(direct)` returns
- * a single `HttpFetch` that already encapsulates the routing. The client
- * itself doesn't know.
+ * JSON to [[MultikinoParser]]. The HTTP path is wired at the composition
+ * root by `MultikinoClient.fetchFor(direct)` as a fallback chain:
+ *
+ *   Zyte (if `ZYTE_API_KEY` set)
+ *     → ScrapingAnt (if `SCRAPINGANT_KEY` set)
+ *       → `direct`
+ *
+ * Each link tries the next on any exception, so one backend going down
+ * (Zyte 5xx, ScrapingAnt rate-limited, …) silently rolls over to the
+ * next without code changes. The client itself doesn't know which
+ * backend served any given request.
  *
  * Session-handling retry stays in the client: optimistic API call,
- * homepage warm-up on failure, retry. With the ScrapingAnt wrapper in
- * place the first call always succeeds (ScrapingAnt does its own cookie
+ * homepage warm-up on failure, retry. With Zyte/ScrapingAnt in front
+ * the first call always succeeds (both wrappers do their own cookie
  * carryover) and the retry never fires; with a direct fetch the retry
- * recovers the 401-without-session-cookie response that Multikino's API
- * returns on a cold connection.
+ * recovers the 401-without-session-cookie response that Multikino's
+ * API returns on a cold connection.
  */
 class MultikinoClient(http: HttpFetch) extends CinemaScraper {
   import MultikinoClient._
@@ -44,30 +50,40 @@ object MultikinoClient {
   val HomeUrl = s"$BaseUrl/"
 
   /** Build the `HttpFetch` to pass into `MultikinoClient` at the
-   *  composition root. Routes through ScrapingAnt when `SCRAPINGANT_KEY`
-   *  is set (production); falls back to `direct` otherwise (local dev /
-   *  tests). The returned fetch is the *single* injection point — test
-   *  wirings override `Wiring.multikinoFetch` with their own (typically
-   *  `FakeHttpFetch`) and the routing decision drops out of the test
-   *  surface entirely.
+   *  composition root. Composes a fallback chain of (Zyte, ScrapingAnt,
+   *  direct) — each link is only included when its env var is set, so
+   *  local dev with neither key reverts to `direct` alone. Tests
+   *  override `Wiring.multikinoFetch` directly with `FakeHttpFetch` and
+   *  this whole construction sits behind an env check that never fires.
    */
-  def fetchFor(direct: HttpFetch): HttpFetch =
-    Env.get("SCRAPINGANT_KEY")
-      .map(k => new ScrapingAntFetch(
+  def fetchFor(direct: HttpFetch): HttpFetch = {
+    val zyte = Env.get("ZYTE_API_KEY").map { k =>
+      "zyte" -> (new ZyteFetch(new ZyteClient(zyteHttpClient, k), HomeUrl): HttpFetch)
+    }
+    val scrapingAnt = Env.get("SCRAPINGANT_KEY").map { k =>
+      "scrapingAnt" -> (new ScrapingAntFetch(
         new ScrapingAntClient(scrapingAntHttpClient, k, proxyCountry = () => ScrapingAntClient.randomCountry()),
         HomeUrl
-      ))
-      .getOrElse(direct)
+      ): HttpFetch)
+    }
+    val chain = (zyte.toSeq ++ scrapingAnt.toSeq) :+ ("direct" -> direct)
+    if (chain.size == 1) chain.head._2 else new FallbackHttpFetch(chain)
+  }
 
-  // The `proxyCountry` thunk fires per ScrapingAnt request — including
-  // each in-client retry attempt — so a single 423 from one pool moves
-  // the next attempt to a different pool. The cinema's API isn't
-  // geo-fenced; we just need to keep dodging IP-class blocks.
+  // Both Zyte and ScrapingAnt have their own cookie-carryover protocols
+  // that need raw response handling, so each keeps a dedicated underlying
+  // `HttpClient`. Zyte does the protocol entirely server-side (we just
+  // POST with a session.id); ScrapingAnt requires reading Set-Cookie off
+  // the homepage response and forwarding via &cookies= — neither is
+  // expressible through the stateless `HttpFetch.get` surface.
+  private lazy val zyteHttpClient = HttpClient.newBuilder()
+    .version(HttpClient.Version.HTTP_1_1)
+    .followRedirects(HttpClient.Redirect.NORMAL)
+    // Zyte calls take ~3-5s per request (warmup + API ≈ 7-10s end-to-end);
+    // a stuck connection would otherwise hang the cinema-refresh tick.
+    .connectTimeout(Duration.ofSeconds(15))
+    .build()
 
-  // ScrapingAnt has its own cookie-carryover protocol (read `Set-Cookie`
-  // off the homepage response, pass via `&cookies=`) that needs raw
-  // response headers — not expressible through the stateless
-  // `HttpFetch.get` surface. So it keeps a dedicated client.
   private lazy val scrapingAntHttpClient = HttpClient.newBuilder()
     .version(HttpClient.Version.HTTP_1_1)
     .followRedirects(HttpClient.Redirect.NORMAL)
