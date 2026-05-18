@@ -24,7 +24,7 @@ import scala.jdk.CollectionConverters._
  * `browser=false` keeps the response raw — the headless-browser mode wraps
  * JSON in `<pre>`, costs more credits, and gets caught by anti-bot detection.
  */
-class ScrapingAntClient(httpClient: HttpClient, key: String) {
+class ScrapingAntClient(httpClient: HttpClient, key: String, proxyCountry: String = "pl") {
   import ScrapingAntClient._
 
   /** GET `targetUrl` via ScrapingAnt, carrying cookies harvested from a first
@@ -52,7 +52,7 @@ class ScrapingAntClient(httpClient: HttpClient, key: String) {
 
   private def request(targetUrl: String, extraParams: String) =
     HttpRequest.newBuilder()
-      .uri(URI.create(s"$Endpoint?url=${urlEncode(targetUrl)}&proxy_country=pl&browser=false$extraParams"))
+      .uri(URI.create(s"$Endpoint?url=${urlEncode(targetUrl)}&proxy_country=$proxyCountry&browser=false$extraParams"))
       .header("x-api-key", key)
       .header("Accept", "application/json, text/plain, */*")
       .GET()
