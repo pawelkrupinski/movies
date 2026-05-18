@@ -39,6 +39,12 @@ trait Wiring {
   // the detail-page parse.
   lazy val kinoMuzaClient: KinoMuzaClient = new KinoMuzaClient(httoFetch)
 
+  // Every cinema scraper is wrapped in `RetryingCinemaScraper` so a single
+  // transient upstream blip (5xx, dropped connection, momentarily broken
+  // HTML block) doesn't leave the cinema's slot empty for an entire
+  // refresh cycle. Multikino retains its own internal retry layers (Zyte
+  // → ScrapingAnt → direct + homepage warm-up); the outer wrapper only
+  // adds extra coverage when every inner layer is exhausted.
   lazy val cinemaScrapers: Seq[CinemaScraper] = Seq(
     new MultikinoClient(multikinoFetch),
     new CharlieMonroeClient(httoFetch),
@@ -50,7 +56,7 @@ trait Wiring {
     new KinoBulgarskaClient(httoFetch),
     new KinoApolloClient(httoFetch),
     new RialtoClient(httoFetch)
-  )
+  ).map(s => new RetryingCinemaScraper(s))
 
   // ── Events ────────────────────────────────────────────────────────────────
   lazy val eventBus: EventBus = new InProcessEventBus()
