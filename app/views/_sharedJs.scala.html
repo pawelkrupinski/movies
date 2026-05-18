@@ -186,6 +186,9 @@
     setFavScreenings(cur);
     star.classList.toggle('is-fav', idx < 0);
     if (IS_FAVOURITES_PAGE) preserveScroll(() => applyFilters());
+    // Toggle changes the pill's permanent width (is-fav stars are always
+    // visible); the row may need a fresh end-of-row pre-wrap pass.
+    scheduleReflow();
   }
 
   // On boot: paint the existing favourite state onto every star in the
@@ -203,6 +206,62 @@
       if (star) star.classList.toggle('is-fav', favScreenings.has(badge.dataset.screeningId));
     });
   }
+
+  // ── End-of-row pre-wrap for fav-star hover ───────────────────────────────
+  //
+  // Pills are compact at rest; the star adds width on hover. Without this,
+  // the last pill on a wrap-row would expand under the cursor and jump to
+  // the next line. We scan each cinema-group, find the rightmost pill on
+  // each row, and if its remaining row-space is less than the star width
+  // we add `.needs-star-room` (CSS adds the equivalent padding-right). The
+  // padding pushes the pill onto the next line BEFORE the user hovers —
+  // when they hover, the star slides into the now-existing slack and the
+  // pill stays put.
+  //
+  // Iterates up to 3 passes: adding the class on one pill can shift row
+  // membership and make a previously mid-row pill the new end-of-row, so
+  // a second / third pass picks up cascade cases.
+  const _STAR_WIDTH_PX = 18;
+  function reflowFavStarSpacing() {
+    document.querySelectorAll('.cinema-group').forEach(group => {
+      const badges = [...group.querySelectorAll('.badge-time')].filter(b =>
+        b.offsetParent !== null && !b.classList.contains('hidden') && getComputedStyle(b).display !== 'none'
+      );
+      if (!badges.length) return;
+      badges.forEach(b => b.classList.remove('needs-star-room'));
+      for (let pass = 0; pass < 3; pass++) {
+        let changed = false;
+        const containerRight = group.getBoundingClientRect().right;
+        for (let i = 0; i < badges.length; i++) {
+          const b = badges[i];
+          if (b.classList.contains('needs-star-room')) continue;
+          // Favourited pills already have the star permanently visible, so
+          // their full width is already in the wrap calc — skip.
+          const star = b.querySelector('.fav-star');
+          if (star && star.classList.contains('is-fav')) continue;
+          const next = badges[i + 1];
+          const rect = b.getBoundingClientRect();
+          const isEndOfRow = !next || next.getBoundingClientRect().top > rect.top;
+          if (!isEndOfRow) continue;
+          if (containerRight - rect.right < _STAR_WIDTH_PX) {
+            b.classList.add('needs-star-room');
+            changed = true;
+          }
+        }
+        if (!changed) break;
+      }
+    });
+  }
+
+  // Debounce a reflow call. Used by applyFilters() and the toggle handlers
+  // (every filter / star click can change which pill is end-of-row); also
+  // by the resize listener. Same setTimeout id for both paths.
+  let _reflowDebounce = 0;
+  function scheduleReflow(delayMs) {
+    clearTimeout(_reflowDebounce);
+    _reflowDebounce = setTimeout(reflowFavStarSpacing, delayMs || 16);
+  }
+  window.addEventListener('resize', () => scheduleReflow(120));
 
   const ALL_CINEMAS = @Html(play.api.libs.json.Json.toJson(allCinemas).toString);
 

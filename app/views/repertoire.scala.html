@@ -194,6 +194,10 @@
 
     sortByEarliestVisible(earlyMap);
     updateCounter(visibleCount, showtimeCount);
+    // Visibility may have changed which pill is end-of-row on each line.
+    // Debounced so a burst of input events (typing in the search box) only
+    // triggers one measurement pass after the DOM settles.
+    scheduleReflow();
   }
 
   function sortByEarliestVisible(earlyMap) {
