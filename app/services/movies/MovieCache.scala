@@ -313,7 +313,11 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
     // and trust the slot data we have until the next non-empty tick.
     if (movies.isEmpty) return Seq.empty
 
-    val resolved = movies.map { cm =>
+    // Carry the freshly-written `SourceData` slot alongside the public
+    // tuple so the prune below can identify "newly written this tick" by
+    // slot reference rather than by cache key — keys can shift mid-tick
+    // when a TMDB-stage rekey moves a row out from under us.
+    val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] = movies.map { cm =>
       // Lock per normalised title so a concurrent first-scrape from another
       // cinema can't create a duplicate row at a different `(title, year)`
       // key while we're between the redirect check and the put. Different
@@ -357,21 +361,34 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
           s.title.contains(cm.movie.title) && s.releaseYear == cm.movie.releaseYear
         )
         put(key, existing.copy(data = existing.data + ((cinema: Source) -> slot)))
-        (cm, key, isNew)
+        ((cm, key, isNew), slot)
       }
     }
 
     // Prune: any cache entry that previously had this cinema's slot but
     // wasn't touched this tick → drop the slot. The record itself stays.
-    val touched = resolved.iterator.map(_._2).toSet
+    //
+    // Identify "touched" by the slot's `SourceData` reference rather than
+    // by cache key. The prune runs OUTSIDE the per-title lock, so between
+    // the per-movie write block above and this iteration a concurrent
+    // `cache.rekey` (typically from a TMDB-stage re-key for another
+    // film's cinema-event-triggered resolution) can move the row from
+    // its original key to a year-keyed sibling — carrying our just-
+    // written slot along. A key-based `touched` set would miss the
+    // moved row and erroneously prune our slot off it. Slot-identity
+    // tracking works because `cache.rekey` preserves the SourceData
+    // reference verbatim through the move.
+    val touchedSlots: Set[SourceData] = resolved.iterator.map(_._2).toSet
     import scala.jdk.CollectionConverters._
     positive.asMap().asScala.iterator
-      .filter { case (k, e) => e.data.contains(cinema) && !touched.contains(k) }
+      .filter { case (_, e) =>
+        e.data.get(cinema).exists(slot => !touchedSlots.contains(slot))
+      }
       .foreach { case (k, e) =>
         put(k, e.copy(data = e.data - cinema))
       }
 
-    resolved
+    resolved.map(_._1)
   }
 
   /** If `primary` doesn't currently exist in the cache, look for an existing
@@ -431,7 +448,20 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
     // copy gets overwritten if it changed), then evict only the keys
     // that disappeared from Mongo since the last sync.
     import scala.jdk.CollectionConverters._
-    val rows     = repo.findAll()
+    val rows = repo.findAll()
+    // `repo.findAll()` swallows every Mongo failure into `Seq.empty` — a
+    // TLS-selector race, a connection-pool churn, an Atlas-side reset all
+    // surface as "no rows". Treating that as "Mongo is genuinely empty,
+    // evict every cached row" wipes the live cache on every transient
+    // hiccup. Skip the eviction step when the result is empty AND the
+    // cache currently has rows: a real Mongo wipe is a degenerate manual
+    // operation that's acceptable to handle only on app restart.
+    val cachedSize = positive.estimatedSize()
+    if (rows.isEmpty && cachedSize > 0) {
+      logger.warn(s"MovieCache rehydrate: findAll() returned empty while cache holds $cachedSize row(s) — " +
+                  "treating as a transient Mongo failure; cache left intact.")
+      return 0
+    }
     val nextKeys = rows.iterator.map(r => CacheKey(r.title, r.year)).toSet
     rows.foreach(r => positive.put(CacheKey(r.title, r.year), r.record))
     positive.asMap().keySet().asScala.toSeq

@@ -27,18 +27,45 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val repo  = new InMemoryMovieRepo()
     val cache = new CaffeineMovieCache(repo)
 
-    // Land a row in the positive cache without writing to the repo, by using
-    // Caffeine directly via the trait's `put`… actually `put` writes through.
-    // Instead: put through the cache (repo gets the upsert), then delete from
-    // the repo behind the cache's back so they diverge.
-    cache.put(cache.keyOf("Ghost", Some(2024)), mkEnrichment("tt1"))
+    // Two rows in cache + repo; delete one from the repo behind the cache's
+    // back so cache + repo diverge by exactly that row. Rehydrate should
+    // evict the disappeared one and keep the rest.
+    //
+    // (The 0-rows-in-repo case is deliberately NOT tested — `rehydrate`
+    // skips eviction on an empty `findAll()` because `MovieRepo.findAll`
+    // swallows every Mongo error into `Seq.empty`, so an empty result
+    // can't reliably be distinguished from a transient TLS/pool race.
+    // A real-world empty Mongo is a manual-wipe degenerate case.)
+    cache.put(cache.keyOf("Ghost",  Some(2024)), mkEnrichment("tt-ghost"))
+    cache.put(cache.keyOf("Keeper", Some(2024)), mkEnrichment("tt-keeper"))
     repo.delete("Ghost", Some(2024))
-    cache.get(cache.keyOf("Ghost", Some(2024))) shouldBe defined  // still cached
+    cache.get(cache.keyOf("Ghost",  Some(2024))) shouldBe defined  // still cached
+    cache.get(cache.keyOf("Keeper", Some(2024))) shouldBe defined
 
     val n = cache.rehydrate()
 
-    n shouldBe 0
-    cache.get(cache.keyOf("Ghost", Some(2024))) shouldBe None
+    n shouldBe 1
+    cache.get(cache.keyOf("Ghost",  Some(2024))) shouldBe None
+    cache.get(cache.keyOf("Keeper", Some(2024))) shouldBe defined
+  }
+
+  it should "leave the cache intact when findAll() returns empty (treats as transient Mongo failure)" in {
+    // The real prod-bug regression: a 30-s rehydrate tick coinciding with a
+    // Mongo TLS-selector race (driver retries internally; findAll surfaces
+    // it as `Seq.empty` via MovieRepo's swallow-on-error). Pre-fix,
+    // every cached row got evicted and the page rendered empty until the
+    // next successful tick.
+    val repo  = new InMemoryMovieRepo()  // start empty
+    val cache = new CaffeineMovieCache(repo)
+    cache.put(cache.keyOf("Ghost", Some(2024)), mkEnrichment("tt1"))
+    // Mongo "lies" — write straight to the cache, then drop from the repo
+    // so the next rehydrate's findAll returns empty.
+    repo.delete("Ghost", Some(2024))
+
+    cache.rehydrate() shouldBe 0
+    // Cache row survives; the user keeps seeing films through the next
+    // (presumably successful) tick.
+    cache.get(cache.keyOf("Ghost", Some(2024))) shouldBe defined
   }
 
   it should "make repo-side edits visible" in {
