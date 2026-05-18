@@ -167,6 +167,13 @@
           @e.metacriticUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">MC</a> }
           @e.rottenTomatoesUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">RT</a> }
           @e.filmwebUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">FW</a> }
+          @* One link per distinct cinema-supplied trailer URL — open in a
+             new tab so debug inspection doesn't navigate away from the
+             admin table. Labelled T1, T2, … to match the 2-char style
+             above; numbering matches the order on the public film page. *@
+          @for((u, idx) <- e.trailerUrls.zipWithIndex) {
+            <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">T@{idx + 1}</a>
+          }
         </td>
         <td>
           <button class="reenrich-btn" type="button" title="Drop and re-fetch all upstream data" onclick="event.stopPropagation()">↻</button>
