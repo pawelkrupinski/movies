@@ -2,7 +2,7 @@ package clients.scraping_ant
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.ScrapingAntClient.{EuropeanCountries, FetchResult, randomEuropean, retryWhileUnusable}
+import services.cinemas.ScrapingAntClient.{FetchResult, SupportedCountries, randomCountry, retryWhileUnusable}
 
 import scala.concurrent.duration._
 
@@ -139,21 +139,28 @@ class ScrapingAntClientSpec extends AnyFlatSpec with Matchers {
 
   // ── proxy_country rotation ────────────────────────────────────────────────
 
-  "randomEuropean" should "always return a country from the EuropeanCountries set" in {
-    val seen = (1 to 200).map(_ => randomEuropean()).toSet
-    seen.subsetOf(EuropeanCountries.toSet) shouldBe true
+  "randomCountry" should "always return a country from the SupportedCountries set" in {
+    val seen = (1 to 200).map(_ => randomCountry()).toSet
+    seen.subsetOf(SupportedCountries.toSet) shouldBe true
   }
 
   it should "actually rotate across pools (not pinned to one country)" in {
-    // 200 draws over 16 countries — odds of seeing fewer than 4 distinct
+    // 200 draws over 20+ countries — odds of seeing fewer than 4 distinct
     // values are vanishingly small with a uniform random source. If this
     // ever flakes it's evidence of a real bug, not a flaky assertion.
-    val seen = (1 to 200).map(_ => randomEuropean()).toSet
+    val seen = (1 to 200).map(_ => randomCountry()).toSet
     seen.size should be >= 4
   }
 
   it should "exclude pl — that pool's the one we're rotating away from" in {
-    EuropeanCountries should not contain "pl"
+    SupportedCountries should not contain "pl"
+  }
+
+  it should "span beyond Europe — the EU-only rotation hit 423s on every pool" in {
+    // Sanity check that the list isn't accidentally re-narrowed: at least
+    // one of these non-EU pools must be present.
+    val nonEu = Set("us", "jp", "kr", "sg", "hk", "ae", "br")
+    SupportedCountries.toSet.intersect(nonEu) should not be empty
   }
 
   it should "skip sleeping entirely when initialBackoff is zero" in {

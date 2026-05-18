@@ -54,7 +54,7 @@ object MultikinoClient {
   def fetchFor(direct: HttpFetch): HttpFetch =
     Env.get("SCRAPINGANT_KEY")
       .map(k => new ScrapingAntFetch(
-        new ScrapingAntClient(scrapingAntHttpClient, k, proxyCountry = () => ScrapingAntClient.randomEuropean()),
+        new ScrapingAntClient(scrapingAntHttpClient, k, proxyCountry = () => ScrapingAntClient.randomCountry()),
         HomeUrl
       ))
       .getOrElse(direct)

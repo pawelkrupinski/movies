@@ -71,30 +71,35 @@ class ScrapingAntClient(httpClient: HttpClient, key: String, proxyCountry: () =>
 object ScrapingAntClient extends Logging {
   private val Endpoint              = "https://api.scrapingant.com/v2/general"
 
-  /** ScrapingAnt-supported European proxy pools we cycle through to evade
-   *  per-pool anti-bot blocks. When one country's datacenter range gets
-   *  scored as bot-suspicious by a cinema's WAF, picking a different
-   *  country gives us a fresh IP pool that hasn't been flagged yet.
+  /** Every ScrapingAnt-supported proxy country (docs.scrapingant.com/
+   *  proxy-settings). We cycle through the full global set — not just
+   *  Europe — because the previous, EU-only rotation still hit 423s on
+   *  every attempt: Multikino's WAF was scoring ScrapingAnt's European
+   *  datacenter ASNs as bot traffic across the board. Non-EU pools
+   *  (US, JP, KR, SG, HK, AE, BR, …) live on different ASNs that may
+   *  not be on the same blocklist.
    *
-   *  The list is exactly the European entries from ScrapingAnt's supported
-   *  country enum (see docs.scrapingant.com/proxy-settings). Anything
-   *  outside that set returns 422 ("proxy_country is not a valid
-   *  enumeration member") — so the previous, larger list (at/be/dk/fi/…)
-   *  silently burned half the retry budget on 422s. Stick to the enum.
+   *  Anything outside this enum returns 422 ("proxy_country is not a
+   *  valid enumeration member"), so the list is the canonical one — no
+   *  guessing.
    *
-   *  `pl` is deliberately omitted: it was the first pool that started
-   *  returning 423 from multikino.pl, so until it cools off we don't
-   *  spend retries hitting a known-bad pool. Easy to re-add later.
+   *  `pl` is the only deliberate omission: it's the first pool we saw
+   *  start returning 423 from multikino.pl, so until it cools off
+   *  we don't spend retries on a known-bad value. Easy to re-add later.
    */
-  val EuropeanCountries: Vector[String] =
-    Vector("cz", "de", "es", "fr", "gb", "it", "nl")
+  val SupportedCountries: Vector[String] =
+    Vector(
+      "ae", "br", "ca", "cn", "cz", "de", "es", "fr", "gb", "hk",
+      "id", "il", "in", "it", "jp", "kr", "nl",      "ru", "sa",
+      "sg", "us", "vn"
+    )
 
-  /** Random pick from `EuropeanCountries`. Used as the `proxyCountry`
+  /** Random pick from `SupportedCountries`. Used as the `proxyCountry`
    *  thunk so each ScrapingAnt request rolls a fresh country and the
    *  in-client retry loop naturally tries different pools on failure.
    */
-  def randomEuropean(): String =
-    EuropeanCountries(Random.nextInt(EuropeanCountries.length))
+  def randomCountry(): String =
+    SupportedCountries(Random.nextInt(SupportedCountries.length))
 
   // Total worst-case wait with 5 attempts × 2s exponential backoff:
   //   2s + 4s + 8s + 16s = 30s of sleeping across 5 calls.
