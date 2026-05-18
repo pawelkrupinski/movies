@@ -31,7 +31,11 @@
   let INDEX = null;
 
   function buildIndex() {
-    INDEX = [...document.querySelectorAll('[data-cinema]')].map(section => ({
+    // `.cinema-section[data-cinema]` only — pills now sit inside
+    // `.cinema-group[data-cinema]` wrappers too (shared with /listing), so
+    // a bare `[data-cinema]` selector would pull those into the section
+    // index and break visibility / filter math.
+    INDEX = [...document.querySelectorAll('.cinema-section[data-cinema]')].map(section => ({
       el:      section,
       cinema:  section.dataset.cinema,
       row:     section.querySelector('.row'),
