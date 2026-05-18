@@ -41,7 +41,7 @@
               val screening  = s"${film.movie.title}|${cinemaShowtimes.cinema.displayName}|${slot.dateTime}"
               val star       = """<span class="fav-star" onclick="toggleFavScreening(event, this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</span>"""
               val attrs      = s"""$roomAttr data-format="${play.twirl.api.HtmlFormat.escape(fmtAttr)}" data-screening-id="${play.twirl.api.HtmlFormat.escape(screening)}" data-time="$time""""
-              val body       = s"$star$time$fmtBadge"
+              val body       = s"$time$fmtBadge$star"
               val tag        = slot.bookingUrl match {
                 case Some(url) => s"""<a href="${play.twirl.api.HtmlFormat.escape(url)}" class="badge-time" target="_blank"$attrs>$body</a>"""
                 case None      => s"""<span class="badge-time"$attrs>$body</span>"""
