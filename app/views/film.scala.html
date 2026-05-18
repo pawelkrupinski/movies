@@ -98,10 +98,6 @@
       margin-top: .4rem;
     }
     .cinema-link:hover { background: #5a5a9e; color: #fff; }
-    .trailer-section {
-      margin-top: 2rem;
-      max-width: 720px;
-    }
     .trailer-frame {
       position: relative;
       width: 100%;
@@ -117,13 +113,6 @@
       width: 100%;
       height: 100%;
       border: 0;
-    }
-    .trailer-heading {
-      font-size: .75rem;
-      color: #888;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      margin-bottom: .4rem;
     }
     .trailer-link {
       background: #3a3a6e;
@@ -230,60 +219,62 @@
         }
         case None => {}
       }
+
+      @* Distinct trailer embed URLs across every cinema's slot. Dedupe by the
+         normalised embed URL (TrailerEmbed.embedUrlFor returns the same shape
+         regardless of which `youtube.com/watch?v=ID` / `youtu.be/ID` form a
+         cinema sent), so a film with three cinemas all linking the same
+         trailer renders as one link, not three.
+         Lives inside the right-hand column alongside Opis / Reżyseria /
+         Obsada so the meta-label heading lines up vertically with the
+         others. *@
+      @defining(film.enrichment.toSeq.flatMap(_.trailerUrls).flatMap(TrailerEmbed.embedUrlFor).distinct) { embedUrls =>
+        @if(embedUrls.nonEmpty) {
+          <div class="meta-label">Zwiastuny</div>
+          <div>
+            @for((url, idx) <- embedUrls.zipWithIndex) {
+              <button type="button" class="trailer-link" onclick="playTrailer(this, '@url')">Zwiastun @{idx + 1}</button>
+            }
+          </div>
+          @* Single iframe slot — every link sets src on this one element so
+             we don't keep multiple videos buffering in parallel. Hidden
+             until the first click. *@
+          <div class="trailer-frame" id="trailer-frame" style="display:none">
+            <iframe id="trailer-iframe"
+                    title="Zwiastun: @film.movie.title"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen></iframe>
+          </div>
+        }
+      }
     </div>
 
   </div>
 
-  @* Distinct trailer embed URLs across every cinema's slot. Dedupe by the
-     normalised embed URL (TrailerEmbed.embedUrlFor returns the same shape
-     regardless of which `youtube.com/watch?v=ID` / `youtu.be/ID` form a
-     cinema sent), so a film with three cinemas all linking the same
-     trailer renders as one link, not three. *@
-  @defining(film.enrichment.toSeq.flatMap(_.trailerUrls).flatMap(TrailerEmbed.embedUrlFor).distinct) { embedUrls =>
-    @if(embedUrls.nonEmpty) {
-      <div class="trailer-section">
-        <div class="trailer-heading">Zwiastuny</div>
-        <div>
-          @for((url, idx) <- embedUrls.zipWithIndex) {
-            <button type="button" class="trailer-link" onclick="playTrailer(this, '@url')">Zwiastun @{idx + 1}</button>
-          }
-        </div>
-        @* Single iframe slot — every link sets src on this one element so
-           we don't keep multiple videos buffering in parallel. Hidden
-           until the first click. *@
-        <div class="trailer-frame" id="trailer-frame" style="display:none">
-          <iframe id="trailer-iframe"
-                  title="Zwiastun: @film.movie.title"
-                  referrerpolicy="strict-origin-when-cross-origin"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowfullscreen></iframe>
-        </div>
-      </div>
-      <script>
-        function playTrailer(btn, url) {
-          const frame  = document.getElementById('trailer-frame');
-          const iframe = document.getElementById('trailer-iframe');
-          // Re-clicking the currently-active button stops the video
-          // (clear src) and hides the player slot. Clearing src is what
-          // actually stops playback — display:none alone keeps audio
-          // playing in some browsers.
-          if (btn.classList.contains('active')) {
-            iframe.src = '';
-            frame.style.display = 'none';
-            btn.classList.remove('active');
-            return;
-          }
-          // First open or switch trailer: set src + autoplay, show slot,
-          // move the active marker to this button.
-          const sep = url.includes('?') ? '&' : '?';
-          iframe.src = url + sep + 'autoplay=1';
-          frame.style.display = '';
-          document.querySelectorAll('.trailer-link').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-        }
-      </script>
+  <script>
+    function playTrailer(btn, url) {
+      const frame  = document.getElementById('trailer-frame');
+      const iframe = document.getElementById('trailer-iframe');
+      // Re-clicking the currently-active button stops the video (clear
+      // src) and hides the player slot. Clearing src is what actually
+      // stops playback — display:none alone keeps audio playing in some
+      // browsers.
+      if (btn.classList.contains('active')) {
+        iframe.src = '';
+        frame.style.display = 'none';
+        btn.classList.remove('active');
+        return;
+      }
+      // First open or switch trailer: set src + autoplay, show slot,
+      // move the active marker to this button.
+      const sep = url.includes('?') ? '&' : '?';
+      iframe.src = url + sep + 'autoplay=1';
+      frame.style.display = '';
+      document.querySelectorAll('.trailer-link').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
     }
-  }
+  </script>
 
   <div class="showtimes-section">
     <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0;">Seanse</h2>
