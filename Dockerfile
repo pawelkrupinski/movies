@@ -5,11 +5,10 @@
 # that directory, so Fly's remote builder receives just the staged JARs +
 # startup scripts — no JDK, no sbt, no source.
 #
-# Java 25 JRE matches the build JDK in CI. The previous Java 21 downgrade
-# was a debugging step for the 512 MB OOM cycle; with the memory bump to
-# 1 GB the headroom is comfortable and we can run the modern JDK in prod
-# again.
-FROM eclipse-temurin:25-jre
+# Java 26 JRE matches the build JDK in CI. Scala 3.8 supports targeting
+# Java 26 bytecode directly; everything in the toolchain (CI JDK, scalac
+# output, javac --release, runtime JRE) lines up on 26.
+FROM eclipse-temurin:26-jre
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app
@@ -34,8 +33,7 @@ CMD exec bin/movies \
     -J-Xms128m \
     -J-XX:ReservedCodeCacheSize=96m \
     -J-XX:MaxMetaspaceSize=192m \
-    -J-XX:MaxDirectMemorySize=128m \
-    -J--sun-misc-unsafe-memory-access=allow
+    -J-XX:MaxDirectMemorySize=128m
     # Cap JVM non-heap regions. Java 21 defaults to ReservedCodeCacheSize=240m,
     # unbounded metaspace, MaxDirectMemorySize=Xmx (256m). Capping each stops
     # silent reservation drift, but the first attempt (64m/128m/64m) starved
