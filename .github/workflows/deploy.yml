@@ -108,15 +108,14 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
-            # Replaces the cache-based warm-up: download the freshly-compiled
-            # target tarball from the compile job and extract. `sbt test`
-            # then sees zinc state intact and runs tests without
-            # recompiling.
+            # Pull the freshly-compiled target tree from the compile job.
+            # Artifact lays its contents back at the workspace root, so
+            # `target/scala-3.3.7/...` ends up exactly where sbt looks.
+            # Zinc state is intact → `sbt test` skips compilation.
             - uses: actions/download-artifact@v4
               with:
                   name: compiled
                   path: .
-            - run: tar xzf compiled.tar.gz && rm compiled.tar.gz
 
             - run: sbt test
               env:
@@ -144,7 +143,6 @@ jobs:
               with:
                   name: compiled
                   path: .
-            - run: tar xzf compiled.tar.gz && rm compiled.tar.gz
 
             - run: sbt IntegrationTest/test
               env:
