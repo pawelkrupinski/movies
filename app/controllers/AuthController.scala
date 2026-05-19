@@ -49,6 +49,11 @@ class AuthController(
       case Some(p) =>
         val state       = UUID.randomUUID().toString
         val redirectUri = callbackUrl(provider, request)
+        // Log the redirect URI we send so a `redirect_uri_mismatch`
+        // error from Google (or the FB equivalent) is one log line
+        // away — paste exactly this string into the provider's
+        // "Authorised redirect URIs" list to fix the mismatch.
+        logger.info(s"OAuth $provider start — redirect_uri=$redirectUri")
         Redirect(p.authUrl(state, redirectUri))
           .withSession(request.session
             + ("oauthState"    -> state)
