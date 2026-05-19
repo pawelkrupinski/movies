@@ -3,7 +3,7 @@ package services.users
 import com.mongodb.client.model.ReplaceOptions
 import models.User
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{MongoClient, MongoCollection, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 import tools.Env
 
@@ -58,9 +58,22 @@ trait UserRepo {
  * "session-only" user that doesn't persist (Phase B will surface
  * that explicitly).
  */
-class MongoUserRepo extends UserRepo with Logging {
+class MongoUserRepo(sharedDb: Option[MongoDatabase] = None) extends UserRepo with Logging {
 
-  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[User]]) = init()
+  // When `sharedDb` is provided (production path via `MongoConnection`),
+  // we apply our codec registry to it and grab the `users` collection
+  // without opening our own client. When `None` (legacy scripts under
+  // test/scala/scripts/, IT specs), we build our own MongoClient.
+  // See `MongoConnection` for the rationale — Phase A originally
+  // opened a third independent MongoClient per process, which is what
+  // tipped RSS past the 512 MB Fly ceiling.
+  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[User]]) =
+    sharedDb match {
+      case Some(db) =>
+        val coll = db.withCodecRegistry(UserCodecs.registry).getCollection[User]("users")
+        (None, Some(coll))
+      case None => init()
+    }
   private def clientOpt: Option[MongoClient]               = initResult._1
   private def coll:      Option[MongoCollection[User]]     = initResult._2
 

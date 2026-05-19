@@ -31,4 +31,15 @@ CMD exec bin/movies \
     -Dhttp.address=0.0.0.0 \
     -Dpidfile.path=/dev/null \
     -J-Xmx256m \
-    -J-Xms128m
+    -J-Xms128m \
+    -J-XX:ReservedCodeCacheSize=96m \
+    -J-XX:MaxMetaspaceSize=192m \
+    -J-XX:MaxDirectMemorySize=128m
+    # Cap JVM non-heap regions. Java 21 defaults to ReservedCodeCacheSize=240m,
+    # unbounded metaspace, MaxDirectMemorySize=Xmx (256m). Capping each stops
+    # silent reservation drift, but the first attempt (64m/128m/64m) starved
+    # Mongo/Netty's direct buffers + Play's metaspace at boot — JVM crashed
+    # before it could bind port 9000 (no OOM-kill line; native allocation
+    # failure inside the JVM). Loosened to values that still recover ~150 MB
+    # vs the defaults while leaving headroom for class loading and reactive
+    # streams direct allocations.

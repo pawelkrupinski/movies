@@ -3,7 +3,7 @@ package services.users
 import com.mongodb.client.model.ReplaceOptions
 import models.UserState
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{MongoClient, MongoCollection, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 import tools.Env
 
@@ -37,9 +37,18 @@ trait UserStateRepo {
   def close(): Unit
 }
 
-class MongoUserStateRepo extends UserStateRepo with Logging {
+class MongoUserStateRepo(sharedDb: Option[MongoDatabase] = None) extends UserStateRepo with Logging {
 
-  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[UserState]]) = init()
+  // Shares its MongoClient with the rest of the app via the
+  // `MongoConnection` passed by Wiring. See MongoUserRepo for the
+  // sharedDb / legacy-init dual-path rationale.
+  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[UserState]]) =
+    sharedDb match {
+      case Some(db) =>
+        val coll = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
+        (None, Some(coll))
+      case None => init()
+    }
   private def clientOpt: Option[MongoClient]                = initResult._1
   private def coll:      Option[MongoCollection[UserState]] = initResult._2
 

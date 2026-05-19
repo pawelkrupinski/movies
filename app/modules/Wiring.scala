@@ -5,7 +5,7 @@ import controllers.{AuthController, HealthController, MovieController, MovieCont
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
-import services.{ShowtimeCache, Stoppable}
+import services.{MongoConnection, ShowtimeCache, Stoppable}
 import services.auth.{FacebookOauthProvider, GoogleOauthProvider, OauthProvider}
 import services.cinemas._
 import services.enrichment._
@@ -63,15 +63,21 @@ trait Wiring {
   // ── Events ────────────────────────────────────────────────────────────────
   lazy val eventBus: EventBus = new InProcessEventBus()
 
+  // ── Mongo ─────────────────────────────────────────────────────────────────
+  // Single shared MongoClient + database for every repo in the app. Prior
+  // shape was three independent MongoClients (movies + users + userStates),
+  // each with its own Netty event loop / connection pool / replica-set
+  // monitor thread — together they tipped the JVM RSS past Fly's 512 MB
+  // cgroup ceiling, causing the kernel OOM cycle. Sharing one connection
+  // is the standard Mongo driver usage pattern.
+  lazy val mongoConnection: MongoConnection = new MongoConnection
+
   // ── Users ─────────────────────────────────────────────────────────────────
-  // Phase A: storage layer only — no controllers consume these yet. Phase B
-  // (OAuth callback) is the first writer; Phase C (REST + UI) the first
-  // reader. Wiring them now keeps Phase B's diff focused on auth.
-  lazy val userRepo:      UserRepo      = new MongoUserRepo()
-  lazy val userStateRepo: UserStateRepo = new MongoUserStateRepo()
+  lazy val userRepo:      UserRepo      = new MongoUserRepo(mongoConnection.database)
+  lazy val userStateRepo: UserStateRepo = new MongoUserStateRepo(mongoConnection.database)
 
   // ── MovieRecord ────────────────────────────────────────────────────────────
-  lazy val movieRepo: MovieRepo = new MongoMovieRepo()
+  lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database)
   lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo)
   // ImdbRatings / RottenTomatoesRatings own the hourly rating refresh + the
   // per-row event listener for their respective services. Pulled out of
@@ -205,9 +211,12 @@ trait Wiring {
     unscreenedCleanup.stop()
     kinoMuzaSynopsisRefresher.stop()
     movieCache.stop()
+    // Each repo's close() is a no-op when it borrowed its database from
+    // `mongoConnection` — closing the shared MongoClient is owned here.
     movieRepo.close()
     userRepo.close()
     userStateRepo.close()
+    mongoConnection.close()
   }
 
   /** Run the entire enrichment pipeline for one row, synchronously, on the

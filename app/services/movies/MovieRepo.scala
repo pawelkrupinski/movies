@@ -5,7 +5,7 @@ import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import models.{MovieRecord, Source, SourceData}
 import org.mongodb.scala.bson.{BsonDateTime, BsonNull}
 import org.mongodb.scala.model.{Filters, Updates}
-import org.mongodb.scala.{MongoClient, MongoCollection, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.bson.conversions.Bson
 import play.api.Logging
 import tools.Env
@@ -81,13 +81,29 @@ trait MovieRepo {
  * Lifecycle: caller (`AppLoader`) registers a shutdown hook that calls
  * `close()` — the class doesn't self-register.
  */
-class MongoMovieRepo extends MovieRepo with Logging {
+class MongoMovieRepo(sharedDb: Option[MongoDatabase] = None) extends MovieRepo with Logging {
 
   // Lazy so subclasses that override every wire method (e.g.
   // `InMemoryMovieRepo` in tests) never trigger a Mongo connection
   // attempt — `new InMemoryMovieRepo()` was waiting 10 seconds per test
   // for the parent's init() to time out against an unreachable cluster.
-  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) = init()
+  //
+  // `sharedDb` injection (the production path): Wiring's `MongoConnection`
+  // owns a single MongoClient and passes its `.database` here. We apply
+  // our own codec registry to that database (a view, not a clone — the
+  // underlying client is shared) and grab our collection from it. This
+  // class doesn't own the client and its `close()` is a no-op.
+  //
+  // `sharedDb = None` (legacy path used by ad-hoc scripts under
+  // test/scala/scripts/): we build our own MongoClient from `MONGODB_URI`
+  // and own its close().
+  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) =
+    sharedDb match {
+      case Some(db) =>
+        val coll = db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredMovieDto]("movies")
+        (None, Some(coll))
+      case None => init()
+    }
   private def clientOpt: Option[MongoClient]                       = initResult._1
   private def coll:      Option[MongoCollection[StoredMovieDto]]   = initResult._2
 
