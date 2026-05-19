@@ -171,12 +171,20 @@ class AuthController(
   }
 
   // Build the absolute callback URL from the request. Behind Fly's
-  // proxy, `request.host` is the public hostname and `request.secure`
-  // reflects the X-Forwarded-Proto header (Play respects it when the
-  // proxy is trusted — Fly's edge always sets it). Locally
-  // `http://localhost:9000`.
+  // edge proxy, TLS terminates at the edge and the container receives
+  // plain HTTP with `X-Forwarded-Proto: https` + `X-Forwarded-Host`.
+  // Read those headers directly rather than relying on Play's
+  // `play.http.forwarded.trustedProxies` machinery — the
+  // configuration didn't make `request.secure` reflect the proxied
+  // scheme on this Play 3.0 setup, so we just trust the headers
+  // (safe: Fly's edge is the only ingress to our container, the
+  // internet can't reach us to forge these). Falls back to
+  // `request.secure` / `request.host` when the headers are absent
+  // (local dev hitting localhost:9000 directly).
   private def callbackUrl(provider: String, request: RequestHeader): String = {
-    val scheme = if (request.secure) "https" else "http"
-    s"$scheme://${request.host}/auth/$provider/callback"
+    val scheme = request.headers.get("X-Forwarded-Proto")
+      .getOrElse(if (request.secure) "https" else "http")
+    val host   = request.headers.get("X-Forwarded-Host").getOrElse(request.host)
+    s"$scheme://$host/auth/$provider/callback"
   }
 }
