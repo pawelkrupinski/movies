@@ -18,7 +18,13 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
       val parts     = ddMM.trim.split("\\.")
       val today     = LocalDate.now()
       val candidate = LocalDate.of(today.getYear, parts(1).toInt, parts(0).toInt)
-      if (candidate.isBefore(today.minusDays(1))) candidate.plusYears(1) else candidate
+      // Only roll forward when the date is *substantially* in the past —
+      // matches `KinoBulgarskaClient`'s rule. A 2-day-old listing (the
+      // site still shows yesterday's screening, the snapshot test runs
+      // 2 days after its capture date, …) is this year, not next; only
+      // a year-boundary January-from-December case justifies rolling
+      // forward. 6 months is the sweet spot between the two.
+      if (candidate.isBefore(today.minusMonths(6))) candidate.plusYears(1) else candidate
     }.toOption
 
   // 5-min scrape returns just the listing — title, director, runtime, year,
