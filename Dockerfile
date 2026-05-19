@@ -14,6 +14,16 @@ ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app
 COPY stage/ ./
+# `actions/upload-artifact@v4` strips the Unix executable bit, so the
+# Play startup scripts under `bin/` arrive as 0644 in the build context.
+# Without this chmod the container exits with code 126 ("command not
+# executable") on every machine start, which Fly retries until
+# max-restart-count and then leaves the machine stopped under a deploy
+# lease — the symptom that took down prod the first time this pipeline
+# ran. The fix is idempotent: a future build path that *does* preserve
+# the bit (tar artefact, direct `docker build`, etc.) won't be harmed
+# by re-applying 0755.
+RUN chmod +x bin/*
 EXPOSE 9000
 CMD exec bin/movies \
     -Dplay.http.secret.key="${APPLICATION_SECRET}" \
