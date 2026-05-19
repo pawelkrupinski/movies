@@ -6,16 +6,15 @@ on:
 
 # Pipeline shape:
 #
-#   compile  ─┬─►  test          ─┐
-#             └─►  integration-test ─┴─►  deploy
+#   test ─┬─►  deploy
+# integration-test ─┘
 #
-# One JVM start does all the compilation (`stage` for the dist that ships
-# to Fly + the Test / IntegrationTest scopes for the downstream test jobs).
-# `test` and `integration-test` run in parallel against the already-compiled
-# class trees uploaded as the `compiled` artifact — no recompilation, no
-# zinc warm-up. Deploy fans in on both and downloads just the `stage` slice.
+# Both test legs run independently. Each does its own compile (sharing the
+# `actions/cache` keyed on hashed sources so the second job in finds zinc
+# state warm). The test job also produces the Play universal-stage dist
+# for deploy, uploaded as the `stage` artifact.
 jobs:
-    compile:
+    test:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -29,8 +28,8 @@ jobs:
             - uses: sbt/setup-sbt@v1
 
             # Warm zinc state across pushes so an unchanged push is near-
-            # instant. Only the `compile` job needs this — downstream jobs
-            # consume the freshly-built artifact, never the cache.
+            # instant. Same key as `integration-test` so both jobs share the
+            # cache.
             - uses: actions/cache@v4
               with:
                   path: |
@@ -41,82 +40,6 @@ jobs:
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            # All three compilation scopes in a single sbt invocation so the
-            # JVM only starts once. `stage` covers Compile/compile + linking
-            # the Play universal-stage dist; `Test/compile` +
-            # `IntegrationTest/compile` produce the test class trees the
-            # downstream jobs need.
-            - run: sbt "stage; Test/compile; IntegrationTest/compile"
-
-            # Direct artifact upload — no intermediate tar. Three excludes:
-            #
-            #   - `target/universal` — dependency JARs (hundreds of MB);
-            #     deploy pulls them through the separate `stage` artifact,
-            #     so they'd be redundant here.
-            #
-            #   - `target/scala-3.3.7/test-classes/fixtures` — copied test
-            #     fixtures. Live in `test/resources/fixtures/` in the
-            #     source tree; `FakeHttpFetch` reads them directly via
-            #     filesystem path, and sbt's `Test/copyResources` re-lays
-            #     them down at the target path on first `sbt test`. Also:
-            #     one recorded URL filename contains `?`
-            #     (`…/suggestion/a/Arcybiskup+Lefebvre+-+dlaczego?.json`)
-            #     which upload-artifact's NTFS-portability filter rejects
-            #     outright. Dropping the whole subtree fixes both.
-            #
-            #   - `target/scala-3.3.7/api` — scaladoc; no downstream job
-            #     uses it.
-            #
-            # Net size drops ~284 MB → ~28 MB. Upload + downstream
-            # downloads become an order of magnitude faster and we don't
-            # need the tar workaround for the bad-filename issue.
-            - uses: actions/upload-artifact@v4
-              with:
-                  name: compiled
-                  path: |
-                      target
-                      project/target
-                      project/project/target
-                      !target/universal
-                      !target/scala-3.3.7/test-classes/fixtures
-                      !target/scala-3.3.7/api
-                  retention-days: 1
-                  if-no-files-found: error
-
-            # The staged Play dist is plain `.jar` / shell-script content
-            # with no `:` filenames, so it can ride the artifact upload as
-            # a directory directly. Kept separate so deploy only pulls
-            # what it needs (no zinc / test-class baggage).
-            - uses: actions/upload-artifact@v4
-              with:
-                  name: stage
-                  path: target/universal/stage
-                  retention-days: 1
-                  if-no-files-found: error
-
-    test:
-        needs: compile
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-
-            - uses: actions/setup-java@v4
-              with:
-                  distribution: temurin
-                  java-version: 21
-                  cache: sbt
-
-            - uses: sbt/setup-sbt@v1
-
-            # Pull the freshly-compiled target tree from the compile job.
-            # Artifact lays its contents back at the workspace root, so
-            # `target/scala-3.3.7/...` ends up exactly where sbt looks.
-            # Zinc state is intact → `sbt test` skips compilation.
-            - uses: actions/download-artifact@v4
-              with:
-                  name: compiled
-                  path: .
-
             - run: sbt test
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
@@ -125,8 +48,20 @@ jobs:
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
+            # Produce the Play universal-stage distribution here so the
+            # deploy job can ship it straight to Fly's builder without
+            # recompiling. Reuses the warm zinc state from `sbt test` —
+            # only linking + writing the dist costs anything.
+            - run: sbt stage
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: stage
+                  path: target/universal/stage
+                  retention-days: 1
+                  if-no-files-found: error
+
     integration-test:
-        needs: compile
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -139,10 +74,15 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
-            - uses: actions/download-artifact@v4
+            - uses: actions/cache@v4
               with:
-                  name: compiled
-                  path: .
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'conf/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
 
             - run: sbt IntegrationTest/test
               env:
@@ -158,7 +98,7 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
-            # Pull the staged distribution built by the `compile` job. The
+            # Pull the staged distribution built by the `test` job. The
             # Dockerfile expects it at top-level `stage/`; the upload
             # artifact's `path` was the directory's contents, so this
             # download lands those contents directly at `./stage/`.
