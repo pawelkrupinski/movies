@@ -22,11 +22,10 @@ primary_region = 'waw'
     soft_limit = 25
 
 [[vm]]
-  # 768mb: midpoint between the Temurin-era 1gb (load-bearing for ~400
-  # MB RSS + cgroup/kernel overhead) and the 512mb floor. With Semeru
-  # OpenJ9's lower RSS (~250–320 MB projected for our Play/Pekko
-  # workload) 768mb is conservative headroom.
-  memory = '768mb'
+  # Back to 1gb. 768mb wasn't enough breathing room on Semeru once the
+  # full workload (Mongo + Pekko + cinema scrapers + enrichment cycle)
+  # was active; 1gb is the comfortable headroom from the Temurin era.
+  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
 
