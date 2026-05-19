@@ -43,6 +43,21 @@ jobs:
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
+            # Produce the Play universal-stage distribution here so the deploy
+            # job can ship it straight to Fly's builder without recompiling.
+            # Scala 3's default `-java-output-version 8` makes these JARs
+            # JDK-agnostic, so the Java-25 build runs unchanged on the
+            # Dockerfile's Java-21 JRE. Reuses the warm zinc state from
+            # `sbt test` — only linking + writing the dist costs anything.
+            - run: sbt stage
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: stage
+                  path: target/universal/stage
+                  retention-days: 1
+                  if-no-files-found: error
+
     integration-test:
         runs-on: ubuntu-latest
         steps:
@@ -79,6 +94,18 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
+
+            # Pull the staged distribution built by the `test` job. The
+            # Dockerfile expects it at top-level `stage/`; placing it there
+            # (rather than its native `target/universal/stage` path) keeps
+            # `.dockerignore` to a single whitelist line and avoids Docker's
+            # deep-path re-inclusion quirks. `.dockerignore` whitelists
+            # exactly `stage/`, so Fly's builder receives the staged JARs
+            # but none of the surrounding test artefacts.
+            - uses: actions/download-artifact@v4
+              with:
+                  name: stage
+                  path: stage
 
             - uses: superfly/flyctl-actions/setup-flyctl@master
 

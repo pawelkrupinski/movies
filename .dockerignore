@@ -1,6 +1,17 @@
-target/
-.git/
-.gitignore
-.scala-build/
-logs/
-RUNNING_PID
+# Everything is excluded by default — Docker only ever needs the staged
+# Play distribution that `sbt stage` produces (and the Dockerfile itself).
+# Source, tests, fixtures, build caches, and .git are pure noise for the
+# runtime image and bloat the build-context upload to Fly's remote builder.
+*
+
+# Whitelist the staged Play distribution. The GitHub Actions deploy job
+# places it at `stage/` (not its native `target/universal/stage` path)
+# precisely so this exclusion can be a single top-level whitelist — Docker's
+# `.dockerignore` doesn't reliably re-include a deep path whose parents are
+# ignored by `*`.
+!stage
+!stage/**
+
+# The Dockerfile is part of the build context (always sent), but listing
+# it here explicitly survives any future top-level pattern change.
+!Dockerfile

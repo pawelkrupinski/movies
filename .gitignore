@@ -8,6 +8,9 @@
 
 dist/*
 target/
+# Local mirror of CI's `actions/download-artifact@v4 -> stage`. Only
+# present when verifying the Docker build off-CI; never committed.
+/stage/
 lib_managed/
 src_managed/
 project/boot/
