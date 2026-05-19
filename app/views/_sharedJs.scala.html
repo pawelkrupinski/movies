@@ -62,6 +62,14 @@
       const h = Math.floor(fromMin / 60), m = fromMin % 60;
       parts.push('od ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
     }
+    // Cinema filter is now part of the Filtry panel; surface the
+    // selected-vs-total count in the button label so the navbar still
+    // signals "you've narrowed the cinemas" at a glance even though the
+    // standalone Kina button is gone.
+    const disabled = getDisabledCinemas();
+    if (disabled.length > 0 && disabled.length < ALL_CINEMAS.length) {
+      parts.push('kina ' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.length);
+    }
     const btn = document.getElementById('format-filter-btn');
     btn.textContent = parts.length === 0 ? 'Filtry' : 'Filtry (' + parts.join(', ') + ')';
   }
@@ -435,7 +443,7 @@
           setDisabledCinemas(dis);
         }
         syncAllCheckbox();
-        updateCinemaBtn();
+        updateFormatBtn();   // cinema count is part of the Filtry label now
         applyFilters();
       };
       label.appendChild(cb);
@@ -443,7 +451,6 @@
       list.appendChild(label);
     });
     syncAllCheckbox();
-    updateCinemaBtn();
   }
 
   function syncAllCheckbox() {
@@ -453,32 +460,15 @@
     allCb.indeterminate = disabled.length > 0 && disabled.length < ALL_CINEMAS.length;
   }
 
-  function updateCinemaBtn() {
-    const disabled = getDisabledCinemas();
-    const btn = document.getElementById('cinema-filter-btn');
-    btn.textContent = disabled.length > 0
-      ? 'Kina (' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.length + ')'
-      : 'Kina';
-  }
+  // Cinema picker now lives inside the Filtry dropdown; no standalone
+  // open/close handler. `buildCinemaPanel` populates the same `#cinema-list`
+  // element (just re-parented into `#format-panel`), so no changes needed
+  // there. The cinema-count summary surfaces in `updateFormatBtn` instead.
 
   function toggleAllCinemas(checked) {
     setDisabledCinemas(checked ? [] : ALL_CINEMAS.slice());
     buildCinemaPanel();
     applyFilters();
-  }
-
-  function toggleCinemaPanel(event) {
-    event.stopPropagation();
-    const panel = document.getElementById('cinema-panel');
-    const opening = panel.style.display === 'none';
-    closeOtherPanels(opening ? panel : null);
-    if (opening) {
-      buildCinemaPanel();
-      panel.style.display = 'block';
-      clampPanel(panel);
-    } else {
-      panel.style.display = 'none';
-    }
   }
 
   // ── Room tooltip ──────────────────────────────────────────────────────────
@@ -536,7 +526,6 @@
 
   document.addEventListener('click', () => {
     document.getElementById('hidden-panel').style.display = 'none';
-    document.getElementById('cinema-panel').style.display = 'none';
     document.getElementById('format-panel').style.display = 'none';
     closeAuthMenu();
   });
@@ -716,7 +705,9 @@
     populateDayOptions();
     squareDateNavBtns();
     updateNavbar();
-    updateCinemaBtn();
+    // Cinema picker lives in the Filtry dropdown now — populate the list
+    // at boot so the first open of Filtry has the checkboxes ready.
+    buildCinemaPanel();
     updateFormatBtn();
     paintFavourites();
     applyFilters();

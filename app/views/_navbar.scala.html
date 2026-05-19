@@ -1,4 +1,17 @@
 @(activePage: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
+@*
+   Navbar layout:
+     - Logo + tab links (Filmy / Kina / ★ / Debug)            — left
+     - Hidden-films flyout button (auto-shown when set)        — inline
+     - Filtry dropdown (now includes the Kina cinema picker)   — right cluster
+     - Search + date                                            — right cluster
+     - Login pill / avatar dropdown                             — far right (desktop)
+                                                                 row-1 right (mobile)
+
+   The Kina cinema picker (formerly a standalone Kina dropdown next to
+   Filtry) now lives inside the Filtry panel — fewer top-level buttons,
+   one source of truth for "what's filtering this page".
+*@
 <nav class="navbar px-4 py-3 d-flex align-items-center" style="flex-wrap:wrap; gap:.4rem">
   <div class="d-flex align-items-center gap-3" style="flex-shrink:0">
     <span class="fw-bold fs-5">🎬<span class="navbar-title"> Repertuar kinowy Poznań</span></span>
@@ -9,64 +22,36 @@
       @if(devMode) {
         <a href="/debug" class="nav-tab">Debug</a>
       }
-      @currentUser match {
-        case Some(user) => {
-          @* Logged in: avatar + first name + dropdown with "Wyloguj się".
-             Dropdown built as a small pure-CSS popover anchored to the
-             pill — no JS framework, click on the pill toggles the
-             dropdown via a tiny inline handler in _sharedJs.            *@
-          <div class="auth-menu" id="auth-menu" onclick="toggleAuthMenu(event)">
-            @user.avatarUrl match {
-              case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
-              case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
-            }
-            <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse("Konto")).split("[ @@]").head</span>
-            <div class="auth-dropdown" id="auth-dropdown">
-              @* Logout route is `+ nocsrf` (form post from a third-party
-                 page can only log a user OUT, not in — same-origin policy
-                 protects against state changes any further than that).   *@
-              <form method="post" action="/auth/logout" class="auth-logout-form">
-                <button type="submit" class="auth-logout-btn">Wyloguj się</button>
-              </form>
-            </div>
-          </div>
-        }
-        case None if oauthProviders.nonEmpty => {
-          @* Logged out + at least one provider configured: "Zaloguj się"
-             pill opens the login modal (defined in _loginModal.scala.html
-             at the page level so the markup is rendered once per page).  *@
-          <button type="button" class="nav-tab nav-tab-login" onclick="openLoginModal()">Zaloguj się</button>
-        }
-        case None => {
-          @* No OAuth providers configured (local dev with no secrets) —
-             render nothing rather than a button that 404s on click.     *@
-        }
-      }
     </div>
   </div>
-  <div class="d-flex gap-2 align-items-center navbar-cinema-controls">
-    <div style="position:relative">
-      <button id="show-hidden-btn" onclick="toggleHiddenPanel(event)" class="btn refresh-btn btn-sm" style="display:none!important"></button>
-      <div id="hidden-panel" class="dropdown-panel" style="display:none">
-        <div id="hidden-panel-list"></div>
-        <div class="panel-divider">
-          <button onclick="showAllFilms()" class="btn refresh-btn btn-sm w-100">Pokaż wszystkie</button>
-        </div>
-      </div>
-    </div>
-    <div style="position:relative">
-      <button id="cinema-filter-btn" onclick="toggleCinemaPanel(event)" class="btn refresh-btn btn-sm">Kina</button>
-      <div id="cinema-panel" class="dropdown-panel" style="display:none" onclick="event.stopPropagation()">
-        <label class="panel-label" style="border-bottom:1px solid #3a3a6e; margin-bottom:4px; padding-bottom:8px;">
-          <input type="checkbox" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> Wszystkie kina
-        </label>
-        <div id="cinema-list"></div>
+
+  @* Hidden-films flyout. The button is `display:none!important` at rest;
+     `updateNavbar` flips it inline-flex when there's at least one hidden
+     title. Wrapped in its own position:relative so the dropdown anchors
+     under the button. *@
+  <div class="navbar-hidden" style="position:relative">
+    <button id="show-hidden-btn" onclick="toggleHiddenPanel(event)" class="btn refresh-btn btn-sm" style="display:none!important"></button>
+    <div id="hidden-panel" class="dropdown-panel" style="display:none">
+      <div id="hidden-panel-list"></div>
+      <div class="panel-divider">
+        <button onclick="showAllFilms()" class="btn refresh-btn btn-sm w-100">Pokaż wszystkie</button>
       </div>
     </div>
   </div>
+
   <div id="filtry-wrapper" class="navbar-filtry" style="position:relative">
     <button id="format-filter-btn" onclick="toggleFormatPanel(event)" class="btn refresh-btn btn-sm">Filtry</button>
     <div id="format-panel" class="dropdown-panel" style="display:none" onclick="event.stopPropagation()">
+      @* Kina cinema picker — moved here from its own dropdown. Same DOM
+         ids (`cinema-all`, `cinema-list`) so the existing
+         `buildCinemaPanel`/`toggleAllCinemas` JS keeps working unchanged. *@
+      <div class="panel-section-label">Kina</div>
+      <label class="panel-label" style="border-bottom:1px solid #3a3a6e; margin-bottom:4px; padding-bottom:8px;">
+        <input type="checkbox" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> Wszystkie kina
+      </label>
+      <div id="cinema-list"></div>
+      <div class="panel-divider"></div>
+
       <div class="panel-section-label">Wymiar</div>
       <label class="panel-label"><input type="radio" name="format-dim"  value=""   checked onchange="onFormatChange()"> Wszystkie</label>
       <label class="panel-label"><input type="radio" name="format-dim"  value="2D"         onchange="onFormatChange()"> 2D</label>
@@ -97,6 +82,7 @@
       <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100">Wyczyść</button>
     </div>
   </div>
+
   <div class="d-flex gap-2 align-items-center navbar-search-date">
     <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()">
     <div class="d-flex align-items-stretch" style="gap:2px">
@@ -109,5 +95,36 @@
       </select>
       <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
     </div>
+  </div>
+
+  @* Auth: own slot so CSS can pin it to the far right on desktop and
+     to the row-1 right on mobile (replacing the spot the old Kina
+     dropdown used to occupy). *@
+  <div class="navbar-auth">
+    @currentUser match {
+      case Some(user) => {
+        <div class="auth-menu" id="auth-menu" onclick="toggleAuthMenu(event)">
+          @user.avatarUrl match {
+            case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
+            case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
+          }
+          <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse("Konto")).split("[ @@]").head</span>
+          <div class="auth-dropdown" id="auth-dropdown">
+            @* Logout route is `+ nocsrf` (form post from a third-party
+               page can only log a user OUT, not in — same-origin policy
+               protects against state changes any further than that).   *@
+            <form method="post" action="/auth/logout" class="auth-logout-form">
+              <button type="submit" class="auth-logout-btn">Wyloguj się</button>
+            </form>
+          </div>
+        </div>
+      }
+      case None if oauthProviders.nonEmpty => {
+        <button type="button" class="nav-tab nav-tab-login" onclick="openLoginModal()">Zaloguj się</button>
+      }
+      case None => {
+        @* No OAuth providers configured (local dev with no secrets). *@
+      }
+    }
   </div>
 </nav>
