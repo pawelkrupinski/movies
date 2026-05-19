@@ -5,15 +5,11 @@
 # that directory, so Fly's remote builder receives just the staged JARs +
 # startup scripts — no JDK, no sbt, no source.
 #
-# IBM Semeru (OpenJ9) JRE 21 on Ubuntu 22.04 (jammy). OpenJ9 typically
-# uses materially less RSS than HotSpot for the same workload — more
-# compact class metadata, smaller default JIT code cache reservation,
-# different GC ergonomics. Trying it on JRE 21 (the matching minor
-# of Scala 3.8.3's `-java-output-version 21` target) — the previous
-# Semeru attempt was on JRE 25 and the machine flapped before a
-# steady RSS reading; pairing JRE with bytecode minor narrows the
-# variables.
-FROM ibm-semeru-runtimes:open-21-jdk-jammy
+# Eclipse Temurin (HotSpot) JRE 26. Scala 3.8.3 emits Java 21 bytecode
+# (the highest output version it accepts); JRE 26 loads those class
+# files unchanged. CI builds on the same JDK 26 — toolchain consistent
+# end-to-end.
+FROM eclipse-temurin:26-jre
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app
