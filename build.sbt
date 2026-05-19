@@ -64,12 +64,6 @@ scalacOptions ++= Seq(
   "-Wconf:src=.*views/.*:silent"
 )
 
-// `javacOptions --release 21` stays — it's the *Java* source language
-// level, not a Scala→bytecode pinning. Play's routes compiler emits Java
-// for the JavaScript reverse router, and the generated source uses
-// modern API; dropping this breaks `Compile/compileIncremental`.
-javacOptions ++= Seq("--release", "21")
-
 // ── Runtime JVM options ───────────────────────────────────────────────────────
 
 // Scala 3.3.7's LazyVals runtime helper still calls

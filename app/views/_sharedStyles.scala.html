@@ -347,14 +347,14 @@
     padding: 2px 6px;
   }
   .anon-nag-toast .anon-nag-close:hover { color: #fff; }
-  /* Desktop layout: tabs on the left; Filtry / search-date / auth as one
-     right-aligned cluster. `margin-left: auto` on Filtry (first item of
-     the right cluster) absorbs the empty space between tabs and the
-     cluster. Hidden-films pill, when visible, sits inline between the
-     tabs and Filtry. */
-  .navbar-hidden      { order: 1; }
-  .navbar-filtry      { order: 2; margin-left: auto; }
-  .navbar-search-date { order: 3; }
+  /* Desktop layout: tabs on the left; search-date / hidden-films / Filtry
+     / auth as one right-aligned cluster. `margin-left: auto` on search-date
+     (first item of the right cluster) absorbs the empty space between tabs
+     and the cluster. Hidden-films pill, when visible, sits inline between
+     search-date and Filtry. */
+  .navbar-search-date { order: 1; margin-left: auto; }
+  .navbar-hidden      { order: 2; }
+  .navbar-filtry      { order: 3; }
   .navbar-auth        { order: 4; }
 
   @@media (max-width: 575px) {
@@ -366,8 +366,8 @@
        margin-left: auto so the long "Filtry (2D NAP …)" label can spill
        onto its own row without losing the right alignment. */
     .navbar-auth        { order: 2; margin-left: auto; }
-    .navbar-hidden      { order: 3; }
-    .navbar-search-date { order: 4; flex-basis: 0; flex-grow: 1; margin-left: 0; justify-content: space-between; }
+    .navbar-search-date { order: 3; flex-basis: 0; flex-grow: 1; margin-left: 0; justify-content: space-between; }
+    .navbar-hidden      { order: 4; }
     .navbar-filtry      { order: 5; margin-left: auto; }
   }
 </style>
