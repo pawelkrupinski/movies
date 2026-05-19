@@ -22,15 +22,15 @@ primary_region = 'waw'
     soft_limit = 25
 
 [[vm]]
-  # Bumped from 512mb → 1gb on 2026-05-19. JVM RSS settled at ~400 MB
-  # working-set after the auth feature (Phases A-D) added the User /
-  # UserState repos + OAuth + REST. With the kernel slab + Fly's runtime
-  # overhead the 512mb cgroup was OOM-killing the JVM every ~5 min in a
-  # restart loop; the architectural fix (shared MongoClient + JVM caps)
-  # dropped total-vm by 1.1 GB but couldn't shrink the actual working
-  # set below the cgroup ceiling. 1gb gives ~600 MB headroom and stops
-  # the cycle.
-  memory = '1gb'
+  # Back to 512mb after switching the prod JVM to IBM Semeru (OpenJ9).
+  # OpenJ9 typically uses 20-40% less RSS than HotSpot/Temurin for the
+  # same Play/Pekko workload — more compact class metadata, smaller
+  # default JIT code cache reservation, gencon GC ergonomics. The 1gb
+  # bump that fixed the OOM cycle on Temurin is no longer load-bearing;
+  # if RSS stays comfortably under 400 MB on Semeru we can run on the
+  # smaller machine. Roll back to 1gb here if Semeru turns out not to
+  # save enough.
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
 
