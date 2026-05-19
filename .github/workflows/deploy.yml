@@ -55,7 +55,13 @@ jobs:
             # Tarring up front avoids the per-file character check AND
             # speeds the transfer (single-file artifact, no per-file
             # overhead × tens of thousands of zinc artifacts).
-            - run: tar czf compiled.tar.gz target project/target project/project/target
+            # Exclude `target/universal` (the staged dist) from the
+            # compiled artifact — it's hundreds of MB of dependency JARs
+            # and the deploy job pulls it through the separate `stage`
+            # artifact anyway. Without this exclude, the tarball was
+            # ~100 MB compressed and the upload's FinalizeArtifact call
+            # intermittently 403'd from the artifact backend.
+            - run: tar --exclude='target/universal' -czf compiled.tar.gz target project/target project/project/target
 
             - uses: actions/upload-artifact@v4
               with:
