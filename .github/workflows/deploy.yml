@@ -4,12 +4,18 @@ on:
     push:
         branches: [main]
 
-# Unit tests + integration tests run on two parallel runners. Each picks
-# up the same target/ cache, so the second one to start usually finds
-# zinc state warm. The deploy job fans in — it only fires after both
-# test legs pass.
+# Pipeline shape:
+#
+#   compile  ─┬─►  test          ─┐
+#             └─►  integration-test ─┴─►  deploy
+#
+# One JVM start does all the compilation (`stage` for the dist that ships
+# to Fly + the Test / IntegrationTest scopes for the downstream test jobs).
+# `test` and `integration-test` run in parallel against the already-compiled
+# class trees uploaded as the `compiled` artifact — no recompilation, no
+# zinc warm-up. Deploy fans in on both and downloads just the `stage` slice.
 jobs:
-    test:
+    compile:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -22,9 +28,9 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
-            # Cache compiled classes + zinc incremental state so a no-source-
-            # change push (e.g. .yml-only tweaks) skips the ~30s cold compile.
-            # Same key as `integration-test` so both jobs share the cache.
+            # Warm zinc state across pushes so an unchanged push is near-
+            # instant. Only the `compile` job needs this — downstream jobs
+            # consume the freshly-built artifact, never the cache.
             - uses: actions/cache@v4
               with:
                   path: |
@@ -34,6 +40,65 @@ jobs:
                   key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'conf/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
+
+            # All three compilation scopes in a single sbt invocation so the
+            # JVM only starts once. `stage` covers Compile/compile + linking
+            # the Play universal-stage dist; `Test/compile` +
+            # `IntegrationTest/compile` produce the test class trees the
+            # downstream jobs need.
+            - run: sbt "stage; Test/compile; IntegrationTest/compile"
+
+            # `compiled` carries every directory the downstream sbt jobs
+            # need to skip recompilation: top-level `target/` (classes,
+            # test-classes, it-classes, zinc state, twirl-generated
+            # sources, streams) plus the project metadata under
+            # `project/target` and `project/project/target`. Upload v4
+            # preserves the relative paths, so a download to `.` lands
+            # everything back where sbt expects it.
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: compiled
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  retention-days: 1
+                  if-no-files-found: error
+
+            # Separate `stage` artifact so the deploy job doesn't have to
+            # pull the whole compiled tree just to ship the dist. Path
+            # points at the directory's *contents*, so download with
+            # `path: stage` lands them at top-level `stage/` — matches
+            # the Dockerfile's `COPY stage/ ./` line + .dockerignore
+            # whitelist.
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: stage
+                  path: target/universal/stage
+                  retention-days: 1
+                  if-no-files-found: error
+
+    test:
+        needs: compile
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            # Replaces the cache-based warm-up: download the freshly-compiled
+            # target tree from the compile job. `sbt test` sees zinc state
+            # intact and runs tests without recompiling.
+            - uses: actions/download-artifact@v4
+              with:
+                  name: compiled
+                  path: .
 
             - run: sbt test
               env:
@@ -43,22 +108,8 @@ jobs:
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
-            # Produce the Play universal-stage distribution here so the deploy
-            # job can ship it straight to Fly's builder without recompiling.
-            # Scala 3's default `-java-output-version 8` makes these JARs
-            # JDK-agnostic, so the Java-25 build runs unchanged on the
-            # Dockerfile's Java-21 JRE. Reuses the warm zinc state from
-            # `sbt test` — only linking + writing the dist costs anything.
-            - run: sbt stage
-
-            - uses: actions/upload-artifact@v4
-              with:
-                  name: stage
-                  path: target/universal/stage
-                  retention-days: 1
-                  if-no-files-found: error
-
     integration-test:
+        needs: compile
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -71,15 +122,10 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
-            - uses: actions/cache@v4
+            - uses: actions/download-artifact@v4
               with:
-                  path: |
-                      target
-                      project/target
-                      project/project/target
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'conf/**') }}
-                  restore-keys: |
-                      sbt-target-${{ runner.os }}-
+                  name: compiled
+                  path: .
 
             - run: sbt IntegrationTest/test
               env:
@@ -95,13 +141,13 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
-            # Pull the staged distribution built by the `test` job. The
-            # Dockerfile expects it at top-level `stage/`; placing it there
-            # (rather than its native `target/universal/stage` path) keeps
-            # `.dockerignore` to a single whitelist line and avoids Docker's
-            # deep-path re-inclusion quirks. `.dockerignore` whitelists
-            # exactly `stage/`, so Fly's builder receives the staged JARs
-            # but none of the surrounding test artefacts.
+            # Pull the staged distribution built by the `compile` job. The
+            # Dockerfile expects it at top-level `stage/`; the upload
+            # artifact's `path` was the directory's contents, so this
+            # download lands those contents directly at `./stage/`.
+            # `.dockerignore` whitelists exactly `stage/`, so Fly's
+            # builder receives the staged JARs but none of the
+            # surrounding test artefacts.
             - uses: actions/download-artifact@v4
               with:
                   name: stage
