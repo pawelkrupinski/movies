@@ -1,5 +1,5 @@
 @import controllers.CinemaSchedule
-@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String], devMode: Boolean)
+@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -14,7 +14,8 @@
 </head>
 <body>
 
-@_navbar("kina", devMode)
+@_navbar("kina", devMode, currentUser, oauthProviders)
+@_loginModal(oauthProviders)
 
 <div class="container-fluid py-4 px-4">
   <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>

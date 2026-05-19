@@ -182,9 +182,136 @@
      fav-star colour used on listing-card and film-page poster buttons so
      the whole "favourite" idea is visually consistent. Slightly larger
      than the text tabs so the glyph reads cleanly at the navbar height. */
-  .nav-tab-fav { color: #ffd24a; font-size: 1.05rem; line-height: 1; padding: .2rem .55rem; }
+  /* inline-flex + align-items: center so the ★ glyph sits in the optical
+     centre of the pill — the surrounding flex row stretches every tab to
+     the tallest sibling's height, and without explicit centering the
+     short-line-height star floats to the top of that stretched box. */
+  .nav-tab-fav { color: #ffd24a; font-size: 1.05rem; line-height: 1; padding: .2rem .55rem; display: inline-flex; align-items: center; justify-content: center; }
   .nav-tab-fav:hover { color: #ffd24a; background: #3a3a6e; }
   .nav-tab-fav.active { color: #ffd24a; background: #3a3a6e; }
+
+  /* ── Auth pill / dropdown / login modal ──────────────────────────────── */
+  .nav-tab-login {
+    cursor: pointer;
+    border: none;
+    font: inherit;
+    background: #3a3a6e;
+    color: #aad4ff;
+    padding: .2rem .7rem;
+  }
+  .nav-tab-login:hover { background: #5a5a9e; color: #fff; }
+
+  /* The "logged in" pill — avatar + first name, click toggles a dropdown
+     anchored below it. Position:relative so the absolute-positioned
+     dropdown has the right anchor. */
+  .auth-menu {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    background: #3a3a6e;
+    color: #aad4ff;
+    border-radius: 6px;
+    padding: .15rem .55rem .15rem .25rem;
+    font-size: .875rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .auth-menu:hover { background: #5a5a9e; color: #fff; }
+  .auth-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; display: block; }
+  .auth-avatar-fallback {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #1a1a2e; color: #ffd24a;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .7rem; font-weight: 600;
+  }
+  .auth-name { font-size: .875rem; }
+  .auth-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: #1e1e2e;
+    border: 1px solid #3a3a6e;
+    border-radius: 8px;
+    padding: 6px;
+    min-width: 160px;
+    display: none;
+    z-index: 50;
+  }
+  .auth-menu.open .auth-dropdown { display: block; }
+  .auth-logout-form { margin: 0; }
+  .auth-logout-btn {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: #eee;
+    text-align: left;
+    padding: .4rem .6rem;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: .875rem;
+  }
+  .auth-logout-btn:hover { background: #3a3a6e; color: #fff; }
+
+  /* Login modal — full-viewport dimmed backdrop, centred card. The backdrop
+     is the click-outside-to-close handler; the card has stopPropagation on
+     its own click so the bubbling doesn't fire-close. */
+  .login-modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.6);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 200;
+  }
+  .login-modal-backdrop.open { display: flex; }
+  .login-modal {
+    background: #1a1a2e;
+    border: 1px solid #3a3a6e;
+    border-radius: 12px;
+    padding: 1.5rem 1.6rem 1.4rem;
+    max-width: 360px;
+    width: 92%;
+    position: relative;
+  }
+  .login-modal-title { font-size: 1.2rem; font-weight: 600; margin-bottom: .5rem; }
+  .login-modal-sub   { font-size: .85rem; color: #aab; margin-bottom: 1.1rem; }
+  .login-modal-close {
+    position: absolute;
+    top: .4rem; right: .55rem;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .login-modal-close:hover { color: #fff; }
+  .login-modal-buttons { display: flex; flex-direction: column; gap: .55rem; }
+  .login-btn {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .65rem .9rem;
+    border-radius: 8px;
+    font-size: .95rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: filter .12s;
+  }
+  .login-btn:hover { filter: brightness(1.1); }
+  .login-btn-icon {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .login-btn-google   { background: #fff; color: #222; }
+  .login-btn-google .login-btn-icon   { background: #4285F4; color: #fff; }
+  .login-btn-facebook { background: #1877F2; color: #fff; }
+  .login-btn-facebook .login-btn-icon { background: #fff;     color: #1877F2; }
   .navbar-search-date { margin-left: auto; order: 2; }
   .navbar-cinema-controls { order: 3; }
   /* Desktop: Filtry follows Kina (cinema-controls) at the far right. */

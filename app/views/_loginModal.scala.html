@@ -1,0 +1,31 @@
+@(oauthProviders: Set[String])
+@*
+   Login modal — rendered once per page. Hidden by default; the "Zaloguj się"
+   pill in `_navbar` flips its display:none. Two large buttons (Google,
+   Facebook) link to the `/auth/<provider>/start` route which 302s to the
+   provider's consent page. Only providers wired in `Wiring.oauthProviders`
+   (i.e. with both env vars set) render here.
+*@
+@if(oauthProviders.nonEmpty) {
+<div class="login-modal-backdrop" id="login-modal-backdrop" onclick="closeLoginModal()">
+  <div class="login-modal" onclick="event.stopPropagation()">
+    <button type="button" class="login-modal-close" onclick="closeLoginModal()" aria-label="Zamknij">&times;</button>
+    <div class="login-modal-title">Zaloguj się</div>
+    <div class="login-modal-sub">Twoje ulubione i ukryte filmy będą synchronizowane między urządzeniami.</div>
+    <div class="login-modal-buttons">
+      @if(oauthProviders.contains("google")) {
+        <a href="/auth/google/start" class="login-btn login-btn-google">
+          <span class="login-btn-icon">G</span>
+          <span class="login-btn-label">Kontynuuj z Google</span>
+        </a>
+      }
+      @if(oauthProviders.contains("facebook")) {
+        <a href="/auth/facebook/start" class="login-btn login-btn-facebook">
+          <span class="login-btn-icon">f</span>
+          <span class="login-btn-label">Kontynuuj z Facebookiem</span>
+        </a>
+      }
+    </div>
+  </div>
+</div>
+}

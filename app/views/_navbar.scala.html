@@ -1,13 +1,46 @@
-@(activePage: String, devMode: Boolean)
+@(activePage: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
 <nav class="navbar px-4 py-3 d-flex align-items-center" style="flex-wrap:wrap; gap:.4rem">
   <div class="d-flex align-items-center gap-3" style="flex-shrink:0">
     <span class="fw-bold fs-5">🎬<span class="navbar-title"> Repertuar kinowy Poznań</span></span>
-    <div class="d-flex gap-1">
+    <div class="d-flex gap-1 align-items-center">
       <a href="/" class="nav-tab@if(activePage == "films"){ active}">Filmy</a>
       <a href="/kina" class="nav-tab@if(activePage == "kina"){ active}">Kina</a>
       <a href="/ulubione" class="nav-tab nav-tab-fav@if(activePage == "favourites"){ active}" title="Ulubione" aria-label="Ulubione">★</a>
       @if(devMode) {
         <a href="/debug" class="nav-tab">Debug</a>
+      }
+      @currentUser match {
+        case Some(user) => {
+          @* Logged in: avatar + first name + dropdown with "Wyloguj się".
+             Dropdown built as a small pure-CSS popover anchored to the
+             pill — no JS framework, click on the pill toggles the
+             dropdown via a tiny inline handler in _sharedJs.            *@
+          <div class="auth-menu" id="auth-menu" onclick="toggleAuthMenu(event)">
+            @user.avatarUrl match {
+              case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
+              case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
+            }
+            <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse("Konto")).split("[ @@]").head</span>
+            <div class="auth-dropdown" id="auth-dropdown">
+              @* Logout route is `+ nocsrf` (form post from a third-party
+                 page can only log a user OUT, not in — same-origin policy
+                 protects against state changes any further than that).   *@
+              <form method="post" action="/auth/logout" class="auth-logout-form">
+                <button type="submit" class="auth-logout-btn">Wyloguj się</button>
+              </form>
+            </div>
+          </div>
+        }
+        case None if oauthProviders.nonEmpty => {
+          @* Logged out + at least one provider configured: "Zaloguj się"
+             pill opens the login modal (defined in _loginModal.scala.html
+             at the page level so the markup is rendered once per page).  *@
+          <button type="button" class="nav-tab nav-tab-login" onclick="openLoginModal()">Zaloguj się</button>
+        }
+        case None => {
+          @* No OAuth providers configured (local dev with no secrets) —
+             render nothing rather than a button that 404s on click.     *@
+        }
       }
     </div>
   </div>

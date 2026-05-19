@@ -27,6 +27,14 @@ GET     /auth/:provider/callback    controllers.AuthController.callback(provider
 + nocsrf
 POST    /auth/logout                controllers.AuthController.logout()
 
+# ── Per-user state (favourites / hidden / disabled-cinemas) ──────────────────
+# The browser JS (Phase D) calls these when logged in instead of writing to
+# localStorage. Anonymous requests get 401 and the JS falls back to
+# localStorage on its own.
+GET     /api/me/state               controllers.UserStateController.get()
++ nocsrf
+PUT     /api/me/state               controllers.UserStateController.put()
+
 # ── Health ────────────────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check
 

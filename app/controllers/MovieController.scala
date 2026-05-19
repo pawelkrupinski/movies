@@ -132,20 +132,29 @@ class MovieControllerService(movieService: MovieService) {
 
 class MovieController( cc: ControllerComponents,
                        movieControllerService: MovieControllerService,
+                       userRepo: services.users.UserRepo,
+                       oauthProviders: Set[String],
                        environment: Mode
                      ) extends AbstractController(cc) {
 
+  // Read the session's `userId` (set by `AuthController.callback`) and
+  // resolve it to a User if the row is still there. Returns None for
+  // anonymous browsers AND for the rare case where a previously
+  // authenticated session's user row was deleted out of band — the
+  // session is stale, treat it as logged out.
+  private def currentUser(request: RequestHeader): Option[models.User] =
+    request.session.get("userId").flatMap(userRepo.findById)
+
   def index(): Action[AnyContent] = Action { request =>
-    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, favouritesMode = false))
+    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, currentUser(request), oauthProviders, favouritesMode = false))
   }
 
   // Same data as `/`; the `favouritesMode` flag tells the client to apply
-  // a localStorage-backed filter that hides every movie / screening not
-  // marked as a favourite. The server is intentionally not involved in
-  // reading favourites — the storage is per-browser and never shipped to
-  // the server.
+  // a localStorage-backed filter (anonymous) or server-state filter
+  // (logged-in, set up in Phase D) that hides every movie / screening
+  // not marked as a favourite.
   def favourites(): Action[AnyContent] = Action { request =>
-    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, favouritesMode = true))
+    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, currentUser(request), oauthProviders, favouritesMode = true))
   }
 
   // Permissive robots.txt — link-preview scrapers (Facebook's
@@ -158,7 +167,7 @@ class MovieController( cc: ControllerComponents,
   }
 
   def kina(): Action[AnyContent] = Action { request =>
-    Ok(views.html.kina(movieControllerService.toCinemaSchedules(), Cinema.all.map(_.displayName), devMode))
+    Ok(views.html.kina(movieControllerService.toCinemaSchedules(), Cinema.all.map(_.displayName), devMode, currentUser(request), oauthProviders))
   }
 
   def debug(): Action[AnyContent] = Action {

@@ -306,6 +306,38 @@
     if (rect.left < 8) panel.style.right = (rect.left - 8) + 'px';
   }
 
+  // ── Auth dropdown + login modal ──────────────────────────────────────────
+  //
+  // Both surfaces stop event propagation so the document-level "click
+  // outside → close" handler defined below doesn't fire-close them on
+  // the same click that opens them.
+
+  function toggleAuthMenu(event) {
+    event.stopPropagation();
+    const menu = document.getElementById('auth-menu');
+    if (menu) menu.classList.toggle('open');
+  }
+  function closeAuthMenu() {
+    const menu = document.getElementById('auth-menu');
+    if (menu) menu.classList.remove('open');
+  }
+
+  function openLoginModal() {
+    const m = document.getElementById('login-modal-backdrop');
+    if (m) m.classList.add('open');
+  }
+  function closeLoginModal() {
+    const m = document.getElementById('login-modal-backdrop');
+    if (m) m.classList.remove('open');
+  }
+  // ESC closes the modal — same UX every other modal in the world has.
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeLoginModal();
+      closeAuthMenu();
+    }
+  });
+
   function toggleHiddenPanel(event) {
     event.stopPropagation();
     const panel = document.getElementById('hidden-panel');
@@ -491,6 +523,7 @@
     document.getElementById('hidden-panel').style.display = 'none';
     document.getElementById('cinema-panel').style.display = 'none';
     document.getElementById('format-panel').style.display = 'none';
+    closeAuthMenu();
   });
 
   // ── Counter ───────────────────────────────────────────────────────────────

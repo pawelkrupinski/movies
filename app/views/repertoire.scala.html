@@ -1,5 +1,5 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], devMode: Boolean, favouritesMode: Boolean = false)
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], favouritesMode: Boolean = false)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -16,7 +16,8 @@
 </head>
 <body>
 
-@_navbar(if(favouritesMode) "favourites" else "films", devMode)
+@_navbar(if(favouritesMode) "favourites" else "films", devMode, currentUser, oauthProviders)
+@_loginModal(oauthProviders)
 
 <div class="container-fluid py-4 px-4">
   <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>
