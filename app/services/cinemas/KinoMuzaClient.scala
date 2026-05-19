@@ -55,6 +55,22 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
     if (paragraphs.isEmpty) None else Some(paragraphs.mkString("\n\n"))
   }
 
+  /** Higher-fidelity portrait poster from a Muza detail page (the listing
+   *  page only carries a smaller landscape thumbnail). The detail page
+   *  template renders the poster as
+   *  `<img class="lazyload img-fuild" data-src=".../<title>-NNNx800.png"
+   *  alt="<title> - okładka">`. The typo class `img-fuild` (sic; Muza's
+   *  template, not ours) is unique to the poster slot, distinguishing it
+   *  from the screenshot stills further down (`lazyload` without
+   *  `img-fuild`) and the mobile-only banner above (eagerly loaded with
+   *  `src`, no `data-src`). Returns `None` when the slot is absent.
+   *  Public so `KinoMuzaSynopsisRefresher` can drive its per-row poster
+   *  upgrade through the same parser. */
+  def parsePoster(html: String): Option[String] =
+    Option(Jsoup.parse(html).selectFirst("img.img-fuild[data-src]"))
+      .map(_.attr("data-src"))
+      .filter(_.nonEmpty)
+
   /** Trailer URL from a Muza detail page. Muza embeds the YouTube trailer
    *  via `<iframe class="embed-responsive-item" src="https://www.youtube
    *  .com/embed/<id>?…">`. Returns the canonical `watch?v=<id>` form; the

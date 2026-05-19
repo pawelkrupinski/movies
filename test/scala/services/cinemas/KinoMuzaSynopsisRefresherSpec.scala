@@ -141,4 +141,39 @@ class KinoMuzaSynopsisRefresherSpec extends AnyFlatSpec with Matchers {
     val slot = cache.get(cache.keyOf("Pieniądze to wszystko", Some(2026))).get.data(KinoMuza)
     slot.trailerUrl shouldBe None
   }
+
+  // Upgrade the listing-page thumbnail with the detail page's portrait
+  // poster. Same per-row fetch, three fields populated together.
+
+  it should "upgrade the poster URL with the detail-page portrait variant" in {
+    val cache     = buildCache(Seq(cinemaMovie("Pieniądze to wszystko", "https://www.kinomuza.pl/movie/pieniadze-to-wszystko/")))
+    val refresher = new KinoMuzaSynopsisRefresher(cache, new KinoMuzaClient(new FakeHttpFetch("kino-muza")), new FakeHttpFetch("kino-muza"))
+
+    refresher.refreshOne() shouldBe true
+
+    val slot = cache.get(cache.keyOf("Pieniądze to wszystko", Some(2026))).get.data(KinoMuza)
+    slot.posterUrl shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-556x800.png")
+  }
+
+  it should "keep the existing posterUrl when the detail page has no portrait poster slot" in {
+    // Pre-populate the Muza slot with a listing-page poster so we can
+    // verify the refresher doesn't blow it away when the detail page
+    // has no `img.img-fuild`. (`dziecko-z-pylu` happens to have one,
+    // so this test would need its own fixture for a "no poster" case;
+    // for now exercise the orElse fallback by mocking an empty HTML.)
+    val cache = buildCache(Seq(cinemaMovie("Stub", "https://stub.test/")))
+    cache.recordCinemaScrape(KinoMuza, Seq(cinemaMovie("Stub", "https://stub.test/")
+      .copy(posterUrl = Some("https://listing-page-thumbnail.jpg"))))
+
+    val emptyFetch = new tools.HttpFetch {
+      override def get(url: String): String =
+        "<html><body><img class='lazyload' data-src='https://stub.test/kadr.jpg'/></body></html>"
+      override def post(url: String, body: String, contentType: String): String = ""
+    }
+    val refresher = new KinoMuzaSynopsisRefresher(cache, new KinoMuzaClient(emptyFetch), emptyFetch)
+    refresher.refreshOne() shouldBe true
+
+    val slot = cache.get(cache.keyOf("Stub", Some(2026))).get.data(KinoMuza)
+    slot.posterUrl shouldBe Some("https://listing-page-thumbnail.jpg")  // unchanged
+  }
 }

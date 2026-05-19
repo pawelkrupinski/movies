@@ -753,6 +753,18 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
     s.get                        should include ("Fergie")
   }
 
+  // Muza's detail page hosts a higher-fidelity portrait poster than the
+  // listing-page thumbnail. `parsePoster` pulls it out so the refresher
+  // can upgrade the row's posterUrl when it processes the detail page.
+  it should "extract the portrait poster URL from a detail page" in {
+    val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(scala.io.Codec.UTF8).mkString
+    client.parsePoster(html) shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-556x800.png")
+  }
+
+  it should "return None when the detail page has no poster image slot" in {
+    client.parsePoster("<html><body><p>no images here</p></body></html>") shouldBe empty
+  }
+
   it should "return exact showtimes for Drama" in {
     val st = byTitle("Drama").showtimes
     st.size shouldBe 5

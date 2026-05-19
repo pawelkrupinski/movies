@@ -74,9 +74,11 @@ class KinoMuzaSynopsisRefresher(
             // Muza's page has no synopsis paragraph.
             val synopsis = client.parseSynopsis(html).getOrElse("")
             val trailer  = client.parseTrailer(html)
-            writeSlot(key, synopsis, trailer)
+            val poster   = client.parsePoster(html)
+            writeSlot(key, synopsis, trailer, poster)
             logger.debug(s"KinoMuza synopsis+trailer: ${key.cleanTitle} (${synopsis.length} chars" +
-                         trailer.map(_ => ", trailer").getOrElse("") + ")")
+                         trailer.map(_ => ", trailer").getOrElse("") +
+                         poster.map(_ => ", poster").getOrElse("") + ")")
           case Failure(ex) =>
             // Transient fetch failure (timeout, rate limit) — leave the
             // slot's synopsis None so the next tick retries.
@@ -92,7 +94,12 @@ class KinoMuzaSynopsisRefresher(
   private def needsSynopsis(slot: SourceData): Boolean =
     slot.synopsis.isEmpty && slot.filmUrl.isDefined
 
-  private def writeSlot(key: services.movies.CacheKey, synopsis: String, trailer: Option[String]): Unit =
+  private def writeSlot(
+    key:      services.movies.CacheKey,
+    synopsis: String,
+    trailer:  Option[String],
+    poster:   Option[String]
+  ): Unit =
     cache.putIfPresent(key, current =>
       current.data.get(KinoMuza) match {
         case Some(s) =>
@@ -101,7 +108,12 @@ class KinoMuzaSynopsisRefresher(
             // Don't overwrite a trailer URL the listing-scrape's `parseHtml`
             // path might already have populated (none today, but keep the
             // refresher idempotent against future schema changes).
-            trailerUrl = trailer.orElse(s.trailerUrl)
+            trailerUrl = trailer.orElse(s.trailerUrl),
+            // Detail-page poster is higher-fidelity (portrait, ~556×800) than
+            // the listing thumbnail (~1200×675 landscape still). Upgrade
+            // when present; keep the listing thumbnail when the detail page
+            // has no poster slot so we don't lose the fallback.
+            posterUrl  = poster.orElse(s.posterUrl)
           )
           current.copy(data = current.data + ((KinoMuza: Source) -> updated))
         case None    => current  // Muza slot dropped between read and write — leave alone.
