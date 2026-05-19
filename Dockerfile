@@ -5,9 +5,10 @@
 # that directory, so Fly's remote builder receives just the staged JARs +
 # startup scripts — no JDK, no sbt, no source.
 #
-# Java 26 JRE matches the build JDK in CI. Scala 3.8 supports targeting
-# Java 26 bytecode directly; everything in the toolchain (CI JDK, scalac
-# output, javac --release, runtime JRE) lines up on 26.
+# Java 26 JRE. Scala 3.8.3 emits Java 21 bytecode (the highest output
+# version it accepts); JRE 26 loads those class files unchanged
+# (backward-compatible class file format). CI builds on the same
+# JDK 26 to keep the toolchain consistent end-to-end.
 FROM eclipse-temurin:26-jre
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA

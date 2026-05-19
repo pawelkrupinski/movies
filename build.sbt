@@ -57,16 +57,19 @@ Test / resourceDirectory :=
 scalacOptions ++= Seq(
   "-feature",
   "-Wunused:imports",
-  // Scala 3's default emits Java 8-compatible bytecode — JDK-agnostic
-  // JARs that load on any JRE 8+. Explicit `-java-output-version` was
-  // tried (21, 23, 24, 25, 26) but Scala 3.8.3 rejects every value
-  // above 22 with "not a valid choice"; the default 8-target is the
-  // simplest and most portable. JRE 26 runs the resulting JARs
-  // unchanged.
+  // Scala 3.8.3 caps `-java-output-version` at 21 (higher values are
+  // rejected with "not a valid choice"). JRE 26 loads Java 21 class
+  // files unchanged, so the toolchain is consistent: build on JDK 26,
+  // emit Java 21 bytecode, run on JRE 26.
+  "-java-output-version", "21",
   // Twirl rewrites the source position of generated-code warnings back to
   // the .scala.html origin, but the warnings come out without a parseable
   // category — filter them by source path. `app/views/` only contains
   // Twirl templates, so silencing the whole tree is safe.
   "-Wconf:src=.*views/.*:silent"
 )
+
+// Match the Scala output above. javac uses `--release N` to pin both
+// the language level and the API surface to JDK N.
+javacOptions ++= Seq("--release", "21")
 
