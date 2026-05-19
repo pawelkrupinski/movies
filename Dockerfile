@@ -5,22 +5,11 @@
 # that directory, so Fly's remote builder receives just the staged JARs +
 # startup scripts — no JDK, no sbt, no source.
 #
-# IBM Semeru (OpenJ9) JRE 25 on Ubuntu 22.04 (jammy). OpenJ9 typically uses
-# materially less RSS than HotSpot for the same workload — the GC + JIT
-# share allocation arenas more aggressively and class metadata is more
-# compact. Trying it as the prod JVM to see whether it gives the 1 GB
-# Fly cgroup more headroom over time.
-#
-# Scala 3.8.3 emits Java 21 bytecode (the highest output version it
-# accepts); JRE 25 loads those class files unchanged.
-#
-# Some HotSpot-specific JVM flags below (`-XX:ReservedCodeCacheSize`,
-# `-XX:MaxMetaspaceSize`) aren't honored by OpenJ9 — they'll print a
-# "option not recognised" line at startup and continue. Equivalent
-# OpenJ9 flags exist (`-Xcodecachetotal`, `-Xmcrs`/`-Xmcrl`) but the
-# defaults are already conservative; leaving HotSpot flags in place
-# is harmless and makes a future rollback to temurin trivial.
-FROM ibm-semeru-runtimes:open-25-jre-jammy
+# Temurin (HotSpot) JRE 25. Scala 3.8.3 emits Java 21 bytecode (highest
+# output version it accepts); JRE 25 loads those class files unchanged.
+# CI's build JDK (Temurin 26) is one minor up — class file format is
+# backward-compatible.
+FROM eclipse-temurin:25-jre
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app
