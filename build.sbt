@@ -57,12 +57,6 @@ Test / resourceDirectory :=
 scalacOptions ++= Seq(
   "-feature",
   "-Wunused:imports",
-  // Emit Java 21 bytecode (default in Scala 3.3 is Java 8). The Fly
-  // runtime is on a Java 21 JRE and CI builds on Java 25 — pinning the
-  // class-file target to 21 keeps the staged JARs deterministic across
-  // CI's JDK version and avoids accidentally drifting to whatever the
-  // build JDK defaults to in the future.
-  "-java-output-version", "21",
   // Twirl rewrites the source position of generated-code warnings back to
   // the .scala.html origin, but the warnings come out without a parseable
   // category — filter them by source path. `app/views/` only contains
@@ -70,9 +64,10 @@ scalacOptions ++= Seq(
   "-Wconf:src=.*views/.*:silent"
 )
 
-// Any Java sources that land later should target the same bytecode level
-// as the Scala output above. javac uses `--release N` to pin both the
-// language level and the API surface to JDK N.
+// `javacOptions --release 21` stays — it's the *Java* source language
+// level, not a Scala→bytecode pinning. Play's routes compiler emits Java
+// for the JavaScript reverse router, and the generated source uses
+// modern API; dropping this breaks `Compile/compileIncremental`.
 javacOptions ++= Seq("--release", "21")
 
 // ── Runtime JVM options ───────────────────────────────────────────────────────
