@@ -5,11 +5,22 @@
 # that directory, so Fly's remote builder receives just the staged JARs +
 # startup scripts — no JDK, no sbt, no source.
 #
-# Java 26 JRE. Scala 3.8.3 emits Java 21 bytecode (the highest output
-# version it accepts); JRE 26 loads those class files unchanged
-# (backward-compatible class file format). CI builds on the same
-# JDK 26 to keep the toolchain consistent end-to-end.
-FROM eclipse-temurin:26-jre
+# IBM Semeru (OpenJ9) JDK 25 on RHEL UBI 9 minimal. OpenJ9 typically uses
+# materially less RSS than HotSpot for the same workload — the GC + JIT
+# share allocation arenas more aggressively and class metadata is more
+# compact. Trying it as the prod JVM to see whether it gives the 1 GB
+# Fly cgroup more headroom over time.
+#
+# Scala 3.8.3 emits Java 21 bytecode (the highest output version it
+# accepts); JDK 25 loads those class files unchanged.
+#
+# Some HotSpot-specific JVM flags below (`-XX:ReservedCodeCacheSize`,
+# `-XX:MaxMetaspaceSize`) aren't honored by OpenJ9 — they'll print a
+# "option not recognised" line at startup and continue. Equivalent
+# OpenJ9 flags exist (`-Xcodecachetotal`, `-Xmcrs`/`-Xmcrl`) but the
+# defaults are already conservative; leaving HotSpot flags in place
+# is harmless and makes a future rollback to temurin trivial.
+FROM ibm-semeru-runtimes:open-25-jdk-ubi9-minimal
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app
