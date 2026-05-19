@@ -23,7 +23,7 @@ jobs:
             - uses: actions/setup-java@v4
               with:
                   distribution: temurin
-                  java-version: 25
+                  java-version: 21
                   cache: sbt
 
             - uses: sbt/setup-sbt@v1
@@ -48,25 +48,38 @@ jobs:
             # downstream jobs need.
             - run: sbt "stage; Test/compile; IntegrationTest/compile"
 
-            # Tar the compiled tree before uploading. `actions/upload-artifact@v4`
-            # rejects files whose names contain `:` / `*` / `<` / `>` / `|`
-            # (NTFS-portability rule), and zinc / streams state inside
-            # `target/scala-3.3.7/streams/$global/...` includes such paths.
-            # Tarring up front avoids the per-file character check AND
-            # speeds the transfer (single-file artifact, no per-file
-            # overhead × tens of thousands of zinc artifacts).
-            # Exclude `target/universal` (the staged dist) from the
-            # compiled artifact — it's hundreds of MB of dependency JARs
-            # and the deploy job pulls it through the separate `stage`
-            # artifact anyway. Without this exclude, the tarball was
-            # ~100 MB compressed and the upload's FinalizeArtifact call
-            # intermittently 403'd from the artifact backend.
-            - run: tar --exclude='target/universal' -czf compiled.tar.gz target project/target project/project/target
-
+            # Direct artifact upload — no intermediate tar. Three excludes:
+            #
+            #   - `target/universal` — dependency JARs (hundreds of MB);
+            #     deploy pulls them through the separate `stage` artifact,
+            #     so they'd be redundant here.
+            #
+            #   - `target/scala-3.3.7/test-classes/fixtures` — copied test
+            #     fixtures. Live in `test/resources/fixtures/` in the
+            #     source tree; `FakeHttpFetch` reads them directly via
+            #     filesystem path, and sbt's `Test/copyResources` re-lays
+            #     them down at the target path on first `sbt test`. Also:
+            #     one recorded URL filename contains `?`
+            #     (`…/suggestion/a/Arcybiskup+Lefebvre+-+dlaczego?.json`)
+            #     which upload-artifact's NTFS-portability filter rejects
+            #     outright. Dropping the whole subtree fixes both.
+            #
+            #   - `target/scala-3.3.7/api` — scaladoc; no downstream job
+            #     uses it.
+            #
+            # Net size drops ~284 MB → ~28 MB. Upload + downstream
+            # downloads become an order of magnitude faster and we don't
+            # need the tar workaround for the bad-filename issue.
             - uses: actions/upload-artifact@v4
               with:
                   name: compiled
-                  path: compiled.tar.gz
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                      !target/universal
+                      !target/scala-3.3.7/test-classes/fixtures
+                      !target/scala-3.3.7/api
                   retention-days: 1
                   if-no-files-found: error
 
@@ -90,7 +103,7 @@ jobs:
             - uses: actions/setup-java@v4
               with:
                   distribution: temurin
-                  java-version: 25
+                  java-version: 21
                   cache: sbt
 
             - uses: sbt/setup-sbt@v1
@@ -122,7 +135,7 @@ jobs:
             - uses: actions/setup-java@v4
               with:
                   distribution: temurin
-                  java-version: 25
+                  java-version: 21
                   cache: sbt
 
             - uses: sbt/setup-sbt@v1
