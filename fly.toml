@@ -22,7 +22,15 @@ primary_region = 'waw'
     soft_limit = 25
 
 [[vm]]
-  memory = '512mb'
+  # Bumped from 512mb → 1gb on 2026-05-19. JVM RSS settled at ~400 MB
+  # working-set after the auth feature (Phases A-D) added the User /
+  # UserState repos + OAuth + REST. With the kernel slab + Fly's runtime
+  # overhead the 512mb cgroup was OOM-killing the JVM every ~5 min in a
+  # restart loop; the architectural fix (shared MongoClient + JVM caps)
+  # dropped total-vm by 1.1 GB but couldn't shrink the actual working
+  # set below the cgroup ceiling. 1gb gives ~600 MB headroom and stops
+  # the cycle.
+  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
 
