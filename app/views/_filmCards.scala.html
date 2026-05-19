@@ -1,9 +1,9 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule])
+@(films: Seq[FilmSchedule], favouriteMovies: Set[String] = Set.empty, favouriteScreenings: Set[String] = Set.empty)
 @for(film <- films) {
 <div class="col" data-title="@film.movie.title">
-  @_movieCard(film.movie, film.posterUrl, film.enrichment) {
-    @_filmShowings(film)
+  @_movieCard(film.movie, film.posterUrl, film.enrichment, favouriteMovies.contains(film.movie.title)) {
+    @_filmShowings(film, favouriteScreenings = favouriteScreenings)
   }
 </div>
 }

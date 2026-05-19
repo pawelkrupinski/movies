@@ -133,6 +133,7 @@ class MovieControllerService(movieService: MovieService) {
 class MovieController( cc: ControllerComponents,
                        movieControllerService: MovieControllerService,
                        userRepo: services.users.UserRepo,
+                       userStateRepo: services.users.UserStateRepo,
                        oauthProviders: Set[String],
                        environment: Mode
                      ) extends AbstractController(cc) {
@@ -145,16 +146,29 @@ class MovieController( cc: ControllerComponents,
   private def currentUser(request: RequestHeader): Option[models.User] =
     request.session.get("userId").flatMap(userRepo.findById)
 
+  // Pre-fetch the logged-in user's favourites so the page renders with
+  // `.is-fav` classes already applied — avoids the flash where a user
+  // with server-stored favourites lands on a fresh tab and sees their
+  // stars unlit until the boot fetch completes. Anonymous users get
+  // empty sets; the client-side `paintFavourites` reads localStorage
+  // and adds the class itself (idempotent against the server-applied
+  // result, so the two paths converge cleanly).
+  private def favouriteSets(user: Option[models.User]): (Set[String], Set[String]) =
+    user.flatMap(u => userStateRepo.find(u.id)) match {
+      case Some(s) => (s.favouriteMovies, s.favouriteScreenings)
+      case None    => (Set.empty,         Set.empty)
+    }
+
   def index(): Action[AnyContent] = Action { request =>
-    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, currentUser(request), oauthProviders, favouritesMode = false))
+    val user = currentUser(request)
+    val (favMovies, favScreenings) = favouriteSets(user)
+    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, user, oauthProviders, favMovies, favScreenings, favouritesMode = false))
   }
 
-  // Same data as `/`; the `favouritesMode` flag tells the client to apply
-  // a localStorage-backed filter (anonymous) or server-state filter
-  // (logged-in, set up in Phase D) that hides every movie / screening
-  // not marked as a favourite.
   def favourites(): Action[AnyContent] = Action { request =>
-    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, currentUser(request), oauthProviders, favouritesMode = true))
+    val user = currentUser(request)
+    val (favMovies, favScreenings) = favouriteSets(user)
+    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, user, oauthProviders, favMovies, favScreenings, favouritesMode = true))
   }
 
   // Permissive robots.txt — link-preview scrapers (Facebook's
@@ -167,7 +181,9 @@ class MovieController( cc: ControllerComponents,
   }
 
   def kina(): Action[AnyContent] = Action { request =>
-    Ok(views.html.kina(movieControllerService.toCinemaSchedules(), Cinema.all.map(_.displayName), devMode, currentUser(request), oauthProviders))
+    val user = currentUser(request)
+    val (favMovies, favScreenings) = favouriteSets(user)
+    Ok(views.html.kina(movieControllerService.toCinemaSchedules(), Cinema.all.map(_.displayName), devMode, user, oauthProviders, favMovies, favScreenings))
   }
 
   def debug(): Action[AnyContent] = Action {
@@ -185,7 +201,10 @@ class MovieController( cc: ControllerComponents,
         // production.
         val proto = if (request.secure) "https" else "http"
         val canonicalUrl = s"$proto://${request.host}${FilmHref(schedule.movie.title)}"
-        Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule)))
+        val user = currentUser(request)
+        val (favMovies, favScreenings) = favouriteSets(user)
+        val isFavourite = favMovies.contains(schedule.movie.title)
+        Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule), isFavourite, favScreenings))
       case None => NotFound(s"Film not found: $title")
     }
   }

@@ -1,5 +1,5 @@
 @import controllers.CinemaSchedule
-@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
+@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], favouriteMovies: Set[String] = Set.empty, favouriteScreenings: Set[String] = Set.empty)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -21,7 +21,7 @@
   <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
   <div id="film-grid">
-    @_cinemaCards(cinemas)
+    @_cinemaCards(cinemas, favouriteMovies, favouriteScreenings)
   </div>
 </div>
 

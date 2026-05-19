@@ -1,5 +1,5 @@
 @import controllers.{FilmSchedule, DateFormatter}
-@(film: FilmSchedule, showCinemaHeaders: Boolean = true)
+@(film: FilmSchedule, showCinemaHeaders: Boolean = true, favouriteScreenings: Set[String] = Set.empty)
 @*
    One film's showings, grouped by date → cinema → time slots.
 
@@ -52,7 +52,14 @@
               val fmtAttr    = slot.format.mkString(" ")
               val time       = slot.dateTime.toLocalTime.toString
               val screening  = s"${film.movie.title}|${cinemaShowtimes.cinema.displayName}|${slot.dateTime}"
-              val star       = """<span class="fav-star" onclick="toggleFavScreening(event, this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</span>"""
+              // Pre-apply `is-fav` server-side when this screening's id is in
+              // the logged-in user's `favouriteScreenings` set. Client-side
+              // `paintFavourites` is idempotent against this — it re-toggles
+              // the same class from localStorage and produces the same DOM,
+              // so anonymous users (empty set passed in) and logged-in users
+              // converge on identical state once both paths run.
+              val starClass  = if (favouriteScreenings.contains(screening)) "fav-star is-fav" else "fav-star"
+              val star       = s"""<span class="$starClass" onclick="toggleFavScreening(event, this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</span>"""
               val attrs      = s"""$roomAttr data-format="${play.twirl.api.HtmlFormat.escape(fmtAttr)}" data-screening-id="${play.twirl.api.HtmlFormat.escape(screening)}" data-time="$time""""
               val body       = s"$time$fmtBadge$star"
               val tag        = slot.bookingUrl match {

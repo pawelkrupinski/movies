@@ -1,10 +1,17 @@
 @import models.{MovieRecord, Movie}
 @import controllers.FilmHref
-@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord] = None)(showingsContent: Html)
+@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord] = None, isFavourite: Boolean = false)(showingsContent: Html)
+@* `isFavourite` is pre-computed server-side from the logged-in user's
+   `favouriteMovies` set so the .is-fav class lands on the button in the
+   initial HTML — avoids the visible flash for users with favourites who
+   land on a fresh-tab page. Anonymous users always pass false; their
+   client-side `paintFavourites` adds the class from localStorage on
+   DOMContentLoaded. Both paths agree on the same class name and idempotent
+   toggle, so a re-paint after server-side application is a no-op. *@
 <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" onclick="hideFilm(this)" title="Ukryj film">✕</button>
-    <button type="button" class="fav-poster-btn" onclick="toggleFavMovie(this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</button>
+    <button type="button" class="fav-poster-btn@if(isFavourite){ is-fav}" onclick="toggleFavMovie(this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</button>
     <a href="@FilmHref(movie.title)" style="display:block;height:100%">
       @posterUrl match {
         case Some(url) => {

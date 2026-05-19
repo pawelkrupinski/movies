@@ -1,5 +1,5 @@
 @import controllers.{CinemaSchedule, CinemaShowtimes, FilmSchedule}
-@(cinemas: Seq[CinemaSchedule])
+@(cinemas: Seq[CinemaSchedule], favouriteMovies: Set[String] = Set.empty, favouriteScreenings: Set[String] = Set.empty)
 @*
    /kina renders one section per cinema, with that cinema's films as cards.
    Each card's interior is "showings, grouped by date → slots". That's the
@@ -18,7 +18,7 @@
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6">
     @for(film <- cs.movies) {
     <div class="col" data-title="@film.movie.title">
-      @_movieCard(film.movie, film.posterUrl, film.enrichment) {
+      @_movieCard(film.movie, film.posterUrl, film.enrichment, favouriteMovies.contains(film.movie.title)) {
         @defining(FilmSchedule(
           movie          = film.movie,
           posterUrl      = film.posterUrl,
@@ -31,7 +31,7 @@
                            },
           enrichment     = film.enrichment
         )) { fs =>
-          @_filmShowings(fs, showCinemaHeaders = false)
+          @_filmShowings(fs, showCinemaHeaders = false, favouriteScreenings = favouriteScreenings)
         }
       }
     </div>
