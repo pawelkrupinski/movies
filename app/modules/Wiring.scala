@@ -1,17 +1,18 @@
 package modules
 
 import clients.TmdbClient
-import controllers.{HealthController, MovieController, MovieControllerService}
+import controllers.{AuthController, HealthController, MovieController, MovieControllerService}
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{ShowtimeCache, Stoppable}
+import services.auth.{FacebookOauthProvider, GoogleOauthProvider, OauthProvider}
 import services.cinemas._
 import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
 import services.movies._
 import services.users.{MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
-import tools.{HttpFetch, RealHttpFetch}
+import tools.{Env, HttpFetch, RealHttpFetch}
 
 trait Wiring {
   lazy val httoFetch: HttpFetch = new RealHttpFetch()
@@ -105,9 +106,28 @@ trait Wiring {
   def controllerComponents: ControllerComponents
   def environmentMode: Mode
 
+  // ── OAuth providers ──────────────────────────────────────────────────────
+  // Each provider is wired only when its env vars are present. The result
+  // is a Map keyed by `OauthProvider.name` — the `/auth/:provider/start`
+  // route indexes directly. Missing keys → provider absent → start route
+  // returns 404 and the navbar UI hides the login button. Local dev with
+  // no OAuth secrets keeps working: pages render, login pill just doesn't.
+  lazy val oauthProviders: Map[String, OauthProvider] = {
+    val google = for {
+      id     <- Env.get("GOOGLE_CLIENT_ID")
+      secret <- Env.get("GOOGLE_CLIENT_SECRET")
+    } yield new GoogleOauthProvider(httoFetch, id, secret)
+    val facebook = for {
+      id     <- Env.get("FACEBOOK_APP_ID")
+      secret <- Env.get("FACEBOOK_APP_SECRET")
+    } yield new FacebookOauthProvider(httoFetch, id, secret)
+    Seq(google, facebook).flatten.map(p => p.name -> (p: OauthProvider)).toMap
+  }
+
   // ── Controllers ───────────────────────────────────────────────────────────
-  lazy val movieController = new MovieController(controllerComponents, movieControllerService, environmentMode)
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
+  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo)
 
   // Subscribe BEFORE ShowtimeCache.start() so the bus's first MovieRecordCreated
   // events reach the enrichment handlers. Bus uses PartialFunction.applyOrElse,

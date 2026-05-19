@@ -17,6 +17,16 @@ POST    /debug/reenrich             controllers.MovieController.reEnrich(title: 
 + nocsrf
 POST    /debug/rehydrate            controllers.MovieController.rehydrate()
 
+# ── Auth (OAuth2 — Google / Facebook) ────────────────────────────────────────
+# `/auth/<provider>/start` issues a CSRF state, stashes it in the signed
+# session cookie, redirects to the provider's consent screen. The callback
+# verifies the state and exchanges the code for a profile; on success the
+# session gets a `userId` and the user lands back on /.
+GET     /auth/:provider/start       controllers.AuthController.start(provider: String)
+GET     /auth/:provider/callback    controllers.AuthController.callback(provider: String)
++ nocsrf
+POST    /auth/logout                controllers.AuthController.logout()
+
 # ── Health ────────────────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check
 
