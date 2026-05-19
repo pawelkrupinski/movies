@@ -1,0 +1,102 @@
+package services.users
+
+import com.mongodb.client.model.ReplaceOptions
+import models.UserState
+import org.mongodb.scala.model.Filters
+import org.mongodb.scala.{MongoClient, MongoCollection, ObservableFuture, SingleObservableFuture}
+import play.api.Logging
+import tools.Env
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.util.Try
+
+/**
+ * Per-user state store — favourites + hidden + disabled-cinemas, one
+ * document per user. Read on every page load for authenticated users
+ * (so the rendered page reflects their server-side state, not stale
+ * localStorage); written when they toggle a favourite / hide a film /
+ * disable a cinema.
+ *
+ * Trait + Mongo impl + in-memory impl mirror `UserRepo`.
+ */
+trait UserStateRepo {
+  def enabled: Boolean
+
+  /** State for `userId`, or `None` when nothing's been persisted yet —
+   *  callers treat `None` as `UserState.empty(userId)`. */
+  def find(userId: String): Option[UserState]
+
+  /** Full-doc replace. Best-effort. */
+  def upsert(state: UserState): Unit
+
+  def close(): Unit
+}
+
+class MongoUserStateRepo extends UserStateRepo with Logging {
+
+  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[UserState]]) = init()
+  private def clientOpt: Option[MongoClient]                = initResult._1
+  private def coll:      Option[MongoCollection[UserState]] = initResult._2
+
+  def enabled: Boolean = coll.isDefined
+
+  def find(userId: String): Option[UserState] = coll.flatMap { c =>
+    Try {
+      Await.result(c.find(Filters.eq("userId", userId)).headOption(), 10.seconds)
+    }.recover {
+      case ex: Throwable =>
+        logger.warn(s"UserStateRepo.find($userId) failed: ${ex.getMessage}")
+        None
+    }.getOrElse(None)
+  }
+
+  def upsert(state: UserState): Unit = coll.foreach { c =>
+    val opts = new ReplaceOptions().upsert(true)
+    Try {
+      Await.result(c.replaceOne(Filters.eq("userId", state.userId), state, opts).toFuture(), 10.seconds)
+      ()
+    }.recover {
+      case ex: Throwable =>
+        logger.warn(s"UserStateRepo.upsert(${state.userId}) failed: ${ex.getMessage}")
+    }
+  }
+
+  def close(): Unit = clientOpt.foreach(_.close())
+
+  private def init(): (Option[MongoClient], Option[MongoCollection[UserState]]) =
+    Env.get("MONGODB_URI") match {
+      case None =>
+        logger.info("MONGODB_URI not set — MongoUserStateRepo disabled.")
+        (None, None)
+      case Some(uri) =>
+        Try {
+          val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
+          val client = MongoClient(uri)
+          val db     = client.getDatabase(dbName).withCodecRegistry(UserCodecs.registry)
+          val coll   = db.getCollection[UserState]("userStates")
+          Await.result(coll.countDocuments().toFuture(), 10.seconds)
+          logger.info(s"MongoUserStateRepo connected to $dbName.userStates")
+          (client, coll)
+        }.recover {
+          case ex: Throwable =>
+            logger.error(s"MongoUserStateRepo init failed (${ex.getMessage}) — disabled.")
+            null
+        }.toOption.filter(_ != null) match {
+          case Some((c, coll)) => (Some(c), Some(coll))
+          case None            => (None, None)
+        }
+    }
+}
+
+class InMemoryUserStateRepo extends UserStateRepo {
+  private val store = scala.collection.mutable.Map.empty[String, UserState]
+
+  def enabled: Boolean = true
+
+  def find(userId: String): Option[UserState] = store.get(userId)
+
+  def upsert(state: UserState): Unit = { store(state.userId) = state }
+
+  def close(): Unit = ()
+}

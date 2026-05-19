@@ -10,6 +10,7 @@ import services.cinemas._
 import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
 import services.movies._
+import services.users.{MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
 import tools.{HttpFetch, RealHttpFetch}
 
 trait Wiring {
@@ -60,6 +61,13 @@ trait Wiring {
 
   // ── Events ────────────────────────────────────────────────────────────────
   lazy val eventBus: EventBus = new InProcessEventBus()
+
+  // ── Users ─────────────────────────────────────────────────────────────────
+  // Phase A: storage layer only — no controllers consume these yet. Phase B
+  // (OAuth callback) is the first writer; Phase C (REST + UI) the first
+  // reader. Wiring them now keeps Phase B's diff focused on auth.
+  lazy val userRepo:      UserRepo      = new MongoUserRepo()
+  lazy val userStateRepo: UserStateRepo = new MongoUserStateRepo()
 
   // ── MovieRecord ────────────────────────────────────────────────────────────
   lazy val movieRepo: MovieRepo = new MongoMovieRepo()
@@ -177,6 +185,8 @@ trait Wiring {
     kinoMuzaSynopsisRefresher.stop()
     movieCache.stop()
     movieRepo.close()
+    userRepo.close()
+    userStateRepo.close()
   }
 
   /** Run the entire enrichment pipeline for one row, synchronously, on the
