@@ -22,15 +22,11 @@ primary_region = 'waw'
     soft_limit = 25
 
 [[vm]]
-  # Back to 512mb after switching the prod JVM to IBM Semeru (OpenJ9).
-  # OpenJ9 typically uses 20-40% less RSS than HotSpot/Temurin for the
-  # same Play/Pekko workload — more compact class metadata, smaller
-  # default JIT code cache reservation, gencon GC ergonomics. The 1gb
-  # bump that fixed the OOM cycle on Temurin is no longer load-bearing;
-  # if RSS stays comfortably under 400 MB on Semeru we can run on the
-  # smaller machine. Roll back to 1gb here if Semeru turns out not to
-  # save enough.
-  memory = '512mb'
+  # 768mb: midpoint between the Temurin-era 1gb (load-bearing for ~400
+  # MB RSS + cgroup/kernel overhead) and the 512mb floor. With Semeru
+  # OpenJ9's lower RSS (~250–320 MB projected for our Play/Pekko
+  # workload) 768mb is conservative headroom.
+  memory = '768mb'
   cpu_kind = 'shared'
   cpus = 1
 
