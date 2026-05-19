@@ -33,7 +33,8 @@ import java.time.Instant
  */
 class UserStateController(
   cc:            ControllerComponents,
-  userStateRepo: UserStateRepo
+  userStateRepo: UserStateRepo,
+  userRepo:      services.users.UserRepo
 ) extends AbstractController(cc) with Logging {
   import UserStateController._
 
@@ -56,6 +57,26 @@ class UserStateController(
             userStateRepo.upsert(state)
             Ok(toJson(state))
         }
+    }
+  }
+
+  /** Hard-delete the user's row + state row, drop their session.
+   *  GDPR-aligned: after this call we hold no row keyed by this user's
+   *  id. The browser's localStorage is left alone — it's per-device, the
+   *  user can clear it themselves; we don't have a server-side handle to
+   *  do it.
+   *
+   *  Anonymous → 401. Authenticated → delete both rows + return 204
+   *  with the session cleared. The response carries no body so a fetch
+   *  call doesn't need a parser. */
+  def deleteAccount(): Action[AnyContent] = Action { request =>
+    request.session.get("userId") match {
+      case None         => Unauthorized(Json.obj("error" -> "not logged in"))
+      case Some(userId) =>
+        logger.info(s"Account deletion requested for $userId")
+        userStateRepo.delete(userId)
+        userRepo.delete(userId)
+        NoContent.withNewSession
     }
   }
 }

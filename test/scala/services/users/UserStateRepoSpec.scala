@@ -47,6 +47,19 @@ class UserStateRepoSpec extends AnyFlatSpec with Matchers {
     repo.find("u2").value.favouriteMovies shouldBe Set("Dune")
   }
 
+  "UserStateRepo.delete" should "remove the row, leaving subsequent finds empty" in {
+    val repo = new InMemoryUserStateRepo
+    repo.upsert(UserState("u1", Set("A"), Set.empty, Set.empty, Set.empty, Now))
+    repo.find("u1") should be (defined)
+    repo.delete("u1")
+    repo.find("u1") shouldBe empty
+  }
+
+  it should "no-op on a delete of a non-existent userId" in {
+    val repo = new InMemoryUserStateRepo
+    noException should be thrownBy repo.delete("never-existed")
+  }
+
   "UserState.empty" should "produce a state with everything blank" in {
     val s = UserState.empty("u1", Now)
     s.userId              shouldBe "u1"

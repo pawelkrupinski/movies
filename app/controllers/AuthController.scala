@@ -6,7 +6,7 @@ import play.api.mvc._
 import services.auth.{OauthProfile, OauthProvider}
 import services.users.UserRepo
 
-import java.time.Instant
+import java.time.Clock
 import java.util.UUID
 import scala.util.{Failure, Success, Try}
 
@@ -39,8 +39,17 @@ import scala.util.{Failure, Success, Try}
 class AuthController(
   cc:        ControllerComponents,
   providers: Map[String, OauthProvider],
-  userRepo:  UserRepo
+  userRepo:  UserRepo,
+  clock:     Clock = Clock.systemUTC()
 ) extends AbstractController(cc) with Logging {
+
+  // OAuth state cookie expires after this — long enough that the user
+  // can take a couple of minutes on the provider's consent screen,
+  // short enough that a stale browser tab carrying old state isn't a
+  // forever-valid CSRF surface. The value's not security-critical
+  // (state is single-use and tied to a random UUID), but bounding it
+  // is hygiene.
+  private val OauthStateTtl = java.time.Duration.ofMinutes(10)
 
   def start(provider: String): Action[AnyContent] = Action { request =>
     providers.get(provider) match {
@@ -56,8 +65,9 @@ class AuthController(
         logger.info(s"OAuth $provider start — redirect_uri=$redirectUri")
         Redirect(p.authUrl(state, redirectUri))
           .withSession(request.session
-            + ("oauthState"    -> state)
-            + ("oauthProvider" -> provider))
+            + ("oauthState"     -> state)
+            + ("oauthProvider"  -> provider)
+            + ("oauthStateTs"   -> clock.instant().toEpochMilli.toString))
     }
   }
 
@@ -68,8 +78,14 @@ class AuthController(
       state         <- request.getQueryString("state").toRight("Missing state")
       expectedState <- request.session.get("oauthState").toRight("Missing session state — start over from /auth")
       sessionProv   <- request.session.get("oauthProvider").toRight("Missing session provider")
+      issuedMs      <- request.session.get("oauthStateTs").flatMap(_.toLongOption).toRight("Missing or unparseable oauthStateTs")
       _             <- Either.cond(state == expectedState, (), "OAuth state mismatch (possible CSRF)")
       _             <- Either.cond(sessionProv == provider, (), s"Provider mismatch: session=$sessionProv, callback=$provider")
+      _             <- Either.cond(
+                         clock.instant().toEpochMilli - issuedMs <= OauthStateTtl.toMillis,
+                         (),
+                         s"OAuth state expired (issued ${(clock.instant().toEpochMilli - issuedMs)/1000}s ago, max ${OauthStateTtl.toMinutes}min)"
+                       )
     } yield (p, code)
 
     parsed match {
@@ -86,7 +102,7 @@ class AuthController(
             val user = upsertUser(provider, profile)
             // Drop the one-shot CSRF state, keep everything else, add userId.
             val nextSession = request.session
-              - "oauthState" - "oauthProvider"
+              - "oauthState" - "oauthProvider" - "oauthStateTs"
               + ("userId" -> user.id)
             Redirect("/").withSession(nextSession)
         }
@@ -94,17 +110,24 @@ class AuthController(
   }
 
   def logout(): Action[AnyContent] = Action { request =>
-    Redirect("/").withSession(request.session - "userId" - "oauthState" - "oauthProvider")
+    Redirect("/").withSession(request.session - "userId" - "oauthState" - "oauthProvider" - "oauthStateTs")
   }
 
   private def upsertUser(provider: String, profile: OauthProfile): User = {
-    val now = Instant.now()
+    val now = clock.instant()
+    // Resolution precedence:
+    //   1. Exact (provider, sub) hit — returning user, same provider.
+    //   2. Email hit on a different provider — account LINKING. The
+    //      OAuth callback's profile has a verified email (Google +
+    //      Facebook both verify before exposing); if it matches an
+    //      existing user, attach the new provider to that row rather
+    //      than fork a duplicate account. The existing user's
+    //      `(provider, providerSub)` get overwritten so the next
+    //      login via either provider resolves to the same id — see
+    //      the comment below for the trade-off.
+    //   3. No match — fresh signup.
     val user = userRepo.findByProviderSub(provider, profile.sub) match {
       case Some(existing) =>
-        // Returning user — refresh whatever the provider sent this time
-        // (display name / avatar can change) but keep the existing
-        // values when the provider returned None (user revoked email
-        // permission, etc — don't blow away what we already have).
         existing.copy(
           email       = profile.email.orElse(existing.email),
           displayName = profile.displayName.orElse(existing.displayName),
@@ -112,16 +135,36 @@ class AuthController(
           lastSeenAt  = now
         )
       case None =>
-        User(
-          id          = UUID.randomUUID().toString,
-          provider    = provider,
-          providerSub = profile.sub,
-          email       = profile.email,
-          displayName = profile.displayName,
-          avatarUrl   = profile.avatarUrl,
-          createdAt   = now,
-          lastSeenAt  = now
-        )
+        profile.email.flatMap(userRepo.findByEmail) match {
+          case Some(linked) =>
+            // Account linking: the matched user signed up via a
+            // different provider earlier. Rewrite (provider, sub) to
+            // this login's pair — that means the user can ONLY log in
+            // via the most-recently-used provider going forward. The
+            // alternative is a `providers: Set[(name, sub)]` collection
+            // on User, which is cleaner but a bigger schema change.
+            // Defer that until someone actually reports needing both
+            // providers active simultaneously.
+            logger.info(s"OAuth $provider link — attaching to user ${linked.id} via email match")
+            linked.copy(
+              provider    = provider,
+              providerSub = profile.sub,
+              displayName = profile.displayName.orElse(linked.displayName),
+              avatarUrl   = profile.avatarUrl.orElse(linked.avatarUrl),
+              lastSeenAt  = now
+            )
+          case None =>
+            User(
+              id          = UUID.randomUUID().toString,
+              provider    = provider,
+              providerSub = profile.sub,
+              email       = profile.email,
+              displayName = profile.displayName,
+              avatarUrl   = profile.avatarUrl,
+              createdAt   = now,
+              lastSeenAt  = now
+            )
+        }
     }
     userRepo.upsert(user)
     user

@@ -30,6 +30,17 @@ trait UserRepo {
    *  "is this a returning user or a fresh signup?". */
   def findByProviderSub(provider: String, providerSub: String): Option[User]
 
+  /** Look up by email (case-insensitive) for account linking. Used when
+   *  the OAuth callback's profile carries an email that already belongs
+   *  to a user signed up via a different provider — attaches the new
+   *  provider to the existing row instead of forking a duplicate
+   *  account. `None` when the provider didn't return an email (e.g. FB
+   *  decline) or when no user has that email yet. */
+  def findByEmail(email: String): Option[User]
+
+  /** Remove the user row. Used by the account-deletion endpoint. */
+  def delete(id: String): Unit
+
   /** Upsert by `id`. Used both for first-login creation and for
    *  `lastSeenAt` bumps. Best-effort — failures are logged, never
    *  thrown; the caller continues with the user object it already has
@@ -79,6 +90,31 @@ class MongoUserRepo extends UserRepo with Logging {
     }.getOrElse(None)
   }
 
+  def findByEmail(email: String): Option[User] = coll.flatMap { c =>
+    // Case-insensitive match: providers normalise differently
+    // (`Alice@Example.com` from one, `alice@example.com` from another)
+    // but they're the same person. Mongo regex with the i flag is the
+    // path-of-least-resistance — anchored to start + end so we don't
+    // match partial substrings.
+    val pattern = "^" + java.util.regex.Pattern.quote(email) + "$"
+    Try {
+      Await.result(c.find(Filters.regex("email", pattern, "i")).headOption(), 10.seconds)
+    }.recover {
+      case ex: Throwable =>
+        logger.warn(s"UserRepo.findByEmail(…) failed: ${ex.getMessage}")
+        None
+    }.getOrElse(None)
+  }
+
+  def delete(id: String): Unit = coll.foreach { c =>
+    Try {
+      Await.result(c.deleteOne(Filters.eq("id", id)).toFuture(), 10.seconds)
+      ()
+    }.recover {
+      case ex: Throwable => logger.warn(s"UserRepo.delete($id) failed: ${ex.getMessage}")
+    }
+  }
+
   def upsert(user: User): Unit = coll.foreach { c =>
     val opts = new ReplaceOptions().upsert(true)
     Try {
@@ -124,8 +160,8 @@ class MongoUserRepo extends UserRepo with Logging {
  * starts with a fresh empty store.
  */
 class InMemoryUserRepo extends UserRepo {
-  private val byId    = scala.collection.mutable.Map.empty[String, User]
-  private val bySub   = scala.collection.mutable.Map.empty[(String, String), String]
+  private val byId  = scala.collection.mutable.Map.empty[String, User]
+  private val bySub = scala.collection.mutable.Map.empty[(String, String), String]
 
   def enabled: Boolean = true
 
@@ -134,9 +170,21 @@ class InMemoryUserRepo extends UserRepo {
   def findByProviderSub(provider: String, providerSub: String): Option[User] =
     bySub.get((provider, providerSub)).flatMap(byId.get)
 
+  def findByEmail(email: String): Option[User] =
+    byId.values.find(_.email.exists(_.equalsIgnoreCase(email)))
+
   def upsert(user: User): Unit = {
+    // Account linking can change a user's (provider, providerSub) pair —
+    // sweep out any stale entries pointing to this id before re-indexing.
+    // Mongo's overwrite-on-upsert gives the same effect naturally; the
+    // in-memory impl has to do it explicitly.
+    bySub.filterInPlace { case (_, id) => id != user.id }
     byId(user.id) = user
     bySub((user.provider, user.providerSub)) = user.id
+  }
+
+  def delete(id: String): Unit = {
+    byId.remove(id).foreach(u => bySub.remove((u.provider, u.providerSub)))
   }
 
   def close(): Unit = ()

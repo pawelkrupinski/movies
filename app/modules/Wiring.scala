@@ -128,7 +128,7 @@ trait Wiring {
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo)
-  lazy val userStateController = new UserStateController(controllerComponents, userStateRepo)
+  lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, userRepo)
 
   // Subscribe BEFORE ShowtimeCache.start() so the bus's first MovieRecordCreated
   // events reach the enrichment handlers. Bus uses PartialFunction.applyOrElse,

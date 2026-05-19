@@ -8,6 +8,8 @@ import play.api.test.{FakeRequest, Helpers}
 import services.auth.{OauthProfile, OauthProvider}
 import services.users.InMemoryUserRepo
 
+import java.time.{Clock, Instant, ZoneOffset}
+
 class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   // Hand-rolled fake — `authUrl` returns a deterministic redirect URL;
@@ -31,12 +33,20 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     avatarUrl   = Some("https://lh3/avatar")
   )
 
+  // Fixed clock so spec assertions don't depend on wall clock. `Now` is
+  // the test's "now"; the state-ts in the session is always relative to
+  // this anchor.
+  private val Now      = Instant.parse("2026-05-19T12:00:00Z")
+  private val NowMs    = Now.toEpochMilli
+  private val fixedClk = Clock.fixed(Now, ZoneOffset.UTC)
+
   private def fixture(providers: OauthProvider*): (AuthController, InMemoryUserRepo) = {
     val repo = new InMemoryUserRepo
     val ctl  = new AuthController(
       Helpers.stubControllerComponents(),
       providers.map(p => p.name -> p).toMap,
-      repo
+      repo,
+      fixedClk
     )
     (ctl, repo)
   }
@@ -69,7 +79,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, repo) = fixture(provider)
 
     val request = FakeRequest("GET", "/auth/google/callback?code=AUTH_CODE&state=THE_STATE")
-      .withSession("oauthState" -> "THE_STATE", "oauthProvider" -> "google")
+      .withSession("oauthState" -> "THE_STATE", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
     val result  = ctl.callback("google")(request)
 
     status(result)            shouldBe SEE_OTHER
@@ -95,7 +105,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     // First login — creates the user.
     val firstSession = session(ctl.callback("google")(
       FakeRequest("GET", "/auth/google/callback?code=C1&state=S1")
-        .withSession("oauthState" -> "S1", "oauthProvider" -> "google")
+        .withSession("oauthState" -> "S1", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
     ))
     val firstUserId = firstSession.get("userId").value
 
@@ -104,12 +114,12 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val updatedProfile = Profile.copy(displayName = Some("Alice (married)"))
     val provider2     = new FakeProvider("google", updatedProfile)
     val (ctl2, repo2) = (
-      new AuthController(Helpers.stubControllerComponents(), Map("google" -> provider2), repo),
+      new AuthController(Helpers.stubControllerComponents(), Map("google" -> provider2), repo, fixedClk),
       repo
     )
     val secondSession = session(ctl2.callback("google")(
       FakeRequest("GET", "/auth/google/callback?code=C2&state=S2")
-        .withSession("oauthState" -> "S2", "oauthProvider" -> "google")
+        .withSession("oauthState" -> "S2", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
     ))
     secondSession.get("userId").value shouldBe firstUserId   // same id, not a fresh signup
     repo2.findById(firstUserId).value.displayName shouldBe Some("Alice (married)")
@@ -120,7 +130,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   it should "reject the callback when state doesn't match the session" in {
     val (ctl, repo) = fixture(new FakeProvider("google", Profile))
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=ATTACKER_GUESS")
-      .withSession("oauthState" -> "THE_REAL_ONE", "oauthProvider" -> "google")
+      .withSession("oauthState" -> "THE_REAL_ONE", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
     val result  = ctl.callback("google")(request)
 
     status(result) shouldBe BAD_REQUEST
@@ -144,7 +154,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
       new FakeProvider("facebook", Profile.copy(sub = "FB-1"))
     )
     val request = FakeRequest("GET", "/auth/facebook/callback?code=C&state=S")
-      .withSession("oauthState" -> "S", "oauthProvider" -> "google")
+      .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
     val result  = ctl.callback("facebook")(request)
 
     status(result) shouldBe BAD_REQUEST
@@ -159,7 +169,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     }
     val (ctl, repo) = fixture(brokenProvider)
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
-      .withSession("oauthState" -> "S", "oauthProvider" -> "google")
+      .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
     val result  = ctl.callback("google")(request)
 
     status(result) shouldBe INTERNAL_SERVER_ERROR
@@ -171,7 +181,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   "AuthController.logout" should "drop userId from the session and redirect to /" in {
     val (ctl, _) = fixture(new FakeProvider("google", Profile))
     val request = FakeRequest("POST", "/auth/logout")
-      .withSession("userId" -> "alice", "oauthState" -> "leftover", "oauthProvider" -> "google")
+      .withSession("userId" -> "alice", "oauthState" -> "leftover", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
     val result = ctl.logout()(request)
 
     status(result)              shouldBe SEE_OTHER
@@ -180,6 +190,99 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     sess.get("userId")          shouldBe empty
     sess.get("oauthState")      shouldBe empty   // any leftover cleared too
     sess.get("oauthProvider")   shouldBe empty
+    sess.get("oauthStateTs")    shouldBe empty
+  }
+
+  // ── /auth/:provider/start — TTL plumbing ────────────────────────────────
+
+  "AuthController.start" should "stamp oauthStateTs in the session" in {
+    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val result   = ctl.start("google")(FakeRequest("GET", "/auth/google/start"))
+    session(result).get("oauthStateTs").value.toLong shouldBe NowMs
+  }
+
+  // ── State TTL on callback ───────────────────────────────────────────────
+
+  "AuthController.callback" should "reject when oauthStateTs is missing (legacy session, pre-TTL deploy)" in {
+    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
+      .withSession("oauthState" -> "S", "oauthProvider" -> "google")   // no oauthStateTs
+    status(ctl.callback("google")(request))      shouldBe BAD_REQUEST
+    contentAsString(ctl.callback("google")(request)) should include ("oauthStateTs")
+  }
+
+  it should "reject when oauthStateTs is older than 10 minutes" in {
+    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val tenMinAndChange = NowMs - (11 * 60 * 1000).toLong
+    val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
+      .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTs" -> tenMinAndChange.toString)
+    val result = ctl.callback("google")(request)
+    status(result) shouldBe BAD_REQUEST
+    contentAsString(result) should include ("expired")
+  }
+
+  it should "accept when oauthStateTs is just under 10 minutes old" in {
+    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val fresh = NowMs - (9 * 60 * 1000).toLong
+    val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
+      .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTs" -> fresh.toString)
+    status(ctl.callback("google")(request)) shouldBe SEE_OTHER
+  }
+
+  // ── Account linking by email ────────────────────────────────────────────
+
+  "AuthController.upsertUser" should "attach a new provider to an existing user when emails match (same person, two providers)" in {
+    val googleProvider = new FakeProvider("google",   Profile)
+    val fbProfile      = OauthProfile(sub = "FB-99", email = Some("alice@example.com"), displayName = Some("Alice on FB"), avatarUrl = None)
+    val fbProvider     = new FakeProvider("facebook", fbProfile)
+    val (ctl, repo)    = fixture(googleProvider, fbProvider)
+
+    // First: sign in with Google.
+    val googleSession = session(ctl.callback("google")(
+      FakeRequest("GET", "/auth/google/callback?code=C1&state=S1")
+        .withSession("oauthState" -> "S1", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
+    ))
+    val firstUserId = googleSession.get("userId").value
+
+    // Then: sign in with Facebook using the SAME email. Should NOT create a
+    // second user — should attach FB to the existing one.
+    val fbSession = session(ctl.callback("facebook")(
+      FakeRequest("GET", "/auth/facebook/callback?code=C2&state=S2")
+        .withSession("oauthState" -> "S2", "oauthProvider" -> "facebook", "oauthStateTs" -> NowMs.toString)
+    ))
+    fbSession.get("userId").value shouldBe firstUserId    // same id, account merged
+
+    // Only one row should exist now (lookup by either provider/sub finds it,
+    // but the current row's `provider` is the most-recently-used one).
+    val linked = repo.findById(firstUserId).value
+    linked.provider    shouldBe "facebook"   // newest wins per the linking rule
+    linked.providerSub shouldBe "FB-99"
+    linked.email       shouldBe Some("alice@example.com")
+
+    // Sanity: looking up by the old (provider, sub) pair no longer finds
+    // anything — the row has migrated to the new pair.
+    repo.findByProviderSub("google", "G-1") shouldBe empty
+  }
+
+  it should "NOT link accounts when the new provider returned no email" in {
+    // Email is the link key. If FB doesn't share email (user declined the
+    // scope), we must NOT silently attach to whoever else has email='' —
+    // the existing user's email is None too, but matching None ↔ None
+    // would link arbitrary strangers. Verify a fresh signup happens.
+    val (ctl, repo) = fixture(
+      new FakeProvider("google",   Profile),                                             // creates user A with email
+      new FakeProvider("facebook", OauthProfile(sub = "FB-99", email = None, None, None)) // would link to A on a bug
+    )
+
+    val first = session(ctl.callback("google")(
+      FakeRequest("GET", "/auth/google/callback?code=C1&state=S1")
+        .withSession("oauthState" -> "S1", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
+    ))
+    val fbSession = session(ctl.callback("facebook")(
+      FakeRequest("GET", "/auth/facebook/callback?code=C2&state=S2")
+        .withSession("oauthState" -> "S2", "oauthProvider" -> "facebook", "oauthStateTs" -> NowMs.toString)
+    ))
+    first.get("userId").value should not be fbSession.get("userId").value
   }
 
 }

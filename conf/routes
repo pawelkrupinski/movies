@@ -34,6 +34,8 @@ POST    /auth/logout                controllers.AuthController.logout()
 GET     /api/me/state               controllers.UserStateController.get()
 + nocsrf
 PUT     /api/me/state               controllers.UserStateController.put()
++ nocsrf
+DELETE  /api/me                     controllers.UserStateController.deleteAccount()
 
 # ── Health ────────────────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check

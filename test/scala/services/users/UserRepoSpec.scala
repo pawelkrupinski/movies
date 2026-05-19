@@ -1,6 +1,7 @@
 package services.users
 
 import models.User
+import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -63,4 +64,42 @@ class UserRepoSpec extends AnyFlatSpec with Matchers {
   it should "be enabled — the in-memory impl is always ready, unlike the Mongo one" in {
     new InMemoryUserRepo().enabled shouldBe true
   }
+
+  "UserRepo.findByEmail" should "find the user by case-insensitive email" in {
+    val repo = new InMemoryUserRepo
+    repo.upsert(Alice)
+    repo.findByEmail("alice@example.com").value      shouldBe Alice
+    repo.findByEmail("ALICE@EXAMPLE.COM").value      shouldBe Alice    // case-insensitive
+    repo.findByEmail("Alice@Example.com").value      shouldBe Alice
+  }
+
+  it should "return None when no user has that email" in {
+    val repo = new InMemoryUserRepo
+    repo.upsert(Alice)
+    repo.findByEmail("bob@example.com") shouldBe empty
+  }
+
+  it should "return None for users whose email is None — anonymous users don't match arbitrary lookups" in {
+    val repo = new InMemoryUserRepo
+    repo.upsert(Alice.copy(id = "no-email", email = None))
+    repo.findByEmail("any@x") shouldBe empty
+    repo.findByEmail("")      shouldBe empty
+  }
+
+  "UserRepo.delete" should "remove the user row + its provider/sub index entry" in {
+    val repo = new InMemoryUserRepo
+    repo.upsert(Alice)
+    repo.findById("uuid-alice") should be (defined)
+
+    repo.delete("uuid-alice")
+    repo.findById("uuid-alice")                          shouldBe empty
+    repo.findByProviderSub("google", "g-12345")          shouldBe empty
+    repo.findByEmail("alice@example.com")                shouldBe empty
+  }
+
+  it should "no-op on a delete of a non-existent id" in {
+    val repo = new InMemoryUserRepo
+    noException should be thrownBy repo.delete("never-existed")
+  }
+
 }

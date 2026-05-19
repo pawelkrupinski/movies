@@ -30,6 +30,10 @@ trait UserStateRepo {
   /** Full-doc replace. Best-effort. */
   def upsert(state: UserState): Unit
 
+  /** Remove this user's state row entirely. Used by the account-deletion
+   *  endpoint alongside `UserRepo.delete`. */
+  def delete(userId: String): Unit
+
   def close(): Unit
 }
 
@@ -59,6 +63,15 @@ class MongoUserStateRepo extends UserStateRepo with Logging {
     }.recover {
       case ex: Throwable =>
         logger.warn(s"UserStateRepo.upsert(${state.userId}) failed: ${ex.getMessage}")
+    }
+  }
+
+  def delete(userId: String): Unit = coll.foreach { c =>
+    Try {
+      Await.result(c.deleteOne(Filters.eq("userId", userId)).toFuture(), 10.seconds)
+      ()
+    }.recover {
+      case ex: Throwable => logger.warn(s"UserStateRepo.delete($userId) failed: ${ex.getMessage}")
     }
   }
 
@@ -97,6 +110,8 @@ class InMemoryUserStateRepo extends UserStateRepo {
   def find(userId: String): Option[UserState] = store.get(userId)
 
   def upsert(state: UserState): Unit = { store(state.userId) = state }
+
+  def delete(userId: String): Unit = { store.remove(userId); () }
 
   def close(): Unit = ()
 }
