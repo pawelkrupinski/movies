@@ -5,11 +5,11 @@
 # that directory, so Fly's remote builder receives just the staged JARs +
 # startup scripts — no JDK, no sbt, no source.
 #
-# Temporarily on Java 21 (vs Java 25 in CI) to isolate Java 25's non-heap
-# footprint as the suspected OOM trigger on the 512 MB Fly machine. The
-# JARs are JDK-agnostic — Scala 3's default `-java-output-version 8`
-# emits Java 8 bytecode — so the Java-25-built dist runs unchanged here.
-FROM eclipse-temurin:21-jre
+# Java 25 JRE matches the build JDK in CI. The previous Java 21 downgrade
+# was a debugging step for the 512 MB OOM cycle; with the memory bump to
+# 1 GB the headroom is comfortable and we can run the modern JDK in prod
+# again.
+FROM eclipse-temurin:25-jre
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app
@@ -34,7 +34,8 @@ CMD exec bin/movies \
     -J-Xms128m \
     -J-XX:ReservedCodeCacheSize=96m \
     -J-XX:MaxMetaspaceSize=192m \
-    -J-XX:MaxDirectMemorySize=128m
+    -J-XX:MaxDirectMemorySize=128m \
+    -J--sun-misc-unsafe-memory-access=allow
     # Cap JVM non-heap regions. Java 21 defaults to ReservedCodeCacheSize=240m,
     # unbounded metaspace, MaxDirectMemorySize=Xmx (256m). Capping each stops
     # silent reservation drift, but the first attempt (64m/128m/64m) starved

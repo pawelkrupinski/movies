@@ -57,12 +57,21 @@ Test / resourceDirectory :=
 scalacOptions ++= Seq(
   "-feature",
   "-Wunused:imports",
+  // Highest Scala 3.3.7 supports is 21. CI + runtime are both on Java 25
+  // (JRE 25 loads Java 21 class files unchanged — class file format is
+  // backward-compatible). When we move off the 3.3 LTS line we can bump
+  // this to match the runtime exactly.
+  "-java-output-version", "21",
   // Twirl rewrites the source position of generated-code warnings back to
   // the .scala.html origin, but the warnings come out without a parseable
   // category — filter them by source path. `app/views/` only contains
   // Twirl templates, so silencing the whole tree is safe.
   "-Wconf:src=.*views/.*:silent"
 )
+
+// Java sources (Play's generated routes JS reverse router) target the same
+// bytecode level as the Scala output.
+javacOptions ++= Seq("--release", "21")
 
 // ── Runtime JVM options ───────────────────────────────────────────────────────
 
