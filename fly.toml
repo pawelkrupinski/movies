@@ -22,10 +22,11 @@ primary_region = 'waw'
     soft_limit = 25
 
 [[vm]]
-  # Back to 1gb. 768mb wasn't enough breathing room on Semeru once the
-  # full workload (Mongo + Pekko + cinema scrapers + enrichment cycle)
-  # was active; 1gb is the comfortable headroom from the Temurin era.
-  memory = '1gb'
+  # 768mb on Temurin 26. With the shared-MongoClient + JVM-caps fix
+  # in place, HotSpot RSS peaks around ~400 MB plus kernel/runtime
+  # overhead; 768mb gives ~250 MB headroom. Bump to 1gb if the next
+  # class-bearing feature pushes it over again.
+  memory = '768mb'
   cpu_kind = 'shared'
   cpus = 1
 
