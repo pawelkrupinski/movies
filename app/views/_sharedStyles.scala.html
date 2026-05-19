@@ -312,6 +312,41 @@
   .login-btn-google .login-btn-icon   { background: #4285F4; color: #fff; }
   .login-btn-facebook { background: #1877F2; color: #fff; }
   .login-btn-facebook .login-btn-icon { background: #fff;     color: #1877F2; }
+
+  /* Anonymous nag toast — shown at most once per 24h when an anonymous
+     user adds their first favourite/hide of the day. Click body → opens
+     the login modal. Self-dismisses after 8s. Pinned to the viewport's
+     bottom-right so it doesn't compete with the navbar above. */
+  .anon-nag-toast {
+    position: fixed;
+    bottom: 16px; right: 16px;
+    max-width: 380px;
+    background: #1e1e2e;
+    border: 1px solid #3a3a6e;
+    border-left: 3px solid #ffd24a;
+    border-radius: 8px;
+    padding: .65rem .9rem .65rem .8rem;
+    color: #eee;
+    font-size: .85rem;
+    line-height: 1.35;
+    display: none;
+    z-index: 150;
+    box-shadow: 0 6px 18px rgba(0,0,0,.4);
+    cursor: pointer;
+  }
+  .anon-nag-toast.open { display: block; }
+  .anon-nag-toast strong { color: #ffd24a; }
+  .anon-nag-toast .anon-nag-close {
+    position: absolute;
+    top: 2px; right: 6px;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 2px 6px;
+  }
+  .anon-nag-toast .anon-nag-close:hover { color: #fff; }
   .navbar-search-date { margin-left: auto; order: 2; }
   .navbar-cinema-controls { order: 3; }
   /* Desktop: Filtry follows Kina (cinema-controls) at the far right. */

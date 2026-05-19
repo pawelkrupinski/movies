@@ -7,6 +7,14 @@
    (i.e. with both env vars set) render here.
 *@
 @if(oauthProviders.nonEmpty) {
+@* Once-per-day toast for anonymous users — fires on the first
+   favourite/hide of the day. Clicking the body opens the login modal;
+   the × dismisses without opening it. *@
+<div class="anon-nag-toast" id="anon-nag-toast" onclick="closeAnonymousNag(); openLoginModal();">
+  <button type="button" class="anon-nag-close" onclick="event.stopPropagation(); closeAnonymousNag();" aria-label="Zamknij">&times;</button>
+  Te <strong>ulubione i ukrycia</strong> będą dostępne tylko na tym urządzeniu. <strong>Zaloguj się</strong>, by synchronizować.
+</div>
+
 <div class="login-modal-backdrop" id="login-modal-backdrop" onclick="closeLoginModal()">
   <div class="login-modal" onclick="event.stopPropagation()">
     <button type="button" class="login-modal-close" onclick="closeLoginModal()" aria-label="Zamknij">&times;</button>
