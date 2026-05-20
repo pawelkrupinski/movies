@@ -6,13 +6,20 @@ on:
 
 # Pipeline shape:
 #
-#   test ─┬─►  deploy
-# integration-test ─┘
+#   test ────────────┬─►  deploy
+#   integration-test ┤
+#   page-tests ──────┘
 #
-# Both test legs run independently. Each does its own compile (sharing the
-# `actions/cache` keyed on hashed sources so the second job in finds zinc
-# state warm). The test job also produces the Play universal-stage dist
-# for deploy, uploaded as the `stage` artifact.
+# All three test legs run independently. Each does its own compile
+# (sharing the `actions/cache` keyed on hashed sources so the second
+# and third jobs in find zinc state warm). The test job also produces
+# the Play universal-stage dist for deploy, uploaded as the `stage`
+# artifact.
+#
+# `page-tests` is the only job that needs a browser: PageJsBehaviourSpec
+# drives a real headless Chrome over CDP to exercise the JS on the
+# rendered pages. Kept out of `test` so the main unit job stays
+# browser-free and the page checks get a discrete CI status row.
 jobs:
     test:
         runs-on: ubuntu-latest
@@ -36,7 +43,7 @@ jobs:
                       target
                       project/target
                       project/project/target
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'conf/**') }}
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
@@ -80,7 +87,7 @@ jobs:
                       target
                       project/target
                       project/project/target
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'conf/**') }}
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
@@ -92,8 +99,51 @@ jobs:
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
+    page-tests:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: 26
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            # Pin a Chrome version so a runner-image bump can't break the
+            # CDP wire format under PageJsBehaviourSpec — the spec talks
+            # raw DevTools Protocol over WebSocket, and major Chrome
+            # versions occasionally rename / restructure messages.
+            - uses: browser-actions/setup-chrome@v1
+              id: setup-chrome
+              with:
+                  chrome-version: stable
+
+            - uses: actions/cache@v4
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            # `setup-chrome` writes the binary to a path the action exposes
+            # via `chrome-path`. Symlink it into one of CdpDriver's
+            # CandidatePaths so the spec's discovery logic finds it
+            # without needing to know about runner-specific layouts.
+            - run: sudo ln -sf "${{ steps.setup-chrome.outputs.chrome-path }}" /usr/bin/google-chrome
+
+            # Page tests don't hit any external service — FixtureTestWiring
+            # injects a stub TMDB key, FakeHttpFetch replays disk fixtures,
+            # InMemoryMovieRepo replaces Mongo. So no secrets needed.
+            - run: sbt PageTest/test
+
     deploy:
-        needs: [test, integration-test]
+        needs: [test, integration-test, page-tests]
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4

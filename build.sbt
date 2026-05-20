@@ -12,14 +12,27 @@ scalaVersion := "3.8.3"
 // from `test/scala/` (`tools.TestWiring`, fakes, etc.) without duplicating.
 lazy val IntegrationTest = config("it") extend Test
 
+// Page-regression tests live in `page/scala/` and run under their own
+// configuration so CI can dispatch `sbt PageTest/test` on a runner that
+// has Chrome installed (PageJsBehaviourSpec drives a real browser over
+// CDP). Pulling them out of `sbt test` keeps the main unit job
+// browser-free and gives the page checks a discrete CI status. Same
+// `extend Test` trick the IT config uses — page specs reuse
+// `FixtureTestWiring`, fakes, and other helpers from `test/scala/`.
+lazy val PageTest = config("page") extend Test
+
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
-  .configs(IntegrationTest)
+  .configs(IntegrationTest, PageTest)
   .settings(
     inConfig(IntegrationTest)(Defaults.testSettings),
     IntegrationTest / scalaSource       := baseDirectory.value / "it" / "scala",
     IntegrationTest / resourceDirectory := baseDirectory.value / "it" / "resources",
     IntegrationTest / parallelExecution := true,
+    inConfig(PageTest)(Defaults.testSettings),
+    PageTest / scalaSource              := baseDirectory.value / "page" / "scala",
+    PageTest / resourceDirectory        := baseDirectory.value / "page" / "resources",
+    PageTest / parallelExecution        := false,
   )
 
 // ── Dependencies ──────────────────────────────────────────────────────────────
