@@ -116,6 +116,50 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       assertSnapshot(snapshotDir.resolve("expected-ulubione.html"), html)
     }
 
+  // The other /ulubione path: a logged-in user with a small favourite
+  // set. The controller pre-filters `toSchedules()` to that subset, so
+  // the rendered HTML should be ~100× smaller than the anonymous-/full-
+  // catalogue case above. This snapshot also locks in the navbar shape
+  // with no Filtry / search / date / hidden-films controls.
+  "the /ulubione page (logged-in, 1 favourite)" should
+    "render only the favourited film + suppress the filter UI in the navbar" in
+    new FixtureTestWiring("17-05-2026") {
+      bootStartup()
+      val pradaSchedule = movieControllerService.toSchedules(now)
+        .find(_.movie.title == "Diabeł ubiera się u Prady 2")
+        .getOrElse(fail("Prada not in the rendered schedules — fixture mismatch"))
+      val loggedInUser = Some(models.User(
+        id          = "test-user",
+        provider    = "google",
+        providerSub = "test-sub",
+        email       = Some("test@example.com"),
+        displayName = Some("Test User"),
+        avatarUrl   = None,
+        createdAt   = java.time.Instant.parse("2026-01-01T00:00:00Z"),
+        lastSeenAt  = java.time.Instant.parse("2026-05-17T00:00:00Z")
+      ))
+      val html: String = views.html.repertoire(
+        Seq(pradaSchedule),                                        // server-pre-filtered
+        Cinema.all.map(_.displayName),
+        devMode = false,
+        currentUser = loggedInUser,
+        oauthProviders = noOauthProviders,
+        favouriteMovies = Set("Diabeł ubiera się u Prady 2"),
+        favouriteScreenings = noFavScreenings,
+        favouritesMode = true
+      ).body
+      // Sanity-check the trimmed navbar: filter UI elements not in DOM.
+      html should not include """id="format-filter-btn""""    // Filtry button
+      html should not include """id="search-input""""         // search box
+      html should not include """id="date-filter""""          // date select
+      html should not include """id="show-hidden-btn""""      // hidden-films flyout
+      // The single favourited film is in there.
+      html should include ("""Diabeł ubiera się u Prady 2""")
+      // …and no other film cards from the corpus made it through.
+      val cardCount = "data-title=\"".r.findAllIn(html).size
+      cardCount shouldBe 1  // exactly one `.col[data-title="…"]`
+    }
+
   /** Same protocol as `FilmScheduleEndToEndSpec`'s snapshot check: when the
    *  expected file is missing, write what was rendered and fail loudly so
    *  the diff goes through code review before being trusted. */

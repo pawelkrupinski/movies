@@ -35,73 +35,9 @@
   </div>
 
   
-  <div class="navbar-hidden" style="position:relative">
-    <button id="show-hidden-btn" onclick="toggleHiddenPanel(event)" class="btn refresh-btn btn-sm" style="display:none!important"></button>
-    <div id="hidden-panel" class="dropdown-panel" style="display:none">
-      <div id="hidden-panel-list"></div>
-      <div class="panel-divider">
-        <button onclick="showAllFilms()" class="btn refresh-btn btn-sm w-100">Pokaż wszystkie</button>
-      </div>
-    </div>
-  </div>
+  
 
-  <div id="filtry-wrapper" class="navbar-filtry" style="position:relative">
-    <button id="format-filter-btn" onclick="toggleFormatPanel(event)" class="btn refresh-btn btn-sm">Filtry</button>
-    <div id="format-panel" class="dropdown-panel" style="display:none" onclick="event.stopPropagation()">
-      
-      
-        <div class="panel-section-label">Kina</div>
-        <label class="panel-label" style="border-bottom:1px solid #3a3a6e; margin-bottom:4px; padding-bottom:8px;">
-          <input type="checkbox" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> Wszystkie kina
-        </label>
-        <div id="cinema-list"></div>
-        <div class="panel-divider"></div>
-      
-
-      <div class="panel-section-label">Wymiar</div>
-      <label class="panel-label"><input type="radio" name="format-dim"  value=""   checked onchange="onFormatChange()"> Wszystkie</label>
-      <label class="panel-label"><input type="radio" name="format-dim"  value="2D"         onchange="onFormatChange()"> 2D</label>
-      <label class="panel-label"><input type="radio" name="format-dim"  value="3D"         onchange="onFormatChange()"> 3D</label>
-      <div class="panel-divider"></div>
-      <div class="panel-section-label">Wersja</div>
-      <label class="panel-label"><input type="radio" name="format-lang" value=""   checked onchange="onFormatChange()"> Wszystkie</label>
-      <label class="panel-label"><input type="radio" name="format-lang" value="NAP"        onchange="onFormatChange()"> Napisy</label>
-      <label class="panel-label"><input type="radio" name="format-lang" value="DUB"        onchange="onFormatChange()"> Dubbing</label>
-      <div class="panel-divider"></div>
-      <label class="panel-label"><input type="checkbox" id="format-imax"           onchange="onFormatChange()"> Tylko IMAX</label>
-      <div class="panel-divider"></div>
-      <div class="panel-section-label">Od godziny</div>
-      <div class="d-flex gap-1 align-items-center" style="margin-bottom:.4rem">
-        <select id="from-hour" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
-          <option value="">Dowolna</option>
-           <option value="0">00</option>  <option value="1">01</option>  <option value="2">02</option>  <option value="3">03</option>  <option value="4">04</option>  <option value="5">05</option>  <option value="6">06</option>  <option value="7">07</option>  <option value="8">08</option>  <option value="9">09</option>  <option value="10">10</option>  <option value="11">11</option>  <option value="12">12</option>  <option value="13">13</option>  <option value="14">14</option>  <option value="15">15</option>  <option value="16">16</option>  <option value="17">17</option>  <option value="18">18</option>  <option value="19">19</option>  <option value="20">20</option>  <option value="21">21</option>  <option value="22">22</option>  <option value="23">23</option> 
-        </select>
-        <span>:</span>
-        <select id="from-minute" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
-          <option value="0">00</option>
-          <option value="15">15</option>
-          <option value="30">30</option>
-          <option value="45">45</option>
-        </select>
-      </div>
-      <div class="panel-divider"></div>
-      <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100">Wyczyść</button>
-    </div>
-  </div>
-
-  <div class="d-flex gap-2 align-items-center navbar-search-date">
-    <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()">
-    <div class="d-flex align-items-stretch" style="gap:2px">
-      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
-      <select id="date-filter" class="filter-select" onchange="applyFilters()">
-        <option value="today">Dzisiaj</option>
-        <option value="tomorrow">Jutro</option>
-        <option value="week">Następne 7 dni</option>
-        <option value="anytime">Kiedykolwiek</option>
-      </select>
-      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
-    </div>
-  </div>
+  
 
   
   <div class="navbar-auth">
@@ -30061,7 +29997,8 @@ const HAS_OAUTH_PROVIDERS = false;
 function getFormatFilter() {
 const dim = (document.querySelector('input[name="format-dim"]:checked') || {}).value || '';
 const lang = (document.querySelector('input[name="format-lang"]:checked') || {}).value || '';
-const imax = document.getElementById('format-imax').checked ? 'IMAX' : '';
+const imaxEl = document.getElementById('format-imax');
+const imax = imaxEl && imaxEl.checked ? 'IMAX' : '';
 return [dim, lang, imax].filter(Boolean);
 }
 function badgeFormatTokens(badge) {
@@ -30099,6 +30036,7 @@ parts.push('kina ' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.
 }
 }
 const btn = document.getElementById('format-filter-btn');
+if (!btn) return;
 btn.textContent = parts.length === 0 ? 'Filtry' : 'Filtry (' + parts.join(', ') + ')';
 }
 function onFormatChange() {
@@ -30257,6 +30195,7 @@ function updateNavbar() {
 const hidden = getHidden();
 const btn = document.getElementById('show-hidden-btn');
 const panel = document.getElementById('hidden-panel');
+if (!btn || !panel) return;
 if (hidden.length > 0) {
 btn.style.setProperty('display', 'inline-flex', 'important');
 btn.textContent = hidden.length + ' ukrytych';
@@ -30466,6 +30405,7 @@ return { today: _cachedToday, tomorrow: _cachedTomorrow, in7Days: _cachedIn7Days
 }
 function populateDayOptions() {
 const select = document.getElementById('date-filter');
+if (!select) return;
 const weekOpt = select.querySelector('option[value="week"]');
 const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
 for (let i = 2; i <= 6; i++) {
@@ -30484,7 +30424,9 @@ const next = sel.selectedIndex + dir;
 if (next >= 0 && next < sel.options.length) { sel.selectedIndex = next; applyFilters(); }
 }
 function squareDateNavBtns() {
-const h = document.getElementById('date-filter').offsetHeight;
+const sel = document.getElementById('date-filter');
+if (!sel) return;
+const h = sel.offsetHeight;
 document.querySelectorAll('.date-nav-btn').forEach(b => {
 b.style.width = h + 'px';
 b.style.height = h + 'px';
@@ -30604,8 +30546,8 @@ node.visible = want;
 let _prevVisibleOrder = [];
 function applyFilters() {
 if (!INDEX) return;
-const filter = document.getElementById('date-filter').value;
-const query = (document.getElementById('search-input').value || '').trim().toLowerCase();
+const filter = document.getElementById('date-filter')?.value || 'anytime';
+const query = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
 const hidden = new Set(getHidden());
 const disabled = new Set(getDisabledCinemas());
 const fmtTokens = getFormatFilter();

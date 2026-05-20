@@ -35,6 +35,8 @@
   </div>
 
   
+  
+  
   <div class="navbar-hidden" style="position:relative">
     <button id="show-hidden-btn" onclick="toggleHiddenPanel(event)" class="btn refresh-btn btn-sm" style="display:none!important"></button>
     <div id="hidden-panel" class="dropdown-panel" style="display:none">
@@ -44,7 +46,9 @@
       </div>
     </div>
   </div>
+  
 
+  
   <div id="filtry-wrapper" class="navbar-filtry" style="position:relative">
     <button id="format-filter-btn" onclick="toggleFormatPanel(event)" class="btn refresh-btn btn-sm">Filtry</button>
     <div id="format-panel" class="dropdown-panel" style="display:none" onclick="event.stopPropagation()">
@@ -95,6 +99,7 @@
       <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
     </div>
   </div>
+  
 
   
   <div class="navbar-auth">
@@ -36384,7 +36389,8 @@ const HAS_OAUTH_PROVIDERS = false;
 function getFormatFilter() {
 const dim = (document.querySelector('input[name="format-dim"]:checked') || {}).value || '';
 const lang = (document.querySelector('input[name="format-lang"]:checked') || {}).value || '';
-const imax = document.getElementById('format-imax').checked ? 'IMAX' : '';
+const imaxEl = document.getElementById('format-imax');
+const imax = imaxEl && imaxEl.checked ? 'IMAX' : '';
 return [dim, lang, imax].filter(Boolean);
 }
 function badgeFormatTokens(badge) {
@@ -36422,6 +36428,7 @@ parts.push('kina ' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.
 }
 }
 const btn = document.getElementById('format-filter-btn');
+if (!btn) return;
 btn.textContent = parts.length === 0 ? 'Filtry' : 'Filtry (' + parts.join(', ') + ')';
 }
 function onFormatChange() {
@@ -36580,6 +36587,7 @@ function updateNavbar() {
 const hidden = getHidden();
 const btn = document.getElementById('show-hidden-btn');
 const panel = document.getElementById('hidden-panel');
+if (!btn || !panel) return;
 if (hidden.length > 0) {
 btn.style.setProperty('display', 'inline-flex', 'important');
 btn.textContent = hidden.length + ' ukrytych';
@@ -36789,6 +36797,7 @@ return { today: _cachedToday, tomorrow: _cachedTomorrow, in7Days: _cachedIn7Days
 }
 function populateDayOptions() {
 const select = document.getElementById('date-filter');
+if (!select) return;
 const weekOpt = select.querySelector('option[value="week"]');
 const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
 for (let i = 2; i <= 6; i++) {
@@ -36807,7 +36816,9 @@ const next = sel.selectedIndex + dir;
 if (next >= 0 && next < sel.options.length) { sel.selectedIndex = next; applyFilters(); }
 }
 function squareDateNavBtns() {
-const h = document.getElementById('date-filter').offsetHeight;
+const sel = document.getElementById('date-filter');
+if (!sel) return;
+const h = sel.offsetHeight;
 document.querySelectorAll('.date-nav-btn').forEach(b => {
 b.style.width = h + 'px';
 b.style.height = h + 'px';

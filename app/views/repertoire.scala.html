@@ -105,8 +105,13 @@
 
   function applyFilters() {
     if (!INDEX) return;
-    const filter    = document.getElementById('date-filter').value;
-    const query     = (document.getElementById('search-input').value || '').trim().toLowerCase();
+    // /ulubione hides the filter UI entirely — fall back to "anytime"
+    // for dates and "" for search so the favourite-films set isn't
+    // narrowed further. Server already pre-filtered to favourites for
+    // logged-in users; for anonymous, IS_FAVOURITES_PAGE alone drives
+    // the filter to the localStorage-favourited subset.
+    const filter    = document.getElementById('date-filter')?.value || 'anytime';
+    const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
     const hidden    = new Set(getHidden());
     const disabled  = new Set(getDisabledCinemas());
     const fmtTokens = getFormatFilter();

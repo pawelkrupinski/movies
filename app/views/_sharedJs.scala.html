@@ -19,7 +19,12 @@
   function getFormatFilter() {
     const dim  = (document.querySelector('input[name="format-dim"]:checked')  || {}).value || '';
     const lang = (document.querySelector('input[name="format-lang"]:checked') || {}).value || '';
-    const imax = document.getElementById('format-imax').checked ? 'IMAX' : '';
+    // The Filtry panel (and the `#format-imax` checkbox inside it) isn't
+    // rendered on /ulubione — the page intentionally has no filter UI.
+    // Treat a missing checkbox as "unchecked / no IMAX filter applied"
+    // rather than throwing.
+    const imaxEl = document.getElementById('format-imax');
+    const imax = imaxEl && imaxEl.checked ? 'IMAX' : '';
     return [dim, lang, imax].filter(Boolean);
   }
 
@@ -78,6 +83,7 @@
       }
     }
     const btn = document.getElementById('format-filter-btn');
+    if (!btn) return;  // /ulubione: Filtry button not rendered.
     btn.textContent = parts.length === 0 ? 'Filtry' : 'Filtry (' + parts.join(', ') + ')';
   }
 
@@ -362,6 +368,7 @@
     const hidden = getHidden();
     const btn = document.getElementById('show-hidden-btn');
     const panel = document.getElementById('hidden-panel');
+    if (!btn || !panel) return;  // /ulubione: hidden-films flyout not rendered.
     if (hidden.length > 0) {
       btn.style.setProperty('display', 'inline-flex', 'important');
       btn.textContent = hidden.length + ' ukrytych';
@@ -645,6 +652,7 @@
 
   function populateDayOptions() {
     const select  = document.getElementById('date-filter');
+    if (!select) return;  // /ulubione: no date filter UI in the navbar.
     const weekOpt = select.querySelector('option[value="week"]');
     const today   = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
     for (let i = 2; i <= 6; i++) {
@@ -665,7 +673,9 @@
   }
 
   function squareDateNavBtns() {
-    const h = document.getElementById('date-filter').offsetHeight;
+    const sel = document.getElementById('date-filter');
+    if (!sel) return;  // /ulubione: no date filter UI in the navbar.
+    const h = sel.offsetHeight;
     document.querySelectorAll('.date-nav-btn').forEach(b => {
       b.style.width  = h + 'px';
       b.style.height = h + 'px';

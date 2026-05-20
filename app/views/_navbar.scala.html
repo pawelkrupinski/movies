@@ -25,6 +25,13 @@
     </div>
   </div>
 
+  @* Filter UI (hidden-films flyout, Filtry dropdown, search + date) is
+     omitted entirely on /ulubione — the page is a clean view of the
+     user's favourites; the existing filters would either be no-ops
+     (cinema picker, format) or actively confusing (hidden-films
+     flyout would show titles that aren't on this page). The JS
+     gracefully no-ops when these element ids are missing. *@
+  @if(activePage != "favourites") {
   @* Hidden-films flyout. The button is `display:none!important` at rest;
      `updateNavbar` flips it inline-flex when there's at least one hidden
      title. Wrapped in its own position:relative so the dropdown anchors
@@ -38,7 +45,9 @@
       </div>
     </div>
   </div>
+  }
 
+  @if(activePage != "favourites") {
   <div id="filtry-wrapper" class="navbar-filtry" style="position:relative">
     <button id="format-filter-btn" onclick="toggleFormatPanel(event)" class="btn refresh-btn btn-sm">Filtry</button>
     <div id="format-panel" class="dropdown-panel" style="display:none" onclick="event.stopPropagation()">
@@ -102,6 +111,7 @@
       <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
     </div>
   </div>
+  }
 
   @* Auth: own slot so CSS can pin it to the far right on desktop and
      to the row-1 right on mobile (replacing the spot the old Kina
