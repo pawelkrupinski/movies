@@ -360,14 +360,16 @@
   @@media (max-width: 575px) {
     .navbar { padding: .5rem .75rem !important; gap: .4rem; }
     .navbar-title { display: none; }
-    /* Mobile: row-1 ends with the auth pill (replacing the old Kina
-       dropdown spot — Kina now lives inside Filtry). Search/date and
-       Filtry wrap onto row-2; Filtry sticks to the right edge via
-       margin-left: auto so the long "Filtry (2D NAP …)" label can spill
-       onto its own row without losing the right alignment. */
-    .navbar-auth        { order: 2; margin-left: auto; }
-    .navbar-search-date { order: 3; flex-basis: 0; flex-grow: 1; margin-left: 0; justify-content: space-between; }
-    .navbar-hidden      { order: 4; }
+    /* Mobile: row-1 ends with [hidden] [auth] flush to the right edge.
+       `margin-left: auto` lives on .navbar-hidden (the leftmost member of
+       that pair) so the slack lands before the cluster rather than between
+       siblings, keeping hidden directly adjacent to the auth pill.
+       Search/date and Filtry wrap onto row-2; Filtry sticks to the right
+       edge via margin-left: auto so the long "Filtry (2D NAP …)" label
+       can spill onto its own row without losing the right alignment. */
+    .navbar-hidden      { order: 2; margin-left: auto; }
+    .navbar-auth        { order: 3; }
+    .navbar-search-date { order: 4; flex-basis: 0; flex-grow: 1; margin-left: 0; justify-content: space-between; }
     .navbar-filtry      { order: 5; margin-left: auto; }
   }
 </style>
