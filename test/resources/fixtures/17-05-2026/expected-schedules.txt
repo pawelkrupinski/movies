@@ -426,7 +426,7 @@ cinemaTitles:      Bez znieczulenia
 runtimeMinutes:    125
 releaseYear:       1978
 countries:         Polska
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/bez-zniecz-2-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
@@ -536,7 +536,7 @@ cinemaTitles:      Broken English
 runtimeMinutes:    96
 releaseYear:       2025
 countries:         Wielka Brytania
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/broken-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Jane Pollard, Iain Forsyth
@@ -563,7 +563,7 @@ cinemaTitles:      Brzezina
 runtimeMinutes:    99
 releaseYear:       1970
 countries:         Polska
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/brzezina-1-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
@@ -617,7 +617,7 @@ cinemaTitles:      Był sobie śnieg
 runtimeMinutes:    128
 releaseYear:       2025
 countries:         Austria
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/byl-sobie-snieg-2-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Nikolaus Geyrhalter
@@ -1115,7 +1115,7 @@ cinemaTitles:      Dziecko z pyłu
 runtimeMinutes:    93
 releaseYear:       2025
 countries:         Polska, Wietnam, Szwecja, Czechy, Katar
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/COD_STILL5-scaled-1920x1080-c-default-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Weronika Mliczewska
@@ -1316,7 +1316,7 @@ cinemaTitles:      Fałszerz stulecia
 runtimeMinutes:    128
 releaseYear:       2025
 countries:         Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/falszerz-2-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Jean-Paul Salomé
@@ -1343,7 +1343,7 @@ cinemaTitles:      FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar
 runtimeMinutes:    98
 releaseYear:       2025
 countries:         Niemcy
-posterUrl:         https://www.kinomuza.pl/content/uploads/2025/12/baby-2-800x450.png
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Joscha Bongard
@@ -1451,7 +1451,7 @@ cinemaTitles:      Giulietta i duchy
 runtimeMinutes:    139
 releaseYear:       1965
 countries:         Włochy, Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/3-4-800x450.jpg
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Giulietta_degli_2.jpg
 synopsis.length:   113
 cast:              —
 director:          Federico Fellini
@@ -1481,7 +1481,7 @@ cinemaTitles:      Guru
 runtimeMinutes:    126
 releaseYear:       2025
 countries:         Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/guru-2-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Yann Gozlan
@@ -1564,7 +1564,7 @@ cinemaTitles:      Głos z księżyca
 runtimeMinutes:    121
 releaseYear:       1990
 countries:         Włochy
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/2-5-800x450.jpg
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/La_voce_della_lunba_3.jpg
 synopsis.length:   110
 cast:              —
 director:          Federico Fellini
@@ -1594,7 +1594,7 @@ cinemaTitles:      Hamnet
 runtimeMinutes:    125
 releaseYear:       2025
 countries:         Wielka Brytania
-posterUrl:         https://www.kinomuza.pl/content/uploads/2025/10/kadry-1-1-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Chloé Zhao
@@ -1910,7 +1910,7 @@ cinemaTitles:      Idź z duszą na dłoni
 runtimeMinutes:    113
 releaseYear:       2025
 countries:         Francja, Palestyna, Iran
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/idz-z-d-2-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Sepideh Farsi
@@ -2411,7 +2411,7 @@ cinemaTitles:      Krajobraz po bitwie
 runtimeMinutes:    101
 releaseYear:       1970
 countries:         Polska
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/krajobraz-3-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
@@ -2438,7 +2438,7 @@ cinemaTitles:      Kronika wypadków miłosnych
 runtimeMinutes:    114
 releaseYear:       1985
 countries:         Polska
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/kroniki-3-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
@@ -2548,7 +2548,7 @@ cinemaTitles:      Kłopotliwy niedźwiedź
 runtimeMinutes:    90
 releaseYear:       2026
 countries:         USA, Kanada, Wielka Brytania
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/klopotliwy-niedzwiedz-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Gabriela Osio Vanden, Jack Weisman
@@ -2640,7 +2640,7 @@ cinemaTitles:      Layla
 runtimeMinutes:    100
 releaseYear:       2024
 countries:         Wielka Brytania
-posterUrl:         https://www.kinomuza.pl/content/uploads/2025/10/lalyla-2-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Amrou Al-Kadhi
@@ -2924,7 +2924,7 @@ cinemaTitles:      Mi Amor
 runtimeMinutes:    113
 releaseYear:       2025
 countries:         Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/mi-amor-1-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Guillaume Nicloux
@@ -3399,7 +3399,7 @@ cinemaTitles:      Młodsza siostra
 runtimeMinutes:    106
 releaseYear:       2025
 countries:         Francja, Niemcy
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/mlodsza-siostra-1-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Hafsia Herzi
@@ -3453,7 +3453,7 @@ cinemaTitles:      Najstarsza osoba na świecie
 runtimeMinutes:    87
 releaseYear:       2025
 countries:         USA
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/Najstarsza-osoba-2-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Sam Green
@@ -3568,7 +3568,7 @@ cinemaTitles:      Nie oglądaj się teraz
 runtimeMinutes:    110
 releaseYear:       1973
 countries:         Wielka Brytania, Włochy
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/Nie-oglądaj-się-teraz1-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Nicolas Roeg
@@ -3623,7 +3623,7 @@ cinemaTitles:      Niedźwiedzica
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         Norwegia, Niemcy
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/niedzwiedzica-2-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Asgeir Helgestad
@@ -3831,7 +3831,7 @@ cinemaTitles:      Noce Cabirii
 runtimeMinutes:    110
 releaseYear:       1957
 countries:         Włochy, Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/2-2-800x450.jpg
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Le-Notti-di-Cabiria-1957-Giulietta-Masina.jpg
 synopsis.length:   115
 cast:              —
 director:          Federico Fellini
@@ -3861,7 +3861,7 @@ cinemaTitles:      Nomadland
 runtimeMinutes:    108
 releaseYear:       2020
 countries:         USA
-posterUrl:         https://www.kinomuza.pl/content/uploads/2021/02/1-12-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Chloé Zhao
@@ -3919,7 +3919,7 @@ cinemaTitles:      Nowa fala
 runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja, USA
-posterUrl:         https://www.kinomuza.pl/content/uploads/2025/11/3-7-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Richard Linklater
@@ -4102,7 +4102,7 @@ cinemaTitles:      Obcy
 runtimeMinutes:    122
 releaseYear:       2025
 countries:         Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/obcy-1-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          François Ozon
@@ -4295,7 +4295,7 @@ cinemaTitles:      Orwell: 2 + 2 = 5
 runtimeMinutes:    119
 releaseYear:       2025
 countries:         Francja, USA
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/orwel-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Raoul Peck
@@ -4322,7 +4322,7 @@ cinemaTitles:      Osiem i pół
 runtimeMinutes:    138
 releaseYear:       1963
 countries:         Włochy, Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/3-800x450.jpg
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/still2_zqnlD61.jpg
 synopsis.length:   115
 cast:              —
 director:          Federico Fellini
@@ -4445,7 +4445,7 @@ cinemaTitles:      Pieniądze to wszystko
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         Irlandia, Dania
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-2-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Sinéad O'Shea
@@ -4472,7 +4472,7 @@ cinemaTitles:      Pieśni lasu
 runtimeMinutes:    94
 releaseYear:       2025
 countries:         Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/piesn-lasu-3-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Vincent Munier
@@ -4527,7 +4527,7 @@ cinemaTitles:      Poczta głosowa
 runtimeMinutes:    102
 releaseYear:       2024
 countries:         Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/poczta-glosowa-1-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Fabienne Godet
@@ -4862,7 +4862,7 @@ cinemaTitles:      Przeżyj to sam
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/przezyj-to-sam-1-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Olivier Nakache, Eric Toledano
@@ -5129,7 +5129,7 @@ cinemaTitles:      Sny o słoniach
 runtimeMinutes:    99
 releaseYear:       2025
 countries:         USA
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/03/sny-o-sloniach-1-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Werner Herzog
@@ -5373,7 +5373,7 @@ cinemaTitles:      Słodkie życie
 runtimeMinutes:    176
 releaseYear:       1960
 countries:         Włochy, Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/3-3-800x450.jpg
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/still_4_PbgzW23.jpg
 synopsis.length:   114
 cast:              —
 director:          Federico Fellini
@@ -5771,7 +5771,7 @@ cinemaTitles:      Wałkonie
 runtimeMinutes:    103
 releaseYear:       1953
 countries:         Włochy, Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/1-1-800x450.jpg
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/I_Vitelloni_02.jpg
 synopsis.length:   119
 cast:              —
 director:          Federico Fellini
@@ -5862,7 +5862,7 @@ cinemaTitles:      Wielki Łuk
 runtimeMinutes:    106
 releaseYear:       2025
 countries:         Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/wielki-luk-2-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Stéphane Demoustier
@@ -5916,7 +5916,7 @@ cinemaTitles:      Windą na szafot
 runtimeMinutes:    90
 releaseYear:       1958
 countries:         Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/winda-1-800x450.jpg
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/29720.png
 synopsis.length:   120
 cast:              —
 director:          Louis Malle
@@ -5946,7 +5946,7 @@ cinemaTitles:      Wolność po włosku
 runtimeMinutes:    117
 releaseYear:       2025
 countries:         Francja, Włochy
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/04/wolnosc-po-w-3-800x450.jpg
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/WOLNOSC_PO_WLOSKU_plakat_PL_LQ_MRg2Jxu.jpg
 synopsis.length:   116
 cast:              —
 director:          Mario Martone
@@ -6049,7 +6049,7 @@ cinemaTitles:      Wszystko na sprzedaż
 runtimeMinutes:    94
 releaseYear:       1968
 countries:         Polska
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/wszystko_na_sprzedaz_06_gallery-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
@@ -6076,7 +6076,7 @@ cinemaTitles:      Wypadek fortepianowy
 runtimeMinutes:    88
 releaseYear:       2025
 countries:         Francja
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/wypadek-fortepianowy-2-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Quentin Dupieux
@@ -6381,7 +6381,7 @@ cinemaTitles:      Zemsta Embriona
 runtimeMinutes:    89
 releaseYear:       1990
 countries:         USA
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/04/Zemsta-embriona-9-800x450.png
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Francis Teri
@@ -6409,7 +6409,7 @@ cinemaTitles:      Ziemia obiecana
 runtimeMinutes:    179
 releaseYear:       1974
 countries:         Polska
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/02/ziemia-o-3-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
@@ -6569,7 +6569,7 @@ cinemaTitles:      Żądło
 runtimeMinutes:    129
 releaseYear:       1973
 countries:         USA
-posterUrl:         https://www.kinomuza.pl/content/uploads/2026/04/zadlo-1-800x450.jpg
+posterUrl:         —
 synopsis.length:   —
 cast:              —
 director:          George Roy Hill

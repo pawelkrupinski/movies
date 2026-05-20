@@ -616,6 +616,44 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.cinemaData.keySet shouldBe Set(Multikino)
   }
 
+  // Muza is a two-stage scraper: every 5-min listing tick carries None for
+  // `posterUrl` / `synopsis` / `trailerUrl` (the listing only knows title +
+  // showtimes + director + filmUrl), while a separate
+  // `KinoMuzaSynopsisRefresher` walks each row's detail page on a slower
+  // cadence and writes the portrait poster, synopsis, and trailer back.
+  // The next listing tick mustn't undo that upgrade: the merge rule keeps
+  // the existing slot's value whenever the cinema reports `None`.
+  it should "preserve refresher-upgraded synopsis / trailerUrl / posterUrl across listing scrapes" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val key   = cache.keyOf("Wolność po włosku", Some(2025))
+
+    // Tick 1: listing scrape carries no detail-page fields.
+    cache.recordCinemaScrape(KinoMuza, Seq(
+      cinemaMovie("Wolność po włosku", KinoMuza, Some(2025), poster = None)
+    ))
+
+    // The refresher visits the detail page and upgrades all three fields.
+    cache.putIfPresent(key, current =>
+      current.copy(data = current.data + ((KinoMuza: Source) ->
+        current.data(KinoMuza).copy(
+          synopsis   = Some("opis filmu"),
+          trailerUrl = Some("https://youtube.com/watch?v=abc"),
+          posterUrl  = Some("https://www.kinomuza.pl/2026/04/wolnosc-po-w-1-555x800.jpg")
+        )
+      ))
+    )
+
+    // Tick 2: listing scrape with the same None payload.
+    cache.recordCinemaScrape(KinoMuza, Seq(
+      cinemaMovie("Wolność po włosku", KinoMuza, Some(2025), poster = None)
+    ))
+
+    val slot = cache.get(key).get.data(KinoMuza)
+    slot.synopsis   shouldBe Some("opis filmu")
+    slot.trailerUrl shouldBe Some("https://youtube.com/watch?v=abc")
+    slot.posterUrl  shouldBe Some("https://www.kinomuza.pl/2026/04/wolnosc-po-w-1-555x800.jpg")
+  }
+
   it should "prune a cinema's slot from records that didn't appear in the fresh scrape" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     // Tick 1: Multikino reports A + B.

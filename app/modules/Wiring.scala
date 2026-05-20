@@ -78,7 +78,13 @@ trait Wiring {
 
   // ── MovieRecord ────────────────────────────────────────────────────────────
   lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database)
-  lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo)
+  // Cache publishes `CinemaMovieAdded` directly from `recordCinemaScrape`
+  // so the event fires AFTER the slot is persisted — a downstream handler
+  // that reads the cache for the just-added (cinema, title, year) tuple
+  // always sees the new slot. The bus passes through the same instance
+  // every other service shares for `MovieRecordCreated` / `TmdbResolved`
+  // / `ImdbIdMissing` / `ImdbIdResolved`.
+  lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo, eventBus)
   // ImdbRatings / RottenTomatoesRatings own the hourly rating refresh + the
   // per-row event listener for their respective services. Pulled out of
   // MovieService so each external service has its own tempo and the TMDB
@@ -99,11 +105,14 @@ trait Wiring {
   // permanent row when its single cinema drops the listing).
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
 
-  // Background per-row synopsis fill for Muza — the listing scrape no longer
-  // hits per-film detail pages (their burst limiter doesn't tolerate 80+
-  // every 5 min). Refresher walks unresolved rows one per minute, writes
-  // the parsed synopsis back to the slot, uses Some("") as the "tried,
-  // nothing" sentinel so each row is processed at most once.
+  // Detail-page enricher for Muza — the listing scrape no longer hits
+  // per-film detail pages (their burst limiter doesn't tolerate 80+ every
+  // 5 min) or carries the portrait poster, synopsis, or trailer. Two
+  // triggers: the `CinemaMovieAdded` event (subscribed below; fires
+  // immediately when a new Muza film is persisted) and a periodic 1-min
+  // safety-net scan (`refreshOne`) that catches rows whose first event
+  // was lost across a restart. `Some("")` is the "tried, nothing" sentinel
+  // so each row stays out of the rescan once processed.
   lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────
@@ -167,6 +176,7 @@ trait Wiring {
   eventBus.subscribe(metascoreRatings.onImdbIdMissing)
   eventBus.subscribe(filmwebRatings.onTmdbResolved)
   eventBus.subscribe(filmwebRatings.onImdbIdMissing)
+  eventBus.subscribe(kinoMuzaSynopsisRefresher.onCinemaMovieAdded)
 
   // Start background work and register shutdown hooks. Order matters on stop:
   // every ratings service's stop() must drain its worker pool before the

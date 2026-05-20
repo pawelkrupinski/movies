@@ -40,6 +40,29 @@ case class MovieRecordCreated(
   director:      Option[String] = None
 ) extends DomainEvent
 
+/** A *new* `(cinema, title, year)` tuple was just persisted to the cache (and
+ *  written through to Mongo) by `recordCinemaScrape`. Fires only on the
+ *  *first* observation of that tuple on the row — repeat ticks for the same
+ *  combination are suppressed (same `isNew` gate as `MovieRecordCreated`).
+ *  Published from inside `MovieCache.recordCinemaScrape` so the slot's
+ *  visibility and the event are atomic: any handler reading the cache for
+ *  the just-published tuple sees the newly-written slot.
+ *
+ *  Carries `filmUrl` so a cinema-specific listener (today:
+ *  `KinoMuzaSynopsisRefresher`) can drive a per-film detail-page fetch
+ *  without re-reading the slot.
+ *
+ *  Periodic safety net: detail-page enrichers should NOT rely solely on
+ *  this event — handlers can be lost across a restart between publish and
+ *  consumption, so each detail-page enricher should also expose a slower
+ *  periodic scan that picks up any rows the event-driven path missed. */
+case class CinemaMovieAdded(
+  cinema:  models.Cinema,
+  title:   String,
+  year:    Option[Int],
+  filmUrl: Option[String]
+) extends DomainEvent
+
 /** TMDB resolved a `(title, year)` to a film and an IMDb id. The enrichment
  *  pipeline publishes this after its TMDB stage writes the row to the cache;
  *  the IMDb stage subscribes and fetches the rating asynchronously, so the

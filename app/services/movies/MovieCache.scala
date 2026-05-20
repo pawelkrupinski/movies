@@ -5,6 +5,7 @@ import models.{Cinema, CinemaMovie, MovieRecord, Source, SourceData}
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
+import services.events.{CinemaMovieAdded, EventBus, InProcessEventBus}
 import tools.{DaemonExecutors, TextNormalization}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -91,7 +92,7 @@ trait MovieCache {
  * effects — callers that want to *trigger* a lookup on miss go through
  * `MovieService` (which owns the worker pool + dedup).
  */
-class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with Logging {
+class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus()) extends MovieCache with Stoppable with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
   private val negative: Cache[CacheKey, java.lang.Boolean] =
@@ -352,10 +353,20 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
         val primary = keyOf(cm.movie.title, cm.movie.releaseYear)
         val key     = redirectToExistingVariant(primary).getOrElse(primary)
         val existing = Option(positive.getIfPresent(key)).getOrElse(MovieRecord())
+        // Two-stage scrapers (today: Kino Muza) leave `cm.posterUrl` /
+        // `cm.synopsis` / `cm.trailerUrl` as `None` from the 5-min listing
+        // tick — the detail-page refresher owns those three fields. The
+        // listing tick mustn't undo that. Rule: the cinema's freshly-
+        // scraped value wins when it's `Some`; when the cinema reports
+        // `None`, preserve whatever's on the existing slot. Single-stage
+        // cinemas (Multikino, Helios, CC, Apollo, …) ship `Some` every
+        // tick, so this is a no-op for them — they keep their authoritative
+        // per-tick refresh.
+        val priorSlot = existing.data.get(cinema)
         val slot = SourceData(
           title          = Some(cm.movie.title),
           originalTitle  = cm.movie.originalTitle,
-          synopsis       = cm.synopsis,
+          synopsis       = cm.synopsis.orElse(priorSlot.flatMap(_.synopsis)),
           // Normalise cast at the write boundary: Cinema City returns
           // ALL CAPS comma-lists hard-capped at ~232 chars (the trailing
           // name is sliced mid-word by the upstream JSON field). Drop
@@ -378,9 +389,9 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
           // MovieRecord.countries union/dedup operates on consistent
           // strings.
           countries      = cm.movie.countries.map(CountryNames.canonical).distinct,
-          posterUrl      = cm.posterUrl,
+          posterUrl      = cm.posterUrl.orElse(priorSlot.flatMap(_.posterUrl)),
           filmUrl        = cm.filmUrl,
-          trailerUrl     = cm.trailerUrl,
+          trailerUrl     = cm.trailerUrl.orElse(priorSlot.flatMap(_.trailerUrl)),
           showtimes      = cm.showtimes
         )
         // `isNew` controls whether to publish `MovieRecordCreated` to the bus.
@@ -389,7 +400,6 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
         // listeners don't churn. A pruned-then-re-listed scrape will re-emit
         // (no prior slot to compare against), which is harmless since the
         // listeners early-exit on already-resolved rows.
-        val priorSlot = existing.data.get(cinema)
         val isNew = !priorSlot.exists(s =>
           s.title.contains(cm.movie.title) && s.releaseYear == cm.movie.releaseYear
         )
@@ -420,6 +430,20 @@ class CaffeineMovieCache(repo: MovieRepo) extends MovieCache with Stoppable with
       .foreach { case (k, e) =>
         put(k, e.copy(data = e.data - cinema))
       }
+
+    // Publish CinemaMovieAdded for each row we just first-scraped onto. This
+    // runs AFTER both the slot put and the prune step so a handler reading
+    // the cache for `(title, year)` immediately sees the freshly-written
+    // slot — eliminating the race ShowtimeCache's caller-side publish would
+    // otherwise leave between persist and notify.
+    //
+    // Gated on `isNew` (same gate as `ShowtimeCache`'s MovieRecordCreated)
+    // so steady-state ticks where the same cinema reports the same film
+    // again don't refire — the periodic safety net in each detail-page
+    // enricher picks up rows whose first event was missed.
+    resolved.foreach { case ((cm, key, isNew), _) =>
+      if (isNew) bus.publish(CinemaMovieAdded(cinema, key.cleanTitle, key.year, cm.filmUrl))
+    }
 
     resolved.map(_._1)
   }

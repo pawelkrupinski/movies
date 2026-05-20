@@ -4,7 +4,10 @@ import clients.tools.FakeHttpFetch
 import models.{CinemaMovie, KinoMuza, Movie, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.events.{CinemaMovieAdded, InProcessEventBus}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
+
+import java.util.concurrent.TimeUnit
 
 import java.time.LocalDateTime
 
@@ -153,6 +156,70 @@ class KinoMuzaSynopsisRefresherSpec extends AnyFlatSpec with Matchers {
 
     val slot = cache.get(cache.keyOf("Pieniądze to wszystko", Some(2026))).get.data(KinoMuza)
     slot.posterUrl shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-556x800.png")
+  }
+
+  // ── Event-driven trigger ──────────────────────────────────────────────────
+  //
+  // `recordCinemaScrape` publishes `CinemaMovieAdded` for every freshly-
+  // persisted Muza tuple. The refresher's `onCinemaMovieAdded` handler is
+  // subscribed by `Wiring`; here we drive the partial function directly
+  // and verify the synopsis lands. Schedules the fetch on the internal
+  // executor, so we poll briefly for completion.
+
+  it should "kick off the detail-page refresh when a CinemaMovieAdded event fires" in {
+    val bus       = new InProcessEventBus()
+    val cache     = new CaffeineMovieCache(new InMemoryMovieRepo(), bus)
+    cache.recordCinemaScrape(KinoMuza, Seq(cinemaMovie(
+      "Pieniądze to wszystko",
+      "https://www.kinomuza.pl/movie/pieniadze-to-wszystko/"
+    )))
+    val refresher = new KinoMuzaSynopsisRefresher(cache,
+      new KinoMuzaClient(new FakeHttpFetch("kino-muza")), new FakeHttpFetch("kino-muza"))
+    bus.subscribe(refresher.onCinemaMovieAdded)
+
+    // Fire the event manually — same payload `recordCinemaScrape` would
+    // have published; here we want to assert the handler's behaviour in
+    // isolation from the cache's publish path.
+    bus.publish(CinemaMovieAdded(KinoMuza, "Pieniądze to wszystko", Some(2026),
+                                 Some("https://www.kinomuza.pl/movie/pieniadze-to-wszystko/")))
+
+    val key = cache.keyOf("Pieniądze to wszystko", Some(2026))
+    val deadline = System.currentTimeMillis() + 2000L
+    while (System.currentTimeMillis() < deadline &&
+           !cache.get(key).flatMap(_.data.get(KinoMuza)).flatMap(_.synopsis).exists(_.nonEmpty))
+      TimeUnit.MILLISECONDS.sleep(20L)
+
+    val slot = cache.get(key).get.data(KinoMuza)
+    slot.synopsis     should not be empty
+    slot.synopsis.get should startWith ("James Cox Chambers Jr.")
+  }
+
+  // Handler must skip a row whose synopsis is already set — protects against
+  // duplicate events (e.g. event + periodic safety net both firing) refetching
+  // a page we already processed.
+  it should "skip the event-driven refresh when the slot's synopsis is already set" in {
+    val bus   = new InProcessEventBus()
+    val noFetch = new FakeHttpFetch("kino-muza") {
+      override def get(url: String): String =
+        throw new AssertionError(s"onCinemaMovieAdded should not have fetched $url")
+    }
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(), bus)
+    val key   = cache.keyOf("Foo", Some(2026))
+    cache.put(key, models.MovieRecord(data = Map[Source, SourceData](
+      KinoMuza -> SourceData(filmUrl = Some("https://www.kinomuza.pl/movie/foo/"),
+                             synopsis = Some("already filled"))
+    )))
+    val refresher = new KinoMuzaSynopsisRefresher(cache, new KinoMuzaClient(noFetch), noFetch)
+    bus.subscribe(refresher.onCinemaMovieAdded)
+
+    bus.publish(CinemaMovieAdded(KinoMuza, "Foo", Some(2026),
+                                 Some("https://www.kinomuza.pl/movie/foo/")))
+
+    // Give the scheduler a brief window to run — if it had fetched, the
+    // override above would have thrown an AssertionError that the scheduler
+    // would swallow into a logged warning. Re-assert synopsis hasn't changed.
+    TimeUnit.MILLISECONDS.sleep(100L)
+    cache.get(key).get.data(KinoMuza).synopsis shouldBe Some("already filled")
   }
 
   it should "keep the existing posterUrl when the detail page has no portrait poster slot" in {

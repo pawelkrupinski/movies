@@ -102,7 +102,6 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
     previews.flatMap { preview =>
       val title    = Option(preview.selectFirst(".preview-title")).map(_.text().trim).map(cleanTitle).filter(_.nonEmpty)
       val filmUrl  = Option(preview.selectFirst("a[href*=/movie/]")).map(_.attr("href"))
-      val posterUrl = Option(preview.selectFirst("img[data-src]")).map(_.attr("data-src"))
       val infoHtml  = Option(preview.selectFirst(".f1-bold p")).map(_.html()).getOrElse("")
       val infoText  = Option(preview.selectFirst(".f1-bold p")).map(_.text()).getOrElse("")
       // Info block is <br>-separated: line 0 = "reż. <names>", line 1 = country/-ies,
@@ -150,7 +149,13 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
         CinemaMovie(
           movie     = Movie(title, runtimeMinutes, releaseYear, countries = countries),
           cinema    = KinoMuza,
-          posterUrl = posterUrl,
+          // The listing page only carries a landscape-cropped thumbnail; the
+          // higher-fidelity portrait poster lives on each film's detail page
+          // and is pulled by `KinoMuzaSynopsisRefresher` on the
+          // `CinemaMovieAdded` event. Leaving the listing's posterUrl as None
+          // means the merge in `MovieCache.recordCinemaScrape` can't clobber
+          // the refresher's portrait on subsequent ticks.
+          posterUrl = None,
           filmUrl   = filmUrl,
           synopsis  = None,
           cast      = None,
