@@ -98,25 +98,34 @@ class RealHttpFetch extends HttpFetch with Logging {
     }
   }
 
-  /** Decode the raw response bytes to a UTF-8 string, decompressing
-   *  gzip when the body looks gzipped. Two ways we detect gzip:
+  /** Decode the raw response bytes to a UTF-8 string. If the body starts
+   *  with the gzip magic prefix `1F 8B`, gunzip it regardless of headers
+   *  — some servers (notably TMDB's `/movie/<id>/external_ids` endpoint
+   *  as of mid-2026) ship gzip bytes without the `Content-Encoding`
+   *  header. If the decompress fails (truncated, corrupt), fall back to
+   *  the raw bytes so the caller sees a String it can investigate
+   *  rather than a black-box `IOException`.
    *
-   *    1. `Content-Encoding: gzip` header — the polite signal.
-   *    2. Magic bytes `1F 8B` at the start of the body — the defensive
-   *       fallback. Some servers (notably TMDB's `/movie/<id>/external_ids`
-   *       endpoint as of mid-2026) ship gzipped bytes without the
-   *       Content-Encoding header. Without this fallback the JSON parser
-   *       chokes with `CTRL-CHAR (code 31)` — the first byte of the gzip
-   *       magic number — exactly the failure mode we hit in CI.
-   *
-   *  Identity-encoded responses pass through unchanged. */
+   *  Identity-encoded responses (no magic prefix) pass through
+   *  unchanged. */
   private def decodeBody(headers: HttpHeaders, bytes: Array[Byte]): String = {
-    val encoding   = headers.firstValue("Content-Encoding").orElse("").toLowerCase
-    val looksGzip  = bytes.length >= 2 && (bytes(0) & 0xFF) == 0x1F && (bytes(1) & 0xFF) == 0x8B
+    val isGzip =
+      headers.firstValue("Content-Encoding").orElse("").equalsIgnoreCase("gzip") ||
+      (bytes.length >= 2 && (bytes(0) & 0xFF) == 0x1F && (bytes(1) & 0xFF) == 0x8B)
     val decoded =
-      if (encoding == "gzip" || looksGzip) {
-        val gz = new GZIPInputStream(new ByteArrayInputStream(bytes))
-        try gz.readAllBytes() finally gz.close()
+      if (isGzip) {
+        try {
+          val gz = new GZIPInputStream(new ByteArrayInputStream(bytes))
+          try gz.readAllBytes() finally gz.close()
+        } catch {
+          case ex: Throwable =>
+            logger.warn(
+              s"gzip decode failed (${ex.getClass.getSimpleName}: ${ex.getMessage}); " +
+              s"first 4 bytes=${bytes.take(4).map(b => f"${b & 0xFF}%02X").mkString(" ")}, " +
+              s"length=${bytes.length} — passing raw bytes through"
+            )
+            bytes
+        }
       } else bytes
     new String(decoded, StandardCharsets.UTF_8)
   }
