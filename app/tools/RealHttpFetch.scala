@@ -109,9 +109,25 @@ class RealHttpFetch extends HttpFetch with Logging {
    *  Identity-encoded responses (no magic prefix) pass through
    *  unchanged. */
   private def decodeBody(headers: HttpHeaders, bytes: Array[Byte]): String = {
-    val isGzip =
-      headers.firstValue("Content-Encoding").orElse("").equalsIgnoreCase("gzip") ||
-      (bytes.length >= 2 && (bytes(0) & 0xFF) == 0x1F && (bytes(1) & 0xFF) == 0x8B)
+    val ceHeader = headers.firstValue("Content-Encoding").orElse("")
+    val gzipByHeader = ceHeader.equalsIgnoreCase("gzip")
+    val gzipByMagic  = bytes.length >= 2 && (bytes(0) & 0xFF) == 0x1F && (bytes(1) & 0xFF) == 0x8B
+    val isGzip       = gzipByHeader || gzipByMagic
+    // Diagnostic: any response whose first byte is in the binary range
+    // (< 0x20, excluding tab/LF/CR) gets a one-line dump of the headers
+    // and first 8 bytes. Lets the next prod failure tell us exactly what
+    // reaches the decoder — header values, byte values, length. WARN so
+    // it surfaces in default-level logging; cheap because the predicate
+    // is false for every JSON / HTML response (those start with `{` or
+    // `<`).
+    val first = if (bytes.length > 0) bytes(0) & 0xFF else -1
+    if (first >= 0 && first < 0x20 && first != 0x09 && first != 0x0A && first != 0x0D) {
+      val hex = bytes.take(8).map(b => f"${b & 0xFF}%02X").mkString(" ")
+      logger.warn(
+        s"decodeBody: binary-looking response (first8=$hex len=${bytes.length}) " +
+        s"Content-Encoding='$ceHeader' gzipByHeader=$gzipByHeader gzipByMagic=$gzipByMagic"
+      )
+    }
     val decoded =
       if (isGzip) {
         try {
