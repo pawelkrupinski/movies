@@ -112,23 +112,6 @@ class KinoMuzaSynopsisRefresher(
     if (cache.get(key).flatMap(_.data.get(KinoMuza)).exists(needsRefresh))
       fetchAndWrite(key, filmUrl)
 
-  /** Unconditional per-row refresh — looks up the row's Muza filmUrl in
-   *  cache and runs a fresh detail-page fetch, overwriting whatever the
-   *  slot currently holds. Goes through `cache.putIfPresent` (i.e. the
-   *  `$set`-diff Mongo write path), so it's safe to call from the
-   *  `/debug/muza-refresh` admin endpoint while listing scrapes are still
-   *  running — the refresher's narrow per-field update can't be reverted
-   *  by a concurrent scrape's stale-cache view the way a direct `upsert`
-   *  would. Returns `true` when a fetch happened, `false` when the row
-   *  has no Muza slot or no filmUrl to fetch from. */
-  def refresh(title: String, year: Option[Int]): Boolean = {
-    val key = cache.keyOf(title, year)
-    cache.get(key).flatMap(_.data.get(KinoMuza)).flatMap(_.filmUrl) match {
-      case Some(url) => fetchAndWrite(key, url); true
-      case None      => false
-    }
-  }
-
   private def fetchAndWrite(key: CacheKey, url: String): Unit =
     Try(http.get(url)) match {
       case Success(stringHtml) =>

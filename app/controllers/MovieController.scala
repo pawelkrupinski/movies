@@ -136,7 +136,6 @@ class MovieControllerService(movieService: MovieService) {
 
 class MovieController( cc: ControllerComponents,
                        movieControllerService: MovieControllerService,
-                       kinoMuzaSynopsisRefresher: services.cinemas.KinoMuzaSynopsisRefresher,
                        userRepo: services.users.UserRepo,
                        userStateRepo: services.users.UserStateRepo,
                        oauthProviders: Set[String],
@@ -250,17 +249,6 @@ class MovieController( cc: ControllerComponents,
   def rehydrate(): Action[AnyContent] = Action {
     val count = movieControllerService.rehydrate()
     Ok(s"rehydrated $count rows\n").as("text/plain; charset=utf-8")
-  }
-
-  /** Force a per-movie detail-page refetch on the Kino Muza refresher.
-   *  Temporary endpoint — added so out-of-band Mongo fixes don't have to
-   *  race the 5-min listing scrape, removed once the affected rows are
-   *  cleaned up. */
-  def muzaRefresh(title: String, year: Option[Int]): Action[AnyContent] = Action {
-    if (kinoMuzaSynopsisRefresher.refresh(title, year))
-      Ok(s"refreshed $title (${year.getOrElse("?")})\n").as("text/plain; charset=utf-8")
-    else
-      NotFound(s"no Muza slot with a filmUrl for $title (${year.getOrElse("?")})\n").as("text/plain; charset=utf-8")
   }
 
   // All /debug/* endpoints return 404 in production so the cache contents and

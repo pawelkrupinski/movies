@@ -140,7 +140,7 @@ trait Wiring {
   }
 
   // ── Controllers ───────────────────────────────────────────────────────────
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, kinoMuzaSynopsisRefresher, userRepo, userStateRepo, oauthProviders.keySet, environmentMode)
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, userRepo, userStateRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, userRepo)
