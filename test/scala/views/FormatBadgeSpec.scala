@@ -86,10 +86,15 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
       Showtime(baseTime, Some("https://example.com/a"), Some("Sala 1"), List("2D")),
     )
     val html = views.html._filmCards(Seq(schedule(showtimes))).body
-    // Per-pill star (clickable inside the <a>; the JS handler stops the
-    // booking-link navigation when toggled).
-    html should include ("""class="fav-star"""")
-    html should include ("""toggleFavScreening(event, this)""")
+    // Per-pill star — minimal markup, no per-element onclick (a single
+    // document-level delegated click handler in `_sharedJs` routes
+    // `.fav-star` clicks to `toggleFavScreening`). The previous inline
+    // `onclick="toggleFavScreening(event, this)"` was ~110 bytes ×
+    // ~2,600 stars on the / page; dropping it saves ~290 KB raw /
+    // ~100 KB gzipped, plus that many fewer function references the
+    // browser materialises during HTML parse.
+    html should include ("""<span class="fav-star">★</span>""")
+    html should not include "onclick=\"toggleFavScreening"
     // ID format: "title|cinema|ISO-datetime" — uniquely identifies a
     // screening across reruns and is the localStorage key.
     html should include (s"""data-screening-id="Test movie|${Helios.displayName}|$baseTime"""")

@@ -216,6 +216,20 @@
     scheduleReflow();
   }
 
+  // One document-level delegated listener for every `.fav-star` click,
+  // instead of an inline `onclick="toggleFavScreening(event, this)"` on
+  // each of the ~2,600 showtime spans the / page renders. The byte
+  // savings on the wire are modest (~30 KB gzipped) but the browser
+  // also stops materialising ~2,600 per-element function references
+  // during HTML parse — a real CPU / heap win on mobile. Uses `closest`
+  // so the click target can be the ★ glyph node itself or anything
+  // inside the span (currently it's just text, but future styling
+  // wrappers don't break the handler).
+  document.addEventListener('click', e => {
+    const star = e.target.closest('.fav-star');
+    if (star) toggleFavScreening(e, star);
+  });
+
   // On boot: paint the existing favourite state onto every star in the
   // freshly-rendered DOM. Runs once before applyFilters() so the filter on
   // /ulubione sees the right .is-fav classes.

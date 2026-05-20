@@ -58,8 +58,17 @@
               // the same class from localStorage and produces the same DOM,
               // so anonymous users (empty set passed in) and logged-in users
               // converge on identical state once both paths run.
+              //
+              // No `onclick` / `title` / `aria-label` per star — a single
+              // delegated click handler in `_sharedJs` catches every
+              // `.fav-star` click and routes it to `toggleFavScreening`.
+              // The previous per-star markup carried ~110 bytes of inline
+              // attribute overhead × ~2,600 showtimes ≈ 290 KB of raw HTML
+              // (~30 KB gzipped) on the / page alone, plus that many
+              // function references the browser had to materialise per
+              // anchor. Delegation cuts both.
               val starClass  = if (favouriteScreenings.contains(screening)) "fav-star is-fav" else "fav-star"
-              val star       = s"""<span class="$starClass" onclick="toggleFavScreening(event, this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</span>"""
+              val star       = s"""<span class="$starClass">★</span>"""
               val attrs      = s"""$roomAttr data-format="${play.twirl.api.HtmlFormat.escape(fmtAttr)}" data-screening-id="${play.twirl.api.HtmlFormat.escape(screening)}" data-time="$time""""
               val body       = s"$time$fmtBadge$star"
               val tag        = slot.bookingUrl match {
