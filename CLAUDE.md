@@ -351,6 +351,43 @@ compiles + tests, phase B compiles + tests, phase C compiles + tests —
 each milestone gets its own commit so the history reads as a sequence
 of safe checkpoints, not one monolith.
 
+### Auto-commit and push once a change is stable
+
+When a fix / feature / refactor reaches the stable-state bar above
+(production code done, tests passing, build green) **and** it's the
+natural end of the change you were asked to make, commit it AND push
+it to origin without waiting for me to ask. Don't leave finished work
+sitting on disk, and don't sit in a "want me to commit?" prompt — the
+default answer is yes.
+
+Stop and ask only when something can't be undone cheaply:
+
+- Force pushes / rewriting published history (`push --force`,
+  `reset --hard` against an upstream branch, `commit --amend` on
+  anything already on origin). Always ask, even if I just pushed it
+  myself five minutes ago.
+- Destructive ops with no easy backout: dropping a Mongo collection,
+  truncating a table, deleting branches, `rm -rf` outside `target/`,
+  killing live machines.
+- Committing files that might carry secrets (`.env.local`,
+  credentials, API keys). Stage by explicit path; flag and ask before
+  staging anything that smells like a secret.
+- Production deploys initiated by the change (manual `flyctl deploy`,
+  release tag pushes), separate from the CI pipeline that fires
+  automatically on push to `main`.
+- A diff so large or so cross-cutting that a reviewer would balk at
+  it. Better to checkpoint and ask which slice to land first than
+  to ship one mega-commit.
+
+Everything else — code changes with green tests, CSS tweaks, doc
+edits, small refactors, even multi-commit phases that each compile +
+test green — just commit and push. If the push triggers CI and CI
+fails, fix forward in the next commit; don't undo the push.
+
+If you commit but defer the push for some reason (e.g. you noticed
+something to fix in the next breath), say so out loud in the same
+message so I don't have to ask "did you push?"
+
 ## Extract repeated patterns into a shared abstraction
 
 If you find yourself writing the same shape of code in a second place — a
