@@ -1,0 +1,253 @@
+package tools
+
+import play.api.libs.json.{JsValue, Json}
+
+import java.net.URI
+import java.net.http.HttpResponse.BodyHandlers
+import java.net.http.WebSocket.Listener
+import java.net.http.{HttpClient, HttpRequest, WebSocket}
+import java.nio.file.{Files, Path, Paths}
+import java.time.Duration
+import java.util.Comparator
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.{CompletableFuture, ConcurrentHashMap, TimeUnit}
+
+/**
+ * Minimal headless-Chrome driver used by `PageJsBehaviourSpec` to run
+ * regression tests against the JavaScript on the rendered Twirl pages.
+ * Drives Chrome over the DevTools Protocol via WebSocket (java.net.http).
+ *
+ * Why not Playwright/Puppeteer: this repo is Scala-only with no npm.
+ * Adding a JS test runner would bring node, a separate build step, and
+ * cross-tool wiring just to assert on a handful of DOM behaviours.
+ * CDP-over-WebSocket gives us the same surface — drive a real browser,
+ * observe a real DOM — without leaving the JVM.
+ *
+ * Lifecycle: callers `Chrome.tryStart()` once per spec (typically in
+ * `beforeAll`), then `openPage(htmlFile) { page => … }` per test for an
+ * isolated tab. The tab is closed at the end of each block; the Chrome
+ * process is closed when the spec finishes. `tryStart` returns `None`
+ * when Chrome isn't installed locally — callers should `cancel` cleanly
+ * so CI that lacks a browser doesn't fail the whole suite.
+ */
+object Chrome {
+
+  /** Locations the headless test infra knows how to find a Chrome
+   *  executable. Covers macOS / Linux / common Docker images. */
+  private val CandidatePaths: Seq[String] = Seq(
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser"
+  )
+
+  def findExecutable(): Option[Path] = CandidatePaths.iterator
+    .map(Paths.get(_))
+    .find(Files.isExecutable)
+
+  /** Launch a headless Chrome on a free port. Returns `None` when no
+   *  Chrome binary is reachable on this machine. */
+  def tryStart(): Option[Chrome] = findExecutable().flatMap { exe =>
+    val port    = findFreePort()
+    val userDir = Files.createTempDirectory("chrome-cdp-test-")
+    val pb = new ProcessBuilder(
+      exe.toString,
+      "--headless",
+      "--disable-gpu",
+      "--no-sandbox",
+      "--hide-scrollbars",
+      "--mute-audio",
+      "--disable-background-networking",
+      "--disable-default-apps",
+      "--disable-extensions",
+      "--disable-sync",
+      // Anchored origin allow-list — without this, Chrome 111+ rejects
+      // WebSocket handshakes from clients that don't send an Origin
+      // header (our java.net.http.WebSocket doesn't) with a 403.
+      "--remote-allow-origins=*",
+      s"--remote-debugging-port=$port",
+      s"--user-data-dir=${userDir.toString}",
+      "about:blank"
+    ).redirectErrorStream(true)
+    val process = pb.start()
+    // Drain stdout/stderr so the buffer never fills up and blocks Chrome.
+    new Thread(() => {
+      val in = process.getInputStream
+      val buf = new Array[Byte](4096)
+      try while (in.read(buf) >= 0) () catch { case _: Throwable => () }
+    }, "chrome-stdout-drain").start()
+    val deadline = System.currentTimeMillis() + 10_000
+    var ready = false
+    while (!ready && System.currentTimeMillis() < deadline) {
+      try {
+        httpGet(s"http://localhost:$port/json/version")
+        ready = true
+      } catch {
+        case _: Throwable => Thread.sleep(100)
+      }
+    }
+    if (ready) Some(new Chrome(process, port, userDir))
+    else {
+      process.destroyForcibly()
+      None
+    }
+  }
+
+  private def findFreePort(): Int = {
+    val s = new java.net.ServerSocket(0)
+    try s.getLocalPort finally s.close()
+  }
+
+  private[tools] def httpGet(url: String): String = {
+    val client = HttpClient.newHttpClient()
+    val req = HttpRequest.newBuilder(URI.create(url))
+      .timeout(Duration.ofSeconds(5))
+      .build()
+    client.send(req, BodyHandlers.ofString()).body()
+  }
+
+  private[tools] def httpPut(url: String): String = {
+    val client = HttpClient.newHttpClient()
+    val req = HttpRequest.newBuilder(URI.create(url))
+      .timeout(Duration.ofSeconds(5))
+      .PUT(HttpRequest.BodyPublishers.noBody())
+      .build()
+    client.send(req, BodyHandlers.ofString()).body()
+  }
+}
+
+/** A running Chrome process; opens isolated tabs per test. */
+class Chrome private[tools] (
+                              process: Process,
+                              port: Int,
+                              userDataDir: Path
+                            ) extends AutoCloseable {
+
+  /** Open `url` in a fresh tab, run `body`, then close the tab. The page
+   *  is loaded synchronously — `body` runs after `document.readyState`
+   *  is `complete`, so DOMContentLoaded handlers (buildCinemaPills,
+   *  buildIndex, the boot-time applyFilters() in _sharedJs) have fired.
+   *
+   *  Callers usually point at `TestHttpServer.baseUrl + "/some/path"`.
+   *  Avoid file:// — `history.replaceState` (used by /kina's pill toggle
+   *  to rewrite the URL) throws SecurityError on file:// origins, which
+   *  silently aborts the rest of the click handler in production code. */
+  def openPage[T](url: String)(body: CdpPage => T): T = {
+    val newTab = Json.parse(Chrome.httpPut(s"http://localhost:$port/json/new?$url"))
+    val wsUrl  = (newTab \ "webSocketDebuggerUrl").as[String]
+    val tabId  = (newTab \ "id").as[String]
+    val page = new CdpPage(URI.create(wsUrl))
+    try {
+      page.send("Page.enable")
+      page.send("Runtime.enable")
+      // Wait for DOMContentLoaded so any inline `addEventListener
+      // ('DOMContentLoaded', …)` registrations have fired. A short poll
+      // is simpler and more reliable than wiring up CDP events.
+      page.waitFor("document.readyState === 'complete'", timeoutMs = 5000)
+      body(page)
+    } finally {
+      try page.close() catch { case _: Throwable => () }
+      try Chrome.httpGet(s"http://localhost:$port/json/close/$tabId") catch { case _: Throwable => () }
+    }
+  }
+
+  override def close(): Unit = {
+    try process.destroy() catch { case _: Throwable => () }
+    if (!process.waitFor(3, TimeUnit.SECONDS)) process.destroyForcibly()
+    // Best-effort cleanup of the temp user-data dir. Don't fail the
+    // spec if a lock file lingers — Chrome occasionally holds one open
+    // for a tick after the process exits.
+    try {
+      Files.walk(userDataDir).sorted(Comparator.reverseOrder()).forEach(p =>
+        try Files.deleteIfExists(p) catch { case _: Throwable => () }
+      )
+    } catch { case _: Throwable => () }
+  }
+}
+
+/** One CDP page session. Synchronous request/response over the WebSocket;
+ *  events are ignored (we don't need them for the current spec). */
+class CdpPage private[tools] (uri: URI) extends AutoCloseable {
+  private val idGen = new AtomicInteger(0)
+  private val pending = new ConcurrentHashMap[Int, CompletableFuture[JsValue]]()
+  private val buffer  = new StringBuilder()
+
+  private val ws: WebSocket = HttpClient.newHttpClient()
+    .newWebSocketBuilder()
+    .connectTimeout(Duration.ofSeconds(5))
+    .buildAsync(uri, new Listener {
+      override def onOpen(ws: WebSocket): Unit = { ws.request(Long.MaxValue); super.onOpen(ws) }
+      override def onText(ws: WebSocket, data: CharSequence, last: Boolean): java.util.concurrent.CompletionStage[_] = {
+        buffer.append(data)
+        if (last) {
+          val text = buffer.toString
+          buffer.setLength(0)
+          val msg = Json.parse(text)
+          (msg \ "id").asOpt[Int].foreach { id =>
+            Option(pending.remove(id)).foreach(_.complete(msg))
+          }
+        }
+        null
+      }
+    }).get(10, TimeUnit.SECONDS)
+
+  /** Issue a CDP method call and return the `result` field of the reply.
+   *  Blocks the caller until the reply arrives or 30s elapses. */
+  def send(method: String, params: JsValue = Json.obj()): JsValue = {
+    val id  = idGen.incrementAndGet()
+    val fut = new CompletableFuture[JsValue]()
+    pending.put(id, fut)
+    val msg = Json.obj("id" -> id, "method" -> method, "params" -> params).toString
+    ws.sendText(msg, true).get(5, TimeUnit.SECONDS)
+    val reply = fut.get(30, TimeUnit.SECONDS)
+    (reply \ "error").asOpt[JsValue].foreach { err =>
+      throw new RuntimeException(s"CDP error from $method: ${Json.stringify(err)}")
+    }
+    (reply \ "result").asOpt[JsValue].getOrElse(Json.obj())
+  }
+
+  /** Evaluate `js` in the page and return the unwrapped value. Throws if
+   *  the JS itself threw — that's the test's signal that the page is
+   *  in an unexpected shape. */
+  def eval(js: String): JsValue = {
+    val params = Json.obj(
+      "expression"    -> js,
+      "returnByValue" -> true,
+      "awaitPromise"  -> true
+    )
+    val result = send("Runtime.evaluate", params)
+    (result \ "exceptionDetails").asOpt[JsValue].foreach { ex =>
+      throw new RuntimeException(s"JS exception evaluating [$js]: ${Json.stringify(ex)}")
+    }
+    (result \ "result" \ "value").asOpt[JsValue].getOrElse(Json.obj())
+  }
+
+  def evalString(js: String): String = eval(js).as[String]
+  def evalInt(js: String):    Int    = eval(js).as[Int]
+  def evalBool(js: String):   Boolean = eval(js).as[Boolean]
+
+  /** Poll until `js` evaluates truthy. Used at page-open time to wait
+   *  for `document.readyState === 'complete'`; can also be used by tests
+   *  that need to wait for a debounced filter pass to settle. */
+  def waitFor(js: String, timeoutMs: Int = 2000, pollMs: Int = 50): Unit = {
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+      if (evalBool(s"!!($js)")) return
+      Thread.sleep(pollMs)
+    }
+    throw new RuntimeException(s"Timed out after ${timeoutMs}ms waiting for: $js")
+  }
+
+  def reload(): Unit = {
+    send("Page.reload")
+    Thread.sleep(150) // give the reload a beat before waitFor polls
+    waitFor("document.readyState === 'complete'", timeoutMs = 5000)
+  }
+
+  override def close(): Unit =
+    try ws.sendClose(WebSocket.NORMAL_CLOSURE, "bye").get(2, TimeUnit.SECONDS)
+    catch { case _: Throwable => () }
+    finally try ws.abort() catch { case _: Throwable => () }
+}
