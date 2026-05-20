@@ -360,6 +360,12 @@ it to origin without waiting for me to ask. Don't leave finished work
 sitting on disk, and don't sit in a "want me to commit?" prompt — the
 default answer is yes.
 
+This applies double to diagnose-and-fix flows. The moment a real fix
+lands for a problem we were investigating (CI failure, prod
+regression, OOM, broken test, anything), wrap up by committing and
+pushing — that's how the fix actually reaches CI / prod. Don't stop
+at "the fix compiles locally" and wait for me to say `push`.
+
 Stop and ask only when something can't be undone cheaply:
 
 - Force pushes / rewriting published history (`push --force`,
@@ -372,17 +378,16 @@ Stop and ask only when something can't be undone cheaply:
 - Committing files that might carry secrets (`.env.local`,
   credentials, API keys). Stage by explicit path; flag and ask before
   staging anything that smells like a secret.
-- Production deploys initiated by the change (manual `flyctl deploy`,
-  release tag pushes), separate from the CI pipeline that fires
-  automatically on push to `main`.
 - A diff so large or so cross-cutting that a reviewer would balk at
   it. Better to checkpoint and ask which slice to land first than
   to ship one mega-commit.
 
 Everything else — code changes with green tests, CSS tweaks, doc
 edits, small refactors, even multi-commit phases that each compile +
-test green — just commit and push. If the push triggers CI and CI
-fails, fix forward in the next commit; don't undo the push.
+test green, even a manual `flyctl deploy` to roll prod back to a
+known-good image during an incident — just do it. If a push triggers
+CI and CI fails, fix forward in the next commit; don't undo the
+push.
 
 If you commit but defer the push for some reason (e.g. you noticed
 something to fix in the next breath), say so out loud in the same
