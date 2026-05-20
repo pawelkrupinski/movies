@@ -132,34 +132,6 @@ class MovieControllerService(movieService: MovieService) {
   private def normalizeTitle(title: String): String = TitleNormalizer.normalize(title)
 
   def rehydrate(): Int = movieService.rehydrate()
-
-  // Restrict each film's per-date showings to today + tomorrow only,
-  // dropping films whose entire schedule fell outside that window.
-  // Used by the / controller to ship a small initial render; the
-  // client extends to the full date range via a background fetch.
-  // `today` is injected (not read off `LocalDate.now`) so snapshot
-  // tests can pin the clock to the fixture's date.
-  def trimToTodayAndTomorrow(schedules: Seq[FilmSchedule], today: LocalDate): Seq[FilmSchedule] = {
-    val tomorrow = today.plusDays(1)
-    schedules.flatMap { s =>
-      val trimmed = s.showings.filter { case (d, _) => d == today || d == tomorrow }
-      if (trimmed.isEmpty) None else Some(s.copy(showings = trimmed))
-    }
-  }
-
-  /** /kina counterpart of `trimToTodayAndTomorrow` — same semantics, but
-   *  walks each cinema's per-film list and drops cinemas left with no
-   *  visible films. */
-  def trimCinemaSchedulesToTodayAndTomorrow(schedules: Seq[CinemaSchedule], today: LocalDate): Seq[CinemaSchedule] = {
-    val tomorrow = today.plusDays(1)
-    schedules.flatMap { cs =>
-      val newMovies = cs.movies.flatMap { m =>
-        val trimmed = m.showings.filter { case (d, _) => d == today || d == tomorrow }
-        if (trimmed.isEmpty) None else Some(m.copy(showings = trimmed))
-      }
-      if (newMovies.isEmpty) None else Some(cs.copy(movies = newMovies))
-    }
-  }
 }
 
 class MovieController( cc: ControllerComponents,
@@ -194,16 +166,7 @@ class MovieController( cc: ControllerComponents,
   def index(): Action[AnyContent] = Action { request =>
     val user = currentUser(request)
     val (favMovies, favScreenings) = favouriteSets(user)
-    // Default render = today + tomorrow only (the default `Dzisiaj`/`Jutro`
-    // date filter values cover ~95 % of pageviews). `?full=1` bypasses the
-    // trim and ships the entire date window — used by the client when the
-    // user picks `Następne 7 dni` / a specific future date that the
-    // initial render didn't include.
-    val full = request.getQueryString("full").contains("1")
-    val today = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-    val schedules = if (full) movieControllerService.toSchedules()
-                    else movieControllerService.trimToTodayAndTomorrow(movieControllerService.toSchedules(), today)
-    Ok(views.html.repertoire(schedules, Cinema.all.map(_.displayName), devMode, user, oauthProviders, favMovies, favScreenings, favouritesMode = false))
+    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, user, oauthProviders, favMovies, favScreenings, favouritesMode = false))
   }
 
   def favourites(): Action[AnyContent] = Action { request =>
@@ -260,13 +223,7 @@ class MovieController( cc: ControllerComponents,
     val (favMovies, favScreenings) = favouriteSets(user)
     val allCinemas = Cinema.all.map(_.displayName)
     val pinned = pinnedCinema.filter(allCinemas.contains)
-    // Same today + tomorrow trim as /. See `index()` for the rationale;
-    // `?full=1` returns the full data for the JS extender.
-    val full = request.getQueryString("full").contains("1")
-    val today = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-    val cinemaSchedules = if (full) movieControllerService.toCinemaSchedules()
-                          else movieControllerService.trimCinemaSchedulesToTodayAndTomorrow(movieControllerService.toCinemaSchedules(), today)
-    Ok(views.html.kina(cinemaSchedules, allCinemas, devMode, user, oauthProviders, favMovies, favScreenings, pinned))
+    Ok(views.html.kina(movieControllerService.toCinemaSchedules(), allCinemas, devMode, user, oauthProviders, favMovies, favScreenings, pinned))
   }
 
   def debug(): Action[AnyContent] = Action {

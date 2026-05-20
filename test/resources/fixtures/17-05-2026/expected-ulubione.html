@@ -30466,26 +30466,6 @@ paintFavourites();
 applyFilters();
 } catch (e) { }
 }
-async function fetchFullGridInBackground() {
-const p = window.location.pathname;
-if (p !== '/' && !p.startsWith('/kina')) return;
-if (new URLSearchParams(window.location.search).get('full') === '1') return;
-try {
-const url = window.location.pathname + '?full=1';
-const resp = await fetch(url, { credentials: 'same-origin' });
-if (!resp.ok) return;
-const html = await resp.text();
-const doc = new DOMParser().parseFromString(html, 'text/html');
-const newGrid = doc.getElementById('film-grid');
-const oldGrid = document.getElementById('film-grid');
-if (!newGrid || !oldGrid) return;
-oldGrid.replaceWith(newGrid);
-if (typeof buildIndex === 'function') buildIndex();
-paintFavourites();
-if (typeof applyFilters === 'function') applyFilters();
-} catch (e) {
-}
-}
 function maybeShowAnonymousNag() {
 if (IS_LOGGED_IN || !HAS_OAUTH_PROVIDERS) return;
 const lastAt = parseInt(localStorage.getItem('lastAnonymousNagAt') || '0', 10);
@@ -30516,7 +30496,6 @@ updateFormatBtn();
 paintFavourites();
 applyFilters();
 bootMergeFromServer();
-fetchFullGridInBackground();
 });</script>
 
 
