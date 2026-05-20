@@ -1,11 +1,12 @@
 package services.cinemas
 
-import models._
+import models.*
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
@@ -46,9 +47,8 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
   //
   // Public so `KinoMuzaSynopsisRefresher` can drive its per-row fetches
   // through the same parser without re-running the listing loop.
-  def parseSynopsis(html: String): Option[String] = {
-    val doc = Jsoup.parse(html)
-    val paragraphs = doc.select("div.col-lg-7.paragraph > p").asScala
+  def parseSynopsis(document: Document): Option[String] = {
+    val paragraphs = document.select("div.col-lg-7.paragraph > p").asScala
       .map(_.text().trim)
       .filter(_.nonEmpty)
       .toSeq
@@ -66,8 +66,8 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
    *  `src`, no `data-src`). Returns `None` when the slot is absent.
    *  Public so `KinoMuzaSynopsisRefresher` can drive its per-row poster
    *  upgrade through the same parser. */
-  def parsePoster(html: String): Option[String] =
-    Option(Jsoup.parse(html).selectFirst("img.img-fuild[data-src]"))
+  def parsePoster(document: Document): Option[String] =
+    Option(document.selectFirst("img.img-fuild[data-src]"))
       .map(_.attr("data-src"))
       .filter(_.nonEmpty)
 
@@ -77,9 +77,8 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
    *  view layer reshapes back to `/embed/` at render time via
    *  `TrailerEmbed.embedUrlFor`. Public so the refresher can drive the
    *  per-row fetch through the same parser. */
-  def parseTrailer(html: String): Option[String] = {
-    val doc = Jsoup.parse(html)
-    val src = Option(doc.selectFirst("iframe.embed-responsive-item")).map(_.attr("src")).filter(_.nonEmpty)
+  def parseTrailer(document: Document): Option[String] = {
+    val src = Option(document.selectFirst("iframe.embed-responsive-item")).map(_.attr("src")).filter(_.nonEmpty)
     src.flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
       .map(id => s"https://www.youtube.com/watch?v=$id")
       .orElse(services.movies.TrailerEmbed.vimeoId(u).map(_ => u)))

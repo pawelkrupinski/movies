@@ -1,6 +1,7 @@
 package services.cinemas
 
 import models.{KinoMuza, Source, SourceData}
+import org.jsoup.Jsoup
 import play.api.Logging
 import services.Stoppable
 import services.movies.MovieCache
@@ -58,23 +59,26 @@ class KinoMuzaSynopsisRefresher(
    *  Returns true when a row was processed (whether or not the fetch
    *  produced a synopsis), false when there was nothing to do. */
   def refreshOne(): Boolean = {
-    val candidate = cache.entries.iterator
-      .collectFirst {
-        case (key, e) if e.data.get(KinoMuza).exists(needsSynopsis) => (key, e)
-      }
+    val candidate: Option[services.movies.CacheKey] = cache.entries.iterator
+      .collectFirst { case (key, e) if e.data.get(KinoMuza).exists(needsSynopsis) => key }
     candidate match {
       case None => false
-      case Some((key, _)) =>
+      case Some(key) =>
         val slot    = cache.get(key).flatMap(_.data.get(KinoMuza)).getOrElse(SourceData())
         val url     = slot.filmUrl.getOrElse(return false)
         Try(http.get(url)) match {
-          case Success(html) =>
-            // `Some("")` is the "tried, nothing found" sentinel — keeps the
-            // row out of the candidate filter on subsequent ticks even when
-            // Muza's page has no synopsis paragraph.
-            val synopsis = client.parseSynopsis(html).getOrElse("")
-            val trailer  = client.parseTrailer(html)
-            val poster   = client.parsePoster(html)
+          case Success(stringHtml) =>
+            // Parse the detail page once; pass the same Document to all
+            // three parsers (synopsis / trailer / poster) so Jsoup's
+            // moderate-cost parse runs once per row instead of three
+            // times. `Some("")` is the "tried, nothing found" sentinel
+            // for synopsis — keeps the row out of the candidate filter
+            // on subsequent ticks even when Muza's page has no synopsis
+            // paragraph.
+            val doc      = Jsoup.parse(stringHtml)
+            val synopsis = client.parseSynopsis(doc).getOrElse("")
+            val trailer  = client.parseTrailer(doc)
+            val poster   = client.parsePoster(doc)
             writeSlot(key, synopsis, trailer, poster)
             logger.debug(s"KinoMuza synopsis+trailer: ${key.cleanTitle} (${synopsis.length} chars" +
                          trailer.map(_ => ", trailer").getOrElse("") +

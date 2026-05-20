@@ -2,6 +2,7 @@ package clients.kino_muza
 
 import clients.tools.FakeHttpFetch
 import models.{KinoMuza, Showtime}
+import org.jsoup.Jsoup
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.KinoMuzaClient
@@ -747,7 +748,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
 
   it should "still expose parseSynopsis for the refresher to call against a recorded detail page" in {
     val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(scala.io.Codec.UTF8).mkString
-    val s    = client.parseSynopsis(html)
+    val s    = client.parseSynopsis(Jsoup.parse(html))
     s                            should not be empty
     s.get                        should startWith ("James Cox Chambers Jr.")
     s.get                        should include ("Fergie")
@@ -758,11 +759,11 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
   // can upgrade the row's posterUrl when it processes the detail page.
   it should "extract the portrait poster URL from a detail page" in {
     val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(scala.io.Codec.UTF8).mkString
-    client.parsePoster(html) shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-556x800.png")
+    client.parsePoster(Jsoup.parse(html)) shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-556x800.png")
   }
 
   it should "return None when the detail page has no poster image slot" in {
-    client.parsePoster("<html><body><p>no images here</p></body></html>") shouldBe empty
+    client.parsePoster(Jsoup.parse("<html><body><p>no images here</p></body></html>")) shouldBe empty
   }
 
   it should "return exact showtimes for Drama" in {
