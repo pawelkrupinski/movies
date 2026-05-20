@@ -39,7 +39,7 @@ CMD exec bin/movies \
     -J-XX:ReservedCodeCacheSize=96m \
     -J-XX:MaxMetaspaceSize=160m \
     -J-XX:MaxDirectMemorySize=96m \
-    -J-Xlog:gc*:stderr:time,uptime,level,tags:filecount=0
+    -J-Xlog:gc*:stderr:time,uptime,level,tags
     # JVM sizing on the 1 GB cgroup. Targets:
     #
     #   - Xms == Xmx == 384m: heap pre-allocated, no resize-up pauses
@@ -59,10 +59,12 @@ CMD exec bin/movies \
     #     dedup pass merges equal char[] arrays across the heap,
     #     measurably cutting young-gen pressure during render.
     #
-    #   - GC log to stderr: the JVM's own pause record. Cheap
-    #     (`filecount=0` writes inline so Fly's log aggregator picks
-    #     it up). Lets the next perf investigation correlate request
-    #     latency spikes with GC events without redeploying.
+    #   - GC log to stderr: the JVM's own pause record. Cheap, picked
+    #     up by Fly's log aggregator alongside the app's own logs.
+    #     Lets the next perf investigation correlate request latency
+    #     spikes with GC events without redeploying. (Note: `stderr`
+    #     output doesn't take a `filecount` decorator — that's for
+    #     `file=…` outputs.)
     #
     # Non-heap caps (Java 21 defaults are unbounded for metaspace and
     # Xmx-sized for direct memory) stay tight to leave headroom:
