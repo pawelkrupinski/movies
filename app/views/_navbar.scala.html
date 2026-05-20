@@ -44,13 +44,19 @@
     <div id="format-panel" class="dropdown-panel" style="display:none" onclick="event.stopPropagation()">
       @* Kina cinema picker — moved here from its own dropdown. Same DOM
          ids (`cinema-all`, `cinema-list`) so the existing
-         `buildCinemaPanel`/`toggleAllCinemas` JS keeps working unchanged. *@
-      <div class="panel-section-label">Kina</div>
-      <label class="panel-label" style="border-bottom:1px solid #3a3a6e; margin-bottom:4px; padding-bottom:8px;">
-        <input type="checkbox" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> Wszystkie kina
-      </label>
-      <div id="cinema-list"></div>
-      <div class="panel-divider"></div>
+         `buildCinemaPanel`/`toggleAllCinemas` JS keeps working unchanged.
+         Hidden on /kina — that page surfaces the same `disabledCinemas`
+         state as a pill row above the film grid, so duplicating the
+         control inside Filtry would just create two UIs for the same
+         state to drift between. *@
+      @if(activePage != "kina") {
+        <div class="panel-section-label">Kina</div>
+        <label class="panel-label" style="border-bottom:1px solid #3a3a6e; margin-bottom:4px; padding-bottom:8px;">
+          <input type="checkbox" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> Wszystkie kina
+        </label>
+        <div id="cinema-list"></div>
+        <div class="panel-divider"></div>
+      }
 
       <div class="panel-section-label">Wymiar</div>
       <label class="panel-label"><input type="radio" name="format-dim"  value=""   checked onchange="onFormatChange()"> Wszystkie</label>

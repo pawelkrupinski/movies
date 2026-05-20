@@ -62,13 +62,19 @@
       const h = Math.floor(fromMin / 60), m = fromMin % 60;
       parts.push('od ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
     }
-    // Cinema filter is now part of the Filtry panel; surface the
-    // selected-vs-total count in the button label so the navbar still
-    // signals "you've narrowed the cinemas" at a glance even though the
-    // standalone Kina button is gone.
-    const disabled = getDisabledCinemas();
-    if (disabled.length > 0 && disabled.length < ALL_CINEMAS.length) {
-      parts.push('kina ' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.length);
+    // Cinema filter is now part of the Filtry panel on most pages;
+    // surface the selected-vs-total count in the button label so the
+    // navbar still signals "you've narrowed the cinemas" at a glance.
+    // On /kina the picker is rendered as a pill row above the grid and
+    // the Filtry panel doesn't carry the Kina section at all — the
+    // `#cinema-list` presence is the natural signal for "Filtry owns
+    // the picker on this page". When it's absent, the count belongs to
+    // the pill row, not the Filtry label.
+    if (document.getElementById('cinema-list')) {
+      const disabled = getDisabledCinemas();
+      if (disabled.length > 0 && disabled.length < ALL_CINEMAS.length) {
+        parts.push('kina ' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.length);
+      }
     }
     const btn = document.getElementById('format-filter-btn');
     btn.textContent = parts.length === 0 ? 'Filtry' : 'Filtry (' + parts.join(', ') + ')';
@@ -425,8 +431,12 @@
   // ── Cinema-filter panel ───────────────────────────────────────────────────
 
   function buildCinemaPanel() {
-    const disabled = getDisabledCinemas();
     const list = document.getElementById('cinema-list');
+    // /kina hides the Filtry-side Kina section entirely (its pills row
+    // owns the same state). Bail when the DOM isn't there instead of
+    // throwing on the null `list`.
+    if (!list) return;
+    const disabled = getDisabledCinemas();
     list.innerHTML = '';
     ALL_CINEMAS.forEach(cinema => {
       const label = document.createElement('label');
@@ -454,8 +464,9 @@
   }
 
   function syncAllCheckbox() {
-    const disabled = getDisabledCinemas();
     const allCb = document.getElementById('cinema-all');
+    if (!allCb) return;  // /kina has no Wszystkie-kina checkbox.
+    const disabled = getDisabledCinemas();
     allCb.checked = disabled.length === 0;
     allCb.indeterminate = disabled.length > 0 && disabled.length < ALL_CINEMAS.length;
   }

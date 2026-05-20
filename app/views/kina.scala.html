@@ -10,6 +10,33 @@
   @_sharedStyles()
   <style>
     .cinema-section-title { color: #aad4ff; font-size: 1rem; font-weight: 600; border-bottom: 1px solid #3a3a6e; padding-bottom: .4rem; }
+    /* Cinema-picker pill row — replaces the Filtry-side Kina section on
+       /kina. Drives the same `disabledCinemas` localStorage state; a pill
+       is "active" when its cinema is NOT in that list. Click toggles the
+       cinema in/out of disabled and re-applies the existing filter. */
+    .cinema-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      margin-bottom: 1.5rem;
+    }
+    .cinema-pill {
+      background: #252540;
+      color: #99b;
+      border: 1px solid #3a3a6e;
+      border-radius: 999px;
+      padding: .3rem .85rem;
+      font-size: .85rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .cinema-pill:hover { background: #3a3a6e; color: #fff; }
+    .cinema-pill.active {
+      background: #3a3a6e;
+      color: #aad4ff;
+      border-color: #5a5a9e;
+    }
   </style>
 </head>
 <body>
@@ -18,6 +45,12 @@
 @_loginModal(oauthProviders)
 
 <div class="container-fluid py-4 px-4">
+  @* Cinema-picker pills — populated from JS at boot off ALL_CINEMAS and
+     `disabledCinemas` localStorage. Renders empty server-side; the JS
+     pill builder is the source of truth so the active/inactive state
+     stays in sync with the same localStorage everywhere else in the
+     app reads from. *@
+  <div class="cinema-pill-row" id="cinema-pills"></div>
   <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
   <div id="film-grid">
@@ -175,6 +208,46 @@
     // hover from jumping a pill onto the next line.
     scheduleReflow();
   }
+
+  // ── Cinema-picker pills ───────────────────────────────────────────────────
+  //
+  // Same `disabledCinemas` localStorage state the Filtry checkboxes drive on
+  // the other pages — just rendered here as a horizontal pill strip above
+  // the grid. `applyFilters()` already hides every `.cinema-section` whose
+  // `data-cinema` is in `disabledCinemas`, so toggling a pill on/off
+  // collapses or restores that whole section without any extra wiring.
+  function buildCinemaPills() {
+    const row = document.getElementById('cinema-pills');
+    if (!row) return;
+    const disabled = new Set(getDisabledCinemas());
+    row.innerHTML = '';
+    ALL_CINEMAS.forEach(cinema => {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'cinema-pill' + (disabled.has(cinema) ? '' : ' active');
+      pill.dataset.cinema = cinema;
+      pill.textContent = cinema;
+      pill.onclick = () => toggleCinemaPill(cinema);
+      row.appendChild(pill);
+    });
+  }
+
+  // Single-select semantics: clicking a pill pins the grid to that cinema
+  // (disables every other one); clicking the same pill again — i.e. when
+  // it's currently the only active pill — clears the filter and shows all
+  // cinemas. The "active" coat-of-paint is still `disabled.has(cinema) ?
+  // '' : 'active'`, so when the disabled set is empty every pill is
+  // active, matching the "no filter" state.
+  function toggleCinemaPill(cinema) {
+    const disabledNow = new Set(getDisabledCinemas());
+    const isLoneActive = !disabledNow.has(cinema) && disabledNow.size === ALL_CINEMAS.length - 1;
+    if (isLoneActive) setDisabledCinemas([]);                                  // un-pin → show all
+    else              setDisabledCinemas(ALL_CINEMAS.filter(c => c !== cinema)); // pin → only this
+    buildCinemaPills();
+    applyFilters();
+  }
+
+  document.addEventListener('DOMContentLoaded', buildCinemaPills);
 
   function sortSection(section, earlyMap) {
     // Same logic as repertoire's sortByEarliestVisible (see comment there).
