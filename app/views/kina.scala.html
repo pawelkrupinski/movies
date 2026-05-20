@@ -38,7 +38,15 @@
       cursor: pointer;
       user-select: none;
     }
-    .cinema-pill:hover  { background: #3a3a6e; color: #fff; }
+    /* Gate `:hover` behind `hover: hover` so iOS/Android Safari don't
+       paint the post-tap sticky hover — same purple background that
+       `.active` uses — onto a pill the user just *un*-pinned. Without
+       this, tapping a pill twice ends with the pill still looking
+       selected until you tap somewhere else. `.active` (the pinned
+       state) stays unconditional. */
+    @@media (hover: hover) and (pointer: fine) {
+      .cinema-pill:hover { background: #3a3a6e; color: #fff; }
+    }
     .cinema-pill.active { background: #3a3a6e; color: #fff; }
     @@media (max-width: 575px) {
       .cinema-nav-row { padding-left: .75rem !important; padding-right: .75rem !important; gap: .15rem; }
