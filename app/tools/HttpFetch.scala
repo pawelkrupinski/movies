@@ -15,6 +15,14 @@ import java.util.concurrent.CompletableFuture
 trait HttpFetch {
   def get(url: String): String
 
+  /** GET with extra request headers. Default delegates to the no-header
+   *  form, which lets test fakes (FakeHttpFetch, RecordingHttpFetch) keep
+   *  overriding only `get(url)` — they fingerprint by URL and don't care
+   *  about headers. Production callers that need per-call auth (e.g.
+   *  TMDB v4 Bearer) use this overload; `RealHttpFetch` overrides it to
+   *  pass headers through. */
+  def get(url: String, headers: Map[String, String]): String = get(url)
+
   def getAsync(url: String): CompletableFuture[String] =
     CompletableFuture.supplyAsync(() => get(url))
 

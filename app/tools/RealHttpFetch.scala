@@ -33,8 +33,10 @@ class RealHttpFetch extends HttpFetch with Logging {
     .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
     .build()
 
-  override def get(url: String): String =
-    sendLogged("GET", url, underlying.send(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray()))
+  override def get(url: String): String = get(url, Map.empty)
+
+  override def get(url: String, headers: Map[String, String]): String =
+    sendLogged("GET", url, underlying.send(buildRequest(url, headers), HttpResponse.BodyHandlers.ofByteArray()))
 
   override def getAsync(url: String): CompletableFuture[String] =
     underlying.sendAsync(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray())
@@ -120,7 +122,7 @@ class RealHttpFetch extends HttpFetch with Logging {
     case other => other
   }
 
-  private def buildRequest(url: String): HttpRequest = {
+  private def buildRequest(url: String, extraHeaders: Map[String, String] = Map.empty): HttpRequest = {
     val builder = HttpRequest.newBuilder()
       .uri(URI.create(url))
       .timeout(RequestTimeout)
@@ -132,6 +134,7 @@ class RealHttpFetch extends HttpFetch with Logging {
       // negotiation explicit and shrinks the wire payload.
       .header("Accept-Encoding", "gzip")
       .GET()
+    extraHeaders.foreach { case (k, v) => builder.header(k, v) }
 
     decorateBuilder(builder, url).build()
   }

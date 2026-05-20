@@ -44,16 +44,31 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
     // recorded for THIS specific query. Fall back to the bare path for
     // older fixtures and for path-only URLs (no query, e.g. cinema HTML
     // pages) where one file per path is enough.
-    val querySuffix = Option(uri.getRawQuery)
-      .map(q => s".${RecordingHttpFetch.stableQueryFingerprint(q)}")
-      .getOrElse("")
-    val bodySuffix  = body.map(b => s".${b.hashCode.toHexString}").getOrElse("")
-    val key = s"$querySuffix$bodySuffix"
+    //
+    // Two fingerprint shapes coexist in the corpus because of how
+    // RecordingHttpFetch handled an empty query historically:
+    //   - URLs with `?api_key=…` only → stripped to "" → hashCode 0
+    //     → fixture written as `<path>.0` (TMDB `/external_ids`, etc.).
+    //   - URLs with no query at all  → suffix omitted entirely → fixture
+    //     written as `<path>` (IMDb GraphQL POSTs at the root path).
+    // After the v4-bearer TMDB move the URLs now match the second
+    // shape, so emit BOTH candidate sets when there's no raw query —
+    // one with the `.0` suffix (existing TMDB fixtures) and one bare
+    // (existing IMDb / cinema-HTML fixtures).
+    val rawQuery     = Option(uri.getRawQuery)
+    val querySuffix  = s".${RecordingHttpFetch.stableQueryFingerprint(rawQuery.getOrElse(""))}"
+    val bodySuffix   = body.map(b => s".${b.hashCode.toHexString}").getOrElse("")
+    val key          = s"$querySuffix$bodySuffix"
+    val bareKey      = bodySuffix  // no query → no fingerprint, just body hash (if any)
     val candidates = Seq(
       s"$base$key",
       s"$base$key.html",
       s"$base$key.json",
       s"$base$key.content",
+      s"$base$bareKey",
+      s"$base$bareKey.html",
+      s"$base$bareKey.json",
+      s"$base$bareKey.content",
       base,
       s"$base.html",
       s"$base.json",
@@ -62,6 +77,10 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
       s"$trimmedBase$key.html",
       s"$trimmedBase$key.json",
       s"$trimmedBase$key.content",
+      s"$trimmedBase$bareKey",
+      s"$trimmedBase$bareKey.html",
+      s"$trimmedBase$bareKey.json",
+      s"$trimmedBase$bareKey.content",
       trimmedBase,
       s"$trimmedBase.html",
       s"$trimmedBase.json",
