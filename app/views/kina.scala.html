@@ -11,9 +11,11 @@
   <style>
     .cinema-section-title { color: #aad4ff; font-size: 1rem; font-weight: 600; border-bottom: 1px solid #3a3a6e; padding-bottom: .4rem; }
     /* Cinema-picker pill row — replaces the Filtry-side Kina section on
-       /kina. Drives the same `disabledCinemas` localStorage state; a pill
-       is "active" when its cinema is NOT in that list. Click toggles the
-       cinema in/out of disabled and re-applies the existing filter. */
+       /kina. Drives the same `disabledCinemas` localStorage state. A pill
+       is "active" only when it's the single pinned cinema (i.e. every
+       other cinema is in `disabledCinemas`); the default "show all"
+       state leaves every pill inactive so the grid's visual mode reads
+       as "no filter applied". */
     .cinema-pill-row {
       display: flex;
       flex-wrap: wrap;
@@ -36,6 +38,12 @@
       background: #3a3a6e;
       color: #aad4ff;
       border-color: #5a5a9e;
+    }
+    /* Mobile: tighter pills so the full strip can stay on one or two
+       rows even when nine cinemas are listed. */
+    @@media (max-width: 575px) {
+      .cinema-pill-row { gap: .3rem; margin-bottom: 1rem; }
+      .cinema-pill     { padding: .22rem .6rem; font-size: .72rem; }
     }
   </style>
 </head>
@@ -219,12 +227,18 @@
   function buildCinemaPills() {
     const row = document.getElementById('cinema-pills');
     if (!row) return;
-    const disabled = new Set(getDisabledCinemas());
+    const disabled = getDisabledCinemas();
+    // A pill is active iff it's the single pinned cinema — i.e. every
+    // other cinema is disabled. The default `[]` state leaves every
+    // pill inactive, which reads as "no filter, all sections visible".
+    const pinned = (disabled.length === ALL_CINEMAS.length - 1)
+      ? ALL_CINEMAS.find(c => !disabled.includes(c))
+      : null;
     row.innerHTML = '';
     ALL_CINEMAS.forEach(cinema => {
       const pill = document.createElement('button');
       pill.type = 'button';
-      pill.className = 'cinema-pill' + (disabled.has(cinema) ? '' : ' active');
+      pill.className = 'cinema-pill' + (cinema === pinned ? ' active' : '');
       pill.dataset.cinema = cinema;
       pill.textContent = cinema;
       pill.onclick = () => toggleCinemaPill(cinema);
