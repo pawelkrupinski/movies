@@ -2,11 +2,14 @@ package tools
 
 import play.api.Logging
 
+import java.io.ByteArrayInputStream
 import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse, HttpTimeoutException}
+import java.net.http.{HttpClient, HttpHeaders, HttpRequest, HttpResponse, HttpTimeoutException}
 import java.net.{CookieManager, CookiePolicy}
+import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
+import java.util.zip.GZIPInputStream
 
 class RealHttpFetch extends HttpFetch with Logging {
   // Connect + per-request timeouts so a hung upstream (MC search HTML
@@ -32,10 +35,11 @@ class RealHttpFetch extends HttpFetch with Logging {
     .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
     .build()
 
-  override def get(url: String): String = sendLogged("GET", url, underlying.send(buildRequest(url), HttpResponse.BodyHandlers.ofString()))
+  override def get(url: String): String =
+    sendLogged("GET", url, underlying.send(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray()))
 
   override def getAsync(url: String): CompletableFuture[String] =
-    underlying.sendAsync(buildRequest(url), HttpResponse.BodyHandlers.ofString())
+    underlying.sendAsync(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray())
       .handle[String] { (response, throwable) =>
         if (throwable != null) {
           logFailure("GET", url, unwrap(throwable))
@@ -50,9 +54,12 @@ class RealHttpFetch extends HttpFetch with Logging {
       .timeout(RequestTimeout)
       .header("Content-Type", contentType)
       .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+      // Decoded transparently in `decodeBody` below. See the matching
+      // header on `buildRequest` for the GET path.
+      .header("Accept-Encoding", "gzip")
       .POST(HttpRequest.BodyPublishers.ofString(body))
       .build()
-    sendLogged("POST", url, underlying.send(req, HttpResponse.BodyHandlers.ofString()))
+    sendLogged("POST", url, underlying.send(req, HttpResponse.BodyHandlers.ofByteArray()))
   }
 
   // ── Logging hooks ─────────────────────────────────────────────────────────
@@ -72,7 +79,7 @@ class RealHttpFetch extends HttpFetch with Logging {
   //     slug doesn't exist" signal; WARN-ing every probe miss would flood
   //     the logs with hundreds of expected 404s per refresh tick.
 
-  private def sendLogged(method: String, url: String, send: => HttpResponse[String]): String = {
+  private def sendLogged(method: String, url: String, send: => HttpResponse[Array[Byte]]): String = {
     val resp = try send catch {
       case ex: Throwable =>
         logFailure(method, url, ex)
@@ -81,14 +88,32 @@ class RealHttpFetch extends HttpFetch with Logging {
     checkStatus(method, url, resp)
   }
 
-  private def checkStatus(method: String, url: String, resp: HttpResponse[String]): String = {
+  private def checkStatus(method: String, url: String, resp: HttpResponse[Array[Byte]]): String = {
     val code = resp.statusCode()
-    if (code >= 200 && code < 300) resp.body()
+    if (code >= 200 && code < 300) decodeBody(resp.headers(), resp.body())
     else {
       if (code >= 500) logger.warn(s"HTTP $code from $method $url (server-side)")
       else             logger.debug(s"HTTP $code from $method $url")
       throw new RuntimeException(s"HTTP $code for $method $url")
     }
+  }
+
+  /** Decode the raw response bytes to a UTF-8 string, decompressing
+   *  `Content-Encoding: gzip` when present. We advertise `gzip` on every
+   *  request (it's a free transfer-size win, and modern CDNs gzip
+   *  opportunistically based on UA fingerprint anyway — TMDB's edge was
+   *  shipping gzipped bytes despite an absent `Accept-Encoding` header,
+   *  which the JSON parser then choked on with `CTRL-CHAR code 31`,
+   *  i.e. the first byte of gzip's magic number). Identity-encoded
+   *  responses pass through unchanged. */
+  private def decodeBody(headers: HttpHeaders, bytes: Array[Byte]): String = {
+    val encoding = headers.firstValue("Content-Encoding").orElse("").toLowerCase
+    val decoded =
+      if (encoding == "gzip") {
+        val gz = new GZIPInputStream(new ByteArrayInputStream(bytes))
+        try gz.readAllBytes() finally gz.close()
+      } else bytes
+    new String(decoded, StandardCharsets.UTF_8)
   }
 
   private def logFailure(method: String, url: String, ex: Throwable): Unit = ex match {
@@ -112,6 +137,11 @@ class RealHttpFetch extends HttpFetch with Logging {
       .timeout(RequestTimeout)
       .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
       .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
+      // Advertise gzip — `decodeBody` decompresses transparently. Without
+      // this header some CDNs still gzip based on the Chrome-shaped UA we
+      // send, so the decode path runs regardless; advertising it makes the
+      // negotiation explicit and shrinks the wire payload.
+      .header("Accept-Encoding", "gzip")
       .GET()
 
     decorateBuilder(builder, url).build()
