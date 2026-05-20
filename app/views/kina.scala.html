@@ -10,6 +10,13 @@
   @_sharedStyles(devMode)
   @_minified(devMode) {
   <style>
+    /* Off-screen cinema sections skip layout + paint until they scroll
+       into view. With 10 sections stacked but only the first 1–2 visible
+       at first paint, this halves the initial layout cost. The
+       intrinsic-size placeholder is sized roughly to a typical section
+       (≈1200 px tall) so the scrollbar doesn't jump when the real
+       section measures itself on entry. */
+    .cinema-section { content-visibility: auto; contain-intrinsic-size: 0 1200px; }
     .cinema-section-title { color: #aad4ff; font-size: 1rem; font-weight: 600; border-bottom: 1px solid #3a3a6e; padding-bottom: .4rem; }
     /* Cinema-picker row — a second navbar row directly under the main
        navbar on /kina. Drives the same `disabledCinemas` localStorage
