@@ -30565,7 +30565,53 @@ updateFormatBtn();
 paintFavourites();
 applyFilters();
 bootMergeFromServer();
-});</script>
+});
+document.addEventListener('click', e => {
+const a = e.target.closest('a.nav-tab');
+if (a) sessionStorage.setItem('navClickAt', String(Date.now()));
+}, { capture: true });
+(function() {
+const samples = { url: location.pathname };
+let lcp = 0, longTaskMs = 0, longTasks = 0;
+if (typeof PerformanceObserver !== 'undefined') {
+try {
+new PerformanceObserver(list => {
+for (const e of list.getEntries()) lcp = Math.max(lcp, e.startTime);
+}).observe({ type: 'largest-contentful-paint', buffered: true });
+} catch (_) {}
+try {
+new PerformanceObserver(list => {
+for (const e of list.getEntries()) { longTaskMs += e.duration; longTasks++; }
+}).observe({ type: 'longtask', buffered: true });
+} catch (_) {}
+}
+function dump() {
+try {
+performance.getEntriesByType('paint').forEach(e => samples[e.name] = Math.round(e.startTime));
+const nav = performance.getEntriesByType('navigation')[0];
+if (nav) {
+samples.ttfb = Math.round(nav.responseStart - nav.requestStart);
+samples.transfer = Math.round(nav.responseEnd - nav.responseStart);
+samples.domparse = Math.round(nav.domInteractive - nav.responseEnd);
+samples.dcl = Math.round(nav.domContentLoadedEventEnd);
+samples.load = Math.round(nav.loadEventEnd);
+}
+samples.lcp = Math.round(lcp);
+samples.longTaskMs = Math.round(longTaskMs);
+samples.longTasks = longTasks;
+samples.conn = (navigator.connection && navigator.connection.effectiveType) || '';
+samples.ua = navigator.userAgent;
+const stash = sessionStorage.getItem('navClickAt');
+if (stash) {
+samples.tapToNavStart = Math.round(performance.timeOrigin - Number(stash));
+sessionStorage.removeItem('navClickAt');
+}
+if (navigator.sendBeacon)
+navigator.sendBeacon('/debug/perf', JSON.stringify(samples));
+} catch (_) {}
+}
+addEventListener('pagehide', dump, { once: true });
+})();</script>
 
 
 

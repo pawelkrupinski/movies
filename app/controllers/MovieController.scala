@@ -1,6 +1,8 @@
 package controllers
 
 import models._
+import play.api.Logging
+import play.api.libs.json.JsValue
 import play.api.mvc._
 import play.api.Mode
 import services.movies.{MovieService, StoredMovieRecord, TitleNormalizer}
@@ -140,7 +142,7 @@ class MovieController( cc: ControllerComponents,
                        userStateRepo: services.users.UserStateRepo,
                        oauthProviders: Set[String],
                        environment: Mode
-                     ) extends AbstractController(cc) {
+                     ) extends AbstractController(cc) with Logging {
 
   // Read the session's `userId` (set by `AuthController.callback`) and
   // resolve it to a User if the row is still there. Returns None for
@@ -274,6 +276,41 @@ class MovieController( cc: ControllerComponents,
   def rehydrate(): Action[AnyContent] = Action {
     val count = movieControllerService.rehydrate()
     Ok(s"rehydrated $count rows\n").as("text/plain; charset=utf-8")
+  }
+
+  /** Sink for the per-page-load perf beacon emitted by `_sharedJs`.
+   *  Logs at INFO with a fixed `PERF` prefix so it's `grep`-friendly out
+   *  of `flyctl logs`. Trims the UA to the OS+browser substring — full
+   *  UA strings are noisy enough to drown out the timings. Always
+   *  returns `204 No Content`; the client doesn't read the response. */
+  def perfBeacon(): Action[JsValue] = Action(parse.tolerantJson) { request =>
+    val j        = request.body
+    def num(k: String): String = (j \ k).asOpt[Double].fold("-")(v => f"$v%.0f")
+    val url      = (j \ "url").asOpt[String].getOrElse("-")
+    val rawUa    = (j \ "ua" ).asOpt[String].getOrElse("")
+    // Trim the UA noise — keep only the platform + browser markers that
+    // matter for diagnosing iOS Safari vs Android Chrome vs desktop.
+    val uaSlim   = uaShape(rawUa)
+    val conn     = (j \ "conn").asOpt[String].filter(_.nonEmpty).getOrElse("-")
+    logger.info(
+      f"PERF $url%-30s " +
+      s"tap2nav=${num("tapToNavStart")} ttfb=${num("ttfb")} " +
+      s"transfer=${num("transfer")} domparse=${num("domparse")} " +
+      s"fcp=${num("first-contentful-paint")} lcp=${num("lcp")} " +
+      s"dcl=${num("dcl")} load=${num("load")} " +
+      s"longTaskMs=${num("longTaskMs")} longTasks=${num("longTasks")} " +
+      s"conn=$conn ua=$uaSlim"
+    )
+    NoContent
+  }
+
+  private def uaShape(ua: String): String = {
+    val mobile  = if (ua.contains("iPhone")) "iPhone" else if (ua.contains("iPad")) "iPad"
+                  else if (ua.contains("Android")) "Android" else "Desktop"
+    val browser = if (ua.contains("CriOS")) "Chrome" else if (ua.contains("FxiOS")) "Firefox"
+                  else if (ua.contains("Chrome/")) "Chrome" else if (ua.contains("Firefox/")) "Firefox"
+                  else if (ua.contains("Safari/")) "Safari" else "Other"
+    s"$mobile-$browser"
   }
 
   // All /debug/* endpoints return 404 in production so the cache contents and
