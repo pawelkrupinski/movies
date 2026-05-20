@@ -30572,6 +30572,11 @@ if (a) sessionStorage.setItem('navClickAt', String(Date.now()));
 }, { capture: true });
 (function() {
 const samples = { url: location.pathname };
+const stash = sessionStorage.getItem('navClickAt');
+if (stash) {
+samples.tapToNavStart = Math.round(performance.timeOrigin - Number(stash));
+sessionStorage.removeItem('navClickAt');
+}
 let lcp = 0, longTaskMs = 0, longTasks = 0;
 if (typeof PerformanceObserver !== 'undefined') {
 try {
@@ -30601,11 +30606,6 @@ samples.longTaskMs = Math.round(longTaskMs);
 samples.longTasks = longTasks;
 samples.conn = (navigator.connection && navigator.connection.effectiveType) || '';
 samples.ua = navigator.userAgent;
-const stash = sessionStorage.getItem('navClickAt');
-if (stash) {
-samples.tapToNavStart = Math.round(performance.timeOrigin - Number(stash));
-sessionStorage.removeItem('navClickAt');
-}
 if (navigator.sendBeacon)
 navigator.sendBeacon('/debug/perf', JSON.stringify(samples));
 } catch (_) {}

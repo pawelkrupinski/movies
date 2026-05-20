@@ -820,6 +820,17 @@
 
   (function() {
     const samples = { url: location.pathname };
+    // `tapToNavStart` has to be computed at boot of the *destination*
+    // page — that's when `performance.timeOrigin` (the wall-clock time
+    // of this navigation starting) is finally larger than the stashed
+    // source-page click timestamp. Reading the stash in `pagehide`
+    // would land on the *source* page's pagehide, giving us source's
+    // timeOrigin (earlier than the click) and a meaningless negative.
+    const stash = sessionStorage.getItem('navClickAt');
+    if (stash) {
+      samples.tapToNavStart = Math.round(performance.timeOrigin - Number(stash));
+      sessionStorage.removeItem('navClickAt');
+    }
     let   lcp = 0, longTaskMs = 0, longTasks = 0;
     if (typeof PerformanceObserver !== 'undefined') {
       try {
@@ -849,17 +860,9 @@
         samples.longTasks  = longTasks;
         samples.conn       = (navigator.connection && navigator.connection.effectiveType) || '';
         samples.ua         = navigator.userAgent;
-        // `tapToNavStart` is the dead time between the click on the previous
-        // page and `navigationStart` on this page. `performance.timeOrigin`
-        // is the wall-clock time the navigation started; subtract the
-        // stashed click wall-clock to get the gap. Only meaningful when
-        // arriving via a nav-tab click — sessionStorage stash is per-tab
-        // and pruned after read.
-        const stash = sessionStorage.getItem('navClickAt');
-        if (stash) {
-          samples.tapToNavStart = Math.round(performance.timeOrigin - Number(stash));
-          sessionStorage.removeItem('navClickAt');
-        }
+        // `tapToNavStart` was already cached at boot (above) — it lives
+        // in `samples` and only makes sense to compute against THIS
+        // page's `timeOrigin`, not against the pagehide moment.
         if (navigator.sendBeacon)
           navigator.sendBeacon('/debug/perf', JSON.stringify(samples));
       } catch (_) {}
