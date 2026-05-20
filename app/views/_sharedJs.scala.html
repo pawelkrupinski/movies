@@ -744,6 +744,55 @@
     } catch (e) { /* network blew up — localStorage is still usable */ }
   }
 
+  // ── Background fetch: full date range over today + tomorrow ─────────────
+  //
+  // The / and /kina controllers ship only today + tomorrow's date-groups
+  // in the initial render so first paint is fast (~30-40 % fewer DOM
+  // nodes, ~half the gzipped bytes). The full date window arrives via
+  // a parallel background `fetch(?full=1)` triggered right after the
+  // initial paint settles — by the time the user reaches for the
+  // `Następne 7 dni` / a specific-date option, the extended grid has
+  // usually already swapped in transparently, so no round-trip-on-click.
+  //
+  // Strategy: re-fetch the SAME page URL with `?full=1`, extract the
+  // full `#film-grid`, replace the trimmed one, then rebuild the
+  // page-local INDEX, re-paint favourites, and re-apply the user's
+  // currently-selected filters so the visible state lands where the
+  // user left it. Failures are swallowed — the trimmed today + tomorrow
+  // render keeps working as a fallback.
+  async function fetchFullGridInBackground() {
+    // Only the trim-applying pages (`/`, `/kina`, `/kina/<cinema>`) have
+    // anything to extend — /ulubione and /film already render their
+    // full data because the schedule there is per-user / per-film and
+    // not date-trimmed.
+    const p = window.location.pathname;
+    if (p !== '/' && !p.startsWith('/kina')) return;
+    // Guard against a recursive fetch loop if the page is already the
+    // full variant (e.g. user navigated directly to `?full=1`).
+    if (new URLSearchParams(window.location.search).get('full') === '1') return;
+    try {
+      const url = window.location.pathname + '?full=1';
+      const resp = await fetch(url, { credentials: 'same-origin' });
+      if (!resp.ok) return;
+      const html = await resp.text();
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const newGrid = doc.getElementById('film-grid');
+      const oldGrid = document.getElementById('film-grid');
+      if (!newGrid || !oldGrid) return;
+      oldGrid.replaceWith(newGrid);
+      // The page-local `buildIndex` walks the new DOM; `applyFilters`
+      // then narrows visibility back to what the user has selected.
+      // `paintFavourites` re-applies `.is-fav` to any newly-rendered
+      // badges that match the user's favourite set.
+      if (typeof buildIndex === 'function') buildIndex();
+      paintFavourites();
+      if (typeof applyFilters === 'function') applyFilters();
+    } catch (e) {
+      // Network blew up / parse failed — the trimmed initial render
+      // is still on-screen and usable.
+    }
+  }
+
   // ── Anonymous nag toast (once per day) ──────────────────────────────────
   //
   // First time an anonymous user favourites or hides something on a given
@@ -789,6 +838,10 @@
     paintFavourites();
     applyFilters();
     bootMergeFromServer();
+    // Background fetch + grid-swap to cover dates past tomorrow. Self-
+    // gated to /, /kina, /kina/<cinema>. Fires after the rest of init
+    // so first paint + interactivity don't compete with the request.
+    fetchFullGridInBackground();
   });
 </script>
 }

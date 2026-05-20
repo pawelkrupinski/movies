@@ -52,7 +52,32 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
 
   private val snapshotDir = Paths.get("test/resources/fixtures/17-05-2026")
 
-  "the / page (repertoire view)" should "render the same HTML as the checked-in snapshot" in
+  // Initial render = today + tomorrow only. The controller trims via
+  // `trimToTodayAndTomorrow` before passing to the view; the rest of
+  // the date window arrives via the JS `fetchFullGridInBackground`
+  // background fetch hitting `?full=1`. Snapshot the trimmed shape
+  // since that's what users actually see on first paint.
+  private val initialDay = now.toLocalDate  // 2026-05-17
+
+  "the / page (initial render — today + tomorrow only)" should
+    "render the same HTML as the checked-in snapshot" in
+    new FixtureTestWiring("17-05-2026") {
+      bootStartup()
+      val html: String = views.html.repertoire(
+        movieControllerService.trimToTodayAndTomorrow(movieControllerService.toSchedules(now), initialDay),
+        Cinema.all.map(_.displayName),
+        devMode = false,
+        currentUser = anonymousUser,
+        oauthProviders = noOauthProviders,
+        favouriteMovies = noFavMovies,
+        favouriteScreenings = noFavScreenings,
+        favouritesMode = false
+      ).body
+      assertSnapshot(snapshotDir.resolve("expected-index.html"), html)
+    }
+
+  "the / page (?full=1 background-fetched render)" should
+    "render the same HTML as the checked-in snapshot" in
     new FixtureTestWiring("17-05-2026") {
       bootStartup()
       val html: String = views.html.repertoire(
@@ -65,10 +90,27 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
         favouriteScreenings = noFavScreenings,
         favouritesMode = false
       ).body
-      assertSnapshot(snapshotDir.resolve("expected-index.html"), html)
+      assertSnapshot(snapshotDir.resolve("expected-index-full.html"), html)
     }
 
-  "the /kina page" should "render the same HTML as the checked-in snapshot" in
+  "the /kina page (initial render — today + tomorrow only)" should
+    "render the same HTML as the checked-in snapshot" in
+    new FixtureTestWiring("17-05-2026") {
+      bootStartup()
+      val html: String = views.html.kina(
+        movieControllerService.trimCinemaSchedulesToTodayAndTomorrow(movieControllerService.toCinemaSchedules(now), initialDay),
+        Cinema.all.map(_.displayName),
+        devMode = false,
+        currentUser = anonymousUser,
+        oauthProviders = noOauthProviders,
+        favouriteMovies = noFavMovies,
+        favouriteScreenings = noFavScreenings
+      ).body
+      assertSnapshot(snapshotDir.resolve("expected-kina.html"), html)
+    }
+
+  "the /kina page (?full=1 background-fetched render)" should
+    "render the same HTML as the checked-in snapshot" in
     new FixtureTestWiring("17-05-2026") {
       bootStartup()
       val html: String = views.html.kina(
@@ -80,7 +122,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
         favouriteMovies = noFavMovies,
         favouriteScreenings = noFavScreenings
       ).body
-      assertSnapshot(snapshotDir.resolve("expected-kina.html"), html)
+      assertSnapshot(snapshotDir.resolve("expected-kina-full.html"), html)
     }
 
   "the /kina/:cinema page" should "seed _kinaPinned from the URL-path cinema label" in
