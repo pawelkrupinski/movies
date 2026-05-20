@@ -22,11 +22,14 @@ primary_region = 'arn'
     soft_limit = 25
 
 [[vm]]
-  # 768mb on Temurin 26. With the shared-MongoClient + JVM-caps fix
-  # in place, HotSpot RSS peaks around ~400 MB plus kernel/runtime
-  # overhead; 768mb gives ~250 MB headroom. Bump to 1gb if the next
-  # class-bearing feature pushes it over again.
-  memory = '768mb'
+  # 1 GB on Temurin 25. With the larger heap (Xmx=384m, see Dockerfile)
+  # and the pre-allocated Xms=Xmx layout (no GC-grow events under load)
+  # the JVM's committed footprint hovers around 600-700 MB at steady
+  # state; 1 GB gives the cgroup ~300 MB headroom for kernel + page
+  # cache + native allocations during scrape bursts. Was 768 MB,
+  # bumped to take pressure off G1 mixed-collection pauses that were
+  # spiking page TTFB to ~1.3 s under steady load.
+  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
 

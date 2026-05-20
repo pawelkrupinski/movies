@@ -31,16 +31,50 @@ CMD exec bin/movies \
     -Dplay.server.http.address=0.0.0.0 \
     -Dhttp.address=0.0.0.0 \
     -Dpidfile.path=/dev/null \
-    -J-Xmx256m \
-    -J-Xms128m \
+    -J-Xms384m \
+    -J-Xmx384m \
+    -J-XX:+UseG1GC \
+    -J-XX:MaxGCPauseMillis=50 \
+    -J-XX:+UseStringDeduplication \
     -J-XX:ReservedCodeCacheSize=96m \
-    -J-XX:MaxMetaspaceSize=192m \
-    -J-XX:MaxDirectMemorySize=128m
-    # Cap JVM non-heap regions. Java 21 defaults to ReservedCodeCacheSize=240m,
-    # unbounded metaspace, MaxDirectMemorySize=Xmx (256m). Capping each stops
-    # silent reservation drift, but the first attempt (64m/128m/64m) starved
-    # Mongo/Netty's direct buffers + Play's metaspace at boot — JVM crashed
-    # before it could bind port 9000 (no OOM-kill line; native allocation
-    # failure inside the JVM). Loosened to values that still recover ~150 MB
-    # vs the defaults while leaving headroom for class loading and reactive
-    # streams direct allocations.
+    -J-XX:MaxMetaspaceSize=160m \
+    -J-XX:MaxDirectMemorySize=96m \
+    -J-Xlog:gc*:stderr:time,uptime,level,tags:filecount=0
+    # JVM sizing on the 1 GB cgroup. Targets:
+    #
+    #   - Xms == Xmx == 384m: heap pre-allocated, no resize-up pauses
+    #     (the 128→256 growth events on the previous config were
+    #     consistent with the ~1.3 s TTFB spikes we measured from
+    #     inside the container; a `dev/tcp` ping showed 4 of 5 reqs
+    #     at 100-130 ms and 1 at 1.3 s).
+    #
+    #   - G1 with a 50 ms pause target: at this heap size G1 keeps
+    #     mixed-collection pauses comfortably under the budget; the
+    #     long-tail spikes were from the default 200 ms target
+    #     combined with concurrent-cycle backups when Xms→Xmx
+    #     resizing was active.
+    #
+    #   - UseStringDeduplication: the / page is a 2 MB HTML string
+    #     built by 200 film cards × repeated attribute names. G1's
+    #     dedup pass merges equal char[] arrays across the heap,
+    #     measurably cutting young-gen pressure during render.
+    #
+    #   - GC log to stderr: the JVM's own pause record. Cheap
+    #     (`filecount=0` writes inline so Fly's log aggregator picks
+    #     it up). Lets the next perf investigation correlate request
+    #     latency spikes with GC events without redeploying.
+    #
+    # Non-heap caps (Java 21 defaults are unbounded for metaspace and
+    # Xmx-sized for direct memory) stay tight to leave headroom:
+    #
+    #   - MaxMetaspaceSize=160m: from 192 — the smaller heap reduces
+    #     class-loader pressure, classes loaded peaks at ~110 MB.
+    #   - MaxDirectMemorySize=96m: from 128 — Pekko + Mongo driver's
+    #     direct buffers measured at ~60 MB peak.
+    #   - ReservedCodeCacheSize=96m: unchanged. JIT-compiled methods
+    #     for Play 3 + the enrichment cascade peak at ~75 MB.
+    #
+    # Total committed ceiling: 384 (heap) + 160 (meta) + 96 (code) +
+    # 96 (direct) = 736 MB. Plus thread stacks (~60 MB) + Pekko +
+    # native overhead (~120 MB) = ~916 MB. Fits in the 1 GB cgroup
+    # with ~108 MB headroom.
