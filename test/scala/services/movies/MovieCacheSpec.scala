@@ -616,6 +616,41 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.cinemaData.keySet shouldBe Set(Multikino)
   }
 
+  // Backfills and `FilmwebUrlAudit` write to the repo directly; the running
+  // cache learns about those edits via the 30-s rehydrate tick. Between the
+  // write and the tick, `recordCinemaScrape` mustn't clobber the freshly
+  // edited field with its own stale-cache view of the record. Concretely:
+  // a scrape that only intends to refresh one cinema slot must not undo an
+  // out-of-band update to a *different* field of the same row.
+  it should "preserve an out-of-band repo edit to a non-cinema field across a concurrent recordCinemaScrape" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val key   = cache.keyOf("Top Gun: Maverick", Some(2022))
+
+    // Initial state — cache + repo agree (rating 7.0, Multikino slot present).
+    cache.put(key, MovieRecord(
+      imdbRating = Some(7.0),
+      data       = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some("Top Gun: Maverick"), releaseYear = Some(2022), posterUrl = Some("multikino.jpg"))
+      )
+    ))
+
+    // Out-of-band edit (the FilmwebUrlAudit / one-shot backfill shape) — bumps
+    // the rating in the repo without touching the cache. Cache still holds 7.0;
+    // repo now holds 8.5.
+    val stored = repo.findAll().find(_.title == "Top Gun: Maverick").get
+    repo.upsert("Top Gun: Maverick", Some(2022), stored.record.copy(imdbRating = Some(8.5)))
+
+    // Concurrent scrape — repeats the same Multikino slot the cache already has.
+    // No cinema-side state actually changes; the only thing the scrape's write
+    // could clobber is the out-of-band repo edit.
+    cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Top Gun: Maverick", Multikino, Some(2022), Some("multikino.jpg"))
+    ))
+
+    repo.findAll().find(_.title == "Top Gun: Maverick").get.record.imdbRating shouldBe Some(8.5)
+  }
+
   // Muza is a two-stage scraper: every 5-min listing tick carries None for
   // `posterUrl` / `synopsis` / `trailerUrl` (the listing only knows title +
   // showtimes + director + filmUrl), while a separate

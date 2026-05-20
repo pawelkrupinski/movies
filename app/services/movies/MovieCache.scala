@@ -352,7 +352,8 @@ class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus(
       withTitleLock(cm.movie.title) {
         val primary = keyOf(cm.movie.title, cm.movie.releaseYear)
         val key     = redirectToExistingVariant(primary).getOrElse(primary)
-        val existing = Option(positive.getIfPresent(key)).getOrElse(MovieRecord())
+        val existingOpt = Option(positive.getIfPresent(key))
+        val existing    = existingOpt.getOrElse(MovieRecord())
         // Two-stage scrapers (today: Kino Muza) leave `cm.posterUrl` /
         // `cm.synopsis` / `cm.trailerUrl` as `None` from the 5-min listing
         // tick — the detail-page refresher owns those three fields. The
@@ -403,7 +404,21 @@ class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus(
         val isNew = !priorSlot.exists(s =>
           s.title.contains(cm.movie.title) && s.releaseYear == cm.movie.releaseYear
         )
-        put(key, existing.copy(data = existing.data + ((cinema: Source) -> slot)))
+        // For existing rows, route through `putIfPresent` so the Mongo write
+        // is a `$set`-diff against the (before, after) pair. The diff only
+        // touches the cinema slot we just rewrote; any out-of-band edit to a
+        // different field of the same record (FilmwebUrlAudit, a per-row
+        // backfill, a manual Mongo update) survives — the running cache's
+        // stale view of that field is irrelevant because the diff doesn't
+        // surface it. For first-time scrapes the row doesn't exist yet, so
+        // a full `put` is the right call (also keeps the `tmdbId` identity
+        // gate live for the only case it can fire).
+        existingOpt match {
+          case Some(_) =>
+            putIfPresent(key, current => current.copy(data = current.data + ((cinema: Source) -> slot)))
+          case None =>
+            put(key, existing.copy(data = existing.data + ((cinema: Source) -> slot)))
+        }
         ((cm, key, isNew), slot)
       }
     }
