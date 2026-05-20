@@ -38,8 +38,7 @@ CMD exec bin/movies \
     -J-XX:+UseStringDeduplication \
     -J-XX:ReservedCodeCacheSize=96m \
     -J-XX:MaxMetaspaceSize=160m \
-    -J-XX:MaxDirectMemorySize=96m \
-    -J-Xlog:gc*:stderr:time,uptime,level,tags
+    -J-XX:MaxDirectMemorySize=96m
     # JVM sizing on the 1 GB cgroup. Targets:
     #
     #   - Xms == Xmx == 384m: heap pre-allocated, no resize-up pauses
@@ -59,12 +58,11 @@ CMD exec bin/movies \
     #     dedup pass merges equal char[] arrays across the heap,
     #     measurably cutting young-gen pressure during render.
     #
-    #   - GC log to stderr: the JVM's own pause record. Cheap, picked
-    #     up by Fly's log aggregator alongside the app's own logs.
-    #     Lets the next perf investigation correlate request latency
-    #     spikes with GC events without redeploying. (Note: `stderr`
-    #     output doesn't take a `filecount` decorator — that's for
-    #     `file=…` outputs.)
+    # GC logging was here as `-J-Xlog:gc*:stderr:…` while diagnosing
+    # the heap-resize spikes; once the tuning above settled the
+    # variance it's just noise in `flyctl logs`. Re-add as a one-liner
+    # if a future perf investigation needs to correlate request
+    # latency with pause records.
     #
     # Non-heap caps (Java 21 defaults are unbounded for metaspace and
     # Xmx-sized for direct memory) stay tight to leave headroom:
