@@ -17,6 +17,12 @@ POST    /debug/reenrich             controllers.MovieController.reEnrich(title: 
 # Mongo edits.
 + nocsrf
 POST    /debug/rehydrate            controllers.MovieController.rehydrate()
+# Force a per-movie detail-page refetch on the Kino Muza refresher. Runs
+# in-process so the write goes through cache.putIfPresent (`$set`-diff)
+# and can't be reverted by a concurrent listing-scrape's stale-cache view.
+# Returns 404 when the row has no Muza slot or no filmUrl to fetch from.
++ nocsrf
+POST    /debug/muza-refresh         controllers.MovieController.muzaRefresh(title: String, year: Option[Int] ?= None)
 
 # ── Auth (OAuth2 — Google / Facebook) ────────────────────────────────────────
 # `/auth/<provider>/start` issues a CSRF state, stashes it in the signed

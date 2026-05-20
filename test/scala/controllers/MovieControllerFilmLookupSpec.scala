@@ -41,12 +41,15 @@ class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
     val svc   = new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
     val movieControllerService   = new MovieControllerService(svc)
     new MovieController(
-      cc                     = Helpers.stubControllerComponents(),
-      movieControllerService = movieControllerService,
-      userRepo               = new services.users.InMemoryUserRepo,
-      userStateRepo          = new services.users.InMemoryUserStateRepo,
-      oauthProviders         = Set.empty,
-      environment            = Mode.Test
+      cc                        = Helpers.stubControllerComponents(),
+      movieControllerService    = movieControllerService,
+      kinoMuzaSynopsisRefresher = new services.cinemas.KinoMuzaSynopsisRefresher(
+        cache, new services.cinemas.KinoMuzaClient(new RealHttpFetch), new RealHttpFetch
+      ),
+      userRepo                  = new services.users.InMemoryUserRepo,
+      userStateRepo             = new services.users.InMemoryUserStateRepo,
+      oauthProviders            = Set.empty,
+      environment               = Mode.Test
     )
   }
 
