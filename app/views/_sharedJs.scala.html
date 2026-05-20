@@ -197,6 +197,24 @@
     if (IS_FAVOURITES_PAGE) preserveScroll(() => applyFilters());
   }
 
+  // Reconstruct a screening's stable id (`title|cinema|datetime`) from
+  // the badge's ancestor chain at click time instead of inlining the
+  // id on every <a class="badge-time"> element. The structural data is
+  // already there: `closest('[data-title]')` is the film card on / and
+  // /kina or the `.showtimes-section` wrapper on /film; `closest('.cinema-group')`
+  // is the per-cinema wrapper; `closest('.date-group')` is the per-date
+  // wrapper. Server-side `_filmShowings` emits these attributes from
+  // the same field values that used to feed `data-screening-id`, so
+  // the reconstructed string is byte-identical to what was inlined
+  // before — existing localStorage entries continue to round-trip.
+  function badgeScreeningId(badge) {
+    const titleEl  = badge.closest('[data-title]');
+    const cinemaEl = badge.closest('.cinema-group');
+    const dateEl   = badge.closest('.date-group');
+    if (!titleEl || !cinemaEl || !dateEl) return '';
+    return titleEl.dataset.title + '|' + cinemaEl.dataset.cinema + '|' + dateEl.dataset.date + 'T' + badge.dataset.time;
+  }
+
   // Pill star click — runs inside an <a class="badge-time">, so we have to
   // stop the booking-link navigation from firing too.
   function toggleFavScreening(event, star) {
@@ -204,7 +222,8 @@
     event.stopPropagation();
     const badge = star.closest('.badge-time');
     if (!badge) return;
-    const id  = badge.dataset.screeningId;
+    const id  = badgeScreeningId(badge);
+    if (!id) return;
     const cur = getFavScreenings();
     const idx = cur.indexOf(id);
     if (idx >= 0) cur.splice(idx, 1); else cur.push(id);
@@ -241,9 +260,9 @@
       const btn = col.querySelector('.fav-poster-btn');
       if (btn) btn.classList.toggle('is-fav', favMovies.has(col.dataset.title));
     });
-    document.querySelectorAll('.badge-time[data-screening-id]').forEach(badge => {
+    document.querySelectorAll('.badge-time').forEach(badge => {
       const star = badge.querySelector('.fav-star');
-      if (star) star.classList.toggle('is-fav', favScreenings.has(badge.dataset.screeningId));
+      if (star) star.classList.toggle('is-fav', favScreenings.has(badgeScreeningId(badge)));
     });
   }
 

@@ -69,7 +69,16 @@
               // anchor. Delegation cuts both.
               val starClass  = if (favouriteScreenings.contains(screening)) "fav-star is-fav" else "fav-star"
               val star       = s"""<span class="$starClass">★</span>"""
-              val attrs      = s"""$roomAttr data-format="${play.twirl.api.HtmlFormat.escape(fmtAttr)}" data-screening-id="${play.twirl.api.HtmlFormat.escape(screening)}" data-time="$time""""
+              // No `data-screening-id` per badge — the JS reconstructs it
+              // on demand from the ancestor chain
+              // (`closest('[data-title]')` + `closest('.cinema-group').dataset.cinema`
+              // + `closest('.date-group').dataset.date + 'T' + dataset.time`).
+              // The reconstruction is byte-identical to the server's
+              // `s"${title}|${cinema}|${slot.dateTime}"` so existing
+              // localStorage entries from before this change continue to
+              // round-trip without migration. Saves ~209 KB raw on the /
+              // page (10 % of the whole rendered HTML).
+              val attrs      = s"""$roomAttr data-format="${play.twirl.api.HtmlFormat.escape(fmtAttr)}" data-time="$time""""
               val body       = s"$time$fmtBadge$star"
               val tag        = slot.bookingUrl match {
                 case Some(url) => s"""<a href="${play.twirl.api.HtmlFormat.escape(url)}" class="badge-time" target="_blank"$attrs>$body</a>"""

@@ -74,7 +74,10 @@
               time:        t,
               timeMin:     timeMin,
               formats:     new Set((b.dataset.format || '').split(' ').filter(Boolean)),
-              screeningId: b.dataset.screeningId || '',
+              // Compute once at index-build time; the value is per-badge
+              // constant for the page's lifetime. Saves N per-filter-pass
+              // calls to `badgeScreeningId` (a 3× closest() walk each).
+              screeningId: badgeScreeningId(b),
               visible:     true
             };
           })

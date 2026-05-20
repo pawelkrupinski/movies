@@ -275,7 +275,13 @@
     }
   </script>
 
-  <div class="showtimes-section">
+  @* `data-title` on the wrapper so the JS `badgeScreeningId` helper
+     (in _sharedJs) can `closest('[data-title]')` and reconstruct the
+     full title|cinema|datetime id from this badge's ancestor chain.
+     `.col[data-title]` already wraps `_filmShowings` on / and /kina;
+     /film is the only page where _filmShowings lives outside a
+     `.col`, so the wrapper here keeps the JS path uniform. *@
+  <div class="showtimes-section" data-title="@film.movie.title">
     <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0;">Seanse</h2>
     @_filmShowings(film, favouriteScreenings = favouriteScreenings)
   </div>

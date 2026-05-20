@@ -81,25 +81,29 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
 
   // ── Per-screening favourite star + data-screening-id ──────────────────────
 
-  it should "carry a stable data-screening-id and an inline fav-star on each badge" in {
+  it should "render a minimal fav-star with no per-element handler attributes" in {
     val showtimes = Seq(
       Showtime(baseTime, Some("https://example.com/a"), Some("Sala 1"), List("2D")),
     )
     val html = views.html._filmCards(Seq(schedule(showtimes))).body
     // Per-pill star — minimal markup, no per-element onclick (a single
     // document-level delegated click handler in `_sharedJs` routes
-    // `.fav-star` clicks to `toggleFavScreening`). The previous inline
-    // `onclick="toggleFavScreening(event, this)"` was ~110 bytes ×
-    // ~2,600 stars on the / page; dropping it saves ~290 KB raw /
-    // ~100 KB gzipped, plus that many fewer function references the
-    // browser materialises during HTML parse.
+    // `.fav-star` clicks to `toggleFavScreening`).
     html should include ("""<span class="fav-star">★</span>""")
     html should not include "onclick=\"toggleFavScreening"
-    // ID format: "title|cinema|ISO-datetime" — uniquely identifies a
-    // screening across reruns and is the localStorage key.
-    html should include (s"""data-screening-id="Test movie|${Helios.displayName}|$baseTime"""")
-    // `data-time` is the JS indexer's read site for the from-hour filter —
-    // necessary because the leading fav-star span shifted `firstChild`.
+    // No inline `data-screening-id` either — the JS `badgeScreeningId`
+    // helper reconstructs the id (`title|cinema|datetime`) from the
+    // badge's ancestor chain at click time. The format stays
+    // byte-identical to the server's, so existing localStorage entries
+    // continue to round-trip after the markup change.
+    html should not include "data-screening-id="
+    // `data-time` is the JS indexer's read site for the from-hour
+    // filter AND the time-half of the reconstructed screening id.
     html should include ("""data-time="18:00"""")
+    // Ancestors carry the other two id components: `.col[data-title]`
+    // wraps the showings list and `.cinema-group[data-cinema]` the
+    // per-cinema block. The reconstruction reads both via `closest`.
+    html should include (s"""data-title="Test movie"""")
+    html should include (s"""data-cinema="${Helios.displayName}"""")
   }
 }
