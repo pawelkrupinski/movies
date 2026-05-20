@@ -128,11 +128,25 @@ class RealHttpFetch extends HttpFetch with Logging {
         s"Content-Encoding='$ceHeader' gzipByHeader=$gzipByHeader gzipByMagic=$gzipByMagic"
       )
     }
-    val decoded =
+    val decoded: Array[Byte] =
       if (isGzip) {
         try {
-          val gz = new GZIPInputStream(new ByteArrayInputStream(bytes))
-          try gz.readAllBytes() finally gz.close()
+          val gz  = new GZIPInputStream(new ByteArrayInputStream(bytes))
+          val out = try gz.readAllBytes() finally gz.close()
+          // Diagnostic: if the gunzip "succeeded" but produced output
+          // whose first byte looks like more gzip magic, that's the
+          // pathological case the prod logs show — readAllBytes returns
+          // *something* without throwing yet the bytes are still
+          // compressed. One line per occurrence so we can see what's
+          // actually coming out.
+          if (out.length > 0 && (out(0) & 0xFF) == 0x1F) {
+            logger.warn(
+              s"gzip decode 'succeeded' but output still gzip-magic: " +
+              s"in.len=${bytes.length}, out.len=${out.length}, " +
+              s"out.first8=${out.take(8).map(b => f"${b & 0xFF}%02X").mkString(" ")}"
+            )
+          }
+          out
         } catch {
           case ex: Throwable =>
             logger.warn(
