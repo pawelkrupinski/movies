@@ -30,6 +30,13 @@
       padding-top: .35rem !important;
       padding-bottom: .35rem !important;
       border-top: 1px solid #2a2a4e;
+      /* `.navbar` is `position: sticky; top: 0` so the main filter bar
+         stays on-screen during scroll. Override here — if BOTH navbar
+         rows were sticky they'd stack on top of each other at the
+         viewport's top edge. The second row scrolls away with the
+         grid; the pinned cinema lives in the URL path so users don't
+         lose the "which cinema am I looking at" affordance. */
+      position: static;
     }
     /* Pills inherit nav-tab look so they sit visually as a second row of
        the navbar (transparent bg, same text colour and hover/active

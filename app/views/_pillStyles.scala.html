@@ -14,6 +14,11 @@
     margin: 1px 2px 1px 0;
     display: inline-block;
     text-decoration: none;
+    /* Prevent iOS long-press selection / link-context sheet on the
+       booking-link badges — taps should always activate the link.
+       The fav-star span inside already has user-select: none. */
+    user-select: none;
+    -webkit-touch-callout: none;
   }
   a.badge-time:hover { background: #5a5a9e; color: #fff; }
   .badge-fmt { font-size: .62rem; opacity: .7; margin-left: 2px; }
