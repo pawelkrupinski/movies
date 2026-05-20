@@ -1,0 +1,119 @@
+package views
+
+import models.Cinema
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import tools.FixtureTestWiring
+
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path, Paths}
+import java.time.LocalDateTime
+
+/**
+ * Whole-page HTML snapshot regression. Renders the three user-facing pages
+ * (`/`, `/kina`, `/ulubione`) against the recorded `17-05-2026` fixture
+ * corpus and diffs each rendered body against a checked-in expected file.
+ *
+ * Catches the class of regression model-level specs miss:
+ *   - a Twirl change that drops a field from a card,
+ *   - a poster URL that suddenly comes out double-escaped,
+ *   - a navbar tab that loses its `active` class,
+ *   - a missing `data-cinema` / `data-title` / `data-time` attribute the
+ *     client-side filter math depends on,
+ *   - the `IS_FAVOURITES_PAGE` JS flag flipping on the wrong page.
+ *
+ * Pairs with `FilmScheduleEndToEndSpec`: that spec asserts the data the
+ * controller hands the view, this one asserts the HTML the view emits
+ * from the same data. Together they cover the full server-side render
+ * pipeline from fixture HTTP responses to bytes on the wire.
+ *
+ * Snapshots live next to `expected-schedules.txt` so the whole fixture
+ * (HTTP responses + expected outputs) ships as one self-contained set.
+ * On first run after a fresh fixture the snapshot doesn't exist — the
+ * test writes it and fails loudly so the diff goes through code review
+ * before being trusted (same protocol as the schedules snapshot).
+ */
+class PageSnapshotSpec extends AnyFlatSpec with Matchers {
+
+  // Pin the clock to the fixture's capture date so the recorded showtimes
+  // are still "in the future" from the test's point of view. Same `now`
+  // FilmScheduleEndToEndSpec uses — any drift between the two specs
+  // would mean one is asserting against a snapshot the other doesn't see.
+  private val now = LocalDateTime.of(2026, 5, 17, 0, 0)
+
+  // Anonymous browser, no OAuth providers configured. Locks the snapshot
+  // to the "no auth pill, no avatar, no logout form" navbar shape — keeps
+  // the snapshot stable regardless of which OAuth secrets the developer
+  // happens to have in `.env.local`.
+  private val anonymousUser    = Option.empty[models.User]
+  private val noOauthProviders = Set.empty[String]
+  private val noFavMovies      = Set.empty[String]
+  private val noFavScreenings  = Set.empty[String]
+
+  private val snapshotDir = Paths.get("test/resources/fixtures/17-05-2026")
+
+  "the / page (repertoire view)" should "render the same HTML as the checked-in snapshot" in
+    new FixtureTestWiring("17-05-2026") {
+      bootStartup()
+      val html: String = views.html.repertoire(
+        movieControllerService.toSchedules(now),
+        Cinema.all.map(_.displayName),
+        devMode = false,
+        currentUser = anonymousUser,
+        oauthProviders = noOauthProviders,
+        favouriteMovies = noFavMovies,
+        favouriteScreenings = noFavScreenings,
+        favouritesMode = false
+      ).body
+      assertSnapshot(snapshotDir.resolve("expected-index.html"), html)
+    }
+
+  "the /kina page" should "render the same HTML as the checked-in snapshot" in
+    new FixtureTestWiring("17-05-2026") {
+      bootStartup()
+      val html: String = views.html.kina(
+        movieControllerService.toCinemaSchedules(now),
+        Cinema.all.map(_.displayName),
+        devMode = false,
+        currentUser = anonymousUser,
+        oauthProviders = noOauthProviders,
+        favouriteMovies = noFavMovies,
+        favouriteScreenings = noFavScreenings
+      ).body
+      assertSnapshot(snapshotDir.resolve("expected-kina.html"), html)
+    }
+
+  "the /ulubione page (repertoire view, favouritesMode=true)" should
+    "render the same HTML as the checked-in snapshot" in
+    new FixtureTestWiring("17-05-2026") {
+      bootStartup()
+      val html: String = views.html.repertoire(
+        movieControllerService.toSchedules(now),
+        Cinema.all.map(_.displayName),
+        devMode = false,
+        currentUser = anonymousUser,
+        oauthProviders = noOauthProviders,
+        favouriteMovies = noFavMovies,
+        favouriteScreenings = noFavScreenings,
+        favouritesMode = true
+      ).body
+      assertSnapshot(snapshotDir.resolve("expected-ulubione.html"), html)
+    }
+
+  /** Same protocol as `FilmScheduleEndToEndSpec`'s snapshot check: when the
+   *  expected file is missing, write what was rendered and fail loudly so
+   *  the diff goes through code review before being trusted. */
+  private def assertSnapshot(expectedPath: Path, actual: String): Unit = {
+    if (!Files.exists(expectedPath)) {
+      Files.write(expectedPath, actual.getBytes(StandardCharsets.UTF_8))
+      fail(s"Snapshot didn't exist — wrote $expectedPath. Review the contents, commit, and re-run.")
+    }
+    val expected = new String(Files.readAllBytes(expectedPath), StandardCharsets.UTF_8)
+    withClue(
+      s"Page HTML snapshot mismatch at $expectedPath. To regenerate after an intentional change:\n" +
+        s"  rm $expectedPath && sbt 'testOnly views.PageSnapshotSpec'\n"
+    ) {
+      actual shouldBe expected
+    }
+  }
+}

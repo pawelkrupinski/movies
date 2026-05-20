@@ -90,8 +90,12 @@ class MovieControllerService(movieService: MovieService) {
     }.sortBy(_._1).map(_._2)
   }
 
-  def toCinemaSchedules(): Seq[CinemaSchedule] = {
-    val now = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
+  def toCinemaSchedules(): Seq[CinemaSchedule] =
+    toCinemaSchedules(LocalDateTime.now(ZoneId.of("Europe/Warsaw")))
+
+  /** Overload with an injectable `now` — see `toSchedules(now)` for the same
+   *  pattern. Production callers should always use the no-arg variant. */
+  def toCinemaSchedules(now: LocalDateTime): Seq[CinemaSchedule] = {
     Cinema.all.flatMap { cinema =>
       val moviesForCinema = movieService.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
         e.cinemaData.get(cinema).flatMap { slot =>

@@ -4,8 +4,7 @@ import controllers.FilmSchedule
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.CinemaScraper
-import services.events.{DomainEvent, MovieRecordCreated}
+import services.events.DomainEvent
 import tools.FixtureTestWiring
 
 import java.nio.charset.StandardCharsets
@@ -62,21 +61,9 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     val seen = mutable.ListBuffer.empty[DomainEvent]
     eventBus.subscribe { case e => seen.append(e) }
 
-    // 3. Run a single scrape tick — the same thing ShowtimeCache would do at
-    //    startup. Inlined so the test can wait deterministically.
-    runOneScrapeTick(cinemaScrapers, movieCache, eventBus)
-
-    // 4. Drain every worker pool. Order matters: MovieService.stop() drains
-    //    the TMDB stage (which emits the downstream events). After it
-    //    returns, every TmdbResolved / ImdbIdMissing has been published —
-    //    their listeners ran synchronously on the worker thread and
-    //    dispatched their own tasks. Drain those next.
-    drainServices()
-
-    // 5. Run `UnscreenedCleanup` exactly as it would fire 20s into boot. If
-    //    the pipeline left Prada with empty `cinemaShowings`, this is what
-    //    would delete the row in production.
-    unscreenedCleanup.removeUnscreened()
+    // Scrape tick + cascade drain + cleanup pass — same shape production
+    // boots into ~20s after startup. See `FixtureTestWiring.bootStartup`.
+    bootStartup()
 
     // 6. ASSERT: Prada is renderable on the home page. `toSchedules`
     //    drives the `/` view in production — it filters the cache snapshot
@@ -424,7 +411,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     // cross cleanTitles, or the identity-gate fold misbehave on already-
     // resolved rows, the Cyrillic row's cinema slots pick up Latin
     // entries here.
-    runOneScrapeTick(cinemaScrapers, movieCache, eventBus)
+    runOneScrapeTick()
     drainServices()
     // drainServices stops the worker pools — runOneScrapeTick on the
     // second pass still works (it doesn't depend on the cascade, just
@@ -432,7 +419,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     // already-shut-down pools will fail loudly via
     // RejectedExecutionException → caught by `EventBus.publish` and
     // logged; the cache state stays internally consistent regardless.
-    runOneScrapeTick(cinemaScrapers, movieCache, eventBus)
+    runOneScrapeTick()
 
     val cyrillicRow = movieCache.snapshot()
       .find(_.title == "ДИЯВОЛ НОСИТЬ ПРАДА 2")
@@ -458,28 +445,4 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  /** Mirror of `ShowtimeCache.refreshOne`, sequenced for the test. Catches
-   * per-scraper failures the same way production does so one missing-
-   * fixture cinema can't take down the whole tick. */
-  private def runOneScrapeTick(
-                                scrapers: Seq[CinemaScraper],
-                                cache: MovieCache,
-                                bus: services.events.EventBus
-                              ): Unit = {
-    scrapers.foreach { scraper =>
-      val cinema = scraper.cinema
-      try {
-        val movies = scraper.fetch()
-        val touched = cache.recordCinemaScrape(cinema, movies)
-        touched.foreach { case (cm, key, isNew) =>
-          if (isNew)
-            bus.publish(MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, cm.director))
-        }
-      } catch {
-        case _: Exception => () // mirror ShowtimeCache.refreshOne's catch
-      }
-    }
-  }
 }
