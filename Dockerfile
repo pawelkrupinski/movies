@@ -5,11 +5,12 @@
 # that directory, so Fly's remote builder receives just the staged JARs +
 # startup scripts — no JDK, no sbt, no source.
 #
-# Eclipse Temurin (HotSpot) JRE 26. Scala 3.8.3 emits Java 21 bytecode
-# (the highest output version it accepts); JRE 26 loads those class
-# files unchanged. CI builds on the same JDK 26 — toolchain consistent
-# end-to-end.
-FROM eclipse-temurin:26-jre
+# Eclipse Temurin (HotSpot) JRE 25 — the current LTS, and the highest
+# Java version Play 3.0.x has shipped tested. Scala 3.8.3 emits Java 21
+# bytecode (the highest output version it accepts); JRE 25 loads those
+# class files unchanged. CI builds on the same JDK 25 — toolchain
+# consistent end-to-end.
+FROM eclipse-temurin:25-jre
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
 WORKDIR /app

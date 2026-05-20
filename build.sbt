@@ -71,9 +71,9 @@ scalacOptions ++= Seq(
   "-feature",
   "-Wunused:imports",
   // Scala 3.8.3 caps `-java-output-version` at 21 (higher values are
-  // rejected with "not a valid choice"). JRE 26 loads Java 21 class
-  // files unchanged, so the toolchain is consistent: build on JDK 26,
-  // emit Java 21 bytecode, run on JRE 26.
+  // rejected with "not a valid choice"). JRE 25 loads Java 21 class
+  // files unchanged, so the toolchain is consistent: build on JDK 25,
+  // emit Java 21 bytecode, run on JRE 25.
   "-java-output-version", "21",
   // Twirl rewrites the source position of generated-code warnings back to
   // the .scala.html origin, but the warnings come out without a parseable
