@@ -2,14 +2,12 @@ package tools
 
 import play.api.Logging
 
-import java.io.ByteArrayInputStream
 import java.net.URI
-import java.net.http.{HttpClient, HttpHeaders, HttpRequest, HttpResponse, HttpTimeoutException}
+import java.net.http.{HttpClient, HttpRequest, HttpResponse, HttpTimeoutException}
 import java.net.{CookieManager, CookiePolicy}
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
-import java.util.zip.GZIPInputStream
 
 class RealHttpFetch extends HttpFetch with Logging {
   // Connect + per-request timeouts so a hung upstream (MC search HTML
@@ -90,7 +88,7 @@ class RealHttpFetch extends HttpFetch with Logging {
 
   private def checkStatus(method: String, url: String, resp: HttpResponse[Array[Byte]]): String = {
     val code = resp.statusCode()
-    if (code >= 200 && code < 300) decodeBody(resp.headers(), resp.body())
+    if (code >= 200 && code < 300) decodeBody(resp.body())
     else {
       if (code >= 500) logger.warn(s"HTTP $code from $method $url (server-side)")
       else             logger.debug(s"HTTP $code from $method $url")
@@ -98,67 +96,14 @@ class RealHttpFetch extends HttpFetch with Logging {
     }
   }
 
-  /** Decode the raw response bytes to a UTF-8 string. If the body starts
-   *  with the gzip magic prefix `1F 8B`, gunzip it regardless of headers
-   *  — some servers (notably TMDB's `/movie/<id>/external_ids` endpoint
-   *  as of mid-2026) ship gzip bytes without the `Content-Encoding`
-   *  header. If the decompress fails (truncated, corrupt), fall back to
-   *  the raw bytes so the caller sees a String it can investigate
-   *  rather than a black-box `IOException`.
-   *
-   *  Identity-encoded responses (no magic prefix) pass through
-   *  unchanged. */
-  private def decodeBody(headers: HttpHeaders, bytes: Array[Byte]): String = {
-    val ceHeader = headers.firstValue("Content-Encoding").orElse("")
-    val gzipByHeader = ceHeader.equalsIgnoreCase("gzip")
-    val gzipByMagic  = bytes.length >= 2 && (bytes(0) & 0xFF) == 0x1F && (bytes(1) & 0xFF) == 0x8B
-    val isGzip       = gzipByHeader || gzipByMagic
-    // Diagnostic: any response whose first byte is in the binary range
-    // (< 0x20, excluding tab/LF/CR) gets a one-line dump of the headers
-    // and first 8 bytes. Lets the next prod failure tell us exactly what
-    // reaches the decoder — header values, byte values, length. WARN so
-    // it surfaces in default-level logging; cheap because the predicate
-    // is false for every JSON / HTML response (those start with `{` or
-    // `<`).
-    val first = if (bytes.length > 0) bytes(0) & 0xFF else -1
-    if (first >= 0 && first < 0x20 && first != 0x09 && first != 0x0A && first != 0x0D) {
-      val hex = bytes.take(8).map(b => f"${b & 0xFF}%02X").mkString(" ")
-      logger.warn(
-        s"decodeBody: binary-looking response (first8=$hex len=${bytes.length}) " +
-        s"Content-Encoding='$ceHeader' gzipByHeader=$gzipByHeader gzipByMagic=$gzipByMagic"
-      )
-    }
-    val decoded: Array[Byte] =
-      if (isGzip) {
-        try {
-          val gz  = new GZIPInputStream(new ByteArrayInputStream(bytes))
-          val out = try gz.readAllBytes() finally gz.close()
-          // Diagnostic: if the gunzip "succeeded" but produced output
-          // whose first byte looks like more gzip magic, that's the
-          // pathological case the prod logs show — readAllBytes returns
-          // *something* without throwing yet the bytes are still
-          // compressed. One line per occurrence so we can see what's
-          // actually coming out.
-          if (out.length > 0 && (out(0) & 0xFF) == 0x1F) {
-            logger.warn(
-              s"gzip decode 'succeeded' but output still gzip-magic: " +
-              s"in.len=${bytes.length}, out.len=${out.length}, " +
-              s"out.first8=${out.take(8).map(b => f"${b & 0xFF}%02X").mkString(" ")}"
-            )
-          }
-          out
-        } catch {
-          case ex: Throwable =>
-            logger.warn(
-              s"gzip decode failed (${ex.getClass.getSimpleName}: ${ex.getMessage}); " +
-              s"first 4 bytes=${bytes.take(4).map(b => f"${b & 0xFF}%02X").mkString(" ")}, " +
-              s"length=${bytes.length} — passing raw bytes through"
-            )
-            bytes
-        }
-      } else bytes
-    new String(decoded, StandardCharsets.UTF_8)
-  }
+  /** Decode the raw response bytes to a UTF-8 string. `Gunzip.decode`
+   *  loops while the bytes still start with the gzip magic prefix
+   *  `1F 8B` — TMDB (or its CDN) ships some responses as
+   *  `gzip(gzip(json))` under a single `Content-Encoding: gzip` header,
+   *  so one round of decompression isn't enough. Non-gzip and
+   *  single-gzip bodies are handled by the same call. */
+  private def decodeBody(bytes: Array[Byte]): String =
+    new String(Gunzip.decode(bytes), StandardCharsets.UTF_8)
 
   private def logFailure(method: String, url: String, ex: Throwable): Unit = ex match {
     case _: HttpTimeoutException =>
