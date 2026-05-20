@@ -135,13 +135,22 @@ class Chrome private[tools] (
    *  to rewrite the URL) throws SecurityError on file:// origins, which
    *  silently aborts the rest of the click handler in production code. */
   def openPage[T](url: String)(body: CdpPage => T): T = {
-    val newTab = Json.parse(Chrome.httpPut(s"http://localhost:$port/json/new?$url"))
+    // Open a blank tab first, then navigate via CDP. Chrome ≥ 130 silently
+    // ignores the URL passed to `/json/new?<URL>` on some platforms (CI
+    // runners with the latest stable) — the tab lands on `about:blank`,
+    // which has an opaque origin (localStorage denied, scripts not
+    // executed against the test server) and produces null `.cinema-section`
+    // queries that look like phantom page failures. Driving the navigation
+    // through `Page.navigate` over CDP is the supported path that doesn't
+    // depend on the legacy query-string URL.
+    val newTab = Json.parse(Chrome.httpPut(s"http://localhost:$port/json/new"))
     val wsUrl  = (newTab \ "webSocketDebuggerUrl").as[String]
     val tabId  = (newTab \ "id").as[String]
     val page = new CdpPage(URI.create(wsUrl))
     try {
       page.send("Page.enable")
       page.send("Runtime.enable")
+      page.send("Page.navigate", Json.obj("url" -> url))
       // Wait for DOMContentLoaded so any inline `addEventListener
       // ('DOMContentLoaded', …)` registrations have fired. A short poll
       // is simpler and more reliable than wiring up CDP events.
