@@ -37098,16 +37098,38 @@
   // membership and make a previously mid-row pill the new end-of-row, so
   // a second / third pass picks up cascade cases.
   const _STAR_WIDTH_PX = 18;
+  // Hover doesn't fire on touch devices — the hover-expand CSS is gated
+  // by `@media (hover: hover)`, so the pre-wrap calculation does nothing
+  // useful there. Skip the entire reflow on touch. Caching the
+  // matchMedia result at boot saves a media-query lookup per call; the
+  // value never changes for the lifetime of a tab (devices don't grow
+  // hover support mid-session). On desktop where it does matter, the
+  // reflow runs as before.
+  const _hasHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
   function reflowFavStarSpacing() {
+    if (!_hasHover) return;
     document.querySelectorAll('.cinema-group').forEach(group => {
+      // Cheap ancestor-visibility short-circuit. One layout read per
+      // group, vs N per-badge `offsetParent` + `getComputedStyle` reads
+      // (each of which would have forced a synchronous style/layout
+      // recompute). A group inside a hidden section/col has rect.width = 0.
+      const groupRect = group.getBoundingClientRect();
+      if (groupRect.width === 0) return;
+      // `style.display` is set by `applyFilters → setVisible` and reads
+      // from the cached attribute — no layout flush. The earlier
+      // `b.classList.contains('hidden')` check was dead (no code writes
+      // a `.hidden` class to badges anywhere in the app).
       const badges = [...group.querySelectorAll('.badge-time')].filter(b =>
-        b.offsetParent !== null && !b.classList.contains('hidden') && getComputedStyle(b).display !== 'none'
+        b.style.display !== 'none'
       );
       if (!badges.length) return;
       badges.forEach(b => b.classList.remove('needs-star-room'));
       for (let pass = 0; pass < 3; pass++) {
         let changed = false;
-        const containerRight = group.getBoundingClientRect().right;
+        // `.needs-star-room` only widens an end-of-row badge by 18 px of
+        // padding-right — the group's outer width is unchanged across
+        // passes, so the rect we already read is good for every pass.
+        const containerRight = groupRect.right;
         for (let i = 0; i < badges.length; i++) {
           const b = badges[i];
           // Favourited pills already have the star permanently visible, so
