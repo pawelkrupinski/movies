@@ -99,17 +99,22 @@ class RealHttpFetch extends HttpFetch with Logging {
   }
 
   /** Decode the raw response bytes to a UTF-8 string, decompressing
-   *  `Content-Encoding: gzip` when present. We advertise `gzip` on every
-   *  request (it's a free transfer-size win, and modern CDNs gzip
-   *  opportunistically based on UA fingerprint anyway — TMDB's edge was
-   *  shipping gzipped bytes despite an absent `Accept-Encoding` header,
-   *  which the JSON parser then choked on with `CTRL-CHAR code 31`,
-   *  i.e. the first byte of gzip's magic number). Identity-encoded
-   *  responses pass through unchanged. */
+   *  gzip when the body looks gzipped. Two ways we detect gzip:
+   *
+   *    1. `Content-Encoding: gzip` header — the polite signal.
+   *    2. Magic bytes `1F 8B` at the start of the body — the defensive
+   *       fallback. Some servers (notably TMDB's `/movie/<id>/external_ids`
+   *       endpoint as of mid-2026) ship gzipped bytes without the
+   *       Content-Encoding header. Without this fallback the JSON parser
+   *       chokes with `CTRL-CHAR (code 31)` — the first byte of the gzip
+   *       magic number — exactly the failure mode we hit in CI.
+   *
+   *  Identity-encoded responses pass through unchanged. */
   private def decodeBody(headers: HttpHeaders, bytes: Array[Byte]): String = {
-    val encoding = headers.firstValue("Content-Encoding").orElse("").toLowerCase
+    val encoding   = headers.firstValue("Content-Encoding").orElse("").toLowerCase
+    val looksGzip  = bytes.length >= 2 && (bytes(0) & 0xFF) == 0x1F && (bytes(1) & 0xFF) == 0x8B
     val decoded =
-      if (encoding == "gzip") {
+      if (encoding == "gzip" || looksGzip) {
         val gz = new GZIPInputStream(new ByteArrayInputStream(bytes))
         try gz.readAllBytes() finally gz.close()
       } else bytes
