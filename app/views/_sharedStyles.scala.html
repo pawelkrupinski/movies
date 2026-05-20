@@ -69,9 +69,19 @@
     z-index: 20;
     display: none;
   }
-  .refresh-btn { background: #3a3a6e; border: none; color: #aad4ff; white-space: nowrap; flex-shrink: 0; }
+  /* Unified 35 px height across every navbar tappable: nav-tabs,
+     refresh-btn (Filtry / hidden-films flyout), date-nav-btn arrows,
+     filter-select, search-input, login pill, auth menu. Tall enough
+     to tap reliably on touch (35 is a comfortable middle ground
+     between Apple HIG's 44 and the visually-compact 29 the page used
+     to ship), short enough to keep the navbar from feeling chunky
+     on desktop. `inline-flex + align-items: center` is what vertically
+     centres the content inside the box — particularly the dynamic
+     "X ukrytych" label on the hidden-films flyout, which used to
+     sit at the top of the button. */
+  .refresh-btn { background: #3a3a6e; border: none; color: #aad4ff; white-space: nowrap; flex-shrink: 0; min-height: 35px; display: inline-flex; align-items: center; justify-content: center; }
   .refresh-btn:hover { background: #5a5a9e; color: #fff; }
-  .date-nav-btn { padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem; touch-action: manipulation; }
+  .date-nav-btn { padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem; touch-action: manipulation; min-height: 35px; min-width: 35px; }
   .filter-select {
     background: #3a3a6e;
     color: #aad4ff;
@@ -81,6 +91,7 @@
     font-size: .875rem;
     cursor: pointer;
     flex-shrink: 0;
+    min-height: 35px;
   }
   .filter-select:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; }
   .search-input {
@@ -91,6 +102,7 @@
     padding: .25rem .6rem;
     font-size: .875rem;
     width: 160px;
+    min-height: 35px;
   }
   .search-input::placeholder { color: #778; }
   .search-input:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; width: 220px; }
@@ -190,6 +202,11 @@
        the tap unambiguous. Doesn't affect keyboard focus / a11y. */
     user-select: none;
     -webkit-touch-callout: none;
+    /* 35 px tap target with the label vertically centred. */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 35px;
   }
   .nav-tab:hover { background: #3a3a6e; color: #fff; }
   .nav-tab.active { background: #3a3a6e; color: #fff; }
@@ -201,7 +218,7 @@
      centre of the pill — the surrounding flex row stretches every tab to
      the tallest sibling's height, and without explicit centering the
      short-line-height star floats to the top of that stretched box. */
-  .nav-tab-fav { color: #ffd24a; font-size: 1.05rem; line-height: 1; padding: .2rem .55rem; display: inline-flex; align-items: center; justify-content: center; }
+  .nav-tab-fav { color: #ffd24a; font-size: 1.05rem; line-height: 1; padding: .2rem .55rem; display: inline-flex; align-items: center; justify-content: center; min-width: 35px; }
   .nav-tab-fav:hover { color: #ffd24a; background: #3a3a6e; }
   .nav-tab-fav.active { color: #ffd24a; background: #3a3a6e; }
 
@@ -213,6 +230,11 @@
     background: #3a3a6e;
     color: #aad4ff;
     padding: .2rem .7rem;
+    /* `.nav-tab` already sets min-height: 35px + inline-flex centering;
+       login pill picks both up via the shared class. The slightly
+       wider horizontal padding (.7 vs .6 rem) keeps "Zaloguj się" /
+       "Wyloguj się" balanced inside the 35 px box without crowding
+       the text against the pill edges. */
   }
   .nav-tab-login:hover { background: #5a5a9e; color: #fff; }
 
@@ -231,6 +253,7 @@
     font-size: .875rem;
     cursor: pointer;
     user-select: none;
+    min-height: 35px;
   }
   .auth-menu:hover { background: #5a5a9e; color: #fff; }
   .auth-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; display: block; }
@@ -266,6 +289,9 @@
     cursor: pointer;
     border-radius: 6px;
     font-size: .875rem;
+    min-height: 35px;
+    display: flex;
+    align-items: center;
   }
   .auth-logout-btn:hover { background: #3a3a6e; color: #fff; }
 
@@ -395,14 +421,10 @@
        focus and every native-picker open. */
     .search-input, .filter-select, input, select { font-size: 16px; }
 
-    /* Apple HIG calls for ≥ 44 CSS px tap targets. Default heights
-       on these (29 / 27 px) were finger-prone-to-misfire territory.
-       Padding the inner chrome up to 44 px keeps the visual look
-       largely the same — the extra space sits inside the tap
-       region around the existing label / glyph. */
-    .nav-tab, .nav-tab-fav { min-height: 44px; min-width: 44px; padding-top: .5rem; padding-bottom: .5rem; display: inline-flex; align-items: center; justify-content: center; }
-    .refresh-btn, .date-nav-btn, .filter-select, .search-input { min-height: 44px; }
-    .date-nav-btn { min-width: 44px; }
+    /* The 35 px min-height / 35 px min-width on nav-tab / nav-tab-fav /
+       refresh-btn / date-nav-btn / filter-select / search-input /
+       nav-tab-login / auth-menu lives on the base rules above so
+       desktop and mobile share a consistent navbar height. */
   }
 </style>
 @_pillStyles()
