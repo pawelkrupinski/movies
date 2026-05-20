@@ -61,11 +61,12 @@ class KinoMuzaSynopsisRefresher(
 
   private val scheduler = DaemonExecutors.scheduler("kino-muza-synopsis")
   // First tick 60 s after boot so the cache has hydrated and the first
-  // scrape has populated current Muza slots. Then once a minute — Muza
-  // tolerates that easily and remaining unresolved rows clear in under
-  // an hour even when the event path missed them.
+  // scrape has populated current Muza slots. Then every 5 minutes — the
+  // event path covers the common case (new Muza film → immediate
+  // detail-page fetch); this slower scan is only the safety net for
+  // events lost across a restart, so it doesn't need to be hot.
   private val StartupDelaySeconds = 60L
-  private val IntervalSeconds     = 60L
+  private val IntervalSeconds     = 300L
 
   /** Event-driven entry point. Subscribed by `Wiring` to the bus —
    *  fires when `recordCinemaScrape` persists a *new* Kino Muza
