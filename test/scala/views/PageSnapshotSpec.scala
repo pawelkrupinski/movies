@@ -83,6 +83,22 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       assertSnapshot(snapshotDir.resolve("expected-kina.html"), html)
     }
 
+  "the /kina/:cinema page" should "seed _kinaPinned from the URL-path cinema label" in
+    new FixtureTestWiring("17-05-2026") {
+      bootStartup()
+      val html: String = views.html.kina(
+        movieControllerService.toCinemaSchedules(now),
+        Cinema.all.map(_.displayName),
+        devMode = false,
+        currentUser = anonymousUser,
+        oauthProviders = noOauthProviders,
+        favouriteMovies = noFavMovies,
+        favouriteScreenings = noFavScreenings,
+        pinnedCinema = Some("Kino Apollo")
+      ).body
+      html should include ("""let _kinaPinned = "Kino Apollo";""")
+    }
+
   "the /ulubione page (repertoire view, favouritesMode=true)" should
     "render the same HTML as the checked-in snapshot" in
     new FixtureTestWiring("17-05-2026") {

@@ -184,10 +184,21 @@ class MovieController( cc: ControllerComponents,
     Ok("User-agent: *\nAllow: /\n").as("text/plain; charset=utf-8")
   }
 
-  def kina(): Action[AnyContent] = Action { request =>
+  def kina(): Action[AnyContent] = renderKina(None)
+
+  // `/kina/:cinema` — pin the grid to a single cinema by display name. The
+  // pinned cinema persists across refreshes because it lives in the URL;
+  // clicking a pill on the page rewrites the path so the URL and the pin
+  // never drift apart. Unknown labels are ignored (the page renders as
+  // unpinned) — see `renderKina`.
+  def kinaPinned(cinema: String): Action[AnyContent] = renderKina(Some(cinema))
+
+  private def renderKina(pinnedCinema: Option[String]): Action[AnyContent] = Action { request =>
     val user = currentUser(request)
     val (favMovies, favScreenings) = favouriteSets(user)
-    Ok(views.html.kina(movieControllerService.toCinemaSchedules(), Cinema.all.map(_.displayName), devMode, user, oauthProviders, favMovies, favScreenings))
+    val allCinemas = Cinema.all.map(_.displayName)
+    val pinned = pinnedCinema.filter(allCinemas.contains)
+    Ok(views.html.kina(movieControllerService.toCinemaSchedules(), allCinemas, devMode, user, oauthProviders, favMovies, favScreenings, pinned))
   }
 
   def debug(): Action[AnyContent] = Action {

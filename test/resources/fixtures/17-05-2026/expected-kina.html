@@ -37734,10 +37734,10 @@
     const filter    = document.getElementById('date-filter').value;
     const query     = (document.getElementById('search-input').value || '').trim().toLowerCase();
     const hidden    = new Set(getHidden());
-    // /kina runs its own in-memory pin (`_kinaPinned`) and ignores the
-    // persistent `disabledCinemas` localStorage — visiting the page always
-    // starts with no cinema pinned, regardless of what Filtry on / had
-    // selected last. Filter the grid against the pin only.
+    // /kina's pin (`_kinaPinned`) is URL-backed (`/kina/:cinema`) and
+    // ignores the persistent `disabledCinemas` localStorage — visiting
+    // `/kina` starts unpinned regardless of what Filtry on / had selected.
+    // Filter the grid against the pin only.
     const disabled  = _kinaPinned
       ? new Set(ALL_CINEMAS.filter(c => c !== _kinaPinned))
       : new Set();
@@ -37829,11 +37829,12 @@
 
   // ── Cinema-picker pills ───────────────────────────────────────────────────
   //
-  // The pill row is the only cinema filter on /kina. State is in-memory
-  // ONLY — the page intentionally doesn't remember the pin across visits,
-  // and it doesn't share state with the Filtry checkboxes on other pages
-  // (their `disabledCinemas` localStorage stays untouched). Every load
-  // starts fresh with no cinema pinned.
+  // The pill row is the only cinema filter on /kina. State lives in the URL
+  // path (`/kina/:cinema`) — the server seeds `_kinaPinned` from the path so
+  // refreshing a pinned URL keeps the pin, and `toggleCinemaPill` rewrites
+  // the URL via `history.replaceState` so the address bar and the pin never
+  // drift apart. It doesn't share state with the Filtry checkboxes on other
+  // pages (their `disabledCinemas` localStorage stays untouched).
   let _kinaPinned = null;
 
   function buildCinemaPills() {
@@ -37852,9 +37853,13 @@
   }
 
   // Single-select semantics: clicking a pill pins the grid to that cinema;
-  // clicking the active pill again un-pins and restores all cinemas.
+  // clicking the active pill again un-pins and restores all cinemas. The
+  // URL path is rewritten in lock-step (`/kina/:cinema` ↔ `/kina`) so a
+  // refresh keeps whatever the user picked.
   function toggleCinemaPill(cinema) {
     _kinaPinned = (_kinaPinned === cinema) ? null : cinema;
+    const url = _kinaPinned ? '/kina/' + encodeURIComponent(_kinaPinned) : '/kina';
+    history.replaceState(null, '', url);
     buildCinemaPills();
     applyFilters();
   }
