@@ -1,0 +1,18 @@
+@*
+   Wraps a block of rendered HTML and minifies the JS / CSS inside any
+   `<script>` and `<style>` tags it contains. Markup outside those tags
+   passes through verbatim. See `tools.Minify` for the stripper rules
+   (comment removal, whitespace collapse, ASI-safe for JS, semicolon-
+   dropping for CSS).
+
+   `devMode = true` skips the minifier entirely so DevTools-style
+   debugging (readable variable names, indented source) keeps working
+   while running `sbt run` locally. Production traffic gets the
+   minified form on every render — `tools.Minify` memoises per input
+   string, so the per-request cost after the first hit is one
+   `ConcurrentHashMap.get` lookup.
+
+   Apply at the call site of inline `<style>` / `<script>` blocks, OR
+   wrapped around `@_sharedStyles()` / `@_sharedJs(…)` invocations.
+*@
+@(devMode: Boolean)(content: Html)@if(devMode) {@content} else {@Html(tools.Minify.process(content.body))}

@@ -1,4 +1,5 @@
-@(allCinemas: Seq[String], currentUser: Option[models.User], oauthProviders: Set[String])
+@(allCinemas: Seq[String], currentUser: Option[models.User], oauthProviders: Set[String], devMode: Boolean = false)
+@_minified(devMode) {
 <script>
   // Page-level flags surfaced by the server-rendered template so the JS
   // can decide where to read/write personalization state. When LOGGED_IN
@@ -761,3 +762,4 @@
     bootMergeFromServer();
   });
 </script>
+}

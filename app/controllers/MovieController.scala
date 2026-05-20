@@ -219,7 +219,7 @@ class MovieController( cc: ControllerComponents,
         val user = currentUser(request)
         val (favMovies, favScreenings) = favouriteSets(user)
         val isFavourite = favMovies.contains(schedule.movie.title)
-        Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule), isFavourite, favScreenings))
+        Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule), isFavourite, favScreenings, devMode))
       case None => NotFound(s"Film not found: $title")
     }
   }

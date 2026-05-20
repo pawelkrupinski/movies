@@ -5,452 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ulubione – Repertuar kinowy Poznań</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <style>
-  /* touch-action: manipulation suppresses iOS Safari's double-tap-to-zoom on
-     every tap target on the page (rapid presses on time badges, date arrows,
-     the Filtry reset, etc. register as separate clicks) while leaving
-     pinch-zoom intact. */
-  html { touch-action: manipulation; }
-  body { background: #111; color: #eee; overflow-x: hidden; }
-  .navbar { background: #1a1a2e; flex-wrap: wrap; }
-  .card {
-    background: #1e1e2e;
-    border: none;
-    border-radius: 12px;
-    overflow: hidden;
-    height: 100%;
-    transition: transform .2s;
-  }
-  .card:hover { transform: translateY(-4px); }
-  .poster-wrap {
-    position: relative;
-    padding-top: 148%;
-    background: #2a2a3e;
-    overflow: hidden;
-  }
-  .poster-wrap img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .no-poster {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: .85rem;
-    color: #99a;
-    font-style: italic;
-    letter-spacing: .03em;
-  }
-  .card-body { padding: 1rem; }
-  .card-title { min-height: 2.5rem; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .3rem; }
-  .card-title a { font-size: .95rem; font-weight: 600; color: #fff; text-decoration: none; }
-  .card-title a:hover { color: #aad4ff; }
-  .pill { background: #252540; border: 1px solid #3a3a6e; border-radius: 3px; padding: 0 5px; font-size: .72rem; color: #99b; white-space: nowrap; }
-  .runtime { font-size: .75rem; color: #888; }
-  .date-label { font-size: .7rem; color: #888; margin-bottom: .2rem; margin-top: .5rem; }
-  #room-tooltip {
-    position: fixed;
-    background: #0e0e1e;
-    color: #ccc;
-    font-size: .68rem;
-    padding: 2px 7px;
-    border-radius: 4px;
-    white-space: nowrap;
-    border: 1px solid #3a3a6e;
-    pointer-events: none;
-    z-index: 20;
-    display: none;
-  }
-  .refresh-btn { background: #3a3a6e; border: none; color: #aad4ff; white-space: nowrap; flex-shrink: 0; }
-  .refresh-btn:hover { background: #5a5a9e; color: #fff; }
-  .date-nav-btn { padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem; touch-action: manipulation; }
-  .filter-select {
-    background: #3a3a6e;
-    color: #aad4ff;
-    border: none;
-    border-radius: 6px;
-    padding: .25rem .5rem;
-    font-size: .875rem;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-  .filter-select:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; }
-  .search-input {
-    background: #3a3a6e;
-    color: #eee;
-    border: none;
-    border-radius: 6px;
-    padding: .25rem .6rem;
-    font-size: .875rem;
-    width: 160px;
-  }
-  .search-input::placeholder { color: #778; }
-  .search-input:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; width: 220px; }
-  @media (max-width: 575px) { .search-input, .search-input:focus { width: 100px; } }
-  .hide-btn {
-    position: absolute;
-    top: 6px; right: 6px;
-    z-index: 10;
-    background: rgba(0,0,0,.55);
-    border: none;
-    color: #fff;
-    border-radius: 50%;
-    width: 26px; height: 26px;
-    font-size: .75rem;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity .15s;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .card:hover .hide-btn { opacity: 1; }
-  /* Favourite-the-whole-movie button: mirror of .hide-btn (top-left, larger
-     star). Hidden by default and revealed on card hover; once a movie is
-     marked favourite, the star turns yellow and stays visible permanently. */
-  .fav-poster-btn {
-    position: absolute;
-    top: 6px; left: 6px;
-    z-index: 10;
-    background: rgba(0,0,0,.55);
-    border: none;
-    color: #fff;
-    border-radius: 50%;
-    width: 26px; height: 26px;
-    font-size: 1rem;
-    line-height: 1;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity .15s, color .15s;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .card:hover .fav-poster-btn { opacity: 1; }
-  .fav-poster-btn.is-fav { opacity: 1; color: #ffd24a; }
-  .dropdown-panel {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    background: #1e1e2e;
-    border: 1px solid #3a3a6e;
-    border-radius: 8px;
-    padding: 8px;
-    z-index: 1000;
-    box-shadow: 0 4px 16px rgba(0,0,0,.5);
-    min-width: 220px;
-    max-width: calc(100vw - 1rem);
-    max-height: 70vh;
-    overflow-y: auto;
-  }
-  .panel-item {
-    padding: 5px 8px;
-    cursor: pointer;
-    border-radius: 4px;
-    font-size: .8rem;
-    color: #eee;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 280px;
-  }
-  .panel-item:hover { background: #3a3a6e; }
-  .panel-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    cursor: pointer;
-    font-size: .8rem;
-    color: #eee;
-    border-radius: 4px;
-  }
-  .panel-label:hover { background: #3a3a6e; }
-  .panel-divider { border-top: 1px solid #3a3a6e; margin: 6px 0; padding-top: 2px; }
-  .panel-section-label {
-    font-size: .65rem;
-    color: #888;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    padding: 4px 8px 2px;
-  }
-  .nav-tab {
-    color: #aad4ff;
-    text-decoration: none;
-    font-size: .875rem;
-    padding: .25rem .6rem;
-    border-radius: 6px;
-  }
-  .nav-tab:hover { background: #3a3a6e; color: #fff; }
-  .nav-tab.active { background: #3a3a6e; color: #fff; }
-  /* Favourites tab renders as a yellow star instead of text — matches the
-     fav-star colour used on listing-card and film-page poster buttons so
-     the whole "favourite" idea is visually consistent. Slightly larger
-     than the text tabs so the glyph reads cleanly at the navbar height. */
-  /* inline-flex + align-items: center so the ★ glyph sits in the optical
-     centre of the pill — the surrounding flex row stretches every tab to
-     the tallest sibling's height, and without explicit centering the
-     short-line-height star floats to the top of that stretched box. */
-  .nav-tab-fav { color: #ffd24a; font-size: 1.05rem; line-height: 1; padding: .2rem .55rem; display: inline-flex; align-items: center; justify-content: center; }
-  .nav-tab-fav:hover { color: #ffd24a; background: #3a3a6e; }
-  .nav-tab-fav.active { color: #ffd24a; background: #3a3a6e; }
+  
+<style>html{touch-action:manipulation}body{background:#111;color:#eee;overflow-x:hidden}.navbar{background:#1a1a2e;flex-wrap:wrap}.card{background:#1e1e2e;border:none;border-radius:12px;overflow:hidden;height:100%;transition:transform .2s}.card:hover{transform:translateY(-4px)}.poster-wrap{position:relative;padding-top:148%;background:#2a2a3e;overflow:hidden}.poster-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.no-poster{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:#99a;font-style:italic;letter-spacing:.03em}.card-body{padding:1rem}.card-title{min-height:2.5rem;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.3rem}.card-title a{font-size:.95rem;font-weight:600;color:#fff;text-decoration:none}.card-title a:hover{color:#aad4ff}.pill{background:#252540;border:1px solid #3a3a6e;border-radius:3px;padding:0 5px;font-size:.72rem;color:#99b;white-space:nowrap}.runtime{font-size:.75rem;color:#888}.date-label{font-size:.7rem;color:#888;margin-bottom:.2rem;margin-top:.5rem}#room-tooltip{position:fixed;background:#0e0e1e;color:#ccc;font-size:.68rem;padding:2px 7px;border-radius:4px;white-space:nowrap;border:1px solid #3a3a6e;pointer-events:none;z-index:20;display:none}.refresh-btn{background:#3a3a6e;border:none;color:#aad4ff;white-space:nowrap;flex-shrink:0}.refresh-btn:hover{background:#5a5a9e;color:#fff}.date-nav-btn{padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;touch-action:manipulation}.filter-select{background:#3a3a6e;color:#aad4ff;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.875rem;cursor:pointer;flex-shrink:0}.filter-select:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.search-input{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:160px}.search-input::placeholder{color:#778}.search-input:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e;width:220px}@media (max-width:575px){.search-input,.search-input:focus{width:100px}}.hide-btn{position:absolute;top:6px;right:6px;z-index:10;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:26px;height:26px;font-size:.75rem;cursor:pointer;opacity:0;transition:opacity .15s;display:flex;align-items:center;justify-content:center}.card:hover .hide-btn{opacity:1}.fav-poster-btn{position:absolute;top:6px;left:6px;z-index:10;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:26px;height:26px;font-size:1rem;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s,color .15s;display:flex;align-items:center;justify-content:center}.card:hover .fav-poster-btn{opacity:1}.fav-poster-btn.is-fav{opacity:1;color:#ffd24a}.dropdown-panel{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:8px;z-index:1000;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:220px;max-width:calc(100vw - 1rem);max-height:70vh;overflow-y:auto}.panel-item{padding:5px 8px;cursor:pointer;border-radius:4px;font-size:.8rem;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}.panel-item:hover{background:#3a3a6e}.panel-label{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;font-size:.8rem;color:#eee;border-radius:4px}.panel-label:hover{background:#3a3a6e}.panel-divider{border-top:1px solid #3a3a6e;margin:6px 0;padding-top:2px}.panel-section-label{font-size:.65rem;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:4px 8px 2px}.nav-tab{color:#aad4ff;text-decoration:none;font-size:.875rem;padding:.25rem .6rem;border-radius:6px}.nav-tab:hover{background:#3a3a6e;color:#fff}.nav-tab.active{background:#3a3a6e;color:#fff}.nav-tab-fav{color:#ffd24a;font-size:1.05rem;line-height:1;padding:.2rem .55rem;display:inline-flex;align-items:center;justify-content:center}.nav-tab-fav:hover{color:#ffd24a;background:#3a3a6e}.nav-tab-fav.active{color:#ffd24a;background:#3a3a6e}.nav-tab-login{cursor:pointer;border:none;font:inherit;background:#3a3a6e;color:#aad4ff;padding:.2rem .7rem}.nav-tab-login:hover{background:#5a5a9e;color:#fff}.auth-menu{position:relative;display:inline-flex;align-items:center;gap:.35rem;background:#3a3a6e;color:#aad4ff;border-radius:6px;padding:.15rem .55rem .15rem .25rem;font-size:.875rem;cursor:pointer;user-select:none}.auth-menu:hover{background:#5a5a9e;color:#fff}.auth-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;display:block}.auth-avatar-fallback{width:22px;height:22px;border-radius:50%;background:#1a1a2e;color:#ffd24a;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:600}.auth-name{font-size:.875rem}.auth-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:6px;min-width:160px;display:none;z-index:50}.auth-menu.open .auth-dropdown{display:block}.auth-logout-form{margin:0}.auth-logout-btn{width:100%;background:transparent;border:none;color:#eee;text-align:left;padding:.4rem .6rem;cursor:pointer;border-radius:6px;font-size:.875rem}.auth-logout-btn:hover{background:#3a3a6e;color:#fff}.login-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.login-modal-backdrop.open{display:flex}.login-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.5rem 1.6rem 1.4rem;max-width:360px;width:92%;position:relative}.login-modal-title{font-size:1.2rem;font-weight:600;margin-bottom:.5rem}.login-modal-sub{font-size:.85rem;color:#aab;margin-bottom:1.1rem}.login-modal-close{position:absolute;top:.4rem;right:.55rem;background:transparent;border:none;color:#888;font-size:1.5rem;line-height:1;cursor:pointer}.login-modal-close:hover{color:#fff}.login-modal-buttons{display:flex;flex-direction:column;gap:.55rem}.login-btn{display:flex;align-items:center;gap:.75rem;padding:.65rem .9rem;border-radius:8px;font-size:.95rem;font-weight:500;text-decoration:none;cursor:pointer;transition:filter .12s}.login-btn:hover{filter:brightness(1.1)}.login-btn-icon{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem}.login-btn-google{background:#fff;color:#222}.login-btn-google .login-btn-icon{background:#4285F4;color:#fff}.login-btn-facebook{background:#1877F2;color:#fff}.login-btn-facebook .login-btn-icon{background:#fff;color:#1877F2}.anon-nag-toast{position:fixed;bottom:16px;right:16px;max-width:380px;background:#1e1e2e;border:1px solid #3a3a6e;border-left:3px solid #ffd24a;border-radius:8px;padding:.65rem .9rem .65rem .8rem;color:#eee;font-size:.85rem;line-height:1.35;display:none;z-index:150;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer}.anon-nag-toast.open{display:block}.anon-nag-toast strong{color:#ffd24a}.anon-nag-toast .anon-nag-close{position:absolute;top:2px;right:6px;background:transparent;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:2px 6px}.anon-nag-toast .anon-nag-close:hover{color:#fff}.navbar-search-date{order:1;margin-left:auto}.navbar-hidden{order:2}.navbar-filtry{order:3}.navbar-auth{order:4}@media (max-width:575px){.navbar{padding:.5rem .75rem !important;gap:.4rem}.navbar-title{display:none}.navbar-hidden{order:2;margin-left:auto}.navbar-auth{order:3}.navbar-search-date{order:4;flex-basis:0;flex-grow:1;margin-left:0;justify-content:space-between}.navbar-filtry{order:5;margin-left:auto}}</style>
 
-  /* ── Auth pill / dropdown / login modal ──────────────────────────────── */
-  .nav-tab-login {
-    cursor: pointer;
-    border: none;
-    font: inherit;
-    background: #3a3a6e;
-    color: #aad4ff;
-    padding: .2rem .7rem;
-  }
-  .nav-tab-login:hover { background: #5a5a9e; color: #fff; }
+<style>.badge-time{background:#3a3a6e;color:#aad4ff;font-size:.72rem;padding:.25em .5em;border-radius:6px;margin:1px 2px 1px 0;display:inline-block;text-decoration:none}a.badge-time:hover{background:#5a5a9e;color:#fff}.badge-fmt{font-size:.62rem;opacity:.7;margin-left:2px}.fav-star{display:none;margin-left:4px;font-size:.85em;line-height:1;cursor:pointer;user-select:none}.badge-time:hover .fav-star{display:inline-block;color:rgba(255,210,74,.55)}.fav-star.is-fav,.badge-time:hover .fav-star.is-fav{display:inline-block;color:#ffd24a}.badge-time.needs-star-room{margin-right:18px}</style>
 
-  /* The "logged in" pill — avatar + first name, click toggles a dropdown
-     anchored below it. Position:relative so the absolute-positioned
-     dropdown has the right anchor. */
-  .auth-menu {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    background: #3a3a6e;
-    color: #aad4ff;
-    border-radius: 6px;
-    padding: .15rem .55rem .15rem .25rem;
-    font-size: .875rem;
-    cursor: pointer;
-    user-select: none;
-  }
-  .auth-menu:hover { background: #5a5a9e; color: #fff; }
-  .auth-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; display: block; }
-  .auth-avatar-fallback {
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    background: #1a1a2e; color: #ffd24a;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: .7rem; font-weight: 600;
-  }
-  .auth-name { font-size: .875rem; }
-  .auth-dropdown {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    background: #1e1e2e;
-    border: 1px solid #3a3a6e;
-    border-radius: 8px;
-    padding: 6px;
-    min-width: 160px;
-    display: none;
-    z-index: 50;
-  }
-  .auth-menu.open .auth-dropdown { display: block; }
-  .auth-logout-form { margin: 0; }
-  .auth-logout-btn {
-    width: 100%;
-    background: transparent;
-    border: none;
-    color: #eee;
-    text-align: left;
-    padding: .4rem .6rem;
-    cursor: pointer;
-    border-radius: 6px;
-    font-size: .875rem;
-  }
-  .auth-logout-btn:hover { background: #3a3a6e; color: #fff; }
-
-  /* Login modal — full-viewport dimmed backdrop, centred card. The backdrop
-     is the click-outside-to-close handler; the card has stopPropagation on
-     its own click so the bubbling doesn't fire-close. */
-  .login-modal-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,.6);
-    display: none;
-    align-items: center; justify-content: center;
-    z-index: 200;
-  }
-  .login-modal-backdrop.open { display: flex; }
-  .login-modal {
-    background: #1a1a2e;
-    border: 1px solid #3a3a6e;
-    border-radius: 12px;
-    padding: 1.5rem 1.6rem 1.4rem;
-    max-width: 360px;
-    width: 92%;
-    position: relative;
-  }
-  .login-modal-title { font-size: 1.2rem; font-weight: 600; margin-bottom: .5rem; }
-  .login-modal-sub   { font-size: .85rem; color: #aab; margin-bottom: 1.1rem; }
-  .login-modal-close {
-    position: absolute;
-    top: .4rem; right: .55rem;
-    background: transparent;
-    border: none;
-    color: #888;
-    font-size: 1.5rem;
-    line-height: 1;
-    cursor: pointer;
-  }
-  .login-modal-close:hover { color: #fff; }
-  .login-modal-buttons { display: flex; flex-direction: column; gap: .55rem; }
-  .login-btn {
-    display: flex;
-    align-items: center;
-    gap: .75rem;
-    padding: .65rem .9rem;
-    border-radius: 8px;
-    font-size: .95rem;
-    font-weight: 500;
-    text-decoration: none;
-    cursor: pointer;
-    transition: filter .12s;
-  }
-  .login-btn:hover { filter: brightness(1.1); }
-  .login-btn-icon {
-    width: 26px; height: 26px;
-    border-radius: 50%;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-weight: 700;
-    font-size: 1rem;
-  }
-  .login-btn-google   { background: #fff; color: #222; }
-  .login-btn-google .login-btn-icon   { background: #4285F4; color: #fff; }
-  .login-btn-facebook { background: #1877F2; color: #fff; }
-  .login-btn-facebook .login-btn-icon { background: #fff;     color: #1877F2; }
-
-  /* Anonymous nag toast — shown at most once per 24h when an anonymous
-     user adds their first favourite/hide of the day. Click body → opens
-     the login modal. Self-dismisses after 8s. Pinned to the viewport's
-     bottom-right so it doesn't compete with the navbar above. */
-  .anon-nag-toast {
-    position: fixed;
-    bottom: 16px; right: 16px;
-    max-width: 380px;
-    background: #1e1e2e;
-    border: 1px solid #3a3a6e;
-    border-left: 3px solid #ffd24a;
-    border-radius: 8px;
-    padding: .65rem .9rem .65rem .8rem;
-    color: #eee;
-    font-size: .85rem;
-    line-height: 1.35;
-    display: none;
-    z-index: 150;
-    box-shadow: 0 6px 18px rgba(0,0,0,.4);
-    cursor: pointer;
-  }
-  .anon-nag-toast.open { display: block; }
-  .anon-nag-toast strong { color: #ffd24a; }
-  .anon-nag-toast .anon-nag-close {
-    position: absolute;
-    top: 2px; right: 6px;
-    background: transparent;
-    border: none;
-    color: #888;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 2px 6px;
-  }
-  .anon-nag-toast .anon-nag-close:hover { color: #fff; }
-  /* Desktop layout: tabs on the left; search-date / hidden-films / Filtry
-     / auth as one right-aligned cluster. `margin-left: auto` on search-date
-     (first item of the right cluster) absorbs the empty space between tabs
-     and the cluster. Hidden-films pill, when visible, sits inline between
-     search-date and Filtry. */
-  .navbar-search-date { order: 1; margin-left: auto; }
-  .navbar-hidden      { order: 2; }
-  .navbar-filtry      { order: 3; }
-  .navbar-auth        { order: 4; }
-
-  @media (max-width: 575px) {
-    .navbar { padding: .5rem .75rem !important; gap: .4rem; }
-    .navbar-title { display: none; }
-    /* Mobile: row-1 ends with [hidden] [auth] flush to the right edge.
-       `margin-left: auto` lives on .navbar-hidden (the leftmost member of
-       that pair) so the slack lands before the cluster rather than between
-       siblings, keeping hidden directly adjacent to the auth pill.
-       Search/date and Filtry wrap onto row-2; Filtry sticks to the right
-       edge via margin-left: auto so the long "Filtry (2D NAP …)" label
-       can spill onto its own row without losing the right alignment. */
-    .navbar-hidden      { order: 2; margin-left: auto; }
-    .navbar-auth        { order: 3; }
-    .navbar-search-date { order: 4; flex-basis: 0; flex-grow: 1; margin-left: 0; justify-content: space-between; }
-    .navbar-filtry      { order: 5; margin-left: auto; }
-  }
-</style>
-
-<style>
-  .badge-time {
-    background: #3a3a6e;
-    color: #aad4ff;
-    font-size: .72rem;
-    padding: .25em .5em;
-    border-radius: 6px;
-    margin: 1px 2px 1px 0;
-    display: inline-block;
-    text-decoration: none;
-  }
-  a.badge-time:hover { background: #5a5a9e; color: #fff; }
-  .badge-fmt { font-size: .62rem; opacity: .7; margin-left: 2px; }
-
-  /* Per-screening favourite star: lives inside each .badge-time pill. The
-     star takes no space at rest — the pill stays compact. On hover it
-     slides in and the pill expands.
-     `.needs-star-room` is added by `reflowFavStarSpacing` (JS) to pills
-     that sit at the end of a wrap-row WITHOUT enough remaining space to
-     accommodate the star — pre-padding them pushes them to the next
-     line before the hover ever fires, so the pill the cursor is on
-     can't jump under the cursor. */
-  .fav-star {
-    display: none;
-    margin-left: 4px;
-    font-size: .85em;
-    line-height: 1;
-    cursor: pointer;
-    user-select: none;
-  }
-  .badge-time:hover .fav-star { display: inline-block; color: rgba(255,210,74,.55); }
-  .fav-star.is-fav,
-  .badge-time:hover .fav-star.is-fav { display: inline-block; color: #ffd24a; }
-  /* Invisible right-margin (not padding) — the pill's visible bounds stay
-     identical, but the wrap calculator sees the box as ~18 px wider,
-     which forces this pill onto the next line. End result: the user
-     never sees the pill grow, only sees it sit on its own line so the
-     hover-expansion has room. */
-  .badge-time.needs-star-room { margin-right: 18px; }
-</style>
-
-<style>
-  .ratings { display: flex; gap: .25rem; align-items: center; flex-wrap: wrap; margin-top: .25rem; }
-  .rating-imdb { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.3; text-decoration: none; }
-  .rating-imdb-label { background: #f5c518; color: #000; font-weight: 700; padding: 0 .3rem; letter-spacing: .02em; }
-  .rating-imdb-value { background: #2a2a3e; color: #f5c518; padding: 0 .35rem; font-weight: 600; }
-  .rating-imdb:hover .rating-imdb-value { background: #3a3a6e; }
-  .rating-meta { background: #66cc66; color: #002200; font-size: .68rem; font-weight: 700; line-height: 1.3; padding: 0 .35rem; border-radius: 3px; text-decoration: none; }
-  a.rating-meta:hover { background: #88dd88; }
-  .rating-fw { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.3; text-decoration: none; }
-  .rating-fw-label { background: #ff6c00; color: #fff; font-weight: 700; padding: 0 .3rem; letter-spacing: .02em; }
-  .rating-fw-value { background: #2a2a3e; color: #ff9c4a; padding: 0 .35rem; font-weight: 600; }
-  .rating-fw:hover .rating-fw-value { background: #3a3a6e; }
-  /* Rotten Tomatoes. Red label for fresh (≥60%), green for rotten — matches
-     RT's own tomato vs splat visual cue. */
-  .rating-rt { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.3; text-decoration: none; }
-  .rating-rt-label { color: #fff; font-weight: 700; padding: 0 .3rem; letter-spacing: .02em; }
-  .rating-rt-value { background: #2a2a3e; padding: 0 .35rem; font-weight: 600; }
-  .rating-rt.fresh  .rating-rt-label { background: #fa320a; }
-  .rating-rt.fresh  .rating-rt-value { color: #ff7c5a; }
-  .rating-rt.rotten .rating-rt-label { background: #1a8f1a; }
-  .rating-rt.rotten .rating-rt-value { color: #6cd06c; }
-  .rating-rt:hover  .rating-rt-value { background: #3a3a6e; }
-</style>
+<style>.ratings{display:flex;gap:.25rem;align-items:center;flex-wrap:wrap;margin-top:.25rem}.rating-imdb{display:inline-flex;align-items:stretch;border-radius:3px;overflow:hidden;font-size:.68rem;line-height:1.3;text-decoration:none}.rating-imdb-label{background:#f5c518;color:#000;font-weight:700;padding:0 .3rem;letter-spacing:.02em}.rating-imdb-value{background:#2a2a3e;color:#f5c518;padding:0 .35rem;font-weight:600}.rating-imdb:hover .rating-imdb-value{background:#3a3a6e}.rating-meta{background:#66cc66;color:#002200;font-size:.68rem;font-weight:700;line-height:1.3;padding:0 .35rem;border-radius:3px;text-decoration:none}a.rating-meta:hover{background:#88dd88}.rating-fw{display:inline-flex;align-items:stretch;border-radius:3px;overflow:hidden;font-size:.68rem;line-height:1.3;text-decoration:none}.rating-fw-label{background:#ff6c00;color:#fff;font-weight:700;padding:0 .3rem;letter-spacing:.02em}.rating-fw-value{background:#2a2a3e;color:#ff9c4a;padding:0 .35rem;font-weight:600}.rating-fw:hover .rating-fw-value{background:#3a3a6e}.rating-rt{display:inline-flex;align-items:stretch;border-radius:3px;overflow:hidden;font-size:.68rem;line-height:1.3;text-decoration:none}.rating-rt-label{color:#fff;font-weight:700;padding:0 .3rem;letter-spacing:.02em}.rating-rt-value{background:#2a2a3e;padding:0 .35rem;font-weight:600}.rating-rt.fresh .rating-rt-label{background:#fa320a}.rating-rt.fresh .rating-rt-value{color:#ff7c5a}.rating-rt.rotten .rating-rt-label{background:#1a8f1a}.rating-rt.rotten .rating-rt-value{color:#6cd06c}.rating-rt:hover .rating-rt-value{background:#3a3a6e}</style>
 
 
-  <style>
-    .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: .1rem; margin-top: .3rem; }
-    .cinema-label-link { color: #66aadd; text-decoration: none; }
-    .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
-  </style>
+
+
+  
+  <style>.cinema-label{font-size:.65rem;color:#66aadd;margin-bottom:.1rem;margin-top:.3rem}.cinema-label-link{color:#66aadd;text-decoration:none}.cinema-label-link:hover{color:#aad4ff;text-decoration:underline}</style>
+  
+
 </head>
 <body>
 
@@ -30487,965 +30055,641 @@
   </div>
 </div>
 
-<script>
-  // Page-level flags surfaced by the server-rendered template so the JS
-  // can decide where to read/write personalization state. When LOGGED_IN
-  // is true the boot path merges localStorage with the server's state and
-  // every subsequent write debounces a PUT to /api/me/state; otherwise
-  // localStorage is canonical and (Phase D) a once-per-day toast nags
-  // anonymous users.
-  const IS_LOGGED_IN         = false;
-  const HAS_OAUTH_PROVIDERS  = false;
 
-  // ── Format-filter dropdown ────────────────────────────────────────────────
+<script>const IS_LOGGED_IN = false;
+const HAS_OAUTH_PROVIDERS = false;
+function getFormatFilter() {
+const dim = (document.querySelector('input[name="format-dim"]:checked') || {}).value || '';
+const lang = (document.querySelector('input[name="format-lang"]:checked') || {}).value || '';
+const imax = document.getElementById('format-imax').checked ? 'IMAX' : '';
+return [dim, lang, imax].filter(Boolean);
+}
+function badgeFormatTokens(badge) {
+return new Set((badge.dataset.format || '').split(' ').filter(Boolean));
+}
+function getFromMinutes() {
+const hStr = (document.getElementById('from-hour') || {}).value;
+if (hStr == null || hStr === '') return null;
+const h = parseInt(hStr, 10);
+const m = parseInt((document.getElementById('from-minute') || {}).value, 10) || 0;
+return h * 60 + m;
+}
+function badgeFormatMatch(badgeFormatSet, requiredTokens) {
+for (let i = 0; i < requiredTokens.length; i++) {
+if (!badgeFormatSet.has(requiredTokens[i])) return false;
+}
+return true;
+}
+let _filterDebounce = 0;
+function applyFiltersDebounced() {
+clearTimeout(_filterDebounce);
+_filterDebounce = setTimeout(applyFilters, 80);
+}
+function updateFormatBtn() {
+const parts = [...getFormatFilter()];
+const fromMin = getFromMinutes();
+if (fromMin !== null) {
+const h = Math.floor(fromMin / 60), m = fromMin % 60;
+parts.push('od ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
+}
+if (document.getElementById('cinema-list')) {
+const disabled = getDisabledCinemas();
+if (disabled.length > 0 && disabled.length < ALL_CINEMAS.length) {
+parts.push('kina ' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.length);
+}
+}
+const btn = document.getElementById('format-filter-btn');
+btn.textContent = parts.length === 0 ? 'Filtry' : 'Filtry (' + parts.join(', ') + ')';
+}
+function onFormatChange() {
+updateFormatBtn();
+applyFilters();
+}
+function closeOtherPanels(except) {
+document.querySelectorAll('.dropdown-panel').forEach(p => {
+if (p !== except) p.style.display = 'none';
+});
+}
+function toggleFormatPanel(event) {
+event.stopPropagation();
+const panel = document.getElementById('format-panel');
+const opening = panel.style.display === 'none';
+closeOtherPanels(opening ? panel : null);
+panel.style.display = opening ? 'block' : 'none';
+if (opening) clampPanel(panel);
+}
+function resetFormatFilter() {
+document.querySelector('input[name="format-dim"][value=""]').checked = true;
+document.querySelector('input[name="format-lang"][value=""]').checked = true;
+document.getElementById('format-imax').checked = false;
+document.getElementById('from-hour').value = '';
+document.getElementById('from-minute').value = '0';
+document.getElementById('format-panel').style.display = 'none';
+onFormatChange();
+}
+function _lsGet(key) {
+try {
+const raw = localStorage.getItem(key);
+if (raw === null) return null;
+return JSON.parse(raw);
+} catch { return null; }
+}
+function _lsSet(key, value) {
+try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+function _cookieRead(name) {
+const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+try { return match ? JSON.parse(decodeURIComponent(match[1])) : null; } catch { return null; }
+}
+function _cookieClear(name) {
+document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax';
+}
+function _migrate(key) {
+if (_lsGet(key) !== null) return;
+const legacy = _cookieRead(key);
+if (legacy !== null) {
+_lsSet(key, legacy);
+_cookieClear(key);
+}
+}
+_migrate('hiddenFilms');
+_migrate('disabledCinemas');
+function getHidden() { return _lsGet('hiddenFilms') || []; }
+function setHidden(titles) { _lsSet('hiddenFilms', titles); scheduleServerSync(); }
+function getDisabledCinemas() { return _lsGet('disabledCinemas') || []; }
+function setDisabledCinemas(l) { _lsSet('disabledCinemas', l); scheduleServerSync(); }
+function getFavMovies() { return _lsGet('favouriteMovies') || []; }
+function setFavMovies(titles) { _lsSet('favouriteMovies', titles); scheduleServerSync(); }
+function getFavScreenings() { return _lsGet('favouriteScreenings') || []; }
+function setFavScreenings(ids) { _lsSet('favouriteScreenings', ids); scheduleServerSync(); }
+function toggleFavMovie(btn) {
+const title = btn.closest('[data-title]').dataset.title;
+const cur = getFavMovies();
+const idx = cur.indexOf(title);
+if (idx >= 0) cur.splice(idx, 1); else cur.push(title);
+setFavMovies(cur);
+btn.classList.toggle('is-fav', idx < 0);
+if (idx < 0) maybeShowAnonymousNag();
+if (IS_FAVOURITES_PAGE) preserveScroll(() => applyFilters());
+}
+function toggleFavScreening(event, star) {
+event.preventDefault();
+event.stopPropagation();
+const badge = star.closest('.badge-time');
+if (!badge) return;
+const id = badge.dataset.screeningId;
+const cur = getFavScreenings();
+const idx = cur.indexOf(id);
+if (idx >= 0) cur.splice(idx, 1); else cur.push(id);
+setFavScreenings(cur);
+star.classList.toggle('is-fav', idx < 0);
+if (idx < 0) maybeShowAnonymousNag();
+if (IS_FAVOURITES_PAGE) preserveScroll(() => applyFilters());
+scheduleReflow();
+}
+document.addEventListener('click', e => {
+const star = e.target.closest('.fav-star');
+if (star) toggleFavScreening(e, star);
+});
+function paintFavourites() {
+const favMovies = new Set(getFavMovies());
+const favScreenings = new Set(getFavScreenings());
+document.querySelectorAll('.col[data-title]').forEach(col => {
+const btn = col.querySelector('.fav-poster-btn');
+if (btn) btn.classList.toggle('is-fav', favMovies.has(col.dataset.title));
+});
+document.querySelectorAll('.badge-time[data-screening-id]').forEach(badge => {
+const star = badge.querySelector('.fav-star');
+if (star) star.classList.toggle('is-fav', favScreenings.has(badge.dataset.screeningId));
+});
+}
+const _STAR_WIDTH_PX = 18;
+const _hasHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+function reflowFavStarSpacing() {
+if (!_hasHover) return;
+document.querySelectorAll('.cinema-group').forEach(group => {
+const groupRect = group.getBoundingClientRect();
+if (groupRect.width === 0) return;
+const badges = [...group.querySelectorAll('.badge-time')].filter(b =>
+b.style.display !== 'none'
+);
+if (!badges.length) return;
+badges.forEach(b => b.classList.remove('needs-star-room'));
+for (let pass = 0; pass < 3; pass++) {
+let changed = false;
+const containerRight = groupRect.right;
+for (let i = 0; i < badges.length; i++) {
+const b = badges[i];
+const star = b.querySelector('.fav-star');
+if (star && star.classList.contains('is-fav')) continue;
+const next = badges[i + 1];
+const rect = b.getBoundingClientRect();
+const isEndOfRow = !next || next.getBoundingClientRect().top > rect.top;
+if (!isEndOfRow) continue;
+if (containerRight - rect.right >= _STAR_WIDTH_PX) continue;
+const prev = badges[i - 1];
+if (prev && prev.getBoundingClientRect().top === rect.top
+&& !prev.classList.contains('needs-star-room')) {
+prev.classList.add('needs-star-room');
+changed = true;
+}
+}
+if (!changed) break;
+}
+});
+}
+let _reflowDebounce = 0;
+function scheduleReflow(delayMs) {
+clearTimeout(_reflowDebounce);
+_reflowDebounce = setTimeout(reflowFavStarSpacing, delayMs || 16);
+}
+window.addEventListener('resize', () => scheduleReflow(120));
+const ALL_CINEMAS = ["Cinema City Kinepolis","Cinema City Poznań Plaza","Helios Posnania","Kino Apollo","Kino Bułgarska 19","Kino Malta Charlie Monroe","Kino Muza","Kino Pałacowe","Kino Rialto","Multikino Stary Browar"];
+function updateNavbar() {
+const hidden = getHidden();
+const btn = document.getElementById('show-hidden-btn');
+const panel = document.getElementById('hidden-panel');
+if (hidden.length > 0) {
+btn.style.setProperty('display', 'inline-flex', 'important');
+btn.textContent = hidden.length + ' ukrytych';
+const list = document.getElementById('hidden-panel-list');
+list.innerHTML = '';
+hidden.forEach(title => {
+const item = document.createElement('div');
+item.className = 'panel-item';
+item.textContent = title;
+item.title = title;
+item.onclick = () => restoreFilm(title);
+list.appendChild(item);
+});
+} else {
+btn.style.setProperty('display', 'none', 'important');
+panel.style.display = 'none';
+}
+}
+function clampPanel(panel) {
+panel.style.right = '0px';
+const rect = panel.getBoundingClientRect();
+if (rect.left < 8) panel.style.right = (rect.left - 8) + 'px';
+}
+function toggleAuthMenu(event) {
+event.stopPropagation();
+const menu = document.getElementById('auth-menu');
+if (menu) menu.classList.toggle('open');
+}
+function closeAuthMenu() {
+const menu = document.getElementById('auth-menu');
+if (menu) menu.classList.remove('open');
+}
+function openLoginModal() {
+const m = document.getElementById('login-modal-backdrop');
+if (m) m.classList.add('open');
+}
+function closeLoginModal() {
+const m = document.getElementById('login-modal-backdrop');
+if (m) m.classList.remove('open');
+}
+document.addEventListener('keydown', e => {
+if (e.key === 'Escape') {
+closeLoginModal();
+closeAuthMenu();
+}
+});
+function toggleHiddenPanel(event) {
+event.stopPropagation();
+const panel = document.getElementById('hidden-panel');
+const opening = panel.style.display === 'none';
+closeOtherPanels(opening ? panel : null);
+panel.style.display = opening ? 'block' : 'none';
+if (opening) clampPanel(panel);
+}
+function hideFilm(btn) {
+const title = btn.closest('[data-title]').dataset.title;
+const hidden = getHidden();
+if (!hidden.includes(title)) {
+hidden.push(title);
+setHidden(hidden);
+maybeShowAnonymousNag();
+}
+applyFilters();
+updateNavbar();
+}
+function restoreFilm(title) {
+preserveScroll(() => {
+setHidden(getHidden().filter(t => t !== title));
+applyFilters();
+updateNavbar();
+});
+}
+function showAllFilms() {
+preserveScroll(() => {
+setHidden([]);
+applyFilters();
+updateNavbar();
+});
+}
+function preserveScroll(fn) {
+const y = window.scrollY;
+fn();
+window.scrollTo(0, y);
+}
+function isSubsequence(sub, full) {
+let j = 0;
+for (let i = 0; i < full.length && j < sub.length; i++) {
+if (full[i] === sub[j]) j++;
+}
+return j === sub.length;
+}
+function buildCinemaPanel() {
+const list = document.getElementById('cinema-list');
+if (!list) return;
+const disabled = getDisabledCinemas();
+list.innerHTML = '';
+ALL_CINEMAS.forEach(cinema => {
+const label = document.createElement('label');
+label.className = 'panel-label';
+const cb = document.createElement('input');
+cb.type = 'checkbox';
+cb.checked = !disabled.includes(cinema);
+cb.onchange = () => {
+const dis = getDisabledCinemas();
+if (cb.checked) {
+setDisabledCinemas(dis.filter(c => c !== cinema));
+} else {
+if (!dis.includes(cinema)) dis.push(cinema);
+setDisabledCinemas(dis);
+}
+syncAllCheckbox();
+updateFormatBtn();
+applyFilters();
+};
+label.appendChild(cb);
+label.appendChild(document.createTextNode(' ' + cinema));
+list.appendChild(label);
+});
+syncAllCheckbox();
+}
+function syncAllCheckbox() {
+const allCb = document.getElementById('cinema-all');
+if (!allCb) return;
+const disabled = getDisabledCinemas();
+allCb.checked = disabled.length === 0;
+allCb.indeterminate = disabled.length > 0 && disabled.length < ALL_CINEMAS.length;
+}
+function toggleAllCinemas(checked) {
+setDisabledCinemas(checked ? [] : ALL_CINEMAS.slice());
+buildCinemaPanel();
+applyFilters();
+}
+const _roomTooltip = document.createElement('div');
+_roomTooltip.id = 'room-tooltip';
+document.body.appendChild(_roomTooltip);
+function showRoomTooltip(badge) {
+_roomTooltip.textContent = badge.dataset.room;
+_roomTooltip.style.display = 'block';
+const badgeRect = badge.getBoundingClientRect();
+const tipW = _roomTooltip.offsetWidth;
+const tipH = _roomTooltip.offsetHeight;
+const cardLeft = (badge.closest('.card') || badge).getBoundingClientRect().left;
+const left = Math.max(cardLeft, badgeRect.left + badgeRect.width / 2 - tipW / 2);
+_roomTooltip.style.left = left + 'px';
+_roomTooltip.style.top = (badgeRect.top - tipH - 4) + 'px';
+}
+function hideRoomTooltip() { _roomTooltip.style.display = 'none'; }
+document.addEventListener('mouseover', e => {
+const b = e.target.closest('.badge-time[data-room]');
+if (b) showRoomTooltip(b); else hideRoomTooltip();
+});
+let _roomTimer = null;
+document.addEventListener('touchstart', e => {
+const badge = e.target.closest('.badge-time[data-room]');
+if (!badge) return;
+_roomTimer = setTimeout(() => {
+showRoomTooltip(badge);
+setTimeout(hideRoomTooltip, 2000);
+}, 500);
+}, { passive: true });
+document.addEventListener('touchend', () => { clearTimeout(_roomTimer); _roomTimer = null; }, { passive: true });
+document.addEventListener('touchmove', () => { clearTimeout(_roomTimer); _roomTimer = null; }, { passive: true });
+document.addEventListener('keydown', e => {
+if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+if (e.key === 'ArrowLeft') stepDate(-1);
+if (e.key === 'ArrowRight') stepDate(1);
+});
+document.addEventListener('click', () => {
+document.getElementById('hidden-panel').style.display = 'none';
+document.getElementById('format-panel').style.display = 'none';
+closeAuthMenu();
+});
+function updateCounter(visibleCount, showtimeCount) {
+const noFilms = document.getElementById('no-films');
+const counter = document.getElementById('film-counter');
+if (visibleCount === 0) {
+const onFavPage = typeof IS_FAVOURITES_PAGE !== 'undefined' && IS_FAVOURITES_PAGE;
+const noFavsAtAll = onFavPage && getFavMovies().length === 0 && getFavScreenings().length === 0;
+noFilms.textContent = noFavsAtAll
+? 'Brak ulubionych. Dodaj ulubione filmy lub seanse na innych stronach.'
+: 'Brak repertuaru.';
+noFilms.style.display = '';
+counter.style.display = 'none';
+} else {
+noFilms.style.display = 'none';
+counter.textContent = visibleCount + ' tytuł(ów) · ' + showtimeCount + ' seansów';
+counter.style.display = '';
+}
+}
+function isoAddDays(isoDate, n) {
+const [y, m, d] = isoDate.split('-').map(Number);
+return new Date(y, m - 1, d + n).toLocaleDateString('sv');
+}
+const DAY2 = ['Nie', 'Pon', 'Wto', 'Śro', 'Czw', 'Pią', 'Sob'];
+const MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca',
+'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+let _cachedDay = null, _cachedToday, _cachedTomorrow, _cachedIn7Days;
+function dateBounds() {
+const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+if (today !== _cachedDay) {
+_cachedDay = today;
+_cachedToday = today;
+_cachedTomorrow = isoAddDays(today, 1);
+_cachedIn7Days = isoAddDays(today, 6);
+}
+return { today: _cachedToday, tomorrow: _cachedTomorrow, in7Days: _cachedIn7Days };
+}
+function populateDayOptions() {
+const select = document.getElementById('date-filter');
+const weekOpt = select.querySelector('option[value="week"]');
+const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+for (let i = 2; i <= 6; i++) {
+const iso = isoAddDays(today, i);
+const [y, mo, da] = iso.split('-').map(Number);
+const dow = new Date(y, mo - 1, da).getDay();
+const opt = document.createElement('option');
+opt.value = iso;
+opt.textContent = DAY2[dow] + ' ' + da + ' ' + MONTHS[mo - 1];
+select.insertBefore(opt, weekOpt);
+}
+}
+function stepDate(dir) {
+const sel = document.getElementById('date-filter');
+const next = sel.selectedIndex + dir;
+if (next >= 0 && next < sel.options.length) { sel.selectedIndex = next; applyFilters(); }
+}
+function squareDateNavBtns() {
+const h = document.getElementById('date-filter').offsetHeight;
+document.querySelectorAll('.date-nav-btn').forEach(b => {
+b.style.width = h + 'px';
+b.style.height = h + 'px';
+});
+}
+let _serverSyncTimer = 0;
+function scheduleServerSync() {
+if (!IS_LOGGED_IN) return;
+clearTimeout(_serverSyncTimer);
+_serverSyncTimer = setTimeout(pushStateToServer, 400);
+}
+function pushStateToServer() {
+fetch('/api/me/state', {
+method: 'PUT',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({
+favouriteMovies: getFavMovies(),
+favouriteScreenings: getFavScreenings(),
+hiddenFilms: getHidden(),
+disabledCinemas: getDisabledCinemas()
+})
+}).catch(() => { });
+}
+async function bootMergeFromServer() {
+if (!IS_LOGGED_IN) return;
+try {
+const resp = await fetch('/api/me/state', { headers: { 'Accept': 'application/json' } });
+if (!resp.ok) return;
+const remote = await resp.json();
+const merge = (local, srv) => [...new Set([...(local || []), ...(srv || [])])].sort();
+_lsSet('favouriteMovies', merge(getFavMovies(), remote.favouriteMovies));
+_lsSet('favouriteScreenings', merge(getFavScreenings(), remote.favouriteScreenings));
+_lsSet('hiddenFilms', merge(getHidden(), remote.hiddenFilms));
+_lsSet('disabledCinemas', merge(getDisabledCinemas(), remote.disabledCinemas));
+pushStateToServer();
+paintFavourites();
+applyFilters();
+} catch (e) { }
+}
+function maybeShowAnonymousNag() {
+if (IS_LOGGED_IN || !HAS_OAUTH_PROVIDERS) return;
+const lastAt = parseInt(localStorage.getItem('lastAnonymousNagAt') || '0', 10);
+const dayMs = 24 * 60 * 60 * 1000;
+if (Date.now() - lastAt < dayMs) return;
+localStorage.setItem('lastAnonymousNagAt', Date.now().toString());
+showAnonymousNag();
+}
+let _nagDismissTimer = 0;
+function showAnonymousNag() {
+const toast = document.getElementById('anon-nag-toast');
+if (!toast) return;
+toast.classList.add('open');
+clearTimeout(_nagDismissTimer);
+_nagDismissTimer = setTimeout(closeAnonymousNag, 8000);
+}
+function closeAnonymousNag() {
+const toast = document.getElementById('anon-nag-toast');
+if (toast) toast.classList.remove('open');
+}
+document.addEventListener('DOMContentLoaded', () => {
+buildIndex();
+populateDayOptions();
+squareDateNavBtns();
+updateNavbar();
+buildCinemaPanel();
+updateFormatBtn();
+paintFavourites();
+applyFilters();
+bootMergeFromServer();
+});</script>
+
+
+
+
+<script>const IS_FAVOURITES_PAGE = true;
+let INDEX = null;
+function buildIndex() {
+const grid = document.getElementById('film-grid');
+INDEX = [...grid.querySelectorAll('.col[data-title]')].map(col => ({
+el: col,
+title: col.dataset.title.toLowerCase(),
+rawTitle: col.dataset.title,
+visible: true,
+groups: [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
+el: group,
+date: group.dataset.date,
+visible: true,
+cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg => ({
+el: cg,
+cinema: cg.dataset.cinema,
+visible: true,
+badges: [...cg.querySelectorAll('.badge-time')].map(b => {
+const t = (b.dataset.time || '').trim();
+const colon = t.indexOf(':');
+const timeMin = colon > 0
+? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10)
+: -1;
+return {
+el: b,
+time: t,
+timeMin: timeMin,
+formats: new Set((b.dataset.format || '').split(' ').filter(Boolean)),
+screeningId: b.dataset.screeningId || '',
+visible: true
+};
+})
+}))
+}))
+}));
+}
+function setVisible(node, want) {
+if (node.visible !== want) {
+node.el.style.display = want ? '' : 'none';
+node.visible = want;
+}
+}
+let _prevVisibleOrder = [];
+function applyFilters() {
+if (!INDEX) return;
+const filter = document.getElementById('date-filter').value;
+const query = (document.getElementById('search-input').value || '').trim().toLowerCase();
+const hidden = new Set(getHidden());
+const disabled = new Set(getDisabledCinemas());
+const fmtTokens = getFormatFilter();
+const hasFmt = fmtTokens.length > 0;
+const fromMin = getFromMinutes();
+const hasFrom = fromMin !== null;
+const favMode = IS_FAVOURITES_PAGE;
+const favMovies = favMode ? new Set(getFavMovies()) : null;
+const favScreenings = favMode ? new Set(getFavScreenings()) : null;
+const { today, tomorrow, in7Days } = dateBounds();
+const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
+const dateOk = filter === 'today' ? d => d === today :
+filter === 'tomorrow' ? d => d === tomorrow :
+filter === 'week' ? d => d >= today && d <= in7Days :
+isSpecific ? d => d === filter :
+_ => true;
+let visibleCount = 0, showtimeCount = 0;
+const earlyMap = new Array(INDEX.length);
+for (let i = 0; i < INDEX.length; i++) {
+const col = INDEX[i];
+if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))) {
+setVisible(col, false);
+earlyMap[i] = null;
+continue;
+}
+const colMovieFav = favMode && favMovies.has(col.rawTitle);
+let colVisible = false, colEarliest = null;
+for (const group of col.groups) {
+if (!dateOk(group.date)) { setVisible(group, false); continue; }
+let groupVisible = false;
+for (const cg of group.cinemaGroups) {
+if (disabled.has(cg.cinema)) { setVisible(cg, false); continue; }
+let cgVisibleCount = 0, cgFirstTime = null;
+const needsBadgeLoop = hasFmt || hasFrom || favMode;
+if (needsBadgeLoop) {
+for (const badge of cg.badges) {
+const fmtOk = !hasFmt || badgeFormatMatch(badge.formats, fmtTokens);
+const timeOk = !hasFrom || badge.timeMin < 0 || badge.timeMin >= fromMin;
+const favOk = !favMode || colMovieFav || favScreenings.has(badge.screeningId);
+const ok = fmtOk && timeOk && favOk;
+setVisible(badge, ok);
+if (ok) {
+cgVisibleCount++;
+if (!cgFirstTime) cgFirstTime = group.date + 'T' + badge.time;
+}
+}
+} else {
+for (const badge of cg.badges) setVisible(badge, true);
+cgVisibleCount = cg.badges.length;
+if (cg.badges.length > 0) cgFirstTime = group.date + 'T' + cg.badges[0].time;
+}
+if (cgVisibleCount > 0) {
+setVisible(cg, true);
+groupVisible = true;
+showtimeCount += cgVisibleCount;
+if (cgFirstTime && (!colEarliest || cgFirstTime < colEarliest))
+colEarliest = cgFirstTime;
+} else {
+setVisible(cg, false);
+}
+}
+setVisible(group, groupVisible);
+if (groupVisible) colVisible = true;
+}
+if (colVisible) {
+setVisible(col, true);
+visibleCount++;
+earlyMap[i] = colEarliest;
+} else {
+setVisible(col, false);
+earlyMap[i] = null;
+}
+}
+sortByEarliestVisible(earlyMap);
+updateCounter(visibleCount, showtimeCount);
+scheduleReflow();
+}
+function sortByEarliestVisible(earlyMap) {
+const visible = [];
+for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);
+visible.sort((a, b) => {
+const ta = earlyMap[a], tb = earlyMap[b];
+return ta < tb ? -1 : ta > tb ? 1 : (a - b);
+});
+if (isSubsequence(visible, _prevVisibleOrder)) return;
+_prevVisibleOrder = visible;
+const grid = document.getElementById('film-grid');
+const frag = document.createDocumentFragment();
+for (const i of visible) frag.appendChild(INDEX[i].el);
+grid.appendChild(frag);
+}</script>
 
-  // Three axes live inside one panel: Wymiar (radio, 2D/3D), Wersja (radio,
-  // NAP/DUB), IMAX (checkbox). Each visible badge must carry every selected
-  // token on its data-format attribute. Empty selection on an axis = no
-  // constraint for that axis.
-  function getFormatFilter() {
-    const dim  = (document.querySelector('input[name="format-dim"]:checked')  || {}).value || '';
-    const lang = (document.querySelector('input[name="format-lang"]:checked') || {}).value || '';
-    const imax = document.getElementById('format-imax').checked ? 'IMAX' : '';
-    return [dim, lang, imax].filter(Boolean);
-  }
 
-  function badgeFormatTokens(badge) {
-    return new Set((badge.dataset.format || '').split(' ').filter(Boolean));
-  }
-
-  // From-hour filter: returns the lower-bound time as minutes-since-midnight
-  // (e.g. 18:30 → 1110), or null when the hour dropdown is set to "Dowolna"
-  // (any). Both dropdowns are read together; the minute default is 00.
-  function getFromMinutes() {
-    const hStr = (document.getElementById('from-hour') || {}).value;
-    if (hStr == null || hStr === '') return null;
-    const h = parseInt(hStr, 10);
-    const m = parseInt((document.getElementById('from-minute') || {}).value, 10) || 0;
-    return h * 60 + m;
-  }
-
-  // requiredTokens may be empty → fast-path. Otherwise checks a pre-built Set
-  // attached to each indexed badge (so we don't re-parse `dataset.format` on
-  // every filter pass).
-  function badgeFormatMatch(badgeFormatSet, requiredTokens) {
-    for (let i = 0; i < requiredTokens.length; i++) {
-      if (!badgeFormatSet.has(requiredTokens[i])) return false;
-    }
-    return true;
-  }
-
-  // Debounce wrapper for fast-firing inputs (the search box). Discrete inputs
-  // like select/radio/checkbox still call applyFilters() directly.
-  let _filterDebounce = 0;
-  function applyFiltersDebounced() {
-    clearTimeout(_filterDebounce);
-    _filterDebounce = setTimeout(applyFilters, 80);
-  }
-
-  function updateFormatBtn() {
-    const parts = [...getFormatFilter()];
-    const fromMin = getFromMinutes();
-    if (fromMin !== null) {
-      const h = Math.floor(fromMin / 60), m = fromMin % 60;
-      parts.push('od ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
-    }
-    // Cinema filter is now part of the Filtry panel on most pages;
-    // surface the selected-vs-total count in the button label so the
-    // navbar still signals "you've narrowed the cinemas" at a glance.
-    // On /kina the picker is rendered as a pill row above the grid and
-    // the Filtry panel doesn't carry the Kina section at all — the
-    // `#cinema-list` presence is the natural signal for "Filtry owns
-    // the picker on this page". When it's absent, the count belongs to
-    // the pill row, not the Filtry label.
-    if (document.getElementById('cinema-list')) {
-      const disabled = getDisabledCinemas();
-      if (disabled.length > 0 && disabled.length < ALL_CINEMAS.length) {
-        parts.push('kina ' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.length);
-      }
-    }
-    const btn = document.getElementById('format-filter-btn');
-    btn.textContent = parts.length === 0 ? 'Filtry' : 'Filtry (' + parts.join(', ') + ')';
-  }
-
-  function onFormatChange() {
-    updateFormatBtn();
-    applyFilters();
-  }
-
-  // Hide every navbar dropdown except (optionally) one — used by each toggle handler
-  // so opening any panel closes all the others.
-  function closeOtherPanels(except) {
-    document.querySelectorAll('.dropdown-panel').forEach(p => {
-      if (p !== except) p.style.display = 'none';
-    });
-  }
-
-  function toggleFormatPanel(event) {
-    event.stopPropagation();
-    const panel = document.getElementById('format-panel');
-    const opening = panel.style.display === 'none';
-    closeOtherPanels(opening ? panel : null);
-    panel.style.display = opening ? 'block' : 'none';
-    if (opening) clampPanel(panel);
-  }
-
-  function resetFormatFilter() {
-    document.querySelector('input[name="format-dim"][value=""]').checked  = true;
-    document.querySelector('input[name="format-lang"][value=""]').checked = true;
-    document.getElementById('format-imax').checked   = false;
-    document.getElementById('from-hour').value       = '';
-    document.getElementById('from-minute').value     = '0';
-    document.getElementById('format-panel').style.display = 'none';
-    onFormatChange();
-  }
-
-  // ── Hidden-films + disabled-cinemas storage ───────────────────────────────
-  //
-  // Backed by localStorage, with one-time migration from the legacy
-  // cookie-based storage. Cookies were silently failing once `hiddenFilms`
-  // grew past the ~4 KB per-cookie budget (cumulative with Play's session
-  // cookie + `disabledCinemas`); the symptom was "click X, card stays
-  // visible" — setHidden's write was being dropped by the browser.
-  //
-  // localStorage has a ~5 MB origin budget, doesn't get sent with every
-  // request, and works the same across browsers.
-
-  function _lsGet(key) {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw === null) return null;
-      return JSON.parse(raw);
-    } catch { return null; }
-  }
-
-  function _lsSet(key, value) {
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-  }
-
-  function _cookieRead(name) {
-    const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
-    try { return match ? JSON.parse(decodeURIComponent(match[1])) : null; } catch { return null; }
-  }
-
-  function _cookieClear(name) {
-    document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax';
-  }
-
-  // One-shot migration: if localStorage is empty and the legacy cookie has a
-  // value, lift it across and drop the cookie. Runs once per key; subsequent
-  // page loads find localStorage already populated.
-  function _migrate(key) {
-    if (_lsGet(key) !== null) return;
-    const legacy = _cookieRead(key);
-    if (legacy !== null) {
-      _lsSet(key, legacy);
-      _cookieClear(key);
-    }
-  }
-  _migrate('hiddenFilms');
-  _migrate('disabledCinemas');
-
-  function getHidden()           { return _lsGet('hiddenFilms')    || []; }
-  function setHidden(titles)     { _lsSet('hiddenFilms',    titles); scheduleServerSync(); }
-  function getDisabledCinemas()  { return _lsGet('disabledCinemas') || []; }
-  function setDisabledCinemas(l) { _lsSet('disabledCinemas', l);    scheduleServerSync(); }
-
-  // ── Favourites (per-movie + per-screening) ────────────────────────────────
-  //
-  // Two parallel sets:
-  //   - favouriteMovies:     titles (the .col[data-title] string)
-  //   - favouriteScreenings: stable per-pill ids
-  //                          ("title|cinema|ISO-datetime", set on the
-  //                          badge's data-screening-id attribute server-side)
-  //
-  // Cookies were the spec — localStorage is what we use here because the
-  // hidden-films / disabled-cinemas migration above proved cookies silently
-  // drop writes past the ~4 KB cap, which per-screening favourites would hit
-  // quickly. /ulubione's filter runs client-side; the server never sees the
-  // list. `IS_FAVOURITES_PAGE` is set by the page template (true on /ulubione,
-  // false on /), and applyFilters() consults it.
-
-  function getFavMovies()        { return _lsGet('favouriteMovies')     || []; }
-  function setFavMovies(titles)  { _lsSet('favouriteMovies',     titles); scheduleServerSync(); }
-  function getFavScreenings()    { return _lsGet('favouriteScreenings') || []; }
-  function setFavScreenings(ids) { _lsSet('favouriteScreenings', ids);   scheduleServerSync(); }
-
-  function toggleFavMovie(btn) {
-    const title = btn.closest('[data-title]').dataset.title;
-    const cur   = getFavMovies();
-    const idx   = cur.indexOf(title);
-    if (idx >= 0) cur.splice(idx, 1); else cur.push(title);
-    setFavMovies(cur);
-    btn.classList.toggle('is-fav', idx < 0);
-    if (idx < 0) maybeShowAnonymousNag();   // only nag when ADDING a favourite, not removing
-    // Re-filter only on the ulubione page — on the main page nothing should
-    // disappear when you star a movie (it just toggles the visual state).
-    if (IS_FAVOURITES_PAGE) preserveScroll(() => applyFilters());
-  }
-
-  // Pill star click — runs inside an <a class="badge-time">, so we have to
-  // stop the booking-link navigation from firing too.
-  function toggleFavScreening(event, star) {
-    event.preventDefault();
-    event.stopPropagation();
-    const badge = star.closest('.badge-time');
-    if (!badge) return;
-    const id  = badge.dataset.screeningId;
-    const cur = getFavScreenings();
-    const idx = cur.indexOf(id);
-    if (idx >= 0) cur.splice(idx, 1); else cur.push(id);
-    setFavScreenings(cur);
-    star.classList.toggle('is-fav', idx < 0);
-    if (idx < 0) maybeShowAnonymousNag();   // only on ADD, not remove
-    if (IS_FAVOURITES_PAGE) preserveScroll(() => applyFilters());
-    // Toggle changes the pill's permanent width (is-fav stars are always
-    // visible); the row may need a fresh end-of-row pre-wrap pass.
-    scheduleReflow();
-  }
-
-  // One document-level delegated listener for every `.fav-star` click,
-  // instead of an inline `onclick="toggleFavScreening(event, this)"` on
-  // each of the ~2,600 showtime spans the / page renders. The byte
-  // savings on the wire are modest (~30 KB gzipped) but the browser
-  // also stops materialising ~2,600 per-element function references
-  // during HTML parse — a real CPU / heap win on mobile. Uses `closest`
-  // so the click target can be the ★ glyph node itself or anything
-  // inside the span (currently it's just text, but future styling
-  // wrappers don't break the handler).
-  document.addEventListener('click', e => {
-    const star = e.target.closest('.fav-star');
-    if (star) toggleFavScreening(e, star);
-  });
-
-  // On boot: paint the existing favourite state onto every star in the
-  // freshly-rendered DOM. Runs once before applyFilters() so the filter on
-  // /ulubione sees the right .is-fav classes.
-  function paintFavourites() {
-    const favMovies     = new Set(getFavMovies());
-    const favScreenings = new Set(getFavScreenings());
-    document.querySelectorAll('.col[data-title]').forEach(col => {
-      const btn = col.querySelector('.fav-poster-btn');
-      if (btn) btn.classList.toggle('is-fav', favMovies.has(col.dataset.title));
-    });
-    document.querySelectorAll('.badge-time[data-screening-id]').forEach(badge => {
-      const star = badge.querySelector('.fav-star');
-      if (star) star.classList.toggle('is-fav', favScreenings.has(badge.dataset.screeningId));
-    });
-  }
-
-  // ── End-of-row pre-wrap for fav-star hover ───────────────────────────────
-  //
-  // Pills are compact at rest; the star adds width on hover. Without this,
-  // the last pill on a wrap-row would expand under the cursor and jump to
-  // the next line. We scan each cinema-group, find the rightmost pill on
-  // each row, and if its remaining row-space is less than the star width
-  // we add `.needs-star-room` (CSS adds the equivalent padding-right). The
-  // padding pushes the pill onto the next line BEFORE the user hovers —
-  // when they hover, the star slides into the now-existing slack and the
-  // pill stays put.
-  //
-  // Iterates up to 3 passes: adding the class on one pill can shift row
-  // membership and make a previously mid-row pill the new end-of-row, so
-  // a second / third pass picks up cascade cases.
-  const _STAR_WIDTH_PX = 18;
-  // Hover doesn't fire on touch devices — the hover-expand CSS is gated
-  // by `@media (hover: hover)`, so the pre-wrap calculation does nothing
-  // useful there. Skip the entire reflow on touch. Caching the
-  // matchMedia result at boot saves a media-query lookup per call; the
-  // value never changes for the lifetime of a tab (devices don't grow
-  // hover support mid-session). On desktop where it does matter, the
-  // reflow runs as before.
-  const _hasHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
-  function reflowFavStarSpacing() {
-    if (!_hasHover) return;
-    document.querySelectorAll('.cinema-group').forEach(group => {
-      // Cheap ancestor-visibility short-circuit. One layout read per
-      // group, vs N per-badge `offsetParent` + `getComputedStyle` reads
-      // (each of which would have forced a synchronous style/layout
-      // recompute). A group inside a hidden section/col has rect.width = 0.
-      const groupRect = group.getBoundingClientRect();
-      if (groupRect.width === 0) return;
-      // `style.display` is set by `applyFilters → setVisible` and reads
-      // from the cached attribute — no layout flush. The earlier
-      // `b.classList.contains('hidden')` check was dead (no code writes
-      // a `.hidden` class to badges anywhere in the app).
-      const badges = [...group.querySelectorAll('.badge-time')].filter(b =>
-        b.style.display !== 'none'
-      );
-      if (!badges.length) return;
-      badges.forEach(b => b.classList.remove('needs-star-room'));
-      for (let pass = 0; pass < 3; pass++) {
-        let changed = false;
-        // `.needs-star-room` only widens an end-of-row badge by 18 px of
-        // padding-right — the group's outer width is unchanged across
-        // passes, so the rect we already read is good for every pass.
-        const containerRight = groupRect.right;
-        for (let i = 0; i < badges.length; i++) {
-          const b = badges[i];
-          // Favourited pills already have the star permanently visible, so
-          // their full width is already in the wrap calc — skip.
-          const star = b.querySelector('.fav-star');
-          if (star && star.classList.contains('is-fav')) continue;
-          const next = badges[i + 1];
-          const rect = b.getBoundingClientRect();
-          const isEndOfRow = !next || next.getBoundingClientRect().top > rect.top;
-          if (!isEndOfRow) continue;
-          if (containerRight - rect.right >= _STAR_WIDTH_PX) continue;
-          // Push the would-jump pill onto its own row by adding the margin
-          // to the PREVIOUS sibling on the same row — that way the 18 px
-          // hangs off the right edge of the old row (past `containerRight`,
-          // so invisible) and the would-jump pill drops cleanly to the next
-          // row with no leading gap. If there's no previous same-row pill
-          // (this one is alone on its row), we can't prevent the jump
-          // without visible side-effects — accept it for the degenerate
-          // case.
-          const prev = badges[i - 1];
-          if (prev && prev.getBoundingClientRect().top === rect.top
-              && !prev.classList.contains('needs-star-room')) {
-            prev.classList.add('needs-star-room');
-            changed = true;
-          }
-        }
-        if (!changed) break;
-      }
-    });
-  }
-
-  // Debounce a reflow call. Used by applyFilters() and the toggle handlers
-  // (every filter / star click can change which pill is end-of-row); also
-  // by the resize listener. Same setTimeout id for both paths.
-  let _reflowDebounce = 0;
-  function scheduleReflow(delayMs) {
-    clearTimeout(_reflowDebounce);
-    _reflowDebounce = setTimeout(reflowFavStarSpacing, delayMs || 16);
-  }
-  window.addEventListener('resize', () => scheduleReflow(120));
-
-  const ALL_CINEMAS = ["Cinema City Kinepolis","Cinema City Poznań Plaza","Helios Posnania","Kino Apollo","Kino Bułgarska 19","Kino Malta Charlie Monroe","Kino Muza","Kino Pałacowe","Kino Rialto","Multikino Stary Browar"];
-
-  // ── Hidden-films panel ────────────────────────────────────────────────────
-
-  function updateNavbar() {
-    const hidden = getHidden();
-    const btn = document.getElementById('show-hidden-btn');
-    const panel = document.getElementById('hidden-panel');
-    if (hidden.length > 0) {
-      btn.style.setProperty('display', 'inline-flex', 'important');
-      btn.textContent = hidden.length + ' ukrytych';
-      const list = document.getElementById('hidden-panel-list');
-      list.innerHTML = '';
-      hidden.forEach(title => {
-        const item = document.createElement('div');
-        item.className = 'panel-item';
-        item.textContent = title;
-        item.title = title;
-        item.onclick = () => restoreFilm(title);
-        list.appendChild(item);
-      });
-    } else {
-      btn.style.setProperty('display', 'none', 'important');
-      panel.style.display = 'none';
-    }
-  }
-
-  function clampPanel(panel) {
-    panel.style.right = '0px';
-    const rect = panel.getBoundingClientRect();
-    if (rect.left < 8) panel.style.right = (rect.left - 8) + 'px';
-  }
-
-  // ── Auth dropdown + login modal ──────────────────────────────────────────
-  //
-  // Both surfaces stop event propagation so the document-level "click
-  // outside → close" handler defined below doesn't fire-close them on
-  // the same click that opens them.
-
-  function toggleAuthMenu(event) {
-    event.stopPropagation();
-    const menu = document.getElementById('auth-menu');
-    if (menu) menu.classList.toggle('open');
-  }
-  function closeAuthMenu() {
-    const menu = document.getElementById('auth-menu');
-    if (menu) menu.classList.remove('open');
-  }
-
-  function openLoginModal() {
-    const m = document.getElementById('login-modal-backdrop');
-    if (m) m.classList.add('open');
-  }
-  function closeLoginModal() {
-    const m = document.getElementById('login-modal-backdrop');
-    if (m) m.classList.remove('open');
-  }
-  // ESC closes the modal — same UX every other modal in the world has.
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      closeLoginModal();
-      closeAuthMenu();
-    }
-  });
-
-  function toggleHiddenPanel(event) {
-    event.stopPropagation();
-    const panel = document.getElementById('hidden-panel');
-    const opening = panel.style.display === 'none';
-    closeOtherPanels(opening ? panel : null);
-    panel.style.display = opening ? 'block' : 'none';
-    if (opening) clampPanel(panel);
-  }
-
-  function hideFilm(btn) {
-    // No scrollY snapshot needed: the sort function's subsequence check
-    // (see `isSubsequence` below) skips the DOM rebuild when cards only got
-    // hidden, so the browser's scroll anchor stays put.
-    const title = btn.closest('[data-title]').dataset.title;
-    const hidden = getHidden();
-    if (!hidden.includes(title)) {
-      hidden.push(title);
-      setHidden(hidden);
-      maybeShowAnonymousNag();  // hide is the other "this will only stick on this device" action
-    }
-    applyFilters();
-    updateNavbar();
-  }
-
-  function restoreFilm(title) {
-    preserveScroll(() => {
-      setHidden(getHidden().filter(t => t !== title));
-      applyFilters();
-      updateNavbar();
-    });
-  }
-
-  function showAllFilms() {
-    preserveScroll(() => {
-      setHidden([]);
-      applyFilters();
-      updateNavbar();
-    });
-  }
-
-  // Wraps a DOM-rebuilding action so the viewport stays put. Used by the
-  // restore-film paths where a card moves from hidden back into the sorted
-  // grid — appendChild detaches+reattaches every visible card and the
-  // browser's scroll anchor can't survive that. The hide path doesn't need
-  // this because its rebuild is skipped via the subsequence check.
-  function preserveScroll(fn) {
-    const y = window.scrollY;
-    fn();
-    window.scrollTo(0, y);
-  }
-
-  // True when `sub` (the new desired visible order) is an in-order subset of
-  // `full` (the order applied at the last rebuild). When true, the visible
-  // cards' relative DOM order is already correct — some entries just became
-  // hidden, but display:none keeps them out of layout so their position is
-  // irrelevant. Skipping the rebuild in that case is what stops the X-button
-  // from briefly jumping the scroll position to the top of the page.
-  function isSubsequence(sub, full) {
-    let j = 0;
-    for (let i = 0; i < full.length && j < sub.length; i++) {
-      if (full[i] === sub[j]) j++;
-    }
-    return j === sub.length;
-  }
-
-  // ── Cinema-filter panel ───────────────────────────────────────────────────
-
-  function buildCinemaPanel() {
-    const list = document.getElementById('cinema-list');
-    // /kina hides the Filtry-side Kina section entirely (its pills row
-    // owns the same state). Bail when the DOM isn't there instead of
-    // throwing on the null `list`.
-    if (!list) return;
-    const disabled = getDisabledCinemas();
-    list.innerHTML = '';
-    ALL_CINEMAS.forEach(cinema => {
-      const label = document.createElement('label');
-      label.className = 'panel-label';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = !disabled.includes(cinema);
-      cb.onchange = () => {
-        const dis = getDisabledCinemas();
-        if (cb.checked) {
-          setDisabledCinemas(dis.filter(c => c !== cinema));
-        } else {
-          if (!dis.includes(cinema)) dis.push(cinema);
-          setDisabledCinemas(dis);
-        }
-        syncAllCheckbox();
-        updateFormatBtn();   // cinema count is part of the Filtry label now
-        applyFilters();
-      };
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(' ' + cinema));
-      list.appendChild(label);
-    });
-    syncAllCheckbox();
-  }
-
-  function syncAllCheckbox() {
-    const allCb = document.getElementById('cinema-all');
-    if (!allCb) return;  // /kina has no Wszystkie-kina checkbox.
-    const disabled = getDisabledCinemas();
-    allCb.checked = disabled.length === 0;
-    allCb.indeterminate = disabled.length > 0 && disabled.length < ALL_CINEMAS.length;
-  }
-
-  // Cinema picker now lives inside the Filtry dropdown; no standalone
-  // open/close handler. `buildCinemaPanel` populates the same `#cinema-list`
-  // element (just re-parented into `#format-panel`), so no changes needed
-  // there. The cinema-count summary surfaces in `updateFormatBtn` instead.
-
-  function toggleAllCinemas(checked) {
-    setDisabledCinemas(checked ? [] : ALL_CINEMAS.slice());
-    buildCinemaPanel();
-    applyFilters();
-  }
-
-  // ── Room tooltip ──────────────────────────────────────────────────────────
-
-  const _roomTooltip = document.createElement('div');
-  _roomTooltip.id = 'room-tooltip';
-  document.body.appendChild(_roomTooltip);
-
-  function showRoomTooltip(badge) {
-    _roomTooltip.textContent = badge.dataset.room;
-    _roomTooltip.style.display = 'block';
-
-    const badgeRect = badge.getBoundingClientRect();
-    const tipW      = _roomTooltip.offsetWidth;
-    const tipH      = _roomTooltip.offsetHeight;
-    const cardLeft  = (badge.closest('.card') || badge).getBoundingClientRect().left;
-
-    const left = Math.max(cardLeft, badgeRect.left + badgeRect.width / 2 - tipW / 2);
-    _roomTooltip.style.left = left + 'px';
-    _roomTooltip.style.top  = (badgeRect.top - tipH - 4) + 'px';
-  }
-
-  function hideRoomTooltip() { _roomTooltip.style.display = 'none'; }
-
-  // Desktop hover
-  document.addEventListener('mouseover', e => {
-    const b = e.target.closest('.badge-time[data-room]');
-    if (b) showRoomTooltip(b); else hideRoomTooltip();
-  });
-
-  // Mobile long-press
-  let _roomTimer = null;
-
-  document.addEventListener('touchstart', e => {
-    const badge = e.target.closest('.badge-time[data-room]');
-    if (!badge) return;
-    _roomTimer = setTimeout(() => {
-      showRoomTooltip(badge);
-      setTimeout(hideRoomTooltip, 2000);
-    }, 500);
-  }, { passive: true });
-
-  document.addEventListener('touchend',  () => { clearTimeout(_roomTimer); _roomTimer = null; }, { passive: true });
-  document.addEventListener('touchmove', () => { clearTimeout(_roomTimer); _roomTimer = null; }, { passive: true });
-
-  // ── Keyboard navigation ───────────────────────────────────────────────────
-
-  document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
-    if (e.key === 'ArrowLeft')  stepDate(-1);
-    if (e.key === 'ArrowRight') stepDate(1);
-  });
-
-  // ── Global click: close panels ────────────────────────────────────────────
-
-  document.addEventListener('click', () => {
-    document.getElementById('hidden-panel').style.display = 'none';
-    document.getElementById('format-panel').style.display = 'none';
-    closeAuthMenu();
-  });
-
-  // ── Counter ───────────────────────────────────────────────────────────────
-
-  function updateCounter(visibleCount, showtimeCount) {
-    const noFilms = document.getElementById('no-films');
-    const counter = document.getElementById('film-counter');
-    if (visibleCount === 0) {
-      // On /ulubione with no favourites stored at all, point the user at
-      // the action instead of saying the catalogue is empty.
-      const onFavPage   = typeof IS_FAVOURITES_PAGE !== 'undefined' && IS_FAVOURITES_PAGE;
-      const noFavsAtAll = onFavPage && getFavMovies().length === 0 && getFavScreenings().length === 0;
-      noFilms.textContent = noFavsAtAll
-        ? 'Brak ulubionych. Dodaj ulubione filmy lub seanse na innych stronach.'
-        : 'Brak repertuaru.';
-      noFilms.style.display = '';
-      counter.style.display = 'none';
-    } else {
-      noFilms.style.display = 'none';
-      counter.textContent = visibleCount + ' tytuł(ów) · ' + showtimeCount + ' seansów';
-      counter.style.display = '';
-    }
-  }
-
-  // ── Date helpers ──────────────────────────────────────────────────────────
-
-  function isoAddDays(isoDate, n) {
-    const [y, m, d] = isoDate.split('-').map(Number);
-    return new Date(y, m - 1, d + n).toLocaleDateString('sv');
-  }
-
-  const DAY2   = ['Nie', 'Pon', 'Wto', 'Śro', 'Czw', 'Pią', 'Sob'];
-  const MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca',
-                  'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
-
-  let _cachedDay = null, _cachedToday, _cachedTomorrow, _cachedIn7Days;
-
-  function dateBounds() {
-    const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
-    if (today !== _cachedDay) {
-      _cachedDay      = today;
-      _cachedToday    = today;
-      _cachedTomorrow = isoAddDays(today, 1);
-      _cachedIn7Days  = isoAddDays(today, 6);
-    }
-    return { today: _cachedToday, tomorrow: _cachedTomorrow, in7Days: _cachedIn7Days };
-  }
-
-  function populateDayOptions() {
-    const select  = document.getElementById('date-filter');
-    const weekOpt = select.querySelector('option[value="week"]');
-    const today   = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
-    for (let i = 2; i <= 6; i++) {
-      const iso = isoAddDays(today, i);
-      const [y, mo, da] = iso.split('-').map(Number);
-      const dow = new Date(y, mo - 1, da).getDay();
-      const opt = document.createElement('option');
-      opt.value = iso;
-      opt.textContent = DAY2[dow] + ' ' + da + ' ' + MONTHS[mo - 1];
-      select.insertBefore(opt, weekOpt);
-    }
-  }
-
-  function stepDate(dir) {
-    const sel  = document.getElementById('date-filter');
-    const next = sel.selectedIndex + dir;
-    if (next >= 0 && next < sel.options.length) { sel.selectedIndex = next; applyFilters(); }
-  }
-
-  function squareDateNavBtns() {
-    const h = document.getElementById('date-filter').offsetHeight;
-    document.querySelectorAll('.date-nav-btn').forEach(b => {
-      b.style.width  = h + 'px';
-      b.style.height = h + 'px';
-    });
-  }
-
-  // ── Server sync for logged-in users ──────────────────────────────────────
-  //
-  // When the user is logged in, localStorage is still the in-page truth
-  // (every read goes there for zero-latency) but every write also
-  // debounces a PUT to /api/me/state so the server stays in sync. The
-  // boot path does a one-time GET + union merge with whatever's in
-  // localStorage so the device's local favourites land on the account
-  // immediately ("migrate on page entry" semantics from the spec) and
-  // any state added on other devices appears here.
-
-  let _serverSyncTimer = 0;
-  function scheduleServerSync() {
-    if (!IS_LOGGED_IN) return;
-    clearTimeout(_serverSyncTimer);
-    // 400ms — long enough to batch a burst of toggles (clicking through
-    // 5 stars rapidly produces one PUT), short enough that closing the
-    // tab right after a single click still gets the write through.
-    _serverSyncTimer = setTimeout(pushStateToServer, 400);
-  }
-
-  function pushStateToServer() {
-    fetch('/api/me/state', {
-      method:  'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        favouriteMovies:     getFavMovies(),
-        favouriteScreenings: getFavScreenings(),
-        hiddenFilms:         getHidden(),
-        disabledCinemas:     getDisabledCinemas()
-      })
-    }).catch(() => { /* offline / 401 — localStorage still has the write */ });
-  }
-
-  // Boot-time merge: pull server state, union with whatever's currently
-  // in localStorage, write the union back to BOTH layers. Runs once on
-  // every page load for logged-in users — cheap (one GET, one PUT, both
-  // tiny payloads), idempotent (a no-change union still sends the same
-  // payload; server-side last-write-wins is fine here), and exactly the
-  // behaviour the spec asked for.
-  async function bootMergeFromServer() {
-    if (!IS_LOGGED_IN) return;
-    try {
-      const resp = await fetch('/api/me/state', { headers: { 'Accept': 'application/json' } });
-      if (!resp.ok) return;
-      const remote = await resp.json();
-      const merge  = (local, srv) => [...new Set([...(local || []), ...(srv || [])])].sort();
-
-      // Write through the underlying _lsSet, NOT via setFavMovies — the
-      // wrapped setters would each fire their own scheduleServerSync(),
-      // racing 4 PUTs at boot. After the merge we issue one explicit
-      // pushStateToServer() at the end.
-      _lsSet('favouriteMovies',     merge(getFavMovies(),        remote.favouriteMovies));
-      _lsSet('favouriteScreenings', merge(getFavScreenings(),    remote.favouriteScreenings));
-      _lsSet('hiddenFilms',         merge(getHidden(),           remote.hiddenFilms));
-      _lsSet('disabledCinemas',     merge(getDisabledCinemas(),  remote.disabledCinemas));
-
-      pushStateToServer();
-      paintFavourites();  // repaint with the unioned state
-      applyFilters();     // hidden / disabled-cinemas may have grown
-    } catch (e) { /* network blew up — localStorage is still usable */ }
-  }
-
-  // ── Anonymous nag toast (once per day) ──────────────────────────────────
-  //
-  // First time an anonymous user favourites or hides something on a given
-  // calendar day, surface a one-liner explaining their action is
-  // browser-local. The toast self-dismisses on click of × or after 8s;
-  // clicking the body opens the login modal. Skipped entirely when no
-  // OAuth providers are configured (local dev with no secrets has nothing
-  // to log into).
-
-  function maybeShowAnonymousNag() {
-    if (IS_LOGGED_IN || !HAS_OAUTH_PROVIDERS) return;
-    const lastAt = parseInt(localStorage.getItem('lastAnonymousNagAt') || '0', 10);
-    const dayMs  = 24 * 60 * 60 * 1000;
-    if (Date.now() - lastAt < dayMs) return;
-    localStorage.setItem('lastAnonymousNagAt', Date.now().toString());
-    showAnonymousNag();
-  }
-
-  let _nagDismissTimer = 0;
-  function showAnonymousNag() {
-    const toast = document.getElementById('anon-nag-toast');
-    if (!toast) return;
-    toast.classList.add('open');
-    clearTimeout(_nagDismissTimer);
-    _nagDismissTimer = setTimeout(closeAnonymousNag, 8000);
-  }
-  function closeAnonymousNag() {
-    const toast = document.getElementById('anon-nag-toast');
-    if (toast) toast.classList.remove('open');
-  }
-
-  // ── Init ──────────────────────────────────────────────────────────────────
-
-  document.addEventListener('DOMContentLoaded', () => {
-    buildIndex();
-    populateDayOptions();
-    squareDateNavBtns();
-    updateNavbar();
-    // Cinema picker lives in the Filtry dropdown now — populate the list
-    // at boot so the first open of Filtry has the checkboxes ready.
-    buildCinemaPanel();
-    updateFormatBtn();
-    paintFavourites();
-    applyFilters();
-    bootMergeFromServer();
-  });
-</script>
-
-<script>
-  // True only on /ulubione — toggles the favourites-filter branch in
-  // applyFilters(). On /, the same page renders unfiltered.
-  const IS_FAVOURITES_PAGE = true;
-
-  // ── DOM index ─────────────────────────────────────────────────────────────
-
-  let INDEX = null;
-
-  function buildIndex() {
-    const grid = document.getElementById('film-grid');
-    INDEX = [...grid.querySelectorAll('.col[data-title]')].map(col => ({
-      el:       col,
-      title:    col.dataset.title.toLowerCase(),
-      rawTitle: col.dataset.title,
-      visible:  true,  // remembered so we only write style.display on changes
-      groups:   [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
-        el:           group,
-        date:         group.dataset.date,
-        visible:      true,
-        cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg => ({
-          el:      cg,
-          cinema:  cg.dataset.cinema,
-          visible: true,
-          // Pre-parse each badge's format tokens into a Set + a numeric
-          // minutes-since-midnight for the time filter. Re-reading
-          // dataset.format / parsing "HH:MM" on every filter pass adds up —
-          // these never change.
-          badges:  [...cg.querySelectorAll('.badge-time')].map(b => {
-            // `data-time` is the canonical clock string injected by the
-            // template. We used to read it from `b.firstChild.textContent`,
-            // but the per-screening fav star (a leading `<span>`) now occupies
-            // that position, so the parse fell back to -1 for every badge.
-            const t = (b.dataset.time || '').trim();
-            const colon = t.indexOf(':');
-            const timeMin = colon > 0
-              ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10)
-              : -1;   // -1 = "no parseable time"; never filtered out
-            return {
-              el:          b,
-              time:        t,
-              timeMin:     timeMin,
-              formats:     new Set((b.dataset.format || '').split(' ').filter(Boolean)),
-              screeningId: b.dataset.screeningId || '',
-              visible:     true
-            };
-          })
-        }))
-      }))
-    }));
-  }
-
-  // ── Master filter ─────────────────────────────────────────────────────────
-
-  // Helper: only write style.display when the visibility actually changed —
-  // avoids triggering layout when nothing moved.
-  function setVisible(node, want) {
-    if (node.visible !== want) {
-      node.el.style.display = want ? '' : 'none';
-      node.visible = want;
-    }
-  }
-
-  // Last-applied DOM order of VISIBLE cards (by their INDEX position).
-  // Hidden cards never appear here — they're display:none and their DOM
-  // position is irrelevant to layout. The subsequence check below uses this
-  // to decide when the rebuild is a no-op.
-  let _prevVisibleOrder = [];
-
-  function applyFilters() {
-    if (!INDEX) return;
-    const filter    = document.getElementById('date-filter').value;
-    const query     = (document.getElementById('search-input').value || '').trim().toLowerCase();
-    const hidden    = new Set(getHidden());
-    const disabled  = new Set(getDisabledCinemas());
-    const fmtTokens = getFormatFilter();
-    const hasFmt    = fmtTokens.length > 0;
-    const fromMin   = getFromMinutes();
-    const hasFrom   = fromMin !== null;
-    // Favourites: on /ulubione, every other filter still applies, AND a
-    // movie is visible only if it's in `favMovies` OR has at least one
-    // screening in `favScreenings`. Per-badge filter: visible if its parent
-    // movie is a favourite, or its own screeningId is favourited.
-    const favMode       = IS_FAVOURITES_PAGE;
-    const favMovies     = favMode ? new Set(getFavMovies())     : null;
-    const favScreenings = favMode ? new Set(getFavScreenings()) : null;
-    const { today, tomorrow, in7Days } = dateBounds();
-
-    const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
-    const dateOk = filter === 'today'    ? d => d === today :
-                   filter === 'tomorrow' ? d => d === tomorrow :
-                   filter === 'week'     ? d => d >= today && d <= in7Days :
-                   isSpecific            ? d => d === filter :
-                                           _  => true;
-
-    let visibleCount = 0, showtimeCount = 0;
-    const earlyMap = new Array(INDEX.length);
-
-    for (let i = 0; i < INDEX.length; i++) {
-      const col = INDEX[i];
-      if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))) {
-        setVisible(col, false);
-        earlyMap[i] = null;
-        continue;
-      }
-      // Favourites mode: a whole-movie favourite shows ALL screenings;
-      // otherwise only individually-favourited screenings show. Compute
-      // once per col so the inner badge loop just checks the set.
-      const colMovieFav = favMode && favMovies.has(col.rawTitle);
-
-      let colVisible = false, colEarliest = null;
-
-      for (const group of col.groups) {
-        if (!dateOk(group.date)) { setVisible(group, false); continue; }
-
-        let groupVisible = false;
-        for (const cg of group.cinemaGroups) {
-          if (disabled.has(cg.cinema)) { setVisible(cg, false); continue; }
-
-          let cgVisibleCount = 0, cgFirstTime = null;
-          const needsBadgeLoop = hasFmt || hasFrom || favMode;
-          if (needsBadgeLoop) {
-            for (const badge of cg.badges) {
-              const fmtOk  = !hasFmt  || badgeFormatMatch(badge.formats, fmtTokens);
-              const timeOk = !hasFrom || badge.timeMin < 0 || badge.timeMin >= fromMin;
-              const favOk  = !favMode || colMovieFav || favScreenings.has(badge.screeningId);
-              const ok = fmtOk && timeOk && favOk;
-              setVisible(badge, ok);
-              if (ok) {
-                cgVisibleCount++;
-                if (!cgFirstTime) cgFirstTime = group.date + 'T' + badge.time;
-              }
-            }
-          } else {
-            // Fast-path: no filter constraints, every badge in this cinema-group is on.
-            for (const badge of cg.badges) setVisible(badge, true);
-            cgVisibleCount = cg.badges.length;
-            if (cg.badges.length > 0) cgFirstTime = group.date + 'T' + cg.badges[0].time;
-          }
-
-          if (cgVisibleCount > 0) {
-            setVisible(cg, true);
-            groupVisible = true;
-            showtimeCount += cgVisibleCount;
-            if (cgFirstTime && (!colEarliest || cgFirstTime < colEarliest))
-              colEarliest = cgFirstTime;
-          } else {
-            setVisible(cg, false);
-          }
-        }
-
-        setVisible(group, groupVisible);
-        if (groupVisible) colVisible = true;
-      }
-
-      if (colVisible) {
-        setVisible(col, true);
-        visibleCount++;
-        earlyMap[i] = colEarliest;
-      } else {
-        setVisible(col, false);
-        earlyMap[i] = null;
-      }
-    }
-
-    sortByEarliestVisible(earlyMap);
-    updateCounter(visibleCount, showtimeCount);
-    // Visibility may have changed which pill is end-of-row on each line.
-    // Debounced so a burst of input events (typing in the search box) only
-    // triggers one measurement pass after the DOM settles.
-    scheduleReflow();
-  }
-
-  function sortByEarliestVisible(earlyMap) {
-    // Only the VISIBLE cards' DOM order matters — hidden ones are display:none
-    // and don't participate in layout. Sort just those by earliest showtime.
-    const visible = [];
-    for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);
-    visible.sort((a, b) => {
-      const ta = earlyMap[a], tb = earlyMap[b];
-      return ta < tb ? -1 : ta > tb ? 1 : (a - b);
-    });
-
-    // Skip the rebuild when the new order is a subsequence of the last applied
-    // one — i.e. cards only became hidden, the remaining ones are in the same
-    // relative position in the DOM. This is what keeps `hideFilm` jump-free:
-    // appendChild detaches+reattaches every visible card and breaks the
-    // browser's scroll anchor; we'd rather not touch the DOM at all.
-    if (isSubsequence(visible, _prevVisibleOrder)) return;
-    _prevVisibleOrder = visible;
-
-    const grid = document.getElementById('film-grid');
-    const frag = document.createDocumentFragment();
-    for (const i of visible) frag.appendChild(INDEX[i].el);
-    grid.appendChild(frag);
-  }
-</script>
 </body>
 </html>
