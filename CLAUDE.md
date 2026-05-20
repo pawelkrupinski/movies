@@ -373,8 +373,11 @@ Stop and ask only when something can't be undone cheaply:
   anything already on origin). Always ask, even if I just pushed it
   myself five minutes ago.
 - Destructive ops with no easy backout: dropping a Mongo collection,
-  truncating a table, deleting branches, `rm -rf` outside `target/`,
-  killing live machines.
+  truncating a table, deleting branches, `rm -rf` outside `target/`.
+  (Killing live Fly machines is NOT in this bucket — see "Short prod
+  downtime is fine" below; a destroyed machine is one `flyctl machine
+  create` / next deploy away from coming back, and brief downtime is
+  acceptable.)
 - Committing files that might carry secrets (`.env.local`,
   credentials, API keys). Stage by explicit path; flag and ask before
   staging anything that smells like a secret.
@@ -388,6 +391,30 @@ test green, even a manual `flyctl deploy` to roll prod back to a
 known-good image during an incident — just do it. If a push triggers
 CI and CI fails, fix forward in the next commit; don't undo the
 push.
+
+### Short prod downtime is fine
+
+Brief downtime in prod — up to ~15 minutes, ideally — is acceptable
+if it gets the change done sooner. Don't dance around clone-swap
+orchestrations, blue/green cutovers, or per-machine canary stages
+just to keep `kinowo.fly.dev` answering 200s the whole time. For a
+hobby-traffic app on a free-tier-ish machine the cost of "the page
+404s for two minutes while a new machine boots" is virtually nothing;
+the cost of building a zero-downtime sequence is real engineering
+time the user would rather you spend elsewhere.
+
+Concretely: when moving a Fly machine to a new region, swapping a
+process under live traffic, redeploying after a config change, or
+similar prod-touching lifecycle ops — just `destroy` and `create`
+(or its equivalent). Watch CI for the deploy to roll, sanity-check
+the result, move on. Don't ask permission first; downtime under 15
+min is in the "everything else" bucket above.
+
+This is about LIFECYCLE — destroying machines, restarting processes,
+brief 5xx windows during a redeploy. Destructive *data* ops
+(dropping a Mongo collection, truncating a table, deleting branches)
+still need explicit confirmation per the rule above; downtime is
+recoverable, data isn't.
 
 If you commit but defer the push for some reason (e.g. you noticed
 something to fix in the next breath), say so out loud in the same
