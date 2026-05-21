@@ -105,26 +105,36 @@ struct SearchBar: View {
         .padding(.vertical, 14)
         .modifier(GlassyPillBackground())
         .padding(.horizontal, 24)
-        // No extra bottom padding — the safeAreaInset already
-        // reserves room for the home-indicator zone, so the pill
-        // sits at the lowest point iOS will let it without
-        // colliding with the system gesture area.
+        // Pull the pill 14pt past the safeAreaInset edge into the
+        // home-indicator zone, so it sits thumb-anchored at the
+        // very bottom of the screen. `.offset` only paints lower —
+        // the safeAreaInset still reserves the original layout slot,
+        // so the grid stays out from under the pill above the
+        // home indicator.
+        .offset(y: 14)
     }
 }
 
 // Translucent capsule background. On iOS 26+ uses the Liquid-Glass
 // `.glassEffect` modifier, which refracts the film grid scrolling
 // underneath — that's the "distorting like a fish eye" feel the
-// user asked for. On iOS 16-25 we fall back to `.ultraThinMaterial`,
-// which gives the same translucent pill without the lens-style
-// distortion (closest the pre-26 SDK can produce).
+// user asked for. On iOS 16-25 we fall back to a Capsule filled
+// with `.ultraThinMaterial`. Both paths get dialed-down opacity so
+// the grid shows through more strongly than the default material /
+// glass.
 private struct GlassyPillBackground: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
-            content.glassEffect(in: Capsule())
+            content
+                .glassEffect(in: Capsule())
+                .opacity(0.8)
         } else {
-            content.background(.ultraThinMaterial, in: Capsule())
+            content.background {
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.55)
+            }
         }
     }
 }
