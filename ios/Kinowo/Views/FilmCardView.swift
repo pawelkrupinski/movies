@@ -23,18 +23,18 @@ struct FilmCardView: View {
                 }
                 if !film.ratings.isEmpty {
                     RatingBadgesView(ratings: film.ratings)
+                        // Padding lives BELOW the FlowLayout (rather
+                        // than as VStack spacing or .padding(.top, …)
+                        // on ShowingsView) because FlowLayout's last
+                        // wrapped row was painting too close to the
+                        // next sibling — adding clearance INSIDE the
+                        // RatingBadgesView's frame guarantees the
+                        // bottom of every pill is followed by ≥ 14 pt
+                        // before any neighbour can paint, regardless
+                        // of which row the last pill ended up on.
+                        .padding(.bottom, 14)
                 }
-                // Extra breathing room above the showings section when
-                // ratings sit directly above — without it, a wrapped FW
-                // (or RT) pill's rounded-rect background visually
-                // touches the first day-label ("Czwartek 21 maja"
-                // bleeding into the pill on Obsesja's two-pill stack).
-                // The day label has its own `.padding(.top, 4)` but
-                // that's tuned for between-days spacing inside
-                // ShowingsView; this padding handles the
-                // ratings→showings boundary specifically.
                 ShowingsView(film: film)
-                    .padding(.top, film.ratings.isEmpty ? 0 : 6)
             }
             .padding(12)
         }
