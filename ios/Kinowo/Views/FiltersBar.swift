@@ -27,21 +27,20 @@ struct TopBar: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.ultraThinMaterial)
+        // Tiny top padding so the pills hug the status bar; the
+        // safeAreaInset already reserves the strip above. Larger bottom
+        // padding keeps a small breathing buffer between the bar and the
+        // grid scrolling beneath it.
+        .padding(.top, 2)
+        .padding(.bottom, 8)
+        .modifier(GlassyBackground(shape: Rectangle()))
     }
 }
 
-// Horizontally-scrolling date-filter pills. Lives in the navigation
-// bar's `.principal` toolbar slot (alongside the camera-icon "logo")
-// so the whole top chrome — Filtry button, brand mark, date filter —
-// collapses into a single row instead of stacking a separate
-// safe-area-inset bar below the nav bar.
-//
-// Compact dimensions are deliberate: nav bar slot is ~32pt tall, so
-// pills use a 12pt font + 3pt vertical padding to clear the chrome
-// without clipping descenders. The horizontal ScrollView covers the
-// case where four pills overflow on iPhone-mini-class widths.
+// Horizontally-scrolling date-filter pills. Sits in the middle of
+// the `TopBar` HStack between the 🎬 brand mark and the Filtry icon,
+// inside the top safeAreaInset. The ScrollView covers the case where
+// four pills overflow on iPhone-mini-class widths.
 struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
 
@@ -74,8 +73,8 @@ struct DatePillsRow: View {
 // Bottom safe-area inset: a single floating search pill, styled like
 // the native iOS search field (Settings / Contacts / Mail). No outer
 // chrome container — the pill sits over the grid content with a
-// translucent `regularMaterial` background, so the grid scrolls
-// visibly behind it.
+// translucent `GlassyBackground` (same modifier the TopBar uses), so
+// the grid scrolls visibly behind it.
 struct SearchBar: View {
     @Binding var search: String
     @FocusState.Binding var focused: Bool
@@ -103,7 +102,7 @@ struct SearchBar: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
-        .modifier(GlassyPillBackground())
+        .modifier(GlassyBackground(shape: Capsule()))
         .padding(.horizontal, 24)
         // Pull the pill 14pt past the safeAreaInset edge into the
         // home-indicator zone, so it sits thumb-anchored at the
@@ -115,23 +114,27 @@ struct SearchBar: View {
     }
 }
 
-// Translucent capsule background. On iOS 26+ uses the Liquid-Glass
-// `.glassEffect` modifier, which refracts the film grid scrolling
-// underneath — that's the "distorting like a fish eye" feel the
-// user asked for. On iOS 16-25 we fall back to a Capsule filled
-// with `.ultraThinMaterial`. Both paths get dialed-down opacity so
-// the grid shows through more strongly than the default material /
-// glass.
-private struct GlassyPillBackground: ViewModifier {
+// Translucent background, shape-parameterised. On iOS 26+ uses the
+// Liquid-Glass `.glassEffect` modifier, which refracts the film grid
+// scrolling underneath — that's the "distorting like a fish eye" feel
+// the user asked for on the search pill. On iOS 16-25 we fall back to
+// the underlying shape filled with `.ultraThinMaterial`. Both paths
+// get dialed-down opacity so the grid shows through more strongly than
+// the default material / glass.
+//
+// Used in two places: the search pill (Capsule) and the top bar
+// (Rectangle). Same translucency knob serves both.
+private struct GlassyBackground<S: Shape>: ViewModifier {
+    let shape: S
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
             content
-                .glassEffect(in: Capsule())
+                .glassEffect(in: shape)
                 .opacity(0.8)
         } else {
             content.background {
-                Capsule()
+                shape
                     .fill(.ultraThinMaterial)
                     .opacity(0.55)
             }
