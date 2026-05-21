@@ -33,7 +33,12 @@ struct TopBar: View {
         // grid scrolling beneath it.
         .padding(.top, 2)
         .padding(.bottom, 8)
-        .modifier(GlassyBackground(shape: Rectangle()))
+        // Plain translucent material strip — no glassEffect refraction
+        // edge, no content-wide opacity. Just the background shape gets
+        // dialed down so the grid scrolls visibly behind the bar.
+        .background {
+            Rectangle().fill(.ultraThinMaterial).opacity(0.55)
+        }
     }
 }
 
@@ -73,8 +78,8 @@ struct DatePillsRow: View {
 // Bottom safe-area inset: a single floating search pill, styled like
 // the native iOS search field (Settings / Contacts / Mail). No outer
 // chrome container — the pill sits over the grid content with a
-// translucent `GlassyBackground` (same modifier the TopBar uses), so
-// the grid scrolls visibly behind it.
+// translucent `GlassyPillBackground`, so the grid scrolls visibly
+// behind it.
 struct SearchBar: View {
     @Binding var search: String
     @FocusState.Binding var focused: Bool
@@ -102,7 +107,7 @@ struct SearchBar: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
-        .modifier(GlassyBackground(shape: Capsule()))
+        .modifier(GlassyPillBackground())
         .padding(.horizontal, 24)
         // Pull the pill 14pt past the safeAreaInset edge into the
         // home-indicator zone, so it sits thumb-anchored at the
@@ -114,27 +119,28 @@ struct SearchBar: View {
     }
 }
 
-// Translucent background, shape-parameterised. On iOS 26+ uses the
-// Liquid-Glass `.glassEffect` modifier, which refracts the film grid
-// scrolling underneath — that's the "distorting like a fish eye" feel
-// the user asked for on the search pill. On iOS 16-25 we fall back to
-// the underlying shape filled with `.ultraThinMaterial`. Both paths
-// get dialed-down opacity so the grid shows through more strongly than
-// the default material / glass.
+// Translucent capsule background for the search pill. On iOS 26+ uses
+// the Liquid-Glass `.glassEffect` modifier, which refracts the film
+// grid scrolling underneath — that's the "distorting like a fish eye"
+// feel the user asked for. On iOS 16-25 we fall back to a Capsule
+// filled with `.ultraThinMaterial`. Both paths get dialed-down opacity
+// so the grid shows through more strongly than the default.
 //
-// Used in two places: the search pill (Capsule) and the top bar
-// (Rectangle). Same translucency knob serves both.
-private struct GlassyBackground<S: Shape>: ViewModifier {
-    let shape: S
+// Not used for the top bar — the glassEffect refraction edge + the
+// content-wide opacity made the bar feel like a floating box rather
+// than a flush translucent strip, so the bar uses a plain
+// `Rectangle().fill(.ultraThinMaterial).opacity(0.55)` background
+// inline instead.
+private struct GlassyPillBackground: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
             content
-                .glassEffect(in: shape)
+                .glassEffect(in: Capsule())
                 .opacity(0.8)
         } else {
             content.background {
-                shape
+                Capsule()
                     .fill(.ultraThinMaterial)
                     .opacity(0.55)
             }
