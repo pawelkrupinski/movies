@@ -16,16 +16,14 @@ primary_region = 'arn'
   auto_start_machines = true
   min_machines_running = 1
 
-  # ALPN over Fly's edge TLS. `h3` advertises HTTP/3 via the `Alt-Svc`
-  # header the browser caches on first response; subsequent loads use
-  # QUIC, saving a full RTT on cellular handshakes (~50-100 ms on iOS
-  # Safari). `h2` + `http/1.1` keep fallback paths intact. Before this
-  # change the response had no `Alt-Svc` and the iPhone-Safari beacons
-  # showed TTFB ~280 ms on / vs ~85 ms desktop — almost all of that
-  # delta is RTT-bound and HTTP/3 0/1-RTT handshakes are the only
-  # ALPN-level lever we have here.
+  # ALPN over Fly's edge TLS. Only `h2` and `http/1.1` are valid here —
+  # the field controls TCP TLS handshake protocol negotiation, and HTTP/3
+  # runs over QUIC/UDP (separate listener). Fly's edge advertises h3 via
+  # the `Alt-Svc` response header when the org/app has HTTP/3 enabled at
+  # the proxy level; that's the configuration knob for "HTTP/3 on iOS
+  # Safari," not this `alpn` array.
   [http_service.tls_options]
-    alpn = ['h3', 'h2', 'http/1.1']
+    alpn = ['h2', 'http/1.1']
 
   [http_service.concurrency]
     type = 'requests'
