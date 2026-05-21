@@ -12,22 +12,22 @@ struct TopBar: View {
     let onTapFilters: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Text("🎬")
-                .font(.system(size: 22))
+                .font(.system(size: 28))
             DatePillsRow(dateFilter: $dateFilter)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: onTapFilters) {
                 Image(systemName: filtersActive
                       ? "line.3.horizontal.decrease.circle.fill"
                       : "line.3.horizontal.decrease.circle")
-                    .font(.title2)
+                    .font(.system(size: 28))
                     .foregroundColor(.accentColor)
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
         .background(.ultraThinMaterial)
     }
 }
@@ -47,15 +47,15 @@ struct DatePillsRow: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
                 ForEach(DateFilter.presets, id: \.self) { f in
                     Button {
                         dateFilter = f
                     } label: {
                         Text(f.label)
-                            .font(.system(size: 14, weight: .medium))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .font(.system(size: 16, weight: .medium))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
                             .background(
                                 dateFilter == f
                                     ? Color.accentColor.opacity(0.85)
