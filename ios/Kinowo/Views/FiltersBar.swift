@@ -29,10 +29,16 @@ struct TopBar: View {
                 // is baked into the glyph itself, no painted background.
                 // `.fill` variant swaps in when any filter axis is
                 // active so the icon tells you at a glance.
+                //
+                // Font size 30pt at scale 1.0 visually matches a pill's
+                // total height (14pt text + 2×7pt v-padding ≈ 28pt) — the
+                // SF Symbol's glyph height is a hair smaller than its font
+                // size, so 30pt lands the circle on the same baseline as
+                // the pill capsules either side.
                 Image(systemName: filtersActive
                       ? "line.3.horizontal.decrease.circle.fill"
                       : "line.3.horizontal.decrease.circle")
-                    .font(.system(size: 24 * s))
+                    .font(.system(size: 30 * s))
                     .foregroundStyle(filtersActive ? Color.accentColor : .primary)
             }
             .buttonStyle(BounceButtonStyle())
@@ -107,12 +113,12 @@ struct DatePillsRow: View {
                 .buttonStyle(.plain)
                 if i < DateFilter.presets.count - 1 {
                     // Spacer that grows to spread the pills along the row,
-                    // but capped at ~half the previous natural gap so pills
-                    // sit closer together. Anything leftover above the cap
-                    // becomes trailing/leading slack between the row and the
-                    // surrounding brand / Filtry chrome.
-                    Spacer(minLength: 4 * scale)
-                        .frame(maxWidth: 12 * scale)
+                    // capped tight so pills sit close together. Anything
+                    // leftover above the cap becomes trailing/leading slack
+                    // between the row and the surrounding brand / Filtry
+                    // chrome.
+                    Spacer(minLength: 2 * scale)
+                        .frame(maxWidth: 6 * scale)
                 }
             }
         }
