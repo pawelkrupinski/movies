@@ -362,17 +362,26 @@
 
   const ALL_CINEMAS = @Html(play.api.libs.json.Json.toJson(allCinemas).toString);
 
-  // ── Hidden-films panel ────────────────────────────────────────────────────
+  // ── Hidden-films UI ───────────────────────────────────────────────────────
+  //
+  // The trigger lives as a row inside the Filtry dropdown
+  // (`#hidden-row`). Tapping it opens `#hidden-modal-backdrop` — a
+  // centred modal whose body lists every hidden title. Clicking a
+  // title restores it but leaves the modal open (browse-and-toggle);
+  // `Wyczyść` clears the whole set and closes the modal. `×` and a
+  // backdrop click close without changing the set.
 
   function updateNavbar() {
     const hidden = getHidden();
-    const btn = document.getElementById('show-hidden-btn');
-    const panel = document.getElementById('hidden-panel');
-    if (!btn || !panel) return;  // /ulubione: hidden-films flyout not rendered.
+    const row     = document.getElementById('hidden-row');
+    const divider = document.getElementById('hidden-row-divider');
+    const count   = document.getElementById('hidden-row-count');
+    const list    = document.getElementById('hidden-modal-list');
+    if (!row || !list) return;  // /ulubione: hidden-films UI not rendered.
     if (hidden.length > 0) {
-      btn.style.setProperty('display', 'inline-flex', 'important');
-      btn.textContent = hidden.length + ' ukrytych';
-      const list = document.getElementById('hidden-panel-list');
+      row.style.display = 'flex';
+      if (divider) divider.style.display = '';
+      count.textContent = hidden.length;
       list.innerHTML = '';
       hidden.forEach(title => {
         const item = document.createElement('div');
@@ -383,9 +392,26 @@
         list.appendChild(item);
       });
     } else {
-      btn.style.setProperty('display', 'none', 'important');
-      panel.style.display = 'none';
+      row.style.display = 'none';
+      if (divider) divider.style.display = 'none';
+      // Auto-close if the modal was open with the last title just removed.
+      closeHiddenModal();
     }
+  }
+
+  function openHiddenModal(event) {
+    if (event) event.stopPropagation();
+    // Close the Filtry dropdown so the modal doesn't paint behind a half-
+    // open dropdown panel on small screens. The other navbar dropdowns
+    // get closed too — same idiom as `closeOtherPanels` for opening any
+    // dropdown.
+    closeOtherPanels(null);
+    const m = document.getElementById('hidden-modal-backdrop');
+    if (m) m.classList.add('open');
+  }
+  function closeHiddenModal() {
+    const m = document.getElementById('hidden-modal-backdrop');
+    if (m) m.classList.remove('open');
   }
 
   function clampPanel(panel) {
@@ -422,18 +448,10 @@
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closeLoginModal();
+      closeHiddenModal();
       closeAuthMenu();
     }
   });
-
-  function toggleHiddenPanel(event) {
-    event.stopPropagation();
-    const panel = document.getElementById('hidden-panel');
-    const opening = panel.style.display === 'none';
-    closeOtherPanels(opening ? panel : null);
-    panel.style.display = opening ? 'block' : 'none';
-    if (opening) clampPanel(panel);
-  }
 
   function hideFilm(btn) {
     // No scrollY snapshot needed: the sort function's subsequence check
@@ -464,6 +482,11 @@
       applyFilters();
       updateNavbar();
     });
+    // `updateNavbar` will close the modal when the hidden set is empty
+    // (last-title-removed path covers per-row restoreFilm too), but be
+    // explicit here so the intent reads at the call site: `Wyczyść`
+    // always closes.
+    closeHiddenModal();
   }
 
   // Wraps a DOM-rebuilding action so the viewport stays put. Used by the

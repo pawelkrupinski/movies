@@ -32,25 +32,20 @@
      flyout would show titles that aren't on this page). The JS
      gracefully no-ops when these element ids are missing. *@
   @if(activePage != "favourites") {
-  @* Hidden-films flyout. The button is `display:none!important` at rest;
-     `updateNavbar` flips it inline-flex when there's at least one hidden
-     title. Wrapped in its own position:relative so the dropdown anchors
-     under the button. *@
-  <div class="navbar-hidden" style="position:relative">
-    <button id="show-hidden-btn" onclick="toggleHiddenPanel(event)" class="btn refresh-btn btn-sm" style="display:none!important"></button>
-    <div id="hidden-panel" class="dropdown-panel" style="display:none">
-      <div id="hidden-panel-list"></div>
-      <div class="panel-divider">
-        <button onclick="showAllFilms()" class="btn refresh-btn btn-sm w-100">Pokaż wszystkie</button>
-      </div>
-    </div>
-  </div>
-  }
-
-  @if(activePage != "favourites") {
   <div id="filtry-wrapper" class="navbar-filtry" style="position:relative">
     <button id="format-filter-btn" onclick="toggleFormatPanel(event)" class="btn refresh-btn btn-sm">Filtry</button>
     <div id="format-panel" class="dropdown-panel" style="display:none" onclick="event.stopPropagation()">
+      @* Ukryte-films opener row. Hidden by default; `updateNavbar` flips
+         `display` to flex when there's at least one hidden title and
+         updates the count. Tapping it opens the centered modal (defined
+         alongside the login modal). *@
+      <div id="hidden-row" class="panel-label" style="display:none; justify-content:space-between; align-items:center;"
+           onclick="openHiddenModal(event)">
+        <span>Ukryte filmy</span>
+        <span id="hidden-row-count" class="hidden-row-count"></span>
+      </div>
+      <div id="hidden-row-divider" class="panel-divider" style="display:none"></div>
+
       @* Kina cinema picker — moved here from its own dropdown. Same DOM
          ids (`cinema-all`, `cinema-list`) so the existing
          `buildCinemaPanel`/`toggleAllCinemas` JS keeps working unchanged.

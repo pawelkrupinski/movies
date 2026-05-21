@@ -1,0 +1,25 @@
+@*
+   Centred modal listing every film the user has hidden via the per-card
+   `Ukryj` action. Triggered from the `Ukryte filmy` row inside the
+   Filtry dropdown (see `_navbar.scala.html`). The list is rebuilt by
+   `updateNavbar` on every hidden/restore action, so this template only
+   provides the scaffolding — the `#hidden-modal-list` body is populated
+   by JS.
+
+   Behaviour requirements (set by product):
+   - Clicking a film in the list restores it BUT keeps the modal open
+     (browse-and-toggle interaction).
+   - "Wyczyść" restores every hidden film AND closes the modal.
+   - The `×` close button and a click on the backdrop both close the
+     modal without changing the hidden set.
+*@
+<div class="hidden-modal-backdrop" id="hidden-modal-backdrop" onclick="closeHiddenModal()">
+  <div class="hidden-modal" onclick="event.stopPropagation()">
+    <button type="button" class="login-modal-close" onclick="closeHiddenModal()" aria-label="Zamknij">&times;</button>
+    <div class="login-modal-title">Ukryte filmy</div>
+    <div id="hidden-modal-list" class="hidden-modal-list"></div>
+    <div class="hidden-modal-actions">
+      <button onclick="showAllFilms()" class="btn refresh-btn btn-sm w-100">Wyczyść</button>
+    </div>
+  </div>
+</div>
