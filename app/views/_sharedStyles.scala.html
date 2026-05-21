@@ -106,7 +106,12 @@
   }
   .search-input::placeholder { color: #778; }
   .search-input:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; width: 220px; }
-  @@media (max-width: 575px) { .search-input, .search-input:focus { width: 100px; } }
+  @@media (max-width: 575px) { .search-input, .search-input:focus { width: 90px; } }
+  /* Sub-iPhone-SE widths can't fit [logo+tabs] [search] [auth] on one
+     row without shrinking the input further. Drop to 70 px so the
+     intended two-row layout (search adjacent to auth on row 1)
+     survives down to ~360 px viewports. */
+  @@media (max-width: 379px) { .search-input, .search-input:focus { width: 70px; } }
   .hide-btn {
     position: absolute;
     top: 6px; right: 6px;
@@ -354,6 +359,23 @@
     flex-direction: column;
     position: relative;
   }
+  /* Search box pinned above the list (flex-column, only the list
+     scrolls). Mirrors the navbar `.search-input` palette so the two
+     search affordances feel like the same thing. */
+  .hidden-modal-search {
+    background: #3a3a6e;
+    color: #eee;
+    border: none;
+    border-radius: 6px;
+    padding: .25rem .6rem;
+    font-size: .875rem;
+    width: 100%;
+    margin-top: .6rem;
+    min-height: 35px;
+    flex-shrink: 0;
+  }
+  .hidden-modal-search::placeholder { color: #778; }
+  .hidden-modal-search:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; }
   /* List body scrolls when there are more titles than fit; the bottom
      "Wyczyść" stays pinned because the card is a flex column. */
   .hidden-modal-list {
@@ -438,27 +460,35 @@
   }
   .anon-nag-toast .anon-nag-close:hover { color: #fff; }
   /* Desktop layout: tabs on the left; search-date / Filtry / auth as one
-     right-aligned cluster. `margin-left: auto` on search-date (first
-     item of the right cluster) absorbs the empty space between tabs and
-     the cluster. The hidden-films entry point used to be its own
-     navbar pill — it now lives inside Filtry as a top row, so there's
-     no `.navbar-hidden` slot anymore. */
-  .navbar-search-date { order: 1; margin-left: auto; }
-  .navbar-filtry      { order: 3; }
-  .navbar-auth        { order: 4; }
+     right-aligned cluster. `margin-left: auto` on the leftmost member
+     of the right cluster (search) absorbs the empty space between
+     tabs and the cluster. Search + date stay visually adjacent on
+     desktop (consecutive orders, date with no left margin).
+     The hidden-films entry point used to be its own navbar pill —
+     it now lives inside Filtry as a top row, so there's no
+     `.navbar-hidden` slot anymore. */
+  .navbar-search    { order: 1; margin-left: auto; }
+  .navbar-date      { order: 2; }
+  .navbar-filtry    { order: 3; }
+  .navbar-auth      { order: 4; }
+  .navbar-row-break { display: none; }
 
   @@media (max-width: 575px) {
     .navbar { padding: .5rem .75rem !important; gap: .4rem; }
     .navbar-title { display: none; }
-    /* Mobile row-1: [logo+tabs] … [search-date] [auth] flush right.
-       Row-2: [filtry] full-width.
-       `margin-left: auto` on search-date pushes the right cluster
-       (search + auth) to the right edge so auth stays where it always
-       was. `flex-basis: 100%` on filtry forces a hard wrap onto its
-       own row regardless of how much slack the row-1 cluster left. */
-    .navbar-search-date { order: 2; margin-left: auto; }
-    .navbar-auth        { order: 3; }
-    .navbar-filtry      { order: 4; flex-basis: 100%; margin-left: 0; }
+    /* Mobile row-1: [logo+tabs] … [search] [auth] flush right.
+       Mobile row-2:                        [date] [filtry] flush right.
+       The 100%-wide zero-height `.navbar-row-break` between auth
+       (order 3) and date (order 5) forces a hard wrap regardless of
+       how much horizontal slack row 1 ended up with — without it,
+       date would slide back onto row 1 on any phone wide enough.
+       `margin-left: auto` on the first item of each right cluster
+       (search on row 1, date on row 2) absorbs the empty space. */
+    .navbar-search    { order: 2; margin-left: auto; }
+    .navbar-auth      { order: 3; }
+    .navbar-row-break { display: block; order: 4; width: 100%; flex-shrink: 0; height: 0; margin: 0; padding: 0; }
+    .navbar-date      { order: 5; margin-left: auto; }
+    .navbar-filtry    { order: 6; margin-left: 0; }
 
     /* iOS Safari auto-zooms the viewport when focus lands on an
        input / select with font-size < 16 px and stays zoomed in

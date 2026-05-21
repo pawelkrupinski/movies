@@ -391,12 +391,27 @@
         item.onclick = () => restoreFilm(title);
         list.appendChild(item);
       });
+      // Reapply any in-flight search query so restoring one film from
+      // a filtered list doesn't suddenly show every other hidden title.
+      filterHiddenModal();
     } else {
       row.style.display = 'none';
       if (divider) divider.style.display = 'none';
       // Auto-close if the modal was open with the last title just removed.
       closeHiddenModal();
     }
+  }
+
+  // In-modal title filter. Pure DOM toggle on the already-rendered
+  // panel-items — no re-render, so the user's typed query keeps focus
+  // and caret position across keystrokes.
+  function filterHiddenModal() {
+    const input = document.getElementById('hidden-modal-search');
+    if (!input) return;
+    const q = input.value.trim().toLowerCase();
+    document.querySelectorAll('#hidden-modal-list .panel-item').forEach(item => {
+      item.style.display = q === '' || item.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
   }
 
   function openHiddenModal(event) {
@@ -412,6 +427,9 @@
   function closeHiddenModal() {
     const m = document.getElementById('hidden-modal-backdrop');
     if (m) m.classList.remove('open');
+    // Reset the search on close so the next open shows the full list.
+    const s = document.getElementById('hidden-modal-search');
+    if (s) { s.value = ''; filterHiddenModal(); }
   }
 
   function clampPanel(panel) {

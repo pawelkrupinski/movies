@@ -4,6 +4,7 @@ import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Paths}
 
 /**
  * Minimal embedded HTTP server used by `PageJsBehaviourSpec` to serve
@@ -25,7 +26,33 @@ class TestHttpServer(routes: PartialFunction[String, String]) extends AutoClosea
     override def handle(ex: HttpExchange): Unit = {
       try {
         val path = ex.getRequestURI.getPath
-        routes.lift(path) match {
+        // `/assets/*` is served from `public/*` on disk so the rendered
+        // page can `<link>` Bootstrap CSS in the test the same way prod
+        // does. Tests that assert on rendered geometry (e.g. the mobile
+        // navbar layout test in `PageJsBehaviourSpec`) need this — the
+        // page's flex layout depends entirely on Bootstrap's `.d-flex`
+        // rules; without them the navbar collapses to a vertical stack
+        // and assertions on element rects all fail. HTML routes still
+        // come from `routes`; assets always fall through to disk.
+        if (path.startsWith("/assets/")) {
+          val rel  = path.stripPrefix("/assets/")
+          val file = Paths.get("public").resolve(rel).toAbsolutePath
+          // Guard against `../` traversal — only serve files under
+          // `public/` (resolve + startsWith).
+          val publicRoot = Paths.get("public").toAbsolutePath
+          if (!file.startsWith(publicRoot) || !Files.exists(file)) {
+            ex.sendResponseHeaders(404, -1)
+          } else {
+            val bytes = Files.readAllBytes(file)
+            val ct = if (path.endsWith(".css"))  "text/css; charset=UTF-8"
+                     else if (path.endsWith(".js")) "application/javascript; charset=UTF-8"
+                     else "application/octet-stream"
+            ex.getResponseHeaders.add("Content-Type", ct)
+            ex.sendResponseHeaders(200, bytes.length.toLong)
+            val os = ex.getResponseBody
+            try os.write(bytes) finally os.close()
+          }
+        } else routes.lift(path) match {
           case Some(html) =>
             val bytes = html.getBytes(StandardCharsets.UTF_8)
             ex.getResponseHeaders.add("Content-Type", "text/html; charset=UTF-8")

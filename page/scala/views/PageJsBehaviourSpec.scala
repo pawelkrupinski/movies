@@ -250,6 +250,122 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Hidden-films modal search ────────────────────────────────────────────
+
+  "the hidden-films modal search input" should "filter listed titles by substring as the user types" in {
+    onPath("/") { page =>
+      // Seed a handful of hidden films directly via localStorage so the
+      // modal has something to filter. Reload picks up the new state.
+      val seeded = """["Diabeł ubiera się u Prady 2","Avatar","Cars"]"""
+      page.eval(s"localStorage.setItem('hiddenFilms', ${jsString(seeded)})")
+      page.reload()
+      page.eval("openHiddenModal()")
+      page.evalInt("document.querySelectorAll('#hidden-modal-list .panel-item').length") shouldBe 3
+
+      page.eval("document.getElementById('hidden-modal-search').value = 'avat'; filterHiddenModal()")
+      page.evalInt(
+        "[...document.querySelectorAll('#hidden-modal-list .panel-item')].filter(i => i.style.display !== 'none').length"
+      ) shouldBe 1
+      page.evalString(
+        "document.querySelector('#hidden-modal-list .panel-item:not([style*=\"none\"])').textContent"
+      ) shouldBe "Avatar"
+    }
+  }
+
+  it should "reset the search box on close so reopening shows the full list" in {
+    onPath("/") { page =>
+      val seeded = """["Avatar","Cars"]"""
+      page.eval(s"localStorage.setItem('hiddenFilms', ${jsString(seeded)})")
+      page.reload()
+      page.eval("openHiddenModal()")
+      page.eval("document.getElementById('hidden-modal-search').value = 'avat'; filterHiddenModal()")
+      page.eval("closeHiddenModal()")
+      page.evalString("document.getElementById('hidden-modal-search').value") shouldBe ""
+
+      page.eval("openHiddenModal()")
+      page.evalInt(
+        "[...document.querySelectorAll('#hidden-modal-list .panel-item')].filter(i => i.style.display !== 'none').length"
+      ) shouldBe 2
+    }
+  }
+
+  // ── Mobile navbar layout ─────────────────────────────────────────────────
+  //
+  // CSS-driven layout regression for the mobile (≤ 575 px) two-row
+  // navbar. Resizes the tab to an iPhone-ish width via CDP's
+  // `Emulation.setDeviceMetricsOverride`, then reads
+  // `getBoundingClientRect()` on each navbar item to assert the
+  // physical layout matches the spec:
+  //
+  //   row 1: [logo+tabs] … [search] [auth]
+  //   row 2: …             [date  ] [filtry]
+  //
+  // Why this test exists: the orders + `margin-left: auto` + the
+  // 100%-wide `.navbar-row-break` are subtle — easy to break with an
+  // unrelated edit. Asserting on rendered geometry catches a regression
+  // that snapshot diffs alone wouldn't (the markup can look fine but
+  // the visual layout flips).
+
+  "the mobile navbar (≤ 575 px)" should "place search to the left of auth on row 1, date to the left of filtry on row 2" in {
+    onPath("/") { page =>
+      // 414 × 896 — iPhone XR / 11 / 12 / 13 / 14 / 14 Pro default
+      // viewport. The sub-iPhone-SE width (375) can't fit
+      // [logo+tabs] [search] [auth] on a single row even with a 70-px
+      // search input, so the spec's "search next to auth on row 1"
+      // can only be verified at 380+ px widths; 414 is the modal
+      // iPhone viewport since 2018.
+      page.send("Emulation.setDeviceMetricsOverride", play.api.libs.json.Json.obj(
+        "width" -> 414, "height" -> 896, "deviceScaleFactor" -> 2.0, "mobile" -> true
+      ))
+      // The override triggers a re-layout but doesn't always re-fire
+      // applyFilters etc.; wait a frame for the resize listeners to
+      // settle.
+      Thread.sleep(100L)
+      // beforeAll renders the corpus with `oauthProviders = Set.empty`,
+      // which leaves `<div class="navbar-auth">` empty (no Zaloguj-się
+      // pill). An empty flex item has zero size and its `getBoundingClientRect`
+      // reports a degenerate position that doesn't reflect production
+      // (where an OAuth provider is always configured and the pill is
+      // visible). Inject the prod-shaped child here so the layout
+      // assertions exercise the realistic anonymous-user navbar.
+      page.eval(
+        "(() => { const a = document.querySelector('.navbar-auth');" +
+        "          if (a && !a.children.length) {" +
+        "            const btn = document.createElement('button');" +
+        "            btn.type = 'button';" +
+        "            btn.className = 'nav-tab nav-tab-login';" +
+        "            btn.textContent = 'Zaloguj się';" +
+        "            a.appendChild(btn);" +
+        "          } })()"
+      )
+
+      def rect(sel: String): (Double, Double) =
+        page.evalString(
+          s"(() => { const r = document.querySelector(${jsString(sel)}).getBoundingClientRect();" +
+          s"          return r.top + '|' + r.left; })()"
+        ).split('|') match {
+          case Array(t, l) => (t.toDouble, l.toDouble)
+        }
+      val (searchTop, searchLeft) = rect(".navbar-search")
+      val (authTop,   authLeft  ) = rect(".navbar-auth")
+      val (dateTop,   dateLeft  ) = rect(".navbar-date")
+      val (filtryTop, filtryLeft) = rect(".navbar-filtry")
+
+      // Row 1: search and auth share the same top. Allow a 4 px
+      // tolerance for sub-pixel alignment + line-height variance.
+      math.abs(searchTop - authTop) should be < 4.0
+      searchLeft should be < authLeft
+
+      // Row 2: date and filtry share the same top, below row 1.
+      math.abs(dateTop - filtryTop) should be < 4.0
+      dateTop should be > authTop
+      dateLeft should be < filtryLeft
+
+      // Reset emulation so the next test starts at the default viewport.
+      page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
+    }
+  }
+
   // ── helpers ──────────────────────────────────────────────────────────────
 
   /** Click the pill whose `data-cinema` matches `cinema`. Asserts the

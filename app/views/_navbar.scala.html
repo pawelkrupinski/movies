@@ -93,19 +93,34 @@
     </div>
   </div>
 
-  <div class="d-flex gap-2 align-items-center navbar-search-date">
+  @* Search and date-selector are kept as separate flex items so the
+     mobile layout can place them on different rows — search joins the
+     login pill on row 1; the day stepper rides with Filtry on row 2.
+     On desktop they sit side-by-side as one visual cluster (search
+     `margin-left: auto`, date adjacent with no left margin). *@
+  <div class="navbar-search">
     <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()">
-    <div class="d-flex align-items-stretch" style="gap:2px">
-      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
-      <select id="date-filter" class="filter-select" onchange="applyFilters()">
-        <option value="today">Dzisiaj</option>
-        <option value="tomorrow">Jutro</option>
-        <option value="week">Następne 7 dni</option>
-        <option value="anytime">Kiedykolwiek</option>
-      </select>
-      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
-    </div>
   </div>
+  <div class="d-flex align-items-stretch navbar-date" style="gap:2px">
+    <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
+    <select id="date-filter" class="filter-select" onchange="applyFilters()">
+      <option value="today">Dzisiaj</option>
+      <option value="tomorrow">Jutro</option>
+      <option value="week">Następne 7 dni</option>
+      <option value="anytime">Kiedykolwiek</option>
+    </select>
+    <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
+  </div>
+  }
+
+  @* Mobile row break — invisible 100%-wide zero-height flex item that
+     sits between row-1 items (search + auth) and row-2 items (date +
+     filtry). Without this the browser would let row-2 items slide
+     onto row-1 whenever there's any horizontal slack, which on most
+     iPhone widths happens often enough to fall back to a one-line
+     layout. Set `display: none` on desktop where it isn't needed. *@
+  @if(activePage != "favourites") {
+    <div class="navbar-row-break" aria-hidden="true"></div>
   }
 
   @* Auth: own slot so CSS can pin it to the far right on desktop and
