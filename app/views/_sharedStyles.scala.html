@@ -562,6 +562,41 @@
        focus and every native-picker open. */
     .search-input, .filter-select, input, select { font-size: 16px; }
 
+    /* Card text scales with viewport too. The grid is 2 columns
+       below 576 px (Bootstrap's `row-cols-2`), so each card is
+       roughly viewport/2 wide — what felt right at the desktop
+       defaults (.95rem title, .72rem pills, .68rem ratings) ends
+       up cramped on a 150-px card on iPhone-SE-class widths. Same
+       clamp pattern as the navbar: a readable floor, a vw-linked
+       middle term, and a ceiling that meets the desktop default
+       at the breakpoint top (575 px) so the layout above 576 px
+       is unchanged. */
+    .card-body         { padding: clamp(.55rem, 2.2vw, 1rem); }
+    .card-title a      { font-size: clamp(.8rem, .55rem + 1.2vw, .95rem); }
+    /* Runtime + the year/format pills that appear next to the title. */
+    .pill              { font-size: clamp(.62rem, .45rem + .8vw, .72rem); padding: 0 clamp(3px, 1vw, 5px); }
+    /* "Czwartek 21 maja" per-day labels. */
+    .date-label        { font-size: clamp(.6rem, .42rem + .8vw, .7rem); }
+    /* Showtime pills (`18:30`) + their `2D NAP` format suffix. */
+    .badge-time        {
+      font-size: clamp(.62rem, .45rem + .8vw, .72rem);
+      padding: .2em clamp(.3em, 1.3vw, .5em);
+    }
+    .badge-fmt         { font-size: clamp(.55rem, .38rem + .7vw, .62rem); }
+    /* Rating pills — IMDb / Metacritic / RT / Filmweb. The two-tab
+       layouts share the same body font; the colored label-tab and the
+       value-tab share the same horizontal padding rule (the unified
+       padding keeps the rounded-rect proportions consistent across
+       cards of different widths). */
+    .rating-imdb, .rating-meta, .rating-fw, .rating-rt {
+      font-size: clamp(.58rem, .43rem + .7vw, .68rem);
+    }
+    .rating-imdb-label, .rating-fw-label, .rating-rt-label,
+    .rating-imdb-value, .rating-fw-value, .rating-rt-value, .rating-meta {
+      padding-left:  clamp(.2rem, .85vw, .35rem);
+      padding-right: clamp(.2rem, .85vw, .35rem);
+    }
+
     /* The 35 px min-height / 35 px min-width on nav-tab / nav-tab-fav /
        refresh-btn / date-nav-btn / filter-select / search-input /
        nav-tab-login / auth-menu lives on the base rules above so
