@@ -314,8 +314,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // search input, so the spec's "search next to auth on row 1"
       // can only be verified at 380+ px widths; 414 is the modal
       // iPhone viewport since 2018.
+      // `mobile: true` switches CDP's emulation to mobile mode, which on
+      // Linux headless Chrome (CI) ignores the explicit width override
+      // and falls back to whatever the launch-flag default is. Sticking
+      // to desktop-shaped emulation with just the width + height
+      // override applies cleanly on both macOS (local) and CI Chrome.
       page.send("Emulation.setDeviceMetricsOverride", play.api.libs.json.Json.obj(
-        "width" -> 414, "height" -> 896, "deviceScaleFactor" -> 2.0, "mobile" -> true
+        "width" -> 414, "height" -> 896, "deviceScaleFactor" -> 1.0, "mobile" -> false
       ))
       // The override triggers a re-layout but doesn't always re-fire
       // applyFilters etc.; wait a frame for the resize listeners to
@@ -351,10 +356,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val (dateTop,   dateLeft  ) = rect(".navbar-date")
       val (filtryTop, filtryLeft) = rect(".navbar-filtry")
 
+      val viewportWidth = page.evalInt("window.innerWidth")
       // Row 1: search and auth share the same top. Allow a 4 px
       // tolerance for sub-pixel alignment + line-height variance.
-      math.abs(searchTop - authTop) should be < 4.0
-      searchLeft should be < authLeft
+      withClue(s"viewport=$viewportWidth search=($searchTop,$searchLeft) auth=($authTop,$authLeft) date=($dateTop,$dateLeft) filtry=($filtryTop,$filtryLeft) ") {
+        viewportWidth shouldBe 414
+        math.abs(searchTop - authTop) should be < 4.0
+        searchLeft should be < authLeft
+      }
 
       // Row 2: date and filtry share the same top, below row 1.
       math.abs(dateTop - filtryTop) should be < 4.0
