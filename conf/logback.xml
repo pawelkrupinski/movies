@@ -7,14 +7,6 @@
 
   <logger name="services" level="INFO"/>
   <logger name="clients" level="INFO"/>
-  <!-- One `ACCESS METHOD URI STATUS DURATION_MS` line per non-asset
-       request; see `tools.AccessLogFilter`. Used to compare per-request
-       server time on desktop vs mobile clicks. -->
-  <logger name="tools.AccessLogFilter" level="INFO"/>
-  <!-- Surfaced from `MovieController.perfBeacon` — one INFO line per page
-       load with the navigation-timing record posted by `_sharedJs`. The
-       root WARN level would otherwise drop these. -->
-  <logger name="PerfBeacon" level="INFO"/>
   <!-- DEBUG surfaces per-entry rating changes from the hourly Cinemeta refresh
        (look for "Cinemeta refresh:" lines). The tick-start / tick-end summary
        and "first run in 10s" line are INFO and always visible. -->

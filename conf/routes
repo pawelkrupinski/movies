@@ -17,12 +17,6 @@ POST    /debug/reenrich             controllers.MovieController.reEnrich(title: 
 # Mongo edits.
 + nocsrf
 POST    /debug/rehydrate            controllers.MovieController.rehydrate()
-# Client-side perf beacon sink — `_sharedJs.scala.html` POSTs one JSON
-# record per page load (paint, LCP, long tasks, navigation timing,
-# tap-to-nav gap). Logs at INFO; pipe through `flyctl logs | grep PERF`
-# for ad-hoc analysis.
-+ nocsrf
-POST    /debug/perf                 controllers.MovieController.perfBeacon()
 
 # ── Auth (OAuth2 — Google / Facebook) ────────────────────────────────────────
 # `/auth/<provider>/start` issues a CSRF state, stashes it in the signed
