@@ -63,6 +63,17 @@ enum HTMLParserSmoke {
         check("at least 90% have showings",   !films.isEmpty && Double(withShowings) / Double(films.count) >= 0.9)
         check("at least 100 showtimes total", totalShowtimes >= 100, "(got \(totalShowtimes))")
         check("at least one IMDb rating",     withImdb > 0)
+        // Twirl HTML-escapes `&` to `&amp;` in attribute values, so any URL
+        // we extract via the raw-regex path must be HTML-decoded before
+        // hitting `URL(string:)` — otherwise multi-param query strings
+        // (e.g. the `&w=480&output=webp` chain on the PosterProxy URL)
+        // get fed to URLSession with literal `amp;` keys and the proxy
+        // ignores them. Guards against future URL extractions skipping
+        // the decode step.
+        let dirtyPosters = films.compactMap { $0.posterURL?.absoluteString }
+            .filter { $0.contains("&amp;") || $0.contains("amp;") }
+        check("no HTML-escaped &amp; in parsed poster URLs", dirtyPosters.isEmpty,
+              "(\(dirtyPosters.count) dirty, first: \(dirtyPosters.first ?? "?"))")
 
         if failures > 0 {
             print("FAILED with \(failures) check failures")

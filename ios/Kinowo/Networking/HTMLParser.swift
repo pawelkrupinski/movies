@@ -47,7 +47,17 @@ enum HTMLParser {
 
     private static func parseFilm(_ chunk: String) -> Film? {
         guard let title = capture(chunk, #"data-title="([^"]+)""#) else { return nil }
-        let poster   = capture(chunk, #"<img src="([^"]+)""#).flatMap { URL(string: $0) }
+        // Posters are now wrapped through the `images.weserv.nl` proxy
+        // (server-side change in commit 39f23c3), so the src carries
+        // `&w=480&output=webp` query params. Twirl HTML-escapes those
+        // `&` to `&amp;` before they hit the wire — decode them back
+        // before handing the string to `URL(string:)` so the query
+        // weserv sees has the intended keys (otherwise weserv either
+        // ignores w/output or rejects the URL outright, leaving
+        // AsyncImage with nothing to render). Booking URL below does
+        // the same dance.
+        let poster   = capture(chunk, #"<img src="([^"]+)""#)
+                          .flatMap { URL(string: $0.htmlDecoded()) }
         let runtime  = capture(chunk, #"<span class="pill runtime">([^<]+)</span>"#)
                           .flatMap(parseRuntime)
         let ratings  = parseRatings(chunk)
