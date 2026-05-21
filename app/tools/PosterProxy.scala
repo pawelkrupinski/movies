@@ -44,6 +44,26 @@ object PosterProxy {
   // wasted bytes on the wire.
   private val TargetWidth = 480
 
+  // Hosts whose origin servers block weserv's outbound IP with 403
+  // (cross-checked against direct-browser fetches that return 200).
+  // For these, the proxy is a net regression — serve the original URL
+  // and let the browser fetch it directly, where the request carries
+  // a real UA + a `Referer: https://kinowo.fly.dev/` that the origin
+  // accepts. Verified empirically on prod:
+  //   probe of 178 unique poster URLs through weserv
+  //     115  ✓ 200 image/webp
+  //      63  ✗ 404 (weserv reported origin 403)
+  //          → 62 of those were www.multikino.pl
+  //          → 1 was a stale cinema-city URL (origin 404, scrape bug)
+  // multikino origins are already HTTPS and serve ~150-300 KB JPEGs,
+  // so skipping the proxy loses the webp/resize win but not the
+  // mixed-content fix (there's no mixed content to fix) and not the
+  // "actually displays" property the user reported.
+  private val SkipHosts = Set(
+    "www.multikino.pl",
+    "multikino.pl"
+  )
+
   /** Wrap a poster URL through weserv with width + format hints.
    *  Returns the original URL untouched when it's empty / null —
    *  callers shouldn't pass `None` in but the empty-string case can
@@ -55,6 +75,8 @@ object PosterProxy {
     // the right scheme automatically (HTTPS when available, falling
     // back to HTTP for HTTP-only origins like kinobulgarska19.pl).
     val stripped = url.replaceFirst("^https?://", "")
+    val host = stripped.takeWhile(_ != '/').toLowerCase
+    if (SkipHosts.contains(host)) return url
     val encoded  = URLEncoder.encode(stripped, "UTF-8")
     s"https://images.weserv.nl/?url=$encoded&w=$TargetWidth&output=webp"
   }
