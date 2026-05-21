@@ -36,8 +36,15 @@ struct TopBar: View {
         // Plain translucent material strip — no glassEffect refraction
         // edge, no content-wide opacity. Just the background shape gets
         // dialed down so the grid scrolls visibly behind the bar.
+        // `.ignoresSafeArea(edges: .top)` pushes the rectangle up past
+        // the safeAreaInset slot, all the way to the device's rounded
+        // top corners, so the status bar reads as part of the same
+        // translucent strip instead of a separate opaque band above it.
         .background {
-            Rectangle().fill(.ultraThinMaterial).opacity(0.55)
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .opacity(0.55)
+                .ignoresSafeArea(edges: .top)
         }
     }
 }
