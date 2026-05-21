@@ -450,13 +450,15 @@
   @@media (max-width: 575px) {
     .navbar { padding: .5rem .75rem !important; gap: .4rem; }
     .navbar-title { display: none; }
-    /* Mobile: row-1 ends with [auth] flush to the right edge; search/date
-       and Filtry wrap onto row-2. Filtry sticks to the right edge via
-       `margin-left: auto` so the long "Filtry (2D NAP …)" label can
-       spill onto its own row without losing the right alignment. */
-    .navbar-auth        { order: 2; margin-left: auto; }
-    .navbar-search-date { order: 4; flex-basis: 0; flex-grow: 1; margin-left: 0; justify-content: space-between; }
-    .navbar-filtry      { order: 5; margin-left: auto; }
+    /* Mobile row-1: [logo+tabs] … [search-date] [auth] flush right.
+       Row-2: [filtry] full-width.
+       `margin-left: auto` on search-date pushes the right cluster
+       (search + auth) to the right edge so auth stays where it always
+       was. `flex-basis: 100%` on filtry forces a hard wrap onto its
+       own row regardless of how much slack the row-1 cluster left. */
+    .navbar-search-date { order: 2; margin-left: auto; }
+    .navbar-auth        { order: 3; }
+    .navbar-filtry      { order: 4; flex-basis: 100%; margin-left: 0; }
 
     /* iOS Safari auto-zooms the viewport when focus lands on an
        input / select with font-size < 16 px and stays zoomed in
