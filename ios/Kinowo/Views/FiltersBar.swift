@@ -18,11 +18,17 @@ struct TopBar: View {
             DatePillsRow(dateFilter: $dateFilter)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: onTapFilters) {
-                Image(systemName: filtersActive
-                      ? "line.3.horizontal.decrease.circle.fill"
-                      : "line.3.horizontal.decrease.circle")
-                    .font(.title2)
-                    .foregroundColor(.accentColor)
+                // Match the translucent circle buttons iOS uses for
+                // close / info / mode-toggle chrome (Sheet dismiss, Apple
+                // News article close, Camera mode buttons). Three-line
+                // icon stripped from its built-in circle so we can paint
+                // our own `.ultraThinMaterial` disc behind it. Foreground
+                // accent-tints when any filter axis is active.
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(filtersActive ? Color.accentColor : .primary)
+                    .frame(width: 32, height: 32)
+                    .background(.ultraThinMaterial, in: Circle())
             }
             .buttonStyle(BounceButtonStyle())
         }
