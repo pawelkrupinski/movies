@@ -175,7 +175,7 @@
         <button type="button" class="fav-poster-btn@if(isFavourite){ is-fav}" onclick="toggleFavMovie(this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</button>
         @film.posterUrl match {
           case Some(url) => {
-            <img src="@url" alt="@film.movie.title" class="poster-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <img src="@tools.PosterProxy.proxy(url)" alt="@film.movie.title" class="poster-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
             <div class="no-poster" style="display:none">Brak plakatu</div>
           }
           case None      => { <div class="no-poster">Brak plakatu</div> }

@@ -21,7 +21,17 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
     // ends up with a broken image. The onerror handler swaps the <img> for the
     // visible "Brak plakatu" placeholder when the browser can't load the asset.
     val rendered = views.html._movieCard(movie, Some("https://example.com/broken.jpg"))(Html("")).body
-    rendered                          should include ("https://example.com/broken.jpg")
+    // The src URL goes through `tools.PosterProxy` (HTTPS-forcing /
+    // resizing image proxy on `images.weserv.nl`), so the original
+    // string isn't in the HTML — but the proxied URL embeds it,
+    // along with the `w=480&output=webp` size + format hints.
+    // Twirl HTML-escapes `&` → `&amp;` when interpolating into attribute
+    // values, so the literal HTML carries `&amp;w=480` etc. Browsers
+    // unescape on read; weserv sees the original query string. The
+    // helper is still tested for its raw output in PosterProxySpec.
+    rendered                          should include ("https://images.weserv.nl/?url=example.com%2Fbroken.jpg")
+    rendered                          should include ("&amp;w=480")
+    rendered                          should include ("&amp;output=webp")
     rendered                          should include ("onerror")
     rendered                          should include ("Brak plakatu")
     rendered                          should include ("display:none")
