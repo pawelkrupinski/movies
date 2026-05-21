@@ -222,6 +222,34 @@
   .nav-tab-fav:hover { color: #ffd24a; background: #3a3a6e; }
   .nav-tab-fav.active { color: #ffd24a; background: #3a3a6e; }
 
+  /* Top-of-viewport progress bar — appears the moment a `.nav-tab` is
+     clicked so the user gets an immediate visual ack of the tap. The
+     400-ms tap-to-FCP gap on iOS Safari is genuinely fast, but without
+     this bar there's no visible response (Safari keeps the old page
+     on-screen during nav) and the wait feels longer than it is. The bar
+     belongs to the *source* page's DOM — when the destination page
+     finishes loading it replaces the whole document, so the bar
+     vanishes naturally. No teardown JS needed.
+     Width animates 0 → 90% over ~3 s with easing toward the right —
+     intentionally never reaches 100% during the animation so a slow
+     real load doesn't end with a stuck "complete" bar that the
+     replacement page then has to dismiss. */
+  #nav-progress {
+    position: fixed;
+    top: 0; left: 0;
+    width: 0;
+    height: 3px;
+    background: #aad4ff;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    transition: width 3s cubic-bezier(.1,.7,.1,1), opacity .15s;
+  }
+  #nav-progress.loading {
+    width: 90%;
+    opacity: 1;
+  }
+
   /* ── Auth pill / dropdown / login modal ──────────────────────────────── */
   .nav-tab-login {
     cursor: pointer;

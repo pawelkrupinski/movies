@@ -815,7 +815,14 @@
   // WebKit just logs less.
   document.addEventListener('click', e => {
     const a = e.target.closest('a.nav-tab');
-    if (a) sessionStorage.setItem('navClickAt', String(Date.now()));
+    if (a) {
+      sessionStorage.setItem('navClickAt', String(Date.now()));
+      // Kick the top-of-viewport progress bar so the user sees an
+      // immediate response to the tap. The animation runs to 90% over
+      // 3 s; the destination page replaces this DOM (and this bar)
+      // when it finishes loading, so there's no completion handler.
+      document.getElementById('nav-progress')?.classList.add('loading');
+    }
   }, { capture: true });
 
   (function() {
