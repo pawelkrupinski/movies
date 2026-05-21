@@ -17,6 +17,11 @@
   <div class="hidden-modal" onclick="event.stopPropagation()">
     <button type="button" class="login-modal-close" onclick="closeHiddenModal()" aria-label="Zamknij">&times;</button>
     <div class="login-modal-title">Ukryte filmy</div>
+    @* Pinned above the scrollable list (flex-column layout, only the
+       list has overflow-y: auto), so it stays visible while the user
+       scrolls through a long list of hidden titles. *@
+    <input type="search" id="hidden-modal-search" class="hidden-modal-search"
+           placeholder="Szukaj…" autocomplete="off" oninput="filterHiddenModal()">
     <div id="hidden-modal-list" class="hidden-modal-list"></div>
     <div class="hidden-modal-actions">
       <button onclick="showAllFilms()" class="btn refresh-btn btn-sm w-100">Wyczyść</button>

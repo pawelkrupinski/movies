@@ -36653,6 +36653,7 @@ if (e.key === 'Escape') {
 closeLoginModal();
 closeHiddenModal();
 closeAuthMenu();
+closeOtherPanels(null);
 }
 });
 function hideFilm(btn) {
@@ -36770,8 +36771,7 @@ if (e.key === 'ArrowLeft') stepDate(-1);
 if (e.key === 'ArrowRight') stepDate(1);
 });
 document.addEventListener('click', () => {
-document.getElementById('hidden-panel').style.display = 'none';
-document.getElementById('format-panel').style.display = 'none';
+closeOtherPanels(null);
 closeAuthMenu();
 });
 function updateCounter(visibleCount, showtimeCount) {

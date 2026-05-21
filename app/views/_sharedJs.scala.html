@@ -444,12 +444,16 @@
     const m = document.getElementById('login-modal-backdrop');
     if (m) m.classList.remove('open');
   }
-  // ESC closes the modal — same UX every other modal in the world has.
+  // ESC closes any open dropdown / modal / menu — same UX every other
+  // modal in the world has. `closeOtherPanels(null)` collapses every
+  // `.dropdown-panel` (Filtry today; any future dropdown automatically)
+  // so this stays correct as the UI grows.
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closeLoginModal();
       closeHiddenModal();
       closeAuthMenu();
+      closeOtherPanels(null);
     }
   });
 
@@ -620,10 +624,22 @@
   });
 
   // ── Global click: close panels ────────────────────────────────────────────
-
+  //
+  // Every dropdown trigger calls `event.stopPropagation()` on open, and
+  // the panel wrappers do the same on their own click so inside-clicks
+  // (radio buttons, cinema toggles, etc.) don't close them. That leaves
+  // outside-clicks free to bubble to `document` — which calls
+  // `closeOtherPanels(null)` to hide every `.dropdown-panel` in one go.
+  //
+  // Used to also reach for `#hidden-panel` directly; that element is
+  // gone (the hidden-films UI is now a centred modal) and the bare
+  // `getElementById(...).style` throw aborted the handler before it
+  // could hide the format-panel, which is exactly the "click outside
+  // Filtry doesn't close it" regression the user reported. Routing
+  // through `closeOtherPanels` keeps the close path robust against
+  // future additions/removals of dropdowns.
   document.addEventListener('click', () => {
-    document.getElementById('hidden-panel').style.display = 'none';
-    document.getElementById('format-panel').style.display = 'none';
+    closeOtherPanels(null);
     closeAuthMenu();
   });
 
