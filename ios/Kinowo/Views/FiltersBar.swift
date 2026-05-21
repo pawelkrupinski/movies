@@ -8,6 +8,7 @@ import SwiftUI
 // effectively invisible.
 struct TopBar: View {
     @Binding var dateFilter: DateFilter
+    let filtersActive: Bool
     let onTapFilters: () -> Void
 
     var body: some View {
@@ -17,11 +18,13 @@ struct TopBar: View {
             DatePillsRow(dateFilter: $dateFilter)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: onTapFilters) {
-                Image(systemName: "line.3.horizontal.decrease.circle")
-                    .font(.system(size: 28))
-                    .foregroundColor(.white)
+                Image(systemName: filtersActive
+                      ? "line.3.horizontal.decrease.circle.fill"
+                      : "line.3.horizontal.decrease.circle")
+                    .font(.title2)
+                    .foregroundColor(.accentColor)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(BounceButtonStyle())
         }
         .padding(.horizontal, 16)
         // Tiny top padding so the pills hug the status bar; the
@@ -120,6 +123,22 @@ struct SearchBar: View {
         // so the grid stays out from under the pill above the
         // home indicator.
         .offset(y: 14)
+    }
+}
+
+// Tap feedback: spring-scale the label down on press and back on
+// release. Used by the Filtry icon (and any future TopBar button) so
+// taps feel like they registered without needing to wait for the
+// sheet to slide in. Works on iOS 16+; `.symbolEffect(.bounce)` would
+// be the more idiomatic choice but it's iOS 17+ only.
+struct BounceButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.85 : 1.0)
+            .animation(
+                .spring(response: 0.25, dampingFraction: 0.55),
+                value: configuration.isPressed
+            )
     }
 }
 

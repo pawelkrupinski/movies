@@ -37,6 +37,7 @@ struct ContentView: View {
                 .safeAreaInset(edge: .top, spacing: 0) {
                     TopBar(
                         dateFilter: $dateFilter,
+                        filtersActive: filtersActive,
                         onTapFilters: { showFilters = true }
                     )
                 }
@@ -98,6 +99,18 @@ struct ContentView: View {
             }
         }
         return out.sorted()
+    }
+
+    // Filtry button uses its `.fill` variant whenever any of the
+    // axes Filtry owns is active — cinemas filtered, format
+    // constrained, or any hidden films queued. Last one is here so
+    // the user can spot "I've hidden a film" at a glance: the Ukryte
+    // filmy list lives inside Filtry, so the only outward cue that
+    // hidden films exist is the filled button.
+    private var filtersActive: Bool {
+        !formatFilter.isEmpty
+            || !prefs.disabledCinemas.isEmpty
+            || !prefs.hiddenFilms.isEmpty
     }
 
     private var filteredFilms: [Film] {
