@@ -2097,8 +2097,8 @@ cinemaScrapes:
 showings:
   2026-06-20  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
-=== Kino bez barier: Arco (AD ===
-displayTitle:      Kino bez barier: Arco (AD
+=== Kino bez barier: Arco (AD + CC + PJM) ===
+displayTitle:      Kino bez barier: Arco (AD + CC + PJM)
 cinemaTitles:      Kino bez barier: Arco (AD + CC + PJM)
 runtimeMinutes:    88
 releaseYear:       2025
@@ -2124,8 +2124,35 @@ cinemaScrapes:
 showings:
   2026-05-21  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
-=== Kino bez barier: Błękitny szlak (AD ===
-displayTitle:      Kino bez barier: Błękitny szlak (AD
+=== Kino bez barier: Arco (AD + CC) ===
+displayTitle:      Kino bez barier: Arco (AD + CC)
+cinemaTitles:      Kino bez barier: Arco (AD + CC)
+runtimeMinutes:    88
+releaseYear:       2025
+countries:         Francja
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_Arco2.jpg
+synopsis.length:   115
+cast:              —
+director:          Ugo Bienvenu
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
+cinemaFilmUrls:
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14331-kino-bez-barier-arco-ad-cc/
+cinemaScrapes:
+  Kino Pałacowe / Kino bez barier: Arco (AD + CC) / 2025
+showings:
+  2026-05-19  Kino Pałacowe                 11:00 Sala 1 - Kinowa
+
+=== Kino bez barier: Błękitny szlak (AD + CC + PJM) ===
+displayTitle:      Kino bez barier: Błękitny szlak (AD + CC + PJM)
 cinemaTitles:      Kino bez barier: Błękitny szlak (AD + CC + PJM)
 runtimeMinutes:    85
 releaseYear:       2025
@@ -2152,8 +2179,35 @@ showings:
   2026-06-23  Kino Pałacowe                 11:00 Sala 1 - Kinowa
   2026-06-25  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
-=== Kino bez barier: Drugie życie (AD ===
-displayTitle:      Kino bez barier: Drugie życie (AD
+=== Kino bez barier: Drugie życie (AD + CC + PJM) ===
+displayTitle:      Kino bez barier: Drugie życie (AD + CC + PJM)
+cinemaTitles:      Kino bez barier: Drugie życie (AD + CC + PJM)
+runtimeMinutes:    116
+releaseYear:       2025
+countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_drugie_zycie1.jpg
+synopsis.length:   119
+cast:              —
+director:          Maryam Touzani
+tmdbId:            1399462
+imdbId:            tt32429174
+originalTitle:     Calle Málaga
+imdbRating:        7.1
+metascore:         73
+rottenTomatoes:    98
+filmwebRating:     7.28205
+metacriticUrl:     https://www.metacritic.com/movie/calle-malaga
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/calle_malaga
+filmwebUrl:        https://www.filmweb.pl/film/Drugie+%C5%BCycie-2025-10088399
+cinemaFilmUrls:
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14484-kino-bez-barier-drugie-zycie-ad-cc-pjm/
+cinemaScrapes:
+  Kino Pałacowe / Kino bez barier: Drugie życie (AD + CC + PJM) / 2025
+showings:
+  2026-06-18  Kino Pałacowe                 18:00 Sala 1 - Kinowa
+
+=== Kino bez barier: Drugie życie (AD + CC) ===
+displayTitle:      Kino bez barier: Drugie życie (AD + CC)
 cinemaTitles:      Kino bez barier: Drugie życie (AD + CC)
 runtimeMinutes:    116
 releaseYear:       2025
@@ -2179,8 +2233,8 @@ cinemaScrapes:
 showings:
   2026-06-16  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
-=== Kino bez barier: Freak Show (AD ===
-displayTitle:      Kino bez barier: Freak Show (AD
+=== Kino bez barier: Freak Show (AD + CC + PJM) ===
+displayTitle:      Kino bez barier: Freak Show (AD + CC + PJM)
 cinemaTitles:      Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie
 runtimeMinutes:    75
 releaseYear:       2026
@@ -2206,8 +2260,62 @@ cinemaScrapes:
 showings:
   2026-06-11  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
-=== Kino bez barier: Milcząca przyjaciółka (AD ===
-displayTitle:      Kino bez barier: Milcząca przyjaciółka (AD
+=== Kino bez barier: Freak Show (AD + CC) ===
+displayTitle:      Kino bez barier: Freak Show (AD + CC)
+cinemaTitles:      Kino bez barier: Freak Show (AD + CC)
+runtimeMinutes:    75
+releaseYear:       2026
+countries:         Polska
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_freak2.jpg
+synopsis.length:   115
+cast:              —
+director:          Łukasz Ronduda, Filip Pawlak
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
+cinemaFilmUrls:
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14481-kino-bez-barier-freak-show-ad-cc/
+cinemaScrapes:
+  Kino Pałacowe / Kino bez barier: Freak Show (AD + CC) / 2026
+showings:
+  2026-06-09  Kino Pałacowe                 11:00 Sala 1 - Kinowa
+
+=== Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM) ===
+displayTitle:      Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM)
+cinemaTitles:      Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM)
+runtimeMinutes:    147
+releaseYear:       2025
+countries:         Niemcy, Francja, Węgry
+posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_milczaca1.jpg
+synopsis.length:   116
+cast:              —
+director:          Ildikó Enyedi
+tmdbId:            1168719
+imdbId:            tt27811632
+originalTitle:     Silent Friend
+imdbRating:        7.5
+metascore:         90
+rottenTomatoes:    95
+filmwebRating:     7.11675
+metacriticUrl:     https://www.metacritic.com/movie/silent-friend
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/silent_friend
+filmwebUrl:        https://www.filmweb.pl/film/Milcz%C4%85ca+przyjaci%C3%B3%C5%82ka-2025-10089999
+cinemaFilmUrls:
+  Kino Pałacowe = http://kinopalacowe.pl/filmy/14480-kino-bez-barier-milczaca-przyjacioka-ad-cc-pjm/
+cinemaScrapes:
+  Kino Pałacowe / Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM) / 2025
+showings:
+  2026-06-04  Kino Pałacowe                 18:00 Sala 1 - Kinowa
+
+=== Kino bez barier: Milcząca przyjaciółka (AD + CC) ===
+displayTitle:      Kino bez barier: Milcząca przyjaciółka (AD + CC)
 cinemaTitles:      Kino bez barier: Milcząca przyjaciółka (AD + CC)
 runtimeMinutes:    147
 releaseYear:       2025
@@ -2233,8 +2341,8 @@ cinemaScrapes:
 showings:
   2026-06-02  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
-=== Kino bez barier: Młode matki (AD ===
-displayTitle:      Kino bez barier: Młode matki (AD
+=== Kino bez barier: Młode matki (AD + CC + PJM) ===
+displayTitle:      Kino bez barier: Młode matki (AD + CC + PJM)
 cinemaTitles:      Kino bez barier: Młode matki (AD + CC + PJM)
 runtimeMinutes:    95
 releaseYear:       2025
@@ -2261,8 +2369,8 @@ showings:
   2026-05-26  Kino Pałacowe                 11:00 Sala 1 - Kinowa
   2026-05-28  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
-=== Kino bez barier: Pieśni lasu (AD ===
-displayTitle:      Kino bez barier: Pieśni lasu (AD
+=== Kino bez barier: Pieśni lasu (AD + CC + PJM) ===
+displayTitle:      Kino bez barier: Pieśni lasu (AD + CC + PJM)
 cinemaTitles:      Kino bez barier: Pieśni lasu (AD + CC + PJM)
 runtimeMinutes:    93
 releaseYear:       2025

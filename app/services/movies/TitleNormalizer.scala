@@ -28,8 +28,12 @@ object TitleNormalizer {
   private val CyklPrefix        = """^Cykl\s+[„"][^„""]*[„""]?\s+[-–—]\s+""".r
   private val SlashSuffix       = """\s+/\s+.+$""".r
   // Require the suffix to start with a letter so that mathematical titles
-  // like "Orwell: 2 + 2 = 5" aren't truncated to "Orwell: 2".
-  private val PlusSuffix        = """\s+\+\s+\p{L}.+$""".r
+  // like "Orwell: 2 + 2 = 5" aren't truncated to "Orwell: 2". The `[^)]+`
+  // tail keeps the strip scoped to suffixes that aren't inside a paren group
+  // — `(AD + CC + PJM)` is a Kino-bez-barier accessibility tag, not a
+  // bilingual postfix, and must survive intact so the cache key and display
+  // title preserve the cinema-reported form.
+  private val PlusSuffix        = """\s+\+\s+\p{L}[^)]*$""".r
   private val AnniversarySuffix = """(?i)\s*[-–—|.]?\s*\d+(?:st|nd|rd|th)?\.?\s*(?:anniversary|rocznica)\s*$""".r
   private val RestoredSuffix    = """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""".r
   private val WersjaSuffix      = """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""".r

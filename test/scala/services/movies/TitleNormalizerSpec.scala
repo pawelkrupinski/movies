@@ -202,6 +202,16 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     preferredDisplay(Seq("Top Gun Maverick", "Top Gun: Maverick")) shouldBe Some("Top Gun: Maverick")
   }
 
+  it should "preserve the full accessibility tag on a Kino bez barier screening" in {
+    // Simulates `MovieRecord.displayTitle`, which feeds the union of the
+    // cinema's raw reported title and the row's cleanTitle (= searchTitle of
+    // the same raw title) into preferredDisplay. Both must end up as the full
+    // "(AD + CC + PJM)" form so the user-visible title isn't truncated.
+    val raw        = "Kino bez barier: Arco (AD + CC + PJM)"
+    val cleanTitle = TitleNormalizer.searchTitle(raw)
+    preferredDisplay(Seq(raw, cleanTitle)) shouldBe Some(raw)
+  }
+
   it should "prefer 'Top Gun: Maverick' regardless of input order" in {
     preferredDisplay(Seq("Top Gun: Maverick", "Top Gun Maverick")) shouldBe Some("Top Gun: Maverick")
   }
@@ -219,16 +229,25 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
   import TitleNormalizer.{searchTitle, apiQuery}
 
-  "searchTitle" should "leave the 'Kino bez barier:' programme prefix intact (cache-key boundary)" in {
+  "searchTitle" should "leave the 'Kino bez barier:' programme prefix AND the trailing accessibility tag intact (cache-key boundary)" in {
     // Cache key must differ from a plain "Freak Show" row (or a DKF "Arco"
     // row from the same cinema) so both rows live — each with its own
     // filmUrl + showtimes. apiQuery handles the stripping for the external
-    // lookups below. The trailing " + CC + PJM)" gets clipped by the
-    // existing `PlusSuffix` stripper (pre-existing behaviour), leaving a
-    // truncated "(AD" — fine for cache-key purposes, the bare "Freak
-    // Show" form happens in apiQuery.
+    // lookups below. `PlusSuffix` is scoped to NOT cross into parens, so the
+    // " + CC + PJM)" inside the accessibility tag survives the strip — the
+    // user-facing displayTitle then reads as the cinema reported it.
     searchTitle("Kino bez barier: Freak Show (AD + CC + PJM)") shouldBe
-      "Kino bez barier: Freak Show (AD"
+      "Kino bez barier: Freak Show (AD + CC + PJM)"
+  }
+
+  it should "still strip a bare bilingual ' + Title' suffix outside of parens" in {
+    // Sanity check: the PlusSuffix tightening must not break the original
+    // intent — stripping a tacked-on bilingual postfix when it stands alone.
+    searchTitle("Tytuł A + Title B") shouldBe "Tytuł A"
+  }
+
+  it should "leave 'Orwell: 2 + 2 = 5' alone (the suffix must start with a letter)" in {
+    searchTitle("Orwell: 2 + 2 = 5") shouldBe "Orwell: 2 + 2 = 5"
   }
 
   "apiQuery" should "strip the 'Kino bez barier:' programme prefix" in {
