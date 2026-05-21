@@ -14,10 +14,10 @@ enum DateFilter: Hashable {
 
     var label: String {
         switch self {
-        case .anytime:        return "Kiedykolwiek"
+        case .anytime:        return "Wszystkie"
         case .today:          return "Dziś"
         case .tomorrow:       return "Jutro"
-        case .week:           return "Tydzień"
+        case .week:           return "7 dni"
         case .specific(let d): return d
         }
     }

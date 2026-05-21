@@ -28,28 +28,28 @@ struct ContentView: View {
                 )
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    // Leading: Filtry button — opens the sheet that owns
+                    // Principal: 🎬 brand mark (matches the web navbar
+                    // glyph) + date-filter pills, all on a single row.
+                    // Replaces the previous "title text + separate
+                    // safeAreaInset bar" layout that wasted a full row
+                    // of vertical space.
+                    ToolbarItem(placement: .principal) {
+                        HStack(spacing: 8) {
+                            Text("🎬")
+                                .font(.system(size: 18))
+                            DatePillsRow(dateFilter: $dateFilter)
+                        }
+                    }
+                    // Trailing: Filtry button — opens the sheet that owns
                     // every other filter axis (Ukryte filmy / Kina /
                     // Wymiar / Wersja / IMAX / Od godziny).
-                    ToolbarItem(placement: .navigationBarLeading) {
+                    ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
                             showFilters = true
                         } label: {
                             Image(systemName: filtersActive
                                   ? "line.3.horizontal.decrease.circle.fill"
                                   : "line.3.horizontal.decrease.circle")
-                        }
-                    }
-                    // Principal: camera-icon brand mark + date-filter
-                    // pills, all on a single row. Replaces the previous
-                    // "title text + separate safeAreaInset bar" layout
-                    // that wasted a full row of vertical space.
-                    ToolbarItem(placement: .principal) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "camera.fill")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundColor(.accentColor)
-                            DatePillsRow(dateFilter: $dateFilter)
                         }
                     }
                 }
