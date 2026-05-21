@@ -188,6 +188,23 @@
   }
   .panel-label:hover { background: #3a3a6e; }
   .panel-divider { border-top: 1px solid #3a3a6e; margin: 6px 0; padding-top: 2px; }
+  /* Scrollbars inside dark popups (the Filtry dropdown and the hidden-films
+     modal list). Default OS scrollbars render light-grey-on-dark and stick
+     out against the navy palette; this re-skins them to match the existing
+     border / hover accents (`#3a3a6e` → `#5a5a9e`). Transparent track so
+     the rule works regardless of the host's bg (`#1e1e2e` for the dropdown,
+     `#1a1a2e` for the modal). `scrollbar-color` covers Firefox, the
+     `::-webkit-scrollbar*` block covers Chromium + WebKit. */
+  .dropdown-panel,
+  .hidden-modal-list { scrollbar-width: thin; scrollbar-color: #3a3a6e transparent; }
+  .dropdown-panel::-webkit-scrollbar,
+  .hidden-modal-list::-webkit-scrollbar { width: 8px; height: 8px; }
+  .dropdown-panel::-webkit-scrollbar-track,
+  .hidden-modal-list::-webkit-scrollbar-track { background: transparent; }
+  .dropdown-panel::-webkit-scrollbar-thumb,
+  .hidden-modal-list::-webkit-scrollbar-thumb { background: #3a3a6e; border-radius: 4px; }
+  .dropdown-panel::-webkit-scrollbar-thumb:hover,
+  .hidden-modal-list::-webkit-scrollbar-thumb:hover { background: #5a5a9e; }
   .panel-section-label {
     font-size: .65rem;
     color: #888;
