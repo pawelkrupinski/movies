@@ -494,18 +494,31 @@
     .navbar { padding: .5rem .75rem !important; gap: .4rem; }
     .navbar-title { display: none; }
     /* Mobile row-1: [logo+tabs] … [search] [auth] flush right.
-       Mobile row-2:                        [date] [filtry] flush right.
+       Mobile row-2: [date]            …    [filtry] flush right.
        The 100%-wide zero-height `.navbar-row-break` between auth
        (order 3) and date (order 5) forces a hard wrap regardless of
        how much horizontal slack row 1 ended up with — without it,
        date would slide back onto row 1 on any phone wide enough.
-       `margin-left: auto` on the first item of each right cluster
-       (search on row 1, date on row 2) absorbs the empty space. */
+       Row-2 has date flush left (no margin) and filtry flush right
+       (margin-left: auto), with the slack between them.
+       The Filtry button text grows with active filters (e.g.
+       "Filtry (kina 9/10, 2D, NAP, od 18:00)") — capped at a
+       fraction of the row so a long label can't push past the
+       row edge and force the whole button onto a third row. */
     .navbar-search    { order: 2; margin-left: auto; }
     .navbar-auth      { order: 3; }
     .navbar-row-break { display: block; order: 4; width: 100%; flex-shrink: 0; height: 0; margin: 0; padding: 0; }
-    .navbar-date      { order: 5; margin-left: auto; }
-    .navbar-filtry    { order: 6; margin-left: 0; }
+    .navbar-date      { order: 5; margin-left: 0; }
+    .navbar-filtry    { order: 6; margin-left: auto; max-width: 50%; min-width: 0; }
+    #format-filter-btn {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      /* `display: block` overrides the `inline-flex` from `.refresh-btn`
+         so the text-overflow-ellipsis kicks in (ellipsis needs a block-
+         level container with overflow:hidden and a constrained width). */
+      display: block;
+    }
 
     /* iOS Safari auto-zooms the viewport when focus lands on an
        input / select with font-size < 16 px and stays zoomed in

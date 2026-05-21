@@ -37,7 +37,8 @@
   </div>
 </div>
 
-@_sharedJs(allCinemas, currentUser, oauthProviders, devMode)
+@_sharedJsConfig(allCinemas, currentUser, oauthProviders)
+<script src="@routes.Assets.versioned("js/shared.js")"></script>
 @_minified(devMode) {
 <script>
   // True only on /ulubione — toggles the favourites-filter branch in

@@ -365,10 +365,44 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         searchLeft should be < authLeft
       }
 
-      // Row 2: date and filtry share the same top, below row 1.
+      // Row 2: date on left, filtry flush right, both at the same top.
       math.abs(dateTop - filtryTop) should be < 4.0
       dateTop should be > authTop
       dateLeft should be < filtryLeft
+
+      // Filtry button truncation — pile on every active filter the
+      // navbar can carry, watch the label balloon, and confirm the
+      // button STILL sits next to date on row 2 instead of being
+      // pushed onto a row of its own. Tests the `max-width: 50%` +
+      // `text-overflow: ellipsis` belt-and-braces on the button.
+      page.eval(
+        "document.querySelector('input[name=\"format-dim\"][value=\"2D\"]').click(); " +
+        "document.querySelector('input[name=\"format-lang\"][value=\"NAP\"]').click(); " +
+        "document.getElementById('format-imax').click(); " +
+        "document.getElementById('from-hour').value = '18'; onFormatChange(); " +
+        "updateFormatBtn();"
+      )
+      Thread.sleep(50L)
+      val (dateTop2,   _) = rect(".navbar-date")
+      val (filtryTop2, _) = rect(".navbar-filtry")
+      withClue(s"after filters: dateTop=$dateTop2 filtryTop=$filtryTop2") {
+        math.abs(dateTop2 - filtryTop2) should be < 4.0
+      }
+      // The button's max-width clamp + overflow + text-overflow
+      // guarantee a long label can't push the button off the row.
+      // Assert the three properties are computed as expected — this
+      // is the durable invariant; whether a particular label happens
+      // to overflow at a particular viewport width is incidental.
+      val truncationCss = page.evalString(
+        "(() => { const s = getComputedStyle(document.getElementById('format-filter-btn'));" +
+        "          return s.maxWidth + '|' + s.overflowX + '|' + s.textOverflow; })()"
+      )
+      val Array(maxW, overflowX, textOverflow) = truncationCss.split('|')
+      withClue(s"maxWidth=$maxW overflowX=$overflowX textOverflow=$textOverflow") {
+        maxW         should not be "none"
+        overflowX    shouldBe "hidden"
+        textOverflow shouldBe "ellipsis"
+      }
 
       // Reset emulation so the next test starts at the default viewport.
       page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())

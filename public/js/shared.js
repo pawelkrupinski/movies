@@ -1,14 +1,9 @@
-@(allCinemas: Seq[String], currentUser: Option[models.User], oauthProviders: Set[String], devMode: Boolean = false)
-@_minified(devMode) {
-<script>
   // Page-level flags surfaced by the server-rendered template so the JS
   // can decide where to read/write personalization state. When LOGGED_IN
   // is true the boot path merges localStorage with the server's state and
   // every subsequent write debounces a PUT to /api/me/state; otherwise
   // localStorage is canonical and (Phase D) a once-per-day toast nags
   // anonymous users.
-  const IS_LOGGED_IN         = @currentUser.isDefined;
-  const HAS_OAUTH_PROVIDERS  = @oauthProviders.nonEmpty;
 
   // ── Format-filter dropdown ────────────────────────────────────────────────
 
@@ -298,7 +293,7 @@
   // a second / third pass picks up cascade cases.
   const _STAR_WIDTH_PX = 18;
   // Hover doesn't fire on touch devices — the hover-expand CSS is gated
-  // by `@@media (hover: hover)`, so the pre-wrap calculation does nothing
+  // by `@media (hover: hover)`, so the pre-wrap calculation does nothing
   // useful there. Skip the entire reflow on touch. Caching the
   // matchMedia result at boot saves a media-query lookup per call; the
   // value never changes for the lifetime of a tab (devices don't grow
@@ -370,7 +365,6 @@
   }
   window.addEventListener('resize', () => scheduleReflow(120));
 
-  const ALL_CINEMAS = @Html(play.api.libs.json.Json.toJson(allCinemas).toString);
 
   // ── Hidden-films UI ───────────────────────────────────────────────────────
   //
@@ -944,5 +938,3 @@
     }
     addEventListener('pagehide', dump, { once: true });
   })();
-</script>
-}

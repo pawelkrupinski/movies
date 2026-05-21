@@ -1,0 +1,23 @@
+@(allCinemas: Seq[String], currentUser: Option[models.User], oauthProviders: Set[String])
+@*
+   Inline-`<script>` block that emits the three page-bound JS constants
+   the externalized `shared.js` reads at top level: IS_LOGGED_IN,
+   HAS_OAUTH_PROVIDERS, ALL_CINEMAS. Everything else in the shared JS
+   moved to `public/js/shared.js` so iOS Safari (and every other engine
+   with a URL-keyed script cache) can parse it ONCE per session and
+   reuse the parsed bytecode across navigations to /, /kina, /ulubione
+   — previously the script was inlined per page and a click-to-link
+   reparsed ~43 KB of JS every time, while pull-to-refresh of the same
+   URL was hitting Safari's parse cache. Externalizing closes that
+   click-vs-refresh perception gap.
+
+   Top-level `const` in classic `<script>` tags lives in the page's
+   shared "script global lexical environment", so the constants
+   declared here are visible to the subsequent
+   `<script src="…/shared.js">` block.
+*@
+<script>
+  const IS_LOGGED_IN        = @currentUser.isDefined;
+  const HAS_OAUTH_PROVIDERS = @oauthProviders.nonEmpty;
+  const ALL_CINEMAS         = @Html(play.api.libs.json.Json.toJson(allCinemas).toString);
+</script>
