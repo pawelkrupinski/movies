@@ -12,7 +12,7 @@ struct FilmCardView: View {
                     Text(film.title)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                         .multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
                     if let mins = film.runtimeMinutes, mins > 0 {
