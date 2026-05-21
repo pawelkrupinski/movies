@@ -151,4 +151,69 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
 
     result.flatMap(_.imdbId) shouldBe Some("tt0088763")
   }
+
+  // ── Async `reEnrich` (the debug-page button's code path) ──────────────────
+
+  "reEnrich (async)" should "keep the row visible while TMDB is in flight, but with the TMDB-derived fields cleared" in {
+    // Hold TMDB hostage on a CountDownLatch so the async stage is still
+    // running when we make assertions. Releases at the end of the test.
+    val gate = new java.util.concurrent.CountDownLatch(1)
+    val tmdbHttp = new HttpFetch {
+      override def get(url: String): String = {
+        gate.await()
+        """{"results":[]}"""
+      }
+      override def post(url: String, body: String, contentType: String): String = get(url)
+    }
+    val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
+    // Seed a row that LOOKS fully enriched — stale TMDB ids, MC/RT/FW URLs,
+    // ratings, and a cinema slot (the one piece reEnrich must preserve so
+    // showtimes survive the re-resolve). The "wrong" data here represents
+    // the prior bad TMDB match the user wants to throw away.
+    val seeded = MovieRecord(
+      tmdbId            = Some(999),
+      imdbId            = Some("tt-stale"),
+      imdbRating        = Some(5.5),
+      metascore         = Some(50),
+      metacriticUrl     = Some("https://www.metacritic.com/movie/wrong"),
+      rottenTomatoes    = Some(60),
+      rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/wrong"),
+      filmwebUrl        = Some("https://www.filmweb.pl/film/Wrong-2020"),
+      filmwebRating     = Some(6.6),
+      data              = Map[Source, SourceData](
+        Tmdb               -> SourceData(originalTitle = Some("Wrong Original Title")),
+        models.Multikino   -> SourceData(title = Some("Pucio"), posterUrl = Some("https://example/poster.jpg"))
+      )
+    )
+    val repo  = new InMemoryMovieRepo(Seq(("Pucio", Some(2026), seeded)))
+    val cache = new CaffeineMovieCache(repo)
+    val svc   = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    svc.reEnrich("Pucio", Some(2026))  // returns immediately, TMDB hangs on `gate`
+
+    val key = cache.keyOf("Pucio", Some(2026))
+    val mid = cache.get(key).getOrElse(fail("row vanished from cache while TMDB was in flight — the regression we're guarding against"))
+
+    // TMDB-derived fields and external-site URLs all cleared so the
+    // dedicated *Ratings classes can rediscover them against the new
+    // tmdbId — no stale URLs survive the re-resolve.
+    mid.tmdbId            shouldBe None
+    mid.imdbId            shouldBe None
+    mid.imdbRating        shouldBe None
+    mid.metascore         shouldBe None
+    mid.metacriticUrl     shouldBe None
+    mid.rottenTomatoes    shouldBe None
+    mid.rottenTomatoesUrl shouldBe None
+    mid.filmwebUrl        shouldBe None
+    mid.filmwebRating     shouldBe None
+    // The TMDB `SourceData` slot is gone too — its synopsis / cast /
+    // director / poster all came from the prior wrong film.
+    mid.data.contains(Tmdb) shouldBe false
+    // Cinema slots stay intact: showtimes survive the re-resolve, the
+    // film doesn't disappear from /, /kina, /ulubione while waiting.
+    mid.data.contains(models.Multikino) shouldBe true
+    mid.data(models.Multikino).title    shouldBe Some("Pucio")
+
+    gate.countDown()  // let the async TMDB stage drain so we don't leak threads
+  }
 }

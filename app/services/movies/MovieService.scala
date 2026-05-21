@@ -153,11 +153,38 @@ class MovieService(
     director:      Option[String] = None
   ): Unit = {
     val key = cache.keyOf(title, year)
-    // Wipe first — runTmdbStageSync would otherwise preserve the existing
-    // row's MC / RT / Filmweb URLs (derived from whichever wrong film TMDB
-    // last landed on). A fresh row writes those as None and lets the
-    // dedicated ratings classes rediscover them.
-    cache.invalidate(key)
+    // Don't delete the row outright — the previous implementation called
+    // `cache.invalidate(key)` here, which dropped the row from positive
+    // cache AND Mongo immediately, leaving a window where /debug,
+    // toSchedules, and the rest of the app saw the film as "gone" until
+    // the async TMDB stage put it back. Worse, if TMDB returned no match
+    // (events, special screenings) or simply took longer than the JS
+    // reload timer to respond, the row stayed gone permanently.
+    //
+    // Instead, atomically strip just the TMDB-derived fields — the row
+    // stays visible while reEnrich is in flight, scrape data + cinema
+    // slots are preserved, and on a TMDB miss the row remains with
+    // cleared TMDB / ratings / URLs (no stale URLs survive from the
+    // previous wrong resolution). The dedicated `*Ratings` classes
+    // re-discover MC / RT / Filmweb URLs from the new tmdbId via the
+    // `TmdbResolved` bus event.
+    cache.putIfPresent(key, existing => existing.copy(
+      tmdbId            = None,
+      imdbId            = None,
+      imdbRating        = None,
+      metascore         = None,
+      metacriticUrl     = None,
+      rottenTomatoes    = None,
+      rottenTomatoesUrl = None,
+      filmwebUrl        = None,
+      filmwebRating     = None,
+      // Drop the TMDB SourceData slot too — synopsis / cast / director
+      // / runtime / countries / poster all came from the wrong film
+      // and shouldn't bleed forward. Cinema slots (per-`Cinema`
+      // entries in `data`) stay intact so showtimes survive the
+      // re-resolve.
+      data              = existing.data - Tmdb
+    ))
     Future(runTmdbStage(key, originalTitle, director))(ec)
     ()
   }
