@@ -4,13 +4,27 @@ struct ContentView: View {
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var prefs: UserPreferences
 
-    @State private var dateFilter: DateFilter = .anytime
+    @State private var dateFilter: DateFilter = .today
     @State private var search: String = ""
     @State private var showHidden: Bool = false
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         NavigationStack {
             content
+                // Tap-to-dismiss: a transparent backdrop sits behind the
+                // grid content and only intercepts taps while the search
+                // is focused. Hit-testing falls through to film cards /
+                // pills / toolbar buttons (they paint above this layer),
+                // so the dismiss only fires on taps that land in empty
+                // grid space — exactly the "click outside" UX the user
+                // asked for.
+                .background(
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { searchFocused = false }
+                        .allowsHitTesting(searchFocused)
+                )
                 .navigationTitle("Repertuar Poznań")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -27,7 +41,7 @@ struct ContentView: View {
                     FiltersBar(dateFilter: $dateFilter)
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    SearchBar(search: $search)
+                    SearchBar(search: $search, focused: $searchFocused)
                 }
                 .sheet(isPresented: $showHidden) {
                     HiddenFilmsView()

@@ -22,6 +22,10 @@ struct FilmGridView: View {
                 .padding(.horizontal, 12)
                 .padding(.bottom, 24)
             }
+            // Drag-to-dismiss the search keyboard: scrolling the grid at
+            // all hides the keyboard immediately. Tap-to-dismiss is
+            // handled by the background overlay in ContentView.
+            .scrollDismissesKeyboard(.immediately)
         }
     }
 }

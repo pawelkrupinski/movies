@@ -1,9 +1,7 @@
 import SwiftUI
 
 // Top safe-area inset: horizontally-scrolling pill row for the date
-// filter. The companion `SearchBar` below docks to the bottom inset
-// (so the keyboard slides it up cleanly on focus instead of covering
-// it at the top).
+// filter. The companion `SearchBar` below docks to the bottom inset.
 struct FiltersBar: View {
     @Binding var dateFilter: DateFilter
 
@@ -36,33 +34,39 @@ struct FiltersBar: View {
     }
 }
 
-// Bottom safe-area inset: search field. Lives at the thumb-zone edge
-// of the screen so reaching it on a 6.7" phone doesn't require a
-// stretch, and so the iOS keyboard slides the field up into view
-// directly (vs. the keyboard covering a top-of-screen field).
+// Bottom safe-area inset: a single floating search pill, styled like
+// the native iOS search field (Settings / Contacts / Mail). No outer
+// chrome container — the pill sits over the grid content with a
+// translucent `regularMaterial` background, so the grid scrolls
+// visibly behind it.
 struct SearchBar: View {
     @Binding var search: String
+    @FocusState.Binding var focused: Bool
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
             TextField("Szukaj filmu", text: $search)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .foregroundColor(.white)
+                .focused($focused)
+                .foregroundColor(.primary)
             if !search.isEmpty {
                 Button {
                     search = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(8)
-        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
     }
 }
