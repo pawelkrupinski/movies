@@ -1,5 +1,37 @@
 import SwiftUI
 
+// Top safe-area inset: 🎬 brand mark + horizontally-scrolling date
+// pills hugging the left edge, with the Filtry button on the right.
+// Built as a plain HStack instead of SwiftUI `ToolbarItem`s because
+// the native nav bar clips a ScrollView inside `.navigationBarLeading`
+// down to a few dozen points of width, which made the pill row
+// effectively invisible.
+struct TopBar: View {
+    @Binding var dateFilter: DateFilter
+    let filtersActive: Bool
+    let onTapFilters: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text("🎬")
+                .font(.system(size: 22))
+            DatePillsRow(dateFilter: $dateFilter)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: onTapFilters) {
+                Image(systemName: filtersActive
+                      ? "line.3.horizontal.decrease.circle.fill"
+                      : "line.3.horizontal.decrease.circle")
+                    .font(.title2)
+                    .foregroundColor(.accentColor)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+    }
+}
+
 // Horizontally-scrolling date-filter pills. Lives in the navigation
 // bar's `.principal` toolbar slot (alongside the camera-icon "logo")
 // so the whole top chrome — Filtry button, brand mark, date filter —

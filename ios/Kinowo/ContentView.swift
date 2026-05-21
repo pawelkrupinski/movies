@@ -26,33 +26,20 @@ struct ContentView: View {
                         .onTapGesture { searchFocused = false }
                         .allowsHitTesting(searchFocused)
                 )
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    // Leading: 🎬 brand mark (matches the web navbar
-                    // glyph) + date-filter pills, hugging the left
-                    // edge. Both are wrapped in a single ToolbarItem so
-                    // the ScrollView inside `DatePillsRow` gets the
-                    // remaining horizontal space (vs. two separate items
-                    // which iOS would space apart).
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        HStack(spacing: 8) {
-                            Text("🎬")
-                                .font(.system(size: 20))
-                            DatePillsRow(dateFilter: $dateFilter)
-                        }
-                    }
-                    // Trailing: Filtry button — opens the sheet that owns
-                    // every other filter axis (Ukryte filmy / Kina /
-                    // Wymiar / Wersja / IMAX / Od godziny).
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button {
-                            showFilters = true
-                        } label: {
-                            Image(systemName: filtersActive
-                                  ? "line.3.horizontal.decrease.circle.fill"
-                                  : "line.3.horizontal.decrease.circle")
-                        }
-                    }
+                // The SwiftUI nav-bar's `.navigationBarLeading` slot
+                // clips a horizontal ScrollView to a few dozen points of
+                // width, which crushed the date-pill row down to one
+                // half-visible pill. Hide the native nav bar entirely
+                // and render our own top chrome via `safeAreaInset(top)`,
+                // so the HStack gets the full screen width to spread
+                // across.
+                .toolbar(.hidden, for: .navigationBar)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    TopBar(
+                        dateFilter: $dateFilter,
+                        filtersActive: filtersActive,
+                        onTapFilters: { showFilters = true }
+                    )
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     SearchBar(search: $search, focused: $searchFocused)
