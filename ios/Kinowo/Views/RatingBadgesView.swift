@@ -90,17 +90,24 @@ private enum Badge {
             Text(label)
                 .font(.system(size: 9, weight: .heavy))
                 .foregroundColor(labelFg)
+                .lineLimit(1)
                 .padding(.horizontal, 4)
                 .padding(.vertical, 2)
                 .background(labelBg)
             Text(value)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(valueFg)
+                .lineLimit(1)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 2)
                 .background(Color(red: 0.165, green: 0.165, blue: 0.243))    // #2a2a3e
         }
         .clipShape(RoundedRectangle(cornerRadius: 3))
+        // Pills render at their intrinsic width — never shrink the
+        // text to the proposal, which is what produced "IMD…" /
+        // "7…" tails on narrow grid cells. FlowLayout wraps overlong
+        // pills to a new line instead.
+        .fixedSize(horizontal: true, vertical: false)
 
         if let url {
             Link(destination: url) { body }.buttonStyle(.plain)
@@ -117,9 +124,11 @@ private enum Badge {
         let body = Text(value)
             .font(.system(size: 10, weight: .heavy))
             .foregroundColor(fg)
+            .lineLimit(1)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
             .background(bg, in: RoundedRectangle(cornerRadius: 3))
+            .fixedSize(horizontal: true, vertical: false)
 
         if let url {
             Link(destination: url) { body }.buttonStyle(.plain)
