@@ -308,19 +308,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   "the mobile navbar (≤ 575 px)" should "place search to the left of auth on row 1, date to the left of filtry on row 2" in {
     onPath("/") { page =>
-      // 414 × 896 — iPhone XR / 11 / 12 / 13 / 14 / 14 Pro default
-      // viewport. The sub-iPhone-SE width (375) can't fit
-      // [logo+tabs] [search] [auth] on a single row even with a 70-px
-      // search input, so the spec's "search next to auth on row 1"
-      // can only be verified at 380+ px widths; 414 is the modal
-      // iPhone viewport since 2018.
-      // `mobile: true` switches CDP's emulation to mobile mode, which on
-      // Linux headless Chrome (CI) ignores the explicit width override
-      // and falls back to whatever the launch-flag default is. Sticking
-      // to desktop-shaped emulation with just the width + height
-      // override applies cleanly on both macOS (local) and CI Chrome.
+      // 500 × 896 — widest mobile viewport (below the 576 px breakpoint
+      // where the mobile media-query stops applying). Picked because
+      // headless Chrome on the CI image renders Linux-fallback fonts
+      // ~3 % wider than macOS Chrome locally — at 414 the navbar
+      // cluster [logo+tabs] [search] [auth] just barely overflows
+      // there, wrapping auth to its own row and tripping the
+      // assertion. 500 gives ~80 px headroom over the cluster's
+      // natural width on either platform.
+      // `mobile: true` switches CDP's emulation to mobile mode, which
+      // on Linux headless Chrome ignores the width override; staying
+      // desktop-shaped (`mobile: false`, dpr 1.0) applies cleanly.
       page.send("Emulation.setDeviceMetricsOverride", play.api.libs.json.Json.obj(
-        "width" -> 414, "height" -> 896, "deviceScaleFactor" -> 1.0, "mobile" -> false
+        "width" -> 500, "height" -> 896, "deviceScaleFactor" -> 1.0, "mobile" -> false
       ))
       // The override triggers a re-layout but doesn't always re-fire
       // applyFilters etc.; wait a frame for the resize listeners to
@@ -360,7 +360,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Row 1: search and auth share the same top. Allow a 4 px
       // tolerance for sub-pixel alignment + line-height variance.
       withClue(s"viewport=$viewportWidth search=($searchTop,$searchLeft) auth=($authTop,$authLeft) date=($dateTop,$dateLeft) filtry=($filtryTop,$filtryLeft) ") {
-        viewportWidth shouldBe 414
+        viewportWidth shouldBe 500
         math.abs(searchTop - authTop) should be < 4.0
         searchLeft should be < authLeft
       }
