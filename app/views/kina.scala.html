@@ -85,9 +85,13 @@
    ALL_CINEMAS and `disabledCinemas` localStorage. Renders empty
    server-side; the JS pill builder is the source of truth so the
    active/inactive state stays in sync with the same localStorage
-   everywhere else in the app reads from. *@
+   everywhere else in the app reads from.
+   `width: 100%` + `justify-content: space-between` on `#cinema-pills`
+   spreads the pills edge-to-edge across the row instead of clustering
+   them on the left. *@
 <nav class="navbar cinema-nav-row px-4 d-flex align-items-center" style="flex-wrap:wrap">
-  <div id="cinema-pills" class="d-flex align-items-center" style="flex-wrap:wrap; gap:.25rem"></div>
+  <div id="cinema-pills" class="d-flex align-items-center"
+       style="flex-wrap:wrap; gap:.25rem; width:100%; justify-content:space-between"></div>
 </nav>
 
 <div class="container-fluid py-4 px-4">
