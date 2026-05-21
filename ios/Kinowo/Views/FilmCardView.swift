@@ -24,7 +24,17 @@ struct FilmCardView: View {
                 if !film.ratings.isEmpty {
                     RatingBadgesView(ratings: film.ratings)
                 }
+                // Extra breathing room above the showings section when
+                // ratings sit directly above — without it, a wrapped FW
+                // (or RT) pill's rounded-rect background visually
+                // touches the first day-label ("Czwartek 21 maja"
+                // bleeding into the pill on Obsesja's two-pill stack).
+                // The day label has its own `.padding(.top, 4)` but
+                // that's tuned for between-days spacing inside
+                // ShowingsView; this padding handles the
+                // ratings→showings boundary specifically.
                 ShowingsView(film: film)
+                    .padding(.top, film.ratings.isEmpty ? 0 : 6)
             }
             .padding(12)
         }
