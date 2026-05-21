@@ -31,6 +31,9 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
     // helper is still tested for its raw output in PosterProxySpec.
     rendered                          should include ("https://images.weserv.nl/?url=example.com%2Fbroken.jpg")
     rendered                          should include ("&amp;w=480")
+    rendered                          should include ("&amp;h=720")
+    rendered                          should include ("&amp;fit=cover")
+    rendered                          should include ("&amp;a=attention")
     rendered                          should include ("&amp;output=webp")
     rendered                          should include ("onerror")
     rendered                          should include ("Brak plakatu")

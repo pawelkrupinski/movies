@@ -44,6 +44,22 @@ object PosterProxy {
   // wasted bytes on the wire.
   private val TargetWidth = 480
 
+  // The `.poster-wrap` card slot is rendered with `padding-top: 148%`,
+  // i.e. the slot is ~2:3 portrait. Asking weserv for a fixed 480×720
+  // crop with `fit=cover&a=attention` gives us:
+  //   - Landscape sources (banners / "_plakat_cut" crops some cinemas
+  //     publish) are cropped to portrait around the salient region
+  //     instead of being squashed by the browser's `object-fit: cover`
+  //     center crop. weserv's `attention` algorithm (libvips smartcrop)
+  //     picks the area with the highest visual entropy + face/skin
+  //     hits — usually the actor's face on a movie poster.
+  //   - Portrait sources at or near 2:3 pass through with minimal loss.
+  //   - Bonus: the response is bounded at ~480×720 px regardless of
+  //     source dimensions, so the megabyte-scale 4000×6000 poster
+  //     masters some cinemas serve get trimmed at the proxy.
+  private val TargetHeight = 720
+
+
   // Hosts whose origin servers block weserv's outbound IP with 403
   // (cross-checked against direct-browser fetches that return 200).
   // For these, the proxy is a net regression — serve the original URL
@@ -78,6 +94,6 @@ object PosterProxy {
     val host = stripped.takeWhile(_ != '/').toLowerCase
     if (SkipHosts.contains(host)) return url
     val encoded  = URLEncoder.encode(stripped, "UTF-8")
-    s"https://images.weserv.nl/?url=$encoded&w=$TargetWidth&output=webp"
+    s"https://images.weserv.nl/?url=$encoded&w=$TargetWidth&h=$TargetHeight&fit=cover&a=attention&output=webp"
   }
 }

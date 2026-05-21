@@ -24,9 +24,18 @@ class PosterProxySpec extends AnyFlatSpec with Matchers {
     proxied should include ("url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F235%2Fposter.jpg%3Frev%3Dabc%26v%3D1")
   }
 
-  it should "request a 480-px wide webp" in {
+  it should "request a 480×720 webp cover-crop with attention-based focal point" in {
     val proxied = PosterProxy.proxy("https://example.com/poster.png")
     proxied should include ("&w=480")
+    // `h` + `fit=cover` + `a=attention` together turn landscape banners
+    // ("_plakat_cut" crops some cinemas publish) into portrait by
+    // cropping around the most salient region of the original instead
+    // of letterboxing or letting `object-fit: cover` do a dumb center
+    // crop client-side. Already-portrait sources pass through with
+    // minimal loss.
+    proxied should include ("&h=720")
+    proxied should include ("&fit=cover")
+    proxied should include ("&a=attention")
     proxied should include ("&output=webp")
   }
 
