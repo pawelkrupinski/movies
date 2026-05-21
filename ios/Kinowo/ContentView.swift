@@ -28,15 +28,16 @@ struct ContentView: View {
                 )
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    // Principal: 🎬 brand mark (matches the web navbar
-                    // glyph) + date-filter pills, all on a single row.
-                    // Replaces the previous "title text + separate
-                    // safeAreaInset bar" layout that wasted a full row
-                    // of vertical space.
-                    ToolbarItem(placement: .principal) {
+                    // Leading: 🎬 brand mark (matches the web navbar
+                    // glyph) + date-filter pills, hugging the left
+                    // edge. Both are wrapped in a single ToolbarItem so
+                    // the ScrollView inside `DatePillsRow` gets the
+                    // remaining horizontal space (vs. two separate items
+                    // which iOS would space apart).
+                    ToolbarItem(placement: .navigationBarLeading) {
                         HStack(spacing: 8) {
                             Text("🎬")
-                                .font(.system(size: 18))
+                                .font(.system(size: 20))
                             DatePillsRow(dateFilter: $dateFilter)
                         }
                     }

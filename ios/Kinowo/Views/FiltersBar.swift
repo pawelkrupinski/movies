@@ -21,9 +21,9 @@ struct DatePillsRow: View {
                         dateFilter = f
                     } label: {
                         Text(f.label)
-                            .font(.system(size: 12, weight: .medium))
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 3)
+                            .font(.system(size: 14, weight: .medium))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
                             .background(
                                 dateFilter == f
                                     ? Color.accentColor.opacity(0.85)
@@ -49,9 +49,9 @@ struct SearchBar: View {
     @FocusState.Binding var focused: Bool
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 14))
+                .font(.system(size: 16))
                 .foregroundStyle(.secondary)
             TextField("Szukaj filmu", text: $search)
                 .textInputAutocapitalization(.never)
@@ -63,14 +63,19 @@ struct SearchBar: View {
                     search = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        // Taller, more translucent: 11pt vertical padding (≈ 38pt
+        // total, matches the native iOS Settings search field) and
+        // `.ultraThinMaterial` so the film grid scrolls visibly behind
+        // the pill instead of being hidden under a solid bar.
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
     }
