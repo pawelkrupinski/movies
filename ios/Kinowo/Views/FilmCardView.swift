@@ -50,10 +50,12 @@ private struct PosterView: View {
                 .frame(maxWidth: .infinity)
                 .aspectRatio(2.0/3.0, contentMode: .fit)
                 .clipped()
+            // Mirror the web layout: ★ on top-left (favourite,
+            // `.fav-poster-btn`), X on top-right (hide, `.hide-btn`).
             HStack {
-                hideButton
-                Spacer()
                 favButton
+                Spacer()
+                hideButton
             }
             .padding(6)
         }

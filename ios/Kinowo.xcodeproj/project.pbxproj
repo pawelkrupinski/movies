@@ -21,7 +21,6 @@
 		DD0000000000000000000D /* ShowingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000D /* ShowingsView.swift */; };
 		DD0000000000000000000E /* RatingBadgesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000E /* RatingBadgesView.swift */; };
 		DD0000000000000000000F /* FiltersBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000F /* FiltersBar.swift */; };
-		DD00000000000000000010 /* HiddenFilmsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000010 /* HiddenFilmsView.swift */; };
 		DD00000000000000000011 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000011 /* FlowLayout.swift */; };
 /* End PBXBuildFile section */
 
@@ -41,7 +40,6 @@
 		CC0000000000000000000D /* ShowingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowingsView.swift; sourceTree = "<group>"; };
 		CC0000000000000000000E /* RatingBadgesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingBadgesView.swift; sourceTree = "<group>"; };
 		CC0000000000000000000F /* FiltersBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FiltersBar.swift; sourceTree = "<group>"; };
-		CC00000000000000000010 /* HiddenFilmsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenFilmsView.swift; sourceTree = "<group>"; };
 		CC00000000000000000011 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -121,7 +119,6 @@
 				CC0000000000000000000D /* ShowingsView.swift */,
 				CC0000000000000000000E /* RatingBadgesView.swift */,
 				CC0000000000000000000F /* FiltersBar.swift */,
-				CC00000000000000000010 /* HiddenFilmsView.swift */,
 				CC00000000000000000011 /* FlowLayout.swift */,
 			);
 			path = Views;
@@ -209,7 +206,6 @@
 				DD0000000000000000000D /* ShowingsView.swift in Sources */,
 				DD0000000000000000000E /* RatingBadgesView.swift in Sources */,
 				DD0000000000000000000F /* FiltersBar.swift in Sources */,
-				DD00000000000000000010 /* HiddenFilmsView.swift in Sources */,
 				DD00000000000000000011 /* FlowLayout.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -44,6 +44,11 @@ final class UserPreferences: ObservableObject {
         store.set(Array(hiddenFilms), forKey: kHidden)
     }
 
+    func unhideAll() {
+        hiddenFilms.removeAll()
+        store.set(Array(hiddenFilms), forKey: kHidden)
+    }
+
     func setDisabledCinemas(_ s: Set<String>) {
         disabledCinemas = s
         store.set(Array(disabledCinemas), forKey: kDisabled)

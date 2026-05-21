@@ -7,7 +7,6 @@ struct ContentView: View {
     @State private var dateFilter: DateFilter = .today
     @State private var formatFilter: FormatFilter = .empty
     @State private var search: String = ""
-    @State private var showHidden: Bool = false
     @State private var showFilters: Bool = false
     @FocusState private var searchFocused: Bool
 
@@ -27,9 +26,11 @@ struct ContentView: View {
                         .onTapGesture { searchFocused = false }
                         .allowsHitTesting(searchFocused)
                 )
-                .navigationTitle("Repertuar Poznań")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    // Leading: Filtry button — opens the sheet that owns
+                    // every other filter axis (Ukryte filmy / Kina /
+                    // Wymiar / Wersja / IMAX / Od godziny).
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button {
                             showFilters = true
@@ -39,23 +40,21 @@ struct ContentView: View {
                                   : "line.3.horizontal.decrease.circle")
                         }
                     }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button {
-                            showHidden = true
-                        } label: {
-                            Image(systemName: prefs.hiddenFilms.isEmpty ? "eye.slash" : "eye.slash.fill")
+                    // Principal: camera-icon brand mark + date-filter
+                    // pills, all on a single row. Replaces the previous
+                    // "title text + separate safeAreaInset bar" layout
+                    // that wasted a full row of vertical space.
+                    ToolbarItem(placement: .principal) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.accentColor)
+                            DatePillsRow(dateFilter: $dateFilter)
                         }
-                        .disabled(prefs.hiddenFilms.isEmpty)
                     }
-                }
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    FiltersBar(dateFilter: $dateFilter)
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     SearchBar(search: $search, focused: $searchFocused)
-                }
-                .sheet(isPresented: $showHidden) {
-                    HiddenFilmsView()
                 }
                 .sheet(isPresented: $showFilters) {
                     FiltersSheet(
@@ -114,8 +113,16 @@ struct ContentView: View {
         return out.sorted()
     }
 
+    // Filtry button uses its `.fill` variant whenever any of the
+    // axes Filtry owns is active — cinemas filtered, format
+    // constrained, or any hidden films queued. Last one is here so
+    // the user can spot "I've hidden a film" at a glance now that
+    // the eye toolbar button is gone (the Ukryte filmy list lives
+    // inside Filtry).
     private var filtersActive: Bool {
-        !formatFilter.isEmpty || !prefs.disabledCinemas.isEmpty
+        !formatFilter.isEmpty
+            || !prefs.disabledCinemas.isEmpty
+            || !prefs.hiddenFilms.isEmpty
     }
 
     private var filteredFilms: [Film] {

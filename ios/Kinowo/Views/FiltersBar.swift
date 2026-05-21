@@ -1,36 +1,41 @@
 import SwiftUI
 
-// Top safe-area inset: horizontally-scrolling pill row for the date
-// filter. The companion `SearchBar` below docks to the bottom inset.
-struct FiltersBar: View {
+// Horizontally-scrolling date-filter pills. Lives in the navigation
+// bar's `.principal` toolbar slot (alongside the camera-icon "logo")
+// so the whole top chrome — Filtry button, brand mark, date filter —
+// collapses into a single row instead of stacking a separate
+// safe-area-inset bar below the nav bar.
+//
+// Compact dimensions are deliberate: nav bar slot is ~32pt tall, so
+// pills use a 12pt font + 3pt vertical padding to clear the chrome
+// without clipping descenders. The horizontal ScrollView covers the
+// case where four pills overflow on iPhone-mini-class widths.
+struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 ForEach(DateFilter.presets, id: \.self) { f in
                     Button {
                         dateFilter = f
                     } label: {
                         Text(f.label)
-                            .font(.system(size: 13, weight: .medium))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .font(.system(size: 12, weight: .medium))
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 3)
                             .background(
                                 dateFilter == f
-                                    ? Color.accentColor.opacity(0.75)
-                                    : Color.white.opacity(0.10),
+                                    ? Color.accentColor.opacity(0.85)
+                                    : Color(.systemGray5),
                                 in: Capsule()
                             )
-                            .foregroundColor(.white)
+                            .foregroundColor(dateFilter == f ? .white : .primary)
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 12)
         }
-        .padding(.vertical, 8)
-        .background(.ultraThinMaterial)
     }
 }
 
@@ -88,6 +93,37 @@ struct FiltersSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                // Hidden films open at the top of Filtry — mirrors the web's
+                // "Ukryte filmy" row inside the Filtry dropdown. Section
+                // omitted entirely when the set is empty so the sheet
+                // stays uncluttered.
+                if !prefs.hiddenFilms.isEmpty {
+                    Section("Ukryte filmy") {
+                        ForEach(
+                            Array(prefs.hiddenFilms).sorted {
+                                $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+                            },
+                            id: \.self
+                        ) { title in
+                            HStack {
+                                Text(title).lineLimit(1)
+                                Spacer()
+                                Button("Pokaż") {
+                                    withAnimation { prefs.unhide(title) }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                        }
+                        Button(role: .destructive) {
+                            withAnimation { prefs.unhideAll() }
+                        } label: {
+                            Text("Pokaż wszystkie")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+
                 if !allCinemas.isEmpty {
                     Section("Kina") {
                         Toggle("Wszystkie kina", isOn: Binding(
