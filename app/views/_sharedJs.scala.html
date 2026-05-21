@@ -826,9 +826,17 @@
     // source-page click timestamp. Reading the stash in `pagehide`
     // would land on the *source* page's pagehide, giving us source's
     // timeOrigin (earlier than the click) and a meaningless negative.
+    //
+    // Staleness guard: iOS Safari's bf-cache restore reuses the entire
+    // JS state, so this IIFE doesn't re-run on a restored tab — the
+    // stash from a click hours/days ago can sit in sessionStorage and
+    // land in the next non-bf-cache navigation as a wildly negative
+    // delta. Only honour stashes < 30 s old; anything older is treated
+    // as orphan and cleared.
     const stash = sessionStorage.getItem('navClickAt');
     if (stash) {
-      samples.tapToNavStart = Math.round(performance.timeOrigin - Number(stash));
+      const gap = performance.timeOrigin - Number(stash);
+      if (gap >= 0 && gap < 30_000) samples.tapToNavStart = Math.round(gap);
       sessionStorage.removeItem('navClickAt');
     }
     let   lcp = 0, longTaskMs = 0, longTasks = 0;
