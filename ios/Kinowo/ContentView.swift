@@ -37,7 +37,6 @@ struct ContentView: View {
                 .safeAreaInset(edge: .top, spacing: 0) {
                     TopBar(
                         dateFilter: $dateFilter,
-                        filtersActive: filtersActive,
                         onTapFilters: { showFilters = true }
                     )
                 }
@@ -101,18 +100,6 @@ struct ContentView: View {
         return out.sorted()
     }
 
-    // Filtry button uses its `.fill` variant whenever any of the
-    // axes Filtry owns is active — cinemas filtered, format
-    // constrained, or any hidden films queued. Last one is here so
-    // the user can spot "I've hidden a film" at a glance now that
-    // the eye toolbar button is gone (the Ukryte filmy list lives
-    // inside Filtry).
-    private var filtersActive: Bool {
-        !formatFilter.isEmpty
-            || !prefs.disabledCinemas.isEmpty
-            || !prefs.hiddenFilms.isEmpty
-    }
-
     private var filteredFilms: [Film] {
         let query = search
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -144,6 +131,7 @@ struct ContentView: View {
             return Film(
                 title: film.title,
                 posterURL: film.posterURL,
+                fallbackPosterURL: film.fallbackPosterURL,
                 runtimeMinutes: film.runtimeMinutes,
                 ratings: film.ratings,
                 showings: filteredDays

@@ -8,7 +8,6 @@ import SwiftUI
 // effectively invisible.
 struct TopBar: View {
     @Binding var dateFilter: DateFilter
-    let filtersActive: Bool
     let onTapFilters: () -> Void
 
     var body: some View {
@@ -18,11 +17,9 @@ struct TopBar: View {
             DatePillsRow(dateFilter: $dateFilter)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: onTapFilters) {
-                Image(systemName: filtersActive
-                      ? "line.3.horizontal.decrease.circle.fill"
-                      : "line.3.horizontal.decrease.circle")
+                Image(systemName: "line.3.horizontal.decrease.circle")
                     .font(.system(size: 28))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.white)
             }
             .buttonStyle(.plain)
         }
