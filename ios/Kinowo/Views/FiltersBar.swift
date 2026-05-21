@@ -1,22 +1,20 @@
 import SwiftUI
 
-// Top safe-area inset: 🎬 brand mark + horizontally-scrolling date
-// pills hugging the left edge, with the Filtry button on the right.
-// Built as a plain HStack instead of SwiftUI `ToolbarItem`s because
-// the native nav bar clips a ScrollView inside `.navigationBarLeading`
-// down to a few dozen points of width, which made the pill row
-// effectively invisible.
+// Top safe-area inset: 🎬 brand mark + four date-filter pills sharing
+// the available width + Filtry button on the right. Built as a plain
+// HStack instead of SwiftUI `ToolbarItem`s because the native nav bar
+// clips its contents to a few dozen points of width.
 struct TopBar: View {
     @Binding var dateFilter: DateFilter
     let filtersActive: Bool
     let onTapFilters: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Text("🎬")
-                .font(.system(size: 28))
+                .font(.system(size: 24))
             DatePillsRow(dateFilter: $dateFilter)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity)
             Button(action: onTapFilters) {
                 // `line.3.horizontal.decrease.circle` is the funnel-in-
                 // circle SF Symbol the iOS app shipped with — the circle
@@ -26,12 +24,12 @@ struct TopBar: View {
                 Image(systemName: filtersActive
                       ? "line.3.horizontal.decrease.circle.fill"
                       : "line.3.horizontal.decrease.circle")
-                    .font(.system(size: 28))
+                    .font(.system(size: 24))
                     .foregroundStyle(filtersActive ? Color.accentColor : .primary)
             }
             .buttonStyle(BounceButtonStyle())
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12)
         // Tiny top padding so the pills hug the status bar; the
         // safeAreaInset already reserves the strip above. Larger bottom
         // padding keeps a small breathing buffer between the bar and the
@@ -54,34 +52,37 @@ struct TopBar: View {
     }
 }
 
-// Horizontally-scrolling date-filter pills. Sits in the middle of
-// the `TopBar` HStack between the 🎬 brand mark and the Filtry icon,
-// inside the top safeAreaInset. The ScrollView covers the case where
-// four pills overflow on iPhone-mini-class widths.
+// Date-filter pills sized to share the available width between the
+// brand mark and the Filtry icon — each pill gets `.frame(maxWidth:
+// .infinity)` so the row fills the line edge-to-edge on every phone
+// width, no horizontal scrolling needed. Long labels (e.g. "Wszystkie"
+// on iPhone-mini-class widths) shrink to fit via `minimumScaleFactor`
+// rather than truncating.
 struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(DateFilter.presets, id: \.self) { f in
-                    Button {
-                        dateFilter = f
-                    } label: {
-                        Text(f.label)
-                            .font(.system(size: 16, weight: .medium))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(
-                                dateFilter == f
-                                    ? Color.accentColor.opacity(0.85)
-                                    : Color(.systemGray5),
-                                in: Capsule()
-                            )
-                            .foregroundColor(dateFilter == f ? .white : .primary)
-                    }
-                    .buttonStyle(.plain)
+        HStack(spacing: 6) {
+            ForEach(DateFilter.presets, id: \.self) { f in
+                Button {
+                    dateFilter = f
+                } label: {
+                    Text(f.label)
+                        .font(.system(size: 15, weight: .medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.55)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 7)
+                        .background(
+                            dateFilter == f
+                                ? Color.accentColor.opacity(0.85)
+                                : Color(.systemGray5),
+                            in: Capsule()
+                        )
+                        .foregroundColor(dateFilter == f ? .white : .primary)
                 }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -168,9 +169,9 @@ struct CinemaPillsRow: View {
 }
 
 // Floating label that names the current tab (Filmy / Kina). Shown on
-// app launch and on every swipe between tabs; fades out after ~1.4 s.
-// Positioned by the caller via `.overlay(alignment:)` plus padding so
-// it sits clear of the top bar.
+// app launch and on every swipe between tabs; fades out after ~0.7 s.
+// Positioned by the caller via `.overlay(alignment: .bottom)` plus
+// padding so it sits clear of the search bar.
 struct TabLabelOverlay: View {
     let text: String
 

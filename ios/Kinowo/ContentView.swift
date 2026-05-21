@@ -70,16 +70,18 @@ struct ContentView: View {
                         showCinemaSection: tab == .films
                     )
                 }
-                .overlay(alignment: .top) {
-                    if let label = tabLabel {
-                        TabLabelOverlay(text: label)
-                            // Sit clear of the top bar; the top safeAreaInset
-                            // is ~92pt tall after the status-bar reach.
-                            .padding(.top, 100)
-                            .allowsHitTesting(false)
-                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                    }
-                }
+        }
+        // Overlay on the NavigationStack so the label aligns to the
+        // device's screen edges, not the safe-area-inset content area.
+        // `.padding(.bottom, 110)` clears the bottom safeAreaInset
+        // (~70pt search pill + 14pt dip + 24pt breathing buffer).
+        .overlay(alignment: .bottom) {
+            if let label = tabLabel {
+                TabLabelOverlay(text: label)
+                    .padding(.bottom, 110)
+                    .allowsHitTesting(false)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            }
         }
         .task {
             if store.films.isEmpty { await store.reload() }
@@ -210,16 +212,17 @@ struct ContentView: View {
         )
     }
 
-    /// Flash the given label on top of the screen for ~1.4 s, then
-    /// fade it out. Cancels any previous fade-out task so back-to-back
-    /// swipes (Filmy → Kina → Filmy) don't leave the label stuck.
+    /// Flash the given label at the bottom of the screen for ~0.7 s,
+    /// then fade it out over 0.2 s. Cancels any previous fade-out task
+    /// so back-to-back swipes (Filmy → Kina → Filmy) don't leave the
+    /// label stuck.
     private func showTabLabel(_ text: String) {
         tabLabelTask?.cancel()
-        withAnimation(.easeInOut(duration: 0.2)) { tabLabel = text }
+        withAnimation(.easeInOut(duration: 0.1)) { tabLabel = text }
         tabLabelTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_400_000_000)
+            try? await Task.sleep(nanoseconds: 700_000_000)
             if Task.isCancelled { return }
-            withAnimation(.easeInOut(duration: 0.4)) { tabLabel = nil }
+            withAnimation(.easeInOut(duration: 0.2)) { tabLabel = nil }
         }
     }
 }
