@@ -1,0 +1,112 @@
+// HTMLParser smoke-test driver — compiles the parser against the kinowo.fly.dev
+// HTML and prints a per-film summary so a human can tell at a glance whether
+// the parse still works. Intended as the iOS-side equivalent of the Scala
+// "scripts must print what they did" rule: re-run it whenever the web
+// templates change and confirm the numbers + sample films still look sane.
+//
+// Usage:
+//   ./Tools/run_smoke.sh              # fetches https://kinowo.fly.dev/
+//   ./Tools/run_smoke.sh path.html    # uses local HTML
+
+import Foundation
+
+@main
+enum HTMLParserSmoke {
+    static func main() {
+        let args = CommandLine.arguments
+        let html: String
+        if args.count >= 2 {
+            do {
+                html = try String(contentsOfFile: args[1], encoding: .utf8)
+            } catch {
+                FileHandle.standardError.write(Data("Failed to read \(args[1]): \(error)\n".utf8))
+                exit(1)
+            }
+        } else {
+            guard let s = fetchProductionHTML() else { exit(1) }
+            html = s
+        }
+
+        print("HTML size: \(html.count) chars")
+        let films = HTMLParser.parse(html: html)
+        print("Parsed films: \(films.count)")
+        print(separator)
+
+        let totalShowtimes = films.flatMap { $0.showings }
+            .flatMap { $0.cinemas }
+            .reduce(0) { $0 + $1.showtimes.count }
+        let withPoster   = films.filter { $0.posterURL != nil }.count
+        let withImdb     = films.filter { $0.ratings.imdb != nil }.count
+        let withRuntime  = films.filter { $0.runtimeMinutes != nil }.count
+        let withShowings = films.filter { !$0.showings.isEmpty }.count
+
+        print("with poster:    \(withPoster) / \(films.count)")
+        print("with runtime:   \(withRuntime) / \(films.count)")
+        print("with IMDb:      \(withImdb) / \(films.count)")
+        print("with showings:  \(withShowings) / \(films.count)")
+        print("total showtimes: \(totalShowtimes)")
+        print(separator)
+
+        for f in films.prefix(5) {
+            printSample(f)
+        }
+        print(separator)
+
+        var failures = 0
+        func check(_ name: String, _ cond: Bool, _ extra: String = "") {
+            if cond { print("✓ \(name)") }
+            else { print("✗ \(name) \(extra)"); failures += 1 }
+        }
+
+        check("at least 30 films parsed",     films.count >= 30, "(got \(films.count))")
+        check("at least 80% have posters",    !films.isEmpty && Double(withPoster)   / Double(films.count) >= 0.8)
+        check("at least 90% have showings",   !films.isEmpty && Double(withShowings) / Double(films.count) >= 0.9)
+        check("at least 100 showtimes total", totalShowtimes >= 100, "(got \(totalShowtimes))")
+        check("at least one IMDb rating",     withImdb > 0)
+
+        if failures > 0 {
+            print("FAILED with \(failures) check failures")
+            exit(2)
+        }
+        print("ALL OK")
+    }
+
+    static let separator = String(repeating: "─", count: 80)
+
+    static func printSample(_ f: Film) {
+        print("• \(f.title)")
+        print("   poster:  \(f.posterURL?.absoluteString.prefix(80).description ?? "—")")
+        print("   runtime: \(f.runtimeMinutes.map { "\($0)min" } ?? "—")")
+        let r = f.ratings
+        let ratings = [
+            r.imdb.map { "IMDb \(String(format: "%.1f", $0))" },
+            r.metascore.map { "MC \($0)" },
+            r.rottenTomatoes.map { "RT \($0)%" },
+            r.filmweb.map { "FW \(String(format: "%.1f", $0))" }
+        ].compactMap { $0 }.joined(separator: " · ")
+        print("   ratings: \(ratings.isEmpty ? "—" : ratings)")
+        print("   days:    \(f.showings.count)")
+        for day in f.showings.prefix(2) {
+            let cinemaSummary = day.cinemas.map { "\($0.cinema)(\($0.showtimes.count))" }
+                .joined(separator: ", ")
+            print("     \(day.date) – \(day.label): \(cinemaSummary)")
+        }
+    }
+
+    static func fetchProductionHTML() -> String? {
+        let url = URL(string: "https://kinowo.fly.dev/")!
+        var request = URLRequest(url: url)
+        request.setValue("KinowoSmoke/1.0", forHTTPHeaderField: "User-Agent")
+        var result: String?
+        let sem = DispatchSemaphore(value: 0)
+        URLSession.shared.dataTask(with: request) { data, _, _ in
+            if let data, let s = String(data: data, encoding: .utf8) { result = s }
+            sem.signal()
+        }.resume()
+        sem.wait()
+        if result == nil {
+            FileHandle.standardError.write(Data("Failed to fetch \(url)\n".utf8))
+        }
+        return result
+    }
+}

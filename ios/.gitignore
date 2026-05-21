@@ -1,0 +1,11 @@
+# Xcode per-user IDE state — never belongs in version control.
+xcuserdata/
+*.xcuserstate
+
+# Build artefacts (the smoke script compiles into /tmp, but be defensive).
+build/
+DerivedData/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# macOS noise.
+.DS_Store
