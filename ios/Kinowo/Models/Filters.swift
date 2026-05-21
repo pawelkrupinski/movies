@@ -7,7 +7,10 @@ enum DateFilter: Hashable {
     case week
     case specific(String) // YYYY-MM-DD
 
-    static let presets: [DateFilter] = [.anytime, .today, .tomorrow, .week]
+    // Dated options first (Dziś / Jutro / Tydzień), with the catch-all
+    // `Kiedykolwiek` pushed to the rightmost slot so the bar reads as
+    // "narrow → broad" left-to-right.
+    static let presets: [DateFilter] = [.today, .tomorrow, .week, .anytime]
 
     var label: String {
         switch self {

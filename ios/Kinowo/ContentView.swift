@@ -24,7 +24,10 @@ struct ContentView: View {
                     }
                 }
                 .safeAreaInset(edge: .top, spacing: 0) {
-                    FiltersBar(dateFilter: $dateFilter, search: $search)
+                    FiltersBar(dateFilter: $dateFilter)
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    SearchBar(search: $search)
                 }
                 .sheet(isPresented: $showHidden) {
                     HiddenFilmsView()
