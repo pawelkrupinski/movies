@@ -1,19 +1,27 @@
 import SwiftUI
+import UIKit
 
 // Top safe-area inset: 🎬 brand mark + four date-filter pills sharing
 // the available width + Filtry button on the right. Built as a plain
 // HStack instead of SwiftUI `ToolbarItem`s because the native nav bar
 // clips its contents to a few dozen points of width.
+//
+// Every numeric size below is multiplied by `scale = viewportWidth / 393`
+// (iPhone 17 reference width). Smaller phones get a proportionally
+// smaller row, larger phones get a taller / fontier one — the whole
+// bar tracks the device's viewport rather than rendering one fixed
+// size that has to fit the smallest screen.
 struct TopBar: View {
     @Binding var dateFilter: DateFilter
     let filtersActive: Bool
     let onTapFilters: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        let s = TopBar.viewportScale
+        HStack(spacing: 8 * s) {
             Text("🎬")
-                .font(.system(size: 24))
-            DatePillsRow(dateFilter: $dateFilter)
+                .font(.system(size: 24 * s))
+            DatePillsRow(dateFilter: $dateFilter, scale: s)
                 .frame(maxWidth: .infinity)
             Button(action: onTapFilters) {
                 // `line.3.horizontal.decrease.circle` is the funnel-in-
@@ -24,18 +32,18 @@ struct TopBar: View {
                 Image(systemName: filtersActive
                       ? "line.3.horizontal.decrease.circle.fill"
                       : "line.3.horizontal.decrease.circle")
-                    .font(.system(size: 24))
+                    .font(.system(size: 24 * s))
                     .foregroundStyle(filtersActive ? Color.accentColor : .primary)
             }
             .buttonStyle(BounceButtonStyle())
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10 * s)
         // Tiny top padding so the pills hug the status bar; the
         // safeAreaInset already reserves the strip above. Larger bottom
         // padding keeps a small breathing buffer between the bar and the
         // grid scrolling beneath it.
-        .padding(.top, 2)
-        .padding(.bottom, 8)
+        .padding(.top, 2 * s)
+        .padding(.bottom, 8 * s)
         // Plain translucent material strip — no glassEffect refraction
         // edge, no content-wide opacity. Just the background shape gets
         // dialed down so the grid scrolls visibly behind the bar.
@@ -50,30 +58,45 @@ struct TopBar: View {
                 .ignoresSafeArea(edges: .top)
         }
     }
+
+    /// Linear scale relative to the iPhone 17 viewport (393pt wide).
+    /// iPhone 13 mini → 0.95, iPhone 17 → 1.00, iPhone 17 Pro Max →
+    /// 1.09. Clamped so iPad split-view / odd window widths can't
+    /// produce a comically scaled bar. Read once at view init via
+    /// `UIScreen.main` — the value is constant per launch on iPhone,
+    /// which is where this app runs.
+    private static let viewportScale: CGFloat = {
+        let w = UIScreen.main.bounds.width
+        return max(0.85, min(1.2, w / 393))
+    }()
 }
 
-// Date-filter pills sized to share the available width between the
-// brand mark and the Filtry icon — each pill gets `.frame(maxWidth:
-// .infinity)` so the row fills the line edge-to-edge on every phone
-// width, no horizontal scrolling needed. Long labels (e.g. "Wszystkie"
-// on iPhone-mini-class widths) shrink to fit via `minimumScaleFactor`
-// rather than truncating.
+// Date-filter pills sharing the available width between the brand mark
+// and the Filtry icon — each pill gets `.frame(maxWidth: .infinity)`
+// so the row fills the line edge-to-edge on every phone width. Font,
+// padding and spacing all multiply by the viewport `scale` passed in
+// from `TopBar`, so every pill renders at the same proportions
+// (rather than one pill shrinking via `minimumScaleFactor` while the
+// others stay at full size, which the user called out as visually
+// uneven). Base font 12pt was picked so the longest label
+// ("Wszystkie") fits the equal-width slot at scale 1.0 without
+// needing per-pill auto-shrinking.
 struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
+    let scale: CGFloat
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 6 * scale) {
             ForEach(DateFilter.presets, id: \.self) { f in
                 Button {
                     dateFilter = f
                 } label: {
                     Text(f.label)
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 12 * scale, weight: .medium))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.55)
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 7)
+                        .padding(.horizontal, 6 * scale)
+                        .padding(.vertical, 7 * scale)
                         .background(
                             dateFilter == f
                                 ? Color.accentColor.opacity(0.85)
