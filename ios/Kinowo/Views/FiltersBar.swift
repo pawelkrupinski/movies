@@ -70,3 +70,96 @@ struct SearchBar: View {
         .padding(.bottom, 8)
     }
 }
+
+// Filtry sheet — mirrors the web's Filtry dropdown: cinema multi-select,
+// Wymiar / Wersja radios, Tylko IMAX toggle, and Od godziny lower-bound.
+// Cinema state is persisted (UserPreferences.disabledCinemas, same key
+// as the web's localStorage); format/from-hour are ephemeral session
+// state owned by ContentView.
+struct FiltersSheet: View {
+    @Binding var formatFilter: FormatFilter
+    @ObservedObject var prefs: UserPreferences
+    /// Sorted, de-duplicated cinema names derived from the films
+    /// currently in `store.films`. A cinema that has zero showings on
+    /// any day doesn't appear — there's nothing to filter.
+    let allCinemas: [String]
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if !allCinemas.isEmpty {
+                    Section("Kina") {
+                        Toggle("Wszystkie kina", isOn: Binding(
+                            get: { prefs.disabledCinemas.isEmpty },
+                            set: { on in
+                                prefs.setDisabledCinemas(on ? [] : Set(allCinemas))
+                            }
+                        ))
+                        ForEach(allCinemas, id: \.self) { cinema in
+                            Toggle(cinema, isOn: Binding(
+                                get: { !prefs.disabledCinemas.contains(cinema) },
+                                set: { on in prefs.toggleCinema(cinema, disabled: !on) }
+                            ))
+                        }
+                    }
+                }
+
+                Section("Wymiar") {
+                    Picker("Wymiar", selection: $formatFilter.dimension) {
+                        Text("Wszystkie").tag("")
+                        Text("2D").tag("2D")
+                        Text("3D").tag("3D")
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Section("Wersja") {
+                    Picker("Wersja", selection: $formatFilter.language) {
+                        Text("Wszystkie").tag("")
+                        Text("Napisy").tag("NAP")
+                        Text("Dubbing").tag("DUB")
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Section {
+                    Toggle("Tylko IMAX", isOn: $formatFilter.imax)
+                }
+
+                Section("Od godziny") {
+                    Picker("Godzina", selection: $formatFilter.fromHour) {
+                        Text("Dowolna").tag(-1)
+                        ForEach(0..<24, id: \.self) { h in
+                            Text(String(format: "%02d", h)).tag(h)
+                        }
+                    }
+                    if formatFilter.fromHour >= 0 {
+                        Picker("Minuta", selection: $formatFilter.fromMinute) {
+                            ForEach([0, 15, 30, 45], id: \.self) { m in
+                                Text(String(format: "%02d", m)).tag(m)
+                            }
+                        }
+                    }
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        formatFilter = .empty
+                        prefs.setDisabledCinemas([])
+                    } label: {
+                        Text("Wyczyść")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+            .navigationTitle("Filtry")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Gotowe") { dismiss() }
+                }
+            }
+        }
+    }
+}

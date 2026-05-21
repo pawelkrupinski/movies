@@ -5,8 +5,10 @@ struct ContentView: View {
     @EnvironmentObject var prefs: UserPreferences
 
     @State private var dateFilter: DateFilter = .today
+    @State private var formatFilter: FormatFilter = .empty
     @State private var search: String = ""
     @State private var showHidden: Bool = false
+    @State private var showFilters: Bool = false
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -28,6 +30,15 @@ struct ContentView: View {
                 .navigationTitle("Repertuar Poznań")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            showFilters = true
+                        } label: {
+                            Image(systemName: filtersActive
+                                  ? "line.3.horizontal.decrease.circle.fill"
+                                  : "line.3.horizontal.decrease.circle")
+                        }
+                    }
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
                             showHidden = true
@@ -45,6 +56,13 @@ struct ContentView: View {
                 }
                 .sheet(isPresented: $showHidden) {
                     HiddenFilmsView()
+                }
+                .sheet(isPresented: $showFilters) {
+                    FiltersSheet(
+                        formatFilter: $formatFilter,
+                        prefs: prefs,
+                        allCinemas: allCinemas
+                    )
                 }
         }
         .task {
@@ -80,6 +98,26 @@ struct ContentView: View {
         }
     }
 
+    // Sorted, de-duplicated cinema names that appear at least once
+    // somewhere in `store.films`. Drives the Kina list in FiltersSheet
+    // and the "Wszystkie kina" master toggle.
+    private var allCinemas: [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        for film in store.films {
+            for day in film.showings {
+                for c in day.cinemas where seen.insert(c.cinema).inserted {
+                    out.append(c.cinema)
+                }
+            }
+        }
+        return out.sorted()
+    }
+
+    private var filtersActive: Bool {
+        !formatFilter.isEmpty || !prefs.disabledCinemas.isEmpty
+    }
+
     private var filteredFilms: [Film] {
         let query = search
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -87,14 +125,33 @@ struct ContentView: View {
         return store.films.compactMap { film in
             if prefs.hiddenFilms.contains(film.title) { return nil }
             if !query.isEmpty && !film.title.lowercased().contains(query) { return nil }
-            let days = film.showings.filter { dateFilter.matches(date: $0.date) }
-            if days.isEmpty { return nil }
+
+            // Per-day / per-cinema / per-showtime filtering: drop a day
+            // whose every cinema is filtered out, drop a cinema whose
+            // every showtime fails the format/from-hour filter. The
+            // film disappears only when no day has any surviving
+            // showtime — matching the web's `applyFilters()` semantics
+            // (a movie card stays visible as long as one badge passes).
+            let filteredDays: [DayShowings] = film.showings.compactMap { day in
+                if !dateFilter.matches(date: day.date) { return nil }
+                let filteredCinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
+                    if prefs.disabledCinemas.contains(cg.cinema) { return nil }
+                    let times = formatFilter.isEmpty
+                        ? cg.showtimes
+                        : cg.showtimes.filter { formatFilter.matches(showtime: $0) }
+                    guard !times.isEmpty else { return nil }
+                    return CinemaShowings(cinema: cg.cinema, cinemaURL: cg.cinemaURL, showtimes: times)
+                }
+                guard !filteredCinemas.isEmpty else { return nil }
+                return DayShowings(date: day.date, label: day.label, cinemas: filteredCinemas)
+            }
+            if filteredDays.isEmpty { return nil }
             return Film(
                 title: film.title,
                 posterURL: film.posterURL,
                 runtimeMinutes: film.runtimeMinutes,
                 ratings: film.ratings,
-                showings: days
+                showings: filteredDays
             )
         }
     }

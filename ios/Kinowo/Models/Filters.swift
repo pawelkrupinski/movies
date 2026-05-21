@@ -56,3 +56,56 @@ enum DateFilter: Hashable {
 
     static func iso(_ date: Date) -> String { isoFormatter.string(from: date) }
 }
+
+/// Mirrors the web's Filtry dropdown: per-axis format tokens (Wymiar /
+/// Wersja / IMAX) combined with a from-hour lower bound. Each axis is
+/// independent — empty strings on the radio axes (`dimension`, `language`)
+/// mean "no constraint", and `fromHour < 0` means "Dowolna". A showtime
+/// passes when EVERY non-empty constraint matches, matching
+/// `applyFilters()` on the web side.
+struct FormatFilter: Equatable {
+    var dimension: String = ""    // "" | "2D" | "3D"
+    var language: String = ""     // "" | "NAP" | "DUB"
+    var imax: Bool = false
+    var fromHour: Int = -1        // -1 = Dowolna
+    var fromMinute: Int = 0
+
+    static let empty = FormatFilter()
+
+    var isEmpty: Bool {
+        dimension.isEmpty && language.isEmpty && !imax && fromHour < 0
+    }
+
+    /// Tokens that the badge's `data-format` set must contain. Empty
+    /// list = no constraint from the format axes (the time axis can
+    /// still narrow things).
+    private var requiredTokens: [String] {
+        var t: [String] = []
+        if !dimension.isEmpty { t.append(dimension) }
+        if !language.isEmpty  { t.append(language)  }
+        if imax               { t.append("IMAX")    }
+        return t
+    }
+
+    /// `nil` when the user picked "Dowolna" (any time).
+    var fromMinutes: Int? {
+        fromHour >= 0 ? fromHour * 60 + fromMinute : nil
+    }
+
+    func matches(showtime: Showtime) -> Bool {
+        let tokens = requiredTokens
+        if !tokens.isEmpty {
+            let badge = Set(showtime.format.split(separator: " ").map(String.init))
+            for t in tokens where !badge.contains(t) { return false }
+        }
+        if let from = fromMinutes {
+            let parts = showtime.time.split(separator: ":").compactMap { Int($0) }
+            // Unparseable time → never filtered out (matches the web's
+            // `timeMin < 0 || timeMin >= fromMin` guard).
+            if parts.count == 2 && (parts[0] * 60 + parts[1]) < from {
+                return false
+            }
+        }
+        return true
+    }
+}
