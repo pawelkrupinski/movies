@@ -156,33 +156,22 @@ struct FiltersSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Hidden films open at the top of Filtry — mirrors the web's
-                // "Ukryte filmy" row inside the Filtry dropdown. Section
-                // omitted entirely when the set is empty so the sheet
+                // Hidden films get a single row at the top of Filtry that
+                // pushes a child screen — the inline list would otherwise
+                // crowd out every other filter when the set grows. Row
+                // hidden entirely when the set is empty so the sheet
                 // stays uncluttered.
                 if !prefs.hiddenFilms.isEmpty {
-                    Section("Ukryte filmy") {
-                        ForEach(
-                            Array(prefs.hiddenFilms).sorted {
-                                $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
-                            },
-                            id: \.self
-                        ) { title in
-                            HStack {
-                                Text(title).lineLimit(1)
-                                Spacer()
-                                Button("Pokaż") {
-                                    withAnimation { prefs.unhide(title) }
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                            }
-                        }
-                        Button(role: .destructive) {
-                            withAnimation { prefs.unhideAll() }
+                    Section {
+                        NavigationLink {
+                            HiddenFilmsList(prefs: prefs)
                         } label: {
-                            Text("Pokaż wszystkie")
-                                .frame(maxWidth: .infinity)
+                            HStack {
+                                Text("Ukryte filmy")
+                                Spacer()
+                                Text("\(prefs.hiddenFilms.count)")
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
@@ -259,6 +248,63 @@ struct FiltersSheet: View {
                     Button("Gotowe") { dismiss() }
                 }
             }
+        }
+    }
+}
+
+// Pushed from Filtry's "Ukryte filmy" row. Lists every hidden title with
+// a per-row Pokaż button and a Pokaż wszystkie destructive bulk action.
+// When the set drains to empty, pop back to Filtry automatically — there
+// is nothing left to manage and the row itself would also have disappeared
+// from the parent screen.
+struct HiddenFilmsList: View {
+    @ObservedObject var prefs: UserPreferences
+    @Environment(\.dismiss) private var dismiss
+
+    private var sortedTitles: [String] {
+        Array(prefs.hiddenFilms).sorted {
+            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+        }
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(sortedTitles, id: \.self) { title in
+                    HiddenFilmRow(title: title, prefs: prefs)
+                }
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    withAnimation { prefs.unhideAll() }
+                } label: {
+                    Text("Pokaż wszystkie")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .navigationTitle("Ukryte filmy")
+        .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: prefs.hiddenFilms) { new in
+            if new.isEmpty { dismiss() }
+        }
+    }
+}
+
+private struct HiddenFilmRow: View {
+    let title: String
+    @ObservedObject var prefs: UserPreferences
+
+    var body: some View {
+        HStack {
+            Text(title).lineLimit(1)
+            Spacer()
+            Button("Pokaż") {
+                withAnimation { prefs.unhide(title) }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
         }
     }
 }
