@@ -175,7 +175,10 @@
         <button type="button" class="fav-poster-btn@if(isFavourite){ is-fav}" onclick="toggleFavMovie(this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</button>
         @film.posterUrl match {
           case Some(url) => {
-            <img src="@tools.PosterProxy.proxy(url)" alt="@film.movie.title" class="poster-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            @* `data-fallback` is TMDB's poster URL when it differs from
+               the primary — covers the cinema-side-404 case. Same
+               inline `onerror` pattern as _movieCard. *@
+            <img src="@tools.PosterProxy.proxy(url)" alt="@film.movie.title" class="poster-img"@film.enrichment.flatMap(_.fallbackPosterUrl).map { f => @Html(s""" data-fallback="$f"""") } onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.removeAttribute('data-fallback');return}this.style.display='none';this.nextElementSibling.style.display='flex'">
             <div class="no-poster" style="display:none">Brak plakatu</div>
           }
           case None      => { <div class="no-poster">Brak plakatu</div> }

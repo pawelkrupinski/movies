@@ -18,7 +18,14 @@
     <a href="@FilmHref(movie.title)" style="display:block;height:100%">
       @posterUrl match {
         case Some(url) => {
-          <img src="@tools.PosterProxy.proxy(url)" alt="@movie.title" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          @* `data-fallback` only emits when TMDB has a different poster
+             from the primary — safety net for cinema-side URLs that
+             404 (e.g. Cinema City listing Drishyam 3 with a posterLink
+             to an image they haven't uploaded). The inline `onerror`
+             swaps `src` to the fallback on the first error and removes
+             the attribute so a second error falls through to the
+             `.no-poster` placeholder. *@
+          <img src="@tools.PosterProxy.proxy(url)" alt="@movie.title" loading="lazy"@enrichment.flatMap(_.fallbackPosterUrl).map { f => @Html(s""" data-fallback="$f"""") } onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.removeAttribute('data-fallback');return}this.style.display='none';this.nextElementSibling.style.display='flex'">
           <div class="no-poster" style="display:none">Brak plakatu</div>
         }
         case None      => { <div class="no-poster">Brak plakatu</div> }
