@@ -36,11 +36,13 @@ enum HTMLParserSmoke {
             .flatMap { $0.cinemas }
             .reduce(0) { $0 + $1.showtimes.count }
         let withPoster   = films.filter { $0.posterURL != nil }.count
+        let withFallback = films.filter { $0.fallbackPosterURL != nil }.count
         let withImdb     = films.filter { $0.ratings.imdb != nil }.count
         let withRuntime  = films.filter { $0.runtimeMinutes != nil }.count
         let withShowings = films.filter { !$0.showings.isEmpty }.count
 
         print("with poster:    \(withPoster) / \(films.count)")
+        print("with fallback:  \(withFallback) / \(films.count)")
         print("with runtime:   \(withRuntime) / \(films.count)")
         print("with IMDb:      \(withImdb) / \(films.count)")
         print("with showings:  \(withShowings) / \(films.count)")
@@ -63,6 +65,13 @@ enum HTMLParserSmoke {
         check("at least 90% have showings",   !films.isEmpty && Double(withShowings) / Double(films.count) >= 0.9)
         check("at least 100 showtimes total", totalShowtimes >= 100, "(got \(totalShowtimes))")
         check("at least one IMDb rating",     withImdb > 0)
+        // _movieCard emits data-fallback on the majority of films (TMDB
+        // poster differs from the cinema-side primary). If this drops to
+        // ~zero the parser's data-fallback regex has rotted against a
+        // template change — the iOS side then can't recover from the
+        // cinema-side 404s the web template handles via onerror.
+        check("at least 50% have a fallback poster", !films.isEmpty && Double(withFallback) / Double(films.count) >= 0.5,
+              "(got \(withFallback) / \(films.count))")
         // Twirl HTML-escapes `&` to `&amp;` in attribute values, so any URL
         // we extract via the raw-regex path must be HTML-decoded before
         // hitting `URL(string:)` — otherwise multi-param query strings

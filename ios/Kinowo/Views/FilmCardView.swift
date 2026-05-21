@@ -74,20 +74,12 @@ private struct PosterView: View {
     @ViewBuilder
     private var poster: some View {
         if let url = film.posterURL {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let img):
-                    img.resizable().aspectRatio(contentMode: .fill)
-                case .empty:
-                    Rectangle()
-                        .fill(Color(red: 0.16, green: 0.16, blue: 0.24))
-                        .overlay(ProgressView().tint(.gray))
-                case .failure:
-                    noPoster
-                @unknown default:
-                    noPoster
-                }
-            }
+            // Mirror the web's `<img data-fallback=... onerror=...>` from
+            // _movieCard: try the cinema-side URL first, swap to the TMDB
+            // fallback once on .failure. AsyncImage has no built-in
+            // fallback so we own a `@State` URL that flips after the
+            // primary errors out.
+            PosterImage(primary: url, fallback: film.fallbackPosterURL, noPoster: { noPoster })
         } else {
             noPoster
         }
@@ -127,5 +119,40 @@ private struct PosterView: View {
                 .background(.black.opacity(0.55), in: Circle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Two-URL AsyncImage: tries `primary`, swaps to `fallback` once on
+/// `.failure`. Mirrors `_movieCard`'s `<img data-fallback=... onerror=...>`
+/// so cinema-side 404s land on the TMDB poster instead of "Brak plakatu".
+private struct PosterImage<NoPoster: View>: View {
+    let primary: URL
+    let fallback: URL?
+    @ViewBuilder var noPoster: () -> NoPoster
+    @State private var triedFallback = false
+
+    var body: some View {
+        let url = triedFallback ? fallback ?? primary : primary
+        AsyncImage(url: url) { phase in
+            switch phase {
+            case .success(let img):
+                img.resizable().aspectRatio(contentMode: .fill)
+            case .empty:
+                Rectangle()
+                    .fill(Color(red: 0.16, green: 0.16, blue: 0.24))
+                    .overlay(ProgressView().tint(.gray))
+            case .failure:
+                if !triedFallback, fallback != nil {
+                    // Trigger a re-render with the fallback URL. SwiftUI
+                    // re-keys AsyncImage on the new URL and kicks off the
+                    // second fetch.
+                    Color.clear.onAppear { triedFallback = true }
+                } else {
+                    noPoster()
+                }
+            @unknown default:
+                noPoster()
+            }
+        }
     }
 }

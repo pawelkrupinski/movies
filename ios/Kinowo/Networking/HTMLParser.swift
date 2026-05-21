@@ -58,6 +58,15 @@ enum HTMLParser {
         // the same dance.
         let poster   = capture(chunk, #"<img src="([^"]+)""#)
                           .flatMap { URL(string: $0.htmlDecoded()) }
+        // `_movieCard` emits `data-fallback="<tmdb-url>"` on the poster
+        // <img> when TMDB has a different poster from the cinema-side
+        // primary. The web's inline `onerror` swaps to it on the
+        // primary's first 404; iOS does the same in PosterView.
+        // Without this, films whose cinema URL 404s (~today: Drishyam
+        // 3; historically several over a season) show "Brak plakatu"
+        // here while the web shows the TMDB poster.
+        let fallback = capture(chunk, #"data-fallback="([^"]+)""#)
+                          .flatMap { URL(string: $0.htmlDecoded()) }
         let runtime  = capture(chunk, #"<span class="pill runtime">([^<]+)</span>"#)
                           .flatMap(parseRuntime)
         let ratings  = parseRatings(chunk)
@@ -65,6 +74,7 @@ enum HTMLParser {
         return Film(
             title: title.htmlDecoded(),
             posterURL: poster,
+            fallbackPosterURL: fallback,
             runtimeMinutes: runtime,
             ratings: ratings,
             showings: showings
