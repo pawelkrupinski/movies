@@ -147,36 +147,36 @@
           data-tmdb="@e.tmdbId.map(_.toString).getOrElse("")"
           data-imdbR="@e.imdbRating.map(_.toString).getOrElse("")"
           data-urls="@{Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten.mkString(" ")}">
-        <td class="title"><a href="@FilmHref(e.displayTitle(title))" onclick="event.stopPropagation()">@title</a></td>
+        <td class="title"><a href="@FilmHref(e.displayTitle(title))">@title</a></td>
         <td class="orig">@if(orig.nonEmpty) { @orig } else { <span class="miss">—</span> }</td>
         <td class="year">@e.releaseYear.map(_.toString).getOrElse("—")</td>
         <td class="id">
           @e.imdbId match {
-            case Some(id) => { <a href="@{s"https://www.imdb.com/title/$id/"}" target="_blank" rel="noopener" onclick="event.stopPropagation()">@id</a> }
+            case Some(id) => { <a href="@{s"https://www.imdb.com/title/$id/"}" target="_blank" rel="noopener">@id</a> }
             case None     => { <span class="miss">—</span> }
           }
         </td>
         <td class="id">
           @e.tmdbId match {
-            case Some(id) => { <a href="@{s"https://www.themoviedb.org/movie/$id"}" target="_blank" rel="noopener" onclick="event.stopPropagation()">@id</a> }
+            case Some(id) => { <a href="@{s"https://www.themoviedb.org/movie/$id"}" target="_blank" rel="noopener">@id</a> }
             case None     => { <span class="miss">—</span> }
           }
         </td>
         <td>@_ratingBadges(Some(e), title)</td>
         <td class="url-cell">
-          @e.metacriticUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">MC</a> }
-          @e.rottenTomatoesUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">RT</a> }
-          @e.filmwebUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">FW</a> }
+          @e.metacriticUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u">MC</a> }
+          @e.rottenTomatoesUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u">RT</a> }
+          @e.filmwebUrl.map { u => <a href="@u" target="_blank" rel="noopener" title="@u">FW</a> }
           @* One link per distinct cinema-supplied trailer URL — open in a
              new tab so debug inspection doesn't navigate away from the
              admin table. Labelled T1, T2, … to match the 2-char style
              above; numbering matches the order on the public film page. *@
           @for((u, idx) <- e.trailerUrls.zipWithIndex) {
-            <a href="@u" target="_blank" rel="noopener" title="@u" onclick="event.stopPropagation()">T@{idx + 1}</a>
+            <a href="@u" target="_blank" rel="noopener" title="@u">T@{idx + 1}</a>
           }
         </td>
         <td>
-          <button class="reenrich-btn" type="button" title="Drop and re-fetch all upstream data" onclick="event.stopPropagation()">↻</button>
+          <button class="reenrich-btn" type="button" title="Drop and re-fetch all upstream data">↻</button>
         </td>
       </tr>
       <tr class="details hidden" data-row-id="r@idx">
@@ -207,10 +207,15 @@
     });
   }
 
-  // Toggle details on data-row click. Inner links + the re-enrich button
-  // call stopPropagation so they don't trigger the toggle.
+  // Toggle details on data-row click. We bail when the click landed
+  // inside an `<a>` or `<button>` so the rating-link / re-enrich-btn
+  // anchors don't pull the row open on their way to their own action
+  // — this used to require an inline `onclick="event.stopPropagation()"`
+  // on every such element (~17 KB of repeated markup on / and /kina
+  // through _ratingBadges, all dropped now).
   document.querySelectorAll('#t tbody tr.data').forEach(tr => {
-    tr.addEventListener('click', () => {
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('a, button')) return;
       const details = document.querySelector('#t tbody tr.details[data-row-id="' + tr.dataset.rowId + '"]');
       if (!details) return;
       const expanded = tr.classList.toggle('expanded');

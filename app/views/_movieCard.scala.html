@@ -10,8 +10,11 @@
    toggle, so a re-paint after server-side application is a no-op. *@
 <div class="card">
   <div class="poster-wrap">
-    <button type="button" class="hide-btn" onclick="hideFilm(this)" title="Ukryj film">✕</button>
-    <button type="button" class="fav-poster-btn@if(isFavourite){ is-fav}" onclick="toggleFavMovie(this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</button>
+    @* No per-button `onclick` — delegated click handlers in
+       _sharedJs.js route .hide-btn / .fav-poster-btn taps to the
+       respective handlers. Saves ~13 KB raw across ~190 cards. *@
+    <button type="button" class="hide-btn" title="Ukryj film">✕</button>
+    <button type="button" class="fav-poster-btn@if(isFavourite){ is-fav}" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</button>
     <a href="@FilmHref(movie.title)" style="display:block;height:100%">
       @posterUrl match {
         case Some(url) => {

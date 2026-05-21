@@ -253,7 +253,17 @@
   // wrappers don't break the handler).
   document.addEventListener('click', e => {
     const star = e.target.closest('.fav-star');
-    if (star) toggleFavScreening(e, star);
+    if (star) { toggleFavScreening(e, star); return; }
+    // Card poster ★ and ✕ buttons — one delegated listener instead of
+    // a per-card inline `onclick="toggleFavMovie(this)"` and
+    // `onclick="hideFilm(this)"`. ~190 cards × 2 buttons each ≈ 380
+    // inline-onclick attributes that don't need to be inlined and
+    // would otherwise re-materialise as function references during
+    // HTML parse on every page load.
+    const fav = e.target.closest('.fav-poster-btn');
+    if (fav) { toggleFavMovie(fav); return; }
+    const hide = e.target.closest('.hide-btn');
+    if (hide) { hideFilm(hide); return; }
   });
 
   // On boot: paint the existing favourite state onto every star in the
