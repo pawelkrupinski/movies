@@ -109,3 +109,52 @@ struct FormatFilter: Equatable {
         return true
     }
 }
+
+extension Sequence where Element == Film {
+    /// Apply the cross-screen filter stack — date / format / search /
+    /// hidden / per-cinema — to a list of films. Both `/` (Filmy) and
+    /// `/kina` go through this; they only differ in which set of
+    /// cinemas is passed as `disabledCinemas` (Filtry's persistent set
+    /// on Filmy, every-cinema-except-pinned on Kina).
+    ///
+    /// Semantics mirror the web's `applyFilters()`: drop a showtime
+    /// whose format/time-from doesn't pass, drop a cinema-group whose
+    /// every showtime fell out, drop a day whose every cinema-group
+    /// fell out, drop a film whose every day fell out. A film stays
+    /// visible as long as one badge somewhere still passes.
+    func filteredFor(
+        date: DateFilter,
+        format: FormatFilter,
+        query: String,
+        hidden: Set<String>,
+        disabledCinemas: Set<String>
+    ) -> [Film] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return self.compactMap { film in
+            if hidden.contains(film.title) { return nil }
+            if !q.isEmpty && !film.title.lowercased().contains(q) { return nil }
+            let days: [DayShowings] = film.showings.compactMap { day in
+                if !date.matches(date: day.date) { return nil }
+                let cinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
+                    if disabledCinemas.contains(cg.cinema) { return nil }
+                    let times = format.isEmpty
+                        ? cg.showtimes
+                        : cg.showtimes.filter { format.matches(showtime: $0) }
+                    guard !times.isEmpty else { return nil }
+                    return CinemaShowings(cinema: cg.cinema, cinemaURL: cg.cinemaURL, showtimes: times)
+                }
+                guard !cinemas.isEmpty else { return nil }
+                return DayShowings(date: day.date, label: day.label, cinemas: cinemas)
+            }
+            if days.isEmpty { return nil }
+            return Film(
+                title: film.title,
+                posterURL: film.posterURL,
+                fallbackPosterURL: film.fallbackPosterURL,
+                runtimeMinutes: film.runtimeMinutes,
+                ratings: film.ratings,
+                showings: days
+            )
+        }
+    }
+}

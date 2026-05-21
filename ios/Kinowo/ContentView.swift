@@ -7,8 +7,22 @@ struct ContentView: View {
     @State private var dateFilter: DateFilter = .today
     @State private var formatFilter: FormatFilter = .empty
     @State private var search: String = ""
+    /// Active tab — swipe-left/right on the TabView flips between
+    /// `.films` (`/`) and `.cinemas` (`/kina`). Each writes a brief
+    /// label overlay so the user knows which screen they landed on
+    /// when there's no other visual cue (no tab bar, just swipe).
+    @State private var tab: Tab = .films
+    /// Kina-tab cinema pin. Equivalent to the web's `_kinaPinned` —
+    /// single-cinema filter that ignores Filtry's persistent
+    /// `disabledCinemas`. `nil` = show all cinemas.
+    @State private var pinnedCinema: String? = nil
     @State private var showFilters: Bool = false
     @FocusState private var searchFocused: Bool
+
+    @State private var tabLabel: String? = nil
+    @State private var tabLabelTask: Task<Void, Never>?
+
+    enum Tab: Hashable { case films, cinemas }
 
     var body: some View {
         NavigationStack {
@@ -48,46 +62,101 @@ struct ContentView: View {
                     FiltersSheet(
                         formatFilter: $formatFilter,
                         prefs: prefs,
-                        allCinemas: allCinemas
+                        allCinemas: allCinemas,
+                        // Hide Filtry's Kina checkbox section on /kina —
+                        // that screen owns its own pinned-cinema picker
+                        // via the pill row, so duplicating the choice
+                        // inside Filtry would be confusing.
+                        showCinemaSection: tab == .films
                     )
+                }
+                .overlay(alignment: .top) {
+                    if let label = tabLabel {
+                        TabLabelOverlay(text: label)
+                            // Sit clear of the top bar; the top safeAreaInset
+                            // is ~92pt tall after the status-bar reach.
+                            .padding(.top, 100)
+                            .allowsHitTesting(false)
+                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    }
                 }
         }
         .task {
             if store.films.isEmpty { await store.reload() }
+        }
+        .onAppear {
+            // Briefly name the starting tab so the user sees the same
+            // label-on-arrival affordance the swipe-driven changes get.
+            // Idempotent — running on every appear is fine; the task
+            // cancels the previous fade-out cleanly.
+            showTabLabel(tab == .films ? "Filmy" : "Kina")
         }
     }
 
     @ViewBuilder
     private var content: some View {
         if store.isLoading && store.films.isEmpty {
-            VStack(spacing: 12) {
-                ProgressView()
-                Text("Ładowanie repertuaru…").font(.callout).foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            loadingState
         } else if let error = store.error, store.films.isEmpty {
-            VStack(spacing: 12) {
-                Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundStyle(.orange)
-                Text("Nie udało się pobrać repertuaru.")
-                Text(error.localizedDescription)
-                    .font(.caption).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                Button("Spróbuj ponownie") {
-                    Task { await store.reload() }
-                }
-                .buttonStyle(.borderedProminent)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            errorState(error)
         } else {
-            FilmGridView(films: filteredFilms)
+            TabView(selection: $tab) {
+                FilmGridView(films: filmsForFilmsTab)
+                    .refreshable { await store.reload() }
+                    .tag(Tab.films)
+                cinemasPage
+                    .tag(Tab.cinemas)
+            }
+            // `.page(indexDisplayMode: .never)` gives horizontal swipe
+            // between pages without the dot indicator at the bottom —
+            // the floating Filmy / Kina label is the only "where am I"
+            // affordance.
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .onChange(of: tab) { new in
+                showTabLabel(new == .films ? "Filmy" : "Kina")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var cinemasPage: some View {
+        VStack(spacing: 0) {
+            CinemaPillsRow(
+                allCinemas: allCinemas,
+                pinnedCinema: $pinnedCinema
+            )
+            FilmGridView(films: filmsForCinemasTab)
                 .refreshable { await store.reload() }
         }
     }
 
+    private var loadingState: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+            Text("Ładowanie repertuaru…").font(.callout).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func errorState(_ error: Error) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundStyle(.orange)
+            Text("Nie udało się pobrać repertuaru.")
+            Text(error.localizedDescription)
+                .font(.caption).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            Button("Spróbuj ponownie") {
+                Task { await store.reload() }
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     // Sorted, de-duplicated cinema names that appear at least once
-    // somewhere in `store.films`. Drives the Kina list in FiltersSheet
-    // and the "Wszystkie kina" master toggle.
+    // somewhere in `store.films`. Drives the Kina list in FiltersSheet,
+    // the "Wszystkie kina" master toggle, and the Kina-tab pill row.
     private var allCinemas: [String] {
         var seen = Set<String>()
         var out: [String] = []
@@ -113,42 +182,44 @@ struct ContentView: View {
             || !prefs.hiddenFilms.isEmpty
     }
 
-    private var filteredFilms: [Film] {
-        let query = search
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-        return store.films.compactMap { film in
-            if prefs.hiddenFilms.contains(film.title) { return nil }
-            if !query.isEmpty && !film.title.lowercased().contains(query) { return nil }
+    private var filmsForFilmsTab: [Film] {
+        store.films.filteredFor(
+            date: dateFilter,
+            format: formatFilter,
+            query: search,
+            hidden: prefs.hiddenFilms,
+            disabledCinemas: prefs.disabledCinemas
+        )
+    }
 
-            // Per-day / per-cinema / per-showtime filtering: drop a day
-            // whose every cinema is filtered out, drop a cinema whose
-            // every showtime fails the format/from-hour filter. The
-            // film disappears only when no day has any surviving
-            // showtime — matching the web's `applyFilters()` semantics
-            // (a movie card stays visible as long as one badge passes).
-            let filteredDays: [DayShowings] = film.showings.compactMap { day in
-                if !dateFilter.matches(date: day.date) { return nil }
-                let filteredCinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
-                    if prefs.disabledCinemas.contains(cg.cinema) { return nil }
-                    let times = formatFilter.isEmpty
-                        ? cg.showtimes
-                        : cg.showtimes.filter { formatFilter.matches(showtime: $0) }
-                    guard !times.isEmpty else { return nil }
-                    return CinemaShowings(cinema: cg.cinema, cinemaURL: cg.cinemaURL, showtimes: times)
-                }
-                guard !filteredCinemas.isEmpty else { return nil }
-                return DayShowings(date: day.date, label: day.label, cinemas: filteredCinemas)
-            }
-            if filteredDays.isEmpty { return nil }
-            return Film(
-                title: film.title,
-                posterURL: film.posterURL,
-                fallbackPosterURL: film.fallbackPosterURL,
-                runtimeMinutes: film.runtimeMinutes,
-                ratings: film.ratings,
-                showings: filteredDays
-            )
+    private var filmsForCinemasTab: [Film] {
+        // Web's `/kina` ignores `disabledCinemas` localStorage — the
+        // pill row is the single source of cinema-truth. Pinning one
+        // cinema is equivalent to disabling every other; no pin
+        // = empty disabled set = show everything.
+        let disabled: Set<String> = {
+            guard let pin = pinnedCinema else { return [] }
+            return Set(allCinemas).subtracting([pin])
+        }()
+        return store.films.filteredFor(
+            date: dateFilter,
+            format: formatFilter,
+            query: search,
+            hidden: prefs.hiddenFilms,
+            disabledCinemas: disabled
+        )
+    }
+
+    /// Flash the given label on top of the screen for ~1.4 s, then
+    /// fade it out. Cancels any previous fade-out task so back-to-back
+    /// swipes (Filmy → Kina → Filmy) don't leave the label stuck.
+    private func showTabLabel(_ text: String) {
+        tabLabelTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.2)) { tabLabel = text }
+        tabLabelTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_400_000_000)
+            if Task.isCancelled { return }
+            withAnimation(.easeInOut(duration: 0.4)) { tabLabel = nil }
         }
     }
 }

@@ -18,17 +18,16 @@ struct TopBar: View {
             DatePillsRow(dateFilter: $dateFilter)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: onTapFilters) {
-                // Match the translucent circle buttons iOS uses for
-                // close / info / mode-toggle chrome (Sheet dismiss, Apple
-                // News article close, Camera mode buttons). Three-line
-                // icon stripped from its built-in circle so we can paint
-                // our own `.ultraThinMaterial` disc behind it. Foreground
-                // accent-tints when any filter axis is active.
-                Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 15, weight: .semibold))
+                // `line.3.horizontal.decrease.circle` is the funnel-in-
+                // circle SF Symbol the iOS app shipped with — the circle
+                // is baked into the glyph itself, no painted background.
+                // `.fill` variant swaps in when any filter axis is
+                // active so the icon tells you at a glance.
+                Image(systemName: filtersActive
+                      ? "line.3.horizontal.decrease.circle.fill"
+                      : "line.3.horizontal.decrease.circle")
+                    .font(.system(size: 28))
                     .foregroundStyle(filtersActive ? Color.accentColor : .primary)
-                    .frame(width: 32, height: 32)
-                    .background(.ultraThinMaterial, in: Circle())
             }
             .buttonStyle(BounceButtonStyle())
         }
@@ -132,6 +131,62 @@ struct SearchBar: View {
     }
 }
 
+// Cinema-picker row, shown only on the Kina tab. Mirrors the web's
+// `.cinema-nav-row` directly under the main navbar on `/kina`: one
+// pill per cinema, single-select (tap a pill → pin to that cinema,
+// tap the pinned pill → unpin and show all). Wraps onto multiple
+// lines via FlowLayout so all ~10 cinema names stay visible without
+// horizontal scrolling, matching the web's `flex-wrap: wrap`.
+struct CinemaPillsRow: View {
+    let allCinemas: [String]
+    @Binding var pinnedCinema: String?
+
+    var body: some View {
+        FlowLayout(spacing: 6, lineSpacing: 6) {
+            ForEach(allCinemas, id: \.self) { cinema in
+                Button {
+                    pinnedCinema = (pinnedCinema == cinema) ? nil : cinema
+                } label: {
+                    Text(cinema)
+                        .font(.system(size: 13, weight: .medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            pinnedCinema == cinema
+                                ? Color.accentColor.opacity(0.85)
+                                : Color(.systemGray5),
+                            in: Capsule()
+                        )
+                        .foregroundColor(pinnedCinema == cinema ? .white : .primary)
+                }
+                .buttonStyle(BounceButtonStyle())
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+}
+
+// Floating label that names the current tab (Filmy / Kina). Shown on
+// app launch and on every swipe between tabs; fades out after ~1.4 s.
+// Positioned by the caller via `.overlay(alignment:)` plus padding so
+// it sits clear of the top bar.
+struct TabLabelOverlay: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 28, weight: .semibold))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(
+                Capsule().strokeBorder(Color.white.opacity(0.12))
+            )
+    }
+}
+
 // Tap feedback: spring-scale the label down on press and back on
 // release. Used by the Filtry icon (and any future TopBar button) so
 // taps feel like they registered without needing to wait for the
@@ -189,6 +244,10 @@ struct FiltersSheet: View {
     /// currently in `store.films`. A cinema that has zero showings on
     /// any day doesn't appear — there's nothing to filter.
     let allCinemas: [String]
+    /// When `false`, the "Kina" section is hidden — the Kina tab uses
+    /// its own pinned-cinema pill row instead of the persistent
+    /// `disabledCinemas` set. Films tab passes `true`.
+    var showCinemaSection: Bool = true
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -214,7 +273,7 @@ struct FiltersSheet: View {
                     }
                 }
 
-                if !allCinemas.isEmpty {
+                if showCinemaSection && !allCinemas.isEmpty {
                     Section("Kina") {
                         Toggle("Wszystkie kina", isOn: Binding(
                             get: { prefs.disabledCinemas.isEmpty },
