@@ -81,9 +81,9 @@ struct SearchBar: View {
     @FocusState.Binding var focused: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 16))
+                .font(.system(size: 17))
                 .foregroundStyle(.secondary)
             TextField("Szukaj filmu", text: $search)
                 .textInputAutocapitalization(.never)
@@ -95,21 +95,37 @@ struct SearchBar: View {
                     search = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16))
+                        .font(.system(size: 17))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
         }
-        // Taller, more translucent: 11pt vertical padding (≈ 38pt
-        // total, matches the native iOS Settings search field) and
-        // `.ultraThinMaterial` so the film grid scrolls visibly behind
-        // the pill instead of being hidden under a solid bar.
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .modifier(GlassyPillBackground())
+        .padding(.horizontal, 24)
+        // No extra bottom padding — the safeAreaInset already
+        // reserves room for the home-indicator zone, so the pill
+        // sits at the lowest point iOS will let it without
+        // colliding with the system gesture area.
+    }
+}
+
+// Translucent capsule background. On iOS 26+ uses the Liquid-Glass
+// `.glassEffect` modifier, which refracts the film grid scrolling
+// underneath — that's the "distorting like a fish eye" feel the
+// user asked for. On iOS 16-25 we fall back to `.ultraThinMaterial`,
+// which gives the same translucent pill without the lens-style
+// distortion (closest the pre-26 SDK can produce).
+private struct GlassyPillBackground: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            content.glassEffect(in: Capsule())
+        } else {
+            content.background(.ultraThinMaterial, in: Capsule())
+        }
     }
 }
 
