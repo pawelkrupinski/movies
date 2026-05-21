@@ -106,7 +106,13 @@ struct DatePillsRow: View {
                 }
                 .buttonStyle(.plain)
                 if i < DateFilter.presets.count - 1 {
+                    // Spacer that grows to spread the pills along the row,
+                    // but capped at ~half the previous natural gap so pills
+                    // sit closer together. Anything leftover above the cap
+                    // becomes trailing/leading slack between the row and the
+                    // surrounding brand / Filtry chrome.
                     Spacer(minLength: 4 * scale)
+                        .frame(maxWidth: 12 * scale)
                 }
             }
         }
