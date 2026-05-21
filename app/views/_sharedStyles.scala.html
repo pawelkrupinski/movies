@@ -491,7 +491,36 @@
   .navbar-row-break { display: none; }
 
   @@media (max-width: 575px) {
-    .navbar { padding: .5rem .75rem !important; gap: .4rem; }
+    /* Viewport-relative knobs for every text-bearing navbar control:
+       fonts and horizontal paddings shrink as the screen narrows so
+       the row never overflows on iPhone-mini-class widths, but never
+       drop below a readable floor on wider phones. Single source of
+       truth so future tweaks adjust both font and the breathing room
+       around each label in lockstep. */
+    .navbar {
+      padding: clamp(.35rem, 1.2vw, .5rem) clamp(.45rem, 2vw, .75rem) !important;
+      gap: clamp(.2rem, .8vw, .4rem);
+      --navbar-fs: clamp(.72rem, 3.4vw, .875rem);
+      --navbar-px: clamp(.3rem, 1.5vw, .6rem);
+    }
+    .navbar .nav-tab,
+    .navbar .nav-tab-login,
+    .navbar .refresh-btn,
+    .navbar .auth-name {
+      font-size: var(--navbar-fs);
+      padding-left:  var(--navbar-px);
+      padding-right: var(--navbar-px);
+    }
+    /* Icon-only controls scale on glyph cap height — ★, < and >. */
+    .navbar .nav-tab-fav  { font-size: clamp(.95rem, 4.5vw, 1.05rem); }
+    .navbar .date-nav-btn { font-size: clamp(1rem,   4.6vw, 1.1rem);  }
+    /* Inputs/selects keep the 16px floor (iOS auto-zoom guard set in
+       the rule below) — only their horizontal padding shrinks with
+       the viewport so the focused search pill doesn't eat the row. */
+    .navbar .search-input, .navbar .filter-select {
+      padding-left:  var(--navbar-px);
+      padding-right: var(--navbar-px);
+    }
     .navbar-title { display: none; }
     /* Mobile row-1: [logo+tabs] … [search] [auth] flush right.
        Mobile row-2: [date]            …    [filtry] flush right.
