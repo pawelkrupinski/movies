@@ -68,9 +68,24 @@
       .cinema-pill:hover { background: #3a3a6e; color: #fff; }
     }
     .cinema-pill.active { background: #3a3a6e; color: #fff; }
+    /* Below 576 px the kina-specific chrome scales with viewport
+       (same clamp pattern _sharedStyles uses for the main navbar +
+       card text): readable floors at iPhone-SE width, ceilings that
+       meet the desktop defaults at the 575 px breakpoint top so the
+       layout above 576 px is byte-for-byte unchanged. */
     @@media (max-width: 575px) {
-      .cinema-nav-row { padding-left: .75rem !important; padding-right: .75rem !important; gap: .15rem; }
-      .cinema-pill    { padding: .22rem .5rem; font-size: .78rem; }
+      .cinema-section-title {
+        font-size: clamp(.78rem, .55rem + 1.2vw, 1rem);
+      }
+      .cinema-nav-row {
+        padding-left:  clamp(.5rem, 2vw, .75rem) !important;
+        padding-right: clamp(.5rem, 2vw, .75rem) !important;
+        gap: clamp(.1rem, .5vw, .25rem);
+      }
+      .cinema-pill {
+        font-size: clamp(.72rem, 3.4vw, .875rem);
+        padding: clamp(.18rem, .8vw, .25rem) clamp(.35rem, 1.5vw, .6rem);
+      }
     }
   </style>
   }
