@@ -8,11 +8,19 @@ struct Film: Identifiable, Hashable {
     /// Server-side `_movieCard` ships them in source-priority order
     /// (Cinema City after Multikino, then other cinemas, then TMDB,
     /// then IMDb) as a pipe-separated `data-fallbacks` attribute —
-    /// cinema CDNs intermittently 403/404 (Multikino's CDN refuses
-    /// cross-origin fetches today; Cinema City has shipped posterLinks
-    /// to images they hadn't uploaded), so we'd rather walk through
-    /// every cinema poster we know before falling back to TMDB. The
-    /// web swaps via `onerror`; we do it in `FilmCardView.PosterImage`.
+    /// cinema CDNs intermittently 403/404 on the bytes themselves
+    /// (Cinema City has shipped posterLinks to images they hadn't
+    /// uploaded; some cinemas rotate slugs without redirects), so we'd
+    /// rather walk through every cinema poster we know before falling
+    /// back to TMDB. The web swaps via `onerror`; we do it in
+    /// `FilmCardView.PosterImage`.
+    ///
+    /// Multikino specifically is fine from residential IPs — phones,
+    /// browsers, this app's `AsyncImage` on a user's network all hit
+    /// 200. The server-side `PosterProxy.SkipHosts` block exists
+    /// because weserv's datacenter egress (and Fly's) lands on
+    /// Cloudflare's ASN blocklist; client fetches don't go through
+    /// either, so end-users see the poster fine.
     let fallbackPosterURLs: [URL]
     let runtimeMinutes: Int?
     let ratings: Ratings
