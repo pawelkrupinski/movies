@@ -108,19 +108,26 @@ case class MovieRecord(
   def posterUrl: Option[String] =
     prioritized.iterator.flatMap(_._2.posterUrl).nextOption()
 
-  /** Safety-net poster from TMDB used as a client-side `onerror`
-   *  fallback when the primary (cinema-side) URL 404s — happens when
-   *  a cinema's own poster image isn't actually uploaded yet (e.g.
-   *  Cinema City listing film 8215 'Drishyam 3' with a posterLink at
-   *  `/posters/8215S2R.jpg` that returns 404). Returns None when no
-   *  TMDB slot is present, or when TMDB's poster equals the primary
-   *  (no point shipping the URL twice). The view emits this as a
-   *  `data-fallback` attribute on the `<img>`; `_sharedJs.shared.js`
-   *  handles the swap before the `.no-poster` placeholder kicks in. */
-  def fallbackPosterUrl: Option[String] = {
-    val tmdb = data.get(Tmdb).flatMap(_.posterUrl)
+  /** Every poster URL we know about *except* the primary, in
+   *  source-priority order — Cinema City after Multikino, then Helios,
+   *  Apollo, …, then Tmdb, then Imdb. The view ships these as a
+   *  `data-fallbacks` chain; the client's `onerror` handler pops the
+   *  next URL until the list is empty, then falls through to
+   *  `.no-poster`. Empty when the primary is the only poster we have.
+   *
+   *  Why a chain rather than just TMDB: cinema CDNs intermittently
+   *  403/404 (Multikino's CDN refuses cross-origin fetches at the
+   *  moment; Cinema City has shipped posterLinks to images they
+   *  hadn't uploaded yet — `8215S2R.jpg` for Drishyam 3). When the
+   *  primary cinema fails we'd rather try another cinema's poster
+   *  than jump straight to TMDB; the data already lives in `data`. */
+  def fallbackPosterUrls: Seq[String] = {
     val primary = posterUrl
-    for (t <- tmdb if !primary.contains(t)) yield t
+    prioritized.iterator
+      .flatMap(_._2.posterUrl)
+      .filterNot(primary.contains)
+      .distinct
+      .toSeq
   }
 
   /** First non-empty trailer URL across cinema sources in priority order.

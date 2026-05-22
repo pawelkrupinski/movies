@@ -74,12 +74,12 @@ private struct PosterView: View {
     @ViewBuilder
     private var poster: some View {
         if let url = film.posterURL {
-            // Mirror the web's `<img data-fallback=... onerror=...>` from
-            // _movieCard: try the cinema-side URL first, swap to the TMDB
-            // fallback once on .failure. AsyncImage has no built-in
-            // fallback so we own a `@State` URL that flips after the
-            // primary errors out.
-            PosterImage(primary: url, fallback: film.fallbackPosterURL, noPoster: { noPoster })
+            // Mirror the web's `<img data-fallbacks=... onerror=...>` from
+            // _movieCard: try the primary URL first, then walk through
+            // every non-primary cinema/TMDB/IMDb poster on .failure.
+            // AsyncImage has no built-in fallback so we own a `@State`
+            // index that advances after each error.
+            PosterImage(primary: url, fallbacks: film.fallbackPosterURLs, noPoster: { noPoster })
         } else {
             noPoster
         }
@@ -122,17 +122,22 @@ private struct PosterView: View {
     }
 }
 
-/// Two-URL AsyncImage: tries `primary`, swaps to `fallback` once on
-/// `.failure`. Mirrors `_movieCard`'s `<img data-fallback=... onerror=...>`
-/// so cinema-side 404s land on the TMDB poster instead of "Brak plakatu".
+/// Walking AsyncImage: tries `primary`, then every entry in `fallbacks`
+/// in order on `.failure`. Mirrors `_movieCard`'s
+/// `<img data-fallbacks=... onerror=...>` so cinema-side 4xxs walk
+/// through other cinemas + TMDB + IMDb before "Brak plakatu" shows.
 private struct PosterImage<NoPoster: View>: View {
     let primary: URL
-    let fallback: URL?
+    let fallbacks: [URL]
     @ViewBuilder var noPoster: () -> NoPoster
-    @State private var triedFallback = false
+    @State private var index = 0
 
     var body: some View {
-        let url = triedFallback ? fallback ?? primary : primary
+        // index 0 = primary; 1…N = fallbacks[i-1]. Out-of-bounds means
+        // we've exhausted the chain and `.failure` should show noPoster.
+        let url: URL? =
+            index == 0 ? primary
+            : (index - 1 < fallbacks.count ? fallbacks[index - 1] : nil)
         AsyncImage(url: url) { phase in
             switch phase {
             case .success(let img):
@@ -142,11 +147,12 @@ private struct PosterImage<NoPoster: View>: View {
                     .fill(Color(red: 0.16, green: 0.16, blue: 0.24))
                     .overlay(ProgressView().tint(.gray))
             case .failure:
-                if !triedFallback, fallback != nil {
-                    // Trigger a re-render with the fallback URL. SwiftUI
-                    // re-keys AsyncImage on the new URL and kicks off the
-                    // second fetch.
-                    Color.clear.onAppear { triedFallback = true }
+                if index <= fallbacks.count - 1 {
+                    // Advance to the next URL in the chain. SwiftUI
+                    // re-keys AsyncImage on the new URL and kicks off
+                    // the next fetch. `index - 1 < fallbacks.count` is
+                    // still true after the bump for indices 0…N-1.
+                    Color.clear.onAppear { index += 1 }
                 } else {
                     noPoster()
                 }

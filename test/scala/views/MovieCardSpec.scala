@@ -1,6 +1,6 @@
 package views
 
-import models.Movie
+import models.{CinemaCityKinepolis, Imdb, Movie, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.twirl.api.Html
@@ -38,6 +38,55 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
     rendered                          should include ("onerror")
     rendered                          should include ("Brak plakatu")
     rendered                          should include ("display:none")
+  }
+
+  it should "ship every non-primary poster URL as a pipe-separated data-fallbacks chain" in {
+    // Werdykt-style row: Multikino is primary (currently 403s in the
+    // wild), Cinema City has a working poster, TMDB and IMDb have
+    // their own. The card should expose them all as a chain so
+    // `onerror` can walk through cinema posters before TMDB/IMDb.
+    val multikino  = "https://www.multikino.pl/.../werdykt.jpg"
+    val cinemaCity = "https://www.cinema-city.pl/.../8194S2R.jpg"
+    val tmdb       = "https://image.tmdb.org/t/p/w500/x.jpg"
+    val imdb       = "https://m.media-amazon.com/.../poster.jpg"
+    val rec = MovieRecord(
+      data = Map[Source, SourceData](
+        Multikino           -> SourceData(posterUrl = Some(multikino)),
+        CinemaCityKinepolis -> SourceData(posterUrl = Some(cinemaCity)),
+        Tmdb                -> SourceData(posterUrl = Some(tmdb)),
+        Imdb                -> SourceData(posterUrl = Some(imdb))
+      )
+    )
+    val rendered = views.html._movieCard(movie, Some(multikino), Some(rec))(Html("")).body
+    rendered should include ("data-fallbacks=\"")
+    // Three fallbacks, joined by a literal pipe. Each individually goes
+    // through PosterProxy → weserv (Cinema City is HTTPS but still gets
+    // resize + webp; the SkipHosts in PosterProxy doesn't include
+    // weserv-friendly cinema hosts).
+    rendered should include ("cinema-city.pl")
+    rendered should include ("image.tmdb.org")
+    rendered should include ("media-amazon.com")
+    // Pipe separator between the proxied URLs.
+    rendered should include ("output=webp|https://images.weserv.nl")
+    // The walking-onerror handler reads `data-fallbacks`, splits on `|`,
+    // and falls through to the `.no-poster` block when empty.
+    rendered should include ("dataset.fallbacks")
+    rendered should include ("split('|')")
+  }
+
+  it should "omit data-fallbacks when no alternative poster exists" in {
+    val onlyMultikino = MovieRecord(
+      data = Map[Source, SourceData](
+        Multikino -> SourceData(posterUrl = Some("https://www.multikino.pl/x.jpg"))
+      )
+    )
+    val rendered = views.html._movieCard(
+      movie, Some("https://www.multikino.pl/x.jpg"), Some(onlyMultikino)
+    )(Html("")).body
+    rendered should not include "data-fallbacks="
+    // The walking-onerror handler is still wired up — it just no-ops
+    // (empty chain) and falls straight through to `.no-poster`.
+    rendered should include ("dataset.fallbacks")
   }
 
   // The whole-movie favourites star (drives /ulubione + the visual yellow

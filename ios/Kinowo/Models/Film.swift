@@ -4,13 +4,16 @@ struct Film: Identifiable, Hashable {
     var id: String { title }
     let title: String
     let posterURL: URL?
-    /// TMDB-derived poster. Server-side `_movieCard` emits this as
-    /// `data-fallback` on the `<img>` whenever it differs from the
-    /// primary, because cinema-side URLs occasionally 404 (e.g. Cinema
-    /// City listing a film with a posterLink to an image they haven't
-    /// uploaded yet). The web swaps via `onerror`; we do it in
-    /// `FilmCardView.PosterView`.
-    let fallbackPosterURL: URL?
+    /// Chain of alternative poster URLs to try when `posterURL` fails.
+    /// Server-side `_movieCard` ships them in source-priority order
+    /// (Cinema City after Multikino, then other cinemas, then TMDB,
+    /// then IMDb) as a pipe-separated `data-fallbacks` attribute —
+    /// cinema CDNs intermittently 403/404 (Multikino's CDN refuses
+    /// cross-origin fetches today; Cinema City has shipped posterLinks
+    /// to images they hadn't uploaded), so we'd rather walk through
+    /// every cinema poster we know before falling back to TMDB. The
+    /// web swaps via `onerror`; we do it in `FilmCardView.PosterImage`.
+    let fallbackPosterURLs: [URL]
     let runtimeMinutes: Int?
     let ratings: Ratings
     let showings: [DayShowings]

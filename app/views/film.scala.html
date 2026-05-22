@@ -175,10 +175,13 @@
         <button type="button" class="fav-poster-btn@if(isFavourite){ is-fav}" onclick="toggleFavMovie(this)" title="Dodaj do ulubionych" aria-label="Dodaj do ulubionych">★</button>
         @film.posterUrl match {
           case Some(url) => {
-            @* `data-fallback` is TMDB's poster URL when it differs from
-               the primary — covers the cinema-side-404 case. Same
+            @* `data-fallbacks` is a pipe-separated chain of poster URLs
+               to try when the primary 404/403s — every non-primary
+               poster we know about in source-priority order. Same
                inline `onerror` pattern as _movieCard. *@
-            <img src="@tools.PosterProxy.proxy(url)" alt="@film.movie.title" class="poster-img"@film.enrichment.flatMap(_.fallbackPosterUrl).map { f => @Html(s""" data-fallback="$f"""") } onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.removeAttribute('data-fallback');return}this.style.display='none';this.nextElementSibling.style.display='flex'">
+            @defining(film.enrichment.toSeq.flatMap(_.fallbackPosterUrls).map(tools.PosterProxy.proxy).mkString("|")) { fallbacks =>
+              <img src="@tools.PosterProxy.proxy(url)" alt="@film.movie.title" class="poster-img"@if(fallbacks.nonEmpty){ data-fallbacks="@fallbacks"} onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){this.src=fb.shift();if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex'">
+            }
             <div class="no-poster" style="display:none">Brak plakatu</div>
           }
           case None      => { <div class="no-poster">Brak plakatu</div> }

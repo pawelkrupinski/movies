@@ -58,15 +58,19 @@ enum HTMLParser {
         // the same dance.
         let poster   = capture(chunk, #"<img src="([^"]+)""#)
                           .flatMap { URL(string: $0.htmlDecoded()) }
-        // `_movieCard` emits `data-fallback="<tmdb-url>"` on the poster
-        // <img> when TMDB has a different poster from the cinema-side
-        // primary. The web's inline `onerror` swaps to it on the
-        // primary's first 404; iOS does the same in PosterView.
-        // Without this, films whose cinema URL 404s (~today: Drishyam
-        // 3; historically several over a season) show "Brak plakatu"
-        // here while the web shows the TMDB poster.
-        let fallback = capture(chunk, #"data-fallback="([^"]+)""#)
-                          .flatMap { URL(string: $0.htmlDecoded()) }
+        // `_movieCard` emits `data-fallbacks="url1|url2|..."` — a chain
+        // of every non-primary poster URL we know about, in
+        // source-priority order (Cinema City after Multikino, then
+        // other cinemas, then TMDB, then IMDb). The web's inline
+        // `onerror` pops the next URL until the chain is empty; iOS
+        // does the same in PosterImage. Without this, films whose
+        // primary URL 4xxs (Multikino's CDN today; Cinema City's
+        // missing-upload case historically) show "Brak plakatu" on
+        // iOS while the web swaps through cinema fallbacks.
+        let fallbacks = (capture(chunk, #"data-fallbacks="([^"]+)""#) ?? "")
+                          .htmlDecoded()
+                          .split(separator: "|", omittingEmptySubsequences: true)
+                          .compactMap { URL(string: String($0)) }
         let runtime  = capture(chunk, #"<span class="pill runtime">([^<]+)</span>"#)
                           .flatMap(parseRuntime)
         let ratings  = parseRatings(chunk)
@@ -74,7 +78,7 @@ enum HTMLParser {
         return Film(
             title: title.htmlDecoded(),
             posterURL: poster,
-            fallbackPosterURL: fallback,
+            fallbackPosterURLs: fallbacks,
             runtimeMinutes: runtime,
             ratings: ratings,
             showings: showings

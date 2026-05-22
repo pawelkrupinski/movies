@@ -150,7 +150,7 @@ extension Sequence where Element == Film {
             return Film(
                 title: film.title,
                 posterURL: film.posterURL,
-                fallbackPosterURL: film.fallbackPosterURL,
+                fallbackPosterURLs: film.fallbackPosterURLs,
                 runtimeMinutes: film.runtimeMinutes,
                 ratings: film.ratings,
                 showings: days

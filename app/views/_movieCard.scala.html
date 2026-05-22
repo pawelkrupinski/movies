@@ -18,14 +18,17 @@
     <a href="@FilmHref(movie.title)" style="display:block;height:100%">
       @posterUrl match {
         case Some(url) => {
-          @* `data-fallback` only emits when TMDB has a different poster
-             from the primary — safety net for cinema-side URLs that
-             404 (e.g. Cinema City listing Drishyam 3 with a posterLink
-             to an image they haven't uploaded). The inline `onerror`
-             swaps `src` to the fallback on the first error and removes
-             the attribute so a second error falls through to the
-             `.no-poster` placeholder. *@
-          <img src="@tools.PosterProxy.proxy(url)" alt="@movie.title" loading="lazy"@enrichment.flatMap(_.fallbackPosterUrl).map { f => @Html(s""" data-fallback="$f"""") } onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.removeAttribute('data-fallback');return}this.style.display='none';this.nextElementSibling.style.display='flex'">
+          @* `data-fallbacks` is a pipe-separated chain of poster URLs to
+             try when the primary 404/403s — every non-primary poster
+             we know about, in source-priority order (Cinema City after
+             Multikino, then other cinemas, then TMDB, then IMDb). Each
+             goes through PosterProxy too so weserv handles HTTPS
+             upgrade + resize + cache. The inline `onerror` pops the
+             next URL until the chain is empty, then falls through to
+             the `.no-poster` placeholder. *@
+          @defining(enrichment.toSeq.flatMap(_.fallbackPosterUrls).map(tools.PosterProxy.proxy).mkString("|")) { fallbacks =>
+            <img src="@tools.PosterProxy.proxy(url)" alt="@movie.title" loading="lazy"@if(fallbacks.nonEmpty){ data-fallbacks="@fallbacks"} onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){this.src=fb.shift();if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex'">
+          }
           <div class="no-poster" style="display:none">Brak plakatu</div>
         }
         case None      => { <div class="no-poster">Brak plakatu</div> }
