@@ -29,6 +29,12 @@
 		DD00000000000000000016 /* FilmDetailStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000016 /* FilmDetailStore.swift */; };
 		DD00000000000000000017 /* FilmDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000017 /* FilmDetail.swift */; };
 		DD00000000000000000018 /* FilmDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000018 /* FilmDetailView.swift */; };
+		DD00000000000000000019 /* FlowLayoutMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000019 /* FlowLayoutMath.swift */; };
+		DD0000000000000000001B /* AccessibilityIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001B /* AccessibilityIdentifiers.swift */; };
+		DD0000000000000000001C /* RepertoireLaunchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001C /* RepertoireLaunchUITests.swift */; };
+		DD0000000000000000001D /* TabSwipeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001D /* TabSwipeUITests.swift */; };
+		DD0000000000000000001E /* FilterSheetUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001E /* FilterSheetUITests.swift */; };
+		DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001B /* AccessibilityIdentifiers.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,10 +61,23 @@
 		CC00000000000000000016 /* FilmDetailStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailStore.swift; sourceTree = "<group>"; };
 		CC00000000000000000017 /* FilmDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetail.swift; sourceTree = "<group>"; };
 		CC00000000000000000018 /* FilmDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailView.swift; sourceTree = "<group>"; };
+		CC00000000000000000019 /* FlowLayoutMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayoutMath.swift; sourceTree = "<group>"; };
+		CC0000000000000000001A /* KinowoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KinowoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC0000000000000000001B /* AccessibilityIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityIdentifiers.swift; sourceTree = "<group>"; };
+		CC0000000000000000001C /* RepertoireLaunchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepertoireLaunchUITests.swift; sourceTree = "<group>"; };
+		CC0000000000000000001D /* TabSwipeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSwipeUITests.swift; sourceTree = "<group>"; };
+		CC0000000000000000001E /* FilterSheetUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterSheetUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AA00000000000000000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA00000000000000000022 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -72,6 +91,7 @@
 			isa = PBXGroup;
 			children = (
 				BB00000000000000000002 /* Kinowo */,
+				BB00000000000000000008 /* KinowoUITests */,
 				BB00000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -81,6 +101,7 @@
 			children = (
 				CC00000000000000000002 /* KinowoApp.swift */,
 				CC00000000000000000003 /* ContentView.swift */,
+				CC0000000000000000001B /* AccessibilityIdentifiers.swift */,
 				BB00000000000000000004 /* Models */,
 				BB00000000000000000005 /* Networking */,
 				BB00000000000000000006 /* Storage */,
@@ -94,8 +115,19 @@
 			isa = PBXGroup;
 			children = (
 				CC00000000000000000001 /* Kinowo.app */,
+				CC0000000000000000001A /* KinowoUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		BB00000000000000000008 /* KinowoUITests */ = {
+			isa = PBXGroup;
+			children = (
+				CC0000000000000000001C /* RepertoireLaunchUITests.swift */,
+				CC0000000000000000001D /* TabSwipeUITests.swift */,
+				CC0000000000000000001E /* FilterSheetUITests.swift */,
+			);
+			path = KinowoUITests;
 			sourceTree = "<group>";
 		};
 		BB00000000000000000004 /* Models */ = {
@@ -141,6 +173,7 @@
 				CC0000000000000000000E /* RatingBadgesView.swift */,
 				CC0000000000000000000F /* FiltersBar.swift */,
 				CC00000000000000000011 /* FlowLayout.swift */,
+				CC00000000000000000019 /* FlowLayoutMath.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -165,6 +198,23 @@
 			productReference = CC00000000000000000001 /* Kinowo.app */;
 			productType = "com.apple.product-type.application";
 		};
+		AA00000000000000000020 /* KinowoUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA00000000000000000023 /* Build configuration list for PBXNativeTarget "KinowoUITests" */;
+			buildPhases = (
+				AA00000000000000000021 /* Sources */,
+				AA00000000000000000022 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AA00000000000000000026 /* PBXTargetDependency */,
+			);
+			name = KinowoUITests;
+			productName = KinowoUITests;
+			productReference = CC0000000000000000001A /* KinowoUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -177,6 +227,10 @@
 				TargetAttributes = {
 					AA00000000000000000002 = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					AA00000000000000000020 = {
+						CreatedOnToolsVersion = 15.0;
+						TestTargetID = AA00000000000000000002;
 					};
 				};
 			};
@@ -194,6 +248,7 @@
 			projectRoot = "";
 			targets = (
 				AA00000000000000000002 /* Kinowo */,
+				AA00000000000000000020 /* KinowoUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -235,10 +290,41 @@
 				DD00000000000000000016 /* FilmDetailStore.swift in Sources */,
 				DD00000000000000000017 /* FilmDetail.swift in Sources */,
 				DD00000000000000000018 /* FilmDetailView.swift in Sources */,
+				DD00000000000000000019 /* FlowLayoutMath.swift in Sources */,
+				DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA00000000000000000021 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DD0000000000000000001B /* AccessibilityIdentifiers.swift in Sources */,
+				DD0000000000000000001C /* RepertoireLaunchUITests.swift in Sources */,
+				DD0000000000000000001D /* TabSwipeUITests.swift in Sources */,
+				DD0000000000000000001E /* FilterSheetUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AA00000000000000000026 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AA00000000000000000002 /* Kinowo */;
+			targetProxy = AA00000000000000000027 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		AA00000000000000000027 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA00000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA00000000000000000002;
+			remoteInfo = Kinowo;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin XCBuildConfiguration section */
 		AA00000000000000000008 /* Debug */ = {
@@ -408,6 +494,52 @@
 			};
 			name = Release;
 		};
+		AA00000000000000000024 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CQ4YC43YDM;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.kinowo.KinowoUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Kinowo;
+			};
+			name = Debug;
+		};
+		AA00000000000000000025 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CQ4YC43YDM;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.kinowo.KinowoUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Kinowo;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -425,6 +557,15 @@
 			buildConfigurations = (
 				AA0000000000000000000A /* Debug */,
 				AA0000000000000000000B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA00000000000000000023 /* Build configuration list for PBXNativeTarget "KinowoUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA00000000000000000024 /* Debug */,
+				AA00000000000000000025 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

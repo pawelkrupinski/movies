@@ -35,6 +35,7 @@ struct FilmGridView: View {
                             FilmCardView(film: film)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier(A11y.FilmGrid.cell)
                     }
                 }
                 .padding(.horizontal, 12)
@@ -98,5 +99,6 @@ struct CinemaSectionedGridView: View {
                     .fill(Color(red: 0.227, green: 0.227, blue: 0.431))
                     .frame(height: 1)
             }
+            .accessibilityIdentifier(A11y.CinemaPage.sectionHeader)
     }
 }

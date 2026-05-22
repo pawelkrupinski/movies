@@ -46,6 +46,12 @@ struct TopBar: View {
                     .foregroundStyle(filtersActive ? Color.accentColor : .primary)
             }
             .buttonStyle(BounceButtonStyle())
+            // The Image has no text label so XCUITest can't find the
+            // button by its accessibility label — give it both a label
+            // and an identifier. The label is also useful for
+            // VoiceOver users in production.
+            .accessibilityLabel("Filtry")
+            .accessibilityIdentifier(A11y.TopBar.filtryButton)
         }
         .padding(.horizontal, 10 * s)
         // Tiny top padding so the pills hug the status bar; the
@@ -231,6 +237,7 @@ struct TabLabelOverlay: View {
             .overlay(
                 Capsule().strokeBorder(Color.white.opacity(0.12))
             )
+            .accessibilityIdentifier(text == "Filmy" ? A11y.TabOverlay.filmy : A11y.TabOverlay.kina)
     }
 }
 
@@ -390,8 +397,10 @@ struct FiltersSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Gotowe") { dismiss() }
+                        .accessibilityIdentifier(A11y.FiltersSheet.doneButton)
                 }
             }
+            .accessibilityIdentifier(A11y.FiltersSheet.root)
         }
     }
 }

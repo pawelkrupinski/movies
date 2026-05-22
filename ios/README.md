@@ -59,35 +59,43 @@ ios/
 │   │   ├── HiddenFilmsView.swift   Manage hidden films
 │   │   └── FlowLayout.swift        Wrapping-row `Layout` (flex-wrap)
 │   └── Assets.xcassets/
-└── Tools/
-    ├── HTMLParserSmoke.swift   Smoke-tests the parser
-    └── run_smoke.sh            Compile + run wrapper
+├── Package.swift                  SPM manifest — KinowoCore library + tests
+├── Tests/KinowoCoreTests/         XCTest cases (Foundation-only)
+│   ├── Unit/                      Per-component tests (parsers, filters, prune)
+│   ├── Integration/               Pipeline tests against captured fixtures
+│   ├── Smoke/                     Live-network tests (env-gated)
+│   ├── Fixtures/                  Captured production HTML
+│   └── Support/Fixtures.swift     Bundle-resource loader
+└── KinowoUITests/                 XCUITest target — drives the simulator
 ```
 
-## Smoke-testing the parser
+## Tests
 
-The HTML parser is fragile by construction — any change to the kinowo template
-markup can break it. Run the smoke script to confirm the parser still produces
-sensible output before shipping a release:
+Three lanes:
 
 ```sh
-./Tools/run_smoke.sh                 # fetches kinowo.fly.dev/ and parses it
-./Tools/run_smoke.sh path/to/.html   # parses a saved HTML file
+# Unit + integration (fast, offline). ~125 tests, runs in ~2s on macOS.
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift test
+
+# Smoke tests against the live site (opt-in — hits kinowo.fly.dev).
+RUN_SMOKE_TESTS=1 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+    xcrun swift test --filter Smoke
+
+# UI tests on a booted simulator (requires full Xcode).
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test \
+    -project Kinowo.xcodeproj -scheme Kinowo \
+    -destination 'platform=iOS Simulator,name=iPhone 17' \
+    CODE_SIGNING_ALLOWED=NO
 ```
 
-The script compiles `HTMLParser.swift` + `HTMLDecoding.swift` + `Film.swift`
-into a small CLI, runs it, and prints:
+CI runs the same three lanes (`.github/workflows/ios.yml`): unit + integration
+on every PR (Linux Docker, swift:5.10), UI tests on every PR (macos-latest
+runner), smoke nightly at 04:00 UTC against production.
 
-* total films + total showtimes
-* what % of films have posters / runtime / IMDb / showings
-* the first 5 films in detail (poster URL, ratings, days, per-cinema counts)
-* a handful of pass/fail checks
-
-A green "ALL OK" line at the bottom means the parser still works against the
-fetched HTML. If the counts collapse to near-zero, something in
-`_filmCards.scala.html` / `_filmShowings.scala.html` / `_ratingBadges.scala.html`
-has changed shape — update the regexes in `Kinowo/Networking/HTMLParser.swift`
-to match.
+The HTML parser is fragile by construction — any change to the kinowo template
+markup can break it. The smoke tests catch that drift; the unit/integration
+tests catch parser regressions against pinned fixtures so the parser doesn't
+quietly rot between live-site changes.
 
 ## Known gaps
 

@@ -5,6 +5,8 @@ xcuserdata/
 # Build artefacts (the smoke script compiles into /tmp, but be defensive).
 build/
 DerivedData/
+.build/
+Package.resolved
 *.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
 
 # macOS noise.

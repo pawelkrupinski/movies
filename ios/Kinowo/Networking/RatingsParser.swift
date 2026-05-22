@@ -15,8 +15,13 @@ enum RatingsParser {
                           .flatMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
         let mcURL   = HTMLPrimitives.capture(chunk, #"<a href="([^"]+)"[^>]*class="rating-meta""#)
                           .flatMap { URL(string: $0) }
-        // rating-meta wraps the score in the anchor body directly.
-        let mc      = HTMLPrimitives.capture(chunk, #"class="rating-meta"[^>]*onclick="event.stopPropagation\(\)">([^<]+)</a>"#)
+        // rating-meta wraps the score in the anchor body directly. Match up
+        // to the closing `>` of the `<a>` open tag, then take the body.
+        // The earlier version anchored on `onclick="event.stopPropagation()"`
+        // — that attribute was removed from the template (commit 6372afc),
+        // so the regex silently stopped matching and MC pills disappeared
+        // from every card.
+        let mc      = HTMLPrimitives.capture(chunk, #"class="rating-meta"[^>]*>([^<]+)</a>"#)
                           .flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
         let rtURL   = HTMLPrimitives.capture(chunk, #"<a href="([^"]+)"[^>]*class="rating-rt[^"]*""#)
                           .flatMap { URL(string: $0) }
