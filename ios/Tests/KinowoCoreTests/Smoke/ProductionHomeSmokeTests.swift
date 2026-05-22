@@ -1,10 +1,13 @@
 import XCTest
 @testable import KinowoCore
-#if canImport(FoundationNetworking)
-// Linux Swift splits URLSession / URLRequest out into a separate
-// module; on Darwin everything lives under Foundation.
-import FoundationNetworking
-#endif
+
+// Smoke tests need `URLSession.shared.data(for:)` — the async API that
+// shipped on Darwin but isn't in Linux Swift 5.10's
+// `FoundationNetworking`. The CI workflow only ever runs smoke tests on
+// macOS or with the env-gated nightly job, so gate the entire file
+// behind `canImport(Darwin)` rather than carrying a non-async fallback
+// just to satisfy a build that wouldn't run them anyway.
+#if canImport(Darwin)
 
 final class ProductionHomeSmokeTests: XCTestCase {
 
@@ -83,3 +86,5 @@ private func fetchHTML(_ url: URL) async throws -> String {
     }
     return String(decoding: data, as: UTF8.self)
 }
+
+#endif

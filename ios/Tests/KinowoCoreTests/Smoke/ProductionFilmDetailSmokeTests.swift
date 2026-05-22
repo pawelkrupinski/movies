@@ -1,10 +1,8 @@
 import XCTest
 @testable import KinowoCore
-#if canImport(FoundationNetworking)
-// Linux Swift splits URLSession / URLRequest out into a separate
-// module; on Darwin everything lives under Foundation.
-import FoundationNetworking
-#endif
+
+// See ProductionHomeSmokeTests for why this file is Darwin-only.
+#if canImport(Darwin)
 
 final class ProductionFilmDetailSmokeTests: XCTestCase {
 
@@ -65,3 +63,5 @@ private func fetchHTML(_ url: URL) async throws -> String {
     }
     return String(decoding: data, as: UTF8.self)
 }
+
+#endif
