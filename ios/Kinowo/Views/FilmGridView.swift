@@ -24,7 +24,17 @@ struct FilmGridView: View {
             ScrollView {
                 LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
                     ForEach(films) { film in
-                        FilmCardView(film: film)
+                        // Whole-card tap navigates to /film. Inner
+                        // Buttons (⭐/✕ on the poster, ★ on showtime
+                        // pills) and Links (cinema-label, booking
+                        // URL) keep their own hit areas — SwiftUI
+                        // routes the tap to the innermost gesture
+                        // handler, so the NavigationLink only fires
+                        // on the gaps between them.
+                        NavigationLink(value: film) {
+                            FilmCardView(film: film)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 12)
@@ -57,7 +67,10 @@ struct CinemaSectionedGridView: View {
                             sectionHeader(section.cinema)
                             LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
                                 ForEach(section.films) { film in
-                                    FilmCardView(film: film, showCinemaHeaders: false)
+                                    NavigationLink(value: film) {
+                                        FilmCardView(film: film, showCinemaHeaders: false)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }

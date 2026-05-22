@@ -22,6 +22,13 @@
 		DD0000000000000000000E /* RatingBadgesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000E /* RatingBadgesView.swift */; };
 		DD0000000000000000000F /* FiltersBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000F /* FiltersBar.swift */; };
 		DD00000000000000000011 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000011 /* FlowLayout.swift */; };
+		DD00000000000000000012 /* HTMLPrimitives.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000012 /* HTMLPrimitives.swift */; };
+		DD00000000000000000013 /* ShowingsParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000013 /* ShowingsParser.swift */; };
+		DD00000000000000000014 /* RatingsParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000014 /* RatingsParser.swift */; };
+		DD00000000000000000015 /* FilmDetailParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000015 /* FilmDetailParser.swift */; };
+		DD00000000000000000016 /* FilmDetailStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000016 /* FilmDetailStore.swift */; };
+		DD00000000000000000017 /* FilmDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000017 /* FilmDetail.swift */; };
+		DD00000000000000000018 /* FilmDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000018 /* FilmDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +48,13 @@
 		CC0000000000000000000E /* RatingBadgesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingBadgesView.swift; sourceTree = "<group>"; };
 		CC0000000000000000000F /* FiltersBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FiltersBar.swift; sourceTree = "<group>"; };
 		CC00000000000000000011 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
+		CC00000000000000000012 /* HTMLPrimitives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLPrimitives.swift; sourceTree = "<group>"; };
+		CC00000000000000000013 /* ShowingsParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowingsParser.swift; sourceTree = "<group>"; };
+		CC00000000000000000014 /* RatingsParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingsParser.swift; sourceTree = "<group>"; };
+		CC00000000000000000015 /* FilmDetailParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailParser.swift; sourceTree = "<group>"; };
+		CC00000000000000000016 /* FilmDetailStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailStore.swift; sourceTree = "<group>"; };
+		CC00000000000000000017 /* FilmDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetail.swift; sourceTree = "<group>"; };
+		CC00000000000000000018 /* FilmDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +102,7 @@
 			isa = PBXGroup;
 			children = (
 				CC00000000000000000005 /* Film.swift */,
+				CC00000000000000000017 /* FilmDetail.swift */,
 				CC00000000000000000006 /* Filters.swift */,
 			);
 			path = Models;
@@ -98,6 +113,11 @@
 			children = (
 				CC00000000000000000007 /* RepertoireClient.swift */,
 				CC00000000000000000008 /* HTMLParser.swift */,
+				CC00000000000000000012 /* HTMLPrimitives.swift */,
+				CC00000000000000000013 /* ShowingsParser.swift */,
+				CC00000000000000000014 /* RatingsParser.swift */,
+				CC00000000000000000015 /* FilmDetailParser.swift */,
+				CC00000000000000000016 /* FilmDetailStore.swift */,
 				CC00000000000000000009 /* HTMLDecoding.swift */,
 			);
 			path = Networking;
@@ -116,6 +136,7 @@
 			children = (
 				CC0000000000000000000B /* FilmGridView.swift */,
 				CC0000000000000000000C /* FilmCardView.swift */,
+				CC00000000000000000018 /* FilmDetailView.swift */,
 				CC0000000000000000000D /* ShowingsView.swift */,
 				CC0000000000000000000E /* RatingBadgesView.swift */,
 				CC0000000000000000000F /* FiltersBar.swift */,
@@ -207,6 +228,13 @@
 				DD0000000000000000000E /* RatingBadgesView.swift in Sources */,
 				DD0000000000000000000F /* FiltersBar.swift in Sources */,
 				DD00000000000000000011 /* FlowLayout.swift in Sources */,
+				DD00000000000000000012 /* HTMLPrimitives.swift in Sources */,
+				DD00000000000000000013 /* ShowingsParser.swift in Sources */,
+				DD00000000000000000014 /* RatingsParser.swift in Sources */,
+				DD00000000000000000015 /* FilmDetailParser.swift in Sources */,
+				DD00000000000000000016 /* FilmDetailStore.swift in Sources */,
+				DD00000000000000000017 /* FilmDetail.swift in Sources */,
+				DD00000000000000000018 /* FilmDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

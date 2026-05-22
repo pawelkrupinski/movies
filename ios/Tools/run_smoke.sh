@@ -12,6 +12,9 @@ trap 'rm -f "$OUT"' EXIT
 swiftc -O -o "$OUT" \
     Tools/HTMLParserSmoke.swift \
     Kinowo/Networking/HTMLParser.swift \
+    Kinowo/Networking/HTMLPrimitives.swift \
+    Kinowo/Networking/ShowingsParser.swift \
+    Kinowo/Networking/RatingsParser.swift \
     Kinowo/Networking/HTMLDecoding.swift \
     Kinowo/Models/Film.swift
 

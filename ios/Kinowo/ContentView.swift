@@ -111,6 +111,12 @@ struct ContentView: View {
             // the floating Filmy / Kina label is the only "where am I"
             // affordance.
             .tabViewStyle(.page(indexDisplayMode: .never))
+            // Resolves NavigationLink(value: Film) from both grids to
+            // the per-film detail screen, the iOS counterpart of
+            // /film?title=… on the web.
+            .navigationDestination(for: Film.self) { film in
+                FilmDetailView(film: film)
+            }
             .onChange(of: tab) { new in
                 showTabLabel(new == .films ? "Filmy" : "Kina")
             }
