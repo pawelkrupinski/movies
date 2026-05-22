@@ -21,9 +21,9 @@ struct ShowingsView: View {
     /// (variable by format tag — "IMAX 3D NAP" is far wider than
     /// "2D" or no format at all) against the actual card content
     /// width (derived from screen width, so a 13 mini packs fewer
-    /// pills per row than a 17 Pro Max). 10 keeps a typical Dziś
+    /// pills per row than a 17 Pro Max). 13 keeps a typical Dziś
     /// card under ~½ a screen height; lower further by passing in.
-    var maxCollapsedLines: Int = 10
+    var maxCollapsedLines: Int = 13
     @State private var isExpanded: Bool = false
 
     var body: some View {
