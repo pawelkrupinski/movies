@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ShowingsView: View {
     let film: Film
@@ -15,15 +16,14 @@ struct ShowingsView: View {
     var collapsible: Bool = false
     /// Soft cap on the visual height of the showings rail when
     /// collapsed, counted in "lines": each day header is 1, each
-    /// cinema header is 1, every `pillsPerLine` showtimes ≈ 1 row of
-    /// pills. 20 keeps a typical card under one screen height; tune
-    /// here without touching the truncation logic.
-    var maxCollapsedLines: Int = 20
-    /// Approximate showtime pills that fit on one row inside a grid
-    /// card (~155pt content width ÷ ~55pt average pill). Used only by
-    /// the line-count estimator; underestimate is safer (truncates
-    /// sooner, so the cap holds) than overestimate.
-    private let pillsPerLine: Int = 3
+    /// cinema header is 1, and each row the pills wrap into is 1.
+    /// Pill rows are computed from the actual rendered pill widths
+    /// (variable by format tag — "IMAX 3D NAP" is far wider than
+    /// "2D" or no format at all) against the actual card content
+    /// width (derived from screen width, so a 13 mini packs fewer
+    /// pills per row than a 17 Pro Max). 10 keeps a typical Dziś
+    /// card under ~½ a screen height; lower further by passing in.
+    var maxCollapsedLines: Int = 10
     @State private var isExpanded: Bool = false
 
     var body: some View {
@@ -67,12 +67,13 @@ struct ShowingsView: View {
         var lineCount = 0
         var visibleDays: [DayShowings] = []
         var hidden = 0
+        let contentWidth = Self.cardShowingsWidth
 
         for day in allDays {
             var keptCinemas: [CinemaShowings] = []
             var dayLines = 1  // the date label itself
             for cinema in day.cinemas {
-                let pillRows = max(1, (cinema.showtimes.count + pillsPerLine - 1) / pillsPerLine)
+                let pillRows = Self.pillRowCount(cinema.showtimes, contentWidth: contentWidth)
                 let cinemaLines = 1 + pillRows  // cinema label + pill rows
                 if lineCount + dayLines + cinemaLines <= maxCollapsedLines {
                     keptCinemas.append(cinema)
@@ -91,6 +92,73 @@ struct ShowingsView: View {
         }
         return (visibleDays, hidden)
     }
+
+    // MARK: – pill-row sizing
+
+    /// Simulates the FlowLayout's wrap: walks pills in order, tallying
+    /// the running row width against `contentWidth` and starting a
+    /// new row when the next pill won't fit. Returns the row count
+    /// that the on-screen layout will actually produce — no
+    /// per-device special casing, just measurement.
+    private static func pillRowCount(_ showtimes: [Showtime], contentWidth: CGFloat) -> Int {
+        guard !showtimes.isEmpty else { return 0 }
+        var rows = 1
+        var rowWidth: CGFloat = 0
+        for st in showtimes {
+            let w = pillWidth(for: st)
+            if rowWidth == 0 {
+                rowWidth = w
+            } else if rowWidth + pillGap + w <= contentWidth {
+                rowWidth += pillGap + w
+            } else {
+                rows += 1
+                rowWidth = w
+            }
+        }
+        return rows
+    }
+
+    /// Actual rendered width of one showtime pill, broken down to
+    /// match `ShowtimeBadge`'s layout: 7+7 horizontal padding, the
+    /// time text at 12pt semibold, an optional 9pt-medium format tag
+    /// preceded by 4pt spacing, then the 4pt + 9pt star. UIFont's
+    /// `(NSString).size(withAttributes:)` returns the same width
+    /// SwiftUI's Text uses, so the estimate tracks pill-by-pill
+    /// reality (no average / no fudge).
+    private static func pillWidth(for st: Showtime) -> CGFloat {
+        let timeWidth = textWidth(st.time, font: timeFont)
+        let trimmedFormat = st.format.trimmingCharacters(in: .whitespacesAndNewlines)
+        let formatWidth: CGFloat = trimmedFormat.isEmpty
+            ? 0
+            : pillInternalGap + textWidth(trimmedFormat, font: formatFont)
+        return pillHorizontalPadding + timeWidth + formatWidth + pillInternalGap + starWidth
+    }
+
+    private static func textWidth(_ s: String, font: UIFont) -> CGFloat {
+        (s as NSString).size(withAttributes: [.font: font]).width
+    }
+
+    private static let timeFont   = UIFont.systemFont(ofSize: 12, weight: .semibold)
+    private static let formatFont = UIFont.systemFont(ofSize: 9,  weight: .medium)
+    private static let starWidth: CGFloat = 9            // SF Symbol "star" at 9pt
+    private static let pillHorizontalPadding: CGFloat = 14  // 7 leading + 7 trailing
+    private static let pillInternalGap: CGFloat = 4      // HStack(spacing: 4) inside the pill
+    private static let pillGap: CGFloat = 4              // FlowLayout(spacing: 4) between pills
+
+    /// Width available to the showings FlowLayout inside one grid
+    /// card. Mirrors `FilmGridView`'s adaptive `GridItem`:
+    /// `.padding(.horizontal, 12)` on the LazyVGrid + 12pt spacing
+    /// between two columns gives card width `(screen − 36) / 2`,
+    /// clamped to the [160, 220] adaptive bounds; FilmCardView's own
+    /// `.padding(12)` then takes 24pt off the inside.
+    /// Computed once at view-construction time — the iOS app is
+    /// phone-only and the screen width is constant per launch.
+    private static let cardShowingsWidth: CGFloat = {
+        let screenWidth = UIScreen.main.bounds.width
+        let columnWidth = (screenWidth - 36) / 2
+        let cardWidth = min(220, max(160, columnWidth))
+        return cardWidth - 24
+    }()
 
     @ViewBuilder
     private func cinemaLabel(_ cinema: CinemaShowings) -> some View {
