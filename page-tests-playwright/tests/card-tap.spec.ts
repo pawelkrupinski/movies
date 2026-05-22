@@ -61,8 +61,12 @@ test.describe('card poster link on WebKit (iPhone emulation)', () => {
     await img.tap();
 
     await page.waitForURL(/\/film\?title=/);
-    const url = new URL(page.url());
-    expect(decodeURIComponent(url.search)).toContain(`title=${title}`);
+    // URLSearchParams handles both `+` (form-style space encoding, what
+    // Play's `routes` reverse-router emits for spaces) and `%20`. A
+    // plain `decodeURIComponent(url.search).contains(title)` would
+    // silently fail for any film title containing a space.
+    const params = new URLSearchParams(new URL(page.url()).search);
+    expect(params.get('title')).toBe(title);
   });
 
   test('detail page renders without a JS error', async ({ page }) => {
