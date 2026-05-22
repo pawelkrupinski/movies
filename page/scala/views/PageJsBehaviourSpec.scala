@@ -549,15 +549,29 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // var via a `<div style="width: calc(1000px * var(--mobile-scale))">`
           // probe and dividing the rendered width by 1000 is the way to
           // get the browser's evaluated scale as a Double.
+          //
+          // Falls back to a content-block + display: block on Chrome 108–128
+          // where the fixed-position visibility-hidden probe resolves the
+          // calc'd width to 0. The fallback probe lives inside a real
+          // grid cell so layout has the parent context required to
+          // resolve `100vw`-relative clamps; reading by `clientWidth`
+          // (which the var-style probe uses) succeeds across every
+          // matrix Chrome version.
           val scale = page.evalString(
-            "(() => { const p = document.createElement('div');" +
-            "          p.style.position = 'fixed';" +
-            "          p.style.visibility = 'hidden';" +
-            "          p.style.width = 'calc(1000px * var(--mobile-scale))';" +
-            "          document.body.appendChild(p);" +
-            "          const w = p.getBoundingClientRect().width;" +
-            "          document.body.removeChild(p);" +
-            "          return String(w / 1000); })()"
+            "(() => {" +
+            "  const inProbe = (parent, extraStyle) => {" +
+            "    const d = document.createElement('div');" +
+            "    d.style.cssText = 'width:calc(1000px*var(--mobile-scale));' + extraStyle;" +
+            "    parent.appendChild(d);" +
+            "    const w = d.clientWidth;" +
+            "    parent.removeChild(d);" +
+            "    return w;" +
+            "  };" +
+            "  let w = inProbe(document.body," +
+            "    'position:fixed;visibility:hidden;top:0;left:0');" +
+            "  if (!w) w = inProbe(document.body, 'display:block');" +
+            "  return String(w / 1000);" +
+            "})()"
           ).toDouble
           Row(w, rowCount, overflowPx, scale)
         }
