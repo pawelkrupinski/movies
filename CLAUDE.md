@@ -487,6 +487,64 @@ Each change's diff either deletes the displaced code alongside the new,
 or names the displacement out loud. Silently leaving the now-dead path
 is the failure mode.
 
+## When CI wake-up fires, stand down — don't double-fix
+
+The `wake-on-failure` action on the deploy workflow spawns a fresh
+Claude Code tab on my Mac the moment a job goes red (see the
+`reference_ci_wakeup` memory and `scripts/ci-wakeup/`). That new tab
+gets the failure prompt and starts diagnosing from scratch. If you're
+still in the *same session that just pushed* the failing commit, you
+and the wake-up Claude will race on byte-identical fixes — one push
+becomes a no-op, and you both burnt the same tokens.
+
+After `git push` on a commit you suspect might fail CI, watch for the
+wake-up signals:
+
+- A `claude <prompt about CI run … failed>` line in `ps aux` or `pgrep
+  -fl claude`.
+- A new commit on `origin/main` you didn't make, appearing during your
+  session.
+- `gh run list` newest entry flipping `in_progress` → `failure` on a
+  job that uses `./.github/actions/wake-on-failure`.
+
+If the wake-up fires while you're mid-fix, **stop and let it finish**.
+The wake-up session has clean context (no clutter from this
+conversation); reconciling two parallel fixes is more expensive than
+waiting one out. `git pull` when it pushes, verify, move on.
+
+If you got there first (already pushed the fix before the wake-up
+could diagnose), reference the fix in the commit message so the
+wake-up Claude reads it from `gh run view --log-failed`'s commit
+context and exits fast rather than redoing the diff.
+
+The failure mode is fixing the same bug in parallel and hoping your
+commit lands. Don't.
+
+## Don't iterate on transient errors
+
+If a tool call fails with an error that smells like a build, cache,
+race, or transient infrastructure problem — `No tests found`, `EBUSY`,
+`ENOENT` on a file you just wrote, a module-resolution error in a
+known-working setup, a Playwright `did not expect test.describe() to
+be called here` from a project that ran the same files a minute ago —
+**retry once cleanly before iterating**. Each variation ("maybe with
+file paths instead of file names", "maybe `--list` to debug") produces
+a new shape of the same noise, not new signal, and you spend turns
+chasing a phantom.
+
+The cheap probe: nuke the suspect state (`rm -rf test-results/`,
+`rm -rf node_modules/.cache/`, `pkill -f playwright`, `sbt clean`,
+etc.) and rerun the **original** command. If it reproduces, you have a
+real bug to chase. If it doesn't, you were burning turns on a
+transient — move on.
+
+Real assertion failures have a specific expectation, value, or
+location ("expected X, got Y at line N"). Transients have the shape
+"the runner itself couldn't start", "the loader tripped on something
+that was fine before", or "the filesystem disagrees with what I wrote
+a second ago". Pattern-match on which kind of error you're staring at
+before deciding to iterate.
+
 ## Follow SOLID — especially depend on interfaces, not implementations
 
 The SOLID principles are the design baseline. Each gets its own section
