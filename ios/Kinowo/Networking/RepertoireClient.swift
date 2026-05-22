@@ -41,4 +41,16 @@ final class RepertoireStore: ObservableObject {
             self.error = error
         }
     }
+
+    /// Drop showtimes that have slipped into the past since the cached
+    /// payload was loaded (and re-sort cinemas inside each day by the
+    /// new earliest slot). The server already does this at fetch time,
+    /// so a fresh `reload()` is a no-op here; the call earns its keep
+    /// when the app comes back from background hours after the last
+    /// fetch — the web's same `now - 30min` rule then runs locally,
+    /// without a round-trip.
+    func pruneStaleShowings(now: Date = Date()) {
+        let pruned = films.prunedPastShowings(now: now)
+        if pruned != films { films = pruned }
+    }
 }

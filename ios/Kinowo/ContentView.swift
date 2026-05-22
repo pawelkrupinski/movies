@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var prefs: UserPreferences
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var dateFilter: DateFilter = .today
     @State private var formatFilter: FormatFilter = .empty
@@ -89,6 +90,16 @@ struct ContentView: View {
             // Idempotent — running on every appear is fine; the task
             // cancels the previous fade-out cleanly.
             showTabLabel(tab == .films ? "Filmy" : "Kina")
+        }
+        .onChange(of: scenePhase) { phase in
+            // App came back from background — drop screenings that
+            // slipped into the past while we were idle and re-sort
+            // cinemas by their earliest remaining slot of the day.
+            // Mirrors the server's `now - 30min` cutoff from
+            // `MovieController.toSchedules` so cached and freshly
+            // fetched payloads age identically. No re-fetch: the
+            // cached data is enough until the user pulls to refresh.
+            if phase == .active { store.pruneStaleShowings() }
         }
     }
 

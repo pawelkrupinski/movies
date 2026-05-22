@@ -123,6 +123,47 @@ struct CinemaSection: Identifiable, Hashable {
 }
 
 extension Sequence where Element == Film {
+    /// Drop screenings already in the past and re-sort cinemas by the
+    /// earliest remaining slot of the day. Mirrors the web's
+    /// `MovieController.toSchedules`:
+    /// - showtimes with `dateTime <= now - 30min` are dropped (a
+    ///   screening that started 25 min ago still counts as future);
+    /// - within each day, cinemas are ordered by their earliest
+    ///   remaining showtime that day;
+    /// - cinema-groups / days / films that empty out are removed.
+    ///
+    /// The server applies the same logic at request time, so a freshly
+    /// fetched payload is already pruned. Calling this locally on app
+    /// foreground keeps the cached data fresh as wall-clock advances
+    /// without a round-trip.
+    func prunedPastShowings(now: Date = Date()) -> [Film] {
+        return self.compactMap { film in
+            let days: [DayShowings] = film.showings.compactMap { day in
+                let kept: [CinemaShowings] = day.cinemas.compactMap { cg in
+                    let future = cg.showtimes.filter {
+                        ShowtimeClock.isFuture($0, on: day.date, now: now)
+                    }
+                    guard !future.isEmpty else { return nil }
+                    return CinemaShowings(cinema: cg.cinema, cinemaURL: cg.cinemaURL, showtimes: future)
+                }
+                guard !kept.isEmpty else { return nil }
+                let sorted = kept.sorted {
+                    ShowtimeClock.earliestMinutes($0) < ShowtimeClock.earliestMinutes($1)
+                }
+                return DayShowings(date: day.date, label: day.label, cinemas: sorted)
+            }
+            if days.isEmpty { return nil }
+            return Film(
+                title: film.title,
+                posterURL: film.posterURL,
+                fallbackPosterURLs: film.fallbackPosterURLs,
+                runtimeMinutes: film.runtimeMinutes,
+                ratings: film.ratings,
+                showings: days
+            )
+        }
+    }
+
     /// Apply the cross-screen filter stack — date / format / search /
     /// hidden / per-cinema — to a list of films. Both `/` (Filmy) and
     /// `/kina` go through this; they only differ in which set of
@@ -211,5 +252,62 @@ extension Sequence where Element == Film {
         return perCinema.keys.sorted().map { name in
             CinemaSection(cinema: name, films: perCinema[name]!)
         }
+    }
+}
+
+/// Combines a screening's `YYYY-MM-DD` date and `HH:MM` time into a
+/// wall-clock moment in Europe/Warsaw — the timezone the web emits
+/// against and the only one the rest of the app reasons about. Pulled
+/// out so `prunedPastShowings` and any future caller (detail screen,
+/// notifications) share one implementation of "is this slot still in
+/// the future" and "what minute does this cinema's earliest slot start".
+enum ShowtimeClock {
+
+    /// Match the web's `isAfter(now.minusMinutes(30))` — a slot is
+    /// "future" if its wall-clock dateTime is strictly after
+    /// `now - 30min`. A screening that started 25 min ago is still
+    /// considered live; one that started 31 min ago is dropped. Slots
+    /// whose `time` doesn't parse are kept (don't silently drop badges
+    /// we can't reason about — same defensive stance as
+    /// `FormatFilter.matches`).
+    static func isFuture(_ slot: Showtime, on date: String, now: Date = Date()) -> Bool {
+        guard let dt = warsawDate(date: date, time: slot.time) else { return true }
+        return dt > now.addingTimeInterval(-30 * 60)
+    }
+
+    /// Minute-of-day of the earliest slot in a cinema-group. Sentinel
+    /// `Int.max` for an empty list so an unsortable input lands at the
+    /// end rather than crashing — empty cinema-groups should have been
+    /// dropped before calling this, so the sentinel exists purely to
+    /// keep the comparator total.
+    static func earliestMinutes(_ cg: CinemaShowings) -> Int {
+        cg.showtimes
+            .compactMap(minutesOfDay)
+            .min() ?? Int.max
+    }
+
+    private static func minutesOfDay(_ slot: Showtime) -> Int? {
+        let parts = slot.time.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2 else { return nil }
+        return parts[0] * 60 + parts[1]
+    }
+
+    private static let warsawCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Warsaw") ?? .current
+        return cal
+    }()
+
+    private static let warsawFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.calendar = warsawCalendar
+        f.timeZone = warsawCalendar.timeZone
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
+    private static func warsawDate(date: String, time: String) -> Date? {
+        warsawFormatter.date(from: "\(date) \(time)")
     }
 }
