@@ -32,20 +32,37 @@ import java.util.concurrent.{CompletableFuture, ConcurrentHashMap, TimeUnit}
  */
 object Chrome {
 
-  /** Locations the headless test infra knows how to find a Chrome
-   *  executable. Covers macOS / Linux / common Docker images. */
+  /** Locations the headless test infra knows how to find a CDP-speaking
+   *  browser executable. Covers macOS / Linux / common Docker images
+   *  for Chrome, Chromium, and Microsoft Edge (Chromium-based, same
+   *  CDP wire format). */
   private val CandidatePaths: Seq[String] = Seq(
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
     "/usr/bin/google-chrome",
     "/usr/bin/google-chrome-stable",
     "/usr/bin/chromium",
-    "/usr/bin/chromium-browser"
+    "/usr/bin/chromium-browser",
+    "/usr/bin/microsoft-edge",
+    "/usr/bin/microsoft-edge-stable",
+    "/opt/microsoft/msedge/microsoft-edge"
   )
 
-  def findExecutable(): Option[Path] = CandidatePaths.iterator
-    .map(Paths.get(_))
-    .find(Files.isExecutable)
+  /** Resolve a browser binary. The `CDP_BROWSER_BIN` env var wins so
+   *  CI can point at a specific Chrome / Edge version installed at a
+   *  non-standard path (the GH Actions matrix sets this per job).
+   *  Otherwise scan `CandidatePaths` for the first executable hit. */
+  def findExecutable(): Option[Path] = {
+    val envOverride = Option(System.getenv("CDP_BROWSER_BIN"))
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .map(Paths.get(_))
+      .filter(Files.isExecutable)
+    envOverride.orElse(
+      CandidatePaths.iterator.map(Paths.get(_)).find(Files.isExecutable)
+    )
+  }
 
   /** Launch a headless Chrome on a free port. Returns `None` when no
    *  Chrome binary is reachable on this machine. */

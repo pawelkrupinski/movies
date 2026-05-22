@@ -1,0 +1,12 @@
+{
+  "name": "kinowo-page-tests-playwright",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright-driven page tests against bundled WebKit (Mobile Safari approximation). Companion to the Scala PageJsBehaviourSpec which drives Chromium / Edge via CDP.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

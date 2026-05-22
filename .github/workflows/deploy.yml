@@ -118,7 +118,24 @@ jobs:
                   secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
                   job:    integration-test
 
-    page-tests:
+    # Chrome version matrix. Each matrix instance is its own GH runner,
+    # so all versions run in parallel and any one going red doesn't
+    # mask the others (`fail-fast: false`).
+    #
+    # Version pick is grounded in real phone distribution as of early
+    # 2026: Chrome 120+ is ~85% of Android devices, 108–120 covers
+    # most of the long tail, and 108 is roughly the floor for devices
+    # still receiving Play Services updates. `stable` keeps tracking
+    # whatever Google ships next. Specific versions catch regressions
+    # like the touchstart-vs-click timing change between Chrome ~113
+    # and 148 that bit the card-tap fix — see
+    # [[feedback-ci-chrome-version-drift]].
+    page-tests-chrome:
+        name: page tests (chrome ${{ matrix.chrome }})
+        strategy:
+            fail-fast: false
+            matrix:
+                chrome: ['stable', '128', '120', '113', '108']
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -131,14 +148,10 @@ jobs:
 
             - uses: sbt/setup-sbt@v1
 
-            # Pin a Chrome version so a runner-image bump can't break the
-            # CDP wire format under PageJsBehaviourSpec — the spec talks
-            # raw DevTools Protocol over WebSocket, and major Chrome
-            # versions occasionally rename / restructure messages.
             - uses: browser-actions/setup-chrome@v1
               id: setup-chrome
               with:
-                  chrome-version: stable
+                  chrome-version: ${{ matrix.chrome }}
 
             - uses: actions/cache@v4
               with:
@@ -150,26 +163,103 @@ jobs:
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            # `setup-chrome` writes the binary to a path the action exposes
-            # via `chrome-path`. Symlink it into one of CdpDriver's
-            # CandidatePaths so the spec's discovery logic finds it
-            # without needing to know about runner-specific layouts.
-            - run: sudo ln -sf "${{ steps.setup-chrome.outputs.chrome-path }}" /usr/bin/google-chrome
-
-            # Page tests don't hit any external service — FixtureTestWiring
-            # injects a stub TMDB key, FakeHttpFetch replays disk fixtures,
-            # InMemoryMovieRepo replaces Mongo. So no secrets needed.
+            # Point CdpDriver at the matrix-installed Chrome via env
+            # var. The driver also prints the resolved browser version
+            # to stderr at boot, so a matrix failure has the version
+            # diff in its log without extra plumbing.
             - run: sbt PageTest/test
+              env:
+                  CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
 
             - if: failure()
               uses: ./.github/actions/wake-on-failure
               with:
                   url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
                   secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    page-tests
+                  job:    page-tests-chrome-${{ matrix.chrome }}
+
+    # Microsoft Edge: Chromium-based, same CDP wire format. Sanity
+    # check that Edge's slightly-different defaults (smart-screen,
+    # tracking-prevention) don't break the page JS. Mobile Edge on
+    # Android tracks the engine version closely with desktop Edge, so
+    # one stable run is enough — broader version coverage on the
+    # Chrome side already exercises older engine code paths.
+    page-tests-edge:
+        name: page tests (edge stable)
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            - uses: browser-actions/setup-edge@v1
+              id: setup-edge
+              with:
+                  edge-version: stable
+
+            - uses: actions/cache@v4
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            - run: sbt PageTest/test
+              env:
+                  CDP_BROWSER_BIN: ${{ steps.setup-edge.outputs.edge-path }}
+
+            - if: failure()
+              uses: ./.github/actions/wake-on-failure
+              with:
+                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
+                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
+                  job:    page-tests-edge
+
+    # WebKit (Mobile Safari approximation) — Playwright's bundled
+    # WebKit build is the closest CI proxy for iOS Safari without
+    # paid device-cloud services. Not a perfect Mobile-Safari fake
+    # (no iOS-specific sticky-hover, no exact touch quirks) but
+    # catches generic WebKit-engine regressions in the same JS we
+    # ship to real iPhone users.
+    page-tests-webkit:
+        name: page tests (webkit / iPhone emulation)
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+
+            - name: Install Playwright + WebKit
+              run: |
+                  cd page-tests-playwright
+                  npm install
+                  npx playwright install --with-deps webkit
+
+            - name: Run Playwright WebKit tests against live site
+              run: |
+                  cd page-tests-playwright
+                  npx playwright test --project=webkit
+
+            - if: failure()
+              uses: ./.github/actions/wake-on-failure
+              with:
+                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
+                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
+                  job:    page-tests-webkit
 
     deploy:
-        needs: [test, integration-test, page-tests]
+        needs: [test, integration-test, page-tests-chrome, page-tests-edge, page-tests-webkit]
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
