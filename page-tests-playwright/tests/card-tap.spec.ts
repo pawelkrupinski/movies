@@ -32,18 +32,24 @@ test.describe('card poster link on WebKit (iPhone emulation)', () => {
     expect(ua).not.toMatch(/Android/);
   });
 
+  // `applyFilters` re-appends visible cards after hidden ones in the
+  // DOM, so a plain `querySelector` lands on a hidden card. Different
+  // engines also serialise `style.display = 'none'` slightly differently
+  // (`display: none;` vs `display:none;`), making a CSS-attribute
+  // selector brittle. Solve both at once by computing the visible
+  // card's title in JS, then targeting it via `[data-title=…]`.
+  const firstVisibleTitle = async (page: import('@playwright/test').Page) =>
+    page.evaluate(() => {
+      const cols = [...document.querySelectorAll<HTMLElement>('.col[data-title]')];
+      return cols.find((c) => c.style.display !== 'none')?.dataset.title ?? null;
+    });
+
   test('tap on a card poster link navigates to /film', async ({ page }) => {
-    // Find the first visible card's poster link. `applyFilters`
-    // re-appends visible cards after hidden ones, so a plain first-
-    // querySelector can land on a hidden card — explicitly filter
-    // by inline display style.
-    const link = page.locator('.col[data-title]:not([style*="display: none"]) .card .poster-wrap > a').first();
-    await expect(link).toBeVisible();
-    const title = await link.evaluate(
-      (el) => (el as HTMLElement).closest<HTMLElement>('[data-title]')?.dataset.title,
-    );
+    const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
 
+    const link = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a`);
+    await expect(link).toBeVisible();
     await link.tap();
 
     await page.waitForURL(/\/film\?title=/);
@@ -55,7 +61,9 @@ test.describe('card poster link on WebKit (iPhone emulation)', () => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
-    const link = page.locator('.col[data-title]:not([style*="display: none"]) .card .poster-wrap > a').first();
+    const title = await firstVisibleTitle(page);
+    expect(title).toBeTruthy();
+    const link = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a`);
     await expect(link).toBeVisible();
     await link.tap();
     await page.waitForURL(/\/film\?title=/);
