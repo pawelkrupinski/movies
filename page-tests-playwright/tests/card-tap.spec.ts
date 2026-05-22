@@ -44,13 +44,21 @@ test.describe('card poster link on WebKit (iPhone emulation)', () => {
       return cols.find((c) => c.style.display !== 'none')?.dataset.title ?? null;
     });
 
-  test('tap on a card poster link navigates to /film', async ({ page }) => {
+  // Target the `<img>` inside the poster-wrap, not the wrapping `<a>`.
+  // `.poster-wrap` uses the `padding-top: 148%` aspect-ratio trick for
+  // its visual height, so the `<a>` in normal flow has a zero-height
+  // bounding box — Playwright's `toBeVisible()` reports it as hidden
+  // even though real users see the poster image just fine. The `<img>`
+  // inside is positioned absolutely (`inset: 0`) so it has the actual
+  // poster dimensions; tapping it dispatches a click event that
+  // bubbles up to the `<a>` exactly as a real-finger tap would.
+  test('tap on a card poster image navigates to /film', async ({ page }) => {
     const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
 
-    const link = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a`);
-    await expect(link).toBeVisible();
-    await link.tap();
+    const img = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
+    await expect(img).toBeVisible();
+    await img.tap();
 
     await page.waitForURL(/\/film\?title=/);
     const url = new URL(page.url());
@@ -63,9 +71,9 @@ test.describe('card poster link on WebKit (iPhone emulation)', () => {
 
     const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
-    const link = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a`);
-    await expect(link).toBeVisible();
-    await link.tap();
+    const img = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
+    await expect(img).toBeVisible();
+    await img.tap();
     await page.waitForURL(/\/film\?title=/);
 
     // film.scala.html's inline `toggleFavMovie` + `playTrailer` blocks
