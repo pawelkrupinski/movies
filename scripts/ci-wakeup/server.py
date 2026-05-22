@@ -54,12 +54,40 @@ import re
 import shlex
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 PORT = 9876
 SECRET_PATH = Path.home() / ".movies-ci-wakeup-secret"
 REPO_DIR = Path.home() / "projects" / "movies"
 LOG_DIR = Path.home() / ".movies-ci-wakeup-logs"
+
+# A single workflow run usually has multiple jobs (iOS has unit-integration,
+# ui-tests, smoke; Deploy has page-tests-chrome and page-tests-webkit), each
+# of which fires the wake-on-failure step independently. Dedup on `run_id`
+# so we only spawn one Claude session per workflow run — otherwise a single
+# bad push opens 3+ tabs that all want to fix the same red CI.
+#
+# In-memory is fine: a run's failed jobs all arrive within seconds of each
+# other, and a launchd restart in that window would just unsuppress the
+# second job, which is the safer failure mode.
+DEDUP_TTL_SECONDS = 30 * 60
+_seen_runs: dict[str, float] = {}
+_seen_runs_lock = threading.Lock()
+
+
+def _should_spawn(run_id: str) -> bool:
+    """Atomically check-and-mark `run_id`. Returns True the first time
+    a run_id is seen within the TTL window, False for repeats."""
+    now = time.time()
+    with _seen_runs_lock:
+        for rid in [r for r, t in _seen_runs.items() if now - t > DEDUP_TTL_SECONDS]:
+            del _seen_runs[rid]
+        if run_id in _seen_runs:
+            return False
+        _seen_runs[run_id] = now
+        return True
 
 # Hard-fail at startup rather than silently accepting any request.
 if not SECRET_PATH.exists():
@@ -137,6 +165,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         branch   = str(data.get("branch",   "?"))
         job      = str(data.get("job",      "?"))
         workflow = str(data.get("workflow", "?"))
+
+        if not _should_spawn(run_id):
+            sys.stderr.write(
+                f"skip: run={run_id} job={job} (already spawned for this run)\n"
+            )
+            self._send(200, b'{"ok": true, "skipped": "duplicate"}\n')
+            return
 
         sys.stderr.write(
             f"wake: run={run_id} sha={sha[:7]} branch={branch} job={job}\n"
