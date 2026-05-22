@@ -660,24 +660,42 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     "Mozilla/5.0 (Linux; Android 13; Pixel 7) " +
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
+  /** Real Oppo Chrome UA (Find X6 / CPH2451). Mirrors the bug report's
+   *  device: standard Chrome on Oppo's ColorOS, not the HeyTap stock
+   *  browser. The UA still contains "Android" so the `/Android/`
+   *  regex installs the listener — but using the genuine string in
+   *  the test makes a future regression in UA detection visible. */
+  private val oppoChromeUA =
+    "Mozilla/5.0 (Linux; Android 13; CPH2451) " +
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+
   /** Override the tab's UA and reload so `shared.js` re-evaluates with
    *  the new `navigator.userAgent`. Each test opens a fresh tab via
    *  `openPage`, so the override is scoped to that tab and doesn't
    *  bleed into other tests. */
-  private def withAndroidUA(page: CdpPage): Unit = {
+  private def withUA(page: CdpPage, ua: String): Unit = {
     page.send("Emulation.setUserAgentOverride", play.api.libs.json.Json.obj(
-      "userAgent" -> androidUA
+      "userAgent" -> ua
     ))
     page.reload()
   }
 
-  /** First `.card` whose `.poster-wrap > a` exists in the rendered
-   *  page. The fixture corpus always has cards on `/`; pinning the
-   *  date filter to "anytime" first guarantees the visible set is
-   *  non-empty regardless of the browser's wall-clock relative to the
-   *  fixture's dates. */
+  private def withAndroidUA(page: CdpPage): Unit = withUA(page, androidUA)
+
+  /** First VISIBLE `.card` whose `.poster-wrap > a` exists in the
+   *  rendered page. `applyFilters` re-orders the grid by appending
+   *  the visible cards to the end of the DOM after sorting; hidden
+   *  cards stay in place at the front. A plain `querySelector` would
+   *  return one of those hidden ones (rect = 0×0), so we explicitly
+   *  pick a visible `.col[data-title]` whose inline `display` style
+   *  is not 'none'. The fixture corpus always has cards on `/`;
+   *  pinning the date filter to "anytime" guarantees the visible set
+   *  is non-empty regardless of the browser's wall-clock relative to
+   *  the fixture's dates. */
   private val firstCardPosterLink =
-    "document.querySelector('.col[data-title] .card .poster-wrap > a')"
+    "(() => [...document.querySelectorAll('.col[data-title]')]" +
+    "        .find(c => c.style.display !== 'none')" +
+    "        ?.querySelector('.card .poster-wrap > a'))()"
 
   "the card poster link on Android" should
     "reveal the .previewed icons and not navigate on the first tap" in {
@@ -734,6 +752,71 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool(
         s"$firstCardPosterLink.closest('.card').classList.contains('previewed')"
       ) shouldBe false
+    }
+  }
+
+  // Repro for the Oppo-Chrome report: the synthesized-`.click()` test
+  // above passes, but on a real device the page navigates on the first
+  // tap. The difference between `link.click()` and a real tap is the
+  // event sequence: a real tap fires touchstart → touchend → a synthetic
+  // mouse click. If anything between those steps initiates the
+  // navigation before our `click` listener gets a chance to call
+  // `preventDefault`, the link follows on the first tap. This test
+  // dispatches the real touch sequence over CDP (with touch emulation
+  // enabled) so the assertion exercises the same path a phone takes.
+
+  "the card poster link on a real Oppo Chrome UA with a synthesised tap" should
+    "preview on the first tap (not navigate)" in {
+    onPath("/") { page =>
+      // Touch emulation + mobile viewport so the page receives genuine
+      // touch events (not mouse-derived). Set BEFORE the UA-swap reload
+      // so the first paint is mobile-shaped.
+      page.send("Emulation.setDeviceMetricsOverride", play.api.libs.json.Json.obj(
+        "width" -> 390, "height" -> 800, "deviceScaleFactor" -> 0, "mobile" -> true
+      ))
+      page.send("Emulation.setTouchEmulationEnabled", play.api.libs.json.Json.obj(
+        "enabled" -> true
+      ))
+      withUA(page, oppoChromeUA)
+      pinDateFilterAnytime(page)
+
+      // Sanity-check the override took. If `navigator.userAgent` came
+      // back without "Android" we'd never reach the listener installer
+      // and the test failure would be misattributed.
+      val ua = page.evalString("navigator.userAgent")
+      withClue(s"navigator.userAgent after override = $ua") {
+        ua.contains("Android") shouldBe true
+      }
+
+      // Centre of the first visible card's poster link, in CSS pixels.
+      val coords = page.evalString(
+        s"(() => { const a = $firstCardPosterLink;" +
+        "          const r = a.getBoundingClientRect();" +
+        "          return Math.round(r.left + r.width/2) + ',' +" +
+        "                 Math.round(r.top  + r.height/2); })()"
+      )
+      val Array(x, y) = coords.split(',').map(_.toInt)
+
+      // Synthesise a real tap gesture (touchStart → touchEnd plus the
+      // synthetic mouse click Chrome dispatches at the gesture's end).
+      // Closer to what a phone produces than `Input.dispatchTouchEvent`
+      // — Chrome wires the whole sequence including gesture
+      // recognition, so any race between touchEnd and the click event
+      // gets exercised here.
+      page.send("Input.synthesizeTapGesture", play.api.libs.json.Json.obj(
+        "x" -> x, "y" -> y, "tapCount" -> 1
+      ))
+      Thread.sleep(250L)
+
+      page.evalString("location.pathname") shouldBe "/"
+      page.evalBool(
+        s"$firstCardPosterLink.closest('.card').classList.contains('previewed')"
+      ) shouldBe true
+
+      page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
+      page.send("Emulation.setTouchEmulationEnabled", play.api.libs.json.Json.obj(
+        "enabled" -> false
+      ))
     }
   }
 
