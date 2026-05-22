@@ -1,5 +1,10 @@
 import XCTest
 @testable import KinowoCore
+#if canImport(FoundationNetworking)
+// Linux Swift splits URLSession / URLRequest out into a separate
+// module; on Darwin everything lives under Foundation.
+import FoundationNetworking
+#endif
 
 final class ProductionHomeSmokeTests: XCTestCase {
 
