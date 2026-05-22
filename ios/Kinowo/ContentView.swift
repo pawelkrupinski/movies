@@ -124,7 +124,10 @@ struct ContentView: View {
                 allCinemas: allCinemas,
                 pinnedCinema: $pinnedCinema
             )
-            FilmGridView(films: filmsForCinemasTab)
+            // Group cinema → movie → screening, matching the web's
+            // `/kina`: each section is one cinema; the cards inside it
+            // are that cinema's films with only its slots.
+            CinemaSectionedGridView(sections: filmsForCinemasTab.groupedByCinema())
                 .refreshable { await store.reload() }
         }
     }

@@ -110,6 +110,18 @@ struct FormatFilter: Equatable {
     }
 }
 
+/// One cinema's slice of a filtered film list: every film that plays at
+/// this cinema, with each film's `showings` restricted to this cinema's
+/// dates and slots. Drives the Kina tab's cinema-grouped layout —
+/// mirrors the web's `_cinemaCards` (one `.cinema-section` per cinema,
+/// holding film cards whose `_filmShowings` see only that cinema's
+/// slots).
+struct CinemaSection: Identifiable, Hashable {
+    var id: String { cinema }
+    let cinema: String
+    let films: [Film]
+}
+
 extension Sequence where Element == Film {
     /// Apply the cross-screen filter stack — date / format / search /
     /// hidden / per-cinema — to a list of films. Both `/` (Filmy) and
@@ -155,6 +167,49 @@ extension Sequence where Element == Film {
                 ratings: film.ratings,
                 showings: days
             )
+        }
+    }
+
+    /// Pivot the (cross-cinema) film list into per-cinema sections. The
+    /// web's `/kina` controller emits this shape directly from
+    /// `CinemaSchedule`; iOS only sees the per-film grouping from `/`,
+    /// so the same view shape is rebuilt here. Each output `Film`
+    /// carries only the showings that happen at the section's cinema —
+    /// so dropping the per-card cinema label (`showCinemaHeaders=false`)
+    /// is non-lossy.
+    ///
+    /// Sections are ordered alphabetically by cinema name to match the
+    /// Kina-tab pill row; films inside a section keep the input order
+    /// (which is the global "earliest showtime" ordering coming from
+    /// the server's `/` HTML).
+    func groupedByCinema() -> [CinemaSection] {
+        var perCinema: [String: [Film]] = [:]
+        for film in self {
+            var seen = Set<String>()
+            for day in film.showings {
+                for cg in day.cinemas {
+                    seen.insert(cg.cinema)
+                }
+            }
+            for cinema in seen {
+                let days: [DayShowings] = film.showings.compactMap { day in
+                    let kept = day.cinemas.filter { $0.cinema == cinema }
+                    guard !kept.isEmpty else { return nil }
+                    return DayShowings(date: day.date, label: day.label, cinemas: kept)
+                }
+                guard !days.isEmpty else { continue }
+                perCinema[cinema, default: []].append(Film(
+                    title: film.title,
+                    posterURL: film.posterURL,
+                    fallbackPosterURLs: film.fallbackPosterURLs,
+                    runtimeMinutes: film.runtimeMinutes,
+                    ratings: film.ratings,
+                    showings: days
+                ))
+            }
+        }
+        return perCinema.keys.sorted().map { name in
+            CinemaSection(cinema: name, films: perCinema[name]!)
         }
     }
 }

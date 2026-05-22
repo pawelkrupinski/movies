@@ -2,6 +2,11 @@ import SwiftUI
 
 struct ShowingsView: View {
     let film: Film
+    /// When the parent already announces the cinema (Kina tab's
+    /// per-cinema section header), suppress the per-card cinema label
+    /// to avoid duplication. Mirrors the web's `_filmShowings`
+    /// `showCinemaHeaders` flag, which `_cinemaCards` flips to false.
+    var showCinemaHeaders: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -12,7 +17,9 @@ struct ShowingsView: View {
                     .padding(.top, 4)
                 ForEach(day.cinemas, id: \.cinema) { cinema in
                     VStack(alignment: .leading, spacing: 4) {
-                        cinemaLabel(cinema)
+                        if showCinemaHeaders {
+                            cinemaLabel(cinema)
+                        }
                         FlowLayout(spacing: 4, lineSpacing: 4) {
                             ForEach(cinema.showtimes) { st in
                                 ShowtimeBadge(film: film, cinema: cinema.cinema, day: day, showtime: st)

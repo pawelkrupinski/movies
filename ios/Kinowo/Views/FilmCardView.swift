@@ -2,6 +2,10 @@ import SwiftUI
 
 struct FilmCardView: View {
     let film: Film
+    /// Passed through to `ShowingsView`. Kina-tab section headers
+    /// already name the cinema, so cards in that layout drop the
+    /// duplicate label — see `CinemaSectionedGridView`.
+    var showCinemaHeaders: Bool = true
     @EnvironmentObject var prefs: UserPreferences
 
     var body: some View {
@@ -34,7 +38,7 @@ struct FilmCardView: View {
                         // of which row the last pill ended up on.
                         .padding(.bottom, 14)
                 }
-                ShowingsView(film: film)
+                ShowingsView(film: film, showCinemaHeaders: showCinemaHeaders)
             }
             .padding(12)
         }
