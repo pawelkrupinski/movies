@@ -88,8 +88,18 @@ object Chrome {
         case _: Throwable => Thread.sleep(100)
       }
     }
-    if (ready) Some(new Chrome(process, port, userDir))
-    else {
+    if (ready) {
+      // Print the Chrome version + binary path to the test log so any
+      // "passes locally / fails on CI" failure has a one-liner diff on
+      // the version that ran. Chrome's `/json/version` endpoint returns
+      // it as JSON. See [[feedback-ci-chrome-version-drift]].
+      try {
+        val info = httpGet(s"http://localhost:$port/json/version")
+        val version = """"Browser":\s*"([^"]+)"""".r.findFirstMatchIn(info).map(_.group(1)).getOrElse("unknown")
+        System.err.println(s"[CdpDriver] Chrome=$version path=$exe")
+      } catch { case _: Throwable => () }
+      Some(new Chrome(process, port, userDir))
+    } else {
       process.destroyForcibly()
       None
     }

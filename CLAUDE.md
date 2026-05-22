@@ -697,3 +697,30 @@ Signs you've drawn the seam in the wrong place:
 Done right, a fake is boring: a `HashMap`, a fixed list of HTTP
 responses, a `Clock.fixed(...)`. The business logic sits above and is
 exercised end-to-end with the real outer class.
+
+## Intercepting taps on links: preventDefault on touchstart, not just click
+
+Any JS that intercepts a tap on a link to alter its default behaviour
+(suppress navigation, defer it, etc.) must call `preventDefault()` on
+`touchstart` with `{ passive: false }`, not only on `click`. Older
+Chrome versions (the ones on real Android devices and on CI's Linux
+runner) dispatch the link's navigation default *before* the bubble-
+phase `click` listener runs, so a click-only `preventDefault` fires
+too late and the page navigates anyway. Per the Touch Events spec,
+`preventDefault` on touchstart suppresses the entire synthetic mouse
+sequence (mousedown / mouseup / click), so the navigation never
+initiates regardless of when the browser would have dispatched click.
+
+Mirror the same logic across both listeners (touchstart + click).
+Touchstart covers Android Chrome and CI Linux Chrome; click covers
+modern macOS Chrome and any non-touch input (Bluetooth mouse,
+accessibility tap-emulation). Only `preventDefault` when the touch
+lands on the specific element you're handling — broad-stroke
+`preventDefault` on touchstart blocks scrolling and other page
+gestures.
+
+Reference: the iPhone-parity card-tap UX (`public/js/shared.js`,
+`if (/Android/.test(navigator.userAgent))` block) — the click-only
+version (3e03083) passed local-Chrome tests and looked fine, but
+failed on every real Android device + CI Linux Chrome. The
+touchstart-added version (0d08caa) fixed both.
