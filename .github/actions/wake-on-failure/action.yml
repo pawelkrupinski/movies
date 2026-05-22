@@ -9,10 +9,10 @@ description: |
 
 inputs:
   url:
-    description: Webhook URL, normally `${{ secrets.CLAUDE_WAKEUP_URL }}`.
+    description: Webhook URL, normally secrets.CLAUDE_WAKEUP_URL.
     required: true
   secret:
-    description: Bearer token, normally `${{ secrets.CLAUDE_WAKEUP_SECRET }}`.
+    description: Bearer token, normally secrets.CLAUDE_WAKEUP_SECRET.
     required: true
   job:
     description: Job name (free-form), used as failure context in the prompt.
