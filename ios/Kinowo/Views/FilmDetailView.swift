@@ -44,14 +44,16 @@ struct FilmDetailView: View {
 
     // MARK: – header (poster + title + ratings + cinema-links)
 
+    @ViewBuilder
     private var header: some View {
-        // 2:3 poster pinned to a fixed width matches the web's
-        // `.poster-img { max-width: 300px }` while keeping the right
-        // column readable on phone widths.
+        // Size the poster to match a listing card's poster on the same
+        // device — the user's mental model is "tapping a card opens
+        // the same film bigger", so the poster shouldn't shrink on
+        // arrival. 2:3 aspect carries the height; no maxHeight cap.
+        let width = Self.listingCardPosterWidth
         HStack(alignment: .top, spacing: 16) {
             poster
-                .frame(width: 140)
-                .frame(maxHeight: 210)
+                .frame(width: width, height: width * 1.5)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             VStack(alignment: .leading, spacing: 8) {
                 Text(film.title)
@@ -66,6 +68,19 @@ struct FilmDetailView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.top, 8)
+    }
+
+    /// Width a poster occupies in the listing's `FilmGridView`. The
+    /// grid uses `GridItem(.adaptive(minimum: 160, maximum: 220),
+    /// spacing: 12)` inside `.padding(.horizontal, 12)`, so on phones
+    /// (always 2 columns) each card is `(screen − 24 − 12) / 2`
+    /// clamped to [160, 220]. Computed once at view-construction
+    /// time; the detail screen doesn't need to react to orientation
+    /// changes finer than that.
+    private static var listingCardPosterWidth: CGFloat {
+        let screenWidth = UIScreen.main.bounds.width
+        let columnWidth = (screenWidth - 24 - 12) / 2
+        return min(220, max(160, columnWidth))
     }
 
     private var ratingsForDisplay: Film.Ratings {
