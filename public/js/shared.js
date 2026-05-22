@@ -283,44 +283,77 @@
   // `(hover: none)` is true on both iPhone and Android, and applying
   // this code on iPhone would require three taps before the link
   // follows. We restore iPhone parity precisely by NOT running on iOS.
-  // TEMP DIAG — wire a visible status panel + per-tap log so we can see
-  // why the listener isn't taking effect on real Android Chrome.
-  function _diagLog(s) {
-    try {
-      let el = document.getElementById('__diag');
-      if (!el) {
-        el = document.createElement('div');
-        el.id = '__diag';
-        el.style.cssText = 'position:fixed;top:80px;left:8px;right:8px;background:#000;color:#0f0;font:11px monospace;padding:6px;z-index:99999;white-space:pre-wrap;max-height:40vh;overflow:auto;border:2px solid #0f0';
-        (document.body || document.documentElement).appendChild(el);
-      }
-      el.textContent += s + '\n';
-    } catch (_) {}
-  }
-  _diagLog('boot UA=' + navigator.userAgent);
-  _diagLog('Android-match=' + /Android/.test(navigator.userAgent));
-
   if (/Android/.test(navigator.userAgent)) {
-    _diagLog('installing listener');
     const clearPreviewed = () => {
       document.querySelectorAll('.card.previewed').forEach(c => c.classList.remove('previewed'));
     };
-    document.addEventListener('click', e => {
-      _diagLog('CLICK target=' + (e.target && e.target.tagName) + ' isTrusted=' + e.isTrusted +
-               ' cancelable=' + e.cancelable + ' defaultPrev=' + e.defaultPrevented);
-      const card = e.target.closest('.card');
-      if (!card) { _diagLog('  no card → clear'); clearPreviewed(); return; }
-      const link = e.target.closest('a');
-      if (!link) { _diagLog('  no link'); return; }
+
+    // Returns the `.card` if `target` is inside the poster <a> or
+    // title <a> of one — null otherwise. The ★ / ✕ icons and any
+    // showtime / cinema-name links inside the card-body keep their
+    // single-tap behaviour (their own delegated handlers above run on
+    // the click pass below; touchstart never matches here).
+    const cardForPosterOrTitle = (target) => {
+      if (!target || !target.closest) return null;
+      const card = target.closest('.card');
+      if (!card) return null;
+      const link = target.closest('a');
+      if (!link) return null;
       const posterAnchor = card.querySelector('.poster-wrap > a');
       const titleAnchor  = card.querySelector('.card-title > a');
       const onPosterOrTitle =
         (posterAnchor && posterAnchor.contains(link)) ||
         (titleAnchor  && titleAnchor.contains(link));
-      if (!onPosterOrTitle) { _diagLog('  not poster/title'); return; }
-      if (card.classList.contains('previewed')) { _diagLog('  already previewed → nav'); return; }
+      return onPosterOrTitle ? card : null;
+    };
+
+    // First the touchstart pass with `{ passive: false }`. Older
+    // Chrome on Android (the version the user reported the bug on,
+    // and what CI's Linux runner ships) dispatches the synthetic
+    // click event AFTER the navigation default action has already
+    // started — `preventDefault` on click fires too late to stop the
+    // link from following. Calling `preventDefault` on touchstart
+    // instead suppresses the entire synthetic-mouse-event sequence
+    // (mousedown / mouseup / click), so the navigation never
+    // initiates. We only preventDefault when the touch lands on a
+    // poster / title link of a not-yet-previewed card, so the rest
+    // of the page (scrolling, showtime pills, ★ / ✕ buttons) keeps
+    // its native behaviour.
+    document.addEventListener('touchstart', e => {
+      const target = e.target;
+      const card = cardForPosterOrTitle(target);
+      if (!card) {
+        // Touch landed outside a poster / title — if it's outside any
+        // card, drop any preview so the next tap on a card starts the
+        // cycle fresh.
+        if (!(target && target.closest && target.closest('.card'))) {
+          clearPreviewed();
+        }
+        return;
+      }
+      if (card.classList.contains('previewed')) return;  // 2nd tap — let nav through
       e.preventDefault();
-      _diagLog('  PREVENTED defaultPrev=' + e.defaultPrevented);
+      clearPreviewed();
+      card.classList.add('previewed');
+    }, { passive: false });
+
+    // Click pass — covers the modern-Chrome path (the bubble click
+    // fires before the navigation default, where preventDefault still
+    // works) and any non-touch input (Bluetooth mouse, accessibility
+    // tap-emulation). Idempotent with the touchstart pass: if a card
+    // is already `.previewed` from touchstart, the click pass returns
+    // before re-preventing.
+    document.addEventListener('click', e => {
+      const target = e.target;
+      const card = cardForPosterOrTitle(target);
+      if (!card) {
+        if (!(target && target.closest && target.closest('.card'))) {
+          clearPreviewed();
+        }
+        return;
+      }
+      if (card.classList.contains('previewed')) return;
+      e.preventDefault();
       clearPreviewed();
       card.classList.add('previewed');
     });
