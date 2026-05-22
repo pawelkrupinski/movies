@@ -72,13 +72,10 @@ struct ContentView: View {
                 }
         }
         // Overlay on the NavigationStack so the label aligns to the
-        // device's screen edges, not the safe-area-inset content area.
-        // `.padding(.bottom, 110)` clears the bottom safeAreaInset
-        // (~70pt search pill + 14pt dip + 24pt breathing buffer).
-        .overlay(alignment: .bottom) {
+        // device's screen centre, not the safe-area-inset content area.
+        .overlay {
             if let label = tabLabel {
                 TabLabelOverlay(text: label)
-                    .padding(.bottom, 110)
                     .allowsHitTesting(false)
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
@@ -212,7 +209,7 @@ struct ContentView: View {
         )
     }
 
-    /// Flash the given label at the bottom of the screen for ~0.7 s,
+    /// Flash the given label in the middle of the screen for ~0.7 s,
     /// then fade it out over 0.2 s. Cancels any previous fade-out task
     /// so back-to-back swipes (Filmy → Kina → Filmy) don't leave the
     /// label stuck.
