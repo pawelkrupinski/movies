@@ -213,6 +213,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   "the / page search input" should "filter visible film cards by title substring" in {
     onPath("/") { page =>
+      // Pin the date filter to 'anytime' so the assertion below depends
+      // ONLY on the search input. The page's default `<select>` value
+      // is "Dzisiaj" (today, the first <option>), which makes
+      // visibility a function of the browser's wall-clock — a card
+      // whose last showing is on the fixture's 2026-05-21 falls out
+      // of the visible set once the wall clock passes that date. The
+      // fixture's screenings are anchored to a fixed `now =
+      // 2026-05-17`, but `dateBounds()` reads the live `new Date()`,
+      // so without this pin the test silently regresses each day past
+      // a fixture-card's last showtime.
+      pinDateFilterAnytime(page)
+
       val totalCards = page.evalInt("document.querySelectorAll('.col[data-title]').length")
       totalCards should be > 5
 
@@ -239,6 +251,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "show every previously-visible card again after clearing the search input" in {
     onPath("/") { page =>
+      // Same wall-clock-stability reasoning as the previous test: pin
+      // the date filter so the baseline + post-clear counts depend
+      // only on the search input.
+      pinDateFilterAnytime(page)
+
       val baselineVisible = page.evalInt(
         "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
       )
@@ -249,6 +266,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       ) shouldBe baselineVisible
     }
   }
+
+  /** Switch the date filter to "Kiedykolwiek" (anytime) and re-run
+   *  `applyFilters()` so the visible-card set no longer depends on the
+   *  browser's wall-clock relative to the fixture's recorded dates. */
+  private def pinDateFilterAnytime(page: CdpPage): Unit =
+    page.eval("document.getElementById('date-filter').value = 'anytime'; applyFilters()")
 
   // ── Hidden-films modal search ────────────────────────────────────────────
 
