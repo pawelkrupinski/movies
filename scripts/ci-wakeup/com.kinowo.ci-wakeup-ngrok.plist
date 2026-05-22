@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ngrok sidecar — fronts the ci-wakeup listener at the static URL
+  configured in ~/Library/Application Support/ngrok/ngrok.yml. The
+  endpoint block in that config (`name: ci-wakeup`) is what binds the
+  stable hostname to localhost:9876.
+
+  Load:    launchctl bootstrap gui/$(id -u) ~/projects/movies/scripts/ci-wakeup/com.kinowo.ci-wakeup-ngrok.plist
+  Unload:  launchctl bootout   gui/$(id -u)/com.kinowo.ci-wakeup-ngrok
+  Status:  launchctl print gui/$(id -u)/com.kinowo.ci-wakeup-ngrok
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.kinowo.ci-wakeup-ngrok</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/ngrok</string>
+    <string>start</string>
+    <string>ci-wakeup</string>
+    <string>--log=stdout</string>
+    <string>--log-format=logfmt</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/pawel/.movies-ci-wakeup-logs/ngrok.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/pawel/.movies-ci-wakeup-logs/ngrok.err.log</string>
+</dict>
+</plist>

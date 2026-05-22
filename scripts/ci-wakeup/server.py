@@ -4,42 +4,41 @@ when GitHub Actions reports a CI failure on the movies repo.
 
 Wire-up:
 
-  GH workflow (`if: failure()` step) ──curl──► cloudflared tunnel ──► this server
+  GH workflow (`if: failure()` step) ──curl──► ngrok static domain ──► this server
                                                                           │
                                                           osascript spawns ▼
                                               Terminal.app new tab in ~/projects/movies
-                                              running `claude -c <prompt-with-failure-context>`
+                                              running `claude <prompt-with-failure-context>`
 
 One-time setup
 ==============
 
-  1. Install cloudflared:
-       brew install cloudflared
+  1. Install ngrok:
+       brew install ngrok
 
-  2. Auth + create a named tunnel (free with a Cloudflare account):
-       cloudflared tunnel login
-       cloudflared tunnel create movies-ci-wakeup
-       cloudflared tunnel route dns movies-ci-wakeup ci-wakeup.<your-zone>
+  2. Add your authtoken (from https://dashboard.ngrok.com/get-started/your-authtoken):
+       ngrok config add-authtoken <token>
 
-  3. Point cloudflared at this server (config at ~/.cloudflared/config.yml):
-       tunnel: movies-ci-wakeup
-       credentials-file: /Users/<you>/.cloudflared/<tunnel-uuid>.json
-       ingress:
-         - hostname: ci-wakeup.<your-zone>
-           service: http://127.0.0.1:9876
-         - service: http_status:404
+  3. Add an `endpoints:` block to ~/Library/Application Support/ngrok/ngrok.yml:
+       endpoints:
+         - name: ci-wakeup
+           description: movies CI failure webhook
+           url: https://<your-static-domain>.ngrok-free.dev
+           upstream:
+             url: http://localhost:9876
+     (Reserve a free static domain at https://dashboard.ngrok.com/domains.)
 
-  4. Generate + store a shared secret:
+  4. Generate + store a shared secret + push both GH secrets:
        openssl rand -hex 32 > ~/.movies-ci-wakeup-secret
        chmod 600 ~/.movies-ci-wakeup-secret
-       gh secret set CLAUDE_WAKEUP_URL    --body "https://ci-wakeup.<your-zone>/webhook"
+       gh secret set CLAUDE_WAKEUP_URL    --body "https://<your-static-domain>.ngrok-free.dev/webhook"
        gh secret set CLAUDE_WAKEUP_SECRET --body "$(cat ~/.movies-ci-wakeup-secret)"
 
   5. Auto-start the server + tunnel at login (see plists in this dir):
        launchctl bootstrap gui/$(id -u) \
          ~/projects/movies/scripts/ci-wakeup/com.kinowo.ci-wakeup.plist
        launchctl bootstrap gui/$(id -u) \
-         ~/projects/movies/scripts/ci-wakeup/com.kinowo.ci-wakeup-cloudflared.plist
+         ~/projects/movies/scripts/ci-wakeup/com.kinowo.ci-wakeup-ngrok.plist
 
 The webhook payload is `{"run_id":..., "sha":..., "branch":..., "job":..., "workflow":...}`,
 authenticated by `Authorization: Bearer <secret>`. Anything else is dropped.
