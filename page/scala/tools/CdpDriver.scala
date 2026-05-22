@@ -255,6 +255,37 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     waitFor("document.readyState === 'complete'", timeoutMs = 5000)
   }
 
+  /** Capture the current viewport as PNG bytes returned Base64-encoded.
+   *  Chrome encodes the screenshot that way over the CDP wire, so this
+   *  passes the encoded string through verbatim — callers decode with
+   *  `java.util.Base64.getDecoder.decode(...)` and write to disk with
+   *  `Files.write(...)`. Used by `tools.MobileScreenshots` to produce
+   *  per-viewport renders of the navbar / page chrome. */
+  def screenshot(): String = {
+    val res = send("Page.captureScreenshot", Json.obj("format" -> "png"))
+    (res \ "data").as[String]
+  }
+
+  /** Override the viewport (CSS pixel) size and force a relayout. Used
+   *  by `MobileLayoutSpec` to drive the same rendered page through a
+   *  range of phone widths (320 → 575 px). `deviceScaleFactor = 0`
+   *  means "use the host's default DPR" which keeps text-metrics
+   *  realistic; `mobile = true` so the page sees the same
+   *  `pointer: coarse` media-query truthiness as a real phone.
+   *
+   *  CDP's `setDeviceMetricsOverride` triggers a synchronous resize +
+   *  layout in the renderer; by the time the call returns,
+   *  `getBoundingClientRect()` reports the new geometry. No extra
+   *  wait is needed. */
+  def setViewport(width: Int, height: Int): Unit = {
+    send("Emulation.setDeviceMetricsOverride", Json.obj(
+      "width"  -> width,
+      "height" -> height,
+      "deviceScaleFactor" -> 0,
+      "mobile" -> true
+    ))
+  }
+
   override def close(): Unit =
     try ws.sendClose(WebSocket.NORMAL_CLOSURE, "bye").get(2, TimeUnit.SECONDS)
     catch { case _: Throwable => () }

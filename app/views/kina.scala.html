@@ -68,23 +68,25 @@
       .cinema-pill:hover { background: #3a3a6e; color: #fff; }
     }
     .cinema-pill.active { background: #3a3a6e; color: #fff; }
-    /* Below 576 px the kina-specific chrome scales with viewport
-       (same clamp pattern _sharedStyles uses for the main navbar +
-       card text): readable floors at iPhone-SE width, ceilings that
-       meet the desktop defaults at the 575 px breakpoint top so the
-       layout above 576 px is byte-for-byte unchanged. */
+    /* Below 576 px the kina-specific chrome rides the shared
+       `--mobile-scale` knob defined in `_sharedStyles` — same factor
+       as the navbar and card text, so the section header, pill row
+       and per-cinema pills shrink/grow in lockstep with everything
+       else on the page. At 575 px the scale is 1.0 and the value
+       lands exactly on the desktop ceiling, so the transition out of
+       this @@media block is seamless. */
     @@media (max-width: 575px) {
       .cinema-section-title {
-        font-size: clamp(.78rem, .55rem + 1.2vw, 1rem);
+        font-size: calc(1rem * var(--mobile-scale));
       }
       .cinema-nav-row {
-        padding-left:  clamp(.5rem, 2vw, .75rem) !important;
-        padding-right: clamp(.5rem, 2vw, .75rem) !important;
-        gap: clamp(.1rem, .5vw, .25rem);
+        padding-left:  calc(.75rem * var(--mobile-scale)) !important;
+        padding-right: calc(.75rem * var(--mobile-scale)) !important;
+        gap: calc(.25rem * var(--mobile-scale));
       }
       .cinema-pill {
-        font-size: clamp(.72rem, 3.4vw, .875rem);
-        padding: clamp(.18rem, .8vw, .25rem) clamp(.35rem, 1.5vw, .6rem);
+        font-size: calc(.875rem * var(--mobile-scale));
+        padding: calc(.25rem * var(--mobile-scale)) calc(.6rem * var(--mobile-scale));
       }
     }
   </style>

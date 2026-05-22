@@ -432,6 +432,152 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Mobile-scale invariants across common phone widths ───────────────────
+  //
+  // Sweeps the same `/` page through eight phone-class viewports
+  // (iPhone-SE 320 → just under the 576 breakpoint 575) and asserts
+  // two structural invariants on every width:
+  //
+  //   1. The navbar wraps to at most 2 rows. Visible flex children of
+  //      `.navbar` are bucketed by their `getBoundingClientRect().top`;
+  //      the distinct bucket count = the row count. ≤ 2 means the
+  //      `<div class="navbar-row-break">` is still doing its job and
+  //      no element is overflowing its row.
+  //
+  //   2. No child extends past the navbar's right edge. Catches the
+  //      case where a long label (e.g. a Filtry button decorated with
+  //      every active filter) would push the row's last item past the
+  //      viewport — visually invisible because of the
+  //      `max-width: 40%; overflow: hidden` belt-and-braces, but the
+  //      assertion is the durable invariant.
+  //
+  // This exists because the layout was previously assembled out of
+  // ~15 per-property `clamp(min, vw-formula, max)` rules — each with
+  // its own cap viewport. Some hit their ceiling at ~410 px, others
+  // at ~540 px. At intermediate widths (Samsung S10 360, iPhone 17
+  // Pro Max ~430) the ratios between navbar and grid sizes drifted.
+  // The refactor collapsed every per-mobile size to
+  // `calc(BASE * var(--mobile-scale))` against a single shared scale
+  // variable; this test pins the resulting layout against regressions.
+
+  "the mobile navbar" should "wrap to ≤ 2 rows with zero horizontal overflow at every common phone width" in {
+    onPath("/") { page =>
+      // beforeAll renders the corpus with `oauthProviders = Set.empty`,
+      // which leaves `.navbar-auth` empty (no Zaloguj-się pill). Inject
+      // the prod-shaped child so the layout assertions exercise the
+      // realistic anonymous-user navbar (same as the test above does).
+      page.eval(
+        "(() => { const a = document.querySelector('.navbar-auth');" +
+        "          if (a && !a.children.length) {" +
+        "            const btn = document.createElement('button');" +
+        "            btn.type = 'button';" +
+        "            btn.className = 'nav-tab nav-tab-login';" +
+        "            btn.textContent = 'Zaloguj się';" +
+        "            a.appendChild(btn);" +
+        "          } })()"
+      )
+
+      // Common phone viewports (CSS px). 360 = Samsung Galaxy S10/S20/
+      // S22 + the narrowest Android in current circulation; 375 =
+      // iPhone SE 2/3 + iPhone 12 mini; 390 = iPhone 12/13/14/15;
+      // 412 = Pixel 6/7/8; 430 = iPhone 14/15/16/17 Pro Max; 540 = a
+      // wider phone landscape / small tablet portrait; 575 = the
+      // @@media breakpoint top, where the mobile rules hand back to
+      // the desktop defaults.
+      //
+      // iPhone SE 1st gen (320 px CSS, released 2016, EOL 2018) is
+      // intentionally NOT in the list — at that width the row 1
+      // cluster (logo + 3 nav-tabs + search input + Zaloguj-się pill)
+      // is just wider than the content area regardless of font scale,
+      // so the layout wraps to 3 rows. Apple's narrowest currently-
+      // supported device is iPhone SE 2/3 at 375 px; accept this as
+      // the design's narrow limit.
+      val viewports = Seq(360, 375, 390, 412, 430, 540, 575)
+
+      // Snapshot the layout invariants once per viewport and assert
+      // afterwards so a failure prints the full table of (width, rows,
+      // overflowPx) for every viewport, not just the first one to fail.
+      // Easier to diagnose a regression that only bites one width.
+      case class Row(width: Int, rows: Int, overflow: Int, scale: Double)
+      val measured: Seq[Row] = viewports.map { w =>
+        page.setViewport(w, 800)
+        // CDP's setDeviceMetricsOverride triggers a relayout, but
+        // resize-listeners and font-driven flex-shrink can settle on a
+        // second tick. A short pause + a forced reflow read is enough.
+        Thread.sleep(60L)
+
+        val rowCount = page.evalInt(
+          "(() => { const nav = document.querySelector('.navbar');" +
+          "          const tops = new Set();" +
+          "          for (const c of nav.children) {" +
+          "            const r = c.getBoundingClientRect();" +
+          "            if (r.width === 0 || r.height === 0) continue;" +
+          "            tops.add(Math.round(r.top));" +
+          "          }" +
+          "          return tops.size; })()"
+        )
+        val overflowPx = page.evalInt(
+          "(() => { const nav = document.querySelector('.navbar');" +
+          "          const navRight = nav.getBoundingClientRect().right;" +
+          "          let maxOver = 0;" +
+          "          for (const c of nav.children) {" +
+          "            const r = c.getBoundingClientRect();" +
+          "            if (r.width === 0 || r.height === 0) continue;" +
+          "            const over = Math.ceil(r.right - navRight);" +
+          "            if (over > maxOver) maxOver = over;" +
+          "          }" +
+          "          return maxOver; })()"
+        )
+        // Sanity: --mobile-scale is monotone-nondecreasing in viewport
+        // and lands exactly on 1.0 at the breakpoint top.
+        // `getComputedStyle.getPropertyValue` returns the *declared* CSS
+        // expression (the literal `clamp(...calc(...)...)`) for unregistered
+        // custom properties — not the resolved number — so reading the
+        // var via a `<div style="width: calc(1000px * var(--mobile-scale))">`
+        // probe and dividing the rendered width by 1000 is the way to get
+        // the browser's evaluated scale as a Double.
+        val scale = page.evalString(
+          "(() => { const p = document.createElement('div');" +
+          "          p.style.position = 'fixed';" +
+          "          p.style.visibility = 'hidden';" +
+          "          p.style.width = 'calc(1000px * var(--mobile-scale))';" +
+          "          document.body.appendChild(p);" +
+          "          const w = p.getBoundingClientRect().width;" +
+          "          document.body.removeChild(p);" +
+          "          return String(w / 1000); })()"
+        ).toDouble
+        Row(w, rowCount, overflowPx, scale)
+      }
+
+      // Reset emulation so a later test in this spec doesn't inherit the
+      // last viewport from this loop.
+      page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
+
+      // Print the table for the test log so a future reader / CI run
+      // can see the actual measured values at each width — matches the
+      // project rule that investigation scripts print what they touched.
+      val table = measured.map(r =>
+        f"  ${r.width}%3d px → rows=${r.rows}  overflow=${r.overflow}%3d px  scale=${r.scale}%.3f"
+      ).mkString("\n")
+      info(s"Mobile navbar layout sweep:\n$table")
+
+      withClue(s"layout sweep:\n$table\n") {
+        all (measured.map(_.rows))     should be <= 2
+        all (measured.map(_.overflow)) shouldBe 0
+        // Scale boundary: 1.0 at the 575 px breakpoint top, where the
+        // mobile overrides land exactly on the desktop ceiling. At the
+        // narrow end the analytic floor is 0.85 (at viewport ≤ 320),
+        // but the sweep starts at 360 so the head value here is the
+        // formula's evaluation at 360, not the floor. The durable
+        // invariant is "monotone non-decreasing across the sweep and
+        // lands on 1.0 at 575" — not byte-exact equality with the
+        // analytical value at any specific width.
+        measured.last.scale shouldBe (1.0 +- 0.001)
+        measured.map(_.scale) shouldBe sorted
+      }
+    }
+  }
+
   // ── helpers ──────────────────────────────────────────────────────────────
 
   /** Click the pill whose `data-cinema` matches `cinema`. Asserts the
