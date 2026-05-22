@@ -261,6 +261,57 @@
     if (hide) { hideFilm(hide); return; }
   });
 
+  // ── Android two-tap card preview ─────────────────────────────────────────
+  //
+  // iPhone Safari natively applies sticky :hover on the first tap of a
+  // link whose hover styles reveal new content — the user sees the
+  // ★ / ✕ poster icons appear, and the SECOND tap follows the link.
+  // Android engines (Chrome, Firefox, Edge) don't do that: the first
+  // tap fires the click immediately, the page navigates, and the icons
+  // never get a chance to show.
+  //
+  // Emulate the iPhone behaviour on Android by intercepting clicks on
+  // the poster <a> and title <a> inside a `.card`. First tap marks the
+  // card `.previewed` (CSS reveals the icons exactly like `:hover`
+  // does) and suppresses the link. Second tap (or any subsequent tap
+  // on a previewed card's link) is allowed through. A tap outside any
+  // card clears the previewed state; a tap on a different card
+  // transfers the preview to it.
+  //
+  // UA-sniffed rather than feature-detected because there's no clean
+  // probe for "this engine applies sticky :hover on touch links" —
+  // `(hover: none)` is true on both iPhone and Android, and applying
+  // this code on iPhone would require three taps before the link
+  // follows. We restore iPhone parity precisely by NOT running on iOS.
+  if (/Android/.test(navigator.userAgent)) {
+    const clearPreviewed = () => {
+      document.querySelectorAll('.card.previewed').forEach(c => c.classList.remove('previewed'));
+    };
+    document.addEventListener('click', e => {
+      const card = e.target.closest('.card');
+      if (!card) { clearPreviewed(); return; }
+      // Only the poster <a> and the title <a> get the two-tap
+      // treatment. ★ / ✕ icons (.fav-poster-btn / .hide-btn) and
+      // any cinema-name / showtime links inside the card-body keep
+      // firing immediately — they have their own delegated handlers
+      // above and the user expects single-tap operation.
+      const link = e.target.closest('a');
+      if (!link) return;
+      const posterAnchor = card.querySelector('.poster-wrap > a');
+      const titleAnchor  = card.querySelector('.card-title > a');
+      const onPosterOrTitle =
+        (posterAnchor && posterAnchor.contains(link)) ||
+        (titleAnchor  && titleAnchor.contains(link));
+      if (!onPosterOrTitle) return;
+      // Second tap on a previewed card — let navigation through.
+      if (card.classList.contains('previewed')) return;
+      // First tap — block nav, reveal icons, mark previewed.
+      e.preventDefault();
+      clearPreviewed();
+      card.classList.add('previewed');
+    });
+  }
+
   // On boot: paint the existing favourite state onto every star in the
   // freshly-rendered DOM. Runs once before applyFilters() so the filter on
   // /ulubione sees the right .is-fav classes.

@@ -639,6 +639,124 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Android card-link two-tap behaviour ──────────────────────────────────
+  //
+  // iPhone Safari natively applies sticky `:hover` on the first tap of
+  // a link whose hover styles reveal new content — the ★ / ✕ poster
+  // icons appear on tap 1, the link follows on tap 2. Android engines
+  // (Chrome, Firefox, Edge) don't do that; the first tap navigates
+  // immediately and the icons never appear. shared.js sniffs the
+  // Android UA and emulates the iPhone two-tap UX by marking the card
+  // `.previewed` on the first click and suppressing `<a>` navigation.
+  //
+  // These tests pin both branches: with an Android UA the first tap
+  // must preview, with the default UA the first tap must navigate. The
+  // pair guards against (a) regressing the iPhone parity work and
+  // (b) the iPhone-native UA also being caught by the JS by mistake
+  // (which would force a three-tap flow on iPhone — what these tests
+  // were written to prevent).
+
+  private val androidUA =
+    "Mozilla/5.0 (Linux; Android 13; Pixel 7) " +
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+
+  /** Override the tab's UA and reload so `shared.js` re-evaluates with
+   *  the new `navigator.userAgent`. Each test opens a fresh tab via
+   *  `openPage`, so the override is scoped to that tab and doesn't
+   *  bleed into other tests. */
+  private def withAndroidUA(page: CdpPage): Unit = {
+    page.send("Emulation.setUserAgentOverride", play.api.libs.json.Json.obj(
+      "userAgent" -> androidUA
+    ))
+    page.reload()
+  }
+
+  /** First `.card` whose `.poster-wrap > a` exists in the rendered
+   *  page. The fixture corpus always has cards on `/`; pinning the
+   *  date filter to "anytime" first guarantees the visible set is
+   *  non-empty regardless of the browser's wall-clock relative to the
+   *  fixture's dates. */
+  private val firstCardPosterLink =
+    "document.querySelector('.col[data-title] .card .poster-wrap > a')"
+
+  "the card poster link on Android" should
+    "reveal the .previewed icons and not navigate on the first tap" in {
+    onPath("/") { page =>
+      withAndroidUA(page)
+      pinDateFilterAnytime(page)
+
+      page.eval(s"$firstCardPosterLink.click()")
+      // Give the click handler + any synchronous navigation a beat;
+      // 50ms is enough since `.click()` is sync and our JS handler is
+      // sync too, but a navigation that DID fire would race the assert.
+      Thread.sleep(50L)
+
+      page.evalString("location.pathname") shouldBe "/"
+      page.evalBool(
+        s"$firstCardPosterLink.closest('.card').classList.contains('previewed')"
+      ) shouldBe true
+    }
+  }
+
+  it should "follow the link on the second tap" in {
+    onPath("/") { page =>
+      withAndroidUA(page)
+      pinDateFilterAnytime(page)
+
+      val title = page.evalString(
+        s"$firstCardPosterLink.closest('[data-title]').dataset.title"
+      )
+
+      page.eval(s"$firstCardPosterLink.click()")  // 1st tap — preview
+      Thread.sleep(50L)
+      page.evalString("location.pathname") shouldBe "/"
+
+      page.eval(s"$firstCardPosterLink.click()")  // 2nd tap — navigate
+      page.waitFor("location.pathname === '/film'", timeoutMs = 5000)
+      java.net.URLDecoder.decode(page.evalString("location.search"), "UTF-8") shouldBe
+        ("?title=" + title)
+    }
+  }
+
+  it should "clear the preview when a subsequent tap lands outside any card" in {
+    onPath("/") { page =>
+      withAndroidUA(page)
+      pinDateFilterAnytime(page)
+
+      page.eval(s"$firstCardPosterLink.click()")
+      Thread.sleep(50L)
+      page.evalBool(
+        s"$firstCardPosterLink.closest('.card').classList.contains('previewed')"
+      ) shouldBe true
+
+      // Tap on a navbar element (anything reliably outside `.card`).
+      page.eval("document.querySelector('.navbar').click()")
+      page.evalBool(
+        s"$firstCardPosterLink.closest('.card').classList.contains('previewed')"
+      ) shouldBe false
+    }
+  }
+
+  // Counter-test: the default (non-Android) UA must navigate on the
+  // first tap — that's the iPhone-parity invariant we're protecting.
+  // iPhone Safari's native sticky-hover does the preview without JS;
+  // headless Chrome with its default Linux/macOS UA has no sticky
+  // hover, so this test exercises "the JS does NOT install the
+  // listener and the link follows immediately".
+  "the card poster link on non-Android (default UA)" should
+    "navigate immediately on the first tap" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val title = page.evalString(
+        s"$firstCardPosterLink.closest('[data-title]').dataset.title"
+      )
+      page.eval(s"$firstCardPosterLink.click()")
+      page.waitFor("location.pathname === '/film'", timeoutMs = 5000)
+      java.net.URLDecoder.decode(page.evalString("location.search"), "UTF-8") shouldBe
+        ("?title=" + title)
+    }
+  }
+
   // ── helpers ──────────────────────────────────────────────────────────────
 
   /** Pin every visible element on the page to Arial / Liberation Sans

@@ -147,7 +147,8 @@
     transition: opacity .15s;
     display: flex; align-items: center; justify-content: center;
   }
-  .card:hover .hide-btn { opacity: 1; }
+  .card:hover .hide-btn,
+  .card.previewed .hide-btn { opacity: 1; }
   /* Favourite-the-whole-movie button: mirror of .hide-btn (top-left, larger
      star). Hidden by default and revealed on card hover; once a movie is
      marked favourite, the star turns yellow and stays visible permanently. */
@@ -167,7 +168,8 @@
     transition: opacity .15s, color .15s;
     display: flex; align-items: center; justify-content: center;
   }
-  .card:hover .fav-poster-btn { opacity: 1; }
+  .card:hover .fav-poster-btn,
+  .card.previewed .fav-poster-btn { opacity: 1; }
   .fav-poster-btn.is-fav { opacity: 1; color: #ffd24a; }
   .dropdown-panel {
     position: absolute;
