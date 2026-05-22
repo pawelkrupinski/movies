@@ -1,3 +1,4 @@
+#if canImport(CoreGraphics)
 import CoreGraphics
 
 /// Pure layout math behind `FlowLayout`. Lives outside the SwiftUI
@@ -5,9 +6,11 @@ import CoreGraphics
 /// inputs without a live SwiftUI rendering pass (the `Subviews`
 /// collection is SwiftUI-internal and can't be constructed in a test).
 ///
-/// Kept in a separate file so the test target can compile against just
-/// CoreGraphics — `FlowLayout.swift` pulls in SwiftUI for the `Layout`
-/// shim, which doesn't exist on swift-corelibs-foundation hosts.
+/// Kept in a separate file (and behind `#if canImport(CoreGraphics)`)
+/// so the test target compiles on Linux Docker CI hosts where SwiftUI
+/// AND CoreGraphics are both absent. macOS / iOS still pull it into
+/// `KinowoCore`; Linux jobs simply skip it — the unit tests for the
+/// algorithm are guarded the same way.
 ///
 /// Algorithm: greedy left-to-right packing, wrap to a new line when the
 /// next item plus the trailing inter-item gap won't fit. Inter-item
@@ -57,3 +60,4 @@ enum FlowLayoutMath {
         return (positions, CGSize(width: max(0, width), height: max(0, totalHeight)))
     }
 }
+#endif

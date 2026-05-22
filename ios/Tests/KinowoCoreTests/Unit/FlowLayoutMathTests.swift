@@ -1,4 +1,5 @@
 import XCTest
+#if canImport(CoreGraphics)
 import CoreGraphics
 @testable import KinowoCore
 
@@ -73,3 +74,4 @@ final class FlowLayoutMathTests: XCTestCase {
         XCTAssertLessThanOrEqual(r.totalSize.width, 150)
     }
 }
+#endif
