@@ -38,7 +38,7 @@ struct FilmCardView: View {
                         // of which row the last pill ended up on.
                         .padding(.bottom, 14)
                 }
-                ShowingsView(film: film, showCinemaHeaders: showCinemaHeaders)
+                ShowingsView(film: film, showCinemaHeaders: showCinemaHeaders, collapsible: true)
             }
             .padding(12)
         }
