@@ -77,14 +77,17 @@ struct TopBar: View {
     }()
 }
 
-// Date-filter pills all rendered at the same width — every pill gets
-// `.frame(maxWidth: .infinity)` so the HStack splits the available
-// row width equally between the four buttons regardless of label
-// length. Base font is small enough that the longest label
-// ("Wszystkie") fits its share without truncating; the
-// `minimumScaleFactor(0.85)` is a narrow safety net for unusually
-// crowded phone widths and rarely triggers (and the cap is close
-// enough to 1.0 that any shrink is barely visible).
+// Date-filter pills sized to their label content — uniform horizontal
+// padding on every pill, so Dziś / Jutro / 7 dni land at very similar
+// widths (4–5 character labels) and Wszystkie naturally takes a bit
+// more room (9 characters). The reverse of equal-width: the longer
+// label gets its own breathing room rather than forcing every pill to
+// shrink its font to share one slot.
+//
+// `Spacer(minLength: 2, maxWidth: 6)` between pills lets the row flex
+// (pills stay close to each other) while leftover row-width spills
+// into the slack between the pill cluster and the surrounding brand /
+// Filtry chrome rather than ballooning the inter-pill gaps.
 //
 // Font, padding and the inter-pill spacing multiply by the viewport
 // `scale` passed in from `TopBar`, so the whole row tracks the
@@ -94,17 +97,15 @@ struct DatePillsRow: View {
     let scale: CGFloat
 
     var body: some View {
-        HStack(spacing: 6 * scale) {
-            ForEach(DateFilter.presets, id: \.self) { f in
+        HStack(spacing: 0) {
+            ForEach(Array(DateFilter.presets.enumerated()), id: \.element) { (i, f) in
                 Button {
                     dateFilter = f
                 } label: {
                     Text(f.label)
-                        .font(.system(size: 13 * scale, weight: .medium))
+                        .font(.system(size: 14 * scale, weight: .medium))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 6 * scale)
+                        .padding(.horizontal, 12 * scale)
                         .padding(.vertical, 7 * scale)
                         .background(
                             dateFilter == f
@@ -115,6 +116,10 @@ struct DatePillsRow: View {
                         .foregroundColor(dateFilter == f ? .white : .primary)
                 }
                 .buttonStyle(.plain)
+                if i < DateFilter.presets.count - 1 {
+                    Spacer(minLength: 2 * scale)
+                        .frame(maxWidth: 6 * scale)
+                }
             }
         }
     }
