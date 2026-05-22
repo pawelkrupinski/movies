@@ -21,4 +21,19 @@
   .rating-rt.rotten .rating-rt-label { background: #1a8f1a; }
   .rating-rt.rotten .rating-rt-value { color: #6cd06c; }
   .rating-rt:hover  .rating-rt-value { background: #3a3a6e; }
+
+  /* Mobile scaling sits next to the desktop defaults so /film gets the
+     same shrinking as the listing pages. `--mobile-scale` is defined
+     in `_pillStyles` (loaded by every page that loads `_ratingStyles`,
+     so the variable is always in scope). */
+  @@media (max-width: 575px) {
+    .rating-imdb, .rating-meta, .rating-fw, .rating-rt {
+      font-size: calc(.68rem * var(--mobile-scale));
+    }
+    .rating-imdb-label, .rating-fw-label, .rating-rt-label,
+    .rating-imdb-value, .rating-fw-value, .rating-rt-value, .rating-meta {
+      padding-left:  calc(.35rem * var(--mobile-scale));
+      padding-right: calc(.35rem * var(--mobile-scale));
+    }
+  }
 </style>

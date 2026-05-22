@@ -8,26 +8,16 @@
   html { touch-action: manipulation; }
   body { background: #111; color: #eee; overflow-x: hidden; }
 
-  /* ── Single mobile-scale knob ──────────────────────────────────────
-     Every per-mobile size — navbar font/padding, card title, showtime
-     pills, rating badges, the /kina pill row, the section header —
-     reads off this variable. Linearly interpolates 0.85 → 1.0 between
-     320 px viewport (iPhone-SE class) and 575 px (the @@media
-     breakpoint top, where the mobile overrides hand back to the
-     desktop defaults — so the value lands exactly on the desktop
-     ceiling at the boundary and the transition is seamless).
-
-     Replaces the previous per-property `clamp(min, vw-formula, max)`
-     shotgun, where each property had its own slope and cap viewport:
-     `--navbar-fs` topped out at ~412 px, but `card-title` and
-     `badge-time` kept scaling until ~540 px. Samsung S10 (360 px)
-     and iPhone 17 Pro Max (~430 px) ended up with visibly different
-     ratios between navbar text and grid text because half the
-     properties were capped on the Pro Max while the others weren't.
-     One scale variable = uniform ratios at every viewport. */
-  :root {
-    --mobile-scale: clamp(0.85, calc(0.85 + 0.15 * (100vw - 320px) / 255px), 1);
-  }
+  /* The single `--mobile-scale` variable that every per-mobile size on
+     every page reads off is defined in `_pillStyles` (which is loaded
+     universally — by `_sharedStyles` on the listing/kina/ulubione
+     pages, and directly on `/film`). Linearly interpolates 0.85 → 1.0
+     between 320 px viewport and 575 px (the @@media breakpoint top,
+     where mobile overrides hand back to the desktop defaults).
+     Replaces ~15 per-property `clamp(min, vw-formula, max)` rules that
+     each capped at a different viewport — Samsung S10 (360) and
+     iPhone 17 Pro Max (~430) ended up with different navbar↔grid
+     ratios under that scheme. One variable = uniform ratios. */
   /* Sticky so the filter bar stays on-screen as the user scrolls
      through a long film grid (200+ cards on /). Was `position:
      relative` — scrolling past the first viewport hid the navbar
@@ -604,21 +594,35 @@
     .pill              { font-size: calc(.72rem * var(--mobile-scale)); padding: 0 calc(5px * var(--mobile-scale)); }
     /* "Czwartek 21 maja" per-day labels. */
     .date-label        { font-size: calc(.7rem * var(--mobile-scale)); }
-    /* Showtime pills (`18:30`) + their `2D NAP` format suffix. */
-    .badge-time        {
-      font-size: calc(.72rem * var(--mobile-scale));
-      padding: .2em calc(.5em * var(--mobile-scale));
+    /* Showtime pills (`.badge-time` / `.badge-fmt`) + rating pills
+       (`.rating-imdb` / `.rating-meta` / `.rating-fw` / `.rating-rt`)
+       are scaled inside their own partials (`_pillStyles`,
+       `_ratingStyles`) so the `/film` page — which loads those
+       partials directly without `_sharedStyles` — gets the same
+       shrinking as the listing pages. */
+
+    /* Pop-over chrome — Filtry dropdown, login + hidden-films modals,
+       auth menu, the anonymous-user nag toast, the showtime-pill room
+       tooltip. None of these are visible at first paint, but they all
+       open on tap and should read at the same visual scale as the
+       navbar / grid that's already on screen. Same `--mobile-scale`
+       factor → consistent typography across every layer of UI. */
+    .login-modal-title  { font-size: calc(1.2rem  * var(--mobile-scale)); }
+    .login-modal-sub    { font-size: calc(.85rem  * var(--mobile-scale)); }
+    .login-btn          {
+      font-size: calc(.95rem * var(--mobile-scale));
+      padding:   calc(.65rem * var(--mobile-scale)) calc(.9rem * var(--mobile-scale));
     }
-    .badge-fmt         { font-size: calc(.62rem * var(--mobile-scale)); }
-    /* Rating pills — IMDb / Metacritic / RT / Filmweb. */
-    .rating-imdb, .rating-meta, .rating-fw, .rating-rt {
-      font-size: calc(.68rem * var(--mobile-scale));
-    }
-    .rating-imdb-label, .rating-fw-label, .rating-rt-label,
-    .rating-imdb-value, .rating-fw-value, .rating-rt-value, .rating-meta {
-      padding-left:  calc(.35rem * var(--mobile-scale));
-      padding-right: calc(.35rem * var(--mobile-scale));
-    }
+    .panel-item         { font-size: calc(.8rem   * var(--mobile-scale)); }
+    .panel-label        { font-size: calc(.8rem   * var(--mobile-scale)); }
+    .panel-section-label{ font-size: calc(.65rem  * var(--mobile-scale)); }
+    .auth-logout-btn    { font-size: calc(.875rem * var(--mobile-scale)); }
+    .anon-nag-toast     { font-size: calc(.85rem  * var(--mobile-scale)); }
+    /* Card-poster fallback ("Brak plakatu") + the hover-on-pill room
+       tooltip (`#room-tooltip`) — small text, but still readable at
+       the floor (0.85 × .85rem = ~11.6 px). */
+    .no-poster          { font-size: calc(.85rem  * var(--mobile-scale)); }
+    #room-tooltip       { font-size: calc(.68rem  * var(--mobile-scale)); }
 
     /* The 35 px min-height / 35 px min-width on nav-tab / nav-tab-fav /
        refresh-btn / date-nav-btn / filter-select / search-input /

@@ -26,6 +26,14 @@ class TestHttpServer(routes: PartialFunction[String, String]) extends AutoClosea
     override def handle(ex: HttpExchange): Unit = {
       try {
         val path = ex.getRequestURI.getPath
+        val rawQ = ex.getRequestURI.getRawQuery
+        // Routes match on the path-plus-query (`/film?title=…` carries
+        // its identity in the query string, not the path). Existing
+        // path-only routes (`/`, `/kina`, `/kina/<X>`) don't ever come
+        // through with a query attached, so they keep matching on the
+        // bare path — `routeKey` is the path verbatim when there's no
+        // query at all.
+        val routeKey = if (rawQ == null) path else s"$path?$rawQ"
         // `/assets/*` is served from `public/*` on disk so the rendered
         // page can `<link>` Bootstrap CSS in the test the same way prod
         // does. Tests that assert on rendered geometry (e.g. the mobile
@@ -52,7 +60,7 @@ class TestHttpServer(routes: PartialFunction[String, String]) extends AutoClosea
             val os = ex.getResponseBody
             try os.write(bytes) finally os.close()
           }
-        } else routes.lift(path) match {
+        } else routes.lift(routeKey) match {
           case Some(html) =>
             val bytes = html.getBytes(StandardCharsets.UTF_8)
             ex.getResponseHeaders.add("Content-Type", "text/html; charset=UTF-8")

@@ -5,6 +5,18 @@
    identity of the time pills stays in lockstep across surfaces — same
    background, same hover, same in-pill favourite star. *@
 <style>
+  /* Single mobile-scale variable defined HERE rather than in
+     `_sharedStyles` because `_pillStyles` is loaded by every page
+     (listing/kina/ulubione via `_sharedStyles`, and the per-film
+     `/film` page directly) — anchoring the variable here means every
+     page that wants to scale chrome by `var(--mobile-scale)` always
+     finds it. Linearly interpolates 0.85 → 1.0 between 320 px viewport
+     and 575 px (the @@media breakpoint top, where mobile overrides
+     land exactly on the desktop ceiling — seamless transition). */
+  :root {
+    --mobile-scale: clamp(0.85, calc(0.85 + 0.15 * (100vw - 320px) / 255px), 1);
+  }
+
   .badge-time {
     background: #3a3a6e;
     color: #aad4ff;
@@ -48,4 +60,15 @@
      never sees the pill grow, only sees it sit on its own line so the
      hover-expansion has room. */
   .badge-time.needs-star-room { margin-right: 18px; }
+
+  /* Mobile scaling lives in the same partial as the desktop defaults
+     so every page loading `_pillStyles` (= every page that renders
+     showtime badges) gets identical mobile sizing. */
+  @@media (max-width: 575px) {
+    .badge-time {
+      font-size: calc(.72rem * var(--mobile-scale));
+      padding: .2em calc(.5em * var(--mobile-scale));
+    }
+    .badge-fmt { font-size: calc(.62rem * var(--mobile-scale)); }
+  }
 </style>

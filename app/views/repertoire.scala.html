@@ -20,6 +20,14 @@
     .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: .1rem; margin-top: .3rem; }
     .cinema-label-link { color: #66aadd; text-decoration: none; }
     .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
+    /* The per-cinema label sitting above each card's pill row rides
+       the shared `--mobile-scale` (defined in `_sharedStyles`) so it
+       tracks the rest of the card text on narrow phones. .65rem at
+       the 0.85 floor still reads as ~8.8 px, just above the
+       "comfortably legible" threshold for a small UI label. */
+    @@media (max-width: 575px) {
+      .cinema-label { font-size: calc(.65rem * var(--mobile-scale)); }
+    }
   </style>
   }
 </head>

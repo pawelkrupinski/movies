@@ -7,16 +7,16 @@ import java.time.LocalDateTime
 import java.util.Base64
 
 /**
- * Screenshot generator for the mobile-scale refactor. Loads the
- * fixture-rendered `/` page in a real headless Chrome, then resizes
- * the viewport through every entry in `Viewports` and writes a PNG
- * per width to `page/screenshots/<width>px.png`.
+ * Screenshot generator for the mobile-scale refactor. Loads each
+ * navbar-bearing fixture page (`/`, `/kina`, `/film?title=…`) in a
+ * real headless Chrome, resizes the viewport through every entry in
+ * `Viewports`, and writes one PNG per (page, width) pair to
+ * `page/screenshots/<slug>-<width>px.png`.
  *
  * Mirrors the boot sequence in `views.PageJsBehaviourSpec` —
  * `FixtureTestWiring` produces the same Twirl-rendered HTML the
- * assertion-based spec drives, so the screenshots and the
- * `wraps to ≤ 2 rows with zero horizontal overflow` test see byte-
- * identical markup.
+ * assertion-based spec drives, so the screenshots and the layout-
+ * sweep test see byte-identical markup.
  *
  * Usage: `sbt "PageTest/runMain tools.MobileScreenshots"`.
  *
@@ -49,55 +49,92 @@ object MobileScreenshots {
     }
 
     try {
-      // Render the same `/` HTML the spec uses.
       val wiring = new FixtureTestWiring("17-05-2026")
       wiring.bootStartup()
       val cinemas  = Cinema.all.map(_.displayName)
-      val schedules = wiring.movieControllerService.toSchedules(now)
+      val schedules       = wiring.movieControllerService.toSchedules(now)
+      val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(now)
+      val anon    = Option.empty[models.User]
+      val noOauth = Set.empty[String]
+      val noFav   = Set.empty[String]
 
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, devMode = false,
-        currentUser    = Option.empty[models.User],
-        oauthProviders = Set.empty,
-        favouriteMovies     = Set.empty,
-        favouriteScreenings = Set.empty,
+        currentUser    = anon, oauthProviders = noOauth,
+        favouriteMovies = noFav, favouriteScreenings = noFav,
         favouritesMode = false
       ).body
 
-      val server = new TestHttpServer({ case "/" => indexHtml })
-      try {
-        chrome.openPage(server.baseUrl + "/") { page =>
-          // Inject the Zaloguj-się pill — `oauthProviders = Set.empty`
-          // leaves `.navbar-auth` empty in the rendered HTML; production
-          // always carries the pill, so seed it before measuring layout
-          // and capturing screenshots. Same trick the spec uses.
-          page.eval(
-            "(() => { const a = document.querySelector('.navbar-auth');" +
-            "          if (a && !a.children.length) {" +
-            "            const btn = document.createElement('button');" +
-            "            btn.type = 'button';" +
-            "            btn.className = 'nav-tab nav-tab-login';" +
-            "            btn.textContent = 'Zaloguj się';" +
-            "            a.appendChild(btn);" +
-            "          } })()"
-          )
+      val kinaHtml: String = views.html.kina(
+        cinemaSchedules, cinemas, devMode = false,
+        currentUser    = anon, oauthProviders = noOauth,
+        favouriteMovies = noFav, favouriteScreenings = noFav,
+        pinnedCinema = None
+      ).body
 
-          val t0 = System.currentTimeMillis()
-          for (w <- Viewports) {
-            page.setViewport(w, ViewportHeight)
-            // setDeviceMetricsOverride is synchronous, but a beat lets
-            // resize-listeners + flex reflow settle before the capture.
-            Thread.sleep(80L)
-            val pngBase64 = page.screenshot()
-            val out = outDir.resolve(s"$w" + "px.png")
-            Files.write(out, Base64.getDecoder.decode(pngBase64),
-              StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-            val bytes = Files.size(out)
-            println(f"$w%3d px → ${out} (${bytes / 1024}%4d KiB)")
+      // Pick a well-populated film from the fixture corpus — Diabeł ubiera
+      // się u Prady 2 has multiple cinemas, a trailer-link row, and a
+      // long-ish Polish title, so the screenshot exercises every chrome
+      // axis (.film-title wrap, .cinema-link pill row, .trailer-link).
+      val filmTitle = "Diabeł ubiera się u Prady 2"
+      val filmSchedule = schedules.find(_.movie.title == filmTitle).getOrElse {
+        System.err.println(s"Fixture missing expected film: '$filmTitle'")
+        sys.exit(3)
+      }
+      val filmHtml: String = views.html.film(
+        filmSchedule, "http://test.local/film", "", isFavourite = false,
+        favouriteScreenings = noFav, devMode = false
+      ).body
+      val filmQuery = "/film?title=" +
+        java.net.URLEncoder.encode(filmTitle, "UTF-8")
+
+      val server = new TestHttpServer({
+        case "/"     => indexHtml
+        case "/kina" => kinaHtml
+        case `filmQuery` => filmHtml
+      })
+      try {
+        val pages: Seq[(String, String)] = Seq(
+          "index" -> "/",
+          "kina"  -> "/kina",
+          "film"  -> filmQuery
+        )
+        val t0 = System.currentTimeMillis()
+        var count = 0
+        for ((slug, path) <- pages) {
+          chrome.openPage(server.baseUrl + path) { page =>
+            // Inject the Zaloguj-się pill so the screenshot matches the
+            // production anonymous-user navbar (the fixture renders with
+            // no OAuth providers configured, leaving `.navbar-auth`
+            // empty). /film doesn't have `.navbar-auth` — the IIFE is a
+            // no-op there because the querySelector returns null.
+            page.eval(
+              "(() => { const a = document.querySelector('.navbar-auth');" +
+              "          if (a && !a.children.length) {" +
+              "            const btn = document.createElement('button');" +
+              "            btn.type = 'button';" +
+              "            btn.className = 'nav-tab nav-tab-login';" +
+              "            btn.textContent = 'Zaloguj się';" +
+              "            a.appendChild(btn);" +
+              "          } })()"
+            )
+            for (w <- Viewports) {
+              page.setViewport(w, ViewportHeight)
+              // setDeviceMetricsOverride is synchronous, but a beat lets
+              // resize-listeners + flex reflow settle before the capture.
+              Thread.sleep(80L)
+              val pngBase64 = page.screenshot()
+              val out = outDir.resolve(s"$slug-$w" + "px.png")
+              Files.write(out, Base64.getDecoder.decode(pngBase64),
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+              val bytes = Files.size(out)
+              println(f"$slug%-5s $w%3d px → ${out} (${bytes / 1024}%4d KiB)")
+              count += 1
+            }
           }
-          val dtMs = System.currentTimeMillis() - t0
-          println(f"done in ${dtMs / 1000.0}%.1fs, ${Viewports.size} captures")
         }
+        val dtMs = System.currentTimeMillis() - t0
+        println(f"done in ${dtMs / 1000.0}%.1fs, $count captures")
       } finally server.close()
     } finally chrome.close()
   }

@@ -152,6 +152,28 @@
     .cinema-label { font-size: .8rem; color: #66aadd; margin-bottom: .25rem; }
     .cinema-label-link { color: #66aadd; text-decoration: none; }
     .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
+
+    /* Mobile scaling. Rides the shared `--mobile-scale` variable
+       defined in `_pillStyles` (loaded right below). Same factor as
+       the listing pages, so the film-detail chrome (title, meta
+       labels, cinema-link / trailer-link pills, sub-section dates)
+       shrinks in lockstep with the rest of the site on narrow phones.
+       The 26 px ★ button, the 16 px-floor inputs and the bootstrap
+       container padding are intentionally left untouched — tap-target
+       and iOS-zoom-guard floors that the scale would push under. */
+    @@media (max-width: 575px) {
+      .back-link  { font-size: calc(.9rem  * var(--mobile-scale)); }
+      .no-poster  { font-size: calc(1rem   * var(--mobile-scale)); }
+      .film-title { font-size: calc(1.6rem * var(--mobile-scale)); }
+      .meta-label { font-size: calc(.75rem * var(--mobile-scale)); }
+      .meta-value { font-size: calc(.9rem  * var(--mobile-scale)); }
+      .cinema-link, .trailer-link {
+        font-size: calc(.85rem * var(--mobile-scale));
+        padding:   calc(.35rem * var(--mobile-scale)) calc(.8rem * var(--mobile-scale));
+      }
+      .date-group .date-label { font-size: calc(.8rem * var(--mobile-scale)); }
+      .cinema-label           { font-size: calc(.8rem * var(--mobile-scale)); }
+    }
   </style>
   }
   @* Shared showtime-pill styles — `.badge-time`, `.badge-fmt`, and the
