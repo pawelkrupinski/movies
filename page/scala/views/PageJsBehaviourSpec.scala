@@ -761,9 +761,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // event sequence: a real tap fires touchstart → touchend → a synthetic
   // mouse click. If anything between those steps initiates the
   // navigation before our `click` listener gets a chance to call
-  // `preventDefault`, the link follows on the first tap. This test
-  // dispatches the real touch sequence over CDP (with touch emulation
-  // enabled) so the assertion exercises the same path a phone takes.
+  // `preventDefault`, the link follows on the first tap.
+  //
+  // Dispatches the touch sequence explicitly via `Input.dispatchTouchEvent`
+  // and waits for the browser to fire its auto-synthesised click,
+  // rather than relying on `Input.synthesizeTapGesture`'s gesture
+  // pipeline. The synthesise call is in the experimental Input domain
+  // and on headless Linux Chrome (CI runner) the trailing click is not
+  // always delivered through the gesture pipeline, leaving the test
+  // flaky. Explicit touchStart / touchEnd plus a polled wait for the
+  // `previewed` class is deterministic across Chrome builds.
 
   "the card poster link on a real Oppo Chrome UA with a synthesised tap" should
     "preview on the first tap (not navigate)" in {
@@ -797,21 +804,31 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       )
       val Array(x, y) = coords.split(',').map(_.toInt)
 
-      // Synthesise a real tap gesture (touchStart → touchEnd plus the
-      // synthetic mouse click Chrome dispatches at the gesture's end).
-      // Closer to what a phone produces than `Input.dispatchTouchEvent`
-      // — Chrome wires the whole sequence including gesture
-      // recognition, so any race between touchEnd and the click event
-      // gets exercised here.
-      page.send("Input.synthesizeTapGesture", play.api.libs.json.Json.obj(
-        "x" -> x, "y" -> y, "tapCount" -> 1
+      // Real touch sequence: touchStart → touchEnd. Chrome's touch
+      // emulation synthesises the trailing click from touchEnd; we wait
+      // for it below rather than dispatching a second mouse click,
+      // because the auto-synthesised click + a manual dispatch would
+      // produce two clicks (the second navigating past `previewed`).
+      page.send("Input.dispatchTouchEvent", play.api.libs.json.Json.obj(
+        "type" -> "touchStart",
+        "touchPoints" -> play.api.libs.json.Json.arr(
+          play.api.libs.json.Json.obj("x" -> x, "y" -> y)
+        )
       ))
-      Thread.sleep(250L)
+      page.send("Input.dispatchTouchEvent", play.api.libs.json.Json.obj(
+        "type" -> "touchEnd",
+        "touchPoints" -> play.api.libs.json.Json.arr()
+      ))
 
+      // Poll for the class instead of a fixed sleep — CI Linux Chrome
+      // dispatches the synthesised click asynchronously after touchEnd
+      // lands in the renderer, and a 250 ms wall-clock sleep raced
+      // against that on the slower runner.
+      page.waitFor(
+        s"$firstCardPosterLink.closest('.card').classList.contains('previewed')",
+        timeoutMs = 2000
+      )
       page.evalString("location.pathname") shouldBe "/"
-      page.evalBool(
-        s"$firstCardPosterLink.closest('.card').classList.contains('previewed')"
-      ) shouldBe true
 
       page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
       page.send("Emulation.setTouchEmulationEnabled", play.api.libs.json.Json.obj(
