@@ -492,6 +492,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   for (path <- Seq("/", "/kina")) {
     s"the mobile navbar on $path" should "wrap to ≤ 2 rows with zero horizontal overflow at every common phone width" in {
       onPath(path) { page =>
+        pinDeterministicFont(page)
         // beforeAll renders the corpus with `oauthProviders = Set.empty`,
         // which leaves `.navbar-auth` empty (no Zaloguj-się pill). Inject
         // the prod-shaped child so the layout assertions exercise the
@@ -611,6 +612,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     val target = "/film?title=" + java.net.URLEncoder.encode(
       "Diabeł ubiera się u Prady 2", "UTF-8")
     onPath(target) { page =>
+      pinDeterministicFont(page)
       val overflows: Seq[(Int, Int)] = MobileViewports.map { w =>
         page.setViewport(w, 1000)
         Thread.sleep(60L)
@@ -638,6 +640,36 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────
+
+  /** Pin every visible element on the page to Arial / Liberation Sans
+   *  before layout-sensitive measurements. Why: the layout sweeps below
+   *  read `getBoundingClientRect()` to assert "navbar fits in ≤ 2 rows"
+   *  and "no horizontal overflow". Those assertions are font-metric
+   *  sensitive, and Bootstrap's `--bs-font-sans-serif` resolves
+   *  differently per platform:
+   *
+   *    - macOS local Chrome  → `system-ui` → SF Pro Text
+   *    - GitHub Linux runner → `system-ui` → Ubuntu / DejaVu Sans (~3 %
+   *      wider per character than SF Pro at the same px size)
+   *
+   *  Same CSS, different rendered widths — the sweep passes locally and
+   *  fails on CI even when the production layout is fine. (Real iOS /
+   *  Android users see SF Pro / Roboto, both narrow.)
+   *
+   *  Pinning to Arial with `Liberation Sans` as the fallback gives
+   *  identical metrics on both platforms (Liberation Sans was designed
+   *  to be byte-for-byte metric-compatible with Arial; both ship by
+   *  default on ubuntu-latest GitHub runners and on macOS). Arial is
+   *  also a hair wider than SF Pro / Roboto, so the test runs as a
+   *  worst-case font width — passing the assertion here means real
+   *  users on narrower system fonts are even more comfortably inside
+   *  the layout bounds. */
+  private def pinDeterministicFont(page: CdpPage): Unit =
+    page.eval(
+      "(() => { const s = document.createElement('style');" +
+      "          s.textContent = '*, body { font-family: Arial, \"Liberation Sans\", sans-serif !important; }';" +
+      "          document.head.appendChild(s); })()"
+    )
 
   /** Click the pill whose `data-cinema` matches `cinema`. Asserts the
    *  pill was found so a typo'd cinema name fails the test with a clear
