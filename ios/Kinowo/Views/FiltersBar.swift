@@ -18,7 +18,11 @@ struct TopBar: View {
 
     var body: some View {
         let s = TopBar.viewportScale
-        HStack(spacing: 8 * s) {
+        // `spacing: 6 * s` matches the inter-pill gap inside
+        // `DatePillsRow`, so the gap from 🎬 → first pill and from
+        // last pill → Filtry icon reads as the same width as the
+        // gaps between the four pills.
+        HStack(spacing: 6 * s) {
             Text("🎬")
                 .font(.system(size: 24 * s))
             DatePillsRow(dateFilter: $dateFilter, scale: s)
@@ -77,34 +81,35 @@ struct TopBar: View {
     }()
 }
 
-// Date-filter pills sized to their label content — uniform horizontal
-// padding on every pill, so Dziś / Jutro / 7 dni land at very similar
-// widths (4–5 character labels) and Wszystkie naturally takes a bit
-// more room (9 characters). The reverse of equal-width: the longer
-// label gets its own breathing room rather than forcing every pill to
-// shrink its font to share one slot.
+// Three short pills (Dziś / Jutro / 7 dni) share one width via
+// `.frame(maxWidth: .infinity)` so the leftover row-width is split
+// equally between them. Wszystkie skips the maxWidth so it stays at
+// its intrinsic 9-character width — naturally the widest pill, but
+// the short pills now sit close to it rather than collapsed to their
+// own 4–5-character intrinsics. The result: three uniform shorter
+// pills and one slightly wider Wszystkie, no font shrinking.
 //
-// `Spacer(minLength: 2, maxWidth: 6)` between pills lets the row flex
-// (pills stay close to each other) while leftover row-width spills
-// into the slack between the pill cluster and the surrounding brand /
-// Filtry chrome rather than ballooning the inter-pill gaps.
-//
-// Font, padding and the inter-pill spacing multiply by the viewport
-// `scale` passed in from `TopBar`, so the whole row tracks the
-// device's viewport rather than rendering one fixed shape.
+// Inter-pill spacing is fixed at `6 * scale` to match the
+// brand → pills and pills → Filtry gaps in `TopBar` — every gap on
+// the bar reads as the same width.
 struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
     let scale: CGFloat
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(DateFilter.presets.enumerated()), id: \.element) { (i, f) in
+        HStack(spacing: 6 * scale) {
+            ForEach(DateFilter.presets, id: \.self) { f in
                 Button {
                     dateFilter = f
                 } label: {
                     Text(f.label)
                         .font(.system(size: 14 * scale, weight: .medium))
                         .lineLimit(1)
+                        // Three short pills claim flex via maxWidth
+                        // .infinity inside the label, so the Capsule
+                        // background tracks the expanded frame.
+                        // Wszystkie's nil keeps it intrinsic inside.
+                        .frame(maxWidth: f == .anytime ? nil : .infinity)
                         .padding(.horizontal, 12 * scale)
                         .padding(.vertical, 7 * scale)
                         .background(
@@ -116,10 +121,14 @@ struct DatePillsRow: View {
                         .foregroundColor(dateFilter == f ? .white : .primary)
                 }
                 .buttonStyle(.plain)
-                if i < DateFilter.presets.count - 1 {
-                    Spacer(minLength: 2 * scale)
-                        .frame(maxWidth: 6 * scale)
-                }
+                // SwiftUI's HStack splits its proposal equally across
+                // children that claim `maxWidth: .infinity` — without
+                // `.fixedSize` here, Wszystkie was getting the same
+                // ~72pt share as a short pill and truncating to "Wsz…".
+                // Pinning Wszystkie to its intrinsic width takes it
+                // out of the flex pool; the three short pills then
+                // share what's left equally.
+                .fixedSize(horizontal: f == .anytime, vertical: false)
             }
         }
     }
