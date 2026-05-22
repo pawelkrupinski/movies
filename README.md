@@ -1,152 +1,142 @@
-# scala-play-app
+# Kinowo
 
-A REST API built with **Scala + Play Framework 2.9 + MongoDB**.
+A Polish cinema repertoire aggregator. Scrapes showtimes from several
+Polish cinema chains and independent cinemas, enriches each film with
+metadata and ratings from TMDB / IMDb / Filmweb / Metacritic / Rotten
+Tomatoes, and serves the combined view as a website and a native iOS
+app.
+
+Live at **<https://kinowo.fly.dev>**.
+
+## What it does
+
+- **Scrapes showtimes** from Cinema City, Multikino, Helios, Kino
+  Apollo, Kino Bułgarska, Kino Muza, Kino Pałacowe, Rialto, and
+  Charlie Monroe. Each cinema has its own client under
+  `app/services/cinemas/`.
+- **Enriches** every film with posters, synopses, trailers, and
+  ratings from TMDB, IMDb, Filmweb, Metacritic, Rotten Tomatoes,
+  OMDb and Cinemeta (`app/services/enrichment/`).
+- **Caches** the resolved film records in memory (Caffeine) with
+  MongoDB as the write-through store, so a cold start rehydrates
+  from Mongo and a refresh tick fans out to the cinemas.
+- **Authenticates** users via Google or Facebook OAuth2 and stores
+  per-user favourites, hidden films, and disabled-cinema lists
+  server-side. Anonymous visitors fall back to `localStorage`.
+- **iOS app** (`ios/Kinowo/`) renders the same data — talks to the
+  website directly and parses its HTML rather than calling a
+  separate JSON API.
 
 ## Stack
 
-| Layer       | Technology                        |
-|-------------|-----------------------------------|
-| Language    | Scala 2.13                        |
-| Web         | Play Framework 2.9                |
-| Database    | MongoDB (official Scala driver 5) |
-| DI          | Guice                             |
-| Build       | sbt 1.10                          |
-| Testing     | ScalaTest + Mockito               |
+| Layer       | Technology                                  |
+|-------------|---------------------------------------------|
+| Language    | Scala 3                                     |
+| Web         | Play Framework (Pekko-based, sbt-plugin 3)  |
+| Frontend    | Twirl templates + vanilla JS                |
+| Database    | MongoDB (official Scala driver 5)           |
+| Cache       | Caffeine (in-process, write-through to Mongo) |
+| Scraping    | jsoup, with ScrapingAnt / Zyte for JS-heavy sources |
+| DI          | Guice                                       |
+| Build       | sbt 1.12, JDK 25 → Java 21 bytecode         |
+| iOS         | SwiftUI                                     |
+| Hosting     | Fly.io (`kinowo` app, region `arn`)         |
 
----
+## Repository layout
 
-## Prerequisites
-
-- **JDK 17+** — `java -version`
-- **sbt 1.10+** — https://www.scala-sbt.org/download
-- **MongoDB 6+** running locally on port `27017`
-
-Start MongoDB locally:
-```bash
-# macOS (Homebrew)
-brew services start mongodb-community
-
-# Docker (fastest)
-docker run -d -p 27017:27017 --name mongo mongo:7
+```
+app/
+├── controllers/          # MovieController, AuthController, UserStateController, ...
+├── models/               # Movie, MovieRecord, Showtime, Cinema, User, UserState
+├── modules/              # Guice wiring
+├── services/
+│   ├── cinemas/          # One client per cinema chain / venue
+│   ├── enrichment/       # TMDB / IMDb / Filmweb / Metacritic / RT clients + ratings
+│   ├── movies/           # MovieCache, MovieRepo, MovieService, merge/patch logic
+│   ├── events/           # In-process event bus (cache → enrichment listeners)
+│   ├── auth/             # OAuth2 providers
+│   ├── users/            # User + per-user state persistence
+│   └── lock/             # Mongo-backed distributed lock
+├── views/                # Twirl templates
+└── tools/                # Test wiring + dev utilities
+conf/
+├── application.conf
+├── logback.xml
+└── routes
+ios/Kinowo/               # SwiftUI iOS app (scrapes the website's HTML)
+test/scala/               # Unit tests (sbt test)
+it/scala/                 # Integration tests (sbt IntegrationTest/test)
+page/scala/               # Browser-driven page-regression tests (sbt PageTest/test)
+fly.toml, Dockerfile      # Fly.io deploy
 ```
 
----
+## Running locally
 
-## Run
+Prereqs: **JDK 17+** (25 recommended), **sbt 1.12**, a running
+**MongoDB** instance.
 
 ```bash
-# Development mode (hot reload)
+# Point at your Mongo. The app reads MONGO_URI; if unset it defaults to
+# mongodb://localhost:27017 with database `movies`.
+export MONGO_URI=mongodb://localhost:27017
+
 sbt run
-
-# The app starts at http://localhost:9000
+# → http://localhost:9000
 ```
 
----
+The first start may take a minute as the scrapers fan out across every
+cinema and enrich each film. Subsequent starts rehydrate from Mongo and
+are near-instant.
 
-## REST API
+### Useful local endpoints
 
-### Health
-```
-GET  /health
-```
+- `/` — main repertoire view
+- `/film?title=...` — single-film detail page
+- `/kina` — view grouped by cinema, `/kina/:cinema` to pin one
+- `/ulubione` — favourites (requires login)
+- `/debug` — dev page exposing the cache contents
+- `POST /debug/reenrich?title=...` — drop one row and re-fetch every source
+- `POST /debug/rehydrate` — reload the in-memory cache from Mongo
+- `/health` — Fly health check
 
-### Items
+## Tests
 
-| Method | Path             | Description        |
-|--------|------------------|--------------------|
-| GET    | /api/items       | List all items     |
-| POST   | /api/items       | Create an item     |
-| GET    | /api/items/:id   | Get item by ID     |
-| PUT    | /api/items/:id   | Update item        |
-| DELETE | /api/items/:id   | Delete item        |
-
-### Example — Create an item
-```bash
-curl -X POST http://localhost:9000/api/items \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Widget",
-    "description": "A very useful widget",
-    "price": 9.99,
-    "tags": ["sale", "new"]
-  }'
-```
-
-### Example — List all items
-```bash
-curl http://localhost:9000/api/items
-```
-
-### Example — Update an item
-```bash
-curl -X PUT http://localhost:9000/api/items/<id> \
-  -H "Content-Type: application/json" \
-  -d '{"price": 7.49}'
-```
-
----
-
-## Configuration
-
-Key settings in `conf/application.conf`:
-
-| Key                  | Default                    | Env var              |
-|----------------------|----------------------------|----------------------|
-| `mongodb.uri`        | `mongodb://localhost:27017` | `MONGODB_URI`        |
-| `mongodb.database`   | `scala_play_db`            | `MONGODB_DATABASE`   |
-| `play.http.secret.key` | *(change this!)*         | `APPLICATION_SECRET` |
-
-For production, always set `APPLICATION_SECRET` to a long random string:
-```bash
-export APPLICATION_SECRET=$(openssl rand -base64 32)
-```
-
----
-
-## Test
+Three separate sbt configurations so CI can fan them out:
 
 ```bash
-sbt test
+sbt test                     # unit tests          → test/scala/
+sbt IntegrationTest/test     # integration tests   → it/scala/
+sbt PageTest/test            # browser/page tests  → page/scala/ (needs Chrome)
 ```
 
----
+`PageTest` drives a real Chrome over CDP, so it lives in its own
+configuration and stays out of the default `sbt test` so non-browser
+CI runners don't need a Chrome install.
 
-## Project Structure
+## Deploying
 
-```
-.
-├── app/
-│   ├── controllers/
-│   │   ├── HealthController.scala   # GET /health
-│   │   └── ItemController.scala    # REST endpoints
-│   ├── models/
-│   │   └── Item.scala              # Domain model + request shapes
-│   ├── modules/
-│   │   └── MongoModule.scala       # Guice DI wiring for Mongo
-│   ├── repositories/
-│   │   └── ItemRepository.scala    # All MongoDB access
-│   └── services/
-│       └── ItemService.scala       # Business logic
-├── conf/
-│   ├── application.conf
-│   └── routes
-├── test/
-│   └── controllers/
-│       └── ItemControllerSpec.scala
-├── build.sbt
-└── project/
-    ├── build.properties
-    └── plugins.sbt
+Fly.io. One machine in `arn` (Stockholm), 1 GB shared-CPU, with a
+write-through Mongo elsewhere.
+
+```bash
+flyctl deploy
 ```
 
----
+The Dockerfile builds the Play distribution via sbt-native-packager;
+`fly.toml` pins the runtime config (memory, ALPN, health check). Brief
+downtime during a redeploy is acceptable per project conventions —
+this is a hobby-traffic app, not a 24/7 SLA.
 
-## Extending
+## Conventions
 
-To add a new resource (e.g. `User`):
+Project-specific conventions for working on this codebase (script
+discipline, backfill rules, license posture, etc.) live in
+[`CLAUDE.md`](./CLAUDE.md).
 
-1. Add `User.scala` in `models/`
-2. Add `UserRepository.scala` in `repositories/`
-3. Add `UserService.scala` in `services/`
-4. Add `UserController.scala` in `controllers/`
-5. Add routes in `conf/routes`
+## License
+
+Source-available under the
+[PolyForm Noncommercial License 1.0.0](./LICENSE). Free for personal,
+research, educational, and other noncommercial use.
+**Commercial use requires a separate license** — contact
+pawel.krupinski@gmail.com.
