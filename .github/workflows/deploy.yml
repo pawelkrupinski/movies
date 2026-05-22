@@ -123,19 +123,21 @@ jobs:
     # mask the others (`fail-fast: false`).
     #
     # Version pick is grounded in real phone distribution as of early
-    # 2026: Chrome 120+ is ~85% of Android devices, 108–120 covers
-    # most of the long tail, and 108 is roughly the floor for devices
-    # still receiving Play Services updates. `stable` keeps tracking
-    # whatever Google ships next. Specific versions catch regressions
-    # like the touchstart-vs-click timing change between Chrome ~113
-    # and 148 that bit the card-tap fix — see
+    # 2026: Chrome 120+ is ~85% of Android devices, 113–120 covers
+    # most of the long tail. 113 is the floor we can actually exercise
+    # — chrome-for-testing (what `browser-actions/setup-chrome` resolves
+    # numeric versions from) doesn't publish builds below 113, so older
+    # Android versions aren't reachable from CI at all. `stable` keeps
+    # tracking whatever Google ships next. Specific versions catch
+    # regressions like the touchstart-vs-click timing change between
+    # Chrome ~113 and 148 that bit the card-tap fix — see
     # [[feedback-ci-chrome-version-drift]].
     page-tests-chrome:
         name: page tests (chrome ${{ matrix.chrome }})
         strategy:
             fail-fast: false
             matrix:
-                chrome: ['stable', '128', '120', '113', '108']
+                chrome: ['stable', '128', '120', '113']
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
