@@ -41,6 +41,13 @@ jobs:
             # plain `swift test` covers Unit + Integration cleanly.
             - run: swift test --package-path ios
 
+            - if: failure()
+              uses: ./.github/actions/wake-on-failure
+              with:
+                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
+                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
+                  job:    ios-unit-integration
+
     ui-tests:
         if: github.event_name != 'schedule'
         runs-on: macos-latest
@@ -76,6 +83,16 @@ jobs:
                   path: build/Kinowo.xcresult
                   if-no-files-found: ignore
 
+            # The XCUITest step above carries `continue-on-error: true`,
+            # so this fires only when the macOS SPM parity step fails —
+            # which is the real signal that the parser layer drifted.
+            - if: failure()
+              uses: ./.github/actions/wake-on-failure
+              with:
+                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
+                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
+                  job:    ios-ui-tests
+
     smoke:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         runs-on: ubuntu-latest
@@ -96,3 +113,10 @@ jobs:
 
             - if: failure()
               run: echo "::warning::Smoke tests failed — kinowo.fly.dev response shape drifted; see test output above."
+
+            - if: failure()
+              uses: ./.github/actions/wake-on-failure
+              with:
+                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
+                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
+                  job:    ios-smoke

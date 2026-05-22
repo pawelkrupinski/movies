@@ -58,19 +58,14 @@ jobs:
             # On any failure above (compile, test, stage), poke the local
             # Claude wake-up listener so a fresh Claude Code tab opens on
             # my Mac with the failure context. See
-            # `scripts/ci-wakeup/server.py` for the listener and the
-            # cloudflared tunnel that fronts it. The webhook secret +
-            # URL are stored as repo secrets; an empty `||:` swallows
-            # curl errors so a tunnel outage doesn't pile a second
-            # failure on top of the first.
-            - name: Wake local Claude on failure
-              if: failure()
-              run: |
-                curl -sS --max-time 10 -X POST \
-                  -H "Authorization: Bearer ${{ secrets.CLAUDE_WAKEUP_SECRET }}" \
-                  -H "Content-Type: application/json" \
-                  -d '{"run_id":"${{ github.run_id }}","sha":"${{ github.sha }}","branch":"${{ github.ref_name }}","job":"test","workflow":"${{ github.workflow }}"}' \
-                  "${{ secrets.CLAUDE_WAKEUP_URL }}" ||:
+            # `.github/actions/wake-on-failure/` for the action and
+            # `scripts/ci-wakeup/server.py` for the listener.
+            - if: failure()
+              uses: ./.github/actions/wake-on-failure
+              with:
+                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
+                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
+                  job:    test
 
             # Produce the Play universal-stage distribution here so the
             # deploy job can ship it straight to Fly's builder without
@@ -116,14 +111,12 @@ jobs:
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
-            - name: Wake local Claude on failure
-              if: failure()
-              run: |
-                curl -sS --max-time 10 -X POST \
-                  -H "Authorization: Bearer ${{ secrets.CLAUDE_WAKEUP_SECRET }}" \
-                  -H "Content-Type: application/json" \
-                  -d '{"run_id":"${{ github.run_id }}","sha":"${{ github.sha }}","branch":"${{ github.ref_name }}","job":"integration-test","workflow":"${{ github.workflow }}"}' \
-                  "${{ secrets.CLAUDE_WAKEUP_URL }}" ||:
+            - if: failure()
+              uses: ./.github/actions/wake-on-failure
+              with:
+                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
+                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
+                  job:    integration-test
 
     page-tests:
         runs-on: ubuntu-latest
@@ -168,14 +161,12 @@ jobs:
             # InMemoryMovieRepo replaces Mongo. So no secrets needed.
             - run: sbt PageTest/test
 
-            - name: Wake local Claude on failure
-              if: failure()
-              run: |
-                curl -sS --max-time 10 -X POST \
-                  -H "Authorization: Bearer ${{ secrets.CLAUDE_WAKEUP_SECRET }}" \
-                  -H "Content-Type: application/json" \
-                  -d '{"run_id":"${{ github.run_id }}","sha":"${{ github.sha }}","branch":"${{ github.ref_name }}","job":"page-tests","workflow":"${{ github.workflow }}"}' \
-                  "${{ secrets.CLAUDE_WAKEUP_URL }}" ||:
+            - if: failure()
+              uses: ./.github/actions/wake-on-failure
+              with:
+                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
+                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
+                  job:    page-tests
 
     deploy:
         needs: [test, integration-test, page-tests]
