@@ -38,10 +38,22 @@ test.describe('card poster link on WebKit (iPhone emulation)', () => {
   // (`display: none;` vs `display:none;`), making a CSS-attribute
   // selector brittle. Solve both at once by computing the visible
   // card's title in JS, then targeting it via `[data-title=…]`.
+  //
+  // Also skip cards whose poster `<img>` has been `display:none`-d by
+  // the inline `onerror` fallback — the upstream poster URL (Multikino,
+  // Helios, etc.) sometimes 404s from GH Actions Linux runners while
+  // resolving from my laptop, leaving a real but visually-hidden img
+  // that would fail `toBeVisible()` below.
   const firstVisibleTitle = async (page: import('@playwright/test').Page) =>
     page.evaluate(() => {
       const cols = [...document.querySelectorAll<HTMLElement>('.col[data-title]')];
-      return cols.find((c) => c.style.display !== 'none')?.dataset.title ?? null;
+      for (const c of cols) {
+        if (c.style.display === 'none') continue;
+        const img = c.querySelector<HTMLImageElement>('.poster-wrap > a img');
+        if (!img || img.style.display === 'none') continue;
+        return c.dataset.title ?? null;
+      }
+      return null;
     });
 
   // Target the `<img>` inside the poster-wrap, not the wrapping `<a>`.
