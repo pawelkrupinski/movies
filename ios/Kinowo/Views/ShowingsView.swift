@@ -63,15 +63,22 @@ struct ShowingsView: View {
     /// counts toward `hidden`. Always truncates at cinema boundaries
     /// (never mid-cinema) so the visible block never reads as half a
     /// cinema's slots.
+    ///
+    /// If the truncation would only hide a few rows (≤ `minHiddenLines`),
+    /// skip it entirely and return the full list — the toggle itself
+    /// takes a line, so hiding ≤ 3 lines of content behind it is barely
+    /// a saving and adds friction. Render the whole thing instead.
     private func collapsed(_ allDays: [DayShowings]) -> (visible: [DayShowings], hidden: Int) {
         var lineCount = 0
         var visibleDays: [DayShowings] = []
         var hidden = 0
+        var hiddenLines = 0
         let contentWidth = Self.cardShowingsWidth
 
         for day in allDays {
             var keptCinemas: [CinemaShowings] = []
             var dayLines = 1  // the date label itself
+            var dayHiddenLines = 0
             for cinema in day.cinemas {
                 let pillRows = Self.pillRowCount(cinema.showtimes, contentWidth: contentWidth)
                 let cinemaLines = 1 + pillRows  // cinema label + pill rows
@@ -80,18 +87,33 @@ struct ShowingsView: View {
                     dayLines += cinemaLines
                 } else {
                     hidden += cinema.showtimes.count
+                    dayHiddenLines += cinemaLines
                 }
             }
             if keptCinemas.isEmpty {
-                // The cap is already saturated; everything from here
-                // on goes into `hidden` (including this whole day).
+                // The cap is already saturated; this whole day (date
+                // label + every cinema in it) is hidden.
+                hiddenLines += 1 + dayHiddenLines
                 continue
             }
             visibleDays.append(DayShowings(date: day.date, label: day.label, cinemas: keptCinemas))
             lineCount += dayLines
+            hiddenLines += dayHiddenLines
+        }
+
+        // ≤ 3 hidden lines is less than the toggle saves visually
+        // (toggle itself takes 1 line). Render the whole list rather
+        // than tucking such a small remainder behind a tap.
+        if hiddenLines <= minHiddenLines {
+            return (allDays, 0)
         }
         return (visibleDays, hidden)
     }
+
+    /// Don't bother collapsing when the truncation would only tuck this
+    /// many lines or fewer behind the toggle — the saving isn't worth
+    /// the extra tap.
+    private let minHiddenLines: Int = 3
 
     // MARK: – pill-row sizing
 
