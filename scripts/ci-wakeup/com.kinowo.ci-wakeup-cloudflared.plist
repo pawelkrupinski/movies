@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Cloudflared sidecar — fronts the ci-wakeup listener at a stable HTTPS
+  URL. Reads the named tunnel + ingress rules from ~/.cloudflared/config.yml
+  (see server.py header for the contents). The tunnel UUID is referenced
+  from that config file, not here, so this plist is generic across hosts.
+
+  Prereqs (run-once, see server.py):
+    brew install cloudflared
+    cloudflared tunnel login
+    cloudflared tunnel create movies-ci-wakeup
+    cloudflared tunnel route dns movies-ci-wakeup ci-wakeup.<your-zone>
+
+  Load:    launchctl bootstrap gui/$(id -u) ~/projects/movies/scripts/ci-wakeup/com.kinowo.ci-wakeup-cloudflared.plist
+  Unload:  launchctl bootout   gui/$(id -u)/com.kinowo.ci-wakeup-cloudflared
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.kinowo.ci-wakeup-cloudflared</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/cloudflared</string>
+    <string>tunnel</string>
+    <string>run</string>
+    <string>movies-ci-wakeup</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/pawel/.movies-ci-wakeup-logs/cloudflared.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/pawel/.movies-ci-wakeup-logs/cloudflared.err.log</string>
+</dict>
+</plist>

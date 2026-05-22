@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Auto-starts the ci-wakeup HTTP listener at login. Listener stays on
+  127.0.0.1:9876; the cloudflared sidecar (loaded by the sibling plist)
+  is what makes it reachable from GitHub Actions.
+
+  Load:    launchctl bootstrap gui/$(id -u) ~/projects/movies/scripts/ci-wakeup/com.kinowo.ci-wakeup.plist
+  Unload:  launchctl bootout   gui/$(id -u)/com.kinowo.ci-wakeup
+  Status:  launchctl print gui/$(id -u)/com.kinowo.ci-wakeup
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.kinowo.ci-wakeup</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/pawel/projects/movies/scripts/ci-wakeup/server.py</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/pawel/.movies-ci-wakeup-logs/server.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/pawel/.movies-ci-wakeup-logs/server.err.log</string>
+</dict>
+</plist>
