@@ -283,30 +283,44 @@
   // `(hover: none)` is true on both iPhone and Android, and applying
   // this code on iPhone would require three taps before the link
   // follows. We restore iPhone parity precisely by NOT running on iOS.
+  // TEMP DIAG — wire a visible status panel + per-tap log so we can see
+  // why the listener isn't taking effect on real Android Chrome.
+  function _diagLog(s) {
+    try {
+      let el = document.getElementById('__diag');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = '__diag';
+        el.style.cssText = 'position:fixed;top:80px;left:8px;right:8px;background:#000;color:#0f0;font:11px monospace;padding:6px;z-index:99999;white-space:pre-wrap;max-height:40vh;overflow:auto;border:2px solid #0f0';
+        (document.body || document.documentElement).appendChild(el);
+      }
+      el.textContent += s + '\n';
+    } catch (_) {}
+  }
+  _diagLog('boot UA=' + navigator.userAgent);
+  _diagLog('Android-match=' + /Android/.test(navigator.userAgent));
+
   if (/Android/.test(navigator.userAgent)) {
+    _diagLog('installing listener');
     const clearPreviewed = () => {
       document.querySelectorAll('.card.previewed').forEach(c => c.classList.remove('previewed'));
     };
     document.addEventListener('click', e => {
+      _diagLog('CLICK target=' + (e.target && e.target.tagName) + ' isTrusted=' + e.isTrusted +
+               ' cancelable=' + e.cancelable + ' defaultPrev=' + e.defaultPrevented);
       const card = e.target.closest('.card');
-      if (!card) { clearPreviewed(); return; }
-      // Only the poster <a> and the title <a> get the two-tap
-      // treatment. ★ / ✕ icons (.fav-poster-btn / .hide-btn) and
-      // any cinema-name / showtime links inside the card-body keep
-      // firing immediately — they have their own delegated handlers
-      // above and the user expects single-tap operation.
+      if (!card) { _diagLog('  no card → clear'); clearPreviewed(); return; }
       const link = e.target.closest('a');
-      if (!link) return;
+      if (!link) { _diagLog('  no link'); return; }
       const posterAnchor = card.querySelector('.poster-wrap > a');
       const titleAnchor  = card.querySelector('.card-title > a');
       const onPosterOrTitle =
         (posterAnchor && posterAnchor.contains(link)) ||
         (titleAnchor  && titleAnchor.contains(link));
-      if (!onPosterOrTitle) return;
-      // Second tap on a previewed card — let navigation through.
-      if (card.classList.contains('previewed')) return;
-      // First tap — block nav, reveal icons, mark previewed.
+      if (!onPosterOrTitle) { _diagLog('  not poster/title'); return; }
+      if (card.classList.contains('previewed')) { _diagLog('  already previewed → nav'); return; }
       e.preventDefault();
+      _diagLog('  PREVENTED defaultPrev=' + e.defaultPrevented);
       clearPreviewed();
       card.classList.add('previewed');
     });
