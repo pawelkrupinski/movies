@@ -6,7 +6,7 @@ on:
 
 # Pipeline shape:
 #
-#   lint ────────────┬─►  deploy
+#   lint ────────────┬─►  deploy ──► lighthouse
 #   test ────────────┤
 #   integration-test ┤
 #   ios-local-server ┤
@@ -436,3 +436,40 @@ jobs:
             - run: flyctl deploy --remote-only -a kinowo --build-arg COMMIT_SHA=${{ github.sha }}
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+    # Lighthouse audit against the freshly deployed site. Runs after
+    # deploy so the scores reflect the code that just shipped. Does NOT
+    # gate anything — `continue-on-error: true` and nothing lists it in
+    # `needs:`. Desktop + mobile form factors run because the audit
+    # verdict differs: mobile applies CPU/network throttling (4× slowdown,
+    # slow 4G). Thresholds live in `.lighthouserc.json` (desktop) and
+    # `.lighthouserc.mobile.json` (mobile).
+    lighthouse:
+        needs: [deploy]
+        runs-on: ubuntu-latest
+        continue-on-error: true
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Lighthouse CI (desktop)
+              uses: treosh/lighthouse-ci-action@v12
+              with:
+                  configPath: ./.lighthouserc.json
+                  uploadArtifacts: true
+                  artifactName: lighthouse-results-desktop
+                  temporaryPublicStorage: true
+
+            - name: Lighthouse CI (mobile)
+              uses: treosh/lighthouse-ci-action@v12
+              with:
+                  configPath: ./.lighthouserc.mobile.json
+                  uploadArtifacts: true
+                  artifactName: lighthouse-results-mobile
+                  temporaryPublicStorage: true
+
+            - if: failure()
+              uses: ./.github/actions/wake-on-failure
+              with:
+                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
+                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
+                  job:    lighthouse
