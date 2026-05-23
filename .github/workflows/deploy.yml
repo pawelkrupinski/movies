@@ -288,7 +288,10 @@ jobs:
               run: cd page-tests-playwright && npm ci
 
             - name: Install Playwright browsers
-              run: cd page-tests-playwright && npx playwright install --with-deps
+              # `--with-deps` (no args) installs chromium + firefox + webkit.
+              # `msedge` is a separate channel that uses Microsoft Edge —
+              # the binary needs to be downloaded explicitly.
+              run: cd page-tests-playwright && npx playwright install --with-deps chromium firefox webkit msedge
 
             # Start the fixture server in the background. Writes the
             # chosen free port to a file so we can read it from the

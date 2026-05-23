@@ -78,5 +78,47 @@ export default defineConfig({
         hasTouch:    devices['Pixel 7'].hasTouch,
       },
     },
+    // ─── Desktop projects ───────────────────────────────────────────────
+    //
+    // The three mobile projects above pin the phone-form-factor JS + CSS.
+    // The desktop projects below cover the >= 992 px branch — different
+    // navbar layout (one row, no row-break), `pointer: fine` truthy,
+    // hover-driven UI affordances. smoke runs on every project; card-tap
+    // and a11y are scoped via per-spec predicates (see those files).
+    //
+    // Desktop WebKit — Safari approximation on a Linux runner. Same
+    // engine as the iPhone project but desktop viewport + mouse pointer
+    // + no iOS-only CSS branches. Catches Safari-engine regressions in
+    // the desktop chrome the iPhone project would miss.
+    {
+      name: 'webkit-desktop',
+      use: { ...devices['Desktop Safari'] },
+    },
+    // Desktop Chromium. Re-covers Chrome engine through the Playwright
+    // harness on top of the Scala-side page-tests-chrome matrix; this
+    // is the project that hosts the axe-core a11y audit (one project
+    // is enough since axe is DOM/CSS-driven, not engine-driven).
+    {
+      name: 'chromium-desktop',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // Desktop Firefox — Gecko engine with full desktop viewport +
+    // mouse pointer. Sole representation of the third major engine at
+    // desktop size; routinely diverges from Blink/WebKit on flexbox
+    // edge cases, focus rings, and CSS containment.
+    {
+      name: 'firefox-desktop',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    // Desktop Edge via Playwright's `msedge` channel. Same engine as
+    // chromium-desktop but with Edge's defaults (smart-screen,
+    // tracking-prevention) and UA. The Scala page-tests-edge job
+    // already covers Edge desktop end-to-end; this is the cross-
+    // harness consistency check. Requires `playwright install msedge`
+    // in CI so the runner has the Edge binary.
+    {
+      name: 'msedge-desktop',
+      use: { ...devices['Desktop Edge'], channel: 'msedge' },
+    },
   ],
 });

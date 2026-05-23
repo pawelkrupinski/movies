@@ -19,9 +19,12 @@ test.describe('axe-core WCAG audit', () => {
   // overrides and surfaces a `color-contrast` violation that Chromium
   // / WebKit don't see. Gate to one engine — the audit's signal is
   // about content + CSS, not about JS-engine behaviour.
+  // `browserName !== 'chromium'` would let this run on chromium-pixel7,
+  // chromium-desktop, AND msedge-desktop (msedge is a chromium channel).
+  // Pin to one project so the audit produces one verdict per CI run.
   test.skip(
-    ({ browserName }) => browserName !== 'chromium',
-    'axe checks the DOM, not the engine — running on one project is enough',
+    ({}, testInfo) => testInfo.project.name !== 'chromium-desktop',
+    'axe checks the DOM, not the engine — chromium-desktop is enough',
   );
 
   test('home page has no axe violations', async ({ page }) => {
