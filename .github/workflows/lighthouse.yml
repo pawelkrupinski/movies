@@ -44,3 +44,16 @@ jobs:
                   # the desktop step's upload (409 Conflict).
                   artifactName: lighthouse-results-mobile
                   temporaryPublicStorage: true
+
+            # Same wake-on-failure pattern as deploy.yml — only fires
+            # on actual step failures (lighthouse-ci errored, artifact
+            # upload failed, browser install died). Score drops below
+            # threshold are `warn`-level in .lighthouserc*.json so they
+            # don't fail the step; this won't spam Claude on every
+            # perf regression.
+            - if: failure()
+              uses: ./.github/actions/wake-on-failure
+              with:
+                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
+                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
+                  job:    lighthouse
