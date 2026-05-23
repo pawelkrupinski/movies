@@ -237,7 +237,14 @@ struct TabLabelOverlay: View {
             .overlay(
                 Capsule().strokeBorder(Color.white.opacity(0.12))
             )
-            .accessibilityIdentifier(text == "Filmy" ? A11y.TabOverlay.filmy : A11y.TabOverlay.kina)
+            .accessibilityIdentifier({
+                switch text {
+                case "Filmy":    return A11y.TabOverlay.filmy
+                case "Kina":     return A11y.TabOverlay.kina
+                case "Ulubione": return A11y.TabOverlay.ulubione
+                default:         return A11y.TabOverlay.filmy
+                }
+            }())
     }
 }
 

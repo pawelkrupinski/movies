@@ -212,6 +212,66 @@ extension Sequence where Element == Film {
         }
     }
 
+    /// Favourites-tab projection. Mirrors the web's `/ulubione` filter
+    /// pass in `repertoire.scala.html`:
+    ///
+    /// - a film is visible iff `favouriteMovies.contains(film.title)`
+    ///   (whole-movie favourite) OR at least one of its screenings has
+    ///   an id in `favouriteScreenings` (per-screening favourite);
+    /// - within a film that's a whole-movie favourite, every screening
+    ///   stays;
+    /// - within a film that's only per-screening-favourited, only the
+    ///   specifically favourited screenings stay;
+    /// - the same date / format / search / hidden / cinema-disabled
+    ///   filters from `filteredFor` still apply on top.
+    ///
+    /// Hidden films are intentionally NOT filtered out here — a user
+    /// explicitly favouriting a film overrides them having previously
+    /// dismissed it from the main grid. Web behaviour matches.
+    func filteredForFavourites(
+        date: DateFilter,
+        format: FormatFilter,
+        query: String,
+        favouriteMovies: Set<String>,
+        favouriteScreenings: Set<String>,
+        disabledCinemas: Set<String>,
+        now: Date = Date()
+    ) -> [Film] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return self.compactMap { film in
+            if !q.isEmpty && !film.title.lowercased().contains(q) { return nil }
+            let wholeMovieFav = favouriteMovies.contains(film.title)
+            let days: [DayShowings] = film.showings.compactMap { day in
+                if !date.matches(date: day.date, now: now) { return nil }
+                let cinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
+                    if disabledCinemas.contains(cg.cinema) { return nil }
+                    let kept = cg.showtimes.filter { slot in
+                        if !format.isEmpty && !format.matches(showtime: slot) { return false }
+                        if wholeMovieFav { return true }
+                        let id = ScreeningId.make(
+                            title: film.title, cinema: cg.cinema,
+                            date: day.date, time: slot.time
+                        )
+                        return favouriteScreenings.contains(id)
+                    }
+                    guard !kept.isEmpty else { return nil }
+                    return CinemaShowings(cinema: cg.cinema, cinemaURL: cg.cinemaURL, showtimes: kept)
+                }
+                guard !cinemas.isEmpty else { return nil }
+                return DayShowings(date: day.date, label: day.label, cinemas: cinemas)
+            }
+            if days.isEmpty { return nil }
+            return Film(
+                title: film.title,
+                posterURL: film.posterURL,
+                fallbackPosterURLs: film.fallbackPosterURLs,
+                runtimeMinutes: film.runtimeMinutes,
+                ratings: film.ratings,
+                showings: days
+            )
+        }
+    }
+
     /// Pivot the (cross-cinema) film list into per-cinema sections. The
     /// web's `/kina` controller emits this shape directly from
     /// `CinemaSchedule`; iOS only sees the per-film grouping from `/`,

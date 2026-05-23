@@ -23,7 +23,16 @@ struct ContentView: View {
     @State private var tabLabel: String? = nil
     @State private var tabLabelTask: Task<Void, Never>?
 
-    enum Tab: Hashable { case films, cinemas }
+    enum Tab: Hashable { case films, cinemas, favourites }
+
+    /// Tab → centre-screen label flashed on swipe arrival.
+    private func tabLabel(for tab: Tab) -> String {
+        switch tab {
+        case .films:      return "Filmy"
+        case .cinemas:    return "Kina"
+        case .favourites: return "Ulubione"
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -89,7 +98,7 @@ struct ContentView: View {
             // label-on-arrival affordance the swipe-driven changes get.
             // Idempotent — running on every appear is fine; the task
             // cancels the previous fade-out cleanly.
-            showTabLabel(tab == .films ? "Filmy" : "Kina")
+            showTabLabel(tabLabel(for: tab))
         }
         .onChange(of: scenePhase) { phase in
             // App came back from background — drop screenings that
@@ -116,6 +125,8 @@ struct ContentView: View {
                     .tag(Tab.films)
                 cinemasPage
                     .tag(Tab.cinemas)
+                favouritesPage
+                    .tag(Tab.favourites)
             }
             // `.page(indexDisplayMode: .never)` gives horizontal swipe
             // between pages without the dot indicator at the bottom —
@@ -129,8 +140,24 @@ struct ContentView: View {
                 FilmDetailView(film: film)
             }
             .onChange(of: tab) { new in
-                showTabLabel(new == .films ? "Filmy" : "Kina")
+                showTabLabel(tabLabel(for: new))
             }
+        }
+    }
+
+    @ViewBuilder
+    private var favouritesPage: some View {
+        // The TopBar's date pills still drive `dateFilter` here, so
+        // tapping Dziś / Jutro / 7 dni / Wszystkie narrows the
+        // favourites view to that window. When the result is empty
+        // the dedicated empty state distinguishes "you have no
+        // favourites yet" from "no favourites play in this window".
+        let films = filmsForFavouritesTab
+        if films.isEmpty {
+            FavouritesEmptyView(hasAnyFavourites: hasAnyFavourites)
+        } else {
+            FilmGridView(films: films)
+                .refreshable { await store.reload() }
         }
     }
 
@@ -207,6 +234,21 @@ struct ContentView: View {
             format: formatFilter,
             query: search,
             hidden: prefs.hiddenFilms,
+            disabledCinemas: prefs.disabledCinemas
+        )
+    }
+
+    private var hasAnyFavourites: Bool {
+        !prefs.favouriteMovies.isEmpty || !prefs.favouriteScreenings.isEmpty
+    }
+
+    private var filmsForFavouritesTab: [Film] {
+        store.films.filteredForFavourites(
+            date: dateFilter,
+            format: formatFilter,
+            query: search,
+            favouriteMovies: prefs.favouriteMovies,
+            favouriteScreenings: prefs.favouriteScreenings,
             disabledCinemas: prefs.disabledCinemas
         )
     }
