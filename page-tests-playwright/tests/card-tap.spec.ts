@@ -9,15 +9,17 @@ import { test, expect } from '@playwright/test';
 
 test.describe('card poster link on WebKit (iPhone emulation)', () => {
   // The iPhone UA + sticky-hover assertions are tied to the iPhone-13
-  // emulation project. `browserName !== 'webkit'` would let this also
+  // emulation project. The describe-level `test.skip(callback)` form
+  // only receives fixtures, not TestInfo, so reading project.name has
+  // to happen from a beforeEach (where TestInfo is the 2nd arg). A
+  // plain `browserName !== 'webkit'` predicate would also let this
   // run on webkit-desktop (Desktop Safari) which has a desktop UA and
   // no touch — every assertion in this file would fail there.
-  test.skip(
-    ({}, testInfo) => testInfo.project.name !== 'webkit',
-    'iPhone UA + sticky-hover assertions — webkit (iPhone 13) project only',
-  );
-
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'webkit',
+      'iPhone UA + sticky-hover assertions — webkit (iPhone 13) project only',
+    );
     await page.goto('/');
     // The `/` page renders 100+ cards from the live database; pin the
     // date filter to "anytime" so the visible set isn't a function

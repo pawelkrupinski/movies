@@ -30,6 +30,7 @@ jobs:
               with:
                   configPath: ./.lighthouserc.json
                   uploadArtifacts: true
+                  artifactName: lighthouse-results-desktop
                   temporaryPublicStorage: true
 
             - name: Lighthouse CI (mobile)
@@ -37,4 +38,9 @@ jobs:
               with:
                   configPath: ./.lighthouserc.mobile.json
                   uploadArtifacts: true
+                  # Distinct artifactName per step — both runs in the
+                  # same job upload to the same workflow run, so the
+                  # default `lighthouse-results` name collides with
+                  # the desktop step's upload (409 Conflict).
+                  artifactName: lighthouse-results-mobile
                   temporaryPublicStorage: true

@@ -21,11 +21,15 @@ test.describe('axe-core WCAG audit', () => {
   // about content + CSS, not about JS-engine behaviour.
   // `browserName !== 'chromium'` would let this run on chromium-pixel7,
   // chromium-desktop, AND msedge-desktop (msedge is a chromium channel).
-  // Pin to one project so the audit produces one verdict per CI run.
-  test.skip(
-    ({}, testInfo) => testInfo.project.name !== 'chromium-desktop',
-    'axe checks the DOM, not the engine — chromium-desktop is enough',
-  );
+  // Pin to one project. The describe-level `test.skip(callback)` form
+  // only receives fixtures, not TestInfo, so this lives in a
+  // beforeEach where TestInfo is the 2nd arg.
+  test.beforeEach(({}, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'chromium-desktop',
+      'axe checks the DOM, not the engine — chromium-desktop is enough',
+    );
+  });
 
   test('home page has no axe violations', async ({ page }) => {
     await page.goto('/');
