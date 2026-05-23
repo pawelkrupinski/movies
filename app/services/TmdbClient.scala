@@ -266,7 +266,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
   }.getOrElse(Seq.empty)
 
   private[clients] def parseSearchResults(body: String): Seq[TmdbClient.SearchResult] =
-    decodeMovieArray((Json.parse(body) \ "results").as[JsArray])
+    (Json.parse(body) \ "results").asOpt[JsArray].map(decodeMovieArray).getOrElse(Seq.empty)
 
   // /find/{external_id} returns matches under "movie_results" in the same row
   // shape as /search/movie's "results". Both decoders share this body.

@@ -50,6 +50,14 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     client.parseSearchResults(json) shouldBe empty
   }
 
+  it should "return empty when results field is null" in {
+    client.parseSearchResults("""{"page":1,"results":null,"total_pages":0}""") shouldBe empty
+  }
+
+  it should "return empty when results field is missing entirely" in {
+    client.parseSearchResults("""{"page":1,"total_pages":0}""") shouldBe empty
+  }
+
   it should "leave releaseYear empty when release_date is missing or short" in {
     val json =
       """{"results":[
