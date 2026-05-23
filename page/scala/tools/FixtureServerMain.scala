@@ -46,7 +46,13 @@ object FixtureServerMain {
     wiring.bootStartup()
 
     val anon    = Option.empty[models.User]
-    val noOauth = Set.empty[String]
+    // Render with a non-empty oauthProviders set so the Twirl
+    // `@if(oauthProviders.nonEmpty)` branches surface the anon-nag
+    // toast + Zaloguj się pill in the navbar. The Scala spec uses an
+    // empty set + injects the Zaloguj się pill manually; Playwright
+    // tests get the production-shaped DOM directly so flows like the
+    // anonymous-nag toast lifecycle can be tested end-to-end.
+    val noOauth = Set("google")
     val noFav   = Set.empty[String]
     val cinemas = Cinema.all.map(_.displayName)
     val schedules       = wiring.movieControllerService.toSchedules(now)
