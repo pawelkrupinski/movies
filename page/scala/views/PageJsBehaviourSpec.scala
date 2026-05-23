@@ -808,6 +808,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval(
         """(() => {
           |  const img = document.querySelector('.poster-wrap img[data-original-src]');
+          |  img.onerror = null;
           |  img.removeAttribute('data-fallbacks');
           |  img.style.display = 'none';
           |  img.nextElementSibling.style.display = 'flex';
