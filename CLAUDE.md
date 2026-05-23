@@ -1,31 +1,53 @@
 # Project conventions for Claude
 
-## Scripts must print what they did
+## Run the relevant test layer locally before claiming a feature is done
 
-When running backfill, migration, or investigation scripts (Scala via
-`sbt "Test/runMain …"`, Python one-shots, `curl` probes, Mongo queries — any
-script whose purpose is to *find out* or *change* state), the script MUST
-print the human-readable data it touched so I can see the result without
-needing another query.
+When a change touches an area one of the CI test layers below
+exercises, run **at least one** of those layers locally as part of
+the same task — before reporting the work as done. The list of
+layers and which kinds of changes they catch:
 
-Examples of what to print:
+- **`sbt test`** — unit specs for controllers, services,
+  enrichment, clients, models. Any change under `app/` that isn't
+  pure view markup should run this.
+- **`sbt IntegrationTest/test`** — `it/scala/` specs that wire fakes
+  + the real cache/repo. Required for any change to enrichment
+  pipelines, cache layering, or anything that crosses the
+  `MovieService` ↔ `MovieRepo` ↔ `MovieCache` seam.
+- **`sbt PageTest/test`** — `page/scala/PageJsBehaviourSpec` drives
+  real Chrome over CDP against Twirl-rendered fixtures. Run on any
+  change to `public/js/`, the inline `<script>` blocks in
+  `repertoire/film/kina.scala.html`, or the rendered HTML shape
+  those JS blocks read.
+- **`cd page-tests-playwright && npx playwright test [--project …]`**
+  — Playwright suite covering mobile + desktop × Chromium / WebKit /
+  Firefox / Edge. Required for visible UX changes — card-tap, pill
+  rows, gestures, the empty / loading / favourites states. `--project`
+  narrows to one engine; the default `--list` shows which exist.
+- **iOS LocalServer (`sbt 'PageTest/runMain tools.FixtureServerMain
+  <port-file>'` in one shell, `KINOWO_LOCAL_URL=http://127.0.0.1:$(cat
+  <port-file>) swift test --package-path ios --filter LocalServer`
+  in another)** — exercises real iOS parsers against the live
+  fixture-server render. Required for any change to either side of
+  that contract: server-side template/HTML shape or iOS
+  `HTMLParser` / `FilmDetailParser`.
+- **`swift test --package-path ios`** — iOS unit / integration
+  suites without the live server. Quicker; required for any change
+  to iOS model / parser logic regardless of whether you also need
+  LocalServer.
 
-- **Investigation**: print the rows / records / API responses you inspected
-  (key fields, not raw JSON dumps), so the conclusion is grounded in
-  visible evidence. Don't paraphrase data without showing it.
-- **Backfill / mutation**: print a `BEFORE → AFTER` line per row changed,
-  or at minimum a sample of N rows touched + the total count. Never just
-  "done, updated 142 rows".
-- **Lookups against external APIs** (TMDB, IMDb, Cinemeta, OMDb, Filmweb,
-  Metacritic, RT): print the resolved id/title/year and the field of
-  interest, not just "found a match".
-- **Mongo queries**: print the documents (or projected fields) the query
-  matched, not just the count.
+You should run **all** the layers that match the change. Run them
+**in parallel** when there are no dependencies (separate `Bash`
+tool calls in the same message), but do **not** split the runs into
+new subagents — keep everything in the main session so the test
+output and any follow-up edits stay in one context. The only
+acceptable reason to skip a layer is that the local toolchain is
+missing (e.g. no full Xcode for `xcodebuild test`); say so
+explicitly when reporting the work.
 
-For very large result sets, print the first N (10–20) plus a `(+ M more)`
-line. If the data isn't human-readable (binary, opaque ids, hashes),
-state that explicitly. This applies to ad-hoc scripts you write inside
-the conversation, not to the production app's logging.
+CI is the safety net, not the test plan. Pushing and waiting for
+the wake-on-failure to ping you is the wrong shape; pushing once
+the relevant layers are green locally is the right shape.
 
 ## Remove one-shot scripts after they're used
 
