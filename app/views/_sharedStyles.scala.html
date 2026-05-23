@@ -243,7 +243,9 @@
     /* iOS Safari otherwise pops up the text-selection / link-context
        sheet on long-press, even on `<a>` tabs that should activate
        on tap-release. Disabling user-select + touch-callout makes
-       the tap unambiguous. Doesn't affect keyboard focus / a11y. */
+       the tap unambiguous. Doesn't affect keyboard focus / a11y.
+       `-webkit-user-select` is for iOS ≤ 16. */
+    -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
     /* 35 px tap target with the label vertically centred. */
@@ -296,6 +298,7 @@
     padding: .15rem .55rem .15rem .25rem;
     font-size: .875rem;
     cursor: pointer;
+    -webkit-user-select: none;
     user-select: none;
     min-height: 35px;
   }

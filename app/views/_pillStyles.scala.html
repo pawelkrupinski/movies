@@ -28,7 +28,10 @@
     text-decoration: none;
     /* Prevent iOS long-press selection / link-context sheet on the
        booking-link badges — taps should always activate the link.
-       The fav-star span inside already has user-select: none. */
+       The fav-star span inside already has user-select: none. The
+       `-webkit-` prefix is for iOS Safari ≤ 16 — the unprefixed
+       property is only honored from Safari 17 (Sep 2023). */
+    -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
   }
@@ -49,6 +52,7 @@
     font-size: .85em;
     line-height: 1;
     cursor: pointer;
+    -webkit-user-select: none;
     user-select: none;
   }
   .badge-time:hover .fav-star { display: inline-block; color: rgba(255,210,74,.55); }
