@@ -120,5 +120,36 @@ export default defineConfig({
       name: 'msedge-desktop',
       use: { ...devices['Desktop Edge'], channel: 'msedge' },
     },
+    // ─── Mobile landscape projects ──────────────────────────────────
+    //
+    // Phone landscape: width > height, height ≤ 500 px. The CSS
+    // `(max-height: 500px) and (orientation: landscape)` media query
+    // rearranges the navbar into two compact rows:
+    //   row 1: [search] … [login]
+    //   row 2: [date selector] … [filtry]
+    // Logo + tab links are hidden to save vertical space.
+    {
+      name: 'chromium-landscape',
+      use: {
+        ...devices['Pixel 7'],
+        viewport: { width: devices['Pixel 7'].viewport.height, height: devices['Pixel 7'].viewport.width },
+      },
+    },
+    {
+      name: 'webkit-landscape',
+      use: {
+        ...devices['iPhone 13'],
+        viewport: { width: devices['iPhone 13'].viewport.height, height: devices['iPhone 13'].viewport.width },
+      },
+    },
+    {
+      name: 'firefox-landscape',
+      use: {
+        browserName: 'firefox',
+        viewport: { width: devices['Pixel 7'].viewport.height, height: devices['Pixel 7'].viewport.width },
+        userAgent: devices['Pixel 7'].userAgent,
+        hasTouch: devices['Pixel 7'].hasTouch,
+      },
+    },
   ],
 });
