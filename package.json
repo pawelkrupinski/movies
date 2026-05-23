@@ -1,0 +1,14 @@
+{
+  "name": "kinowo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Top-level package.json — exists only to host ESLint for the production JS under public/js/. The Playwright suite has its own package.json under page-tests-playwright/.",
+  "scripts": {
+    "lint": "eslint 'public/js/**/*.js'"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0"
+  }
+}

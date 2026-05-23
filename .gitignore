@@ -43,3 +43,7 @@ project/plugins/project/
 # `page-tests-playwright/` working directory but local devs may
 # accidentally run from root). Never committed either way.
 /test-results/
+
+# npm dependencies — the top-level `package.json` exists only to host
+# ESLint for `public/js/`; CI installs on demand from the lockfile.
+node_modules/

@@ -86,3 +86,29 @@ scalacOptions ++= Seq(
 // the language level and the API surface to JDK N.
 javacOptions ++= Seq("--release", "21")
 
+// ── Coverage (sbt-scoverage) ──────────────────────────────────────────────────
+//
+// `sbt clean coverage test coverageReport` instruments the bytecode,
+// runs the unit suite, then writes `target/scala-*/scoverage-report/`.
+// CI uploads the report as an artifact and prints the summary text.
+//
+// Templates and one-shot scripts under `test/scala/scripts/` aren't
+// production code — exclude them so the coverage number reflects the
+// app, not generated Twirl or the ad-hoc backfill harnesses.
+coverageExcludedPackages := Seq(
+  "<empty>",
+  "router\\..*",          // play-routes-compiler output (generated)
+  "controllers\\.javascript\\..*",
+  "controllers\\.routes.*",
+  "views\\.html\\..*",    // Twirl-generated `.scala.html` → `.scala`
+).mkString(";")
+coverageExcludedFiles := ".*/test/scala/scripts/.*"
+
+// No minimum floor yet — the report is uploaded as a CI artifact for
+// inspection. Once a few runs land we know the actual baseline, then
+// `coverageMinimumStmtTotal` / `coverageMinimumBranchTotal` get set
+// just under it with `coverageFailOnMinimum := true` so a slip fails
+// the job. Setting a floor today would either be (a) so low it gives
+// no signal or (b) a guess that flakes the first time it runs.
+coverageFailOnMinimum := false
+

@@ -7,11 +7,17 @@ on:
         - cron: '0 6 * * 1'
     workflow_dispatch:
 
-# Informational only — does NOT gate deploy. Lighthouse runs against
-# the live site (post-deploy on push, weekly on schedule), warns on
-# score drops below threshold, and uploads the full HTML report to
-# Lighthouse's temporary public storage so a single click from the
-# workflow run opens the breakdown.
+# Runs against the live site (post-deploy on push, weekly on
+# schedule) and uploads the full HTML report to Lighthouse's
+# temporary public storage so a single click from the workflow run
+# opens the breakdown.
+#
+# Does NOT gate deploy (the workflow runs AFTER deploy.yml has
+# already shipped), but a score drop on accessibility / best-
+# practices / seo now FAILS this workflow — those categories are
+# stable run-to-run and a regression is real. Performance stays
+# 'warn' because mobile-throttled scores flake by 0.1–0.2 on the
+# free Fly tier. See `.lighthouserc.json` for thresholds.
 #
 # Both desktop AND mobile form factors run because the audit verdict
 # differs: mobile applies CPU/network throttling (4× slowdown, slow
@@ -45,12 +51,10 @@ jobs:
                   artifactName: lighthouse-results-mobile
                   temporaryPublicStorage: true
 
-            # Same wake-on-failure pattern as deploy.yml — only fires
-            # on actual step failures (lighthouse-ci errored, artifact
-            # upload failed, browser install died). Score drops below
-            # threshold are `warn`-level in .lighthouserc*.json so they
-            # don't fail the step; this won't spam Claude on every
-            # perf regression.
+            # Same wake-on-failure pattern as deploy.yml. Fires on
+            # any step failure — including the assertion gates in
+            # the .lighthouserc*.json files: a11y / best-practices /
+            # seo regressions wake Claude here.
             - if: failure()
               uses: ./.github/actions/wake-on-failure
               with:
