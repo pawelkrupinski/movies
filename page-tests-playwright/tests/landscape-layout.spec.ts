@@ -60,4 +60,50 @@ test.describe('mobile landscape navbar layout', () => {
     });
     expect(ratio).toBeGreaterThan(0.4);
   });
+
+  test('film grid packs 6 cards per row', async ({ page }) => {
+    // Landscape phones at 844–915 px wide land on Bootstrap's md
+    // breakpoint by default (`row-cols-md-4` = 4 cards/row). The
+    // landscape media query in `_sharedStyles` overrides each
+    // `.col` to `flex: 0 0 calc(100% / 6)`. Reads the column's
+    // computed width against its parent — `getComputedStyle`
+    // works whether or not the date filter has hidden the row,
+    // so this is stable against the default "today" filter
+    // dropping the whole fixture corpus (which is dated to
+    // 2026-05-17, not the wall-clock day the CI runs).
+    const ratio = await page.evaluate(() => {
+      const grid = document.querySelector('#film-grid') as HTMLElement;
+      const col  = grid?.querySelector(':scope > .col') as HTMLElement;
+      if (!grid || !col) return -1;
+      // Force the .col into the layout flow long enough to measure
+      // (display:none would give a zero width). We restore the
+      // previous style after reading.
+      const prevDisplay = col.style.display;
+      col.style.display = 'block';
+      const colWidth  = col.getBoundingClientRect().width;
+      const gridWidth = grid.getBoundingClientRect().width;
+      col.style.display = prevDisplay;
+      return colWidth / gridWidth;
+    });
+    // 100% / 6 ≈ 0.1667. Bootstrap gutters take ~12 px out of each
+    // column, so the visible ratio lands a hair below the math.
+    // Band tolerates that without false positives at 5- or 7-col
+    // breakpoints.
+    expect(ratio).toBeGreaterThan(0.15);
+    expect(ratio).toBeLessThan(0.18);
+  });
+
+  test('card chrome shrinks to mobile-scale floor', async ({ page }) => {
+    // `--mobile-scale` is pinned to 0.85 in landscape, so a card
+    // title's font-size collapses to 0.95rem × 0.85 ≈ 12.92 px on
+    // a 16 px-root document. Tolerance band covers sub-pixel
+    // rounding across engines.
+    const titleFontPx = await page.evaluate(() => {
+      const a = document.querySelector('#film-grid .card-title a') as HTMLElement;
+      if (!a) return -1;
+      return parseFloat(getComputedStyle(a).fontSize);
+    });
+    expect(titleFontPx).toBeGreaterThan(12.5);
+    expect(titleFontPx).toBeLessThan(13.5);
+  });
 });

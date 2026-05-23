@@ -647,6 +647,33 @@
     .navbar-row-break { display: block; order: 3; width: 100%; flex-shrink: 0; height: 0; margin: 0; padding: 0; }
     .navbar-date      { order: 4; margin-left: 0; }
     .navbar-filtry    { order: 5; margin-left: auto; max-width: 50%; min-width: 0; }
+
+    /* Cards in landscape — mirrors the (max-width: 575px) card block.
+       Landscape phones cross the 575 px breakpoint width-wise so
+       those portrait rules don't fire, but the device is still
+       pocket-sized vertically. `--mobile-scale` is pinned to 0.85
+       by `_pillStyles` under the same media query, so the calc()s
+       below shrink the same way the portrait rules do. */
+    .card-body         { padding: calc(1rem * var(--mobile-scale)); }
+    .card-title a      { font-size: calc(.95rem * var(--mobile-scale)); }
+    .pill              { font-size: calc(.72rem * var(--mobile-scale)); padding: 0 calc(5px * var(--mobile-scale)); }
+    .date-label        { font-size: calc(.7rem * var(--mobile-scale)); }
+    .cinema-label      { font-size: calc(.65rem * var(--mobile-scale)); }
+    .no-poster         { font-size: calc(.85rem * var(--mobile-scale)); }
+    #room-tooltip      { font-size: calc(.68rem * var(--mobile-scale)); }
+
+    /* Denser grid: a landscape phone is 700–950 px wide and lands
+       on Bootstrap's md (`row-cols-md-4`) or lg (`row-cols-lg-5`)
+       breakpoint, so 4–5 cards per row. The horizontal real-estate
+       is wider than vertical, so 6 cards fit comfortably with the
+       smaller card chrome above — the user surveys ~50 % more films
+       per scroll position. Selector matches both `/` (#film-grid)
+       and `/kina` (each `.cinema-section` carries its own grid row). */
+    #film-grid > .col,
+    .cinema-section .row > .col {
+      flex: 0 0 calc(100% / 6);
+      max-width: calc(100% / 6);
+    }
   }
 </style>
 @_pillStyles()

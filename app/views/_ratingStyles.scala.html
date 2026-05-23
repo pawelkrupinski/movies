@@ -25,8 +25,11 @@
   /* Mobile scaling sits next to the desktop defaults so /film gets the
      same shrinking as the listing pages. `--mobile-scale` is defined
      in `_pillStyles` (loaded by every page that loads `_ratingStyles`,
-     so the variable is always in scope). */
-  @@media (max-width: 575px) {
+     so the variable is always in scope). The landscape arm of the OR
+     keeps the smaller rating-pill height on wide-but-short phone
+     viewports — `--mobile-scale` is pinned to 0.85 there. */
+  @@media (max-width: 575px),
+         (max-height: 500px) and (orientation: landscape) {
     .rating-imdb, .rating-meta, .rating-fw, .rating-rt {
       font-size: calc(.68rem * var(--mobile-scale));
     }
