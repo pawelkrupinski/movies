@@ -3,7 +3,7 @@
 @for(film <- films) {
 <div class="col" data-title="@film.movie.title">
   @_movieCard(film.movie, film.posterUrl, film.enrichment, favouriteMovies.contains(film.movie.title)) {
-    @_filmShowings(film, favouriteScreenings = favouriteScreenings, maxRows = Some(20))
+    @_filmShowings(film, favouriteScreenings = favouriteScreenings)
   }
 </div>
 }

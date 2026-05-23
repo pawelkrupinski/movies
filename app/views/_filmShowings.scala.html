@@ -1,5 +1,5 @@
-@import controllers.{FilmSchedule, DateFormatter, FilmHref, CinemaShowtimes, ShowingsTruncation, TruncatedShowings}
-@(film: FilmSchedule, showCinemaHeaders: Boolean = true, favouriteScreenings: Set[String] = Set.empty, maxRows: Option[Int] = None)
+@import controllers.{FilmSchedule, DateFormatter, FilmHref}
+@(film: FilmSchedule, showCinemaHeaders: Boolean = true, favouriteScreenings: Set[String] = Set.empty)
 @*
    One film's showings, grouped by date → cinema → time slots.
 
@@ -16,12 +16,6 @@
 
    Cinema name links to that cinema's page for the film when available;
    per-cinema common format tokens are stripped from each slot's badge.
-
-   `maxRows` truncates at cinema boundaries using the same heuristic as
-   the iOS app: date label = 1 row, cinema header = 1 row (when shown),
-   pill rows = ceil(showtimeCount / 6). When truncated, a "więcej"
-   link navigates to the film page. Pass `None` (the default) on the
-   /film page to show everything.
 *@
 @defining(
   film.showings.flatMap(_._2)
@@ -31,10 +25,7 @@
       c -> (if (fmts.isEmpty) Set.empty[String] else fmts.reduce(_ intersect _))
     }
 ) { commonToksByCinema =>
-@defining(maxRows.map(cap => ShowingsTruncation.truncate(film.showings, cap, showCinemaHeaders))
-  .getOrElse(TruncatedShowings(film.showings, 0))
-) { truncated =>
-@for((date, cinemaShowtimesList) <- truncated.showings) {
+@for((date, cinemaShowtimesList) <- film.showings) {
   <div class="date-group" data-date="@date">
     <div class="date-label">@DateFormatter.format(date)</div>
     @for(cinemaShowtimes <- cinemaShowtimesList) {
@@ -74,8 +65,5 @@
     }
   </div>
 }
-@if(truncated.hiddenCount > 0) {
-  <a href="@FilmHref(film.movie.title)" class="showings-more">… +@truncated.hiddenCount @ShowingsTruncation.showtimeNoun(truncated.hiddenCount)</a>
-}
-}
+<a href="@FilmHref(film.movie.title)" class="showings-more" style="display:none"></a>
 }

@@ -366,6 +366,118 @@
   window.addEventListener('resize', () => scheduleReflow(120));
 
 
+  // ── Showings truncation ─────────────────────────────────────────────────
+  //
+  // After each filter pass, caps visible showings per card at ~20 visual
+  // rows. Hides overflow at cinema-group boundaries and shows a
+  // "… +N seansów" link to the /film page. Mirrors the iOS app's collapse.
+  //
+  // Called from applyFilters() in repertoire + kina after visibility has
+  // been set on badges / groups. Walks the already-computed visibility —
+  // no extra DOM measurement. The /film page has no applyFilters and
+  // doesn't call this, so it renders everything.
+
+  const _MAX_SHOWINGS_ROWS = 20;
+  const _PILLS_PER_ROW     = 6;
+  const _MIN_HIDDEN         = 3;
+
+  function _showtimeNoun(n) {
+    if (n === 1) return 'seans';
+    const mod10 = n % 10, mod100 = n % 100;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'seanse';
+    return 'seansów';
+  }
+
+  function undoTruncation() {
+    document.querySelectorAll('.date-group, .cinema-group').forEach(el => {
+      if (el._truncated) { el.style.display = ''; el._truncated = false; }
+    });
+  }
+  window.undoTruncation = undoTruncation;
+
+  function truncateShowings(cardEl, hasCinemaHeaders) {
+    const link = cardEl.querySelector('.showings-more');
+    if (!link) return;
+
+    const dateGroups = cardEl.querySelectorAll('.date-group');
+
+    let lineCount = 0;
+    let hidden = 0;
+    let capped = false;
+
+    for (const dg of dateGroups) {
+      if (dg.style.display === 'none') continue;
+
+      const cinemaGroups = dg.querySelectorAll('.cinema-group');
+      let dayHasVisible = false;
+      const dayLabelRow = 1;
+      let dayLines = dayLabelRow;
+
+      for (const cg of cinemaGroups) {
+        if (cg.style.display === 'none') continue;
+
+        const visibleBadges = [...cg.querySelectorAll('.badge-time')].filter(
+          b => b.style.display !== 'none'
+        ).length;
+        if (visibleBadges === 0) continue;
+
+        if (capped) {
+          hidden += visibleBadges;
+          cg.style.display = 'none';
+          cg._truncated = true;
+          continue;
+        }
+
+        const pillRows = Math.max(1, Math.ceil(visibleBadges / _PILLS_PER_ROW));
+        const cinemaLines = (hasCinemaHeaders ? 1 : 0) + pillRows;
+
+        if (lineCount + dayLines + cinemaLines <= _MAX_SHOWINGS_ROWS) {
+          if (cg._truncated) { cg.style.display = ''; cg._truncated = false; }
+          dayHasVisible = true;
+          dayLines += cinemaLines;
+        } else {
+          hidden += visibleBadges;
+          cg.style.display = 'none';
+          cg._truncated = true;
+          capped = true;
+        }
+      }
+
+      if (dayHasVisible) {
+        lineCount += dayLines;
+      } else if (capped) {
+        if (dg.style.display !== 'none') {
+          dg.style.display = 'none';
+          dg._truncated = true;
+        }
+      }
+    }
+
+    if (hidden > _MIN_HIDDEN) {
+      link.textContent = '… +' + hidden + ' ' + _showtimeNoun(hidden);
+      link.style.display = '';
+    } else {
+      if (hidden > 0) {
+        for (const dg of dateGroups) {
+          if (dg._truncated) { dg.style.display = ''; dg._truncated = false; }
+          for (const cg of dg.querySelectorAll('.cinema-group')) {
+            if (cg._truncated) { cg.style.display = ''; cg._truncated = false; }
+          }
+        }
+      }
+      link.style.display = 'none';
+    }
+  }
+
+  function truncateAllShowings(hasCinemaHeaders) {
+    document.querySelectorAll('.col[data-title]').forEach(col =>
+      truncateShowings(col, hasCinemaHeaders)
+    );
+  }
+
+  window.truncateAllShowings = truncateAllShowings;
+
+
   // ── Hidden-films UI ───────────────────────────────────────────────────────
   //
   // The trigger lives as a row inside the Filtry dropdown

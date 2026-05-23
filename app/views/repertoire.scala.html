@@ -124,6 +124,7 @@
 
   function applyFilters() {
     if (!INDEX) return;
+    undoTruncation();
     // /ulubione hides the filter UI entirely — fall back to "anytime"
     // for dates and "" for search so the favourite-films set isn't
     // narrowed further. Server already pre-filtered to favourites for
@@ -224,10 +225,8 @@
     }
 
     sortByEarliestVisible(earlyMap);
+    truncateAllShowings(true);
     updateCounter(visibleCount, showtimeCount);
-    // Visibility may have changed which pill is end-of-row on each line.
-    // Debounced so a burst of input events (typing in the search box) only
-    // triggers one measurement pass after the DOM settles.
     scheduleReflow();
   }
 

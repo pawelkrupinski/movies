@@ -181,6 +181,7 @@
 
   function applyFilters() {
     if (!INDEX) return;
+    undoTruncation();
     const filter    = document.getElementById('date-filter').value;
     const query     = (document.getElementById('search-input').value || '').trim().toLowerCase();
     const hidden    = new Set(getHidden());
@@ -270,10 +271,8 @@
       if (sectionVisible && section.row) sortSection(section, earlyMap);
     }
 
+    truncateAllShowings(false);
     updateCounter(visibleCount, showtimeCount);
-    // Pills now share the listing-card shape — including the hover-expanding
-    // fav-star — so /kina needs the same end-of-row pre-wrap pass to keep
-    // hover from jumping a pill onto the next line.
     scheduleReflow();
   }
 
