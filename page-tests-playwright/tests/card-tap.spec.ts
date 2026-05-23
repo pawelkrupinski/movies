@@ -1,39 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { pinDateFilterAnytime } from './helpers';
 
-// WebKit (Mobile Safari approximation) — regression coverage for the
-// card-tap two-tap behaviour. iPhone Safari's native sticky-hover
-// handles the first-tap preview without our JS, and `shared.js`
-// explicitly DOESN'T install the Android two-tap listener on iOS UAs
-// (running it there would force a three-tap flow). These tests pin
-// the iPhone-parity contract from the WebKit side.
+// Single-tap card navigation — tapping a poster or title link goes
+// straight to the /film detail page on every browser. Icons (★, ✕)
+// are always visible; no two-tap preview system.
 
 test.describe('card poster link on WebKit (iPhone emulation)', () => {
-  // The iPhone UA + sticky-hover assertions are tied to the iPhone-13
-  // emulation project. The describe-level `test.skip(callback)` form
-  // only receives fixtures, not TestInfo, so reading project.name has
-  // to happen from a beforeEach (where TestInfo is the 2nd arg). A
-  // plain `browserName !== 'webkit'` predicate would also let this
-  // run on webkit-desktop (Desktop Safari) which has a desktop UA and
-  // no touch — every assertion in this file would fail there.
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== 'webkit',
-      'iPhone UA + sticky-hover assertions — webkit (iPhone 13) project only',
+      'webkit (iPhone 13) project only',
     );
     await page.goto('/');
-    // The `/` page renders 100+ cards from the live database; pin the
-    // date filter to "anytime" so the visible set isn't a function
-    // of the runner's wall-clock relative to the live schedule.
     await pinDateFilterAnytime(page);
-  });
-
-  test('UA is iPhone-shaped so the Android listener stays unbound', async ({ page }) => {
-    const ua = await page.evaluate(() => navigator.userAgent);
-    expect(ua).toMatch(/iPhone/);
-    // shared.js gates the two-tap listener on `/Android/.test(ua)`;
-    // iPhone UA should not match.
-    expect(ua).not.toMatch(/Android/);
   });
 
   // `applyFilters` re-appends visible cards after hidden ones in the

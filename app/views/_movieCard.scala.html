@@ -27,7 +27,7 @@
              next URL until the chain is empty, then falls through to
              the `.no-poster` placeholder. *@
           @defining(enrichment.toSeq.flatMap(_.fallbackPosterUrls).map(tools.PosterProxy.proxy).mkString("|")) { fallbacks =>
-            <img src="@tools.PosterProxy.proxy(url)" alt="@movie.title" loading="lazy"@if(fallbacks.nonEmpty){ data-fallbacks="@fallbacks"} onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){this.src=fb.shift();if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <img src="@tools.PosterProxy.proxy(url)" alt="@movie.title" loading="lazy" data-original-src="@tools.PosterProxy.proxy(url)"@if(fallbacks.nonEmpty){ data-fallbacks="@fallbacks" data-original-fallbacks="@fallbacks"} onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';schedulePosterRetry(this)">
           }
           <div class="no-poster" style="display:none">Brak plakatu</div>
         }

@@ -261,104 +261,6 @@
     if (hide) { hideFilm(hide); return; }
   });
 
-  // ── Android two-tap card preview ─────────────────────────────────────────
-  //
-  // iPhone Safari natively applies sticky :hover on the first tap of a
-  // link whose hover styles reveal new content — the user sees the
-  // ★ / ✕ poster icons appear, and the SECOND tap follows the link.
-  // Android engines (Chrome, Firefox, Edge) don't do that: the first
-  // tap fires the click immediately, the page navigates, and the icons
-  // never get a chance to show.
-  //
-  // Emulate the iPhone behaviour on Android by intercepting clicks on
-  // the poster <a> and title <a> inside a `.card`. First tap marks the
-  // card `.previewed` (CSS reveals the icons exactly like `:hover`
-  // does) and suppresses the link. Second tap (or any subsequent tap
-  // on a previewed card's link) is allowed through. A tap outside any
-  // card clears the previewed state; a tap on a different card
-  // transfers the preview to it.
-  //
-  // UA-sniffed rather than feature-detected because there's no clean
-  // probe for "this engine applies sticky :hover on touch links" —
-  // `(hover: none)` is true on both iPhone and Android, and applying
-  // this code on iPhone would require three taps before the link
-  // follows. We restore iPhone parity precisely by NOT running on iOS.
-  if (/Android/.test(navigator.userAgent)) {
-    const clearPreviewed = () => {
-      document.querySelectorAll('.card.previewed').forEach(c => c.classList.remove('previewed'));
-    };
-
-    // Returns the `.card` if `target` is inside the poster <a> or
-    // title <a> of one — null otherwise. The ★ / ✕ icons and any
-    // showtime / cinema-name links inside the card-body keep their
-    // single-tap behaviour (their own delegated handlers above run on
-    // the click pass below; touchstart never matches here).
-    const cardForPosterOrTitle = (target) => {
-      if (!target || !target.closest) return null;
-      const card = target.closest('.card');
-      if (!card) return null;
-      const link = target.closest('a');
-      if (!link) return null;
-      const posterAnchor = card.querySelector('.poster-wrap > a');
-      const titleAnchor  = card.querySelector('.card-title > a');
-      const onPosterOrTitle =
-        (posterAnchor && posterAnchor.contains(link)) ||
-        (titleAnchor  && titleAnchor.contains(link));
-      return onPosterOrTitle ? card : null;
-    };
-
-    // First the touchstart pass with `{ passive: false }`. Older
-    // Chrome on Android (the version the user reported the bug on,
-    // and what CI's Linux runner ships) dispatches the synthetic
-    // click event AFTER the navigation default action has already
-    // started — `preventDefault` on click fires too late to stop the
-    // link from following. Calling `preventDefault` on touchstart
-    // instead suppresses the entire synthetic-mouse-event sequence
-    // (mousedown / mouseup / click), so the navigation never
-    // initiates. We only preventDefault when the touch lands on a
-    // poster / title link of a not-yet-previewed card, so the rest
-    // of the page (scrolling, showtime pills, ★ / ✕ buttons) keeps
-    // its native behaviour.
-    document.addEventListener('touchstart', e => {
-      const target = e.target;
-      const card = cardForPosterOrTitle(target);
-      if (!card) {
-        // Touch landed outside a poster / title — if it's outside any
-        // card, drop any preview so the next tap on a card starts the
-        // cycle fresh.
-        if (!(target && target.closest && target.closest('.card'))) {
-          clearPreviewed();
-        }
-        return;
-      }
-      if (card.classList.contains('previewed')) return;  // 2nd tap — let nav through
-      e.preventDefault();
-      clearPreviewed();
-      card.classList.add('previewed');
-    }, { passive: false });
-
-    // Click pass — covers the modern-Chrome path (the bubble click
-    // fires before the navigation default, where preventDefault still
-    // works) and any non-touch input (Bluetooth mouse, accessibility
-    // tap-emulation). Idempotent with the touchstart pass: if a card
-    // is already `.previewed` from touchstart, the click pass returns
-    // before re-preventing.
-    document.addEventListener('click', e => {
-      const target = e.target;
-      const card = cardForPosterOrTitle(target);
-      if (!card) {
-        if (!(target && target.closest && target.closest('.card'))) {
-          clearPreviewed();
-        }
-        return;
-      }
-      if (card.classList.contains('previewed')) return;
-      e.preventDefault();
-      clearPreviewed();
-      card.classList.add('previewed');
-    });
-  }
-
   // On boot: paint the existing favourite state onto every star in the
   // freshly-rendered DOM. Runs once before applyFilters() so the filter on
   // /ulubione sees the right .is-fav classes.
@@ -933,6 +835,64 @@
     const toast = document.getElementById('anon-nag-toast');
     if (toast) toast.classList.remove('open');
   }
+
+  // ── Poster retry with exponential backoff ──────────────────────────────
+  //
+  // Mirrors the iOS PosterImage retry loop (RetryBackoff.swift). When all
+  // fallback URLs are exhausted the img is hidden and a backoff timer
+  // schedules a fresh attempt of the entire chain (primary + fallbacks).
+  // Sequence: 2s, 6s, 18s, 54s, 162s (then 162s forever) — multiplier 3,
+  // same as iOS. A `_kinowo_t=<gen>` cache-buster is appended on retries
+  // so the browser (and any upstream CDN / weserv cache) doesn't serve a
+  // stale failure. Returning to the tab (visibilitychange → visible)
+  // resets the backoff cycle, matching iOS's scenePhase → .active reset.
+
+  const _POSTER_RETRY_MAX = 4;
+
+  function _posterDelay(attempt) {
+    var c = Math.max(0, Math.min(attempt, _POSTER_RETRY_MAX));
+    var v = 2;
+    for (var i = 0; i < c; i++) v *= 3;
+    return v;
+  }
+
+  function _posterCacheBust(url, gen) {
+    if (gen === 0) return url;
+    var sep = url.indexOf('?') === -1 ? '?' : '&';
+    return url + sep + '_kinowo_t=' + gen;
+  }
+
+  function schedulePosterRetry(img) {
+    var attempt = parseInt(img.dataset.retryAttempt || '0', 10);
+    var delay = _posterDelay(attempt);
+    img.dataset.retryAttempt = String(attempt + 1);
+    img._posterTimer = setTimeout(function() { restartPosterChain(img); }, delay * 1000);
+  }
+
+  function restartPosterChain(img) {
+    var gen = (parseInt(img.dataset.retryGen || '0', 10)) + 1;
+    img.dataset.retryGen = String(gen);
+    var original = img.dataset.originalSrc;
+    var originalFb = img.dataset.originalFallbacks || '';
+    if (originalFb) img.dataset.fallbacks = originalFb;
+    else img.removeAttribute('data-fallbacks');
+    img.style.display = '';
+    img.nextElementSibling.style.display = 'none';
+    img.src = _posterCacheBust(original, gen);
+  }
+
+  function cancelPosterRetry(img) {
+    if (img._posterTimer) { clearTimeout(img._posterTimer); img._posterTimer = null; }
+  }
+
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState !== 'visible') return;
+    document.querySelectorAll('img[data-retry-attempt]').forEach(function(img) {
+      cancelPosterRetry(img);
+      img.dataset.retryAttempt = '0';
+      restartPosterChain(img);
+    });
+  });
 
   // ── Init ──────────────────────────────────────────────────────────────────
 

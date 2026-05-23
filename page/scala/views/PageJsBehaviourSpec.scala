@@ -748,221 +748,92 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // ── Android card-link two-tap behaviour ──────────────────────────────────
+  // ── Single-tap card navigation ───────────────────────────────────────────
   //
-  // iPhone Safari natively applies sticky `:hover` on the first tap of
-  // a link whose hover styles reveal new content — the ★ / ✕ poster
-  // icons appear on tap 1, the link follows on tap 2. Android engines
-  // (Chrome, Firefox, Edge) don't do that; the first tap navigates
-  // immediately and the icons never appear. shared.js sniffs the
-  // Android UA and emulates the iPhone two-tap UX by marking the card
-  // `.previewed` on the first click and suppressing `<a>` navigation.
-  //
-  // These tests pin both branches: with an Android UA the first tap
-  // must preview, with the default UA the first tap must navigate. The
-  // pair guards against (a) regressing the iPhone parity work and
-  // (b) the iPhone-native UA also being caught by the JS by mistake
-  // (which would force a three-tap flow on iPhone — what these tests
-  // were written to prevent).
+  // Every tap on a poster or title link navigates directly to /film.
+  // Icons (★, ✕) are always visible — no two-tap preview system.
 
-  private val androidUA =
-    "Mozilla/5.0 (Linux; Android 13; Pixel 7) " +
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-
-  /** Real Oppo Chrome UA (Find X6 / CPH2451). Mirrors the bug report's
-   *  device: standard Chrome on Oppo's ColorOS, not the HeyTap stock
-   *  browser. The UA still contains "Android" so the `/Android/`
-   *  regex installs the listener — but using the genuine string in
-   *  the test makes a future regression in UA detection visible. */
-  private val oppoChromeUA =
-    "Mozilla/5.0 (Linux; Android 13; CPH2451) " +
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-
-  /** Override the tab's UA and reload so `shared.js` re-evaluates with
-   *  the new `navigator.userAgent`. Each test opens a fresh tab via
-   *  `openPage`, so the override is scoped to that tab and doesn't
-   *  bleed into other tests. */
-  private def withUA(page: CdpPage, ua: String): Unit = {
-    page.send("Emulation.setUserAgentOverride", play.api.libs.json.Json.obj(
-      "userAgent" -> ua
-    ))
-    page.reload()
-  }
-
-  private def withAndroidUA(page: CdpPage): Unit = withUA(page, androidUA)
-
-  /** First VISIBLE `.card` whose `.poster-wrap > a` exists in the
-   *  rendered page. `applyFilters` re-orders the grid by appending
-   *  the visible cards to the end of the DOM after sorting; hidden
-   *  cards stay in place at the front. A plain `querySelector` would
-   *  return one of those hidden ones (rect = 0×0), so we explicitly
-   *  pick a visible `.col[data-title]` whose inline `display` style
-   *  is not 'none'. The fixture corpus always has cards on `/`;
-   *  pinning the date filter to "anytime" guarantees the visible set
-   *  is non-empty regardless of the browser's wall-clock relative to
-   *  the fixture's dates. */
   private val firstCardPosterLink =
     "(() => [...document.querySelectorAll('.col[data-title]')]" +
     "        .find(c => c.style.display !== 'none')" +
     "        ?.querySelector('.card .poster-wrap > a'))()"
 
-  "the card poster link on Android" should
-    "reveal the .previewed icons and not navigate on the first tap" in {
+  "the card poster link" should
+    "navigate to /film on the first click" in {
     onPath("/") { page =>
-      withAndroidUA(page)
       pinDateFilterAnytime(page)
-
-      page.eval(s"$firstCardPosterLink.click()")
-      // Give the click handler + any synchronous navigation a beat;
-      // 50ms is enough since `.click()` is sync and our JS handler is
-      // sync too, but a navigation that DID fire would race the assert.
-      Thread.sleep(50L)
-
-      page.evalString("location.pathname") shouldBe "/"
-      page.evalBool(
-        s"$firstCardPosterLink.closest('.card').classList.contains('previewed')"
-      ) shouldBe true
-    }
-  }
-
-  it should "follow the link on the second tap" in {
-    onPath("/") { page =>
-      withAndroidUA(page)
-      pinDateFilterAnytime(page)
-
       val title = page.evalString(
         s"$firstCardPosterLink.closest('[data-title]').dataset.title"
       )
-
-      page.eval(s"$firstCardPosterLink.click()")  // 1st tap — preview
-      Thread.sleep(50L)
-      page.evalString("location.pathname") shouldBe "/"
-
-      page.eval(s"$firstCardPosterLink.click()")  // 2nd tap — navigate
+      page.eval(s"$firstCardPosterLink.click()")
       page.waitFor("location.pathname === '/film'", timeoutMs = 5000)
       java.net.URLDecoder.decode(page.evalString("location.search"), "UTF-8") shouldBe
         ("?title=" + title)
     }
   }
 
-  it should "clear the preview when a subsequent tap lands outside any card" in {
-    onPath("/") { page =>
-      withAndroidUA(page)
-      pinDateFilterAnytime(page)
-
-      page.eval(s"$firstCardPosterLink.click()")
-      Thread.sleep(50L)
-      page.evalBool(
-        s"$firstCardPosterLink.closest('.card').classList.contains('previewed')"
-      ) shouldBe true
-
-      // Tap on a navbar element (anything reliably outside `.card`).
-      page.eval("document.querySelector('.navbar').click()")
-      page.evalBool(
-        s"$firstCardPosterLink.closest('.card').classList.contains('previewed')"
-      ) shouldBe false
-    }
-  }
-
-  // Repro for the Oppo-Chrome report: the synthesized-`.click()` test
-  // above passes, but on a real device the page navigates on the first
-  // tap. The difference between `link.click()` and a real tap is the
-  // event sequence: a real tap fires touchstart → touchend → a synthetic
-  // mouse click. If anything between those steps initiates the
-  // navigation before our `click` listener gets a chance to call
-  // `preventDefault`, the link follows on the first tap.
+  // ── Poster retry with exponential backoff ─────────────────────────────
   //
-  // Dispatches the touch sequence explicitly via `Input.dispatchTouchEvent`
-  // and waits for the browser to fire its auto-synthesised click,
-  // rather than relying on `Input.synthesizeTapGesture`'s gesture
-  // pipeline. The synthesise call is in the experimental Input domain
-  // and on headless Linux Chrome (CI runner) the trailing click is not
-  // always delivered through the gesture pipeline, leaving the test
-  // flaky. Explicit touchStart / touchEnd plus a polled wait for the
-  // `previewed` class is deterministic across Chrome builds.
+  // The inline onerror on each poster <img> walks fallback URLs, then
+  // calls schedulePosterRetry to kick off an exponential-backoff retry
+  // loop (2s, 6s, 18s, 54s, 162s — same sequence as iOS). These tests
+  // verify the JS backoff math and the DOM wiring without waiting for
+  // real timers.
 
-  "the card poster link on a real Oppo Chrome UA with a synthesised tap" should
-    "preview on the first tap (not navigate)" in {
+  "poster retry backoff" should "produce the 2·3^n sequence capped at 162" in {
     onPath("/") { page =>
-      // Touch emulation + mobile viewport so the page receives genuine
-      // touch events (not mouse-derived). Set BEFORE the UA-swap reload
-      // so the first paint is mobile-shaped.
-      page.send("Emulation.setDeviceMetricsOverride", play.api.libs.json.Json.obj(
-        "width" -> 390, "height" -> 800, "deviceScaleFactor" -> 0, "mobile" -> true
-      ))
-      page.send("Emulation.setTouchEmulationEnabled", play.api.libs.json.Json.obj(
-        "enabled" -> true
-      ))
-      withUA(page, oppoChromeUA)
-      pinDateFilterAnytime(page)
-
-      // Sanity-check the override took. If `navigator.userAgent` came
-      // back without "Android" we'd never reach the listener installer
-      // and the test failure would be misattributed.
-      val ua = page.evalString("navigator.userAgent")
-      withClue(s"navigator.userAgent after override = $ua") {
-        ua.contains("Android") shouldBe true
-      }
-
-      // Centre of the first visible card's poster link, in CSS pixels.
-      val coords = page.evalString(
-        s"(() => { const a = $firstCardPosterLink;" +
-        "          const r = a.getBoundingClientRect();" +
-        "          return Math.round(r.left + r.width/2) + ',' +" +
-        "                 Math.round(r.top  + r.height/2); })()"
-      )
-      val Array(x, y) = coords.split(',').map(_.toInt)
-
-      // Real touch sequence: touchStart → touchEnd. Chrome's touch
-      // emulation synthesises the trailing click from touchEnd; we wait
-      // for it below rather than dispatching a second mouse click,
-      // because the auto-synthesised click + a manual dispatch would
-      // produce two clicks (the second navigating past `previewed`).
-      page.send("Input.dispatchTouchEvent", play.api.libs.json.Json.obj(
-        "type" -> "touchStart",
-        "touchPoints" -> play.api.libs.json.Json.arr(
-          play.api.libs.json.Json.obj("x" -> x, "y" -> y)
-        )
-      ))
-      page.send("Input.dispatchTouchEvent", play.api.libs.json.Json.obj(
-        "type" -> "touchEnd",
-        "touchPoints" -> play.api.libs.json.Json.arr()
-      ))
-
-      // Poll for the class instead of a fixed sleep — CI Linux Chrome
-      // dispatches the synthesised click asynchronously after touchEnd
-      // lands in the renderer, and a 250 ms wall-clock sleep raced
-      // against that on the slower runner.
-      page.waitFor(
-        s"$firstCardPosterLink.closest('.card').classList.contains('previewed')",
-        timeoutMs = 2000
-      )
-      page.evalString("location.pathname") shouldBe "/"
-
-      page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
-      page.send("Emulation.setTouchEmulationEnabled", play.api.libs.json.Json.obj(
-        "enabled" -> false
-      ))
+      val delays = (0 to 6).map(i => page.evalInt(s"_posterDelay($i)"))
+      delays shouldBe Seq(2, 6, 18, 54, 162, 162, 162)
     }
   }
 
-  // Counter-test: the default (non-Android) UA must navigate on the
-  // first tap — that's the iPhone-parity invariant we're protecting.
-  // iPhone Safari's native sticky-hover does the preview without JS;
-  // headless Chrome with its default Linux/macOS UA has no sticky
-  // hover, so this test exercises "the JS does NOT install the
-  // listener and the link follows immediately".
-  "the card poster link on non-Android (default UA)" should
-    "navigate immediately on the first tap" in {
+  it should "render data-original-src on every poster img" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
-      val title = page.evalString(
-        s"$firstCardPosterLink.closest('[data-title]').dataset.title"
+      val withPoster = page.evalInt(
+        "[...document.querySelectorAll('.poster-wrap img[src]')].length"
       )
-      page.eval(s"$firstCardPosterLink.click()")
-      page.waitFor("location.pathname === '/film'", timeoutMs = 5000)
-      java.net.URLDecoder.decode(page.evalString("location.search"), "UTF-8") shouldBe
-        ("?title=" + title)
+      val withOriginal = page.evalInt(
+        "[...document.querySelectorAll('.poster-wrap img[data-original-src]')].length"
+      )
+      withPoster should be > 0
+      withOriginal shouldBe withPoster
+    }
+  }
+
+  it should "schedule a retry when the fallback chain is exhausted" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      // Grab the first poster img and simulate exhaustion of all fallbacks.
+      page.eval(
+        """(() => {
+          |  const img = document.querySelector('.poster-wrap img[data-original-src]');
+          |  img.removeAttribute('data-fallbacks');
+          |  img.style.display = 'none';
+          |  img.nextElementSibling.style.display = 'flex';
+          |  schedulePosterRetry(img);
+          |})()""".stripMargin)
+      val attempt = page.evalString(
+        "document.querySelector('.poster-wrap img[data-retry-attempt]').dataset.retryAttempt"
+      )
+      attempt shouldBe "1"
+      // Clean up the timer so it doesn't fire during teardown.
+      page.eval(
+        """(() => {
+          |  const img = document.querySelector('.poster-wrap img[data-retry-attempt]');
+          |  cancelPosterRetry(img);
+          |})()""".stripMargin)
+    }
+  }
+
+  it should "append a cache-buster on retry generation > 0" in {
+    onPath("/") { page =>
+      page.evalString("_posterCacheBust('https://example.com/poster.jpg', 0)") shouldBe
+        "https://example.com/poster.jpg"
+      page.evalString("_posterCacheBust('https://example.com/poster.jpg', 3)") shouldBe
+        "https://example.com/poster.jpg?_kinowo_t=3"
+      page.evalString("_posterCacheBust('https://example.com/poster.jpg?w=480', 2)") shouldBe
+        "https://example.com/poster.jpg?w=480&_kinowo_t=2"
     }
   }
 
