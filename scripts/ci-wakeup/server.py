@@ -78,6 +78,9 @@ LOG_DIR = Path.home() / ".movies-ci-wakeup-logs"
 # file exists AND the tty still belongs to a live Terminal tab, the wake
 # routes there; otherwise we fall back to spawning a new tab.
 TARGET_TTY_PATH = Path.home() / ".movies-ci-wakeup-target"
+# Fallback spawn launches this wrapper — it self-registers the new tab's
+# tty so the next webhook routes here too, then runs `claude <prompt>`.
+REGISTER_SCRIPT = REPO_DIR / "scripts" / "ci-wakeup" / "register-tab.sh"
 
 # A single workflow run usually has multiple jobs (iOS has unit-integration,
 # ui-tests, smoke; Deploy has page-tests-chrome and page-tests-webkit), each
@@ -182,9 +185,18 @@ end tell
 
 
 def _spawn_fresh_tab(prompt: str) -> None:
-    """Fallback: open a new Terminal tab in the repo dir running claude with
-    the prompt as its first message."""
-    cmd = f"cd {shlex.quote(str(REPO_DIR))} && claude {shlex.quote(prompt)}"
+    """Fallback when no tab is registered (or the registered tty is gone):
+    open a new Terminal tab running `register-tab.sh <prompt>`. The wrapper
+    writes the new tab's tty to `TARGET_TTY_PATH`, then runs `claude
+    <prompt>` — so subsequent webhooks route into this same tab via the
+    designated-tab path. EXIT trap in the wrapper releases the marker when
+    claude quits.
+
+    After dispatching, block briefly until the marker appears so a webhook
+    arriving moments later doesn't race past an empty marker and spawn a
+    second tab. HTTPServer is single-threaded, so this blocks any second
+    handler too — exactly what we want."""
+    cmd = f"{shlex.quote(str(REGISTER_SCRIPT))} {shlex.quote(prompt)}"
     escaped = cmd.replace("\\", "\\\\").replace('"', '\\"')
     applescript = (
         'tell application "Terminal"\n'
@@ -192,7 +204,18 @@ def _spawn_fresh_tab(prompt: str) -> None:
         f'  do script "{escaped}"\n'
         'end tell\n'
     )
+    # Snapshot the marker's mtime (or None) so we can detect a fresh write
+    # rather than just "the file exists from a prior dead tab".
+    before_mtime = TARGET_TTY_PATH.stat().st_mtime if TARGET_TTY_PATH.exists() else None
     subprocess.run(["osascript", "-e", applescript], check=False)
+    deadline = time.time() + 5.0
+    while time.time() < deadline:
+        if TARGET_TTY_PATH.exists():
+            mtime = TARGET_TTY_PATH.stat().st_mtime
+            if before_mtime is None or mtime > before_mtime:
+                return
+        time.sleep(0.1)
+    sys.stderr.write("warn: marker did not appear within 5s of spawn\n")
 
 
 def _spawn_claude(run_id: str, sha: str, branch: str, job: str, workflow: str) -> None:

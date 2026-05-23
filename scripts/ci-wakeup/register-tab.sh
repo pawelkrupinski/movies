@@ -5,8 +5,13 @@
 #
 # Usage: open a new Terminal tab, then `./scripts/ci-wakeup/register-tab.sh`.
 # The script writes this tab's tty to ~/.movies-ci-wakeup-target, cds into
-# the repo, and execs `claude`. On exit (Ctrl-C, claude quit) it removes
+# the repo, and runs `claude`. On exit (Ctrl-C, claude quit) it removes
 # the marker so the next webhook falls back to spawning a fresh tab.
+#
+# Any args are forwarded to `claude` as its initial prompt — used by the
+# ci-wakeup listener's fallback path, which launches this script when no
+# tab is registered yet, so the spawned tab both registers itself AND
+# starts processing the failure immediately.
 #
 # Only one tab can be registered at a time — re-running this script in
 # another tab silently takes over.
@@ -32,4 +37,4 @@ release() {
 trap release EXIT
 
 cd "$REPO_DIR"
-claude
+claude "$@"
