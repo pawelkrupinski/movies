@@ -121,40 +121,6 @@ queries.
 Always print throughput at the end (`done in 12.3s, ~8 req/s`) so the
 next run can be tuned.
 
-## Backfill stored data when ingestion or maintenance logic changes
-
-Whenever you change how a field is ingested, parsed, normalised,
-scraped, or otherwise maintained — in a way that would produce a
-different value for already-persisted records — you MUST also backfill
-the existing rows in Mongo. The new logic only applies to records
-touched after the change; without a backfill, the DB is left in a mixed
-state where old rows still carry the pre-change value and look
-"correct" until something re-enriches them, which may be never.
-
-Examples that require a backfill:
-
-- Changing how a URL is canonicalised, slugified, or validated (e.g.
-  the Metacritic/RT search-URL rule).
-- Changing the parsing of a scraped field (rating scale, date format,
-  title normalisation).
-- Adding/removing/renaming a field, or changing which source wins when
-  multiple are available.
-- Tightening validation so previously-accepted values should now be
-  `None`/dropped.
-- Fixing a bug in an enrichment client where the buggy output is
-  already in the DB.
-
-Concretely: write an ad-hoc script (under `test/scala/scripts/`) that
-re-runs the affected logic against every stored row and updates Mongo
-in place. Follow the script conventions above (BEFORE → AFTER,
-parallelise within rate limits, print throughput). Don't rely on
-natural re-enrichment to eventually heal the data.
-
-If a backfill is impractical (e.g. source no longer available), say so
-and propose an alternative (invalidate the field, mark rows stale,
-schedule a re-enrichment) rather than silently leaving the DB
-inconsistent.
-
 ## Always add tests for new or changed functionality
 
 Every piece of new or modified behaviour MUST come with a test that
@@ -432,39 +398,6 @@ Each change's diff either deletes the displaced code alongside the new,
 or names the displacement out loud. Silently leaving the now-dead path
 is the failure mode.
 
-## When CI wake-up fires, stand down — don't double-fix
-
-The `wake-on-failure` action on the deploy workflow spawns a fresh
-Claude Code tab on my Mac the moment a job goes red (see the
-`reference_ci_wakeup` memory and `scripts/ci-wakeup/`). That new tab
-gets the failure prompt and starts diagnosing from scratch. If you're
-still in the *same session that just pushed* the failing commit, you
-and the wake-up Claude will race on byte-identical fixes — one push
-becomes a no-op, and you both burnt the same tokens.
-
-After `git push` on a commit you suspect might fail CI, watch for the
-wake-up signals:
-
-- A `claude <prompt about CI run … failed>` line in `ps aux` or `pgrep
-  -fl claude`.
-- A new commit on `origin/main` you didn't make, appearing during your
-  session.
-- `gh run list` newest entry flipping `in_progress` → `failure` on a
-  job that uses `./.github/actions/wake-on-failure`.
-
-If the wake-up fires while you're mid-fix, **stop and let it finish**.
-The wake-up session has clean context (no clutter from this
-conversation); reconciling two parallel fixes is more expensive than
-waiting one out. `git pull` when it pushes, verify, move on.
-
-If you got there first (already pushed the fix before the wake-up
-could diagnose), reference the fix in the commit message so the
-wake-up Claude reads it from `gh run view --log-failed`'s commit
-context and exits fast rather than redoing the diff.
-
-The failure mode is fixing the same bug in parallel and hoping your
-commit lands. Don't.
-
 ## Don't iterate on transient errors
 
 If a tool call fails with an error that smells like a build, cache,
@@ -480,8 +413,9 @@ chasing a phantom.
 The cheap probe: nuke the suspect state (`rm -rf test-results/`,
 `rm -rf node_modules/.cache/`, `pkill -f playwright`, `sbt clean`,
 etc.) and rerun the **original** command. If it reproduces, you have a
-real bug to chase. If it doesn't, you were burning turns on a
-transient — move on.
+real bug to chase. If it doesn't, investigate and fix the test for
+intermittent failures — a test that passes on rerun is not healthy,
+it's flaky.
 
 Real assertion failures have a specific expectation, value, or
 location ("expected X, got Y at line N"). Transients have the shape
