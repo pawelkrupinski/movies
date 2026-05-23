@@ -187,6 +187,49 @@
 </head>
 <body>
 
+<script>
+  var _POSTER_RETRY_MAX = 4;
+  function _posterDelay(attempt) {
+    var c = Math.max(0, Math.min(attempt, _POSTER_RETRY_MAX));
+    var v = 2;
+    for (var i = 0; i < c; i++) v *= 3;
+    return v;
+  }
+  function schedulePosterRetry(img) {
+    var attempt = parseInt(img.dataset.retryAttempt || '0', 10);
+    img.dataset.retryAttempt = String(attempt + 1);
+    img._posterTimer = setTimeout(function() {
+      var gen = (parseInt(img.dataset.retryGen || '0', 10)) + 1;
+      img.dataset.retryGen = String(gen);
+      var original = img.dataset.originalSrc;
+      var originalFb = img.dataset.originalFallbacks || '';
+      if (originalFb) img.dataset.fallbacks = originalFb;
+      else img.removeAttribute('data-fallbacks');
+      img.style.display = '';
+      img.nextElementSibling.style.display = 'none';
+      var sep = original.indexOf('?') === -1 ? '?' : '&';
+      img.src = gen === 0 ? original : original + sep + '_kinowo_t=' + gen;
+    }, _posterDelay(attempt) * 1000);
+  }
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState !== 'visible') return;
+    document.querySelectorAll('img[data-retry-attempt]').forEach(function(img) {
+      if (img._posterTimer) { clearTimeout(img._posterTimer); img._posterTimer = null; }
+      img.dataset.retryAttempt = '0';
+      var gen = (parseInt(img.dataset.retryGen || '0', 10)) + 1;
+      img.dataset.retryGen = String(gen);
+      var original = img.dataset.originalSrc;
+      var originalFb = img.dataset.originalFallbacks || '';
+      if (originalFb) img.dataset.fallbacks = originalFb;
+      else img.removeAttribute('data-fallbacks');
+      img.style.display = '';
+      img.nextElementSibling.style.display = 'none';
+      var sep = original.indexOf('?') === -1 ? '?' : '&';
+      img.src = gen === 0 ? original : original + sep + '_kinowo_t=' + gen;
+    });
+  });
+</script>
+
 <nav class="navbar px-4 py-3">
   <a href="/" class="back-link">← Repertuar</a>
 </nav>

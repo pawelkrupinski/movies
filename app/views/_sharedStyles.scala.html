@@ -798,14 +798,30 @@
     }
   }
 
-  /* Landscape compact padding — the 28 px control heights live
-     in both the `(max-width: 575px)` portrait block and here, but
-     the tighter 3 px top/bottom padding is landscape-only because
-     portrait has room for the scaled `.5rem` padding. */
+  /* Landscape compact padding + heights. The 28 px control heights
+     also live in the `(max-width: 575px)` portrait block — both are
+     needed because a landscape phone has width > 575 px (so the
+     portrait query doesn't match) while a portrait phone has
+     height > 500 px (so this query doesn't match). The tighter
+     3 px top/bottom padding is landscape-only. */
   @@media (max-height: 500px) and (orientation: landscape) {
     .navbar {
       padding-top:    3px !important;
       padding-bottom: 3px !important;
+    }
+    .navbar .nav-tab,
+    .navbar .nav-tab-fav,
+    .navbar .nav-tab-login,
+    .navbar .refresh-btn,
+    .navbar .date-nav-btn,
+    .navbar .btn.date-nav-btn,
+    .navbar .filter-select,
+    .navbar .search-input,
+    .navbar .auth-name {
+      height: 28px;
+      min-height: 28px;
+      max-height: 28px;
+      box-sizing: border-box;
     }
   }
 </style>
