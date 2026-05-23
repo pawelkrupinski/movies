@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
 import services.events.{InProcessEventBus, MovieRecordCreated}
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 
 /**
  * Regression: "Diabeł ubiera się u Prady 2" disappears from the main page
@@ -26,14 +26,6 @@ import tools.GetOnlyHttpFetch
  */
 class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
 
-  // ── Stubs ──────────────────────────────────────────────────────────────────
-
-  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-  }
-
   // TMDB returns "Diabeł ubiera się u Prady 2" (id 928344, imdb tt12340108)
   // for any title search. The film's real TMDB id is unimportant for this
   // test — we just need the stub to resolve every variant to the same id
@@ -44,10 +36,10 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   private val PradaExternalIds = """{"id":928344,"imdb_id":"tt12340108"}"""
 
   private def tmdbStub() = new TmdbClient(
-    http = new StubFetch(Map(
+    http = new RoutingHttpFetch(Map(
       "/search/movie" -> PradaSearch,
       "/external_ids" -> PradaExternalIds
-    )),
+    ), getOnly = true),
     apiKey = Some("stub")
   )
 

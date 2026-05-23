@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import services.events.{DomainEvent, InProcessEventBus, MovieRecordCreated, TmdbResolved}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo, MovieService}
 import tools.Eventually.eventually
-import tools.HttpFetch
+import tools.{HttpFetch, RoutingHttpFetch}
 
 import scala.collection.mutable
 
@@ -32,17 +32,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
   // ── Stubs ──────────────────────────────────────────────────────────────────
 
-  private class StubFetch(routes: Map[String, String]) extends HttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-    override def post(url: String, body: String, contentType: String): String = get(url)
-  }
-
-  private val deadFetch = new HttpFetch {
-    override def get(url: String): String = throw new RuntimeException(s"unused: $url")
-    override def post(url: String, body: String, contentType: String): String = get(url)
-  }
+  private val deadFetch        = RoutingHttpFetch.dead("unused")
   private def deadFilmweb()    = new FilmwebClient(http = deadFetch)
   private def deadMetacritic() = new MetacriticClient(http = deadFetch)
   private def deadRt()         = new RottenTomatoesClient(http = deadFetch)
@@ -58,7 +48,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     """{"data":{"title":{"ratingsSummary":{"aggregateRating":7.0,"voteCount":17000}}}}"""
 
   private def tmdbStub() = new TmdbClient(
-    http = new StubFetch(Map("/search/movie" -> Mk2Search, "/external_ids" -> Mk2ExternalIds)),
+    http = new RoutingHttpFetch(Map("/search/movie" -> Mk2Search, "/external_ids" -> Mk2ExternalIds)),
     apiKey = Some("stub")
   )
 
@@ -85,7 +75,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     bus.subscribe { case e: TmdbResolved => seen.append(e) }
 
     val emptyTmdb = new TmdbClient(
-      http = new StubFetch(Map("/search/movie" -> """{"results":[]}""")),
+      http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}""")),
       apiKey = Some("stub")
     )
     val cache       = new CaffeineMovieCache(new InMemoryMovieRepo())
@@ -111,7 +101,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     bus.subscribe { case e: TmdbResolved => seen.append(e) }
 
     val cache       = new CaffeineMovieCache(new InMemoryMovieRepo())
-    val imdb        = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
+    val imdb        = new ImdbClient(http = new RoutingHttpFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
     val imdbRatings = new ImdbRatings(cache, imdb)
     val svc   = new MovieService(cache, bus, tmdbStub())
 
@@ -128,7 +118,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // `scripts/EnrichmentBackfill` follows this pattern.
   "reEnrichSync" should "fill the row's IMDb rating when chained with imdbRatings.refreshOneSync" in {
     val bus      = new InProcessEventBus()
-    val imdbHttp = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql))
+    val imdbHttp = new RoutingHttpFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql))
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepo())
     val ratings  = new ImdbRatings(cache, new ImdbClient(http = imdbHttp))
     val svc      = new MovieService(cache, bus, tmdbStub())
@@ -158,7 +148,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       ("Mortal Kombat II", Some(2026), seed)
     )))
     // TMDB search returns the same tmdbId 931285 but external_ids has no imdb_id.
-    val tmdbHttp = new StubFetch(Map(
+    val tmdbHttp = new RoutingHttpFetch(Map(
       "/search/movie" -> Mk2Search,
       "/external_ids" -> """{"id":931285, "imdb_id":""}"""   // ← cross-reference dropped
     ))
@@ -190,7 +180,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // TMDB now resolves to a DIFFERENT tmdbId (931285) AND that one has no
     // imdb cross-reference (yet). The old imdbId is about the wrong film and
     // must not leak into the new row.
-    val tmdbHttp = new StubFetch(Map(
+    val tmdbHttp = new RoutingHttpFetch(Map(
       "/search/movie" -> Mk2Search,
       "/external_ids" -> """{"id":931285, "imdb_id":""}"""
     ))
@@ -253,7 +243,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // film — the test asserts this code path is NEVER hit.
     val kieslowski = """{"results":[{"id":124,"title":"Bez końca","original_title":"Bez końca","release_date":"1985-06-17","popularity":12.0}]}"""
     val tmdb = new TmdbClient(
-      http = new StubFetch(Map("/search/movie" -> kieslowski, "/external_ids" -> """{"id":124,"imdb_id":"tt0086961"}""")),
+      http = new RoutingHttpFetch(Map("/search/movie" -> kieslowski, "/external_ids" -> """{"id":124,"imdb_id":"tt0086961"}""")),
       apiKey = Some("stub")
     )
     val svc = new MovieService(cache, new InProcessEventBus(), tmdb)
@@ -284,7 +274,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       ("Bez końca", Some(1985), oldFilm)
     )))
     // TMDB stub returns the Kieślowski film (popularity wins year-less search).
-    val tmdbHttp = new StubFetch(Map(
+    val tmdbHttp = new RoutingHttpFetch(Map(
       "/search/movie" -> """{"results":[{"id":124,"title":"Bez końca","original_title":"Bez końca","release_date":"1985-06-17","popularity":12.0}]}""",
       "/external_ids" -> """{"id":124,"imdb_id":"tt0086961"}"""
     ))
@@ -322,7 +312,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     )))
     // TMDB stub returns a different film if asked — assertion is we don't ask.
     val wrong = """{"results":[{"id":999,"title":"Wrong","original_title":"Wrong","release_date":"2010-01-01","popularity":15.0}]}"""
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = new RoutingHttpFetch(Map(
       "/search/movie" -> wrong,
       "/external_ids" -> """{"id":999,"imdb_id":"tt9999999"}"""
     )), apiKey = Some("stub"))
@@ -353,7 +343,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // TMDB stub returns the wrong film if asked — the assertion is that we
     // don't ask, because the sister-row hit short-circuits.
     val wrong = """{"results":[{"id":99999,"title":"Wrong","original_title":"Wrong","release_date":"2019-01-01","popularity":15.0}]}"""
-    val tmdb = new TmdbClient(http = new StubFetch(Map(
+    val tmdb = new TmdbClient(http = new RoutingHttpFetch(Map(
       "/search/movie" -> wrong,
       "/external_ids" -> """{"id":99999,"imdb_id":"tt9999999"}"""
     )), apiKey = Some("stub"))
@@ -393,7 +383,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case r: TmdbResolved => resolved.append(r) }
 
-    val tmdbHttp = new StubFetch(Map(
+    val tmdbHttp = new RoutingHttpFetch(Map(
       "/search/movie" -> Mk2Search,
       "/movie/931285/credits" -> """{"id":931285,"crew":[{"id":1,"name":"Simon McQuoid","job":"Director","department":"Directing"}]}""",
       "/external_ids" -> Mk2ExternalIds
@@ -436,7 +426,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // recover the id via the suggestion endpoint.
     val frostExternalIds = """{"id":1648927,"imdb_id":""}"""
 
-    val tmdbHttp = new StubFetch(Map(
+    val tmdbHttp = new RoutingHttpFetch(Map(
       "/search/movie"                 -> wrongTitleHit,
       "/movie/50416/credits"          -> wrongCredits,
       "/search/person"                -> personSearch,
@@ -490,7 +480,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo(Seq(
       ("Bez końca", None, stale)
     )))
-    val tmdbHttp = new StubFetch(Map(
+    val tmdbHttp = new RoutingHttpFetch(Map(
       "/search/movie" -> """{"results":[{"id":1596319,"title":"Bez końca","original_title":"Bez końca","release_date":"2026-01-01","popularity":2.0}]}""",
       "/external_ids" -> """{"id":1596319,"imdb_id":"tt39075417"}"""
     ))
@@ -513,7 +503,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     cache.isNegative(key) shouldBe true
 
     val svc = new MovieService(
-      cache, new InProcessEventBus(), new TmdbClient(http = new StubFetch(Map("/search/movie" -> """{"results":[]}""")), apiKey = Some("stub"))
+      cache, new InProcessEventBus(), new TmdbClient(http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}""")), apiKey = Some("stub"))
     )
 
     svc.retryUnresolvedTmdb()
@@ -563,7 +553,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val seenResolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => seenResolved.append(e) }
 
-    val imdb = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
+    val imdb = new ImdbClient(http = new RoutingHttpFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
     val svc  = new MovieService(cache, bus, tmdbStub())
 
     svc.retryUnresolvedTmdb()
@@ -585,7 +575,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val resolved = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case e: TmdbResolved => resolved.append(e) }
 
-    val imdb = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
+    val imdb = new ImdbClient(http = new RoutingHttpFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
     val svc  = new MovieService(cache, bus, tmdbStub())
     bus.subscribe(svc.onMovieRecordCreated)
 
@@ -634,7 +624,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
     // This test exercises the IMDb stage listener — wire it directly without
     // MovieService, since the TMDB stage doesn't fire here.
-    val imdb        = new ImdbClient(http = new StubFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
+    val imdb        = new ImdbClient(http = new RoutingHttpFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
     val imdbRatings = new ImdbRatings(cache, imdb)
     bus.subscribe(imdbRatings.onTmdbResolved)
 

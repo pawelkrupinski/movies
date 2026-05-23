@@ -2,30 +2,19 @@ package services.auth
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.HttpFetch
-
-import scala.collection.mutable
+import tools.RoutingHttpFetch
 
 class FacebookOauthProviderSpec extends AnyFlatSpec with Matchers {
-
-  private class ScriptedFetch(replies: Map[String, String]) extends HttpFetch {
-    val calls: mutable.ListBuffer[(String, String)] = mutable.ListBuffer.empty
-    override def get(url: String): String = {
-      calls += (("GET", url))
-      replies.collectFirst { case (k, v) if url.contains(k) => v }
-        .getOrElse(throw new RuntimeException(s"No scripted reply for GET $url"))
-    }
-    override def post(url: String, body: String, contentType: String): String = {
-      calls += (("POST", url))
-      throw new RuntimeException("Facebook flow should never POST — it's GET-only")
-    }
-  }
 
   private val AppId  = "1234567890"
   private val Secret = "FB_APP_SECRET"
 
+  // Facebook's flow is GET-only — `getOnly = true` makes any accidental
+  // POST throw rather than silently routing through the same map.
+  private def scripted(replies: Map[String, String]) = new RoutingHttpFetch(replies, getOnly = true)
+
   "Facebook.authUrl" should "hit Facebook's dialog/oauth endpoint with email + public_profile scopes" in {
-    val p   = new FacebookOauthProvider(new ScriptedFetch(Map.empty), AppId, Secret)
+    val p   = new FacebookOauthProvider(scripted(Map.empty), AppId, Secret)
     val url = p.authUrl("xyz", "https://k/auth/facebook/callback")
     url should startWith ("https://www.facebook.com/v18.0/dialog/oauth?")
     url should include ("scope=email%2Cpublic_profile")
@@ -34,7 +23,7 @@ class FacebookOauthProviderSpec extends AnyFlatSpec with Matchers {
   }
 
   "Facebook.exchangeCode" should "hit GET /token then GET /me?fields=… and parse the nested picture.data.url" in {
-    val fake = new ScriptedFetch(Map(
+    val fake = scripted(Map(
       "graph.facebook.com/v18.0/oauth/access_token" -> """{"access_token":"EAAtoken","token_type":"bearer","expires_in":5183999}""",
       "graph.facebook.com/v18.0/me"                 ->
         """{"id":"100012345","name":"Test FB","email":"u@example.com","picture":{"data":{"url":"https://platform-lookaside.fbsbx.com/avatar.jpg","width":50,"height":50,"is_silhouette":false}}}"""
@@ -59,7 +48,7 @@ class FacebookOauthProviderSpec extends AnyFlatSpec with Matchers {
   it should "accept an email-less profile — Facebook lets users decline email scope" in {
     // About a third of Facebook users decline the email permission. We
     // shouldn't reject those logins; just store email = None and carry on.
-    val fake = new ScriptedFetch(Map(
+    val fake = scripted(Map(
       "graph.facebook.com/v18.0/oauth/access_token" -> """{"access_token":"t"}""",
       "graph.facebook.com/v18.0/me"                 -> """{"id":"S","name":"FB No-Email"}"""
     ))
@@ -69,7 +58,7 @@ class FacebookOauthProviderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "throw when /me omits id" in {
-    val fake = new ScriptedFetch(Map(
+    val fake = scripted(Map(
       "graph.facebook.com/v18.0/oauth/access_token" -> """{"access_token":"t"}""",
       "graph.facebook.com/v18.0/me"                 -> """{"name":"Idless"}"""
     ))
@@ -80,6 +69,6 @@ class FacebookOauthProviderSpec extends AnyFlatSpec with Matchers {
   }
 
   "Facebook.name" should "be 'facebook' (matches the route :provider segment)" in {
-    new FacebookOauthProvider(new ScriptedFetch(Map.empty), AppId, Secret).name shouldBe "facebook"
+    new FacebookOauthProvider(scripted(Map.empty), AppId, Secret).name shouldBe "facebook"
   }
 }

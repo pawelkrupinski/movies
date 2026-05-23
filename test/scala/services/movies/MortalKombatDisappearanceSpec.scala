@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
 import services.events.{InProcessEventBus, MovieRecordCreated}
-import tools.GetOnlyHttpFetch
+import tools.RoutingHttpFetch
 
 /**
  * Reproduction of the "Mortal Kombat II disappears" report.
@@ -45,14 +45,6 @@ import tools.GetOnlyHttpFetch
  */
 class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
 
-  // ── Stubs ──────────────────────────────────────────────────────────────────
-
-  private class StubFetch(routes: Map[String, String]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-  }
-
   // TMDB returns Mortal Kombat II (tmdbId 931285) for any title search.
   // /external_ids → tt17490712.
   private val Mk2Search =
@@ -61,10 +53,10 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
   private val Mk2ExternalIds = """{"id":931285,"imdb_id":"tt17490712"}"""
 
   private def tmdbStub() = new TmdbClient(
-    http = new StubFetch(Map(
+    http = new RoutingHttpFetch(Map(
       "/search/movie" -> Mk2Search,
       "/external_ids" -> Mk2ExternalIds
-    )),
+    ), getOnly = true),
     apiKey = Some("stub")
   )
 

@@ -7,9 +7,7 @@ import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
-import tools.HttpFetch
-
-import scala.collection.mutable
+import tools.{HttpFetch, RoutingHttpFetch}
 
 /**
  * Tests for `MovieService.reEnrichSync`.
@@ -29,20 +27,7 @@ import scala.collection.mutable
  */
 class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
 
-  private class RecordingStub(routes: Map[String, String]) extends HttpFetch {
-    val requested = mutable.ListBuffer.empty[String]
-    override def get(url: String): String = {
-      requested.append(url)
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
-    }
-    override def post(url: String, body: String, contentType: String): String = get(url)
-  }
-
-  private val deadFetch = new HttpFetch {
-    override def get(url: String): String = throw new RuntimeException(s"unused: $url")
-    override def post(url: String, body: String, contentType: String): String = get(url)
-  }
+  private val deadFetch        = RoutingHttpFetch.dead("unused")
   private def deadFilmweb()    = new FilmwebClient(http = deadFetch)
   private def deadImdb()       = new ImdbClient(http = deadFetch)
   private def deadMetacritic() = new MetacriticClient(http = deadFetch)
@@ -68,7 +53,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
       |]}""".stripMargin
   private val BttFExternalIds = """{"id":105, "imdb_id":"tt0088763"}"""
 
-  private def tmdbWithYearFallback(): RecordingStub = new RecordingStub(Map(
+  private def tmdbWithYearFallback(): RoutingHttpFetch = new RoutingHttpFetch(Map(
     // TMDB returns no hits for `query=...&year=2026&primary_release_year=2026`
     // (the year filter excludes the 1985 film). The order matters: more
     // specific stubs go first in our substring search.
@@ -97,8 +82,8 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     result.flatMap(_.imdbId) shouldBe Some("tt0088763")
     // And we proved it by hitting `/search/movie`. `findByImdbId` (`/find/...`)
     // is never called.
-    tmdbHttp.requested.exists(_.contains("/search/movie"))    shouldBe true
-    tmdbHttp.requested.exists(_.contains("/find/"))           shouldBe false
+    tmdbHttp.calls.map(_._2).exists(_.contains("/search/movie"))    shouldBe true
+    tmdbHttp.calls.map(_._2).exists(_.contains("/find/"))           shouldBe false
   }
 
   // The user-facing scenario this captures: cinema reports year=2026 for an
@@ -117,11 +102,11 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     result.flatMap(_.imdbId)        shouldBe Some("tt0088763")
     result.flatMap(_.originalTitle) shouldBe Some("Back to the Future")
     // Two search calls expected — year-scoped (empty), then year-less.
-    tmdbHttp.requested.count(_.contains("/search/movie")) shouldBe 2
+    tmdbHttp.calls.map(_._2).count(_.contains("/search/movie")) shouldBe 2
   }
 
   it should "leave the existing row untouched when TMDB lookup fails entirely" in {
-    val tmdbHttp = new RecordingStub(Map(
+    val tmdbHttp = new RoutingHttpFetch(Map(
       // Both year-scoped and year-less return zero results.
       "/search/movie" -> """{"results":[]}"""
     ))
