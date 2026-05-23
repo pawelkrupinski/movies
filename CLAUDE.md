@@ -93,39 +93,6 @@ fields that surface in the view, CSS class or `data-*` attribute
 changes on rendered elements, inline `onerror`/`onclick` handler
 changes.
 
-## Remove one-shot scripts after they're used
-
-A script written for a specific past fix — "backfill the rows whose
-`metacriticUrl` was stored as a search URL", "delete the orphaned
-'DZIEŃ DZIECKA W APOLLO' row", "investigate the three Viridiana rows" —
-should be deleted in the same commit that finishes the work. Once the
-change is in the code and the data has been reconciled, the script will
-never re-run; leaving it clutters `test/scala/scripts/` and bit-rots
-against the current schema.
-
-What counts as a one-shot:
-
-- Backfills tied to a specific fix where the data is now in the target
-  state (`AllCapsTitleBackfill`, `ApolloPrefixBackfill`,
-  `CacheKeyYearBackfill`).
-- Per-film investigations (`InvestigateViridiana`).
-- Phase audits for a migration that has since landed (`MergeKeyAudit`,
-  `MongoIdConsolidate`).
-- One-shot data-shape migrations (`MoviesCollectionMigrate`,
-  `SameTmdbIdMerge`).
-
-What to keep:
-
-- Re-runnable diagnostics with no destructive write (`DuplicateAudit`,
-  `MetacriticDiagnostics`).
-- Per-service revalidation patterns that rerun on the next client change
-  (`MetacriticBackfill`, `RottenTomatoesBackfill`, `FilmwebUrlAudit`,
-  `MetascoreBackfill`, `FilmwebReset`, `EnrichmentBackfill`).
-- Ad-hoc one-row refresh tools (`RefreshOneFilmweb`).
-
-If unsure, delete. A future change can re-derive the script from a
-remaining template in five minutes.
-
 ## Parallelize scripts, but don't get rate-limited
 
 Long-running scripts that hit external services (TMDB, IMDb, Filmweb,
@@ -153,94 +120,6 @@ queries.
 
 Always print throughput at the end (`done in 12.3s, ~8 req/s`) so the
 next run can be tuned.
-
-## Never persist Metacritic or Rotten Tomatoes search URLs
-
-`MovieRecord.metacriticUrl` / `MovieRecord.rottenTomatoesUrl` may only
-hold a **canonical** `/movie/...` or `/m/...` URL — the URL of the
-actual film page. Search URLs (`/search/<query>` on Metacritic,
-`/search?search=<query>` on RT) must never be written to the database or
-the in-memory cache.
-
-Why: search URLs are unstable (the result set changes as titles get
-added/renamed), they cache poorly on third-party sites for years, and
-Mongo persistence makes them sticky. The view layer
-(`MovieRecord.metacriticHref` / `rottenTomatoesHref`) already
-synthesises a display-time search link when the stored URL is `None`.
-
-- `MetacriticClient.urlFor` and `RottenTomatoesClient.urlFor` return
-  `Option[String]` — `None` when no canonical slug 200s.
-- Callers must NEVER reintroduce a `.getOrElse(searchUrl(...))` fallback.
-- If a search URL surfaces anywhere in persistence (script, controller,
-  service), treat it as a bug and fix the upstream to return None.
-  Don't filter at the call site.
-
-## Don't let classes register themselves as listeners
-
-A class must not call `lifecycle.addStopHook`, `scheduler.scheduleAtFixedRate`,
-`bus.subscribe`, `addListener`, or any similar self-registration in its
-constructor or init block. That side-effect-on-construction makes the
-class hard to instantiate in tests (the listener fires the moment you
-`new` it), hides the wiring from the call graph, and ties the class's
-lifetime to its purpose.
-
-Instead, expose the operation as a plain method (`def start()`,
-`def tick()`, `def onSomething(…)`) and do the registration in the
-wiring code — the DI module, `AppLoader`, or whichever composition root
-owns the lifecycle. Tests can then construct the class freely and invoke
-the method directly.
-
-When a bus carries multiple event types, the listener should be a
-`PartialFunction[Event, Unit]` rather than a total `Event => Unit` with
-a no-op `case _`. The partial function lets the bus filter on
-`isDefinedAt` and avoids the bug of an accidentally-exhaustive match
-silently swallowing future event types.
-
-```scala
-// Yes:
-def onShowtimeEvent: PartialFunction[CacheEvent, Unit] = {
-  case CacheEvent.Refreshed(movies) => preload(movies)
-}
-
-// No:
-def onShowtimeEvent(e: CacheEvent): Unit = e match {
-  case CacheEvent.Refreshed(movies) => preload(movies)
-  case _                            => ()  // silently eats every new event
-}
-```
-
-## Never hardcode overrides keyed by movie identity
-
-Do not add code that pins a film's data or behaviour by its title, IMDb
-id, TMDB id, year, or any other per-film identifier. No
-`Map("tt0241527" -> "harry-potter-and-the-sorcerers-stone")` slug
-overrides, no `if (title == "Belle") ...`, no
-`imdbId match { case "tt..." => }` special cases, no year-keyed exception
-lists. The existing `TitleOverrides` is the narrow exception that proves
-the rule — TMDB's Polish-locale search literally cannot surface the
-right film — and it is maintained by me, not extended by you.
-
-Per-film overrides paper over upstream data problems, scale linearly
-with edge cases the codebase will never finish collecting, go stale
-silently when upstream corrects itself, and hide the real bug from the
-next reader.
-
-When a film resolves wrong (wrong MC slug, wrong IMDb id, missing
-rating, etc.) the fix MUST be one of:
-
-- A general data-driven path that handles this class of problem — e.g.
-  consulting TMDB's `/alternative_titles` for the US release title
-  rather than pinning HP1's slug; tightening search-scrape acceptance
-  rather than blocking a specific bad slug.
-- A change to how the data is parsed/normalised/cleaned at the source.
-- Accepting that for this row the value stays `None` (and letting the
-  view layer fall back to a synthesised search link).
-
-If after honestly looking you cannot find a non-identity-keyed solution,
-STOP and ask me — describe the case, the upstream data, and what the
-smallest-possible override would look like. I will almost always tell
-you to drop it; the few times I won't, I'll be the one to add it. Do
-NOT ship the override and ask forgiveness.
 
 ## Backfill stored data when ingestion or maintenance logic changes
 
@@ -821,33 +700,6 @@ Signs you've drawn the seam in the wrong place:
 Done right, a fake is boring: a `HashMap`, a fixed list of HTTP
 responses, a `Clock.fixed(...)`. The business logic sits above and is
 exercised end-to-end with the real outer class.
-
-## Intercepting taps on links: preventDefault on touchstart, not just click
-
-Any JS that intercepts a tap on a link to alter its default behaviour
-(suppress navigation, defer it, etc.) must call `preventDefault()` on
-`touchstart` with `{ passive: false }`, not only on `click`. Older
-Chrome versions (the ones on real Android devices and on CI's Linux
-runner) dispatch the link's navigation default *before* the bubble-
-phase `click` listener runs, so a click-only `preventDefault` fires
-too late and the page navigates anyway. Per the Touch Events spec,
-`preventDefault` on touchstart suppresses the entire synthetic mouse
-sequence (mousedown / mouseup / click), so the navigation never
-initiates regardless of when the browser would have dispatched click.
-
-Mirror the same logic across both listeners (touchstart + click).
-Touchstart covers Android Chrome and CI Linux Chrome; click covers
-modern macOS Chrome and any non-touch input (Bluetooth mouse,
-accessibility tap-emulation). Only `preventDefault` when the touch
-lands on the specific element you're handling — broad-stroke
-`preventDefault` on touchstart blocks scrolling and other page
-gestures.
-
-Reference: the iPhone-parity card-tap UX (`public/js/shared.js`,
-`if (/Android/.test(navigator.userAgent))` block) — the click-only
-version (3e03083) passed local-Chrome tests and looked fine, but
-failed on every real Android device + CI Linux Chrome. The
-touchstart-added version (0d08caa) fixed both.
 
 ## Quota-saving patterns (general, not task-specific)
 
