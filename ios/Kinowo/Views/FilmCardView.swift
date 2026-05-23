@@ -130,18 +130,35 @@ private struct PosterView: View {
 /// in order on `.failure`. Mirrors `_movieCard`'s
 /// `<img data-fallbacks=... onerror=...>` so cinema-side 4xxs walk
 /// through other cinemas + TMDB + IMDb before "Brak plakatu" shows.
+///
+/// When the whole chain is exhausted (no URL loaded) we don't sit on
+/// "Brak plakatu" forever — an exponential-backoff retry restarts
+/// from the primary URL after 2s, 4s, 8s, 16s, 32s, 64s. Each retry
+/// bumps `generation`; that's both used as the SwiftUI `.id(...)` to
+/// remount the AsyncImage subtree (forcing a fresh load) AND
+/// stitched into the URL as `_kinowo_t=<n>` so `URLCache` can't
+/// serve us back a stale failure. The cycle resets to 2s on every
+/// `scenePhase == .active` transition — opening the app or
+/// returning from background gives the cinema CDN one more chance.
 private struct PosterImage<NoPoster: View>: View {
     let primary: URL
     let fallbacks: [URL]
     @ViewBuilder var noPoster: () -> NoPoster
+
     @State private var index = 0
+    @State private var generation = 0
+    @State private var cycleAttempt = 0
+    @State private var retryTask: Task<Void, Never>?
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         // index 0 = primary; 1…N = fallbacks[i-1]. Out-of-bounds means
-        // we've exhausted the chain and `.failure` should show noPoster.
-        let url: URL? =
+        // we've exhausted the chain and `.failure` should show
+        // noPoster + schedule the next retry.
+        let baseURL: URL? =
             index == 0 ? primary
             : (index - 1 < fallbacks.count ? fallbacks[index - 1] : nil)
+        let url = baseURL.flatMap { withRetryToken($0, generation) }
         AsyncImage(url: url) { phase in
             switch phase {
             case .success(let img):
@@ -152,17 +169,61 @@ private struct PosterImage<NoPoster: View>: View {
                     .overlay(ProgressView().tint(.gray))
             case .failure:
                 if index <= fallbacks.count - 1 {
-                    // Advance to the next URL in the chain. SwiftUI
-                    // re-keys AsyncImage on the new URL and kicks off
-                    // the next fetch. `index - 1 < fallbacks.count` is
-                    // still true after the bump for indices 0…N-1.
                     Color.clear.onAppear { index += 1 }
                 } else {
                     noPoster()
+                        .onAppear { scheduleNextRetry() }
                 }
             @unknown default:
                 noPoster()
             }
         }
+        .id(generation)
+        .onChange(of: scenePhase) { phase in
+            // Bringing the app to the foreground resets the backoff
+            // clock so a flaky CDN gets a fresh attempt immediately,
+            // not on the 64-second tail of an old cycle. Only fire the
+            // restart when we're currently sitting on a failed chain —
+            // a successfully loaded poster shouldn't be re-fetched.
+            guard phase == .active, index > fallbacks.count else { return }
+            retryTask?.cancel()
+            retryTask = nil
+            cycleAttempt = 0
+            index = 0
+            generation += 1
+        }
+        .onDisappear { retryTask?.cancel(); retryTask = nil }
     }
+
+    private func scheduleNextRetry() {
+        // `noPoster`'s onAppear can fire more than once (scroll
+        // off+on, sibling state churn). Don't stack retry tasks.
+        guard retryTask == nil else { return }
+        let delaySeconds = RetryBackoff.seconds(forAttempt: cycleAttempt)
+        retryTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(delaySeconds) * 1_000_000_000)
+            if Task.isCancelled { return }
+            cycleAttempt += 1
+            index = 0
+            generation += 1
+            retryTask = nil
+        }
+    }
+
+    /// `URLCache` keys responses by URL identity, so a retry of the
+    /// exact same URL can be served the cached failure. Stitching a
+    /// monotonically-incrementing `_kinowo_t` query param onto every
+    /// retry keeps the cinema CDN seeing the canonical URL (unknown
+    /// params get ignored) while invalidating the local cache key.
+    /// `generation == 0` is the first attempt — leave the URL alone
+    /// so we don't pollute the CDN cache key on the happy path.
+    private func withRetryToken(_ base: URL, _ gen: Int) -> URL? {
+        guard gen > 0 else { return base }
+        var c = URLComponents(url: base, resolvingAgainstBaseURL: false) ?? URLComponents()
+        var items = c.queryItems ?? []
+        items.append(URLQueryItem(name: "_kinowo_t", value: "\(gen)"))
+        c.queryItems = items
+        return c.url ?? base
+    }
+
 }

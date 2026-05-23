@@ -14,13 +14,20 @@ final class RepertoireStore: ObservableObject {
 
     private let url: URL
     private let session: URLSession
+    private var lastReloadedAt: Date?
+
+    /// Below this age, `reloadIfStale` is a no-op. 60s is long enough
+    /// that a quick swipe-up-to-notification-centre-and-back doesn't
+    /// hit `/`, and short enough that an actual return-from-background
+    /// after the user did something else for a minute does.
+    private let staleAfter: TimeInterval = 60
 
     init(url: URL = kinowoProductionURL, session: URLSession = .shared) {
         self.url = url
         self.session = session
     }
 
-    func reload() async {
+    func reload(now: Date = Date()) async {
         isLoading = true
         error = nil
         defer { isLoading = false }
@@ -37,9 +44,25 @@ final class RepertoireStore: ObservableObject {
                 throw URLError(.cannotDecodeContentData)
             }
             self.films = HTMLParser.parse(html: html)
+            self.lastReloadedAt = now
         } catch {
             self.error = error
         }
+    }
+
+    /// Called when the app comes back to the foreground. Refreshes the
+    /// payload if the last successful load is older than `staleAfter`
+    /// — newly-added screenings, swapped poster URLs (e.g. a cinema
+    /// rotated their CDN), and any other server-side change land
+    /// without the user having to pull-to-refresh.
+    ///
+    /// On a load failure `lastReloadedAt` stays nil, so the first
+    /// re-foreground after an error reliably retries.
+    func reloadIfStale(now: Date = Date()) async {
+        if let last = lastReloadedAt, now.timeIntervalSince(last) < staleAfter {
+            return
+        }
+        await reload(now: now)
     }
 
     /// Drop showtimes that have slipped into the past since the cached

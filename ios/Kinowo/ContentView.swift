@@ -106,9 +106,19 @@ struct ContentView: View {
             // cinemas by their earliest remaining slot of the day.
             // Mirrors the server's `now - 30min` cutoff from
             // `MovieController.toSchedules` so cached and freshly
-            // fetched payloads age identically. No re-fetch: the
-            // cached data is enough until the user pulls to refresh.
-            if phase == .active { store.pruneStaleShowings() }
+            // fetched payloads age identically.
+            //
+            // `reloadIfStale` then fires a real network fetch when
+            // the cached payload is more than 60s old, picking up
+            // any server-side changes (new screenings, swapped
+            // poster URLs from a cinema rotating their CDN, …)
+            // without the user having to pull-to-refresh. The local
+            // prune still runs first so any time-only update lands
+            // before the network roundtrip completes.
+            if phase == .active {
+                store.pruneStaleShowings()
+                Task { await store.reloadIfStale() }
+            }
         }
     }
 
