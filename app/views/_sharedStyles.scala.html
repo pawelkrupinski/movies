@@ -132,6 +132,18 @@
      intended two-row layout (search adjacent to auth on row 1)
      survives down to ~360 px viewports. */
   @@media (max-width: 379px) { .search-input, .search-input:focus { width: 70px; } }
+
+  /* `#date-filter` is the day-picker `<select>`. Its natural width is
+     driven by the widest option ("Następne 7 dni" / "Pią 29 maja" /
+     etc.) — ~150 px of select chrome on its own, which on the
+     narrowest portrait phones leaves Filtry no room to share row 2
+     when its label is maxed out. Capping the select shifts the
+     widest-option overflow to an ellipsis on the selected option
+     text; the dropdown panel still shows full option labels. The
+     two breakpoints mirror the search-input shrink ladder above so
+     the row budget rebalances at the same widths. */
+  @@media (max-width: 575px) { #date-filter { max-width: 6.5rem; } }
+  @@media (max-width: 379px) { #date-filter { max-width: 5rem; } }
   .hide-btn {
     position: absolute;
     top: 6px; right: 6px;
@@ -312,17 +324,22 @@
     font-size: .7rem; font-weight: 600;
   }
   /* Truncate long display names with an ellipsis so the auth pill
-     can't grow without bound and force navbar wraps. 11ch ≈ "Aleksander…"
-     — long enough for any common Polish given name, short enough to
-     bound the pill width on a 375-px iPhone SE without crowding out
-     the date stepper. The pill itself is inline-flex so the
-     max-width on the inner span propagates outwards. */
+     can't grow without bound and force navbar wraps. On desktop a
+     14 ch cap covers compound Polish names ("Aleksandra-Anna…"); on
+     mobile (portrait + landscape) the row budget is too tight even
+     at 14 ch, so the name disappears entirely there — the avatar +
+     dropdown still surface "who am I logged in as", and the
+     remaining row width goes to search / date / Filtry. */
   .auth-name {
     font-size: .875rem;
-    max-width: 11ch;
+    max-width: 14ch;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  @@media (max-width: 575px),
+         (max-height: 500px) and (orientation: landscape) {
+    .auth-name { display: none; }
   }
   .auth-dropdown {
     position: absolute;

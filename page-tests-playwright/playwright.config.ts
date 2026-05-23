@@ -145,11 +145,30 @@ export default defineConfig({
       },
     },
     {
+      name: 'webkit-landscape-iphone-17',
+      use: {
+        // iPhone 17 landscape ≈ 852 × 393. Playwright's bundled
+        // `devices` doesn't carry the 17 series yet; copy iPhone
+        // 13's UA + touch hints and swap the viewport.
+        ...devices['iPhone 13'],
+        viewport: { width: 852, height: 393 },
+      },
+    },
+    {
+      name: 'webkit-landscape-iphone-17-pro',
+      use: {
+        // iPhone 17 Pro landscape ≈ 874 × 402.
+        ...devices['iPhone 13'],
+        viewport: { width: 874, height: 402 },
+      },
+    },
+    {
       name: 'webkit-landscape-iphone-17-pro-max',
       use: {
-        // Playwright's bundled `devices` table doesn't ship the
-        // 17 Pro Max yet; copy iPhone 13's UA + touch hints, swap
-        // the viewport in landscape to the 17 Pro Max's 956 × 440.
+        // iPhone 17 Pro Max landscape ≈ 956 × 440 — the viewport
+        // the user reported the original two-row reflow looking
+        // wrong on. Pinned as a named project so a future regression
+        // shows up as a dedicated CI row.
         ...devices['iPhone 13'],
         viewport: { width: 956, height: 440 },
       },
