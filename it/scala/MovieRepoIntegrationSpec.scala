@@ -1,0 +1,224 @@
+package integration
+
+import models.{Helios, MovieRecord, Multikino, Source, SourceData, Tmdb}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.mongodb.scala.{MongoClient, SingleObservableFuture}
+import org.mongodb.scala.model.Filters
+import services.movies.MongoMovieRepo
+import tools.Env
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
+
+/**
+ * Live test of MovieRepo against real MongoDB Atlas. Requires MONGODB_URI
+ * to be set (in `.env.local` or the environment). Skips otherwise so CI doesn't
+ * fail without secrets.
+ *
+ * Writes a sentinel record under a deterministic id, reads it back, and cleans
+ * up. Run-isolated so it won't interfere with the production collection of
+ * real movies.
+ */
+class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+
+  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+
+  private val repo = new MongoMovieRepo()
+
+  // Tidy sentinel rows so they don't leak into the production positive cache
+  // at the next app startup (the service hydrates *everything* from Mongo).
+  override protected def afterAll(): Unit = try {
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+      .getCollection("movies")
+    Await.ready(
+      coll.deleteMany(Filters.regex("_id", "^__integration-test-")).toFuture(),
+      10.seconds
+    )
+    client.close()
+    repo.close()
+  } finally super.afterAll()
+
+  "MovieRepo" should "be enabled when MONGODB_URI is set" in {
+    repo.enabled shouldBe true
+  }
+
+  it should "round-trip an MovieRecord: upsert → findAll → match" in {
+    val sentinelTitle = "__integration-test-sentinel__"
+    val sentinelYear  = Some(1900)
+    val toStore = MovieRecord(
+      imdbId         = Some("tt0000001"),
+      imdbRating     = Some(7.5),
+      metascore      = Some(80),
+      filmwebUrl     = Some("https://www.filmweb.pl/film/Test-1900-1"),
+      filmwebRating  = Some(7.2),
+      rottenTomatoes = Some(91),
+      tmdbId            = Some(424242),
+      metacriticUrl     = Some("https://www.metacritic.com/movie/integration-test"),
+      rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/integration_test"),
+      data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Integration Test")))
+    )
+
+    repo.upsert(sentinelTitle, sentinelYear, toStore)
+
+    val all   = repo.findAll()
+    val found = all.find(r => r.title == sentinelTitle && r.year == sentinelYear)
+    found should not be empty
+    val e = found.get.record
+    e.imdbId         shouldBe Some("tt0000001")
+    e.imdbRating     shouldBe Some(7.5)
+    e.metascore      shouldBe Some(80)
+    e.originalTitle  shouldBe Some("Integration Test")
+    e.filmwebUrl     shouldBe Some("https://www.filmweb.pl/film/Test-1900-1")
+    e.filmwebRating  shouldBe Some(7.2)
+    e.rottenTomatoes shouldBe Some(91)
+    e.tmdbId            shouldBe Some(424242)
+    e.metacriticUrl     shouldBe Some("https://www.metacritic.com/movie/integration-test")
+    e.rottenTomatoesUrl shouldBe Some("https://www.rottentomatoes.com/m/integration_test")
+  }
+
+  it should "handle Enrichments with all-None optional fields" in {
+    val title = "__integration-test-sparse__"
+    val toStore = MovieRecord(
+      imdbId         = Some("tt0000002")
+    )
+    repo.upsert(title, None, toStore)
+    val found = repo.findAll().find(r => r.title == title && r.year.isEmpty)
+    found should not be empty
+    val e = found.get.record
+    e.imdbId         shouldBe Some("tt0000002")
+    e.imdbRating     shouldBe None
+    e.metascore      shouldBe None
+    e.originalTitle  shouldBe None
+    e.filmwebUrl     shouldBe None
+    e.filmwebRating  shouldBe None
+    e.rottenTomatoes    shouldBe None
+    e.metacriticUrl     shouldBe None
+    e.rottenTomatoesUrl shouldBe None
+  }
+
+  // Cinema slots are persisted under sourceData.<cinemaName>. Round-trip
+  // every Option field plus a co-production country list to confirm decode
+  // matches encode for the per-cinema sub-document.
+  it should "round-trip a SourceData slot including the production countries" in {
+    val title = "__integration-test-sourcedata-country__"
+    val year  = Some(2026)
+    val slot  = SourceData(
+      title          = Some(title),
+      originalTitle  = Some("Original"),
+      synopsis       = Some("synopsis"),
+      cast           = Some("cast list"),
+      director       = Some("dir"),
+      runtimeMinutes = Some(123),
+      releaseYear    = Some(2025),
+      countries      = Seq("Polska", "Francja"),
+      posterUrl      = Some("https://example/poster.jpg"),
+      filmUrl        = Some("https://example/film"),
+      showtimes      = Seq.empty
+    )
+    val toStore = MovieRecord(
+      imdbId = Some("tt0000003"),
+      data   = Map[Source, SourceData](Helios -> slot)
+    )
+    repo.upsert(title, year, toStore)
+
+    val found = repo.findAll().find(r => r.title == title && r.year == year)
+    found should not be empty
+    val e = found.get.record
+    e.cinemaData.keySet shouldBe Set(Helios)
+    e.cinemaData(Helios).countries shouldBe Seq("Polska", "Francja")
+    e.cinemaData(Helios).filmUrl shouldBe Some("https://example/film")
+    // Merged accessor surfaces the only cinema's countries.
+    e.countries shouldBe Seq("Polska", "Francja")
+  }
+
+  it should "leave countries empty when a slot was written without them" in {
+    val title = "__integration-test-sourcedata-no-country__"
+    val slot  = SourceData()
+    repo.upsert(title, None, MovieRecord(
+      data = Map[Source, SourceData](Multikino -> slot)
+    ))
+    val found = repo.findAll().find(r => r.title == title && r.year.isEmpty)
+    found should not be empty
+    found.get.record.cinemaData(Multikino).countries shouldBe Seq.empty
+    found.get.record.countries shouldBe Seq.empty
+  }
+
+  // Regression for "Tom i Jerry: Przygoda w muzeum" / "Tom i jerry: przygoda w
+  // muzeum": case-only variants of the same Polish title accumulated as
+  // separate Mongo rows because docId was case-preserved. The hourly refresh
+  // walks the Caffeine cache (which collapses them) and only ever wrote back
+  // to one row, leaving the other(s) frozen at whatever they were when first
+  // upserted — including with metacriticUrl/rottenTomatoesUrl set to None for
+  // records created before that feature shipped.
+  it should "collapse case-variant cleanTitle upserts into a single Mongo row" in {
+    val titleCaps = "__integration-test-CASEDEDUPE__"
+    val titleLow  = "__integration-test-casededupe__"
+    val withUrls = MovieRecord(
+      imdbId            = Some("tt0000010"),
+      imdbRating        = Some(7.5),
+      metascore         = Some(80),
+      metacriticUrl     = Some("https://www.metacritic.com/movie/case-dedupe-test"),
+      rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/case_dedupe_test"),
+      data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Case Dedupe Test")))
+    )
+    val withoutUrls = withUrls.copy(
+      metacriticUrl     = None,
+      rottenTomatoesUrl = None
+    )
+
+    // Upsert UPPER first (with URLs), then LOWER (without). With normalized
+    // docId both writes target the same _id, so the second overwrites.
+    repo.upsert(titleCaps, Some(2025), withUrls)
+    repo.upsert(titleLow,  Some(2025), withoutUrls)
+
+    val rows = repo.findAll().filter(_.record.imdbId.contains("tt0000010"))
+    rows                                  should have size 1
+    // Second upsert wins: URLs nulled, which is exactly what made the
+    // production case observable.
+    rows.head.record.metacriticUrl     shouldBe None
+    rows.head.record.rottenTomatoesUrl shouldBe None
+  }
+
+  // Regression: legacy docs in prod were written with an older `docId`
+  // formula (whitespace-preserving), and `repo.delete` — which builds the
+  // `_id` from the *current* formula — silently failed to delete them
+  // (`deleteOne` matched zero docs, no warning). On every restart the
+  // mergeAll pass picked the same losers and tried to delete them, but
+  // their old-formula `_id`s never matched. Fix: delete by `title` + `year`
+  // instead of by `_id`, so any past or future `_id` drift can't defeat the
+  // cleanup.
+  it should "delete every doc matching (title, year), regardless of its _id formula" in {
+    import org.mongodb.scala.bson._
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val coll   = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+      .getCollection[org.mongodb.scala.bson.collection.immutable.Document]("movies")
+    try {
+      // Seed two docs at the same (title, year) but with different `_id`s —
+      // one matching the current formula, one with a stale "old-formula"
+      // shape that the current `MovieRepo.docId` wouldn't compute.
+      val title = "__integration-test-stale-id__"
+      val year  = Some(2099)
+      val freshId = s"${title.toLowerCase.replaceAll("[^a-z0-9]+", "")}|2099"
+      val staleId = s"${title.toLowerCase}|2099"  // stale formula keeps spaces/underscores
+      Seq(freshId, staleId).foreach { id =>
+        val doc = org.mongodb.scala.bson.collection.immutable.Document(
+          "_id"   -> BsonString(id),
+          "title" -> BsonString(title),
+          "year"  -> BsonInt32(2099)
+        )
+        Await.ready(coll.insertOne(doc).toFuture(), 10.seconds)
+      }
+      // Sanity: both docs exist.
+      val before = Await.result(coll.countDocuments(Filters.eq("title", title)).toFuture(), 10.seconds)
+      before shouldBe 2
+
+      repo.delete(title, year)
+
+      val after = Await.result(coll.countDocuments(Filters.eq("title", title)).toFuture(), 10.seconds)
+      after shouldBe 0
+    } finally client.close()
+  }
+}
