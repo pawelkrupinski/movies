@@ -703,10 +703,10 @@
       padding-left:  5px;
       padding-right: 5px;
     }
-    .navbar .nav-tab-fav  { font-size: calc(.9rem  * var(--mobile-scale)); }
-    .navbar .date-nav-btn { font-size: calc(.95rem * var(--mobile-scale)); min-width: 28px; }
+    .navbar .nav-tab-fav  { font-size: calc(.9rem  * var(--mobile-scale)); height: 28px; min-height: 28px; }
+    .navbar .date-nav-btn { font-size: calc(.95rem * var(--mobile-scale)); height: 28px; min-height: 28px; min-width: 28px; }
     .navbar .filter-select,
-    .navbar .search-input { padding-top: 0; padding-bottom: 0; }
+    .navbar .search-input { height: 28px; min-height: 28px; padding-top: 0; padding-bottom: 0; }
 
     /* Cap the Filtry pill + ellipsis on the button text so a maxed-
        out label ("Filtry (kina 9/10, 3D, NAP, IMAX, od 18:30)") can't
@@ -746,9 +746,17 @@
     }
   }
 
-  /* Wide landscape (≥ 900 px): bump to 6 columns. Pixel 7 (915 px),
-     iPhone 17 Pro Max (956 px) have enough room for the denser grid. */
-  @@media (max-height: 500px) and (orientation: landscape) and (min-width: 900px) {
+  /* Wide landscape (≥ 800 px): bump to 6 columns. iPhone 17 Pro Max
+     and Pro have native landscape widths of 956 / 874 CSS px, but
+     because the templates don't set `viewport-fit=cover`, iOS Safari
+     renders the page WITHIN the Dynamic-Island safe-area —
+     `window.innerWidth` (the value media queries match against)
+     drops by ~60 px per side on Pro Max (956 → ~830) and ~40 px on
+     other Pro models. Threshold 800 captures everything from the
+     iPhone Pro / Plus class up; iPhone SE (667) and the
+     narrow-landscape 760 px test viewport correctly stay at 4 cols.
+     The Galaxy S10 narrow-landscape spec assumes this boundary. */
+  @@media (max-height: 500px) and (orientation: landscape) and (min-width: 800px) {
     #film-grid > .col,
     .cinema-section .row > .col {
       flex: 0 0 calc(100% / 6);

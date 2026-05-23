@@ -127,8 +127,11 @@ test.describe('mobile landscape layout', () => {
   // ── Card density: separate concern, stays in landscape ────────
 
   test('film grid column count matches viewport width', async ({ page }) => {
-    // Wide landscape (≥ 900 px): 6 columns (100%/6 ≈ 0.167).
-    // Narrow landscape (< 900 px): 4 columns (25% = 0.25).
+    // Wide landscape (≥ 800 px): 6 columns (100%/6 ≈ 0.167).
+    // Narrow landscape (< 800 px): 4 columns (25% = 0.25).
+    // The 800 cutoff sits above the narrow-landscape 760 spec and
+    // below every iPhone Pro / Plus landscape after the Dynamic-
+    // Island safe-area inset bites (956 → ~830 on 17 Pro Max).
     const { ratio, vpWidth } = await page.evaluate(() => {
       const grid = document.querySelector('#film-grid') as HTMLElement;
       const col  = grid?.querySelector(':scope > .col') as HTMLElement;
@@ -140,7 +143,7 @@ test.describe('mobile landscape layout', () => {
       col.style.display = prevDisplay;
       return { ratio: colWidth / gridWidth, vpWidth: window.innerWidth };
     });
-    if (vpWidth >= 900) {
+    if (vpWidth >= 800) {
       expect(ratio).toBeGreaterThan(0.15);
       expect(ratio).toBeLessThan(0.18);
     } else {
