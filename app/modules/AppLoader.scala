@@ -63,7 +63,9 @@ class AppComponents(context: Context)
     throw new RuntimeException("SCRAPINGANT_KEY must be set")
 
   // ── Router + filters ──────────────────────────────────────────────────────
-  override def httpFilters: Seq[EssentialFilter] = super.httpFilters :+ corsFilter
+  lazy val cspFilter: CspFilter = new CspFilter()(materializer, executionContext)
+  override def httpFilters: Seq[EssentialFilter] =
+    super.httpFilters :+ corsFilter :+ cspFilter
   lazy val router: Router = new Routes(httpErrorHandler, movieController, authController, userStateController, healthController, assets)
 
   start()

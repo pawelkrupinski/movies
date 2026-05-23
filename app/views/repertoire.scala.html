@@ -6,8 +6,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@if(favouritesMode){Ulubione – }Repertuar kinowy Poznań</title>
+  @_errorTracking()
+  @_analytics()
   @* Bootstrap self-hosted — see kina.scala.html for the reasoning. *@
-  <link rel="stylesheet" href="@routes.Assets.versioned("css/bootstrap-5.3.3.min.css")">
+  <link rel="stylesheet" href="@routes.Assets.versioned("css/bootstrap-5.3.3.min.css")" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   @_sharedStyles(devMode)
   @_minified(devMode) {
   <style>

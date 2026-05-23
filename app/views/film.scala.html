@@ -7,6 +7,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@film.movie.title – Repertuar kinowy Poznań</title>
+  @_errorTracking()
+  @_analytics()
 
   @* Open Graph + Twitter Card metadata — drives WhatsApp / Messenger /
      Slack / Telegram / Discord link previews. Preview UIs don't render
@@ -33,7 +35,7 @@
   }
 
   @* Bootstrap self-hosted — see kina.scala.html for the reasoning. *@
-  <link rel="stylesheet" href="@routes.Assets.versioned("css/bootstrap-5.3.3.min.css")">
+  <link rel="stylesheet" href="@routes.Assets.versioned("css/bootstrap-5.3.3.min.css")" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   @_minified(devMode) {
   <style>
     body { background: #111; color: #eee; }

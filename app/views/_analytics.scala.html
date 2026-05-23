@@ -1,0 +1,23 @@
+@*
+   Google Analytics 4 page tag. Driven by `GA_MEASUREMENT_ID` (the
+   `G-XXXXXXXX` measurement id on the GA4 property settings page).
+   When unset the partial emits nothing — local dev, PR previews, and
+   fixture-rendered tests don't ship analytics.
+
+   GA4 is the default choice over Plausible/Umami here because the
+   integration is one script tag plus one `gtag('config', id)` call;
+   self-hosted alternatives would mean standing up a second service
+   and a database for a hobby-traffic site.
+*@
+@tools.Env.get("GA_MEASUREMENT_ID") match {
+  case Some(id) => {
+<script async src="https://www.googletagmanager.com/gtag/js?id=@id"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '@id');
+</script>
+  }
+  case None => {}
+}

@@ -1,0 +1,17 @@
+@*
+   Sentry "Loader Script" tag. Driven by `SENTRY_LOADER_URL` — the
+   per-DSN script path Sentry hosts at
+   `https://js.sentry-cdn.com/<publicKey>.min.js`. When unset the
+   partial emits nothing; the page stays Sentry-free for local dev /
+   PR previews / fixture renders.
+
+   The loader script is async and only initialises the SDK on the
+   first uncaught error (lazy hydration), so the perf cost on
+   error-free page loads is just the `<script src>` request itself.
+   Configuration (release, environment, sampling) lives on the
+   Sentry project dashboard rather than in this page so a tuning
+   change doesn't need a redeploy.
+*@
+@tools.Env.get("SENTRY_LOADER_URL").map { url =>
+<script src="@url" crossorigin="anonymous"></script>
+}
