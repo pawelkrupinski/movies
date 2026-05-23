@@ -34,20 +34,51 @@ interface Phone {
   height: number;  // CSS-pixel height in portrait
 }
 
-// Real CSS-pixel dimensions, portrait. Sources: Apple
-// Developer "Designing for iOS" + Android "Foldables and
-// large screens" + Material screens reference.
+// Effective browser viewport sizes (CSS pixels) that `window.innerWidth`
+// /`innerHeight` actually report on real devices — NOT the marketing
+// "screen resolution". Two reasons the two values diverge:
+//
+//   1. iPhones with a notch or Dynamic Island render the page inside
+//      the safe area when the `<meta name="viewport">` doesn't set
+//      `viewport-fit=cover` (kinowo doesn't). In portrait that eats
+//      ~80–90 px of height (Dynamic Island top + home indicator
+//      bottom); in landscape that eats ~50–80 px of width (notch
+//      side, sometimes both sides if iOS symmetrises). Heights here
+//      reflect the portrait inner-height the device reports —
+//      swapping to landscape gives the effective landscape width.
+//   2. Android phones don't take any insets (gesture indicator and
+//      status bar reduce visible area but not the CSS viewport that
+//      media queries see). Their entries are the device's native
+//      CSS-pixel width × height.
+//
+// Adding a new phone = append to the right group with its actual
+// reported viewport. The test asserts row count / overflow against
+// these values, so they should track real devices.
 const VIEWPORTS: Phone[] = [
-  { name: 'iPhone SE (3rd gen)',  width: 375, height: 667 },
-  { name: 'iPhone 13 mini',       width: 375, height: 812 },
+  // ── Small Android phones (the narrow band where the navbar
+  // crowds first — Galaxy S10 / A50 share a 360 px width). ─────
+  { name: 'Galaxy S10 / A50',     width: 360, height: 760 },
+  { name: 'Galaxy S22',           width: 360, height: 780 },
+  { name: 'Pixel 4a',             width: 393, height: 851 },
+
+  // ── iPhones — heights are post-safe-area effective viewports
+  // (Dynamic Island + home indicator subtracted). When the test
+  // swaps to landscape, the inner-width matches what real iOS
+  // Safari reports — typically ~50–80 px less than the device's
+  // native CSS landscape width. ────────────────────────────────
+  { name: 'iPhone SE (3rd gen)',  width: 375, height: 667 },  // no DI/notch
+  { name: 'iPhone 13 mini',       width: 375, height: 740 },  // native 812 → ~740
+  { name: 'iPhone 13/14/15/16',   width: 390, height: 760 },  // native 844 → ~760
+  { name: 'iPhone 15 Pro / 17',   width: 393, height: 770 },  // native 852 → ~770
+  { name: 'iPhone 17 Pro',        width: 402, height: 790 },  // native 874 → ~790
+  { name: 'iPhone 14 Plus',       width: 428, height: 840 },  // native 926 → ~840
+  { name: 'iPhone 15 Pro Max',    width: 430, height: 850 },  // native 932 → ~850
+  { name: 'iPhone 17 Pro Max',    width: 440, height: 870 },  // native 956 → ~870
+
+  // ── Larger Android phones — no inset shrinkage. ─────────────
   { name: 'Galaxy S24',           width: 384, height: 824 },
-  { name: 'iPhone 13/14/15/16',   width: 390, height: 844 },
-  { name: 'iPhone 15 Pro / 17',   width: 393, height: 852 },
-  { name: 'iPhone 17 Pro',        width: 402, height: 874 },
   { name: 'Pixel 7 / 8',          width: 412, height: 915 },
-  { name: 'iPhone 14 Plus',       width: 428, height: 926 },
-  { name: 'iPhone 15 Pro Max',    width: 430, height: 932 },
-  { name: 'iPhone 17 Pro Max',    width: 440, height: 956 },
+  { name: 'Galaxy Note 20 Ultra', width: 412, height: 883 },
   { name: 'Pixel 8 Pro',          width: 448, height: 992 },
 ];
 
