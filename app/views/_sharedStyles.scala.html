@@ -284,15 +284,20 @@
   .nav-tab-login {
     cursor: pointer;
     border: none;
+    /* `font: inherit` resets the browser's button font (the OS
+       caption font on most platforms) so the pill picks up the
+       navbar's typeface. The explicit `font-size: .875rem` below
+       then locks it to the same 14 px size as sibling `.nav-tab`
+       links — without it the pill would render at the navbar's
+       1 rem (16 px) default and the test in
+       `navbar-uniformity.spec.ts` flags the size mismatch.
+       `.nav-tab` already sets min-height: 35px + inline-flex
+       centering; login pill picks both up via the shared class. */
     font: inherit;
+    font-size: .875rem;
     background: #3a3a6e;
     color: #aad4ff;
     padding: .2rem .7rem;
-    /* `.nav-tab` already sets min-height: 35px + inline-flex centering;
-       login pill picks both up via the shared class. The slightly
-       wider horizontal padding (.7 vs .6 rem) keeps "Zaloguj się" /
-       "Wyloguj się" balanced inside the 35 px box without crowding
-       the text against the pill edges. */
   }
   .nav-tab-login:hover { background: #5a5a9e; color: #fff; }
 
