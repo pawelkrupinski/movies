@@ -118,26 +118,59 @@ jobs:
                   secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
                   job:    integration-test
 
-    # Chrome version matrix. Each matrix instance is its own GH runner,
-    # so all versions run in parallel and any one going red doesn't
-    # mask the others (`fail-fast: false`).
+    # All cross-browser page tests in one matrix. Each row is its own
+    # GH runner so they all parallelise, and `fail-fast: false` keeps
+    # one red row from masking the others.
     #
-    # Version pick is grounded in real phone distribution as of early
-    # 2026: Chrome 120+ is ~85% of Android devices, 113–120 covers
-    # most of the long tail. 113 is the floor we can actually exercise
-    # — chrome-for-testing (what `browser-actions/setup-chrome` resolves
-    # numeric versions from) doesn't publish builds below 113, so older
-    # Android versions aren't reachable from CI at all. `stable` keeps
-    # tracking whatever Google ships next. Specific versions catch
-    # regressions like the touchstart-vs-click timing change between
-    # Chrome ~113 and 148 that bit the card-tap fix — see
-    # [[feedback-ci-chrome-version-drift]].
-    page-tests-chrome:
-        name: page tests (chrome ${{ matrix.chrome }})
+    # Three families:
+    #
+    # - `chrome` / `edge` rows run the Scala PageTest spec against an
+    #   installed browser via CDP. Chrome version pick reflects real
+    #   Android phone distribution as of early 2026 (120+ ≈ 85% of
+    #   devices, 113–120 the long tail); 113 is the floor that
+    #   chrome-for-testing publishes. `stable` tracks whatever Google
+    #   ships next. Specific versions catch regressions like the
+    #   touchstart-vs-click timing change that bit the card-tap fix
+    #   — see [[feedback-ci-chrome-version-drift]]. Edge runs one
+    #   stable row; mobile Edge tracks desktop Edge closely.
+    #
+    # - `playwright` rows drive `page-tests-playwright/` against a
+    #   `FixtureServerMain`-backed instance of the Twirl templates
+    #   (InMemoryMovieRepo + FakeHttpFetch — same fixture wiring the
+    #   Scala spec uses, exposed over HTTP). One row per Playwright
+    #   project (see `playwright.config.ts`). Splitting per-project
+    #   was a wall-clock win: the unified single-job version ran
+    #   224 tests with `workers: 1` and took ~5m; per-project rows
+    #   parallelise across runners and each finishes in ~2m.
+    #
+    #   Each `playwright` row needs only its one engine binary —
+    #   `matrix.browser` is `chromium` / `firefox` / `webkit` /
+    #   `msedge`, fed straight to `playwright install`.
+    #
+    #   axe-core gates itself to `chromium-desktop` (see
+    #   `tests/a11y.spec.ts` — `test.beforeEach` skips on every
+    #   other project), so only that row pays the audit cost.
+    #   It's `continue-on-error` because the site has known WCAG
+    #   violations (`color-contrast` on `.text-secondary` against
+    #   the dark body bg) that aren't worth blocking deploys over.
+    page-tests:
+        name: page tests (${{ matrix.label }})
         strategy:
             fail-fast: false
             matrix:
-                chrome: ['stable', '128', '120', '113']
+                include:
+                    - { label: chrome stable, kind: chrome, version: stable }
+                    - { label: chrome 128,    kind: chrome, version: '128' }
+                    - { label: chrome 120,    kind: chrome, version: '120' }
+                    - { label: chrome 113,    kind: chrome, version: '113' }
+                    - { label: edge stable,   kind: edge,   version: stable }
+                    - { label: playwright chromium,         kind: playwright, project: chromium,         browser: chromium }
+                    - { label: playwright webkit,           kind: playwright, project: webkit,           browser: webkit }
+                    - { label: playwright firefox,          kind: playwright, project: firefox,          browser: firefox }
+                    - { label: playwright chromium-desktop, kind: playwright, project: chromium-desktop, browser: chromium }
+                    - { label: playwright webkit-desktop,   kind: playwright, project: webkit-desktop,   browser: webkit }
+                    - { label: playwright firefox-desktop,  kind: playwright, project: firefox-desktop,  browser: firefox }
+                    - { label: playwright msedge-desktop,   kind: playwright, project: msedge-desktop,   browser: msedge }
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -151,115 +184,17 @@ jobs:
             - uses: sbt/setup-sbt@v1
 
             - uses: browser-actions/setup-chrome@v1
+              if: matrix.kind == 'chrome'
               id: setup-chrome
               with:
-                  chrome-version: ${{ matrix.chrome }}
-
-            - uses: actions/cache@v4
-              with:
-                  path: |
-                      target
-                      project/target
-                      project/project/target
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
-                  restore-keys: |
-                      sbt-target-${{ runner.os }}-
-
-            # Point CdpDriver at the matrix-installed Chrome via env
-            # var. The driver also prints the resolved browser version
-            # to stderr at boot, so a matrix failure has the version
-            # diff in its log without extra plumbing.
-            - run: sbt PageTest/test
-              env:
-                  CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
-
-            - if: failure()
-              uses: ./.github/actions/wake-on-failure
-              with:
-                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    page-tests-chrome-${{ matrix.chrome }}
-
-    # Microsoft Edge: Chromium-based, same CDP wire format. Sanity
-    # check that Edge's slightly-different defaults (smart-screen,
-    # tracking-prevention) don't break the page JS. Mobile Edge on
-    # Android tracks the engine version closely with desktop Edge, so
-    # one stable run is enough — broader version coverage on the
-    # Chrome side already exercises older engine code paths.
-    page-tests-edge:
-        name: page tests (edge stable)
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-
-            - uses: actions/setup-java@v4
-              with:
-                  distribution: temurin
-                  java-version: 25
-                  cache: sbt
-
-            - uses: sbt/setup-sbt@v1
+                  chrome-version: ${{ matrix.version }}
 
             - uses: browser-actions/setup-edge@v1
+              if: matrix.kind == 'edge'
               id: setup-edge
               with:
-                  edge-version: stable
+                  edge-version: ${{ matrix.version }}
 
-            - uses: actions/cache@v4
-              with:
-                  path: |
-                      target
-                      project/target
-                      project/project/target
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
-                  restore-keys: |
-                      sbt-target-${{ runner.os }}-
-
-            - run: sbt PageTest/test
-              env:
-                  CDP_BROWSER_BIN: ${{ steps.setup-edge.outputs.edge-path }}
-
-            - if: failure()
-              uses: ./.github/actions/wake-on-failure
-              with:
-                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    page-tests-edge
-
-    # WebKit (Mobile Safari approximation) — Playwright's bundled
-    # WebKit build is the closest CI proxy for iOS Safari without
-    # paid device-cloud services. Not a perfect Mobile-Safari fake
-    # (no iOS-specific sticky-hover, no exact touch quirks) but
-    # catches generic WebKit-engine regressions in the same JS we
-    # ship to real iPhone users.
-    # Playwright cross-engine job. Drives Chromium / WebKit / Firefox
-    # against a `FixtureServerMain`-backed instance of the Twirl
-    # templates (InMemoryMovieRepo + FakeHttpFetch — same fixture
-    # wiring the Scala spec uses, just exposed over HTTP for an
-    # out-of-process runner). Fully deterministic, no network.
-    #
-    # Split: smoke + behaviour specs gate the deploy; the axe-core
-    # a11y audit runs as an informational layer (continue-on-error)
-    # because the site has known WCAG violations (`color-contrast`
-    # on `.text-secondary` against the dark body bg) that aren't
-    # worth blocking deploys over while they're being fixed. The
-    # a11y step shows red in the UI; the workflow proceeds.
-    page-tests-playwright:
-        name: page tests (playwright cross-browser)
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-
-            - uses: actions/setup-java@v4
-              with:
-                  distribution: temurin
-                  java-version: 25
-                  cache: sbt
-
-            - uses: sbt/setup-sbt@v1
-
-            # Same sbt cache key as the Chrome-matrix jobs so they
-            # all warm the same zinc state.
             - uses: actions/cache@v4
               with:
                   path: |
@@ -271,33 +206,35 @@ jobs:
                       sbt-target-${{ runner.os }}-
 
             - uses: actions/setup-node@v4
+              if: matrix.kind == 'playwright'
               with:
                   node-version: '20'
                   cache: npm
                   cache-dependency-path: page-tests-playwright/package-lock.json
 
-            # Cache the Playwright browser binaries (~250 MB across
-            # Chromium + Firefox + WebKit). Keyed on the package-lock
-            # so a Playwright version bump pulls fresh.
+            # Cache the Playwright browser binary for this row. Keyed
+            # on the package-lock + the row's browser so a Playwright
+            # bump pulls fresh and rows don't share each other's tarball.
             - uses: actions/cache@v4
+              if: matrix.kind == 'playwright'
               with:
                   path: ~/.cache/ms-playwright
-                  key: playwright-${{ runner.os }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
+                  key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
 
             - name: Install npm deps
+              if: matrix.kind == 'playwright'
               run: cd page-tests-playwright && npm ci
 
-            - name: Install Playwright browsers
-              # `--with-deps` (no args) installs chromium + firefox + webkit.
-              # `msedge` is a separate channel that uses Microsoft Edge —
-              # the binary needs to be downloaded explicitly.
-              run: cd page-tests-playwright && npx playwright install --with-deps chromium firefox webkit msedge
+            - name: Install Playwright browser
+              if: matrix.kind == 'playwright'
+              run: cd page-tests-playwright && npx playwright install --with-deps ${{ matrix.browser }}
 
             # Start the fixture server in the background. Writes the
             # chosen free port to a file so we can read it from the
             # next step without parsing sbt's chatty stdout. The PID
             # is captured for the always-run kill step further below.
             - name: Start FixtureServerMain
+              if: matrix.kind == 'playwright'
               run: |
                   rm -f /tmp/kinowo-port.txt
                   sbt 'PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 &
@@ -313,15 +250,27 @@ jobs:
                   fi
                   echo "KINOWO_BASE_URL=http://127.0.0.1:$(cat /tmp/kinowo-port.txt)" >> $GITHUB_ENV
 
+            # Point CdpDriver at the matrix-installed browser via env
+            # var. The driver also prints the resolved browser version
+            # to stderr at boot, so a matrix failure has the version
+            # diff in its log without extra plumbing.
+            - name: Run Scala PageTest
+              if: matrix.kind == 'chrome' || matrix.kind == 'edge'
+              run: sbt PageTest/test
+              env:
+                  CDP_BROWSER_BIN: ${{ matrix.kind == 'chrome' && steps.setup-chrome.outputs.chrome-path || steps.setup-edge.outputs.edge-path }}
+
             - name: Run Playwright behaviour specs (blocking)
-              run: cd page-tests-playwright && npx playwright test --grep-invert "axe-core"
+              if: matrix.kind == 'playwright'
+              run: cd page-tests-playwright && npx playwright test --project ${{ matrix.project }} --grep-invert "axe-core"
 
             - name: Run Playwright axe-core a11y audit (informational)
+              if: matrix.kind == 'playwright' && matrix.project == 'chromium-desktop'
               continue-on-error: true
-              run: cd page-tests-playwright && npx playwright test --grep "axe-core"
+              run: cd page-tests-playwright && npx playwright test --project ${{ matrix.project }} --grep "axe-core"
 
             - name: Stop FixtureServerMain
-              if: always()
+              if: always() && matrix.kind == 'playwright'
               run: |
                   if [ -n "$FIXTURE_PID" ]; then
                       kill $FIXTURE_PID 2>/dev/null || true
@@ -332,10 +281,10 @@ jobs:
               with:
                   url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
                   secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    page-tests-playwright
+                  job:    page-tests (${{ matrix.label }})
 
     deploy:
-        needs: [test, integration-test, page-tests-chrome, page-tests-edge, page-tests-playwright]
+        needs: [test, integration-test, page-tests]
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4

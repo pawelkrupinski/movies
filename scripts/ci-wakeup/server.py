@@ -83,10 +83,10 @@ TARGET_TTY_PATH = Path.home() / ".movies-ci-wakeup-target"
 REGISTER_SCRIPT = REPO_DIR / "scripts" / "ci-wakeup" / "register-tab.sh"
 
 # A single workflow run usually has multiple jobs (iOS has unit-integration,
-# ui-tests, smoke; Deploy has page-tests-chrome and page-tests-webkit), each
-# of which fires the wake-on-failure step independently. Dedup on `run_id`
-# so we only spawn one Claude session per workflow run — otherwise a single
-# bad push opens 3+ tabs that all want to fix the same red CI.
+# ui-tests, smoke; Deploy has a multi-row page-tests matrix), each of which
+# fires the wake-on-failure step independently. Dedup on `run_id` so we only
+# spawn one Claude session per workflow run — otherwise a single bad push
+# opens 3+ tabs that all want to fix the same red CI.
 #
 # In-memory is fine: a run's failed jobs all arrive within seconds of each
 # other, and a launchd restart in that window would just unsuppress the
