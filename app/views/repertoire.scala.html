@@ -39,6 +39,9 @@
 @_loginModal(oauthProviders)
 @_hiddenModal()
 
+@_sharedJsConfig(allCinemas, currentUser, oauthProviders)
+<script src="@routes.Assets.versioned("js/shared.js")"></script>
+
 <div class="container-fluid py-4 px-4">
   <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
@@ -47,8 +50,6 @@
   </div>
 </div>
 
-@_sharedJsConfig(allCinemas, currentUser, oauthProviders)
-<script src="@routes.Assets.versioned("js/shared.js")"></script>
 @_minified(devMode) {
 <script>
   // True only on /ulubione — toggles the favourites-filter branch in

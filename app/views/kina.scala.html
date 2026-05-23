@@ -101,6 +101,9 @@
 @_loginModal(oauthProviders)
 @_hiddenModal()
 
+@_sharedJsConfig(allCinemas, currentUser, oauthProviders)
+<script src="@routes.Assets.versioned("js/shared.js")"></script>
+
 @* Cinema-picker as a second navbar row — populated from JS at boot off
    ALL_CINEMAS and `disabledCinemas` localStorage. Renders empty
    server-side; the JS pill builder is the source of truth so the
@@ -118,8 +121,6 @@
   </div>
 </div>
 
-@_sharedJsConfig(allCinemas, currentUser, oauthProviders)
-<script src="@routes.Assets.versioned("js/shared.js")"></script>
 @_minified(devMode) {
 <script>
   // ── DOM index ─────────────────────────────────────────────────────────────
