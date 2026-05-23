@@ -126,28 +126,27 @@ test.describe('mobile landscape layout', () => {
 
   // ── Card density: separate concern, stays in landscape ────────
 
-  test('film grid packs 6 cards per row', async ({ page }) => {
-    // The landscape media query in `_sharedStyles` overrides each
-    // `.col` to `flex: 0 0 calc(100% / 6)`. Reads the column's
-    // computed width against its parent — `getComputedStyle`
-    // works whether or not the date filter has hidden the row.
-    const ratio = await page.evaluate(() => {
+  test('film grid column count matches viewport width', async ({ page }) => {
+    // Wide landscape (≥ 900 px): 6 columns (100%/6 ≈ 0.167).
+    // Narrow landscape (< 900 px): 4 columns (25% = 0.25).
+    const { ratio, vpWidth } = await page.evaluate(() => {
       const grid = document.querySelector('#film-grid') as HTMLElement;
       const col  = grid?.querySelector(':scope > .col') as HTMLElement;
-      if (!grid || !col) return -1;
+      if (!grid || !col) return { ratio: -1, vpWidth: 0 };
       const prevDisplay = col.style.display;
       col.style.display = 'block';
       const colWidth  = col.getBoundingClientRect().width;
       const gridWidth = grid.getBoundingClientRect().width;
       col.style.display = prevDisplay;
-      return colWidth / gridWidth;
+      return { ratio: colWidth / gridWidth, vpWidth: window.innerWidth };
     });
-    // 100% / 6 ≈ 0.1667. Bootstrap gutters take ~12 px out of
-    // each column, so the visible ratio lands a hair below the
-    // math. Band tolerates that without false positives at 5- or
-    // 7-col breakpoints.
-    expect(ratio).toBeGreaterThan(0.15);
-    expect(ratio).toBeLessThan(0.18);
+    if (vpWidth >= 900) {
+      expect(ratio).toBeGreaterThan(0.15);
+      expect(ratio).toBeLessThan(0.18);
+    } else {
+      expect(ratio).toBeGreaterThan(0.23);
+      expect(ratio).toBeLessThan(0.27);
+    }
   });
 
   test('card chrome shrinks to mobile-scale floor', async ({ page }) => {

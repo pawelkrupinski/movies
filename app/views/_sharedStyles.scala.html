@@ -645,29 +645,30 @@
   }
 
   @@media (max-height: 500px) and (orientation: landscape) {
-    /* Navbar stays at its desktop one-row layout in landscape: the
-       viewport is wide enough (iPhone 17 Pro Max → 956 px; Pixel 7
-       → 915 px) to fit logo + tabs + search + date + filtry + auth
-       on one line, with the date selector naturally sitting just
-       left of Filtry per the default `.navbar-date { order: 2 }` /
-       `.navbar-filtry { order: 3 }` rules above. Hiding the logo
-       and reflowing onto two rows turned out worse on real
-       landscape phones than the unchanged desktop layout. */
-
-    /* Drop the wordmark text — same as the portrait
-       `(max-width: 575px)` block. The 🎬 emoji stays so the logo
-       cluster has an anchor; "Repertuar kinowy Poznań" eats ~140 px
-       of horizontal room and pushes the auth pill onto a second
-       row on the 956 px iPhone 17 Pro Max viewport. */
     .navbar-title { display: none; }
 
-    /* Cards in landscape — mirrors the (max-width: 575px) card block.
-       Landscape phones cross the 575 px breakpoint width-wise so
-       those portrait rules don't fire, but the device is still
-       pocket-sized vertically. `--mobile-scale` is pinned to 0.85
-       by `_pillStyles` under the same media query, so the calc()s
-       below shrink the same way the portrait rules do. */
-    .card-body         { padding: calc(1rem * var(--mobile-scale)); }
+    /* Compact navbar: landscape vertical space is scarce (360 px on
+       a Galaxy S10). Shrink controls from the desktop 35 px height
+       to 28 px; tighten padding and font. */
+    .navbar {
+      padding: 3px 8px !important;
+      gap: 3px;
+    }
+    .navbar .nav-tab,
+    .navbar .nav-tab-login,
+    .navbar .refresh-btn,
+    .navbar .auth-name {
+      font-size: calc(.8rem * var(--mobile-scale));
+      padding-left:  5px;
+      padding-right: 5px;
+      height: 28px;
+    }
+    .navbar .nav-tab-fav  { font-size: calc(.9rem  * var(--mobile-scale)); height: 28px; }
+    .navbar .date-nav-btn { font-size: calc(.95rem * var(--mobile-scale)); height: 28px; min-width: 28px; }
+    .navbar .filter-select,
+    .navbar .search-input { height: 28px; padding-top: 0; padding-bottom: 0; }
+
+    .card-body         { padding: calc(.6rem * var(--mobile-scale)); }
     .card-title a      { font-size: calc(.95rem * var(--mobile-scale)); }
     .pill              { font-size: calc(.72rem * var(--mobile-scale)); padding: 0 calc(5px * var(--mobile-scale)); }
     .date-label        { font-size: calc(.7rem * var(--mobile-scale)); }
@@ -675,13 +676,25 @@
     .no-poster         { font-size: calc(.85rem * var(--mobile-scale)); }
     #room-tooltip      { font-size: calc(.68rem * var(--mobile-scale)); }
 
-    /* Denser grid: a landscape phone is 700–950 px wide and lands
-       on Bootstrap's md (`row-cols-md-4`) or lg (`row-cols-lg-5`)
-       breakpoint, so 4–5 cards per row. The horizontal real-estate
-       is wider than vertical, so 6 cards fit comfortably with the
-       smaller card chrome above — the user surveys ~50 % more films
-       per scroll position. Selector matches both `/` (#film-grid)
-       and `/kina` (each `.cinema-section` carries its own grid row). */
+    /* Tighter card gaps — default Bootstrap gutter (1.5 rem) wastes
+       horizontal room that narrow landscape phones need for card
+       content. */
+    #film-grid,
+    .cinema-section .row { --bs-gutter-x: .5rem; }
+
+    /* Default landscape density: 4 columns. Narrow landscape phones
+       (Galaxy S10 → 760 px) can't fit 6 readable cards; 4 gives
+       ~190 px per card — enough for a 2-line title. */
+    #film-grid > .col,
+    .cinema-section .row > .col {
+      flex: 0 0 25%;
+      max-width: 25%;
+    }
+  }
+
+  /* Wide landscape (≥ 900 px): bump to 6 columns. Pixel 7 (915 px),
+     iPhone 17 Pro Max (956 px) have enough room for the denser grid. */
+  @@media (max-height: 500px) and (orientation: landscape) and (min-width: 900px) {
     #film-grid > .col,
     .cinema-section .row > .col {
       flex: 0 0 calc(100% / 6);
