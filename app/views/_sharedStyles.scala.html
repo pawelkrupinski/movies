@@ -515,6 +515,15 @@
   .navbar-auth      { order: 4; }
   .navbar-row-break { display: none; }
 
+  /* The Debug tab is a dev-mode-only link. On mobile (both portrait
+     and landscape) it pushes the navbar over its width budget on the
+     narrow phones — and the page it links to is keyboard-shortcut
+     heavy anyway, not useful on touch. Hide on both mobile arms. */
+  @@media (max-width: 575px),
+         (max-height: 500px) and (orientation: landscape) {
+    .nav-tab-debug { display: none; }
+  }
+
   @@media (max-width: 575px) {
     /* Every text-bearing navbar control rides `--mobile-scale` — fonts
        and horizontal paddings shrink with the viewport so the row
@@ -636,17 +645,21 @@
   }
 
   @@media (max-height: 500px) and (orientation: landscape) {
-    .navbar {
-      padding: .35rem .75rem !important;
-      gap: .35rem;
-    }
+    /* Navbar stays at its desktop one-row layout in landscape: the
+       viewport is wide enough (iPhone 17 Pro Max → 956 px; Pixel 7
+       → 915 px) to fit logo + tabs + search + date + filtry + auth
+       on one line, with the date selector naturally sitting just
+       left of Filtry per the default `.navbar-date { order: 2 }` /
+       `.navbar-filtry { order: 3 }` rules above. Hiding the logo
+       and reflowing onto two rows turned out worse on real
+       landscape phones than the unchanged desktop layout. */
+
+    /* Drop the wordmark text — same as the portrait
+       `(max-width: 575px)` block. The 🎬 emoji stays so the logo
+       cluster has an anchor; "Repertuar kinowy Poznań" eats ~140 px
+       of horizontal room and pushes the auth pill onto a second
+       row on the 956 px iPhone 17 Pro Max viewport. */
     .navbar-title { display: none; }
-    .navbar > .d-flex:first-child { display: none !important; }
-    .navbar-search    { order: 1; margin-left: 0; flex: 1; }
-    .navbar-auth      { order: 2; margin-left: auto; }
-    .navbar-row-break { display: block; order: 3; width: 100%; flex-shrink: 0; height: 0; margin: 0; padding: 0; }
-    .navbar-date      { order: 4; margin-left: 0; }
-    .navbar-filtry    { order: 5; margin-left: auto; max-width: 50%; min-width: 0; }
 
     /* Cards in landscape — mirrors the (max-width: 575px) card block.
        Landscape phones cross the 575 px breakpoint width-wise so

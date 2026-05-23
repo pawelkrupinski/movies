@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { waitForCards } from './helpers';
 
-test.describe('mobile landscape navbar layout', () => {
+// Locks landscape mobile to the one-row desktop layout. A previous
+// iteration hid the logo and reflowed the navbar into two rows; on
+// real landscape phones (iPhone 17 Pro Max → 956 px viewport,
+// Pixel 7 → 915 px) that was worse than the unchanged desktop bar.
+// The card-density part of the landscape media query (6 cols, 0.85
+// `--mobile-scale`) stays — those tests live here too.
+test.describe('mobile landscape layout', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('landscape'),
       'landscape layout only applies to landscape projects');
@@ -9,12 +15,30 @@ test.describe('mobile landscape navbar layout', () => {
     await waitForCards(page);
   });
 
-  test('logo and tab links are hidden', async ({ page }) => {
+  // ── Navbar: same as portrait/desktop on one row ─────────────
+
+  test('logo and tab links are visible', async ({ page }) => {
+    // Logo + tabs sit in the first `.d-flex` child of the navbar.
+    // The two-row landscape reflow used to set `display: none` on
+    // this element — keep a guard so future "tidy-up" changes
+    // can't reintroduce that.
     const logoTabs = page.locator('.navbar > .d-flex').first();
-    await expect(logoTabs).toBeHidden();
+    await expect(logoTabs).toBeVisible();
+    await expect(page.locator('.navbar a.nav-tab', { hasText: 'Filmy' })).toBeVisible();
+    await expect(page.locator('.navbar a.nav-tab', { hasText: 'Kina' })).toBeVisible();
+    await expect(page.locator('.navbar a.nav-tab-fav')).toBeVisible();
   });
 
-  test('row 1 has search then login, row 2 has date then filtry', async ({ page }) => {
+  test('logo+tabs, search, date, filtry share the first row', async ({ page }) => {
+    // The contract is "looks like portrait" — every cluster the
+    // user expects to interact with sits on the first navbar row.
+    // The auth pill may wrap to a second row on the narrower
+    // landscape viewports (iPhone 13 → 844 px) when search +
+    // date's natural width consumes the row's slack; portrait
+    // wraps the same way, so we accept it. The four clusters
+    // that DO matter (logo/tabs, search, date stepper, Filtry)
+    // must share a vertical band — otherwise the user is back to
+    // the old two-row reflow we just reverted.
     const boxes = await page.evaluate(() => {
       const q = (sel: string) => {
         const el = document.querySelector(sel);
@@ -23,61 +47,94 @@ test.describe('mobile landscape navbar layout', () => {
         return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
       };
       return {
-        search: q('.navbar-search'),
-        auth:   q('.navbar-auth'),
-        date:   q('.navbar-date'),
-        filtry: q('.navbar-filtry'),
+        logoTabs: q('.navbar > .d-flex'),
+        search:   q('.navbar-search'),
+        date:     q('.navbar-date'),
+        filtry:   q('.navbar-filtry'),
       };
     });
 
-    expect(boxes.search).toBeTruthy();
-    expect(boxes.auth).toBeTruthy();
-    expect(boxes.date).toBeTruthy();
-    expect(boxes.filtry).toBeTruthy();
+    const { logoTabs, search, date, filtry } = boxes as Record<
+      string,
+      { top: number; bottom: number; left: number; right: number }
+    >;
+    expect(logoTabs).toBeTruthy();
+    expect(search).toBeTruthy();
+    expect(date).toBeTruthy();
+    expect(filtry).toBeTruthy();
 
-    const { search, auth, date, filtry } = boxes as Record<string, { top: number; bottom: number; left: number; right: number }>;
-
-    // Row 1: search and auth share the same vertical band
-    expect(Math.abs(search.top - auth.top)).toBeLessThan(10);
-    // Search is left of auth
-    expect(search.left).toBeLessThan(auth.left);
-
-    // Row 2: date and filtry share the same vertical band
-    expect(Math.abs(date.top - filtry.top)).toBeLessThan(10);
-    // Date is left of filtry
-    expect(date.left).toBeLessThan(filtry.left);
-
-    // Row 2 is below row 1
-    expect(date.top).toBeGreaterThan(search.top);
+    // 12 px tolerance covers sub-pixel rounding across engines.
+    const baseline = logoTabs.top;
+    for (const [, box] of Object.entries({ search, date, filtry })) {
+      expect(Math.abs(box.top - baseline)).toBeLessThan(12);
+      // Sanity: not pushed off-screen / collapsed.
+      expect(box.bottom - box.top).toBeGreaterThan(20);
+    }
   });
 
-  test('search input spans most of row width', async ({ page }) => {
-    const ratio = await page.evaluate(() => {
-      const navbar = document.querySelector('.navbar') as HTMLElement;
-      const search = document.querySelector('.navbar-search') as HTMLElement;
-      if (!navbar || !search) return 0;
-      return search.getBoundingClientRect().width / navbar.getBoundingClientRect().width;
+  test('date selector sits immediately left of Filtry', async ({ page }) => {
+    // The whole point of the landscape contract: the user can
+    // reach the date stepper without jumping cross-screen — it
+    // hugs the Filtry pill. Same row, date.right ≤ filtry.left,
+    // and search (the only other neighbour at this width) sits
+    // further left. Auth may have wrapped onto a second row on
+    // narrower viewports — irrelevant to this check.
+    const layout = await page.evaluate(() => {
+      const r = (el: Element | null) => {
+        if (!el) return null;
+        const b = el.getBoundingClientRect();
+        return { top: b.top, bottom: b.bottom, left: b.left, right: b.right };
+      };
+      return {
+        date:   r(document.querySelector('.navbar-date')),
+        filtry: r(document.querySelector('.navbar-filtry')),
+        search: r(document.querySelector('.navbar-search')),
+      };
     });
-    expect(ratio).toBeGreaterThan(0.4);
+
+    expect(layout.date).toBeTruthy();
+    expect(layout.filtry).toBeTruthy();
+    expect(layout.search).toBeTruthy();
+    const { date, filtry, search } = layout as Record<
+      string,
+      { top: number; bottom: number; left: number; right: number }
+    >;
+
+    // Same row.
+    expect(Math.abs(date.top - filtry.top)).toBeLessThan(12);
+    // Date is to the left of Filtry.
+    expect(date.right).toBeLessThanOrEqual(filtry.left + 1);
+    // Adjacent — nothing in the navbar sits between date.right
+    // and filtry.left. Search must be OUTSIDE that horizontal
+    // band: search.right ≤ date.left (further left).
+    expect(search.right).toBeLessThanOrEqual(date.left + 1);
   });
+
+  test('row-break is suppressed (no second navbar row)', async ({ page }) => {
+    // `.navbar-row-break` flips to `display: block` in the
+    // portrait (max-width: 575px) media query to force a hard
+    // wrap. In landscape we want the row-break invisible so the
+    // navbar stays one line. The element is in the DOM either
+    // way; this assertion is on the computed display.
+    const display = await page.evaluate(() => {
+      const el = document.querySelector('.navbar-row-break') as HTMLElement | null;
+      if (!el) return 'missing';
+      return getComputedStyle(el).display;
+    });
+    expect(display).toBe('none');
+  });
+
+  // ── Card density: separate concern, stays in landscape ────────
 
   test('film grid packs 6 cards per row', async ({ page }) => {
-    // Landscape phones at 844–915 px wide land on Bootstrap's md
-    // breakpoint by default (`row-cols-md-4` = 4 cards/row). The
-    // landscape media query in `_sharedStyles` overrides each
+    // The landscape media query in `_sharedStyles` overrides each
     // `.col` to `flex: 0 0 calc(100% / 6)`. Reads the column's
     // computed width against its parent — `getComputedStyle`
-    // works whether or not the date filter has hidden the row,
-    // so this is stable against the default "today" filter
-    // dropping the whole fixture corpus (which is dated to
-    // 2026-05-17, not the wall-clock day the CI runs).
+    // works whether or not the date filter has hidden the row.
     const ratio = await page.evaluate(() => {
       const grid = document.querySelector('#film-grid') as HTMLElement;
       const col  = grid?.querySelector(':scope > .col') as HTMLElement;
       if (!grid || !col) return -1;
-      // Force the .col into the layout flow long enough to measure
-      // (display:none would give a zero width). We restore the
-      // previous style after reading.
       const prevDisplay = col.style.display;
       col.style.display = 'block';
       const colWidth  = col.getBoundingClientRect().width;
@@ -85,18 +142,18 @@ test.describe('mobile landscape navbar layout', () => {
       col.style.display = prevDisplay;
       return colWidth / gridWidth;
     });
-    // 100% / 6 ≈ 0.1667. Bootstrap gutters take ~12 px out of each
-    // column, so the visible ratio lands a hair below the math.
-    // Band tolerates that without false positives at 5- or 7-col
-    // breakpoints.
+    // 100% / 6 ≈ 0.1667. Bootstrap gutters take ~12 px out of
+    // each column, so the visible ratio lands a hair below the
+    // math. Band tolerates that without false positives at 5- or
+    // 7-col breakpoints.
     expect(ratio).toBeGreaterThan(0.15);
     expect(ratio).toBeLessThan(0.18);
   });
 
   test('card chrome shrinks to mobile-scale floor', async ({ page }) => {
     // `--mobile-scale` is pinned to 0.85 in landscape, so a card
-    // title's font-size collapses to 0.95rem × 0.85 ≈ 12.92 px on
-    // a 16 px-root document. Tolerance band covers sub-pixel
+    // title's font-size collapses to 0.95rem × 0.85 ≈ 12.92 px
+    // on a 16 px-root document. Tolerance band covers sub-pixel
     // rounding across engines.
     const titleFontPx = await page.evaluate(() => {
       const a = document.querySelector('#film-grid .card-title a') as HTMLElement;

@@ -122,12 +122,14 @@ export default defineConfig({
     },
     // ─── Mobile landscape projects ──────────────────────────────────
     //
-    // Phone landscape: width > height, height ≤ 500 px. The CSS
-    // `(max-height: 500px) and (orientation: landscape)` media query
-    // rearranges the navbar into two compact rows:
-    //   row 1: [search] … [login]
-    //   row 2: [date selector] … [filtry]
-    // Logo + tab links are hidden to save vertical space.
+    // Phone landscape: width > height, height ≤ 500 px. The
+    // `(max-height: 500px) and (orientation: landscape)` media
+    // query keeps the desktop one-row navbar but shrinks card
+    // chrome (`--mobile-scale: 0.85`) and packs 6 cards per row.
+    // Three viewport sizes — Pixel 7 (915 px), iPhone 13 (844 px),
+    // iPhone 17 Pro Max (956 px) — so the band of "wider than
+    // 768 px md breakpoint but still height-constrained" is
+    // covered end-to-end.
     {
       name: 'chromium-landscape',
       use: {
@@ -140,6 +142,16 @@ export default defineConfig({
       use: {
         ...devices['iPhone 13'],
         viewport: { width: devices['iPhone 13'].viewport.height, height: devices['iPhone 13'].viewport.width },
+      },
+    },
+    {
+      name: 'webkit-landscape-iphone-17-pro-max',
+      use: {
+        // Playwright's bundled `devices` table doesn't ship the
+        // 17 Pro Max yet; copy iPhone 13's UA + touch hints, swap
+        // the viewport in landscape to the 17 Pro Max's 956 × 440.
+        ...devices['iPhone 13'],
+        viewport: { width: 956, height: 440 },
       },
     },
     {
