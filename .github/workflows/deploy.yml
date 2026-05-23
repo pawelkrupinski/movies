@@ -9,6 +9,7 @@ on:
 #   lint ────────────┬─►  deploy
 #   test ────────────┤
 #   integration-test ┤
+#   ios-local-server ┤
 #   page-tests ──────┘
 #   coverage  (independent — does NOT gate deploy)
 #
@@ -109,6 +110,104 @@ jobs:
                   url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
                   secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
                   job:    lint
+
+    # iOS LocalServer tests. Boots `FixtureServerMain` (the same Play
+    # server FixtureServerMain + InMemoryMovieRepo combo the
+    # Playwright suite uses) in the background and runs the
+    # `LocalServer*` XCTest cases against it — `KinowoCore`'s real
+    # parsers (HTMLParser, FilmDetailParser) crawl HTML the Twirl
+    # templates just rendered.
+    #
+    # This is the cross-cutting gate: a server-side template change
+    # that would break the iOS parser fails CI here, on the PR that
+    # introduces it. Previously the catch was nightly smoke tests
+    # against kinowo.fly.dev, i.e. only POST-deploy.
+    #
+    # `continue-on-error: false` (default) — deploy depends on this.
+    ios-local-server:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            - uses: actions/cache@v4
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            - uses: swift-actions/setup-swift@v2
+              with:
+                  swift-version: '5.10'
+
+            - uses: actions/cache@v4
+              with:
+                  path: ios/.build
+                  key: spm-build-${{ runner.os }}-${{ hashFiles('ios/Package.swift', 'ios/Package.resolved') }}
+                  restore-keys: |
+                      spm-build-${{ runner.os }}-
+
+            # Boot the server in the background. It binds to a
+            # kernel-assigned free port and writes that port to the
+            # file we pass; we busy-wait for the file (60s ceiling)
+            # then export the resulting URL for the swift test step.
+            - name: Boot FixtureServerMain
+              run: |
+                  set -euo pipefail
+                  PORT_FILE=$(mktemp)
+                  echo "PORT_FILE=$PORT_FILE" >> "$GITHUB_ENV"
+
+                  nohup sbt "PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
+                  echo "SERVER_PID=$!" >> "$GITHUB_ENV"
+
+                  for _ in $(seq 1 60); do
+                      if [ -s "$PORT_FILE" ]; then break; fi
+                      sleep 2
+                  done
+                  if [ ! -s "$PORT_FILE" ]; then
+                      echo "::error::FixtureServerMain never wrote a port file"
+                      tail -100 fixture-server.log
+                      exit 1
+                  fi
+                  PORT=$(cat "$PORT_FILE")
+                  echo "KINOWO_LOCAL_URL=http://127.0.0.1:$PORT" >> "$GITHUB_ENV"
+                  echo "fixture server listening on http://127.0.0.1:$PORT"
+
+            - name: Run LocalServer iOS tests
+              run: swift test --package-path ios --filter LocalServer
+
+            - name: Stop FixtureServerMain
+              if: always()
+              run: |
+                  if [ -n "${SERVER_PID:-}" ]; then
+                      kill "$SERVER_PID" 2>/dev/null || true
+                  fi
+
+            - name: Upload fixture-server log on failure
+              if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: fixture-server-log
+                  path: fixture-server.log
+                  if-no-files-found: ignore
+
+            - if: failure()
+              uses: ./.github/actions/wake-on-failure
+              with:
+                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
+                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
+                  job:    ios-local-server
 
     integration-test:
         runs-on: ubuntu-latest
@@ -315,7 +414,7 @@ jobs:
                   wakeup-job:    page-tests (firefox / ${{ matrix.variant }})
 
     deploy:
-        needs: [lint, test, integration-test, page-tests-chrome, page-tests-safari, page-tests-edge, page-tests-firefox]
+        needs: [lint, test, integration-test, ios-local-server, page-tests-chrome, page-tests-safari, page-tests-edge, page-tests-firefox]
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
