@@ -205,7 +205,7 @@ runtimeMinutes:    80
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/lotto-plakat.jpg?rev=38a9f6140a1a4ffcab6674adfc953e0e
-synopsis.length:   1221
+synopsis.length:   1214
 cast:              Alessandro Sperduti
 director:          Simona Risi
 tmdbId:            —
@@ -233,7 +233,7 @@ runtimeMinutes:    95
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/monet-nenufary-plakat.jpg?rev=0ec23b8a082f4b7bb70c073696776d8a
-synopsis.length:   811
+synopsis.length:   808
 cast:              Elisa Lasowski
 director:          Giovanni Troilo
 tmdbId:            —
@@ -261,7 +261,7 @@ runtimeMinutes:    80
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/rafael-plakat.jpg?rev=e127f4cbbb104fde8a20d94cf4ba7dc0
-synopsis.length:   609
+synopsis.length:   605
 cast:              —
 director:           Massimo Ferrari
 tmdbId:            —
@@ -289,7 +289,7 @@ runtimeMinutes:    157
 releaseYear:       2026
 countries:         Indie
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8204S2R.jpg
-synopsis.length:   587
+synopsis.length:   325
 cast:              Vineeth Sreenivasan, Basil Joseph, Tovino Thomas, Darshana Rajendran, Zarin Shihab, Riya Shibu, Arya Salim
 director:          Arun Anirudhan
 tmdbId:            1510767
@@ -316,7 +316,7 @@ runtimeMinutes:    165
 releaseYear:       2026
 countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8213S2R.jpg
-synopsis.length:   919
+synopsis.length:   908
 cast:              Helen Mirren
 director:          Stephen Daldry
 tmdbId:            —
@@ -454,7 +454,7 @@ runtimeMinutes:    105
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/billie-eilish/billie-eilish_plakat_cut.jpg?rev=25c4d4367da24664815b62a9c3b17741
-synopsis.length:   384
+synopsis.length:   382
 cast:              Billie Eilish
 director:          James Cameron
 tmdbId:            1515899
@@ -965,7 +965,7 @@ runtimeMinutes:    106
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drama/drama-plakat-final-cut.jpg?rev=99e50bcc8ce449fab18d52c1caef4c08
-synopsis.length:   668
+synopsis.length:   667
 cast:              Robert Pattinson, Zendaya Coleman, Alana Haim, Hailey Gates
 director:          Kristoffer Borgli 
 tmdbId:            1325734
@@ -1452,7 +1452,7 @@ runtimeMinutes:    139
 releaseYear:       1965
 countries:         Włochy, Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Giulietta_degli_2.jpg
-synopsis.length:   113
+synopsis.length:   112
 cast:              —
 director:          Federico Fellini
 tmdbId:            19120
@@ -1565,7 +1565,7 @@ runtimeMinutes:    121
 releaseYear:       1990
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/La_voce_della_lunba_3.jpg
-synopsis.length:   110
+synopsis.length:   109
 cast:              —
 director:          Federico Fellini
 tmdbId:            59050
@@ -1679,7 +1679,7 @@ runtimeMinutes:    —
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/harry-potter/hp-i-insygnia-1-plakat.png?rev=4bb3985b391c48bb8865e6ad3c792e81
-synopsis.length:   153
+synopsis.length:   152
 cast:              Daniel Radcliffe, Rupert Grint, Emma Watson, Ralph Fiennes
 director:          David Yates
 tmdbId:            —
@@ -1938,7 +1938,7 @@ runtimeMinutes:    106
 releaseYear:       2026
 countries:         USA, Wielka Brytania
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/iron-maiden/ironmaiden.jpg?rev=a8cd80d50e264d7baef87d55f4b41156
-synopsis.length:   582
+synopsis.length:   572
 cast:              Steve Harris, Bruce Dickinson, Nicko McBrain, Adrian Smith, Dave Murray
 director:          Malcolm Venville
 tmdbId:            1642859
@@ -2023,7 +2023,7 @@ runtimeMinutes:    150
 releaseYear:       2026
 countries:         Indie
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8203S2R.jpg
-synopsis.length:   357
+synopsis.length:   95
 cast:              Prakash Raj, Kaali Venkat, TRISHA KRISHNAN, Yogi Babu, Suriya, RJ Balaji, Indrans, Mansoor Ali Khan, Swasika Vijay
 director:          RJ Balaji
 tmdbId:            1367220
@@ -2158,7 +2158,7 @@ runtimeMinutes:    85
 releaseYear:       2025
 countries:         Brazylia, Meksyk, Holandia
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_bekitny_szlak.jpg
-synopsis.length:   114
+synopsis.length:   113
 cast:              —
 director:          Gabriel Mascara
 tmdbId:            —
@@ -2213,7 +2213,7 @@ runtimeMinutes:    116
 releaseYear:       2025
 countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_drugie_zycie2.jpg
-synopsis.length:   120
+synopsis.length:   119
 cast:              —
 director:          Maryam Touzani
 tmdbId:            1399462
@@ -2267,7 +2267,7 @@ runtimeMinutes:    75
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_freak2.jpg
-synopsis.length:   115
+synopsis.length:   114
 cast:              —
 director:          Łukasz Ronduda, Filip Pawlak
 tmdbId:            —
@@ -2321,7 +2321,7 @@ runtimeMinutes:    147
 releaseYear:       2025
 countries:         Niemcy, Francja, Węgry
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_milczaca2.jpg
-synopsis.length:   117
+synopsis.length:   116
 cast:              —
 director:          Ildikó Enyedi
 tmdbId:            1168719
@@ -2574,7 +2574,7 @@ runtimeMinutes:    70
 releaseYear:       2025
 countries:         Polska, Niemcy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/KUMOTRY_plakat_filmweb.jpg
-synopsis.length:   120
+synopsis.length:   119
 cast:              —
 director:          Emilia Śniegoska
 tmdbId:            1454157
@@ -2716,7 +2716,7 @@ runtimeMinutes:    160
 releaseYear:       2021
 countries:         Włochy
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/opera/latraviata2026_plakat.png?rev=d55bc88afb2b4c949d93ba3113f446ce
-synopsis.length:   1492
+synopsis.length:   1466
 cast:              Sonya Yoncheva, Vittorio Grigolo, George Petean
 director:          Michele Olcese, Francesco Ivan Ciampa
 tmdbId:            —
@@ -3060,7 +3060,7 @@ runtimeMinutes:    127
 releaseYear:       2026
 countries:         USA, Wielka Brytania
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/michael/michael-plakat-net-fin-cut.jpg?rev=50ffa68228ab41d0a9633db28bbd2b6e
-synopsis.length:   578
+synopsis.length:   567
 cast:              Jaafar Jackson, Juliano Valdi, Colman Domingo
 director:          Antoine Fuqua
 tmdbId:            936075
@@ -3139,7 +3139,7 @@ runtimeMinutes:    —
 releaseYear:       1991
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/milczenie-owiec-cut.jpg?rev=e42068650341416bb3c39e499ad5bc5b
-synopsis.length:   594
+synopsis.length:   593
 cast:              Anthony Hopkins, Jodie Foster, Ted Levine, Kasi Lemmons
 director:          Jonathan Demme
 tmdbId:            274
@@ -3704,7 +3704,7 @@ runtimeMinutes:    150
 releaseYear:       2026
 countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8212S2R.jpg
-synopsis.length:   652
+synopsis.length:   631
 cast:              Lesley Manville, Aidan Turner, Monica Barbaro
 director:          Marianne Elliott
 tmdbId:            —
@@ -3786,7 +3786,7 @@ runtimeMinutes:    55
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8188D2R.jpg
-synopsis.length:   599
+synopsis.length:   588
 cast:              —
 director:          Paweł Wendorff, Elżbieta Wąsik; Jarosław Szyszko, Barbara Koniecka, Mateusz Kmieć, Natalia Bartska-Kmieć
 tmdbId:            1646671
@@ -3913,7 +3913,7 @@ runtimeMinutes:    720
 releaseYear:       —
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/maraton/lotr/lotr_2026_plakat.jpg?rev=c5ca96212d114e9eb256e066a10b0b28
-synopsis.length:   1237
+synopsis.length:   1234
 cast:              —
 director:          —
 tmdbId:            —
@@ -3940,7 +3940,7 @@ runtimeMinutes:    110
 releaseYear:       1957
 countries:         Włochy, Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Le-Notti-di-Cabiria-1957-Giulietta-Masina.jpg
-synopsis.length:   115
+synopsis.length:   114
 cast:              —
 director:          Federico Fellini
 tmdbId:            19426
@@ -4169,7 +4169,7 @@ runtimeMinutes:    98
 releaseYear:       2006
 countries:         Japonia
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/anime/o-dziewczynie-skaczacej-przez-czas-plakat2.jpg?rev=125e66df557f4228bf3605103ca217f9
-synopsis.length:   506
+synopsis.length:   505
 cast:              Riisa Naka, Mitsutaka Itakura, Takuya Ishida, Ayami Kakiuchi
 director:          Mamoru Hosoda
 tmdbId:            14069
@@ -4318,7 +4318,7 @@ runtimeMinutes:    105
 releaseYear:       2026
 countries:         Japonia
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8076S2R.jpg
-synopsis.length:   778
+synopsis.length:   752
 cast:              —
 director:          Yasuhito Kikuchi
 tmdbId:            1363974
@@ -4431,7 +4431,7 @@ runtimeMinutes:    138
 releaseYear:       1963
 countries:         Włochy, Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/still2_zqnlD61.jpg
-synopsis.length:   115
+synopsis.length:   114
 cast:              —
 director:          Federico Fellini
 tmdbId:            422
@@ -4608,7 +4608,7 @@ runtimeMinutes:    150
 releaseYear:       2026
 countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8211S2R.jpg
-synopsis.length:   618
+synopsis.length:   607
 cast:              Nicola Coughlan, Siobhán McSweeney, Éanna Hardwicke
 director:          Caitríona McLaughlin
 tmdbId:            —
@@ -4998,7 +4998,7 @@ runtimeMinutes:    45
 releaseYear:       2026
 countries:         Polska, Anna Błaszczyk, Dominik Litwiniak
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/pucio/pucio-plakat.jpg?rev=5c59e10082a64578b39f13a3bf9616bd
-synopsis.length:   1165
+synopsis.length:   1154
 cast:              —
 director:          Marta Stróżycka
 tmdbId:            1645035
@@ -5168,7 +5168,7 @@ runtimeMinutes:    —
 releaseYear:       2026
 countries:         Polska
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8186O2R.jpg
-synopsis.length:   482
+synopsis.length:   471
 cast:              —
 director:          —
 tmdbId:            —
@@ -5292,7 +5292,7 @@ runtimeMinutes:    109
 releaseYear:       2026
 countries:         Irlandia, Wielka Brytania, Niemcy, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/sprawiedliwosc-owiec/sprawiedliwoscowiec_plakat.jpg?rev=be0f91ffd2f248caaed986a915b760f8
-synopsis.length:   785
+synopsis.length:   784
 cast:              Nicholas Galitzine, Molly Gordon, Julia Louis-Dreyfus, Bryan Cranston, Chris O’Dowd, Regina Hall, Patrick Stewart, Hong Chau, Emma Thompson, Tosin Cole, Kobna Holdbrook-Smith, Conleth Hill i Mandeep Dhillon
 director:          Kyle Balda
 tmdbId:            1301421
@@ -5351,7 +5351,7 @@ runtimeMinutes:    94
 releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/straszny-film/straszny-film-plakat-net.jpg?rev=90bf6b7775c948f49f68a67c868d264b
-synopsis.length:   353
+synopsis.length:   351
 cast:              Anna Faris, Sydney Park, Lochlyn Munro
 director:          Michael Tiddes
 tmdbId:            4247
@@ -5430,7 +5430,7 @@ runtimeMinutes:    100
 releaseYear:       2026
 countries:         Japonia, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/super-mario-galaxy-film/super-mario-galaxy-film-plakat-final.jpg?rev=343089138a9844fb8f7d115642cf2862
-synopsis.length:   181
+synopsis.length:   180
 cast:              —
 director:          Aaron Horvath, Michael Jelenic
 tmdbId:            1226863
@@ -5482,7 +5482,7 @@ runtimeMinutes:    176
 releaseYear:       1960
 countries:         Włochy, Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/still_4_PbgzW23.jpg
-synopsis.length:   114
+synopsis.length:   113
 cast:              —
 director:          Federico Fellini
 tmdbId:            439
@@ -5569,7 +5569,7 @@ runtimeMinutes:    93
 releaseYear:       2026
 countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/tadc/tadc_plakat1.jpg?rev=6804403f06ff476592b3fb32300bcdf8
-synopsis.length:   593
+synopsis.length:   586
 cast:              Lizzie Freeman, Michael Kovach, Marissa Lenti, Ashley Nichols
 director:          Gooseworx  
 tmdbId:            1667198
@@ -5726,7 +5726,7 @@ runtimeMinutes:    110
 releaseYear:       1986
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/top-gun-rocznica40.jpg?rev=9d8790a579a34b90a653b01fa16444c9
-synopsis.length:   535
+synopsis.length:   528
 cast:              Tom Cruise, Tom Skerritt, Kelly McGillis, Val Kilmer, 
 Anthony Edwards, Tim Robbins
 director:          Tony Scott
@@ -5778,7 +5778,7 @@ runtimeMinutes:    130
 releaseYear:       2020
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/multikino_imported/imported_from_external_source/posterimage/top-gun-maverick-plakat-finalny-cut_f040b47882.jpg?rev=973ff8b6bd434f0eb0e2aad7eef2a685
-synopsis.length:   745
+synopsis.length:   738
 cast:              Tom Cruise, Val Kilmer, Miles Teller, Jennifer Connelly, Monica Barbaro, Jay Ellis
 director:          Joseph Kosinski
 tmdbId:            361743
@@ -5944,7 +5944,7 @@ runtimeMinutes:    105
 releaseYear:       1974
 countries:         Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Widmo_wolnosci_1080_x_1080.jpg
-synopsis.length:   112
+synopsis.length:   111
 cast:              —
 director:          Luis Buñuel
 tmdbId:            5558
@@ -6130,7 +6130,7 @@ runtimeMinutes:    151
 releaseYear:       2026
 countries:         Wielka Brytania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8210S2R.jpg
-synopsis.length:   920
+synopsis.length:   703
 cast:              Bryan Cranston, Marianne Jean-Baptiste, Paapa Essiedu, Tom Glynn-Carney, Hayley Squires
 director:          Ivo Van Hove
 tmdbId:            —

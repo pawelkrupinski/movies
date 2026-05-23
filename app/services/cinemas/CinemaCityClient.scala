@@ -177,7 +177,7 @@ object CinemaCityClient {
     val cast      = js.flatMap(j => (j \ "cast").asOpt[String]).filter(_.nonEmpty)
     val director  = js.flatMap(j => (j \ "directors").asOpt[String]).filter(_.nonEmpty)
     val synopsis  = js.flatMap(j => (j \ "synopsis").asOpt[String]).filter(_.nonEmpty)
-      .map(_.replaceAll("&nbsp;", " ").replaceAll("\\s+", " ").trim)
+      .map(tools.TextNormalization.stripHtml)
     val countries = parseCountries(html)
       .orElse(js.flatMap(j => (j \ "releaseCountry").asOpt[String]).filter(_.nonEmpty)
         .map(s => s.split(",").map(_.trim).filter(_.nonEmpty).toSeq))

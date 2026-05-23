@@ -59,4 +59,23 @@ class TextNormalizationSpec extends AnyFlatSpec with Matchers {
     val noComma = "A" * 240
     TextNormalization.dropTrailingPartialNameIfLong(noComma) shouldBe noComma
   }
+
+  // ── stripHtml ─────────────────────────────────────────────────────────────
+
+  "stripHtml" should "strip div and br wrappers from a Multikino synopsis" in {
+    val raw = "<div>Młodzi ludzie są świadkami wypadku.</div><div><br></div>"
+    TextNormalization.stripHtml(raw) shouldBe "Młodzi ludzie są świadkami wypadku."
+  }
+
+  it should "return plain text unchanged" in {
+    TextNormalization.stripHtml("No tags here.") shouldBe "No tags here."
+  }
+
+  it should "collapse whitespace left by removed tags" in {
+    TextNormalization.stripHtml("<p>First paragraph.</p>  <p>Second.</p>") shouldBe "First paragraph. Second."
+  }
+
+  it should "decode HTML entities" in {
+    TextNormalization.stripHtml("caf&eacute; &amp; bar") shouldBe "café & bar"
+  }
 }

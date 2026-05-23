@@ -100,7 +100,7 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
         ApiMovieInfo(
           title         = Some(title),
           duration      = (js \ "duration").asOpt[Int],
-          description   = (js \ "description").asOpt[String].filter(_.nonEmpty),
+          description   = (js \ "description").asOpt[String].filter(_.nonEmpty).map(tools.TextNormalization.stripHtml),
           cast          = (js \ "filmCast").asOpt[String].filter(_.nonEmpty),
           director      = (js \ "director").asOpt[String].filter(_.nonEmpty),
           year          = (js \ "yearOfProduction").asOpt[String].flatMap(s => Try(s.take(4).toInt).toOption),

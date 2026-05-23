@@ -56,7 +56,7 @@ object MultikinoParser {
       cinema      = Multikino,
       posterUrl   = (film \ "posterImageSrc").asOpt[String].filter(_.nonEmpty),
       filmUrl     = absoluteUrl((film \ "filmUrl").asOpt[String]),
-      synopsis    = (film \ "synopsisShort").asOpt[String].filter(_.nonEmpty),
+      synopsis    = (film \ "synopsisShort").asOpt[String].filter(_.nonEmpty).map(tools.TextNormalization.stripHtml),
       cast        = (film \ "cast").asOpt[String].filter(_.nonEmpty),
       director    = (film \ "director").asOpt[String].filter(_.nonEmpty),
       showtimes   = sessions.flatMap(parseSession).toSeq,

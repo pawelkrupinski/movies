@@ -1,6 +1,7 @@
 package tools
 
 import java.text.Normalizer
+import org.jsoup.Jsoup
 
 /**
  * Shared text-normalization primitives. CLAUDE.md threshold-2 extraction:
@@ -64,6 +65,9 @@ object TextNormalization {
    * comma. Below the threshold the string is left alone (a genuinely
    * long-but-complete cast keeps its tail).
    */
+  def stripHtml(s: String): String =
+    Jsoup.parse(s).text().replaceAll("\\s+", " ").trim
+
   def dropTrailingPartialNameIfLong(s: String, threshold: Int = 230): String =
     if (s.length < threshold) s
     else s.lastIndexOf(',') match {

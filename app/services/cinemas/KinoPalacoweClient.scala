@@ -207,7 +207,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
           bookingUrl     = (entry \ "ticket_url").asOpt[String].filter(_.nonEmpty),
           room           = room,
           runtimeMinutes = runtime,
-          synopsis       = (entry \ "lead").asOpt[String].map(_.trim).filter(_.nonEmpty)
+          synopsis       = (entry \ "lead").asOpt[String].map(tools.TextNormalization.stripHtml).filter(_.nonEmpty)
         )
       }
     }
