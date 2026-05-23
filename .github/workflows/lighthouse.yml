@@ -11,17 +11,30 @@ on:
 # the live site (post-deploy on push, weekly on schedule), warns on
 # score drops below threshold, and uploads the full HTML report to
 # Lighthouse's temporary public storage so a single click from the
-# workflow run opens the breakdown. Thresholds live in
-# .lighthouserc.json — adjust there, not here.
+# workflow run opens the breakdown.
+#
+# Both desktop AND mobile form factors run because the audit verdict
+# differs: mobile applies CPU/network throttling (4× slowdown, slow
+# 4G), which is closer to how most kinowo visitors actually load the
+# site; desktop is the baseline for "what's possible on good
+# hardware". Thresholds live in `.lighthouserc.json` (desktop) and
+# `.lighthouserc.mobile.json` (mobile) — adjust there, not here.
 jobs:
     lighthouse:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
 
-            - name: Lighthouse CI
+            - name: Lighthouse CI (desktop)
               uses: treosh/lighthouse-ci-action@v12
               with:
                   configPath: ./.lighthouserc.json
+                  uploadArtifacts: true
+                  temporaryPublicStorage: true
+
+            - name: Lighthouse CI (mobile)
+              uses: treosh/lighthouse-ci-action@v12
+              with:
+                  configPath: ./.lighthouserc.mobile.json
                   uploadArtifacts: true
                   temporaryPublicStorage: true
