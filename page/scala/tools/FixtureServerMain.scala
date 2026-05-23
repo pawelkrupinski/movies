@@ -66,6 +66,18 @@ object FixtureServerMain {
       favouritesMode = false
     ).body
 
+    // /ulubione re-renders `repertoire` with `favouritesMode = true`
+    // so the page's inline `applyFilters` switches to the favourites
+    // branch. Server side passes the same schedules; client side
+    // narrows to `getFavMovies() ∪ getFavScreenings()` per the
+    // localStorage state Playwright tests can seed.
+    val ulubioneHtml: String = views.html.repertoire(
+      schedules, cinemas, devMode = false,
+      currentUser = anon, oauthProviders = noOauth,
+      favouriteMovies = noFav, favouriteScreenings = noFav,
+      favouritesMode = true
+    ).body
+
     def renderFilm(title: String): String = {
       val target = URLDecoder.decode(title, "UTF-8")
       schedules.find(_.movie.title == target) match {
@@ -79,6 +91,7 @@ object FixtureServerMain {
 
     val server = new TestHttpServer({
       case "/"                          => indexHtml
+      case "/ulubione"                  => ulubioneHtml
       case "/kina"                      => renderKina(None)
       case p if p.startsWith("/kina/") =>
         val raw    = URLDecoder.decode(p.stripPrefix("/kina/"), "UTF-8")
