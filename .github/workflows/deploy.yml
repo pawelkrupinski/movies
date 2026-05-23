@@ -6,7 +6,7 @@ on:
 
 # Pipeline shape:
 #
-#   lint ────────────┬─►  deploy
+#   lint ────────────┬─►  deploy ──► lighthouse
 #   test ────────────┤
 #   integration-test ┤
 #   ios-local-server ┤
@@ -436,3 +436,39 @@ jobs:
             - run: flyctl deploy --remote-only -a kinowo --build-arg COMMIT_SHA=${{ github.sha }}
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+    # Lighthouse audit against the freshly deployed site. Runs after
+    # deploy so the scores reflect the code that just shipped. Does NOT
+    # gate anything — `continue-on-error: true` and nothing lists it in
+    # `needs:`. HTML reports are uploaded as artifacts (7-day retention)
+    # so score regressions are one click away from the workflow run.
+    lighthouse:
+        needs: [deploy]
+        runs-on: ubuntu-latest
+        continue-on-error: true
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+
+            - name: Run Lighthouse
+              run: |
+                  npx lighthouse@latest https://kinowo.fly.dev/ \
+                      --output html --output json \
+                      --output-path ./lighthouse-home \
+                      --chrome-flags="--headless=new --no-sandbox"
+                  npx lighthouse@latest https://kinowo.fly.dev/kina \
+                      --output html --output json \
+                      --output-path ./lighthouse-kina \
+                      --chrome-flags="--headless=new --no-sandbox"
+
+            - uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: lighthouse-report
+                  path: |
+                      ./lighthouse-home.*
+                      ./lighthouse-kina.*
+                  retention-days: 7
