@@ -42,6 +42,18 @@ One-time setup
 
 The webhook payload is `{"run_id":..., "sha":..., "branch":..., "job":..., "workflow":...}`,
 authenticated by `Authorization: Bearer <secret>`. Anything else is dropped.
+
+Designated tab
+==============
+
+By default each wake spawns a fresh Terminal tab + claude session. To
+route every CI failure into one long-lived claude session instead, run
+`scripts/ci-wakeup/register-tab.sh` in a Terminal tab — it writes the
+tab's tty to `~/.movies-ci-wakeup-target` and execs claude. While that
+marker exists, the listener types each prompt into the registered tab
+(claude's TUI queues them as separate user messages). When the marker
+is missing or the tab is gone, behaviour falls back to the new-tab
+spawn.
 """
 
 from __future__ import annotations
@@ -62,6 +74,10 @@ PORT = 9876
 SECRET_PATH = Path.home() / ".movies-ci-wakeup-secret"
 REPO_DIR = Path.home() / "projects" / "movies"
 LOG_DIR = Path.home() / ".movies-ci-wakeup-logs"
+# Set by `register-tab.sh` to a tty path (e.g. `/dev/ttys003`). When the
+# file exists AND the tty still belongs to a live Terminal tab, the wake
+# routes there; otherwise we fall back to spawning a new tab.
+TARGET_TTY_PATH = Path.home() / ".movies-ci-wakeup-target"
 
 # A single workflow run usually has multiple jobs (iOS has unit-integration,
 # ui-tests, smoke; Deploy has page-tests-chrome and page-tests-webkit), each
@@ -98,12 +114,8 @@ SECRET = SECRET_PATH.read_text().strip().encode()
 LOG_DIR.mkdir(exist_ok=True)
 
 
-def _spawn_claude(run_id: str, sha: str, branch: str, job: str, workflow: str) -> None:
-    """Open a Terminal.app tab in the repo and start Claude Code with a
-    prompt that includes the failure context. AppleScript is the cleanest
-    way to control Terminal.app from a daemon — `open -a Terminal` only
-    raises the app, it can't seed a command in the new tab."""
-    prompt = (
+def _build_prompt(run_id: str, sha: str, branch: str, job: str, workflow: str) -> str:
+    return (
         f"CI run {run_id} on branch {branch} (workflow {workflow!r}, job {job!r}) "
         f"failed at sha {sha}. Pull the failing logs with "
         f"`gh run view {run_id} --log-failed`, find the failing test/job, "
@@ -111,11 +123,68 @@ def _spawn_claude(run_id: str, sha: str, branch: str, job: str, workflow: str) -
         f"add a regression test, commit and push without waiting for approval."
     )
 
-    cmd = f"cd {shlex.quote(str(REPO_DIR))} && claude {shlex.quote(prompt)}"
 
-    # `do script` opens a new window if Terminal isn't already running, or a
-    # new tab in the front window if it is. The double-quoted string is
-    # passed verbatim to the shell — escape backslashes and double-quotes.
+def _as_applescript_string(s: str) -> str:
+    """Escape Python string `s` for embedding in an AppleScript double-quoted
+    string literal. Newlines become explicit `& linefeed &` joins because
+    AppleScript string literals can't span source lines."""
+    parts = s.split("\n")
+    escaped = ['"' + p.replace("\\", "\\\\").replace('"', '\\"') + '"' for p in parts]
+    return " & linefeed & ".join(escaped)
+
+
+def _read_target_tty() -> str | None:
+    """The path written by `register-tab.sh`. Returns None when the marker
+    file is absent or empty (no designated tab — fall back to new-tab)."""
+    try:
+        tty = TARGET_TTY_PATH.read_text().strip()
+    except OSError:
+        return None
+    return tty or None
+
+
+def _send_into_existing_tab(prompt: str, target_tty: str) -> bool:
+    """Type `prompt` into the Terminal tab whose tty matches `target_tty`,
+    bringing its window forward. Returns True if the tab was found and the
+    keystrokes dispatched, False if no such tab exists (caller falls back)."""
+    applescript = f'''
+tell application "Terminal"
+    set targetTab to missing value
+    set targetWindow to missing value
+    repeat with w in windows
+        repeat with t in tabs of w
+            if tty of t is "{target_tty}" then
+                set targetTab to t
+                set targetWindow to w
+                exit repeat
+            end if
+        end repeat
+        if targetTab is not missing value then exit repeat
+    end repeat
+    if targetTab is missing value then
+        error "tab-not-found"
+    end if
+    do script ({_as_applescript_string(prompt)}) in targetTab
+    activate
+    set frontmost of targetWindow to true
+end tell
+'''.strip()
+    result = subprocess.run(
+        ["osascript", "-e", applescript],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        sys.stderr.write(
+            f"send-to-tab failed (tty={target_tty}): {result.stderr.strip()}\n"
+        )
+        return False
+    return True
+
+
+def _spawn_fresh_tab(prompt: str) -> None:
+    """Fallback: open a new Terminal tab in the repo dir running claude with
+    the prompt as its first message."""
+    cmd = f"cd {shlex.quote(str(REPO_DIR))} && claude {shlex.quote(prompt)}"
     escaped = cmd.replace("\\", "\\\\").replace('"', '\\"')
     applescript = (
         'tell application "Terminal"\n'
@@ -124,6 +193,27 @@ def _spawn_claude(run_id: str, sha: str, branch: str, job: str, workflow: str) -
         'end tell\n'
     )
     subprocess.run(["osascript", "-e", applescript], check=False)
+
+
+def _spawn_claude(run_id: str, sha: str, branch: str, job: str, workflow: str) -> None:
+    """Deliver the failure prompt to claude. If a tab is registered via
+    `register-tab.sh`, type the prompt into that tab's running claude session
+    (its TUI queues it as the next user message). Otherwise open a fresh
+    Terminal tab + claude with the prompt as its first message.
+
+    The HTTPServer is single-threaded so concurrent webhooks are already
+    serialised; combined with claude's input queue, "queue them as they
+    arrive" needs no explicit queue here."""
+    prompt = _build_prompt(run_id, sha, branch, job, workflow)
+    target_tty = _read_target_tty()
+    if target_tty and _send_into_existing_tab(prompt, target_tty):
+        sys.stderr.write(f"queued into designated tab {target_tty}\n")
+        return
+    if target_tty:
+        sys.stderr.write(
+            f"designated tab {target_tty} not found — spawning fresh tab\n"
+        )
+    _spawn_fresh_tab(prompt)
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
