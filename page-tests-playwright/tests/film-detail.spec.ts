@@ -74,6 +74,14 @@ test.describe('/film detail page', () => {
     expect(await page.locator('#trailer-iframe').getAttribute('src')).toBe('');
   });
 
+  test('the ← Repertuar back link navigates to /', async ({ page }) => {
+    await gotoFirstFilm(page);
+    await page.locator('a.back-link').click();
+    await page.waitForURL(/.*\/$/);
+    // Sanity that we landed on the listing rather than a 404 stub.
+    await page.waitForSelector('.col[data-title]', { state: 'attached' });
+  });
+
   test('detail page renders without a JS error', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
