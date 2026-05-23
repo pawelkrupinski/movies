@@ -155,15 +155,8 @@
     width: 26px; height: 26px;
     font-size: .75rem;
     cursor: pointer;
-    opacity: 0;
-    transition: opacity .15s;
     display: flex; align-items: center; justify-content: center;
   }
-  .card:hover .hide-btn,
-  .card.previewed .hide-btn { opacity: 1; }
-  /* Favourite-the-whole-movie button: mirror of .hide-btn (top-left, larger
-     star). Hidden by default and revealed on card hover; once a movie is
-     marked favourite, the star turns yellow and stays visible permanently. */
   .fav-poster-btn {
     position: absolute;
     top: 6px; left: 6px;
@@ -176,13 +169,10 @@
     font-size: 1rem;
     line-height: 1;
     cursor: pointer;
-    opacity: 0;
-    transition: opacity .15s, color .15s;
+    transition: color .15s;
     display: flex; align-items: center; justify-content: center;
   }
-  .card:hover .fav-poster-btn,
-  .card.previewed .fav-poster-btn { opacity: 1; }
-  .fav-poster-btn.is-fav { opacity: 1; color: #ffd24a; }
+  .fav-poster-btn.is-fav { color: #ffd24a; }
   .dropdown-panel {
     position: absolute;
     top: calc(100% + 6px);
@@ -592,10 +582,17 @@
     /* Icon-only controls scale on glyph cap height — ★, < and >. */
     .navbar .nav-tab-fav  { font-size: calc(1.05rem * var(--mobile-scale)); }
     .navbar .date-nav-btn { font-size: calc(1.1rem  * var(--mobile-scale)); }
-    /* Inputs/selects keep the 16px floor (iOS auto-zoom guard set in
-       the rule below) — only their horizontal padding shrinks with
-       the viewport so the focused search pill doesn't eat the row. */
+    /* Navbar search + date-filter selects ride the SAME
+       `--navbar-fs` as the surrounding tabs and Filtry button so
+       every row of the navbar has uniform typography. The broad
+       `input, select { font-size: 16px }` rule further down keeps
+       non-navbar inputs at the iOS auto-zoom floor; this scoped
+       override drops the navbar pair below that floor on purpose
+       — `navbar-uniformity.spec.ts` locks the contract in. Visual
+       uniformity won the trade-off vs the auto-zoom hop on
+       Mobile Safari focus. */
     .navbar .search-input, .navbar .filter-select {
+      font-size:     var(--navbar-fs);
       padding-left:  var(--navbar-px);
       padding-right: var(--navbar-px);
     }
@@ -633,12 +630,15 @@
     }
 
     /* iOS Safari auto-zooms the viewport when focus lands on an
-       input / select with font-size < 16 px and stays zoomed in
-       until the user manually pinches back out. Bumping these to
-       16 px on mobile breakpoints alone (desktop stays at .875rem)
-       keeps the page at its intended scale on every search-input
-       focus and every native-picker open. */
-    .search-input, .filter-select, input, select { font-size: 16px; }
+       input / select with font-size < 16 px. The bump keeps
+       non-navbar inputs (login modal, hidden-films modal search,
+       Filtry's from-hour / from-minute selects inside the
+       dropdown) at the iOS-safe floor. The NAVBAR search +
+       date-filter intentionally opt out via the scoped
+       `.navbar .search-input, .navbar .filter-select` rule above
+       — visual font-uniformity across the navbar won the trade-
+       off vs the auto-zoom hop on focus. */
+    input, select { font-size: 16px; }
 
     /* Card text rides `--mobile-scale` too. The grid is 2 columns
        below 576 px (Bootstrap's `row-cols-2`), so each card is roughly
@@ -710,7 +710,9 @@
     .navbar .nav-tab,
     .navbar .nav-tab-login,
     .navbar .refresh-btn,
-    .navbar .auth-name {
+    .navbar .auth-name,
+    .navbar .filter-select,
+    .navbar .search-input {
       font-size: calc(.8rem * var(--mobile-scale));
       padding-left:  5px;
       padding-right: 5px;

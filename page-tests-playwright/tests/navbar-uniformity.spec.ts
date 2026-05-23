@@ -106,20 +106,15 @@ test.describe('navbar uniformity — desktop', () => {
     await waitForCards(page);
   });
 
-  test('text controls share a single font-size', async ({ page }) => {
+  test('text controls + inputs share a single font-size', async ({ page }) => {
     const { byGroup } = await measureNavbarControls(page);
     // Desktop: nav-tab / nav-tab-login / refresh-btn / auth-name
-    // all read .875rem (14 px @ 16 px root). Allow 0.5 px for
-    // sub-pixel rounding between engines.
-    expectUniform('desktop text-control font', byGroup.text, 'fontPx', 0.5);
-  });
-
-  test('inputs share a single font-size', async ({ page }) => {
-    const { byGroup } = await measureNavbarControls(page);
-    // Desktop search + date-filter selects ride the same .875 rem
-    // as the text controls. They're a separate group only because
-    // the mobile breakpoint pins them to 16 px (iOS zoom guard).
-    expectUniform('desktop input font', byGroup.input, 'fontPx', 0.5);
+    // + search-input + date-filter all read .875rem (14 px @ 16 px
+    // root). Glyph-only controls (★, ‹ ›) are excluded — they carry
+    // their own larger font for icon legibility. 0.5 px tolerance
+    // covers sub-pixel rounding between engines.
+    const textAndInputs = [...byGroup.text, ...byGroup.input];
+    expectUniform('desktop text+input font', textAndInputs, 'fontPx', 0.5);
   });
 
   test('all interactive controls share a single height', async ({ page }) => {
@@ -149,33 +144,58 @@ test.describe('navbar uniformity — mobile portrait', () => {
     await waitForCards(page);
   });
 
-  test('text controls share a single font-size', async ({ page }) => {
+  test('text controls + inputs share a single font-size', async ({ page }) => {
     const { byGroup } = await measureNavbarControls(page);
     // Mobile portrait: nav-tab / nav-tab-login / refresh-btn /
-    // auth-name ride `var(--navbar-fs)` (= .875rem ×
-    // --mobile-scale, so 11.9 px at the 0.85 floor, 14 px at the
-    // breakpoint top). The four must match each other regardless
-    // of which scale value resolved.
-    expectUniform('mobile-portrait text-control font', byGroup.text, 'fontPx', 0.5);
-  });
-
-  test('inputs share a single font-size (16 px iOS-zoom floor)', async ({ page }) => {
-    const { byGroup } = await measureNavbarControls(page);
-    // Both inputs are pinned to 16 px (`{font-size: 16px}` inside
-    // the (max-width: 575px) block) to keep iOS Safari from
-    // auto-zooming on focus. Two of them, both 16 px.
-    expectUniform('mobile-portrait input font', byGroup.input, 'fontPx', 0.5);
-    if (byGroup.input.length > 0) {
-      expect(byGroup.input[0].fontPx, 'mobile-portrait inputs pinned to 16 px iOS-zoom floor').toBeCloseTo(16, 0);
-    }
+    // auth-name AND the search + date-filter inputs all ride
+    // `var(--navbar-fs)` (= .875rem × --mobile-scale, so 11.9 px
+    // at the 0.85 floor, 14 px at the breakpoint top). The
+    // previous design kept the inputs at 16 px to dodge iOS
+    // Safari's auto-zoom-on-focus, but that produced a visible
+    // size mismatch with the surrounding tabs; the project chose
+    // visual uniformity over the auto-zoom trade-off.
+    const textAndInputs = [...byGroup.text, ...byGroup.input];
+    expectUniform('mobile-portrait text+input font', textAndInputs, 'fontPx', 0.5);
   });
 
   test('all interactive controls share a single height', async ({ page }) => {
     const { byGroup } = await measureNavbarControls(page);
-    // Every navbar pill on mobile portrait stays at the desktop
-    // 35 px target — the landscape compact arm is the only place
-    // we drop to 28 px. Sub-pixel rounding tolerated at 1 px.
+    // Every navbar pill on mobile portrait collapses to the
+    // compact 28 px box (shared with landscape — see
+    // `navbar-orientation-uniformity.spec.ts`). Sub-pixel
+    // rounding tolerated at 1 px.
     const everything = [...byGroup.text, ...byGroup.glyph, ...byGroup.input];
     expectUniform('mobile-portrait control height', everything, 'heightPx', 1);
+  });
+});
+
+// ── Mobile landscape ──────────────────────────────────────────
+
+test.describe('navbar uniformity — mobile landscape', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('landscape'),
+      'landscape projects only');
+    await page.goto('/');
+    await waitForCards(page);
+  });
+
+  test('text controls + inputs share a single font-size', async ({ page }) => {
+    const { byGroup } = await measureNavbarControls(page);
+    // Landscape: every text-bearing control + input renders at
+    // `.8rem × --mobile-scale` (.8 × .85 = ~10.88 px). Glyph
+    // controls (★, ‹ ›) keep their own larger font as on the
+    // other breakpoints. Sub-pixel tolerance 0.5 px.
+    const textAndInputs = [...byGroup.text, ...byGroup.input];
+    expectUniform('mobile-landscape text+input font', textAndInputs, 'fontPx', 0.5);
+  });
+
+  test('all interactive controls share a single height', async ({ page }) => {
+    const { byGroup } = await measureNavbarControls(page);
+    // 28 px shared with mobile portrait — see
+    // `navbar-orientation-uniformity.spec.ts`. This assertion is
+    // the per-breakpoint witness; the cross-orientation spec is
+    // the rotational witness.
+    const everything = [...byGroup.text, ...byGroup.glyph, ...byGroup.input];
+    expectUniform('mobile-landscape control height', everything, 'heightPx', 1);
   });
 });
