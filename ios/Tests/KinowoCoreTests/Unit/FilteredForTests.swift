@@ -20,10 +20,6 @@ final class FilteredForTests: XCTestCase {
              runtimeMinutes: 100, ratings: .empty, showings: days)
     }
 
-    // `filteredFor` calls `date.matches(date:)` without a `now` parameter,
-    // so `.today` / `.tomorrow` resolve against `Date()`. Build the
-    // fixture's day strings from the live wall-clock so the `.today` case
-    // is exercisable regardless of when the suite runs.
     private let today: String = DateFilter.iso(Date())
     private let tomorrow: String = DateFilter.iso(Date().addingTimeInterval(86_400))
 
@@ -127,5 +123,26 @@ final class FilteredForTests: XCTestCase {
         XCTAssertEqual(result.map(\.title), ["Mandalorian and Grogu"])
         let todayDay = result[0].showings[0]
         XCTAssertEqual(todayDay.cinemas.map(\.cinema), ["Helonki"])
+    }
+
+    func testTodayFilterUsesProvidedNowNotSystemClock() {
+        let fixedToday = "2020-06-15"
+        let fixedTomorrow = "2020-06-16"
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Warsaw")!
+        let now = cal.date(from: DateComponents(year: 2020, month: 6, day: 15, hour: 12))!
+
+        let films = [
+            film("A", [day(fixedToday, [cinema("X", [slot("18:00")])])]),
+            film("B", [day(fixedTomorrow, [cinema("X", [slot("19:00")])])]),
+        ]
+
+        let filtered = films.filteredFor(
+            date: .today, format: .empty, query: "",
+            hidden: [], disabledCinemas: [],
+            now: now
+        )
+        XCTAssertEqual(filtered.map(\.title), ["A"])
+        XCTAssertEqual(filtered[0].showings.map(\.date), [fixedToday])
     }
 }

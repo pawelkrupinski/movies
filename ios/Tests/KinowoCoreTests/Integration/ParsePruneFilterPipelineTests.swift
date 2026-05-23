@@ -63,7 +63,8 @@ final class ParsePruneFilterPipelineTests: XCTestCase {
         let pruned = films.prunedPastShowings(now: now)
         let filtered = pruned.filteredFor(
             date: .today, format: .empty, query: "",
-            hidden: [], disabledCinemas: []
+            hidden: [], disabledCinemas: [],
+            now: now
         )
         XCTAssertFalse(filtered.isEmpty, "expected films on \(today) but got none")
         for film in filtered {

@@ -180,14 +180,15 @@ extension Sequence where Element == Film {
         format: FormatFilter,
         query: String,
         hidden: Set<String>,
-        disabledCinemas: Set<String>
+        disabledCinemas: Set<String>,
+        now: Date = Date()
     ) -> [Film] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return self.compactMap { film in
             if hidden.contains(film.title) { return nil }
             if !q.isEmpty && !film.title.lowercased().contains(q) { return nil }
             let days: [DayShowings] = film.showings.compactMap { day in
-                if !date.matches(date: day.date) { return nil }
+                if !date.matches(date: day.date, now: now) { return nil }
                 let cinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
                     if disabledCinemas.contains(cg.cinema) { return nil }
                     let times = format.isEmpty
