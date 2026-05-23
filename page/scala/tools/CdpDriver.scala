@@ -313,6 +313,23 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     ))
   }
 
+  /** Desktop counterpart to `setViewport`: same CDP call, but with
+   *  `mobile = false` so the page is laid out under desktop CSS branches
+   *  (`@media (hover: hover)`, `pointer: fine`, no `--mobile-scale`
+   *  shrinking). Used by the desktop layout sweep to drive the page
+   *  through 1280 / 1440 / 1920 px widths and assert the navbar fits
+   *  one row with zero horizontal overflow at every common desktop
+   *  size. Reset with `Emulation.clearDeviceMetricsOverride` when the
+   *  caller is done — same pattern as the mobile sweep. */
+  def setDesktopViewport(width: Int, height: Int): Unit = {
+    send("Emulation.setDeviceMetricsOverride", Json.obj(
+      "width"  -> width,
+      "height" -> height,
+      "deviceScaleFactor" -> 0,
+      "mobile" -> false
+    ))
+  }
+
   override def close(): Unit =
     try ws.sendClose(WebSocket.NORMAL_CLOSURE, "bye").get(2, TimeUnit.SECONDS)
     catch { case _: Throwable => () }

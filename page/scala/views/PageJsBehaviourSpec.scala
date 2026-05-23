@@ -672,6 +672,82 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Desktop layout invariants ────────────────────────────────────────────
+  //
+  // The mobile sweep above pins the < 576 px branch; this one pins the
+  // desktop branch. Three common widths bracket the realistic desktop
+  // range:
+  //   1280 = 13" laptop / small external monitor at default scaling
+  //   1440 = MacBook 14" + many midrange external displays
+  //   1920 = Full-HD desktop (the most common single-monitor width)
+  //
+  // Asserts:
+  //   1. The navbar fits in ONE row. Desktop CSS removes the
+  //      `.navbar-row-break` flex item so all the navbar children
+  //      sit in line; if a wide label or new entry overflows onto a
+  //      second row, that's a regression.
+  //   2. Zero horizontal overflow on the document. `scrollWidth >
+  //      innerWidth` produces a horizontal scrollbar, which is always
+  //      a desktop bug.
+  //
+  // Uses `setDesktopViewport` (mobile = false) so the page sees the
+  // same `pointer: fine` / `@media (hover: hover)` truthiness a real
+  // desktop browser does, and the `--mobile-scale` clamps stay at 1.0.
+  private val DesktopViewports = Seq(1280, 1440, 1920)
+
+  for (path <- Seq("/", "/kina")) {
+    s"the desktop navbar on $path" should "fit in one row with zero horizontal overflow at every common desktop width" in {
+      onPath(path) { page =>
+        pinDeterministicFont(page)
+        // Same anonymous-user pill injection the mobile sweep uses, so
+        // the navbar width measurement covers the realistic prod
+        // layout (logged-out visitor with a Zaloguj-się button).
+        page.eval(
+          "(() => { const a = document.querySelector('.navbar-auth');" +
+          "          if (a && !a.children.length) {" +
+          "            const btn = document.createElement('button');" +
+          "            btn.type = 'button';" +
+          "            btn.className = 'nav-tab nav-tab-login';" +
+          "            btn.textContent = 'Zaloguj się';" +
+          "            a.appendChild(btn);" +
+          "          } })()"
+        )
+
+        case class Row(width: Int, rows: Int, docOverflow: Int)
+        val measured: Seq[Row] = DesktopViewports.map { w =>
+          page.setDesktopViewport(w, 900)
+          Thread.sleep(60L)
+
+          val rowCount = page.evalInt(
+            "(() => { const nav = document.querySelector('.navbar');" +
+            "          const tops = new Set();" +
+            "          for (const c of nav.children) {" +
+            "            const r = c.getBoundingClientRect();" +
+            "            if (r.width === 0 || r.height === 0) continue;" +
+            "            tops.add(Math.round(r.top));" +
+            "          }" +
+            "          return tops.size; })()"
+          )
+          val docOverflow = page.evalInt(
+            "Math.max(0, document.documentElement.scrollWidth - window.innerWidth)"
+          )
+          Row(w, rowCount, docOverflow)
+        }
+
+        page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
+
+        val table = measured.map { r =>
+          f"  ${r.width}%4d px → rows=${r.rows} overflow=${r.docOverflow}%3d px"
+        }.mkString("\n")
+        info(s"desktop layout sweep on $path:\n$table")
+        withClue(s"desktop layout sweep on $path:\n$table\n") {
+          all (measured.map(_.rows))        shouldBe 1
+          all (measured.map(_.docOverflow)) shouldBe 0
+        }
+      }
+    }
+  }
+
   // ── Android card-link two-tap behaviour ──────────────────────────────────
   //
   // iPhone Safari natively applies sticky `:hover` on the first tap of
