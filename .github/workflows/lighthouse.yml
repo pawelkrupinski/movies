@@ -30,10 +30,3 @@ jobs:
                   uploadArtifacts: true
                   artifactName: lighthouse-results-mobile
                   temporaryPublicStorage: true
-
-            - if: failure()
-              uses: ./.github/actions/wake-on-failure
-              with:
-                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    lighthouse

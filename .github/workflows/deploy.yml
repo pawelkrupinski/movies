@@ -62,18 +62,6 @@ jobs:
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
-            # On any failure above (compile, test, stage), poke the local
-            # Claude wake-up listener so a fresh Claude Code tab opens on
-            # my Mac with the failure context. See
-            # `.github/actions/wake-on-failure/` for the action and
-            # `scripts/ci-wakeup/server.py` for the listener.
-            - if: failure()
-              uses: ./.github/actions/wake-on-failure
-              with:
-                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    test
-
             # Produce the Play universal-stage distribution here so the
             # deploy job can ship it straight to Fly's builder without
             # recompiling. Reuses the warm zinc state from `sbt test` —
@@ -104,12 +92,6 @@ jobs:
                   cache: 'npm'
             - run: npm ci
             - run: npm run lint
-            - if: failure()
-              uses: ./.github/actions/wake-on-failure
-              with:
-                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    lint
 
     # iOS LocalServer tests. Boots `FixtureServerMain` (the same Play
     # server FixtureServerMain + InMemoryMovieRepo combo the
@@ -202,12 +184,6 @@ jobs:
                   path: fixture-server.log
                   if-no-files-found: ignore
 
-            - if: failure()
-              uses: ./.github/actions/wake-on-failure
-              with:
-                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    ios-local-server
 
     integration-test:
         runs-on: ubuntu-latest
@@ -240,12 +216,6 @@ jobs:
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
-            - if: failure()
-              uses: ./.github/actions/wake-on-failure
-              with:
-                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    integration-test
 
     # Test-coverage job. Runs the unit suite under sbt-scoverage's
     # instrumented bytecode and uploads the HTML report as an artifact
@@ -348,9 +318,6 @@ jobs:
                   version:       ${{ matrix.version }}
                   project:       ${{ matrix.project }}
                   browser:       ${{ matrix.browser }}
-                  wakeup-url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  wakeup-secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  wakeup-job:    page-tests (chrome / ${{ matrix.variant }})
 
     page-tests-safari:
         name: page tests (safari / ${{ matrix.variant }})
@@ -368,9 +335,6 @@ jobs:
                   kind:          ${{ matrix.kind }}
                   project:       ${{ matrix.project }}
                   browser:       ${{ matrix.browser }}
-                  wakeup-url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  wakeup-secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  wakeup-job:    page-tests (safari / ${{ matrix.variant }})
 
     page-tests-edge:
         name: page tests (edge / ${{ matrix.variant }})
@@ -389,9 +353,6 @@ jobs:
                   version:       ${{ matrix.version }}
                   project:       ${{ matrix.project }}
                   browser:       ${{ matrix.browser }}
-                  wakeup-url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  wakeup-secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  wakeup-job:    page-tests (edge / ${{ matrix.variant }})
 
     page-tests-firefox:
         name: page tests (firefox / ${{ matrix.variant }})
@@ -409,9 +370,6 @@ jobs:
                   kind:          ${{ matrix.kind }}
                   project:       ${{ matrix.project }}
                   browser:       ${{ matrix.browser }}
-                  wakeup-url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  wakeup-secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  wakeup-job:    page-tests (firefox / ${{ matrix.variant }})
 
     deploy:
         needs: [lint, test, integration-test, ios-local-server, page-tests-chrome, page-tests-safari, page-tests-edge, page-tests-firefox]
@@ -467,9 +425,3 @@ jobs:
                   artifactName: lighthouse-results-mobile
                   temporaryPublicStorage: true
 
-            - if: failure()
-              uses: ./.github/actions/wake-on-failure
-              with:
-                  url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
-                  secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    lighthouse

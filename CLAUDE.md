@@ -46,8 +46,8 @@ missing (e.g. no full Xcode for `xcodebuild test`); say so
 explicitly when reporting the work.
 
 CI is the safety net, not the test plan. Pushing and waiting for
-the wake-on-failure to ping you is the wrong shape; pushing once
-the relevant layers are green locally is the right shape.
+CI to catch something is the wrong shape; pushing once the relevant
+layers are green locally is the right shape.
 
 ## Regenerate page snapshots when the rendered HTML changes
 

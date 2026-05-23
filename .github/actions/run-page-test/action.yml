@@ -26,15 +26,6 @@ inputs:
   browser:
     description: Engine binary to install when kind=playwright (chromium|firefox|webkit|msedge).
     required: false
-  wakeup-url:
-    description: secrets.CLAUDE_WAKEUP_URL passthrough.
-    required: true
-  wakeup-secret:
-    description: secrets.CLAUDE_WAKEUP_SECRET passthrough.
-    required: true
-  wakeup-job:
-    description: Human-readable job label for the wake-on-failure prompt.
-    required: true
 
 runs:
   using: composite
@@ -147,9 +138,3 @@ runs:
             kill $FIXTURE_PID 2>/dev/null || true
         fi
 
-    - if: failure()
-      uses: ./.github/actions/wake-on-failure
-      with:
-        url:    ${{ inputs.wakeup-url }}
-        secret: ${{ inputs.wakeup-secret }}
-        job:    ${{ inputs.wakeup-job }}
