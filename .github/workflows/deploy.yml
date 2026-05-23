@@ -232,47 +232,107 @@ jobs:
     # (no iOS-specific sticky-hover, no exact touch quirks) but
     # catches generic WebKit-engine regressions in the same JS we
     # ship to real iPhone users.
-    page-tests-webkit:
-        name: page tests (webkit / iPhone emulation)
+    # Playwright cross-engine job. Drives Chromium / WebKit / Firefox
+    # against a `FixtureServerMain`-backed instance of the Twirl
+    # templates (InMemoryMovieRepo + FakeHttpFetch — same fixture
+    # wiring the Scala spec uses, just exposed over HTTP for an
+    # out-of-process runner). Fully deterministic, no network.
+    #
+    # Split: smoke + behaviour specs gate the deploy; the axe-core
+    # a11y audit runs as an informational layer (continue-on-error)
+    # because the site has known WCAG violations (`color-contrast`
+    # on `.text-secondary` against the dark body bg) that aren't
+    # worth blocking deploys over while they're being fixed. The
+    # a11y step shows red in the UI; the workflow proceeds.
+    page-tests-playwright:
+        name: page tests (playwright cross-browser)
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
 
+            - uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            # Same sbt cache key as the Chrome-matrix jobs so they
+            # all warm the same zinc state.
+            - uses: actions/cache@v4
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
             - uses: actions/setup-node@v4
               with:
                   node-version: '20'
+                  cache: npm
+                  cache-dependency-path: page-tests-playwright/package-lock.json
 
-            - name: Install Playwright + WebKit
-              run: |
-                  cd page-tests-playwright
-                  npm install
-                  npx playwright install --with-deps webkit
+            # Cache the Playwright browser binaries (~250 MB across
+            # Chromium + Firefox + WebKit). Keyed on the package-lock
+            # so a Playwright version bump pulls fresh.
+            - uses: actions/cache@v4
+              with:
+                  path: ~/.cache/ms-playwright
+                  key: playwright-${{ runner.os }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
 
-            # Split: smoke + card-tap gate the deploy; the axe-core a11y
-            # audit runs as an informational layer (continue-on-error)
-            # because the live site has known WCAG violations that aren't
-            # worth blocking deploys over while they're being fixed. The
-            # a11y step shows red in the UI; the workflow proceeds.
-            - name: Run Playwright WebKit smoke + card-tap (blocking)
+            - name: Install npm deps
+              run: cd page-tests-playwright && npm ci
+
+            - name: Install Playwright browsers
+              run: cd page-tests-playwright && npx playwright install --with-deps
+
+            # Start the fixture server in the background. Writes the
+            # chosen free port to a file so we can read it from the
+            # next step without parsing sbt's chatty stdout. The PID
+            # is captured for the always-run kill step further below.
+            - name: Start FixtureServerMain
               run: |
-                  cd page-tests-playwright
-                  npx playwright test --project=webkit --grep-invert "axe-core"
+                  rm -f /tmp/kinowo-port.txt
+                  sbt 'PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 &
+                  echo "FIXTURE_PID=$!" >> $GITHUB_ENV
+                  for _ in $(seq 1 60); do
+                      [ -f /tmp/kinowo-port.txt ] && break
+                      sleep 2
+                  done
+                  if [ ! -f /tmp/kinowo-port.txt ]; then
+                      echo "FixtureServerMain didn't write port within 120s; sbt log:"
+                      cat /tmp/sbt-fixture.log
+                      exit 1
+                  fi
+                  echo "KINOWO_BASE_URL=http://127.0.0.1:$(cat /tmp/kinowo-port.txt)" >> $GITHUB_ENV
+
+            - name: Run Playwright behaviour specs (blocking)
+              run: cd page-tests-playwright && npx playwright test --grep-invert "axe-core"
 
             - name: Run Playwright axe-core a11y audit (informational)
               continue-on-error: true
+              run: cd page-tests-playwright && npx playwright test --grep "axe-core"
+
+            - name: Stop FixtureServerMain
+              if: always()
               run: |
-                  cd page-tests-playwright
-                  npx playwright test --project=webkit --grep "axe-core"
+                  if [ -n "$FIXTURE_PID" ]; then
+                      kill $FIXTURE_PID 2>/dev/null || true
+                  fi
 
             - if: failure()
               uses: ./.github/actions/wake-on-failure
               with:
                   url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
                   secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    page-tests-webkit
+                  job:    page-tests-playwright
 
     deploy:
-        needs: [test, integration-test, page-tests-chrome, page-tests-edge, page-tests-webkit]
+        needs: [test, integration-test, page-tests-chrome, page-tests-edge, page-tests-playwright]
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4

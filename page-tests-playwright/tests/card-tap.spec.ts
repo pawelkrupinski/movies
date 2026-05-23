@@ -8,6 +8,13 @@ import { test, expect } from '@playwright/test';
 // the iPhone-parity contract from the WebKit side.
 
 test.describe('card poster link on WebKit (iPhone emulation)', () => {
+  // The iPhone UA + sticky-hover assertions are WebKit-project
+  // specific; running them under Chromium-Pixel-7 / Firefox-Pixel-7
+  // projects fails the UA check and exercises the wrong engine path.
+  test.skip(
+    ({ browserName }) => browserName !== 'webkit',
+    'iPhone UA + sticky-hover assertions — WebKit project only',
+  );
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/');

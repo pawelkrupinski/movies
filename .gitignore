@@ -37,3 +37,9 @@ project/plugins/project/
 # regenerates them on demand from the same fixture corpus the page
 # specs use, so committing them would just churn the diff.
 /page/screenshots/
+
+# Playwright drops a `.last-run.json` and trace zips here when run
+# from the project root (which the CI workflow does via the
+# `page-tests-playwright/` working directory but local devs may
+# accidentally run from root). Never committed either way.
+/test-results/

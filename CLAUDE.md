@@ -782,3 +782,80 @@ Reference: the iPhone-parity card-tap UX (`public/js/shared.js`,
 version (3e03083) passed local-Chrome tests and looked fine, but
 failed on every real Android device + CI Linux Chrome. The
 touchstart-added version (0d08caa) fixed both.
+
+## Quota-saving patterns (general, not task-specific)
+
+The conversation history of this project has burned non-trivial
+tokens on patterns I keep falling into. Avoid them.
+
+### Run the narrowest test scope you can
+
+`sbt page:test` runs 24 specs in ~30 s. `sbt 'page:testOnly
+views.PageJsBehaviourSpec -- -z "card poster link"'` runs 4 in ~6 s.
+When iterating on one test, use `testOnly` + the `-z` substring
+filter. Same for the main `sbt test` — there are hundreds of unit
+specs; `testOnly` to the spec under change cuts a full run from
+minutes to seconds.
+
+### Background long waits, don't poll-loop in the foreground
+
+`gh run watch` and the until-loops that poll `gh run list` every
+30 s burn tool-call turns. Spawn the wait with `run_in_background:
+true` and a sensible `until` condition; the harness notifies you
+when it completes. Free turns for actual work in the meantime.
+
+Same for `sleep` + screenshot loops against the simulator: spawn,
+do other work, the notification tells you when the screenshot
+landed.
+
+### Pre-resize screenshots before reading them
+
+A raw simulator screenshot is 1080 × 2400 (or worse on bigger
+devices) and costs a lot per Read. `sips -Z 720 src.png --out
+small.png` resizes to a width readable by the model in one quick
+glance. Use the small one for routine inspection; reach for the
+full-res only when you specifically need to see fine pixel detail.
+
+### Batch independent tool calls in one message
+
+A single Tool-call block can hold many tool calls; they run in
+parallel. `git status`, `git diff`, and `git log --oneline -3`
+have no dependencies on each other — fire them together. Same for
+reads of unrelated files, parallel curls, parallel grep + read
+chains. Sequential message-per-call is the worst case.
+
+### Don't re-read files after Edit / Write
+
+The harness tracks file state. If `Edit` or `Write` returned
+success, the file is in the state you asked for. Re-Reading "to
+verify" costs a round trip and tells you nothing the tool result
+didn't already.
+
+### Delegate broad codebase exploration to the Explore subagent
+
+More than 3 `grep` or `find` calls in a row searching for the
+same concept ("where is X used", "how does Y wire together")
+costs main-context tokens. Spawn an Explore subagent with the
+question and let it report back. The subagent reads the relevant
+files in its own context window; main-thread only pays for the
+question + answer.
+
+The same applies to read-only investigations: "look up the live
+CSS to confirm Z" — Explore, not main.
+
+### Iterate via the test, not by hand
+
+When a test fails, fix the test then re-run. Don't manually
+inspect via 10 ad-hoc tool calls — print state from the test
+itself (`info(...)`, `withClue(...)`, or a JS `evaluate` block in
+Playwright) so the test log carries the diagnostic. One
+test-run / commit cycle is cheaper than a debugging cascade.
+
+If the test passes locally and fails on CI, suspect environment
+difference first (Chrome version, runner OS) before treating it
+as test flakiness — see [[feedback-ci-chrome-version-drift]].
+
+### Don't poll harness-tracked work
+
+`run_in_background: true` already notifies on completion. Sleeping
++ polling on top of it doubles the cost. Trust the notification.
