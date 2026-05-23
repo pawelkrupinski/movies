@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { getVisibleTitles, setDateFilter } from './helpers';
 
 // Broad-strokes liveness check against kinowo.fly.dev. The home page
 // 200s with at least one visible card, the date filter narrows the
@@ -8,24 +9,8 @@ import { test, expect } from '@playwright/test';
 // applyFilters re-throwing, etc.) — the card-tap spec only covers the
 // touch-handler contract.
 
-type AnyWindow = typeof globalThis & { applyFilters?: () => void };
-
-const visibleCardCount = (page: import('@playwright/test').Page) =>
-  page.evaluate(
-    () =>
-      [...document.querySelectorAll<HTMLElement>('.col[data-title]')].filter(
-        (c) => c.style.display !== 'none',
-      ).length,
-  );
-
-const setDateFilter = (page: import('@playwright/test').Page, value: string) =>
-  page.evaluate((v: string) => {
-    const sel = document.getElementById('date-filter') as HTMLSelectElement | null;
-    if (sel) {
-      sel.value = v;
-      (globalThis as AnyWindow).applyFilters?.();
-    }
-  }, value);
+const visibleCardCount = async (page: import('@playwright/test').Page) =>
+  (await getVisibleTitles(page)).length;
 
 test.describe('kinowo.fly.dev smoke', () => {
   test('home page renders at least one visible card', async ({ page }) => {

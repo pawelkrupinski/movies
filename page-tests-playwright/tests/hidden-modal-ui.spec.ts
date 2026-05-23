@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setLocalStorageJson } from './helpers';
 
 // Hidden-films modal open/close via UI:
 //   - The `#hidden-row-count` badge (inside the Filtry button area)
@@ -11,12 +12,7 @@ test.describe('hidden films modal UI', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.evaluate(() => {
-      localStorage.setItem(
-        'hiddenFilms',
-        JSON.stringify(['Avatar', 'Cars']),
-      );
-    });
+    await setLocalStorageJson(page, 'hiddenFilms', ['Avatar', 'Cars']);
     await page.reload();
   });
 

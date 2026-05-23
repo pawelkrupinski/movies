@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { pinDateFilterAnytime } from './helpers';
+import { getLocalStorageJson, pinDateFilterAnytime } from './helpers';
 
 // Per-showtime ★ — `.fav-star` inside `.badge-time`. Clicking it
 // toggles the screening's id in `favouriteScreenings` localStorage
@@ -49,10 +49,7 @@ test.describe('per-screening favourite ★', () => {
       star.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     }, ctx!.screeningId);
 
-    const stored = await page.evaluate(() => {
-      const raw = localStorage.getItem('favouriteScreenings');
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    });
+    const stored = (await getLocalStorageJson<string[]>(page, 'favouriteScreenings')) ?? [];
     expect(stored).toContain(ctx!.screeningId);
   });
 
@@ -110,10 +107,7 @@ test.describe('per-screening favourite ★', () => {
       star?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
     }, ctx!.screeningId);
 
-    const stored = await page.evaluate(() => {
-      const raw = localStorage.getItem('favouriteScreenings');
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    });
+    const stored = (await getLocalStorageJson<string[]>(page, 'favouriteScreenings')) ?? [];
     expect(stored).not.toContain(ctx!.screeningId);
   });
 });

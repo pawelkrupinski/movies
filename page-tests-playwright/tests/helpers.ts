@@ -7,13 +7,80 @@ import type { Page } from '@playwright/test';
  * helper for the same reason.
  */
 export async function pinDateFilterAnytime(page: Page): Promise<void> {
-  await page.evaluate(() => {
+  await setDateFilter(page, 'anytime');
+}
+
+/**
+ * Drive the `#date-filter` `<select>` and trigger the page's inline
+ * `applyFilters()` so the visible-cards set reflects the new value
+ * before assertions run. Used by every spec that needs deterministic
+ * showtime visibility — `pinDateFilterAnytime` is just this with
+ * `value = 'anytime'`.
+ */
+export async function setDateFilter(page: Page, value: string): Promise<void> {
+  await page.evaluate((v) => {
     const sel = document.getElementById('date-filter') as HTMLSelectElement | null;
     if (sel) {
-      sel.value = 'anytime';
+      sel.value = v;
       (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.();
     }
-  });
+  }, value);
+}
+
+/**
+ * Wait for the home / favourites listing to have rendered at least
+ * one `.col[data-title]` card into the DOM. `state: 'attached'` is
+ * deliberate: the page's inline `applyFilters` hides out-of-window
+ * cards with `display:none` and shuffles them to the front of DOM
+ * order, so the default `'visible'` check times out even with cards
+ * present.
+ */
+export async function waitForCards(page: Page): Promise<void> {
+  await page.waitForSelector('.col[data-title]', { state: 'attached' });
+}
+
+/**
+ * Read a JSON value out of `localStorage`. Returns `null` if the key
+ * is absent or holds invalid JSON. Generic so callers can narrow the
+ * return type without an `as` cast at the call site.
+ */
+export async function getLocalStorageJson<T = unknown>(page: Page, key: string): Promise<T | null> {
+  return page.evaluate((k) => {
+    const raw = localStorage.getItem(k);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }, key);
+}
+
+/**
+ * Write `value` into `localStorage[key]` as JSON. Equivalent to
+ * `localStorage.setItem(key, JSON.stringify(value))` inside a
+ * `page.evaluate`.
+ */
+export async function setLocalStorageJson(page: Page, key: string, value: unknown): Promise<void> {
+  await page.evaluate(
+    ([k, v]) => localStorage.setItem(k as string, v as string),
+    [key, JSON.stringify(value)],
+  );
+}
+
+/**
+ * Titles of every `.col[data-title]` card the page is currently
+ * showing — `style.display !== 'none'` is the same predicate the
+ * page's own filter pipeline applies. Order matches DOM order, which
+ * the inline `applyFilters` keeps as "visible cards first, hidden
+ * cards moved to the end".
+ */
+export async function getVisibleTitles(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.col[data-title]')]
+      .filter((c) => c.style.display !== 'none')
+      .map((c) => c.dataset.title!),
+  );
 }
 
 /**

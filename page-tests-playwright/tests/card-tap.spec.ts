@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { pinDateFilterAnytime } from './helpers';
 
 // WebKit (Mobile Safari approximation) — regression coverage for the
 // card-tap two-tap behaviour. iPhone Safari's native sticky-hover
@@ -24,14 +25,7 @@ test.describe('card poster link on WebKit (iPhone emulation)', () => {
     // The `/` page renders 100+ cards from the live database; pin the
     // date filter to "anytime" so the visible set isn't a function
     // of the runner's wall-clock relative to the live schedule.
-    await page.evaluate(() => {
-      const sel = document.getElementById('date-filter') as HTMLSelectElement | null;
-      if (sel) {
-        sel.value = 'anytime';
-        // applyFilters is defined globally in the inline script.
-        (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.();
-      }
-    });
+    await pinDateFilterAnytime(page);
   });
 
   test('UA is iPhone-shaped so the Android listener stays unbound', async ({ page }) => {

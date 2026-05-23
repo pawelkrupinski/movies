@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { firstVisibleTitle, pinDateFilterAnytime } from './helpers';
+import {
+  firstVisibleTitle,
+  getLocalStorageJson,
+  pinDateFilterAnytime,
+  setLocalStorageJson,
+} from './helpers';
 
 // Hide-film lifecycle:
 //   1. The ✕ button on a poster persists the title to
@@ -31,10 +36,7 @@ test.describe('hide film flow', () => {
       (globalThis as { hideFilm?: (el: HTMLElement) => void }).hideFilm?.(btn);
     }, title!);
 
-    const stored = await page.evaluate(() => {
-      const raw = localStorage.getItem('hiddenFilms');
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    });
+    const stored = (await getLocalStorageJson<string[]>(page, 'hiddenFilms')) ?? [];
     expect(stored).toContain(title);
 
     // The card's column is `display: none`-d by `applyFilters` on
@@ -50,9 +52,7 @@ test.describe('hide film flow', () => {
     // Seed three hidden titles directly so we don't depend on the
     // ✕-button click flow. Reload picks them up.
     const seeded = ['Avatar', 'Cars', 'Diabeł ubiera się u Prady 2'];
-    await page.evaluate((titles) => {
-      localStorage.setItem('hiddenFilms', JSON.stringify(titles));
-    }, seeded);
+    await setLocalStorageJson(page, 'hiddenFilms', seeded);
     await page.reload();
 
     await page.evaluate(() =>
@@ -72,9 +72,7 @@ test.describe('hide film flow', () => {
 
     // Seed the card as hidden, reload, confirm hidden, then unhide
     // via the inline JS the modal's "Pokaż" buttons route to.
-    await page.evaluate((t) => {
-      localStorage.setItem('hiddenFilms', JSON.stringify([t]));
-    }, title!);
+    await setLocalStorageJson(page, 'hiddenFilms', [title!]);
     await page.reload();
     await pinDateFilterAnytime(page);
 
@@ -96,10 +94,7 @@ test.describe('hide film flow', () => {
       title!,
     )).not.toBe('none');
 
-    const stillHidden = await page.evaluate(() => {
-      const raw = localStorage.getItem('hiddenFilms');
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    });
+    const stillHidden = (await getLocalStorageJson<string[]>(page, 'hiddenFilms')) ?? [];
     expect(stillHidden).not.toContain(title);
   });
 });

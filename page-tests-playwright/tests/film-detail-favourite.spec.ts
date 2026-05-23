@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { firstVisibleTitle, pinDateFilterAnytime } from './helpers';
+import {
+  firstVisibleTitle,
+  getLocalStorageJson,
+  pinDateFilterAnytime,
+  setLocalStorageJson,
+} from './helpers';
 
 // `/film?title=…` carries its own ★ button (the same `.fav-poster-btn`
 // shape as the listing card). The page has an inline `toggleFavMovie`
@@ -26,10 +31,7 @@ test.describe('/film detail page favourite ★', () => {
       (globalThis as { toggleFavMovie?: (el: HTMLElement) => void }).toggleFavMovie?.(btn);
     });
 
-    const favs = await page.evaluate(() => {
-      const raw = localStorage.getItem('favouriteMovies');
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    });
+    const favs = (await getLocalStorageJson<string[]>(page, 'favouriteMovies')) ?? [];
     expect(favs).toContain(title);
     await expect(page.locator('.fav-poster-btn')).toHaveClass(/is-fav/);
   });
@@ -39,9 +41,7 @@ test.describe('/film detail page favourite ★', () => {
 
     // Seed BEFORE the reload — the DOMContentLoaded handler on /film
     // reads `favouriteMovies` and paints the button.
-    await page.evaluate((t) => {
-      localStorage.setItem('favouriteMovies', JSON.stringify([t]));
-    }, title);
+    await setLocalStorageJson(page, 'favouriteMovies', [title]);
     await page.reload();
 
     await expect(page.locator('.fav-poster-btn')).toHaveClass(/is-fav/);

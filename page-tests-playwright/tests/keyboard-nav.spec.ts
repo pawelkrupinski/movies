@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setDateFilter, waitForCards } from './helpers';
 
 // Document-level keydown handler in shared.js maps ArrowLeft / Right
 // to `stepDate(-1 / 1)` — the same function the navbar's date-arrow
@@ -9,13 +10,9 @@ test.describe('keyboard arrow date navigation', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('.col[data-title]', { state: 'attached' });
+    await waitForCards(page);
     // Land on a known starting value so the cycle is deterministic.
-    await page.evaluate(() => {
-      const sel = document.getElementById('date-filter') as HTMLSelectElement;
-      sel.value = 'today';
-      (globalThis as { applyFilters?: () => void }).applyFilters?.();
-    });
+    await setDateFilter(page, 'today');
   });
 
   test('ArrowRight advances the date filter', async ({ page }) => {

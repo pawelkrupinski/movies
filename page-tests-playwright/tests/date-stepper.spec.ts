@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setDateFilter, waitForCards } from './helpers';
 
 // The navbar's ← / → buttons call `stepDate(±1)` which cycles the
 // `#date-filter` <select> through its options. Visible-card count
@@ -9,13 +10,9 @@ test.describe('date stepper buttons', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('.col[data-title]', { state: 'attached' });
+    await waitForCards(page);
     // Land on a known starting value so cycling is deterministic.
-    await page.evaluate(() => {
-      const sel = document.getElementById('date-filter') as HTMLSelectElement;
-      sel.value = 'today';
-      (globalThis as { applyFilters?: () => void }).applyFilters?.();
-    });
+    await setDateFilter(page, 'today');
   });
 
   test('the → button advances the select to the next option', async ({ page }) => {

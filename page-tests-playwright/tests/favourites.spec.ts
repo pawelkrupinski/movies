@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { firstVisibleTitle, pinDateFilterAnytime } from './helpers';
+import {
+  firstVisibleTitle,
+  getLocalStorageJson,
+  getVisibleTitles,
+  pinDateFilterAnytime,
+  setLocalStorageJson,
+  waitForCards,
+} from './helpers';
 
 // Favourites flow:
 //   - Toggling the ★ on a poster persists to `localStorage`
@@ -29,10 +36,7 @@ test.describe('favourites', () => {
       (globalThis as { toggleFavMovie?: (el: HTMLElement) => void }).toggleFavMovie?.(btn);
     }, title!);
 
-    const favs = await page.evaluate(() => {
-      const raw = localStorage.getItem('favouriteMovies');
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    });
+    const favs = (await getLocalStorageJson<string[]>(page, 'favouriteMovies')) ?? [];
     expect(favs).toContain(title);
 
     // Re-paint after the toggle adds the `.is-fav` class on the
@@ -59,10 +63,7 @@ test.describe('favourites', () => {
       tog?.(btn);
     }, title!);
 
-    const favs = await page.evaluate(() => {
-      const raw = localStorage.getItem('favouriteMovies');
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    });
+    const favs = (await getLocalStorageJson<string[]>(page, 'favouriteMovies')) ?? [];
     expect(favs).not.toContain(title);
   });
 });
@@ -74,27 +75,14 @@ test.describe('/ulubione page', () => {
     // then navigate to /ulubione. The page's inline `applyFilters`
     // with `IS_FAVOURITES_PAGE = true` will hide non-favourited cards.
     await page.goto('/');
-    const titles = await page.evaluate(() => {
-      const cols = [...document.querySelectorAll<HTMLElement>('.col[data-title]')];
-      // Pick the first two distinct visible titles.
-      return cols
-        .filter((c) => c.style.display !== 'none')
-        .slice(0, 2)
-        .map((c) => c.dataset.title!);
-    });
+    const titles = (await getVisibleTitles(page)).slice(0, 2);
     expect(titles).toHaveLength(2);
-    await page.evaluate((ts) => {
-      localStorage.setItem('favouriteMovies', JSON.stringify(ts));
-    }, titles);
+    await setLocalStorageJson(page, 'favouriteMovies', titles);
 
     await page.goto('/ulubione');
-    await page.waitForSelector('.col[data-title]', { state: 'attached' });
+    await waitForCards(page);
 
-    const visibleTitles = await page.evaluate(() =>
-      [...document.querySelectorAll<HTMLElement>('.col[data-title]')]
-        .filter((c) => c.style.display !== 'none')
-        .map((c) => c.dataset.title!),
-    );
+    const visibleTitles = await getVisibleTitles(page);
     // `/ulubione` should narrow to the seeded set (order may differ).
     expect(visibleTitles.sort()).toEqual([...titles].sort());
   });

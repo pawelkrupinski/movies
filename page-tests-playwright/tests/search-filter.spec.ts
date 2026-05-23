@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { pinDateFilterAnytime } from './helpers';
+import { pinDateFilterAnytime, setLocalStorageJson } from './helpers';
 
 // `/` page search input + hidden-films modal filter. Ports the
 // corresponding Scala tests so the same assertions run cross-engine.
@@ -65,12 +65,7 @@ test.describe('the hidden-films modal search', () => {
     await page.goto('/');
     // Seed a handful of hidden films directly via localStorage so the
     // modal has something to filter; reload to pick up the new state.
-    await page.evaluate(() => {
-      localStorage.setItem(
-        'hiddenFilms',
-        JSON.stringify(['Diabeł ubiera się u Prady 2', 'Avatar', 'Cars'])
-      );
-    });
+    await setLocalStorageJson(page, 'hiddenFilms', ['Diabeł ubiera się u Prady 2', 'Avatar', 'Cars']);
     await page.reload();
   });
 

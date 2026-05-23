@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { pinDateFilterAnytime } from './helpers';
+import { getLocalStorageJson, pinDateFilterAnytime } from './helpers';
 
 // Filtry > Kina section: per-cinema checkboxes + the master
 // "Wszystkie kina" checkbox. Unchecking a cinema hides its
@@ -45,10 +45,7 @@ test.describe('Filtry > Kina checkboxes', () => {
       cb?.click();
     });
 
-    const stored = await page.evaluate(() => {
-      const raw = localStorage.getItem('disabledCinemas');
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    });
+    const stored = (await getLocalStorageJson<string[]>(page, 'disabledCinemas')) ?? [];
     expect(stored).toContain(firstCinema);
 
     const afterVisible = await visibleCinemaGroups(page);
@@ -79,10 +76,7 @@ test.describe('Filtry > Kina checkboxes', () => {
     const afterVisible = await visibleCinemaGroups(page);
     expect(afterVisible).toBe(beforeVisible);
 
-    const stored = await page.evaluate(() => {
-      const raw = localStorage.getItem('disabledCinemas');
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    });
+    const stored = (await getLocalStorageJson<string[]>(page, 'disabledCinemas')) ?? [];
     expect(stored).toEqual([]);
   });
 
@@ -107,10 +101,7 @@ test.describe('Filtry > Kina checkboxes', () => {
       (document.getElementById('cinema-all') as HTMLInputElement).click();
     });
 
-    const stored = await page.evaluate(() => {
-      const raw = localStorage.getItem('disabledCinemas');
-      return raw ? (JSON.parse(raw) as string[]) : [];
-    });
+    const stored = (await getLocalStorageJson<string[]>(page, 'disabledCinemas')) ?? [];
     expect(stored).toEqual([]);
 
     const afterMasterVisible = await visibleCinemaGroups(page);
