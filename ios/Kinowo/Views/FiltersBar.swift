@@ -101,8 +101,10 @@ struct TopBar: View {
 struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
     let scale: CGFloat
+    @Environment(\.horizontalSizeClass) private var hSize
 
     var body: some View {
+        let landscape = hSize == .regular || UIScreen.main.bounds.width > UIScreen.main.bounds.height
         HStack(spacing: 6 * scale) {
             ForEach(DateFilter.presets, id: \.self) { f in
                 Button {
@@ -111,11 +113,7 @@ struct DatePillsRow: View {
                     Text(f.label)
                         .font(.system(size: 14 * scale, weight: .medium))
                         .lineLimit(1)
-                        // Three short pills claim flex via maxWidth
-                        // .infinity inside the label, so the Capsule
-                        // background tracks the expanded frame.
-                        // Wszystkie's nil keeps it intrinsic inside.
-                        .frame(maxWidth: f == .anytime ? nil : .infinity)
+                        .frame(maxWidth: (f == .anytime && !landscape) ? nil : .infinity)
                         .padding(.horizontal, 12 * scale)
                         .padding(.vertical, 7 * scale)
                         .background(
@@ -127,14 +125,7 @@ struct DatePillsRow: View {
                         .foregroundColor(dateFilter == f ? .white : .primary)
                 }
                 .buttonStyle(.plain)
-                // SwiftUI's HStack splits its proposal equally across
-                // children that claim `maxWidth: .infinity` — without
-                // `.fixedSize` here, Wszystkie was getting the same
-                // ~72pt share as a short pill and truncating to "Wsz…".
-                // Pinning Wszystkie to its intrinsic width takes it
-                // out of the flex pool; the three short pills then
-                // share what's left equally.
-                .fixedSize(horizontal: f == .anytime, vertical: false)
+                .fixedSize(horizontal: f == .anytime && !landscape, vertical: false)
             }
         }
     }

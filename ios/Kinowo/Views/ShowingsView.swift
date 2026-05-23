@@ -34,9 +34,10 @@ struct ShowingsView: View {
 
         VStack(alignment: .leading, spacing: 6) {
             ForEach(days, id: \.date) { day in
-                Text(day.label)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                Text(day.label.uppercased())
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(Color.white.opacity(0.85))
+                    .tracking(0.5)
                     .padding(.top, 4)
                 ForEach(day.cinemas, id: \.cinema) { cinema in
                     VStack(alignment: .leading, spacing: 4) {
