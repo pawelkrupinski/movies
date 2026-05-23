@@ -23,7 +23,16 @@
        the noise stops surfacing while real TLS-layer errors still log. -->
   <logger name="org.mongodb.driver.connection.tls" level="ERROR"/>
 
+  <!-- Sentry: forward ERROR-level events; attach INFO+ as breadcrumbs.
+       Reads SENTRY_DSN from the environment; when unset the appender is
+       a no-op (local dev, CI). -->
+  <appender name="SENTRY" class="io.sentry.logback.SentryAppender">
+    <minimumEventLevel>ERROR</minimumEventLevel>
+    <minimumBreadcrumbLevel>INFO</minimumBreadcrumbLevel>
+  </appender>
+
   <root level="WARN">
     <appender-ref ref="STDOUT"/>
+    <appender-ref ref="SENTRY"/>
   </root>
 </configuration>

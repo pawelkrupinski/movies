@@ -48,6 +48,9 @@ libraryDependencies ++= Seq(
   // In-memory caching
   "com.github.ben-manes.caffeine" % "caffeine" % "3.2.4",
 
+  // Error reporting
+  "io.sentry" % "sentry-logback" % "8.42.0",
+
   // Testing
   "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test
 )
