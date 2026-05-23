@@ -122,26 +122,30 @@ jobs:
     # GH runner so they all parallelise, and `fail-fast: false` keeps
     # one red row from masking the others.
     #
-    # Three families:
+    # Rows are tagged with a `family` axis (chrome / safari / edge /
+    # firefox) so the CI checks list sorts neatly by engine family.
+    # Two execution kinds run underneath:
     #
-    # - `chrome` / `edge` rows run the Scala PageTest spec against an
-    #   installed browser via CDP. Chrome version pick reflects real
-    #   Android phone distribution as of early 2026 (120+ ≈ 85% of
-    #   devices, 113–120 the long tail); 113 is the floor that
-    #   chrome-for-testing publishes. `stable` tracks whatever Google
-    #   ships next. Specific versions catch regressions like the
-    #   touchstart-vs-click timing change that bit the card-tap fix
-    #   — see [[feedback-ci-chrome-version-drift]]. Edge runs one
-    #   stable row; mobile Edge tracks desktop Edge closely.
+    # - `chrome` / `edge` (kind) rows run the Scala PageTest spec
+    #   against an installed browser via CDP. Chrome version pick
+    #   reflects real Android phone distribution as of early 2026
+    #   (120+ ≈ 85% of devices, 113–120 the long tail); 113 is the
+    #   floor that chrome-for-testing publishes. `stable` tracks
+    #   whatever Google ships next. Specific versions catch
+    #   regressions like the touchstart-vs-click timing change that
+    #   bit the card-tap fix — see [[feedback-ci-chrome-version-drift]].
+    #   Edge runs one stable row; mobile Edge tracks desktop Edge
+    #   closely.
     #
-    # - `playwright` rows drive `page-tests-playwright/` against a
-    #   `FixtureServerMain`-backed instance of the Twirl templates
-    #   (InMemoryMovieRepo + FakeHttpFetch — same fixture wiring the
-    #   Scala spec uses, exposed over HTTP). One row per Playwright
-    #   project (see `playwright.config.ts`). Splitting per-project
-    #   was a wall-clock win: the unified single-job version ran
-    #   224 tests with `workers: 1` and took ~5m; per-project rows
-    #   parallelise across runners and each finishes in ~2m.
+    # - `playwright` (kind) rows drive `page-tests-playwright/`
+    #   against a `FixtureServerMain`-backed instance of the Twirl
+    #   templates (InMemoryMovieRepo + FakeHttpFetch — same fixture
+    #   wiring the Scala spec uses, exposed over HTTP). One row per
+    #   Playwright project (see `playwright.config.ts`). Splitting
+    #   per-project was a wall-clock win: the unified single-job
+    #   version ran 224 tests with `workers: 1` and took ~5m;
+    #   per-project rows parallelise across runners and each
+    #   finishes in ~2m.
     #
     #   Each `playwright` row needs only its one engine binary —
     #   `matrix.browser` is `chromium` / `firefox` / `webkit` /
@@ -154,23 +158,27 @@ jobs:
     #   violations (`color-contrast` on `.text-secondary` against
     #   the dark body bg) that aren't worth blocking deploys over.
     page-tests:
-        name: page tests (${{ matrix.label }})
+        name: page tests (${{ matrix.family }} / ${{ matrix.variant }})
         strategy:
             fail-fast: false
             matrix:
                 include:
-                    - { label: chrome stable, kind: chrome, version: stable }
-                    - { label: chrome 128,    kind: chrome, version: '128' }
-                    - { label: chrome 120,    kind: chrome, version: '120' }
-                    - { label: chrome 113,    kind: chrome, version: '113' }
-                    - { label: edge stable,   kind: edge,   version: stable }
-                    - { label: playwright chromium,         kind: playwright, project: chromium,         browser: chromium }
-                    - { label: playwright webkit,           kind: playwright, project: webkit,           browser: webkit }
-                    - { label: playwright firefox,          kind: playwright, project: firefox,          browser: firefox }
-                    - { label: playwright chromium-desktop, kind: playwright, project: chromium-desktop, browser: chromium }
-                    - { label: playwright webkit-desktop,   kind: playwright, project: webkit-desktop,   browser: webkit }
-                    - { label: playwright firefox-desktop,  kind: playwright, project: firefox-desktop,  browser: firefox }
-                    - { label: playwright msedge-desktop,   kind: playwright, project: msedge-desktop,   browser: msedge }
+                    # Chrome family: Scala/CDP across four versions + Playwright Chromium (mobile + desktop)
+                    - { family: chrome,  variant: stable,             kind: chrome,     version: stable }
+                    - { family: chrome,  variant: '128',              kind: chrome,     version: '128' }
+                    - { family: chrome,  variant: '120',              kind: chrome,     version: '120' }
+                    - { family: chrome,  variant: '113',              kind: chrome,     version: '113' }
+                    - { family: chrome,  variant: playwright mobile,  kind: playwright, project: chromium,         browser: chromium }
+                    - { family: chrome,  variant: playwright desktop, kind: playwright, project: chromium-desktop, browser: chromium }
+                    # Safari family: Playwright WebKit (mobile + desktop)
+                    - { family: safari,  variant: playwright mobile,  kind: playwright, project: webkit,           browser: webkit }
+                    - { family: safari,  variant: playwright desktop, kind: playwright, project: webkit-desktop,   browser: webkit }
+                    # Edge family: Scala/CDP stable + Playwright msedge channel (desktop only — see playwright.config.ts)
+                    - { family: edge,    variant: stable,             kind: edge,       version: stable }
+                    - { family: edge,    variant: playwright desktop, kind: playwright, project: msedge-desktop,   browser: msedge }
+                    # Firefox family: Playwright Gecko (mobile + desktop)
+                    - { family: firefox, variant: playwright mobile,  kind: playwright, project: firefox,          browser: firefox }
+                    - { family: firefox, variant: playwright desktop, kind: playwright, project: firefox-desktop,  browser: firefox }
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -281,7 +289,7 @@ jobs:
               with:
                   url:    ${{ secrets.CLAUDE_WAKEUP_URL }}
                   secret: ${{ secrets.CLAUDE_WAKEUP_SECRET }}
-                  job:    page-tests (${{ matrix.label }})
+                  job:    page-tests (${{ matrix.family }} / ${{ matrix.variant }})
 
     deploy:
         needs: [test, integration-test, page-tests]
