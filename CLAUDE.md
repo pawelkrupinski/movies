@@ -49,6 +49,50 @@ CI is the safety net, not the test plan. Pushing and waiting for
 the wake-on-failure to ping you is the wrong shape; pushing once
 the relevant layers are green locally is the right shape.
 
+## Regenerate page snapshots when the rendered HTML changes
+
+`PageSnapshotSpec` (`page/scala/views/PageSnapshotSpec.scala`) diffs
+the rendered HTML for `/`, `/kina`, and `/ulubione` against checked-in
+expected files under `test/resources/fixtures/17-05-2026/`. Any change
+that alters the HTML a Twirl template emits — new or changed
+attributes on an element, added/removed markup, reordered output,
+changed inline JS — will break the snapshot comparison.
+
+When your change intentionally alters the rendered HTML:
+
+1. Delete the stale expected file(s):
+   ```
+   rm test/resources/fixtures/17-05-2026/expected-index.html
+   rm test/resources/fixtures/17-05-2026/expected-kina.html
+   rm test/resources/fixtures/17-05-2026/expected-ulubione.html
+   ```
+   Delete only the pages your change affects. When in doubt, delete
+   all three — they regenerate in seconds.
+
+2. Run the snapshot spec:
+   ```
+   sbt 'PageTest/testOnly views.PageSnapshotSpec'
+   ```
+   The spec writes the missing file(s) and fails with
+   "Snapshot didn't exist — wrote …". This is expected.
+
+3. Re-run to confirm the new snapshot is stable:
+   ```
+   sbt 'PageTest/testOnly views.PageSnapshotSpec'
+   ```
+   All tests should pass. If they don't, the rendering is
+   non-deterministic — investigate before committing.
+
+4. Commit the regenerated snapshot(s) alongside the production change
+   that caused them. Don't commit snapshots in a separate commit —
+   they're part of the same logical change.
+
+Changes that typically require regeneration: Twirl template edits
+(`app/views/*.scala.html`), `PosterProxy` output changes, model
+fields that surface in the view, CSS class or `data-*` attribute
+changes on rendered elements, inline `onerror`/`onclick` handler
+changes.
+
 ## Remove one-shot scripts after they're used
 
 A script written for a specific past fix — "backfill the rows whose
