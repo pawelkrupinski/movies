@@ -551,6 +551,17 @@
   @@media (max-width: 575px),
          (max-height: 500px) and (orientation: landscape) {
     .nav-tab-debug { display: none; }
+    /* `#film-counter` is the "12 tytułów · 57 seansów" line that
+       sits between the navbar and the grid. On mobile (portrait
+       phones + landscape phones) the line eats a card-row of
+       vertical room without adding information the user doesn't
+       already see (the cards themselves are right below, and the
+       date pills above already disambiguate "is anything playing
+       today"). Hide it; the inline `style="display:none"` is
+       still flipped to visible by the JS counter update, so
+       `!important` is needed to win against that. */
+    #film-counter { display: none !important; }
+    .container-fluid { padding-top: .75rem !important; }
   }
 
   @@media (max-width: 575px) {
@@ -561,7 +572,7 @@
        uniform ratios between the navbar and the grid beneath it. */
     .navbar {
       padding: calc(.5rem * var(--mobile-scale)) calc(.75rem * var(--mobile-scale)) !important;
-      gap: calc(.4rem * var(--mobile-scale));
+      gap: calc(.2rem * var(--mobile-scale));
       --navbar-fs: calc(.875rem * var(--mobile-scale));
       --navbar-px: calc(.6rem  * var(--mobile-scale));
     }
