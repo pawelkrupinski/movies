@@ -539,6 +539,11 @@
   .navbar-auth      { order: 4; }
   .navbar-row-break { display: none; }
 
+  @@media (min-width: 576px) {
+    .container-fluid { padding-top: .75rem !important; }
+    #film-counter    { margin-bottom: .75rem !important; }
+  }
+
   /* The Debug tab is a dev-mode-only link. On mobile (both portrait
      and landscape) it pushes the navbar over its width budget on the
      narrow phones — and the page it links to is keyboard-shortcut
@@ -683,10 +688,24 @@
     .no-poster          { font-size: calc(.85rem  * var(--mobile-scale)); }
     #room-tooltip       { font-size: calc(.68rem  * var(--mobile-scale)); }
 
-    /* The 35 px min-height / 35 px min-width on nav-tab / nav-tab-fav /
-       refresh-btn / date-nav-btn / filter-select / search-input /
-       nav-tab-login / auth-menu lives on the base rules above so
-       desktop and mobile share a consistent navbar height. */
+    /* Compact 28 px control heights for portrait mobile — matches
+       the landscape-only block further down so rotating the device
+       doesn't shift the row height. Locked in by
+       `navbar-orientation-uniformity.spec.ts`. */
+    .navbar .nav-tab,
+    .navbar .nav-tab-fav,
+    .navbar .nav-tab-login,
+    .navbar .refresh-btn,
+    .navbar .date-nav-btn,
+    .navbar .btn.date-nav-btn,
+    .navbar .filter-select,
+    .navbar .search-input,
+    .navbar .auth-name {
+      height: 28px;
+      min-height: 28px;
+      max-height: 28px;
+      box-sizing: border-box;
+    }
   }
 
   @@media (max-height: 500px) and (orientation: landscape) {
@@ -779,33 +798,14 @@
     }
   }
 
-  /* Shared compact-navbar heights for portrait and landscape
-     phones. Each interactive control collapses to a 28 px box and
-     the navbar wraps that in 3 px of top/bottom padding — same
-     numbers for both orientations, so the rendered row height
-     doesn't shift when the user rotates the device. Locked in by
-     `navbar-orientation-uniformity.spec.ts`.
-     `.btn.date-nav-btn` carries its own `max-height: 28px` because
-     Bootstrap's `.btn` line-height pushed the rendered height past
-     28 px without the cap on Safari. */
+  /* Landscape compact padding — the 28 px control heights live
+     in both the `(max-width: 575px)` portrait block and here, but
+     the tighter 3 px top/bottom padding is landscape-only because
+     portrait has room for the scaled `.5rem` padding. */
   @@media (max-height: 500px) and (orientation: landscape) {
     .navbar {
       padding-top:    3px !important;
       padding-bottom: 3px !important;
-    }
-    .navbar .nav-tab,
-    .navbar .nav-tab-fav,
-    .navbar .nav-tab-login,
-    .navbar .refresh-btn,
-    .navbar .date-nav-btn,
-    .navbar .btn.date-nav-btn,
-    .navbar .filter-select,
-    .navbar .search-input,
-    .navbar .auth-name {
-      height: 28px;
-      min-height: 28px;
-      max-height: 28px;
-      box-sizing: border-box;
     }
   }
 </style>
