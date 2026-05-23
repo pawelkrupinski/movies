@@ -368,7 +368,7 @@
 
   // ── Showings truncation ─────────────────────────────────────────────────
   //
-  // After each filter pass, caps visible showings per card at ~20 visual
+  // After each filter pass, caps visible showings per card at ~10 visual
   // rows. Hides overflow at cinema-group boundaries and shows a
   // "… +N seansów" link to the /film page. Mirrors the iOS app's collapse.
   //
@@ -377,7 +377,7 @@
   // no extra DOM measurement. The /film page has no applyFilters and
   // doesn't call this, so it renders everything.
 
-  const _MAX_SHOWINGS_ROWS = 20;
+  const _MAX_SHOWINGS_ROWS = 10;
   const _PILLS_PER_ROW     = 6;
   const _MIN_HIDDEN         = 3;
 
