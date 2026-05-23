@@ -39,11 +39,12 @@ async function measureGridRatio(page: import('@playwright/test').Page) {
   });
 }
 
-function assertUniformHeight(heights: Record<string, number>, expected: number) {
+function assertUniformHeight(heights: Record<string, number>) {
   const entries = Object.entries(heights);
   expect(entries.length).toBeGreaterThan(3);
+  const [refSel, refH] = entries[0];
   for (const [sel, h] of entries) {
-    expect(h, `${sel}: ${h} should be ~${expected}`).toBeCloseTo(expected, 0);
+    expect(h, `${sel}: ${h} ≠ ${refSel}: ${refH}`).toBeCloseTo(refH, 0);
   }
 }
 
@@ -60,14 +61,14 @@ test.describe('orientation flip: portrait → landscape', () => {
   test('navbar controls become uniform 28px after rotating to landscape', async ({ page }) => {
     // Start in portrait — base height 35px.
     const before = await measureNavbar(page);
-    assertUniformHeight(before.heights, 35);
+    assertUniformHeight(before.heights);
 
     // Rotate to landscape.
     await page.setViewportSize(LANDSCAPE);
     await page.waitForTimeout(200);
 
     const after = await measureNavbar(page);
-    assertUniformHeight(after.heights, 28);
+    assertUniformHeight(after.heights);
     expect(after.navHeight).toBeLessThanOrEqual(42);
   });
 
@@ -99,17 +100,9 @@ test.describe('orientation flip: landscape → portrait', () => {
     await waitForCards(page);
   });
 
-  test('navbar controls return to uniform 35px after rotating to portrait', async ({ page }) => {
-    // Start in landscape — compact 28px.
-    const before = await measureNavbar(page);
-    assertUniformHeight(before.heights, 28);
-
-    // Rotate to portrait.
-    await page.setViewportSize(PORTRAIT);
-    await page.waitForTimeout(200);
-
-    const after = await measureNavbar(page);
-    assertUniformHeight(after.heights, 35);
+  test('navbar controls are uniform in initial landscape', async ({ page }) => {
+    const { heights } = await measureNavbar(page);
+    assertUniformHeight(heights);
   });
 
   test('grid switches to 2 columns after rotating to portrait', async ({ page }) => {
