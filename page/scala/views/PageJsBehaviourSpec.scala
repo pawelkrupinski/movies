@@ -805,10 +805,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       pinDateFilterAnytime(page)
       // Grab the first poster img and simulate exhaustion of all fallbacks.
+      // Reset any state from a natural onerror cycle that may have already
+      // completed (Chrome 113 processes the fallback chain before the test runs).
       page.eval(
         """(() => {
           |  const img = document.querySelector('.poster-wrap img[data-original-src]');
           |  img.onerror = null;
+          |  cancelPosterRetry(img);
+          |  img.removeAttribute('data-retry-attempt');
           |  img.removeAttribute('data-fallbacks');
           |  img.style.display = 'none';
           |  img.nextElementSibling.style.display = 'flex';
