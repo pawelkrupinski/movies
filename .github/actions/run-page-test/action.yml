@@ -1,0 +1,155 @@
+name: Run page-test row
+description: |
+  Shared step body for the `page-tests-*` matrix jobs.
+
+  Two execution kinds:
+
+  - `chrome` / `edge`: install the matching browser via
+    `browser-actions/setup-*`, then `sbt PageTest/test` with
+    `CDP_BROWSER_BIN` pointing at it.
+
+  - `playwright`: install Node + the one engine binary specified
+    by `browser`, boot `FixtureServerMain` over a kernel-assigned
+    port, then `npx playwright test --project <project>`. axe-core
+    runs only on `project: chromium-desktop` (informational).
+
+inputs:
+  kind:
+    description: chrome | edge | playwright
+    required: true
+  version:
+    description: Browser version when kind=chrome|edge (e.g. `stable`, `128`).
+    required: false
+  project:
+    description: Playwright project name when kind=playwright.
+    required: false
+  browser:
+    description: Engine binary to install when kind=playwright (chromium|firefox|webkit|msedge).
+    required: false
+  wakeup-url:
+    description: secrets.CLAUDE_WAKEUP_URL passthrough.
+    required: true
+  wakeup-secret:
+    description: secrets.CLAUDE_WAKEUP_SECRET passthrough.
+    required: true
+  wakeup-job:
+    description: Human-readable job label for the wake-on-failure prompt.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 25
+        cache: sbt
+
+    - uses: sbt/setup-sbt@v1
+
+    - uses: browser-actions/setup-chrome@v1
+      if: inputs.kind == 'chrome'
+      id: setup-chrome
+      with:
+        chrome-version: ${{ inputs.version }}
+
+    - uses: browser-actions/setup-edge@v1
+      if: inputs.kind == 'edge'
+      id: setup-edge
+      with:
+        edge-version: ${{ inputs.version }}
+
+    - uses: actions/cache@v4
+      with:
+        path: |
+          target
+          project/target
+          project/project/target
+        key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+        restore-keys: |
+          sbt-target-${{ runner.os }}-
+
+    - uses: actions/setup-node@v4
+      if: inputs.kind == 'playwright'
+      with:
+        node-version: '20'
+        cache: npm
+        cache-dependency-path: page-tests-playwright/package-lock.json
+
+    # Cache the Playwright browser binary for this row. Keyed on
+    # package-lock + the row's browser so a Playwright bump pulls
+    # fresh and rows don't share each other's tarball.
+    - uses: actions/cache@v4
+      if: inputs.kind == 'playwright'
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ inputs.browser }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
+
+    - name: Install npm deps
+      if: inputs.kind == 'playwright'
+      shell: bash
+      run: cd page-tests-playwright && npm ci
+
+    - name: Install Playwright browser
+      if: inputs.kind == 'playwright'
+      shell: bash
+      run: cd page-tests-playwright && npx playwright install --with-deps ${{ inputs.browser }}
+
+    # Start the fixture server in the background. Writes the chosen
+    # free port to a file so we can read it from the next step without
+    # parsing sbt's chatty stdout. The PID is captured for the
+    # always-run kill step further below.
+    - name: Start FixtureServerMain
+      if: inputs.kind == 'playwright'
+      shell: bash
+      run: |
+        rm -f /tmp/kinowo-port.txt
+        sbt 'PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 &
+        echo "FIXTURE_PID=$!" >> $GITHUB_ENV
+        for _ in $(seq 1 60); do
+            [ -f /tmp/kinowo-port.txt ] && break
+            sleep 2
+        done
+        if [ ! -f /tmp/kinowo-port.txt ]; then
+            echo "FixtureServerMain didn't write port within 120s; sbt log:"
+            cat /tmp/sbt-fixture.log
+            exit 1
+        fi
+        echo "KINOWO_BASE_URL=http://127.0.0.1:$(cat /tmp/kinowo-port.txt)" >> $GITHUB_ENV
+
+    # Point CdpDriver at the matrix-installed browser via env var.
+    # The driver also prints the resolved browser version to stderr
+    # at boot, so a failure has the version diff in its log without
+    # extra plumbing.
+    - name: Run Scala PageTest
+      if: inputs.kind == 'chrome' || inputs.kind == 'edge'
+      shell: bash
+      env:
+        CDP_BROWSER_BIN: ${{ inputs.kind == 'chrome' && steps.setup-chrome.outputs.chrome-path || steps.setup-edge.outputs.edge-path }}
+      run: sbt PageTest/test
+
+    - name: Run Playwright behaviour specs (blocking)
+      if: inputs.kind == 'playwright'
+      shell: bash
+      run: cd page-tests-playwright && npx playwright test --project ${{ inputs.project }} --grep-invert "axe-core"
+
+    - name: Run Playwright axe-core a11y audit (informational)
+      if: inputs.kind == 'playwright' && inputs.project == 'chromium-desktop'
+      continue-on-error: true
+      shell: bash
+      run: cd page-tests-playwright && npx playwright test --project ${{ inputs.project }} --grep "axe-core"
+
+    - name: Stop FixtureServerMain
+      if: always() && inputs.kind == 'playwright'
+      shell: bash
+      run: |
+        if [ -n "$FIXTURE_PID" ]; then
+            kill $FIXTURE_PID 2>/dev/null || true
+        fi
+
+    - if: failure()
+      uses: ./.github/actions/wake-on-failure
+      with:
+        url:    ${{ inputs.wakeup-url }}
+        secret: ${{ inputs.wakeup-secret }}
+        job:    ${{ inputs.wakeup-job }}
