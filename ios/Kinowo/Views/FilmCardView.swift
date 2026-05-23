@@ -133,13 +133,14 @@ private struct PosterView: View {
 ///
 /// When the whole chain is exhausted (no URL loaded) we don't sit on
 /// "Brak plakatu" forever — an exponential-backoff retry restarts
-/// from the primary URL after 2s, 4s, 8s, 16s, 32s, 64s. Each retry
-/// bumps `generation`; that's both used as the SwiftUI `.id(...)` to
-/// remount the AsyncImage subtree (forcing a fresh load) AND
-/// stitched into the URL as `_kinowo_t=<n>` so `URLCache` can't
-/// serve us back a stale failure. The cycle resets to 2s on every
-/// `scenePhase == .active` transition — opening the app or
-/// returning from background gives the cinema CDN one more chance.
+/// from the primary URL after 2s, 6s, 18s, 54s, 162s (then 162s
+/// forever). Each retry bumps `generation`; that's both used as the
+/// SwiftUI `.id(...)` to remount the AsyncImage subtree (forcing a
+/// fresh load) AND stitched into the URL as `_kinowo_t=<n>` so
+/// `URLCache` can't serve us back a stale failure. The cycle resets
+/// to 2s on every `scenePhase == .active` transition — opening the
+/// app or returning from background gives the cinema CDN one more
+/// chance.
 private struct PosterImage<NoPoster: View>: View {
     let primary: URL
     let fallbacks: [URL]
