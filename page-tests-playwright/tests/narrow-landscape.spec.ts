@@ -61,6 +61,41 @@ test.describe('narrow landscape (760×360)', () => {
   });
 });
 
+test.describe('landscape navbar uniform height', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('landscape'),
+      'landscape-only test');
+    await page.goto('/');
+    await waitForCards(page);
+  });
+
+  test('all visible navbar controls share the same height', async ({ page }) => {
+    const heights = await page.evaluate(() => {
+      const nav = document.querySelector('.navbar');
+      if (!nav) return {};
+      const sels = [
+        '.nav-tab', '.nav-tab-fav', '.nav-tab-login',
+        '.refresh-btn', '.date-nav-btn',
+        '.filter-select', '.search-input',
+      ];
+      const result: Record<string, number> = {};
+      for (const sel of sels) {
+        const el = nav.querySelector(sel) as HTMLElement | null;
+        if (!el || el.offsetParent === null) continue;
+        const h = el.getBoundingClientRect().height;
+        if (h > 0) result[sel] = h;
+      }
+      return result;
+    });
+    const values = Object.values(heights);
+    expect(values.length).toBeGreaterThan(3);
+    const target = values[0];
+    for (const [sel, h] of Object.entries(heights)) {
+      expect(h, `${sel} height ${h} ≠ ${target}`).toBeCloseTo(target, 0);
+    }
+  });
+});
+
 test.describe('portrait filtry button (360×760)', () => {
   test.use({ viewport: { width: 360, height: 760 } });
 
