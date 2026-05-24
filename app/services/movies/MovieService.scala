@@ -185,7 +185,7 @@ class MovieService(
       // re-resolve.
       data              = existing.data - Tmdb
     ))
-    Future(runTmdbStage(key, originalTitle, director))(ec)
+    Future(runTmdbStage(key, originalTitle, director))(using ec)
     ()
   }
 
@@ -224,7 +224,7 @@ class MovieService(
     // divergent row sitting in Mongo forever.
     if (cache.hasResolvedSiblingByTitle(key.cleanTitle)) return
     if (pending.add(key)) {
-      Future(try runTmdbStage(key, originalTitle, director) finally pending.remove(key))(ec)
+      Future(try runTmdbStage(key, originalTitle, director) finally pending.remove(key))(using ec)
       ()
     }
   }
@@ -423,7 +423,7 @@ class MovieService(
       val origHint = e.cinemaOriginalTitle
       val dirHint  = e.director
       if (pending.add(k)) {
-        Future(try runTmdbStage(k, origHint, dirHint) finally pending.remove(k))(ec)
+        Future(try runTmdbStage(k, origHint, dirHint) finally pending.remove(k))(using ec)
         ()
       }
     }

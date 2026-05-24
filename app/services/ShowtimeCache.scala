@@ -51,7 +51,7 @@ class ShowtimeCache(
    *  the downstream worker pools (`MovieService`, `*Ratings`, …) without
    *  racing the scrape. */
   def runOnce(): Unit = {
-    Await.ready(Future.sequence(submitAllScrapers())(implicitly, ec), Duration.Inf)
+    Await.ready(Future.sequence(submitAllScrapers())(using implicitly, ec), Duration.Inf)
     ()
   }
 
@@ -60,7 +60,7 @@ class ShowtimeCache(
    *  Per-scraper failures are caught inside `refreshOne` and never reach
    *  the future. */
   private def submitAllScrapers(): Seq[Future[Unit]] =
-    scrapers.map(s => Future(refreshOne(s))(ec))
+    scrapers.map(s => Future(refreshOne(s))(using ec))
 
   def stop(): Unit = {
     scheduler.shutdown()

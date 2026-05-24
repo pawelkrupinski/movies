@@ -39,9 +39,9 @@ object ParallelDetailFetch extends Logging {
           val result = url -> fetch(url)
           completed.add(url)
           result
-        }(ec)
+        }(using ec)
       }
-      val result = Await.result(Future.sequence(futures)(implicitly, ec), timeout).toMap
+      val result = Await.result(Future.sequence(futures)(using implicitly, ec), timeout).toMap
       val elapsed = System.currentTimeMillis() - t0
       logger.debug(s"$label: fetched ${result.size} detail pages in ${elapsed}ms")
       result

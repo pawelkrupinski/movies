@@ -57,11 +57,11 @@ object Minify {
       val nextScript = html.indexOf("<script", i)
       val nextStyle  = html.indexOf("<style",  i)
       val (tagStart, tagName, minifier) = (nextScript, nextStyle) match {
-        case (-1, -1)              => (-1,             "",       identity[String] _)
-        case (s, -1)               => (s,              "script", minifyJs _)
-        case (-1, t)               => (t,              "style",  minifyCss _)
-        case (s, t)  if s < t      => (s,              "script", minifyJs _)
-        case (_, t)                => (t,              "style",  minifyCss _)
+        case (-1, -1)              => (-1,             "",       identity[String])
+        case (s, -1)               => (s,              "script", minifyJs)
+        case (-1, t)               => (t,              "style",  minifyCss)
+        case (s, t)  if s < t      => (s,              "script", minifyJs)
+        case (_, t)                => (t,              "style",  minifyCss)
       }
       if (tagStart < 0) {
         sb.append(html, i, html.length)

@@ -2,7 +2,7 @@ package services.movies
 
 import com.mongodb.MongoException
 import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
-import models.{MovieRecord, Source, SourceData}
+import models.MovieRecord
 import org.mongodb.scala.bson.{BsonDateTime, BsonNull}
 import org.mongodb.scala.model.{Filters, Updates}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}

@@ -74,5 +74,5 @@ class CspFilter @Inject() (implicit
         // can't quietly turn them on.
         "Permissions-Policy"     -> "camera=(), microphone=(), geolocation=(), interest-cohort=()",
       )
-    }(ec)
+    }(using ec)
 }

@@ -40,7 +40,7 @@ class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends
    *  the row imdbId-less than guess a wrong id. */
   val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
     case ImdbIdMissing(title, year, searchTitle) =>
-      Future(resolve(title, year, searchTitle, publishEvent = true))(ec)
+      Future(resolve(title, year, searchTitle, publishEvent = true))(using ec)
       ()
   }
 

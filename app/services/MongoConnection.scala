@@ -1,6 +1,6 @@
 package services
 
-import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
 import tools.Env
 

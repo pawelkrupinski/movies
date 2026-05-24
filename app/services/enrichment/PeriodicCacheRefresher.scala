@@ -46,7 +46,7 @@ abstract class PeriodicCacheRefresher(
   /** Dispatch a single-row refresh on the virtual-thread EC. No-op when the
    *  row no longer exists or can't be resolved by the subclass. */
   private[services] def schedule(key: CacheKey): Unit = {
-    Future(refreshOne(key))(ec)
+    Future(refreshOne(key))(using ec)
     ()
   }
 

@@ -59,7 +59,7 @@ class ScrapingAntClient(httpClient: HttpClient, key: String, proxyCountry: () =>
       .GET()
       .build()
 
-  private def readSetCookieHeaders(response: HttpResponse[_]): String =
+  private def readSetCookieHeaders(response: HttpResponse[?]): String =
     response.headers().allValues("set-cookie").asScala
       .map(_.split(";", 2).head)
       .filter(_.nonEmpty)

@@ -3,7 +3,7 @@ package services.users
 import com.mongodb.client.model.ReplaceOptions
 import models.UserState
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
 import tools.Env
 
