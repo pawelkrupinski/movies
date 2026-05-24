@@ -80,6 +80,7 @@
   }
 
   function applyFilters() {
+    undoTruncation();
     var cols = document.querySelectorAll('#film-grid > .col[data-title]');
     var hidden = new Set(getHidden());
     var visible = 0, showings = 0;
@@ -91,6 +92,7 @@
         showings += col.querySelectorAll('.badge-time').length;
       }
     });
+    truncateAllShowings(true);
     updateCounter(visible, showings);
   }
 

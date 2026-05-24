@@ -176,23 +176,15 @@ class MovieController( cc: ControllerComponents,
     Ok(views.html.browse(films, heading, devMode, user, oauthProviders, favMovies, favScreenings))
   }
 
-  def byCountry(name: String): Action[AnyContent] = Action { request =>
-    val films = movieControllerService.toSchedules().filter(_.movie.countries.contains(name))
-    renderBrowse(name, films, request)
-  }
-
-  def byDirector(name: String): Action[AnyContent] = Action { request =>
-    val films = movieControllerService.toSchedules().filter(
-      _.director.exists(_.split(",").map(_.trim).contains(name))
-    )
-    renderBrowse(name, films, request)
-  }
-
-  def byActor(name: String): Action[AnyContent] = Action { request =>
-    val films = movieControllerService.toSchedules().filter(
-      _.cast.exists(_.split(",").map(_.trim).contains(name))
-    )
-    renderBrowse(name, films, request)
+  def browse(kraj: Option[String], rezyser: Option[String], aktor: Option[String]): Action[AnyContent] = Action { request =>
+    val all = movieControllerService.toSchedules()
+    val (heading, films) = (kraj, rezyser, aktor) match {
+      case (Some(name), _, _) => name -> all.filter(_.movie.countries.contains(name))
+      case (_, Some(name), _) => name -> all.filter(_.director.exists(_.split(",").map(_.trim).contains(name)))
+      case (_, _, Some(name)) => name -> all.filter(_.cast.exists(_.split(",").map(_.trim).contains(name)))
+      case _                  => "Filmy" -> all
+    }
+    renderBrowse(heading, films, request)
   }
 
   def favourites(): Action[AnyContent] = Action { request =>
