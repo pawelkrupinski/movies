@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Per-device screenshots of `/` on six phones spanning the size
-// spectrum (small Android → large iPhone), in both portrait and
-// landscape, then opens the 12 files in Preview.app.
+// Per-device screenshots of `/`, `/kina`, `/filmy`, and `/film` on
+// six phones spanning the size spectrum (small Android → large
+// iPhone), in both portrait and landscape, then opens all files in
+// Preview.app.
 //
 // "Two screen heights" — the browser viewport stays at the device's
 // actual dimensions so `@media` queries fire correctly, but the
@@ -65,36 +66,48 @@ async function bootFixtureServer() {
   throw new Error('FixtureServerMain did not start within 120 s');
 }
 
-async function shootOne(baseUrl, phone, orientation) {
+const PAGES = [
+  { slug: 'home',  path: '/',      selector: '.col[data-title]' },
+  { slug: 'kina',  path: '/kina',  selector: '.cinema-section[data-cinema]' },
+  { slug: 'filmy', path: '/filmy', selector: '#film-grid' },
+  { slug: 'film',  path: null,     selector: '.poster-wrap' },
+];
+
+async function discoverFilmPath(baseUrl) {
+  const browser = await chromium.launch();
+  const context = await browser.newContext();
+  const page    = await context.newPage();
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.col[data-title]', { state: 'attached', timeout: 30_000 });
+  const title = await page.$eval('.col[data-title]', el => el.dataset.title);
+  await browser.close();
+  return `/film?title=${encodeURIComponent(title)}`;
+}
+
+async function shootOne(url, phone, orientation, pageSlug) {
   const isPortrait = orientation === 'portrait';
   const viewportW  = isPortrait ? phone.width  : phone.height;
   const viewportH  = isPortrait ? phone.height : phone.width;
   const captureH   = viewportH * 2;
 
   const browser = await engines[phone.engine].launch();
-  // Spread the device profile (UA, hasTouch, isMobile, DPR) so the
-  // screenshot reflects what the device's Safari / Chrome actually
-  // does — Mobile UA, touch handlers, scrollbar style. Override the
-  // viewport with the phone's effective dimensions.
   const context = await browser.newContext({
     ...devices[phone.device],
     viewport: { width: viewportW, height: viewportH },
   });
   const page = await context.newPage();
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.col[data-title]', { state: 'attached', timeout: 30_000 });
-  // applyFilters() runs on load, reorders the grid via
-  // appendChild. Give it one settling frame so the screenshot
-  // catches the final layout rather than a mid-shuffle frame.
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  const pg = PAGES.find(p => p.slug === pageSlug);
+  await page.waitForSelector(pg.selector, { state: 'attached', timeout: 30_000 });
   await page.waitForTimeout(500);
 
-  const out = join(OUT_DIR, `${phone.slug}-${orientation}.png`);
+  const out = join(OUT_DIR, `${pageSlug}-${phone.slug}-${orientation}.png`);
   await page.screenshot({
     path: out,
     fullPage: true,
     clip: { x: 0, y: 0, width: viewportW, height: captureH },
   });
-  console.log(`  ✔ ${phone.slug}-${orientation}.png  (${viewportW}×${captureH} CSS px)`);
+  console.log(`  ✔ ${pageSlug}-${phone.slug}-${orientation}.png  (${viewportW}×${captureH} CSS px)`);
   await browser.close();
 }
 
@@ -109,10 +122,19 @@ if (!baseUrl) {
 }
 
 try {
-  for (const phone of PHONES) {
-    console.log(`${phone.label}:`);
-    await shootOne(baseUrl, phone, 'portrait');
-    await shootOne(baseUrl, phone, 'landscape');
+  // Discover a film title from the fixture data for the /film page.
+  const filmPage = PAGES.find(p => p.slug === 'film');
+  filmPage.path = await discoverFilmPath(baseUrl);
+  console.log(`Film page: ${filmPage.path}`);
+
+  for (const pg of PAGES) {
+    const url = `${baseUrl}${pg.path}`;
+    console.log(`\n── ${pg.slug} (${pg.path}) ──`);
+    for (const phone of PHONES) {
+      console.log(`${phone.label}:`);
+      await shootOne(url, phone, 'portrait', pg.slug);
+      await shootOne(url, phone, 'landscape', pg.slug);
+    }
   }
 } finally {
   if (server) {
@@ -121,10 +143,12 @@ try {
   }
 }
 
-const files = PHONES.flatMap(p => [
-  join(OUT_DIR, `${p.slug}-portrait.png`),
-  join(OUT_DIR, `${p.slug}-landscape.png`),
-]);
+const files = PAGES.flatMap(pg =>
+  PHONES.flatMap(p => [
+    join(OUT_DIR, `${pg.slug}-${p.slug}-portrait.png`),
+    join(OUT_DIR, `${pg.slug}-${p.slug}-landscape.png`),
+  ])
+);
 console.log(`\nOpening ${files.length} screenshots in Preview…`);
 execSync(`open -a Preview ${files.map(f => `"${f}"`).join(' ')}`);
 console.log('Done.');

@@ -84,6 +84,12 @@ object FixtureServerMain {
       favouritesMode = true
     ).body
 
+    val filmyHtml: String = views.html.browse(
+      schedules, "Filmy", devMode = false,
+      currentUser = anon, oauthProviders = noOauth,
+      favouriteMovies = noFav, favouriteScreenings = noFav
+    ).body
+
     def renderFilm(title: String): String = {
       val target = URLDecoder.decode(title, "UTF-8")
       schedules.find(_.movie.title == target) match {
@@ -98,6 +104,7 @@ object FixtureServerMain {
     val server = new TestHttpServer({
       case "/"                          => indexHtml
       case "/ulubione"                  => ulubioneHtml
+      case "/filmy"                     => filmyHtml
       case "/kina"                      => renderKina(None)
       case p if p.startsWith("/kina/") =>
         val raw    = URLDecoder.decode(p.stripPrefix("/kina/"), "UTF-8")
