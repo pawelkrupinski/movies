@@ -74,4 +74,38 @@ test.describe('zoomed portrait card gaps', () => {
     });
     expect(bodyPad).toBeGreaterThanOrEqual(8);
   });
+
+  test('navbar rows have visible vertical gap between them', async ({ page }) => {
+    const gap = await page.evaluate(() => {
+      const nav = document.querySelector('.navbar') as HTMLElement;
+      if (!nav) return null;
+
+      const row1Sels = ['.navbar-logo', '.nav-tab', '.nav-tab-fav', '.navbar-auth'];
+      const row2Sels = ['.navbar-date', '.navbar-filtry'];
+
+      let row1Bottom = 0;
+      for (const sel of row1Sels) {
+        for (const el of Array.from(nav.querySelectorAll(sel)) as HTMLElement[]) {
+          const r = el.getBoundingClientRect();
+          if (r.height > 0) row1Bottom = Math.max(row1Bottom, r.bottom);
+        }
+      }
+
+      let row2Top = Infinity;
+      for (const sel of row2Sels) {
+        for (const el of Array.from(nav.querySelectorAll(sel)) as HTMLElement[]) {
+          const r = el.getBoundingClientRect();
+          if (r.height > 0) row2Top = Math.min(row2Top, r.top);
+        }
+      }
+
+      if (row1Bottom === 0 || row2Top === Infinity) return null;
+      return row2Top - row1Bottom;
+    });
+    expect(gap, 'could not measure navbar row gap').not.toBeNull();
+    expect(
+      gap!,
+      `navbar row gap is ${gap!.toFixed(1)}px; need ≥ 4px`,
+    ).toBeGreaterThanOrEqual(4);
+  });
 });
