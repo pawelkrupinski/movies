@@ -105,7 +105,7 @@ test.describe('zoomed portrait card gaps', () => {
     expect(gap, 'could not measure navbar row gap').not.toBeNull();
     expect(
       gap!,
-      `navbar row gap is ${gap!.toFixed(1)}px; need > 0`,
-    ).toBeGreaterThan(0);
+      `navbar row gap is ${gap!.toFixed(1)}px; expected 1px`,
+    ).toBeCloseTo(1, 0);
   });
 });
