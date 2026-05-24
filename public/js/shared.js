@@ -77,6 +77,10 @@
         parts.push('kina ' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.length);
       }
     }
+    var countries = getCountryFilter();
+    if (countries.length > 0) {
+      parts.push(countries.length === 1 ? countries[0] : countries.length + ' krajów');
+    }
     const btn = document.getElementById('format-filter-btn');
     if (!btn) return;  // /ulubione: Filtry button not rendered.
     btn.textContent = parts.length === 0 ? 'Filtry' : 'Filtry (' + parts.join(', ') + ')';
@@ -110,8 +114,39 @@
     document.getElementById('format-imax').checked   = false;
     document.getElementById('from-hour').value       = '';
     document.getElementById('from-minute').value     = '0';
+    document.querySelectorAll('#country-list input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
     document.getElementById('format-panel').style.display = 'none';
     onFormatChange();
+  }
+
+  // ── Country filter ──────────────────────────────────────────────────────
+
+  function getCountryFilter() {
+    return [...document.querySelectorAll('#country-list input[type="checkbox"]')]
+      .filter(function(cb) { return cb.checked; })
+      .map(function(cb) { return cb.value; });
+  }
+
+  function buildCountryPanel() {
+    var list = document.getElementById('country-list');
+    if (!list) return;
+    var countrySet = new Set();
+    document.querySelectorAll('.col[data-countries]').forEach(function(col) {
+      (col.dataset.countries || '').split('|').filter(Boolean).forEach(function(c) { countrySet.add(c); });
+    });
+    var sorted = [...countrySet].sort(function(a, b) { return a.localeCompare(b, 'pl'); });
+    list.innerHTML = '';
+    sorted.forEach(function(country) {
+      var label = document.createElement('label');
+      label.className = 'panel-label';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = country;
+      cb.onchange = function() { updateFormatBtn(); applyFilters(); };
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' ' + country));
+      list.appendChild(label);
+    });
   }
 
   // ── Hidden-films + disabled-cinemas storage ───────────────────────────────
@@ -1016,6 +1051,7 @@
     // Cinema picker lives in the Filtry dropdown now — populate the list
     // at boot so the first open of Filtry has the checkboxes ready.
     buildCinemaPanel();
+    buildCountryPanel();
     updateFormatBtn();
     paintFavourites();
     applyFilters();

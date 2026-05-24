@@ -159,6 +159,7 @@ extension Sequence where Element == Film {
                 fallbackPosterURLs: film.fallbackPosterURLs,
                 runtimeMinutes: film.runtimeMinutes,
                 ratings: film.ratings,
+                countries: film.countries,
                 showings: days
             )
         }
@@ -181,12 +182,14 @@ extension Sequence where Element == Film {
         query: String,
         hidden: Set<String>,
         disabledCinemas: Set<String>,
+        countries: Set<String> = [],
         now: Date = Date()
     ) -> [Film] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return self.compactMap { film in
             if hidden.contains(film.title) { return nil }
             if !q.isEmpty && !film.title.lowercased().contains(q) { return nil }
+            if !countries.isEmpty && countries.isDisjoint(with: film.countries) { return nil }
             let days: [DayShowings] = film.showings.compactMap { day in
                 if !date.matches(date: day.date, now: now) { return nil }
                 let cinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
@@ -207,6 +210,7 @@ extension Sequence where Element == Film {
                 fallbackPosterURLs: film.fallbackPosterURLs,
                 runtimeMinutes: film.runtimeMinutes,
                 ratings: film.ratings,
+                countries: film.countries,
                 showings: days
             )
         }
@@ -235,11 +239,13 @@ extension Sequence where Element == Film {
         favouriteMovies: Set<String>,
         favouriteScreenings: Set<String>,
         disabledCinemas: Set<String>,
+        countries: Set<String> = [],
         now: Date = Date()
     ) -> [Film] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return self.compactMap { film in
             if !q.isEmpty && !film.title.lowercased().contains(q) { return nil }
+            if !countries.isEmpty && countries.isDisjoint(with: film.countries) { return nil }
             let wholeMovieFav = favouriteMovies.contains(film.title)
             let days: [DayShowings] = film.showings.compactMap { day in
                 if !date.matches(date: day.date, now: now) { return nil }
@@ -267,6 +273,7 @@ extension Sequence where Element == Film {
                 fallbackPosterURLs: film.fallbackPosterURLs,
                 runtimeMinutes: film.runtimeMinutes,
                 ratings: film.ratings,
+                countries: film.countries,
                 showings: days
             )
         }
@@ -306,6 +313,7 @@ extension Sequence where Element == Film {
                     fallbackPosterURLs: film.fallbackPosterURLs,
                     runtimeMinutes: film.runtimeMinutes,
                     ratings: film.ratings,
+                    countries: film.countries,
                     showings: days
                 ))
             }

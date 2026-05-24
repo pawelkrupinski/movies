@@ -141,6 +141,7 @@
       cols:    [...section.querySelectorAll('.col[data-title]')].map(col => ({
         el:       col,
         title:    col.dataset.title.toLowerCase(),
+        countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
         rawTitle: col.dataset.title,
         visible:  true,
         groups:   [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
@@ -193,10 +194,12 @@
     const disabled  = _kinaPinned
       ? new Set(ALL_CINEMAS.filter(c => c !== _kinaPinned))
       : new Set();
-    const fmtTokens = getFormatFilter();
-    const hasFmt    = fmtTokens.length > 0;
-    const fromMin   = getFromMinutes();
-    const hasFrom   = fromMin !== null;
+    const fmtTokens     = getFormatFilter();
+    const hasFmt        = fmtTokens.length > 0;
+    const fromMin       = getFromMinutes();
+    const hasFrom       = fromMin !== null;
+    const countryFilter = getCountryFilter();
+    const hasCountry    = countryFilter.length > 0;
     const { today, tomorrow, in7Days } = dateBounds();
 
     const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
@@ -216,7 +219,8 @@
 
       for (let i = 0; i < section.cols.length; i++) {
         const col = section.cols[i];
-        if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))) {
+        if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))
+            || (hasCountry && !countryFilter.some(c => col.countries.has(c)))) {
           setVisible(col, false);
           earlyMap[i] = null;
           continue;

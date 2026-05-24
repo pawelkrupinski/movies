@@ -66,6 +66,7 @@
       el:       col,
       title:    col.dataset.title.toLowerCase(),
       rawTitle: col.dataset.title,
+      countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
       visible:  true,  // remembered so we only write style.display on changes
       groups:   [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
         el:           group,
@@ -135,10 +136,12 @@
     const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
     const hidden    = new Set(getHidden());
     const disabled  = new Set(getDisabledCinemas());
-    const fmtTokens = getFormatFilter();
-    const hasFmt    = fmtTokens.length > 0;
-    const fromMin   = getFromMinutes();
-    const hasFrom   = fromMin !== null;
+    const fmtTokens     = getFormatFilter();
+    const hasFmt        = fmtTokens.length > 0;
+    const fromMin       = getFromMinutes();
+    const hasFrom       = fromMin !== null;
+    const countryFilter = getCountryFilter();
+    const hasCountry    = countryFilter.length > 0;
     // Favourites: on /ulubione, every other filter still applies, AND a
     // movie is visible only if it's in `favMovies` OR has at least one
     // screening in `favScreenings`. Per-badge filter: visible if its parent
@@ -160,7 +163,8 @@
 
     for (let i = 0; i < INDEX.length; i++) {
       const col = INDEX[i];
-      if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))) {
+      if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))
+          || (hasCountry && !countryFilter.some(c => col.countries.has(c)))) {
         setVisible(col, false);
         earlyMap[i] = null;
         continue;

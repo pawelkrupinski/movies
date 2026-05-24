@@ -71,6 +71,9 @@ enum HTMLParser {
                           .compactMap { URL(string: String($0)) }
         let runtime  = HTMLPrimitives.capture(chunk, #"<span class="pill runtime">([^<]+)</span>"#)
                           .flatMap(parseRuntime)
+        let countries = (HTMLPrimitives.capture(chunk, #"data-countries="([^"]*)""#) ?? "")
+                          .split(separator: "|", omittingEmptySubsequences: true)
+                          .map { String($0).htmlDecoded() }
         let ratings  = RatingsParser.parseRatings(in: chunk)
         let showings = ShowingsParser.parseShowings(in: chunk)
         return Film(
@@ -79,6 +82,7 @@ enum HTMLParser {
             fallbackPosterURLs: fallbacks,
             runtimeMinutes: runtime,
             ratings: ratings,
+            countries: countries,
             showings: showings
         )
     }

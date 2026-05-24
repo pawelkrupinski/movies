@@ -291,14 +291,10 @@ private struct GlassyPillBackground: ViewModifier {
 // state owned by ContentView.
 struct FiltersSheet: View {
     @Binding var formatFilter: FormatFilter
+    @Binding var selectedCountries: Set<String>
     @ObservedObject var prefs: UserPreferences
-    /// Sorted, de-duplicated cinema names derived from the films
-    /// currently in `store.films`. A cinema that has zero showings on
-    /// any day doesn't appear — there's nothing to filter.
     let allCinemas: [String]
-    /// When `false`, the "Kina" section is hidden — the Kina tab uses
-    /// its own pinned-cinema pill row instead of the persistent
-    /// `disabledCinemas` set. Films tab passes `true`.
+    let allCountries: [String]
     var showCinemaSection: Bool = true
     @Environment(\.dismiss) private var dismiss
 
@@ -337,6 +333,20 @@ struct FiltersSheet: View {
                             Toggle(cinema, isOn: Binding(
                                 get: { !prefs.disabledCinemas.contains(cinema) },
                                 set: { on in prefs.toggleCinema(cinema, disabled: !on) }
+                            ))
+                        }
+                    }
+                }
+
+                if !allCountries.isEmpty {
+                    Section("Kraj produkcji") {
+                        ForEach(allCountries, id: \.self) { country in
+                            Toggle(country, isOn: Binding(
+                                get: { selectedCountries.contains(country) },
+                                set: { on in
+                                    if on { selectedCountries.insert(country) }
+                                    else  { selectedCountries.remove(country) }
+                                }
                             ))
                         }
                     }
@@ -383,6 +393,7 @@ struct FiltersSheet: View {
                 Section {
                     Button(role: .destructive) {
                         formatFilter = .empty
+                        selectedCountries = []
                         prefs.setDisabledCinemas([])
                     } label: {
                         Text("Wyczyść")

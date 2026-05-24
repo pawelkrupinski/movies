@@ -15,9 +15,9 @@ final class FilteredForTests: XCTestCase {
         DayShowings(date: date, label: date, cinemas: cinemas)
     }
 
-    private func film(_ title: String, _ days: [DayShowings]) -> Film {
+    private func film(_ title: String, _ days: [DayShowings], countries: [String] = []) -> Film {
         Film(title: title, posterURL: nil, fallbackPosterURLs: [],
-             runtimeMinutes: 100, ratings: .empty, showings: days)
+             runtimeMinutes: 100, ratings: .empty, countries: countries, showings: days)
     }
 
     private let today: String = DateFilter.iso(Date())
@@ -144,5 +144,45 @@ final class FilteredForTests: XCTestCase {
         )
         XCTAssertEqual(filtered.map(\.title), ["A"])
         XCTAssertEqual(filtered[0].showings.map(\.date), [fixedToday])
+    }
+
+    // MARK: - Country filter
+
+    func testCountryFilterShowsOnlyMatchingFilms() {
+        let films = [
+            film("Polish Film", [day(today, [cinema("A", [slot("18:00")])])], countries: ["Polska"]),
+            film("US Film",     [day(today, [cinema("A", [slot("19:00")])])], countries: ["USA"]),
+            film("Co-prod",     [day(today, [cinema("A", [slot("20:00")])])], countries: ["Polska", "Francja"]),
+        ]
+        let filtered = films.filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: [], countries: ["USA"]
+        )
+        XCTAssertEqual(filtered.map(\.title), ["US Film"])
+    }
+
+    func testCountryFilterORSemantics() {
+        let films = [
+            film("Polish Film",  [day(today, [cinema("A", [slot("18:00")])])], countries: ["Polska"]),
+            film("French Film",  [day(today, [cinema("A", [slot("19:00")])])], countries: ["Francja"]),
+            film("German Film",  [day(today, [cinema("A", [slot("20:00")])])], countries: ["Niemcy"]),
+        ]
+        let filtered = films.filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: [], countries: ["Polska", "Francja"]
+        )
+        XCTAssertEqual(filtered.map(\.title).sorted(), ["French Film", "Polish Film"])
+    }
+
+    func testEmptyCountryFilterShowsAll() {
+        let films = [
+            film("A", [day(today, [cinema("A", [slot("18:00")])])], countries: ["Polska"]),
+            film("B", [day(today, [cinema("A", [slot("19:00")])])], countries: ["USA"]),
+        ]
+        let filtered = films.filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: [], countries: []
+        )
+        XCTAssertEqual(filtered.count, 2)
     }
 }

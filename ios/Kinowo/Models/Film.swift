@@ -24,6 +24,7 @@ struct Film: Identifiable, Hashable {
     let fallbackPosterURLs: [URL]
     let runtimeMinutes: Int?
     let ratings: Ratings
+    let countries: [String]
     let showings: [DayShowings]
 
     struct Ratings: Hashable {

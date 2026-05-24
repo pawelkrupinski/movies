@@ -7,6 +7,7 @@ struct ContentView: View {
 
     @State private var dateFilter: DateFilter = .today
     @State private var formatFilter: FormatFilter = .empty
+    @State private var selectedCountries: Set<String> = []
     @State private var search: String = ""
     /// Active tab — swipe-left/right on the TabView flips between
     /// `.films` (`/`) and `.cinemas` (`/kina`). Each writes a brief
@@ -71,8 +72,10 @@ struct ContentView: View {
                 .sheet(isPresented: $showFilters) {
                     FiltersSheet(
                         formatFilter: $formatFilter,
+                        selectedCountries: $selectedCountries,
                         prefs: prefs,
                         allCinemas: allCinemas,
+                        allCountries: allCountries,
                         // Hide Filtry's Kina checkbox section on /kina —
                         // that screen owns its own pinned-cinema picker
                         // via the pill row, so duplicating the choice
@@ -226,16 +229,22 @@ struct ContentView: View {
         return out.sorted()
     }
 
-    // Filtry button uses its `.fill` variant whenever any of the
-    // axes Filtry owns is active — cinemas filtered, format
-    // constrained, or any hidden films queued. Last one is here so
-    // the user can spot "I've hidden a film" at a glance: the Ukryte
-    // filmy list lives inside Filtry, so the only outward cue that
-    // hidden films exist is the filled button.
+    private var allCountries: [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        for film in store.films {
+            for c in film.countries where seen.insert(c).inserted {
+                out.append(c)
+            }
+        }
+        return out.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
     private var filtersActive: Bool {
         !formatFilter.isEmpty
             || !prefs.disabledCinemas.isEmpty
             || !prefs.hiddenFilms.isEmpty
+            || !selectedCountries.isEmpty
     }
 
     private var filmsForFilmsTab: [Film] {
@@ -244,7 +253,8 @@ struct ContentView: View {
             format: formatFilter,
             query: search,
             hidden: prefs.hiddenFilms,
-            disabledCinemas: prefs.disabledCinemas
+            disabledCinemas: prefs.disabledCinemas,
+            countries: selectedCountries
         )
     }
 
@@ -259,7 +269,8 @@ struct ContentView: View {
             query: search,
             favouriteMovies: prefs.favouriteMovies,
             favouriteScreenings: prefs.favouriteScreenings,
-            disabledCinemas: prefs.disabledCinemas
+            disabledCinemas: prefs.disabledCinemas,
+            countries: selectedCountries
         )
     }
 
@@ -277,7 +288,8 @@ struct ContentView: View {
             format: formatFilter,
             query: search,
             hidden: prefs.hiddenFilms,
-            disabledCinemas: disabled
+            disabledCinemas: disabled,
+            countries: selectedCountries
         )
     }
 

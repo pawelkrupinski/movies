@@ -17,7 +17,7 @@ final class FilteredForFavouritesTests: XCTestCase {
 
     private func film(_ title: String, _ days: [DayShowings]) -> Film {
         Film(title: title, posterURL: nil, fallbackPosterURLs: [],
-             runtimeMinutes: 100, ratings: .empty, showings: days)
+             runtimeMinutes: 100, ratings: .empty, countries: [], showings: days)
     }
 
     private let today: String    = DateFilter.iso(Date())
