@@ -43,7 +43,7 @@ class GoogleOauthProvider(http: HttpFetch, clientId: String, clientSecret: Strin
       "prompt"        -> "select_account"
     )
     val params = if (isPrivateIp(redirectUri)) {
-      base ++ Seq("device_id" -> clientId, "device_name" -> "local-dev")
+      base ++ Seq("device_id" -> clientId.take(64), "device_name" -> "local-dev")
     } else base
     AuthEndpoint + "?" + formEncode(params)
   }
