@@ -3,11 +3,10 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.{DaemonExecutors, HttpFetch}
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -83,16 +82,10 @@ class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
    *  Failures (404, network, missing fixture) leave that URL absent from
    *  the result map — the row keeps its None trailer, the rest of the
    *  movie is unaffected. */
-  private def fetchTrailers(urls: Seq[String]): Map[String, Option[String]] = {
-    if (urls.isEmpty) return Map.empty
-    val ec = DaemonExecutors.virtualThreadEC("kino-bulgarska-trailers")
-    try {
-      val futures = urls.map { url =>
-        Future(url -> Try(http.get(url)).toOption.flatMap(parseTrailer))(ec)
-      }
-      Await.result(Future.sequence(futures)(implicitly, ec), 1.minute).toMap
-    } finally ec.shutdown()
-  }
+  private def fetchTrailers(urls: Seq[String]): Map[String, Option[String]] =
+    ParallelDetailFetch("kino-bulgarska-trailers", urls, 1.minute) { url =>
+      Try(http.get(url)).toOption.flatMap(parseTrailer)
+    }
 
   /** Trailer URL parsed from a Bulgarska film page. Returns the canonical
    *  `youtube.com/watch?v=ID` form when the iframe holds a YouTube video;

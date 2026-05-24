@@ -68,6 +68,7 @@ class ShowtimeCache(
 
   private def refreshOne(scraper: CinemaScraper): Unit = {
     val cinema = scraper.cinema
+    logger.debug(s"Refreshing ${cinema.displayName}")
     val t0     = System.currentTimeMillis()
     try {
       val movies  = scraper.fetch()
