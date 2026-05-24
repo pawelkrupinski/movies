@@ -175,10 +175,12 @@ case class MovieRecord(
    *  case. */
   def countries: Seq[String] = {
     val seen = scala.collection.mutable.LinkedHashSet.empty[String]
-    prioritized.flatMap(_._2.countries).foreach { c =>
-      val key = c.toLowerCase
-      if (!seen.exists(_.toLowerCase == key)) seen += c
-    }
+    prioritized.flatMap(_._2.countries)
+      .filter(services.cinemas.CountryNames.isPolish)
+      .foreach { c =>
+        val key = c.toLowerCase
+        if (!seen.exists(_.toLowerCase == key)) seen += c
+      }
     seen.toSeq
   }
 

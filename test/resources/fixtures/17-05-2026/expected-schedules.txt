@@ -1143,7 +1143,7 @@ displayTitle:      Erupcja
 cinemaTitles:      Erupcja
 runtimeMinutes:    71
 releaseYear:       2026
-countries:         2026
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/erupcja.jpg?rev=66cbdeeffa9b41eca82059aab89bb588
 synopsis.length:   378
 cast:              Lena Góra, Charli XCX, Will Madden, Jeremy O. Harris, Agata Trzebuchowska
@@ -2804,7 +2804,7 @@ displayTitle:      Liga Mistrzów UEFA - Finał
 cinemaTitles:      Liga Mistrzów UEFA - Finał
 runtimeMinutes:    140
 releaseYear:       2026
-countries:         -
+countries:         —
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8063O2R.jpg
 synopsis.length:   466
 cast:              —
@@ -4996,7 +4996,7 @@ displayTitle:      Pucio
 cinemaTitles:      Pucio
 runtimeMinutes:    45
 releaseYear:       2026
-countries:         Polska, Anna Błaszczyk, Dominik Litwiniak
+countries:         Polska
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/pucio/pucio-plakat.jpg?rev=5c59e10082a64578b39f13a3bf9616bd
 synopsis.length:   1154
 cast:              —
