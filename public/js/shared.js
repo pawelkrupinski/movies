@@ -156,11 +156,15 @@
   function buildCountryPanel() {
     var list = document.getElementById('country-list');
     if (!list) return;
-    var countrySet = new Set();
+    var countryCount = {};
     document.querySelectorAll('.col[data-countries]').forEach(function(col) {
-      (col.dataset.countries || '').split('|').filter(Boolean).forEach(function(c) { countrySet.add(c); });
+      (col.dataset.countries || '').split('|').filter(Boolean).forEach(function(c) {
+        countryCount[c] = (countryCount[c] || 0) + 1;
+      });
     });
-    var sorted = [...countrySet].sort(function(a, b) { return a.localeCompare(b, 'pl'); });
+    var sorted = Object.keys(countryCount).sort(function(a, b) {
+      return (countryCount[b] - countryCount[a]) || a.localeCompare(b, 'pl');
+    });
     list.innerHTML = '';
     sorted.forEach(function(country) {
       var label = document.createElement('label');
@@ -171,6 +175,10 @@
       cb.onchange = function() { updateCountryCount(); updateFormatBtn(); applyFilters(); };
       label.appendChild(cb);
       label.appendChild(document.createTextNode(' ' + country));
+      var cnt = document.createElement('span');
+      cnt.className = 'country-film-count';
+      cnt.textContent = '(' + countryCount[country] + ')';
+      label.appendChild(cnt);
       list.appendChild(label);
     });
   }
