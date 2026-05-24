@@ -4,10 +4,6 @@ on:
     push:
         branches: [main]
 
-concurrency:
-    group: deploy-main
-    cancel-in-progress: true
-
 # Pipeline shape:
 #
 #   lint ────────────┬─►  deploy ──► lighthouse
@@ -378,23 +374,36 @@ jobs:
     deploy:
         needs: [lint, test, integration-test, ios-local-server, page-tests-chrome, page-tests-safari, page-tests-edge, page-tests-firefox]
         runs-on: ubuntu-latest
+        # Serialize deploys so two passing builds can't race flyctl.
+        # cancel-in-progress is false — a queued deploy still runs once
+        # the active one finishes, then the guard below decides whether
+        # to actually ship it.
+        concurrency:
+            group: fly-deploy
+            cancel-in-progress: false
         steps:
             - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
 
-            # Guard against out-of-order deploys: if a newer commit has
-            # landed on main while this run's tests were in flight, skip
-            # the deploy — the newer run will handle it. The workflow-
-            # level `cancel-in-progress` covers sequential pushes; this
-            # catches the edge case where two runs complete their test
-            # matrix in opposite order.
-            - name: Abort if a newer commit exists on main
+            - uses: superfly/flyctl-actions/setup-flyctl@master
+
+            # Skip if a newer commit is already live on Fly. The running
+            # machine carries COMMIT_SHA from the Dockerfile build-arg;
+            # if this workflow's commit is an ancestor of that SHA, a
+            # newer build already deployed successfully and re-deploying
+            # this one would roll back.
+            - name: Check deployed commit
               id: guard
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
               run: |
-                  git fetch origin main --quiet
-                  head=$(git rev-parse origin/main)
-                  if [ "${{ github.sha }}" != "$head" ]; then
-                      echo "::warning::Skipping deploy — this commit (${{ github.sha }}) is behind origin/main ($head)"
-                      echo "skip=true" >> "$GITHUB_OUTPUT"
+                  deployed=$(flyctl ssh console -a kinowo -C 'printenv COMMIT_SHA' 2>/dev/null || echo "")
+                  if [ -n "$deployed" ] && [ "$deployed" != "${{ github.sha }}" ]; then
+                      if git merge-base --is-ancestor "${{ github.sha }}" "$deployed" 2>/dev/null; then
+                          echo "::warning::Skipping deploy — commit $deployed (descendant of ${{ github.sha }}) is already live"
+                          echo "skip=true" >> "$GITHUB_OUTPUT"
+                      fi
                   fi
 
             # Pull the staged distribution built by the `test` job. The
@@ -409,9 +418,6 @@ jobs:
               with:
                   name: stage
                   path: stage
-
-            - uses: superfly/flyctl-actions/setup-flyctl@master
-              if: steps.guard.outputs.skip != 'true'
 
             - run: flyctl deploy --remote-only -a kinowo --build-arg COMMIT_SHA=${{ github.sha }}
               if: steps.guard.outputs.skip != 'true'
