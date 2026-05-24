@@ -298,7 +298,7 @@
   // ── Favourites (per-movie + per-screening) ────────────────────────────────
   //
   // Two parallel sets:
-  //   - favouriteMovies:     titles (the .col[data-title] string)
+  //   - favouriteMovies:     titles (the [data-title] string)
   //   - favouriteScreenings: stable per-pill ids
   //                          ("title|cinema|ISO-datetime", set on the
   //                          badge's data-screening-id attribute server-side)
@@ -403,9 +403,9 @@
   function paintFavourites() {
     const favMovies     = new Set(getFavMovies());
     const favScreenings = new Set(getFavScreenings());
-    document.querySelectorAll('.col[data-title]').forEach(col => {
-      const btn = col.querySelector('.fav-poster-btn');
-      if (btn) btn.classList.toggle('is-fav', favMovies.has(col.dataset.title));
+    document.querySelectorAll('.fav-poster-btn').forEach(btn => {
+      const titled = btn.closest('[data-title]');
+      if (titled) btn.classList.toggle('is-fav', favMovies.has(titled.dataset.title));
     });
     document.querySelectorAll('.badge-time').forEach(badge => {
       const star = badge.querySelector('.fav-star');
