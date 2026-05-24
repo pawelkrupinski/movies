@@ -19,6 +19,7 @@
      opts back out of sticky so the two rows don't both jam against
      the top edge. */
   .navbar { background: #1a1a2e; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; gap: .4rem; }
+  .navbar-logo { flex-shrink: 0; }
   .card {
     background: #1e1e2e;
     border: none;
@@ -732,12 +733,6 @@
   @@media (max-height: 500px) and (orientation: landscape) {
     .navbar-title { display: none; }
 
-    /* On zoomed-landscape viewports (e.g. Galaxy S10 at 150 % →
-       507 × 240) both the portrait (max-width: 575px) query and
-       this landscape query match. The portrait block reorders the
-       navbar into two rows and flips `.navbar-row-break` to
-       `display: block`. Reset everything back to the one-row
-       desktop order so landscape stays a single row everywhere. */
     .navbar-row-break { display: none; }
     .navbar-search    { order: 1; margin-left: auto; }
     .navbar-date      { order: 2; }
@@ -745,10 +740,15 @@
     .navbar-auth      { order: 4; }
 
     .navbar {
+      flex-wrap: nowrap;
       padding-left:  8px !important;
       padding-right: 8px !important;
       gap: 3px;
     }
+    .navbar-logo { gap: 4px !important; flex-shrink: 1; min-width: 0; }
+    .navbar-search { min-width: 0; }
+    .navbar-search .search-input { min-width: 60px; width: 100%; }
+    .navbar-auth { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
     .navbar .nav-tab,
     .navbar .nav-tab-login,
     .navbar .refresh-btn,

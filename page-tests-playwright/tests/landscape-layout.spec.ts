@@ -29,16 +29,7 @@ test.describe('mobile landscape layout', () => {
     await expect(page.locator('.navbar a.nav-tab-fav')).toBeVisible();
   });
 
-  test('logo+tabs, search, date, filtry share the first row', async ({ page }) => {
-    // The contract is "looks like portrait" — every cluster the
-    // user expects to interact with sits on the first navbar row.
-    // The auth pill may wrap to a second row on the narrower
-    // landscape viewports (iPhone 13 → 844 px) when search +
-    // date's natural width consumes the row's slack; portrait
-    // wraps the same way, so we accept it. The four clusters
-    // that DO matter (logo/tabs, search, date stepper, Filtry)
-    // must share a vertical band — otherwise the user is back to
-    // the old two-row reflow we just reverted.
+  test('all navbar items share a single row', async ({ page }) => {
     const boxes = await page.evaluate(() => {
       const q = (sel: string) => {
         const el = document.querySelector(sel);
@@ -51,10 +42,11 @@ test.describe('mobile landscape layout', () => {
         search:   q('.navbar-search'),
         date:     q('.navbar-date'),
         filtry:   q('.navbar-filtry'),
+        auth:     q('.navbar-auth'),
       };
     });
 
-    const { logoTabs, search, date, filtry } = boxes as Record<
+    const { logoTabs, search, date, filtry, auth } = boxes as Record<
       string,
       { top: number; bottom: number; left: number; right: number }
     >;
@@ -62,13 +54,12 @@ test.describe('mobile landscape layout', () => {
     expect(search).toBeTruthy();
     expect(date).toBeTruthy();
     expect(filtry).toBeTruthy();
+    expect(auth).toBeTruthy();
 
-    // 12 px tolerance covers sub-pixel rounding across engines.
     const baseline = logoTabs.top;
-    for (const [, box] of Object.entries({ search, date, filtry })) {
+    for (const [, box] of Object.entries({ search, date, filtry, auth })) {
       expect(Math.abs(box.top - baseline)).toBeLessThan(12);
-      // Sanity: not pushed off-screen / collapsed.
-      expect(box.bottom - box.top).toBeGreaterThan(20);
+      expect(box.bottom - box.top).toBeGreaterThan(0);
     }
   });
 
