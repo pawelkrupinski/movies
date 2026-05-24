@@ -652,12 +652,12 @@ WebFontConfig = {
 </article>
 <article class="title-list-item list-item animation title-category-id-0">
     <div class="list-item-image">
-        <a class="blur-bg" title="Wydarzenie: BILET PODARUNKOWY DO KINA RIALTO" href="https://www.kinorialto.poznan.pl/wydarzenie/?id=63083">
+        <a class="blur-bg" title="Film: BILET PODARUNKOWY DO KINA RIALTO" href="https://www.kinorialto.poznan.pl/wydarzenie/?id=63083">
             <img decoding="async" class="b24-blur-img" src="https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/img-0028-edit.jpg" alt="Grafika reklamowa">
         </a>
     </div>
     <div class="h3 list-item-title short-text">
-        <a href="https://www.kinorialto.poznan.pl/wydarzenie/?id=63083" title="Wydarzenie: BILET PODARUNKOWY DO KINA RIALTO" class="b24-link show-loader text">BILET PODARUNKOWY DO KINA RIALTO</a>
+        <a href="https://www.kinorialto.poznan.pl/wydarzenie/?id=63083" title="Film: BILET PODARUNKOWY DO KINA RIALTO" class="b24-link show-loader text">BILET PODARUNKOWY DO KINA RIALTO</a>
     </div>
 </article>
 <article class="title-list-item list-item animation title-category-id-0">
@@ -936,7 +936,7 @@ WebFontConfig = {
 
 	<div class="show">
 		<a href="https://www.kinorialto.poznan.pl/wydarzenie/?id=63083"
-           title="Wydarzenie: BILET PODARUNKOWY DO KINA RIALTO"
+           title="Film: BILET PODARUNKOWY DO KINA RIALTO"
 		   class="b24-button b24-inline-flex b24-btn show-loader">Zobacz</a>
 	</div>
 </div>

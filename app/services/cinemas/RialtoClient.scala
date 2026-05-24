@@ -63,6 +63,11 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
   private val RuntimePat  = """(\d+)\s*min""".r
   private val YearPat     = """\b((?:19|20)\d{2})\b""".r
 
+  private val NonFilmTitlePatterns = Seq("bilet podarunkowy", "karta podarunkowa", "voucher")
+
+  private def isNonFilmEntry(title: String): Boolean =
+    NonFilmTitlePatterns.exists(title.toLowerCase.contains)
+
   private case class FilmEntry(
     title:          String,
     eventUrl:       String,
@@ -149,7 +154,7 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
         }
 
         FilmEntry(title, eventUrl, posterUrl, synopsis, director, runtime, year, countries)
-      }
+      }.filterNot(e => isNonFilmEntry(e.title))
     }
 
   private def parseEventPage(html: String): Seq[Showtime] = {

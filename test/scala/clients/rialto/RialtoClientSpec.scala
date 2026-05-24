@@ -28,6 +28,12 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     results.map(_.cinema).toSet shouldBe Set(Rialto)
   }
 
+  // ── Non-film filtering ──────────────────────────────────────────────────
+
+  it should "exclude gift-card entries from results" in {
+    results.map(_.movie.title) should not contain "Bilet podarunkowy do kina rialto"
+  }
+
   // ── Complete title set ────────────────────────────────────────────────────
 
   it should "return exactly the expected set of movie titles" in {
