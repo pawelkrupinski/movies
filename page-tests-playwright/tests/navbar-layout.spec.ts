@@ -334,3 +334,32 @@ test.describe('orientation flip: landscape → portrait', () => {
     expect(after).toBeLessThan(0.55);
   });
 });
+
+// ── Zoomed landscape: date ›  must not touch / overlap Filtry ────
+
+test.describe('zoomed landscape — date-to-filtry gap', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(
+      !testInfo.project.name.includes('zoomed-landscape'),
+      'zoomed-landscape projects only',
+    );
+    await page.goto('/');
+    await waitForCards(page);
+  });
+
+  test('date › button does not touch or overlap the Filtry button', async ({ page }) => {
+    const gap = await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('.date-nav-btn')) as HTMLElement[];
+      const stepFwd = btns[btns.length - 1];
+      const filtryBtn = document.getElementById('format-filter-btn');
+      if (!stepFwd || !filtryBtn) return null;
+      return filtryBtn.getBoundingClientRect().left - stepFwd.getBoundingClientRect().right;
+    });
+    expect(gap, 'date-nav-btn / filtry button not found').not.toBeNull();
+    const vp = page.viewportSize()!;
+    expect(
+      gap!,
+      `date›-to-filtry gap is ${gap!.toFixed(1)}px at ${vp.width}×${vp.height}; need ≥ 2px`,
+    ).toBeGreaterThanOrEqual(2);
+  });
+});

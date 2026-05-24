@@ -608,7 +608,7 @@
     }
     /* Icon-only controls scale on glyph cap height — ★, < and >. */
     .navbar .nav-tab-fav  { font-size: calc(1.05 * var(--ms)); }
-    .navbar .date-nav-btn { font-size: calc(1.1 * var(--ms)); }
+    .navbar .date-nav-btn { font-size: calc(1.1 * var(--ms)); min-width: min(35px, 8vw); flex-shrink: 1; }
     /* Navbar search + date-filter selects ride the SAME
        `--navbar-fs` as the surrounding tabs and Filtry button so
        every row of the navbar has uniform typography. The broad
@@ -765,7 +765,7 @@
     .navbar .btn.date-nav-btn { font-size: calc(.95 * var(--ms)); min-width: 0; padding-left: 3px; padding-right: 3px; }
     .navbar .filter-select,
     .navbar .search-input { padding-top: 0; padding-bottom: 0; }
-    .navbar-date { align-items: center; flex-shrink: 1; min-width: 0; }
+    .navbar-date { align-items: center; flex-shrink: 0; min-width: 0; }
     .navbar-date .filter-select { min-width: 0; }
 
     .navbar-filtry { min-width: 0; flex-shrink: 0; }
