@@ -306,32 +306,33 @@
 
       @film.director match {
         case Some(text) => {
+          @defining(text.split(",").map(_.trim).filter(_.nonEmpty)) { names =>
           <div class="meta-label">Reżyseria</div>
-          <div class="meta-value">@text.split(",").map(_.trim).filter(_.nonEmpty).zipWithIndex.map { case (name, i) =>
-            if(i > 0) { Html(", ") }
-            <a href="@BrowseHref.director(name)" class="meta-link">@name</a>
-          }</div>
+          <div class="meta-value">@for((name, i) <- names.zipWithIndex) {<!--
+            -->@if(i > 0){, }<a href="@BrowseHref.director(name)" class="meta-link">@name</a><!--
+          -->}</div>
+          }
         }
         case None => {}
       }
 
       @film.cast match {
         case Some(text) => {
+          @defining(text.split(",").map(_.trim).filter(_.nonEmpty)) { names =>
           <div class="meta-label">Obsada</div>
-          <div class="meta-value">@text.split(",").map(_.trim).filter(_.nonEmpty).zipWithIndex.map { case (name, i) =>
-            if(i > 0) { Html(", ") }
-            <a href="@BrowseHref.actor(name)" class="meta-link">@name</a>
-          }</div>
+          <div class="meta-value">@for((name, i) <- names.zipWithIndex) {<!--
+            -->@if(i > 0){, }<a href="@BrowseHref.actor(name)" class="meta-link">@name</a><!--
+          -->}</div>
+          }
         }
         case None => {}
       }
 
       @if(film.movie.countries.nonEmpty) {
         <div class="meta-label">Kraj(e) produkcji</div>
-        <div class="meta-value">@film.movie.countries.zipWithIndex.map { case (country, i) =>
-          if(i > 0) { Html(", ") }
-          <a href="@BrowseHref.country(country)" class="meta-link">@country</a>
-        }</div>
+        <div class="meta-value">@for((country, i) <- film.movie.countries.zipWithIndex) {<!--
+          -->@if(i > 0){, }<a href="@BrowseHref.country(country)" class="meta-link">@country</a><!--
+        -->}</div>
       }
 
       @* Distinct trailer embed URLs across every cinema's slot. Dedupe by the
