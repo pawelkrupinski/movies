@@ -101,13 +101,14 @@ async function shootOne(url, phone, orientation, pageSlug) {
   await page.waitForSelector(pg.selector, { state: 'attached', timeout: 30_000 });
   await page.waitForTimeout(500);
 
-  const out = join(OUT_DIR, `${pageSlug}-${phone.slug}-${orientation}.png`);
+  const name = `${phone.slug}-${pageSlug}-${orientation}.png`;
+  const out = join(OUT_DIR, name);
   await page.screenshot({
     path: out,
     fullPage: true,
     clip: { x: 0, y: 0, width: viewportW, height: captureH },
   });
-  console.log(`  ✔ ${pageSlug}-${phone.slug}-${orientation}.png  (${viewportW}×${captureH} CSS px)`);
+  console.log(`  ✔ ${name}  (${viewportW}×${captureH} CSS px)`);
   await browser.close();
 }
 
@@ -143,10 +144,10 @@ try {
   }
 }
 
-const files = PAGES.flatMap(pg =>
-  PHONES.flatMap(p => [
-    join(OUT_DIR, `${pg.slug}-${p.slug}-portrait.png`),
-    join(OUT_DIR, `${pg.slug}-${p.slug}-landscape.png`),
+const files = PHONES.flatMap(p =>
+  PAGES.flatMap(pg => [
+    join(OUT_DIR, `${p.slug}-${pg.slug}-portrait.png`),
+    join(OUT_DIR, `${p.slug}-${pg.slug}-landscape.png`),
   ])
 );
 console.log(`\nOpening ${files.length} screenshots in Preview…`);
