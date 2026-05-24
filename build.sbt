@@ -22,7 +22,7 @@ lazy val IntegrationTest = config("it") extend Test
 lazy val PageTest = config("page") extend Test
 
 lazy val root = (project in file("."))
-  .enablePlugins(PlayScala)
+  .enablePlugins(PlayScala, SbtWeb)
   .configs(IntegrationTest, PageTest)
   .settings(
     inConfig(IntegrationTest)(Defaults.testSettings),
@@ -33,6 +33,7 @@ lazy val root = (project in file("."))
     PageTest / scalaSource              := baseDirectory.value / "page" / "scala",
     PageTest / resourceDirectory        := baseDirectory.value / "page" / "resources",
     PageTest / parallelExecution        := false,
+    pipelineStages := Seq(digest),
   )
 
 // ── Dependencies ──────────────────────────────────────────────────────────────

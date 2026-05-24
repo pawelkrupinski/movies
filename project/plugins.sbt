@@ -1,4 +1,5 @@
 addSbtPlugin("org.playframework" % "sbt-plugin" % "3.0.10")
+addSbtPlugin("com.github.sbt" % "sbt-digest" % "2.1.0")
 
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.6.1")
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.7")

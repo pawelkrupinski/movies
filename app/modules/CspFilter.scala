@@ -20,9 +20,10 @@ import scala.concurrent.{ExecutionContext, Future}
  *
  * Allow-lists below trace the actual external surfaces the app uses:
  *
- *  - `js.sentry-cdn.com` / `sentry.io` for the optional Sentry SDK
+ *  - `*.sentry-cdn.com` / `sentry.io` for the optional Sentry SDK
  *    loaded via [[views.html._errorTracking]] when `SENTRY_LOADER_URL`
- *    is set.
+ *    is set. Wildcarded because Sentry uses region-specific CDN
+ *    subdomains (`js-de.sentry-cdn.com`, etc.).
  *  - `googletagmanager.com` / `google-analytics.com` for the optional
  *    GA4 tag loaded via [[views.html._analytics]] when
  *    `GA_MEASUREMENT_ID` is set. Both endpoints stay listed even
@@ -43,11 +44,11 @@ class CspFilter @Inject() (implicit
 
   private val csp: String = Seq(
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://js.sentry-cdn.com https://browser.sentry-cdn.com https://www.googletagmanager.com https://www.google-analytics.com",
+    "script-src 'self' 'unsafe-inline' https://*.sentry-cdn.com https://www.googletagmanager.com https://www.google-analytics.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.sentry.io https://www.google-analytics.com https://*.googletagmanager.com",
+    "connect-src 'self' https://*.sentry.io https://*.google-analytics.com https://*.googletagmanager.com",
     "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
     "object-src 'none'",
     "base-uri 'self'",

@@ -34,7 +34,7 @@ class CspFilterSpec extends AnyFlatSpec with Matchers {
 
   it should "allow Sentry, GTM and GA hosts in script-src" in {
     val csp = run().header.headers("Content-Security-Policy")
-    csp should include("https://js.sentry-cdn.com")
+    csp should include("https://*.sentry-cdn.com")
     csp should include("https://www.googletagmanager.com")
     csp should include("https://www.google-analytics.com")
   }
