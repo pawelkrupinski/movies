@@ -279,9 +279,10 @@ jobs:
     #   `npx playwright test --project <project>`. The Playwright
     #   suite drives `page-tests-playwright/` against a Twirl-rendered
     #   fixture server (InMemoryMovieRepo + FakeHttpFetch — same
-    #   wiring the Scala spec uses, exposed over HTTP). Splitting
-    #   per-project parallelises across runners — each finishes in
-    #   ~2m vs the ~5m monolith.
+    #   wiring the Scala spec uses, exposed over HTTP). Mobile
+    #   projects are split per-phone so each runner handles one
+    #   phone's four variants (portrait, zoomed, landscape,
+    #   zoomed-landscape) — ~4 projects × 20 specs ≈ under 2 min.
     #
     # Chrome version pick reflects real Android phone distribution as
     # of early 2026 (120+ ≈ 85% of devices, 113–120 the long tail);
@@ -307,8 +308,12 @@ jobs:
                     - { variant: '128',              kind: chrome,     version: '128' }
                     - { variant: '120',              kind: chrome,     version: '120' }
                     - { variant: '113',              kind: chrome,     version: '113' }
-                    - { variant: playwright mobile,  kind: playwright, project: 'chromium-*-*',   browser: chromium }
-                    - { variant: playwright desktop, kind: playwright, project: chromium-desktop, browser: chromium }
+                    - { variant: pw galaxy-s10,      kind: playwright, project: 'chromium-galaxy-s10*',  browser: chromium }
+                    - { variant: pw galaxy-s23,      kind: playwright, project: 'chromium-galaxy-s23*',  browser: chromium }
+                    - { variant: pw galaxy-s25,      kind: playwright, project: 'chromium-galaxy-s25*',  browser: chromium }
+                    - { variant: pw pixel-7,         kind: playwright, project: 'chromium-pixel-7*',     browser: chromium }
+                    - { variant: pw pixel-9,         kind: playwright, project: 'chromium-pixel-9*',     browser: chromium }
+                    - { variant: pw desktop,         kind: playwright, project: chromium-desktop,        browser: chromium }
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -325,8 +330,12 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { variant: playwright mobile,  kind: playwright, project: 'webkit-*-*',   browser: webkit }
-                    - { variant: playwright desktop, kind: playwright, project: webkit-desktop, browser: webkit }
+                    - { variant: pw iphone-se,       kind: playwright, project: 'webkit-iphone-se*',  browser: webkit }
+                    - { variant: pw iphone-13,       kind: playwright, project: 'webkit-iphone-13*',  browser: webkit }
+                    - { variant: pw iphone-15,       kind: playwright, project: 'webkit-iphone-15*',  browser: webkit }
+                    - { variant: pw iphone-16,       kind: playwright, project: 'webkit-iphone-16*',  browser: webkit }
+                    - { variant: pw iphone-17,       kind: playwright, project: 'webkit-iphone-17*',  browser: webkit }
+                    - { variant: pw desktop,         kind: playwright, project: webkit-desktop,       browser: webkit }
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -343,7 +352,7 @@ jobs:
             matrix:
                 include:
                     - { variant: stable,             kind: edge,       version: stable }
-                    - { variant: playwright desktop, kind: playwright, project: msedge-desktop, browser: msedge }
+                    - { variant: pw desktop,         kind: playwright, project: msedge-desktop, browser: msedge }
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -360,8 +369,12 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { variant: playwright mobile,  kind: playwright, project: 'firefox-*-*',   browser: firefox }
-                    - { variant: playwright desktop, kind: playwright, project: firefox-desktop, browser: firefox }
+                    - { variant: pw galaxy-s10,      kind: playwright, project: 'firefox-galaxy-s10*',  browser: firefox }
+                    - { variant: pw galaxy-s23,      kind: playwright, project: 'firefox-galaxy-s23*',  browser: firefox }
+                    - { variant: pw galaxy-s25,      kind: playwright, project: 'firefox-galaxy-s25*',  browser: firefox }
+                    - { variant: pw pixel-7,         kind: playwright, project: 'firefox-pixel-7*',     browser: firefox }
+                    - { variant: pw pixel-9,         kind: playwright, project: 'firefox-pixel-9*',     browser: firefox }
+                    - { variant: pw desktop,         kind: playwright, project: firefox-desktop,        browser: firefox }
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4

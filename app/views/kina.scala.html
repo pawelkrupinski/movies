@@ -85,16 +85,16 @@
        this @@media block is seamless. */
     @@media (max-width: 575px) {
       .cinema-section-title {
-        font-size: calc(1rem * var(--mobile-scale));
+        font-size: var(--ms);
       }
       .cinema-nav-row {
-        padding-left:  calc(.75rem * var(--mobile-scale)) !important;
-        padding-right: calc(.75rem * var(--mobile-scale)) !important;
-        gap: calc(.25rem * var(--mobile-scale));
+        padding-left:  calc(.75 * var(--ms)) !important;
+        padding-right: calc(.75 * var(--ms)) !important;
+        gap: calc(.25 * var(--ms));
       }
       .cinema-pill {
-        font-size: calc(.875rem * var(--mobile-scale));
-        padding: calc(.25rem * var(--mobile-scale)) calc(.6rem * var(--mobile-scale));
+        font-size: calc(.875 * var(--ms));
+        padding: calc(.25 * var(--ms)) calc(.6 * var(--ms));
       }
     }
   </style>

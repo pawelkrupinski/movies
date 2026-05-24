@@ -35,9 +35,11 @@ test.describe('keyboard arrow date navigation', () => {
   });
 
   test('arrow keys do nothing when focus is inside the search input', async ({ page }) => {
-    // The keydown handler bails on INPUT / SELECT / TEXTAREA targets so
-    // typing in the search box doesn't reshuffle the date filter.
-    await page.locator('#search-input').focus();
+    const search = page.locator('#search-input');
+    const hidden = !(await search.isVisible());
+    test.skip(hidden, 'search input is display:none on ultra-narrow viewports');
+
+    await search.focus();
     const before = await page.locator('#date-filter').inputValue();
     await page.keyboard.press('ArrowRight');
     const after = await page.locator('#date-filter').inputValue();

@@ -5,26 +5,23 @@
    identity of the time pills stays in lockstep across surfaces — same
    background, same hover, same in-pill favourite star. *@
 <style>
-  /* Single mobile-scale variable defined HERE rather than in
-     `_sharedStyles` because `_pillStyles` is loaded by every page
-     (listing/kina/ulubione via `_sharedStyles`, and the per-film
-     `/film` page directly) — anchoring the variable here means every
-     page that wants to scale chrome by `var(--mobile-scale)` always
-     finds it. Linearly interpolates 0.85 → 1.0 between 320 px viewport
-     and 575 px (the @@media breakpoint top, where mobile overrides
-     land exactly on the desktop ceiling — seamless transition). */
+  /* Mobile-scale variables: linearly interpolate 0.85 → 1.0 between
+     320 px and 575 px viewport width. Expressed as length-valued
+     `--ms` (rem) and `--ms-px` (px) instead of a dimensionless
+     number, because Firefox doesn't support <length>/<length>
+     division in calc() — the old `(100vw - 320px) / 255px` produced
+     a <number> in Chromium/WebKit but was invalid in Firefox,
+     breaking every property that referenced the scale. The
+     linearised `A + B*vw` form avoids division entirely.
+     Usage: `calc(X * var(--ms))` for rem-based scaling,
+     `calc(X * var(--ms-px))` for px-based scaling. */
   :root {
-    --mobile-scale: clamp(0.85, calc(0.85 + 0.15 * (100vw - 320px) / 255px), 1);
+    --ms: clamp(0.85rem, calc(0.6618rem + 0.9412vw), 1rem);
+    --ms-px: clamp(0.85px, calc(0.6618px + 0.05882vw), 1px);
   }
 
-  /* Landscape phones: viewport width crosses 575 px so the clamp
-     above would yield 1.0, but the device is still pocket-sized in
-     the dimension that matters (height). Pin `--mobile-scale` to
-     the floor so the card chrome shrinks the way it does in
-     portrait, and the wide horizontal room can host more cards
-     per row (see `_sharedStyles` for the grid override). */
   @@media (max-height: 500px) and (orientation: landscape) {
-    :root { --mobile-scale: 0.85; }
+    :root { --ms: 0.85rem; --ms-px: 0.85px; }
   }
 
   .badge-time {
@@ -75,18 +72,13 @@
      hover-expansion has room. */
   .badge-time.needs-star-room { margin-right: 18px; }
 
-  /* Mobile scaling lives in the same partial as the desktop defaults
-     so every page loading `_pillStyles` (= every page that renders
-     showtime badges) gets identical mobile sizing. The landscape
-     arm of the OR keeps the smaller pill height on wide-but-short
-     phone viewports — `--mobile-scale` is pinned to 0.85 there. */
   @@media (max-width: 575px),
          (max-height: 500px) and (orientation: landscape) {
     .badge-time {
-      font-size: calc(.72rem * var(--mobile-scale));
-      padding: .2em calc(.5em * var(--mobile-scale));
+      font-size: calc(.72 * var(--ms));
+      padding: .2em .5em;
     }
-    .badge-fmt { font-size: calc(.62rem * var(--mobile-scale)); }
+    .badge-fmt { font-size: calc(.62 * var(--ms)); }
   }
 
   .showings-more {
