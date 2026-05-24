@@ -42,7 +42,8 @@
   <style>
     body { background: #111; color: #eee; }
     .navbar { background: #1a1a2e; }
-    .back-link { color: #aad4ff; text-decoration: none; font-size: .9rem; line-height: 1; }
+    .back-link { color: #aad4ff; text-decoration: none; font-size: .9rem; display: inline-flex; align-items: center; gap: .3em; }
+    .back-link svg { width: .7em; height: .7em; flex-shrink: 0; }
     .back-link:hover { color: #fff; }
     .poster-wrap {
       position: relative;
@@ -202,7 +203,7 @@
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 <nav class="navbar px-4 py-3 d-flex align-items-center justify-content-between">
-  <a href="/" class="back-link">← Repertuar</a>
+  <a href="/" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg>Repertuar</a>
   <div>
     @currentUser match {
       case Some(user) => {
