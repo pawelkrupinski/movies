@@ -1,0 +1,110 @@
+@import controllers.FilmSchedule
+@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], favouriteMovies: Set[String] = Set.empty, favouriteScreenings: Set[String] = Set.empty)
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@heading – Repertuar kinowy Poznań</title>
+  @_errorTracking()
+  @_analytics()
+  <link rel="stylesheet" href="@routes.Assets.versioned("css/bootstrap-5.3.3.min.css")" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  @_sharedStyles(devMode)
+  @_minified(devMode) {
+  <style>
+    #film-grid > .col { content-visibility: auto; contain-intrinsic-size: 0 460px; }
+    .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: .1rem; margin-top: .3rem; }
+    .cinema-label-link { color: #66aadd; text-decoration: none; }
+    .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
+    @@media (max-width: 575px) {
+      .cinema-label { font-size: calc(.65rem * var(--mobile-scale)); }
+    }
+  </style>
+  }
+</head>
+<body>
+
+<nav class="navbar px-4 py-3 d-flex align-items-center" style="flex-wrap:wrap">
+  <div class="d-flex align-items-center gap-3" style="flex-shrink:0">
+    <a href="/" class="back-link" style="font-size:.9rem; color:#aad4ff; text-decoration:none;">← Repertuar</a>
+  </div>
+  <div class="navbar-auth">
+    @currentUser match {
+      case Some(user) => {
+        <div class="auth-menu" id="auth-menu" onclick="toggleAuthMenu(event)">
+          @user.avatarUrl match {
+            case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
+            case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
+          }
+          <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse("Konto")).split("[ @@]").head</span>
+          <div class="auth-dropdown" id="auth-dropdown">
+            <form method="post" action="/auth/logout" class="auth-logout-form">
+              <button type="submit" class="auth-logout-btn">Wyloguj się</button>
+            </form>
+          </div>
+        </div>
+      }
+      case None if oauthProviders.nonEmpty => {
+        <button type="button" class="nav-tab nav-tab-login" onclick="openLoginModal()">Zaloguj się</button>
+      }
+      case None => {}
+    }
+  </div>
+</nav>
+
+@_loginModal(oauthProviders)
+
+@_sharedJsConfig(Seq.empty, currentUser, oauthProviders)
+<script src="@routes.Assets.versioned("js/shared.js")"></script>
+
+<div class="container-fluid py-4 px-4">
+  <h1 style="font-size:1.3rem; font-weight:600; margin-bottom:1.2rem; color:#eee;">@heading</h1>
+  <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>
+  <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak filmów.</div>
+  <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
+    @_filmCards(films, favouriteMovies, favouriteScreenings)
+  </div>
+</div>
+
+@_minified(devMode) {
+<script>
+  const IS_FAVOURITES_PAGE = false;
+
+  function buildIndex() {}
+
+  function setVisible(node, want) {
+    if (node.visible !== want) {
+      node.el.style.display = want ? '' : 'none';
+      node.visible = want;
+    }
+  }
+
+  function applyFilters() {
+    var cols = document.querySelectorAll('#film-grid > .col[data-title]');
+    var hidden = new Set(getHidden());
+    var visible = 0, showings = 0;
+    cols.forEach(function(col) {
+      var isHidden = hidden.has(col.dataset.title);
+      col.style.display = isHidden ? 'none' : '';
+      if (!isHidden) {
+        visible++;
+        showings += col.querySelectorAll('.badge-time').length;
+      }
+    });
+    updateCounter(visible, showings);
+  }
+
+  function toggleAuthMenu(event) {
+    event.stopPropagation();
+    var menu = document.getElementById('auth-menu');
+    if (menu) menu.classList.toggle('open');
+  }
+  document.addEventListener('click', function() {
+    var menu = document.getElementById('auth-menu');
+    if (menu) menu.classList.remove('open');
+  });
+</script>
+}
+
+</body>
+</html>

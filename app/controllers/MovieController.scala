@@ -170,6 +170,31 @@ class MovieController( cc: ControllerComponents,
     Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, user, oauthProviders, favMovies, favScreenings, favouritesMode = false))
   }
 
+  private def renderBrowse(heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
+    val user = currentUser(request)
+    val (favMovies, favScreenings) = favouriteSets(user)
+    Ok(views.html.browse(films, heading, devMode, user, oauthProviders, favMovies, favScreenings))
+  }
+
+  def byCountry(name: String): Action[AnyContent] = Action { request =>
+    val films = movieControllerService.toSchedules().filter(_.movie.countries.contains(name))
+    renderBrowse(name, films, request)
+  }
+
+  def byDirector(name: String): Action[AnyContent] = Action { request =>
+    val films = movieControllerService.toSchedules().filter(
+      _.director.exists(_.split(",").map(_.trim).contains(name))
+    )
+    renderBrowse(name, films, request)
+  }
+
+  def byActor(name: String): Action[AnyContent] = Action { request =>
+    val films = movieControllerService.toSchedules().filter(
+      _.cast.exists(_.split(",").map(_.trim).contains(name))
+    )
+    renderBrowse(name, films, request)
+  }
+
   def favourites(): Action[AnyContent] = Action { request =>
     val user = currentUser(request)
     val (favMovies, favScreenings) = favouriteSets(user)
@@ -245,7 +270,7 @@ class MovieController( cc: ControllerComponents,
         val user = currentUser(request)
         val (favMovies, favScreenings) = favouriteSets(user)
         val isFavourite = favMovies.contains(schedule.movie.title)
-        Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule), isFavourite, favScreenings, devMode))
+        Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule), isFavourite, favScreenings, devMode, user, oauthProviders))
       case None => NotFound(s"Film not found: $title")
     }
   }

@@ -1,6 +1,7 @@
 @import controllers.FilmSchedule
+@import controllers.BrowseHref
 @import services.movies.TrailerEmbed
-@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, isFavourite: Boolean = false, favouriteScreenings: Set[String] = Set.empty, devMode: Boolean = false)
+@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, isFavourite: Boolean = false, favouriteScreenings: Set[String] = Set.empty, devMode: Boolean = false, currentUser: Option[models.User] = None, oauthProviders: Set[String] = Set.empty)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -36,6 +37,7 @@
 
   @* Bootstrap self-hosted — see kina.scala.html for the reasoning. *@
   <link rel="stylesheet" href="@routes.Assets.versioned("css/bootstrap-5.3.3.min.css")" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  @_sharedStyles(devMode)
   @_minified(devMode) {
   <style>
     body { background: #111; color: #eee; }
@@ -90,6 +92,8 @@
     .film-title { font-size: 1.6rem; font-weight: 700; margin-bottom: .5rem; }
     .meta-label { font-size: .75rem; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .15rem; margin-top: .9rem; }
     .meta-value { font-size: .9rem; color: #ddd; }
+    .meta-link { color: #aad4ff; text-decoration: none; }
+    .meta-link:hover { color: #fff; text-decoration: underline; }
     .cinema-link {
       display: inline-block;
       background: #3a3a6e;
@@ -230,9 +234,32 @@
   });
 </script>
 
-<nav class="navbar px-4 py-3">
+<nav class="navbar px-4 py-3 d-flex align-items-center justify-content-between">
   <a href="/" class="back-link">← Repertuar</a>
+  <div>
+    @currentUser match {
+      case Some(user) => {
+        <div class="auth-menu" id="auth-menu" onclick="toggleAuthMenu(event)">
+          @user.avatarUrl match {
+            case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
+            case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
+          }
+          <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse("Konto")).split("[ @@]").head</span>
+          <div class="auth-dropdown" id="auth-dropdown">
+            <form method="post" action="/auth/logout" class="auth-logout-form">
+              <button type="submit" class="auth-logout-btn">Wyloguj się</button>
+            </form>
+          </div>
+        </div>
+      }
+      case None if oauthProviders.nonEmpty => {
+        <button type="button" class="nav-tab nav-tab-login" onclick="openLoginModal()">Zaloguj się</button>
+      }
+      case None => {}
+    }
+  </div>
 </nav>
+@_loginModal(oauthProviders)
 
 <div class="container py-4" style="max-width: 860px;">
   <div class="row g-4">
@@ -280,7 +307,10 @@
       @film.director match {
         case Some(text) => {
           <div class="meta-label">Reżyseria</div>
-          <div class="meta-value">@text</div>
+          <div class="meta-value">@text.split(",").map(_.trim).filter(_.nonEmpty).zipWithIndex.map { case (name, i) =>
+            if(i > 0) { Html(", ") }
+            <a href="@BrowseHref.director(name)" class="meta-link">@name</a>
+          }</div>
         }
         case None => {}
       }
@@ -288,14 +318,20 @@
       @film.cast match {
         case Some(text) => {
           <div class="meta-label">Obsada</div>
-          <div class="meta-value">@text</div>
+          <div class="meta-value">@text.split(",").map(_.trim).filter(_.nonEmpty).zipWithIndex.map { case (name, i) =>
+            if(i > 0) { Html(", ") }
+            <a href="@BrowseHref.actor(name)" class="meta-link">@name</a>
+          }</div>
         }
         case None => {}
       }
 
       @if(film.movie.countries.nonEmpty) {
         <div class="meta-label">Kraj(e) produkcji</div>
-        <div class="meta-value">@film.movie.countries.mkString(", ")</div>
+        <div class="meta-value">@film.movie.countries.zipWithIndex.map { case (country, i) =>
+          if(i > 0) { Html(", ") }
+          <a href="@BrowseHref.country(country)" class="meta-link">@country</a>
+        }</div>
       }
 
       @* Distinct trailer embed URLs across every cinema's slot. Dedupe by the
@@ -391,6 +427,27 @@
       const titles = JSON.parse(localStorage.getItem('favouriteMovies')) || [];
       if (titles.includes(title)) btn.classList.add('is-fav');
     } catch {}
+  });
+
+  function toggleAuthMenu(event) {
+    event.stopPropagation();
+    var menu = document.getElementById('auth-menu');
+    if (menu) menu.classList.toggle('open');
+  }
+  function openLoginModal() {
+    var m = document.getElementById('login-modal-backdrop');
+    if (m) m.classList.add('open');
+  }
+  function closeLoginModal() {
+    var m = document.getElementById('login-modal-backdrop');
+    if (m) m.classList.remove('open');
+  }
+  document.addEventListener('click', function() {
+    var menu = document.getElementById('auth-menu');
+    if (menu) menu.classList.remove('open');
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLoginModal();
   });
 </script>
 }
