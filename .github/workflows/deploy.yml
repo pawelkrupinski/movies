@@ -381,6 +381,22 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
+            # Guard against out-of-order deploys: if a newer commit has
+            # landed on main while this run's tests were in flight, skip
+            # the deploy — the newer run will handle it. The workflow-
+            # level `cancel-in-progress` covers sequential pushes; this
+            # catches the edge case where two runs complete their test
+            # matrix in opposite order.
+            - name: Abort if a newer commit exists on main
+              id: guard
+              run: |
+                  git fetch origin main --quiet
+                  head=$(git rev-parse origin/main)
+                  if [ "${{ github.sha }}" != "$head" ]; then
+                      echo "::warning::Skipping deploy — this commit (${{ github.sha }}) is behind origin/main ($head)"
+                      echo "skip=true" >> "$GITHUB_OUTPUT"
+                  fi
+
             # Pull the staged distribution built by the `test` job. The
             # Dockerfile expects it at top-level `stage/`; the upload
             # artifact's `path` was the directory's contents, so this
@@ -389,13 +405,16 @@ jobs:
             # builder receives the staged JARs but none of the
             # surrounding test artefacts.
             - uses: actions/download-artifact@v4
+              if: steps.guard.outputs.skip != 'true'
               with:
                   name: stage
                   path: stage
 
             - uses: superfly/flyctl-actions/setup-flyctl@master
+              if: steps.guard.outputs.skip != 'true'
 
             - run: flyctl deploy --remote-only -a kinowo --build-arg COMMIT_SHA=${{ github.sha }}
+              if: steps.guard.outputs.skip != 'true'
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
