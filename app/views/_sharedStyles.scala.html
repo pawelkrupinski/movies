@@ -8,7 +8,7 @@
   html { touch-action: manipulation; }
   body { background: #111; color: #eee; overflow-x: hidden; }
 
-  /* The `--ms` / `--ms-px` variables defined in `_pillStyles` linearly
+  /* The `--mobile-scale` / `--mobile-scale-px` variables defined in `_pillStyles` linearly
      interpolate 0.85 → 1.0 between 320 px and 575 px viewport. */
   /* Sticky so the filter bar stays on-screen as the user scrolls
      through a long film grid (200+ cards on /). Was `position:
@@ -128,7 +128,7 @@
      two overflow, so the logo clips via max-width. */
   @@media (max-width: 290px) {
     .navbar-search { display: none; }
-    nav.navbar { padding: 0 !important; column-gap: 0 !important; row-gap: calc(.05 * var(--ms)) !important; }
+    nav.navbar { padding: 0 !important; column-gap: 0 !important; row-gap: calc(.05 * var(--mobile-scale)) !important; }
     .navbar > div:first-child { max-width: 60% !important; overflow: hidden; }
     .navbar-auth { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40% !important; }
     .navbar-date { max-width: 60% !important; overflow: hidden; }
@@ -587,10 +587,10 @@
        the desktop ceiling at the breakpoint top. Single scale knob =
        uniform ratios between the navbar and the grid beneath it. */
     .navbar {
-      padding: calc(.5 * var(--ms)) min(calc(.75 * var(--ms)), 2.5vw) !important;
-      gap: calc(.2 * var(--ms));
-      --navbar-fs: calc(.875 * var(--ms));
-      --navbar-px: min(calc(.6 * var(--ms)), 2.5vw);
+      padding: calc(.5 * var(--mobile-scale)) min(calc(.75 * var(--mobile-scale)), 2.5vw) !important;
+      gap: calc(.2 * var(--mobile-scale));
+      --navbar-fs: calc(.875 * var(--mobile-scale));
+      --navbar-px: min(calc(.6 * var(--mobile-scale)), 2.5vw);
     }
     .navbar-logo { gap: min(1rem, 3vw) !important; }
     .navbar > div:first-child {
@@ -607,8 +607,8 @@
       padding-right: var(--navbar-px);
     }
     /* Icon-only controls scale on glyph cap height — ★, < and >. */
-    .navbar .nav-tab-fav  { font-size: calc(1.05 * var(--ms)); }
-    .navbar .date-nav-btn { font-size: calc(1.1 * var(--ms)); min-width: min(35px, 8vw); flex-shrink: 1; }
+    .navbar .nav-tab-fav  { font-size: calc(1.05 * var(--mobile-scale)); }
+    .navbar .date-nav-btn { font-size: calc(1.1 * var(--mobile-scale)); min-width: min(35px, 8vw); flex-shrink: 1; }
     /* Navbar search + date-filter selects ride the SAME
        `--navbar-fs` as the surrounding tabs and Filtry button so
        every row of the navbar has uniform typography. The broad
@@ -675,15 +675,15 @@
        as the navbar keeps the two visual zones in proportion at every
        mobile width. */
     .container-fluid {
-      padding-left:  min(calc(.75 * var(--ms)), 2.5vw) !important;
-      padding-right: min(calc(.75 * var(--ms)), 2.5vw) !important;
+      padding-left:  min(calc(.75 * var(--mobile-scale)), 2.5vw) !important;
+      padding-right: min(calc(.75 * var(--mobile-scale)), 2.5vw) !important;
     }
     #film-grid,
-    .cinema-section .row { --bs-gutter-x: min(var(--ms), 3.5vw); }
-    .card-body         { padding: min(var(--ms), 4vw); }
-    .card-title a      { font-size: calc(.95 * var(--ms)); }
-    .pill              { font-size: calc(.72 * var(--ms)); padding: 0 calc(5 * var(--ms-px)); }
-    .date-label        { font-size: calc(.7 * var(--ms)); }
+    .cinema-section .row { --bs-gutter-x: min(var(--mobile-scale), 3.5vw); }
+    .card-body         { padding: min(var(--mobile-scale), 4vw); }
+    .card-title a      { font-size: calc(.95 * var(--mobile-scale)); }
+    .pill              { font-size: calc(.72 * var(--mobile-scale)); padding: 0 calc(5 * var(--mobile-scale-px)); }
+    .date-label        { font-size: calc(.7 * var(--mobile-scale)); }
     /* Showtime pills (`.badge-time` / `.badge-fmt`) + rating pills
        (`.rating-imdb` / `.rating-meta` / `.rating-fw` / `.rating-rt`)
        are scaled inside their own partials (`_pillStyles`,
@@ -697,19 +697,19 @@
        open on tap and should read at the same visual scale as the
        navbar / grid that's already on screen. Same `--mobile-scale`
        factor → consistent typography across every layer of UI. */
-    .login-modal-title  { font-size: calc(1.2 * var(--ms)); }
-    .login-modal-sub    { font-size: calc(.85 * var(--ms)); }
+    .login-modal-title  { font-size: calc(1.2 * var(--mobile-scale)); }
+    .login-modal-sub    { font-size: calc(.85 * var(--mobile-scale)); }
     .login-btn          {
-      font-size: calc(.95 * var(--ms));
-      padding:   calc(.65 * var(--ms)) calc(.9 * var(--ms));
+      font-size: calc(.95 * var(--mobile-scale));
+      padding:   calc(.65 * var(--mobile-scale)) calc(.9 * var(--mobile-scale));
     }
-    .panel-item         { font-size: calc(.8 * var(--ms)); }
-    .panel-label        { font-size: calc(.8 * var(--ms)); }
-    .panel-section-label{ font-size: calc(.65 * var(--ms)); }
-    .auth-logout-btn    { font-size: calc(.875 * var(--ms)); }
-    .anon-nag-toast     { font-size: calc(.85 * var(--ms)); }
-    .no-poster          { font-size: calc(.85 * var(--ms)); }
-    #room-tooltip       { font-size: calc(.68 * var(--ms)); }
+    .panel-item         { font-size: calc(.8 * var(--mobile-scale)); }
+    .panel-label        { font-size: calc(.8 * var(--mobile-scale)); }
+    .panel-section-label{ font-size: calc(.65 * var(--mobile-scale)); }
+    .auth-logout-btn    { font-size: calc(.875 * var(--mobile-scale)); }
+    .anon-nag-toast     { font-size: calc(.85 * var(--mobile-scale)); }
+    .no-poster          { font-size: calc(.85 * var(--mobile-scale)); }
+    #room-tooltip       { font-size: calc(.68 * var(--mobile-scale)); }
 
     /* Compact 28 px control heights for portrait mobile — matches
        the landscape-only block further down so rotating the device
@@ -757,12 +757,12 @@
     .navbar .auth-name,
     .navbar .filter-select,
     .navbar .search-input {
-      font-size: calc(.8 * var(--ms));
+      font-size: calc(.8 * var(--mobile-scale));
       padding-left:  5px;
       padding-right: 5px;
     }
-    .navbar .nav-tab-fav  { font-size: calc(.9 * var(--ms)); min-width: 0; padding-left: 4px; padding-right: 4px; }
-    .navbar .btn.date-nav-btn { font-size: calc(.95 * var(--ms)); min-width: 0; padding-left: 3px; padding-right: 3px; }
+    .navbar .nav-tab-fav  { font-size: calc(.9 * var(--mobile-scale)); min-width: 0; padding-left: 4px; padding-right: 4px; }
+    .navbar .btn.date-nav-btn { font-size: calc(.95 * var(--mobile-scale)); min-width: 0; padding-left: 3px; padding-right: 3px; }
     .navbar .filter-select,
     .navbar .search-input { padding-top: 0; padding-bottom: 0; }
     .navbar-date { align-items: center; flex-shrink: 0; min-width: 0; }
@@ -780,13 +780,13 @@
       padding-left:  8px !important;
       padding-right: 8px !important;
     }
-    .card-body         { padding: calc(.6 * var(--ms)); }
-    .card-title a      { font-size: calc(.95 * var(--ms)); }
-    .pill              { font-size: calc(.72 * var(--ms)); padding: 0 calc(5 * var(--ms-px)); }
-    .date-label        { font-size: calc(.7 * var(--ms)); }
-    .cinema-label      { font-size: calc(.65 * var(--ms)); }
-    .no-poster         { font-size: calc(.85 * var(--ms)); }
-    #room-tooltip      { font-size: calc(.68 * var(--ms)); }
+    .card-body         { padding: calc(.6 * var(--mobile-scale)); }
+    .card-title a      { font-size: calc(.95 * var(--mobile-scale)); }
+    .pill              { font-size: calc(.72 * var(--mobile-scale)); padding: 0 calc(5 * var(--mobile-scale-px)); }
+    .date-label        { font-size: calc(.7 * var(--mobile-scale)); }
+    .cinema-label      { font-size: calc(.65 * var(--mobile-scale)); }
+    .no-poster         { font-size: calc(.85 * var(--mobile-scale)); }
+    #room-tooltip      { font-size: calc(.68 * var(--mobile-scale)); }
 
     /* Tighter card gaps — default Bootstrap gutter (1.5 rem) wastes
        horizontal room that narrow landscape phones need for card

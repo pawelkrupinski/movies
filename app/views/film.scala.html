@@ -176,17 +176,17 @@
        container padding are intentionally left untouched — tap-target
        and iOS-zoom-guard floors that the scale would push under. */
     @@media (max-width: 575px) {
-      .back-link  { font-size: calc(.9 * var(--ms)); }
-      .no-poster  { font-size: var(--ms); }
-      .film-title { font-size: calc(1.6 * var(--ms)); }
-      .meta-label { font-size: calc(.75 * var(--ms)); }
-      .meta-value { font-size: calc(.9 * var(--ms)); }
+      .back-link  { font-size: calc(.9 * var(--mobile-scale)); }
+      .no-poster  { font-size: var(--mobile-scale); }
+      .film-title { font-size: calc(1.6 * var(--mobile-scale)); }
+      .meta-label { font-size: calc(.75 * var(--mobile-scale)); }
+      .meta-value { font-size: calc(.9 * var(--mobile-scale)); }
       .cinema-link, .trailer-link {
-        font-size: calc(.85 * var(--ms));
-        padding:   calc(.35 * var(--ms)) calc(.8 * var(--ms));
+        font-size: calc(.85 * var(--mobile-scale));
+        padding:   calc(.35 * var(--mobile-scale)) calc(.8 * var(--mobile-scale));
       }
-      .date-group .date-label { font-size: calc(.8 * var(--ms)); }
-      .cinema-label           { font-size: calc(.8 * var(--ms)); }
+      .date-group .date-label { font-size: calc(.8 * var(--mobile-scale)); }
+      .cinema-label           { font-size: calc(.8 * var(--mobile-scale)); }
     }
   </style>
   }

@@ -7,21 +7,21 @@
 <style>
   /* Mobile-scale variables: linearly interpolate 0.85 → 1.0 between
      320 px and 575 px viewport width. Expressed as length-valued
-     `--ms` (rem) and `--ms-px` (px) instead of a dimensionless
+     `--mobile-scale` (rem) and `--mobile-scale-px` (px) instead of a dimensionless
      number, because Firefox doesn't support <length>/<length>
      division in calc() — the old `(100vw - 320px) / 255px` produced
      a <number> in Chromium/WebKit but was invalid in Firefox,
      breaking every property that referenced the scale. The
      linearised `A + B*vw` form avoids division entirely.
-     Usage: `calc(X * var(--ms))` for rem-based scaling,
-     `calc(X * var(--ms-px))` for px-based scaling. */
+     Usage: `calc(X * var(--mobile-scale))` for rem-based scaling,
+     `calc(X * var(--mobile-scale-px))` for px-based scaling. */
   :root {
-    --ms: clamp(0.85rem, calc(0.6618rem + 0.9412vw), 1rem);
-    --ms-px: clamp(0.85px, calc(0.6618px + 0.05882vw), 1px);
+    --mobile-scale: clamp(0.85rem, calc(0.6618rem + 0.9412vw), 1rem);
+    --mobile-scale-px: clamp(0.85px, calc(0.6618px + 0.05882vw), 1px);
   }
 
   @@media (max-height: 500px) and (orientation: landscape) {
-    :root { --ms: 0.85rem; --ms-px: 0.85px; }
+    :root { --mobile-scale: 0.85rem; --mobile-scale-px: 0.85px; }
   }
 
   .badge-time {
@@ -75,10 +75,10 @@
   @@media (max-width: 575px),
          (max-height: 500px) and (orientation: landscape) {
     .badge-time {
-      font-size: calc(.72 * var(--ms));
+      font-size: calc(.72 * var(--mobile-scale));
       padding: .2em .5em;
     }
-    .badge-fmt { font-size: calc(.62 * var(--ms)); }
+    .badge-fmt { font-size: calc(.62 * var(--mobile-scale)); }
   }
 
   .showings-more {
