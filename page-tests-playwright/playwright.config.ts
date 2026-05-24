@@ -1,186 +1,147 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices, type Project } from '@playwright/test';
 
-// Two ways to point the suite at a backend:
-//
-//   1. `KINOWO_BASE_URL=http://127.0.0.1:<port>` — what CI does. The
-//      port comes from `FixtureServerMain` (Scala) which boots
-//      `FixtureTestWiring` + serves Twirl-rendered pages over the
-//      same `TestHttpServer` the Scala spec uses. Fully fixture-
-//      grounded: every page is deterministic, no network, no real
-//      database.
-//
-//   2. Falls back to the live https://kinowo.fly.dev when no env
-//      var is set, so a developer can `npx playwright test` against
-//      production for smoke purposes.
-//
-// Tests tagged `@live-only` skip when running against the local
-// fixture server (because they need real, mutable data) and run only
-// against the live site. The vast majority of tests use the local
-// fixture path so CI is deterministic; the `@live-only` band stays
-// small to limit the flakiness that real data introduces.
 const BASE_URL = process.env.KINOWO_BASE_URL ?? 'https://kinowo.fly.dev';
 const IS_LOCAL_FIXTURE = BASE_URL.startsWith('http://127.0.0.1');
 
+// ─── Phone definitions ──────────────────────────────────────────────
+//
+// Effective CSS-pixel viewports on real devices. iPhone heights are
+// post-safe-area (Dynamic Island + home indicator subtracted).
+
+interface Phone { slug: string; width: number; height: number }
+
+const ANDROID_PHONES: Phone[] = [
+  { slug: 'galaxy-s10',       width: 360, height: 760 },
+  { slug: 'galaxy-s23',       width: 360, height: 780 },
+  { slug: 'pixel-9',          width: 360, height: 808 },
+  { slug: 'galaxy-s25-ultra', width: 412, height: 891 },
+  { slug: 'pixel-7',          width: 412, height: 915 },
+  { slug: 'pixel-9-pro',      width: 427, height: 952 },
+];
+
+const IPHONES: Phone[] = [
+  { slug: 'iphone-se',           width: 375, height: 667 },
+  { slug: 'iphone-13',           width: 390, height: 760 },
+  { slug: 'iphone-17',           width: 393, height: 770 },
+  { slug: 'iphone-16-pro',       width: 402, height: 790 },
+  { slug: 'iphone-15-pro-max',   width: 430, height: 850 },
+  { slug: 'iphone-17-pro-max',   width: 440, height: 870 },
+];
+
+const WINDOWS_PHONES: Phone[] = [
+  { slug: 'lumia-520', width: 320, height: 533 },
+  { slug: 'lumia-950', width: 360, height: 640 },
+];
+
+const ALL_PHONES = [...ANDROID_PHONES, ...IPHONES];
+
+// 150% display zoom → viewport shrinks to 2/3 of normal.
+function zoomed(p: Phone): Phone {
+  return { slug: `${p.slug}-zoomed`, width: Math.round(p.width * 2 / 3), height: Math.round(p.height * 2 / 3) };
+}
+
+function landscape(p: Phone): Phone {
+  return { slug: `${p.slug}-landscape`, width: p.height, height: p.width };
+}
+
+// All four orientation × zoom variants for a phone.
+function variants(p: Phone): Phone[] {
+  return [p, zoomed(p), landscape(p), landscape(zoomed(p))];
+}
+
+// ─── Engine helpers ─────────────────────────────────────────────────
+
+function firefoxUse(p: Phone) {
+  return {
+    browserName: 'firefox' as const,
+    viewport:  { width: p.width, height: p.height },
+    userAgent: devices['Pixel 7'].userAgent,
+    hasTouch:  devices['Pixel 7'].hasTouch,
+  };
+}
+
+function webkitUse(p: Phone) {
+  return {
+    ...devices['iPhone 13'],
+    viewport: { width: p.width, height: p.height },
+  };
+}
+
+function chromiumUse(p: Phone) {
+  return {
+    ...devices['Pixel 7'],
+    viewport: { width: p.width, height: p.height },
+  };
+}
+
+function edgeUse(p: Phone) {
+  return {
+    ...devices['Pixel 7'],
+    channel: 'msedge' as const,
+    viewport: { width: p.width, height: p.height },
+  };
+}
+
+// ─── Project generation ─────────────────────────────────────────────
+
+const projects: Project[] = [
+
+  // ─── Firefox — Android phones only, portrait + landscape, normal + 150% zoom
+  //
+  // Gecko engine diverges enough from Blink / WebKit that mobile bugs
+  // frequently surface here first. iPhone users don't run Firefox
+  // (iOS forces WebKit for all browsers), so Firefox tests cover
+  // Android viewports only.
+  ...ANDROID_PHONES.flatMap(p => variants(p).map(v => ({
+    name: `firefox-${v.slug}`,
+    use: firefoxUse(v),
+  }))),
+
+  // ─── WebKit — all iPhones, portrait + landscape, normal + 150% zoom
+  //
+  // Closest CI proxy for Mobile Safari. Each iPhone viewport is tested
+  // in both orientations and at 150% accessibility zoom.
+  ...IPHONES.flatMap(p => variants(p).map(v => ({
+    name: `webkit-${v.slug}`,
+    use: webkitUse(v),
+  }))),
+
+  // ─── Chromium — all Android phones, portrait + landscape, normal + 150% zoom
+  //
+  // Closest to the median Android Chrome user. No Chrome on Windows
+  // Phone — Edge covers those viewports.
+  ...ANDROID_PHONES.flatMap(p => variants(p).map(v => ({
+    name: `chromium-${v.slug}`,
+    use: chromiumUse(v),
+  }))),
+
+  // ─── Edge — Windows Phone viewports, portrait + landscape, normal + 150% zoom
+  //
+  // Lumia 520 (320 px, narrowest phone ever mass-produced) and Lumia
+  // 950 (360 px). Edge uses the Chromium engine via the `msedge`
+  // channel. Chrome was never available on Windows Phone.
+  ...WINDOWS_PHONES.flatMap(p => variants(p).map(v => ({
+    name: `msedge-${v.slug}`,
+    use: edgeUse(v),
+  }))),
+
+  // ─── Desktop ──────────────────────────────────────────────────────
+  { name: 'webkit-desktop',   use: { ...devices['Desktop Safari'] } },
+  { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'] } },
+  { name: 'firefox-desktop',  use: { ...devices['Desktop Firefox'] } },
+  { name: 'msedge-desktop',   use: { ...devices['Desktop Edge'], channel: 'msedge' } },
+];
+
 export default defineConfig({
   testDir: './tests',
-  // One worker is enough for now — WebKit boot is a few seconds, and
-  // each spec runs a small number of cheap assertions. If the suite
-  // grows past 20 tests it's worth bumping to 2-4 (each gets its own
-  // browser context anyway, no shared state).
-  workers: 1,
-  // The live site can occasionally hiccup on cold-start — one retry
-  // smooths over a single 5xx without masking a real regression. The
-  // local fixture server doesn't need retries.
+  workers: '50%',
   retries: IS_LOCAL_FIXTURE ? 0 : 1,
   timeout: 30_000,
   expect: { timeout: 5_000 },
   use: {
     baseURL: BASE_URL,
-    // Trace on first retry only — gives us debug data when something
-    // goes wrong without keeping a trace per pass.
     trace: 'on-first-retry',
   },
-  // Tests can `test.skip(...IS_LIVE_ONLY)` to gate themselves; we
-  // expose the flag here via the metadata so any spec that doesn't
-  // care doesn't have to repeat the env-var dance.
   metadata: { isLocalFixture: IS_LOCAL_FIXTURE, baseURL: BASE_URL },
-  projects: [
-    // Chromium + Pixel 7 — closest to the median Android Chrome user.
-    // Playwright bundles its own Chromium build, so this is engine
-    // coverage in addition to the Scala matrix's Chrome-version
-    // coverage (the Scala matrix uses installed Chrome; Playwright
-    // uses bundled). Both checks reach a different surface area.
-    {
-      name: 'chromium',
-      use: { ...devices['Pixel 7'] },
-    },
-    // WebKit + iPhone 13 — closest CI proxy for Mobile Safari short
-    // of paid device-cloud services. Catches generic WebKit-engine
-    // regressions in the same JS we ship to iPhone users.
-    {
-      name: 'webkit',
-      use: { ...devices['iPhone 13'] },
-    },
-    // Firefox — desktop mobile-viewport sanity. Firefox on Android is
-    // a smaller slice than Chrome / Safari, but the engine is far
-    // enough from Blink / WebKit that mobile bugs frequently surface
-    // here first.
-    //
-    // Playwright's Firefox doesn't support `isMobile` device emulation
-    // (only `viewport` + `userAgent`), so we copy the Pixel 7 profile
-    // selectively rather than spreading `devices['Pixel 7']`.
-    {
-      name: 'firefox',
-      use: {
-        browserName: 'firefox',
-        viewport:    devices['Pixel 7'].viewport,
-        userAgent:   devices['Pixel 7'].userAgent,
-        hasTouch:    devices['Pixel 7'].hasTouch,
-      },
-    },
-    // ─── Desktop projects ───────────────────────────────────────────────
-    //
-    // The three mobile projects above pin the phone-form-factor JS + CSS.
-    // The desktop projects below cover the >= 992 px branch — different
-    // navbar layout (one row, no row-break), `pointer: fine` truthy,
-    // hover-driven UI affordances. smoke runs on every project; card-tap
-    // and a11y are scoped via per-spec predicates (see those files).
-    //
-    // Desktop WebKit — Safari approximation on a Linux runner. Same
-    // engine as the iPhone project but desktop viewport + mouse pointer
-    // + no iOS-only CSS branches. Catches Safari-engine regressions in
-    // the desktop chrome the iPhone project would miss.
-    {
-      name: 'webkit-desktop',
-      use: { ...devices['Desktop Safari'] },
-    },
-    // Desktop Chromium. Re-covers Chrome engine through the Playwright
-    // harness on top of the Scala-side page-tests-chrome matrix; this
-    // is the project that hosts the axe-core a11y audit (one project
-    // is enough since axe is DOM/CSS-driven, not engine-driven).
-    {
-      name: 'chromium-desktop',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    // Desktop Firefox — Gecko engine with full desktop viewport +
-    // mouse pointer. Sole representation of the third major engine at
-    // desktop size; routinely diverges from Blink/WebKit on flexbox
-    // edge cases, focus rings, and CSS containment.
-    {
-      name: 'firefox-desktop',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    // Desktop Edge via Playwright's `msedge` channel. Same engine as
-    // chromium-desktop but with Edge's defaults (smart-screen,
-    // tracking-prevention) and UA. The Scala page-tests-edge job
-    // already covers Edge desktop end-to-end; this is the cross-
-    // harness consistency check. Requires `playwright install msedge`
-    // in CI so the runner has the Edge binary.
-    {
-      name: 'msedge-desktop',
-      use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    },
-    // ─── Mobile landscape projects ──────────────────────────────────
-    //
-    // Phone landscape: width > height, height ≤ 500 px. The
-    // `(max-height: 500px) and (orientation: landscape)` media
-    // query keeps the desktop one-row navbar but shrinks card
-    // chrome (`--mobile-scale: 0.85`) and packs 6 cards per row.
-    // Three viewport sizes — Pixel 7 (915 px), iPhone 13 (844 px),
-    // iPhone 17 Pro Max (956 px) — so the band of "wider than
-    // 768 px md breakpoint but still height-constrained" is
-    // covered end-to-end.
-    {
-      name: 'chromium-landscape',
-      use: {
-        ...devices['Pixel 7'],
-        viewport: { width: devices['Pixel 7'].viewport.height, height: devices['Pixel 7'].viewport.width },
-      },
-    },
-    {
-      name: 'webkit-landscape',
-      use: {
-        ...devices['iPhone 13'],
-        viewport: { width: devices['iPhone 13'].viewport.height, height: devices['iPhone 13'].viewport.width },
-      },
-    },
-    {
-      name: 'webkit-landscape-iphone-17',
-      use: {
-        // iPhone 17 landscape ≈ 852 × 393. Playwright's bundled
-        // `devices` doesn't carry the 17 series yet; copy iPhone
-        // 13's UA + touch hints and swap the viewport.
-        ...devices['iPhone 13'],
-        viewport: { width: 852, height: 393 },
-      },
-    },
-    {
-      name: 'webkit-landscape-iphone-17-pro',
-      use: {
-        // iPhone 17 Pro landscape ≈ 874 × 402.
-        ...devices['iPhone 13'],
-        viewport: { width: 874, height: 402 },
-      },
-    },
-    {
-      name: 'webkit-landscape-iphone-17-pro-max',
-      use: {
-        // iPhone 17 Pro Max landscape ≈ 956 × 440 — the viewport
-        // the user reported the original two-row reflow looking
-        // wrong on. Pinned as a named project so a future regression
-        // shows up as a dedicated CI row.
-        ...devices['iPhone 13'],
-        viewport: { width: 956, height: 440 },
-      },
-    },
-    {
-      name: 'firefox-landscape',
-      use: {
-        browserName: 'firefox',
-        viewport: { width: devices['Pixel 7'].viewport.height, height: devices['Pixel 7'].viewport.width },
-        userAgent: devices['Pixel 7'].userAgent,
-        hasTouch: devices['Pixel 7'].hasTouch,
-      },
-    },
-  ],
+  projects,
 });
