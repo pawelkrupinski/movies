@@ -307,7 +307,7 @@ jobs:
                     - { variant: '128',              kind: chrome,     version: '128' }
                     - { variant: '120',              kind: chrome,     version: '120' }
                     - { variant: '113',              kind: chrome,     version: '113' }
-                    - { variant: playwright mobile,  kind: playwright, project: chromium,         browser: chromium }
+                    - { variant: playwright mobile,  kind: playwright, project: 'chromium-*-*',   browser: chromium }
                     - { variant: playwright desktop, kind: playwright, project: chromium-desktop, browser: chromium }
         runs-on: ubuntu-latest
         steps:
@@ -325,7 +325,7 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { variant: playwright mobile,  kind: playwright, project: webkit,         browser: webkit }
+                    - { variant: playwright mobile,  kind: playwright, project: 'webkit-*-*',   browser: webkit }
                     - { variant: playwright desktop, kind: playwright, project: webkit-desktop, browser: webkit }
         runs-on: ubuntu-latest
         steps:
@@ -360,7 +360,7 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { variant: playwright mobile,  kind: playwright, project: firefox,         browser: firefox }
+                    - { variant: playwright mobile,  kind: playwright, project: 'firefox-*-*',   browser: firefox }
                     - { variant: playwright desktop, kind: playwright, project: firefox-desktop, browser: firefox }
         runs-on: ubuntu-latest
         steps:

@@ -122,13 +122,13 @@ runs:
     - name: Run Playwright behaviour specs (blocking)
       if: inputs.kind == 'playwright'
       shell: bash
-      run: cd page-tests-playwright && npx playwright test --project ${{ inputs.project }} --grep-invert "axe-core"
+      run: cd page-tests-playwright && npx playwright test --project "${{ inputs.project }}" --grep-invert "axe-core"
 
     - name: Run Playwright axe-core a11y audit (informational)
       if: inputs.kind == 'playwright' && inputs.project == 'chromium-desktop'
       continue-on-error: true
       shell: bash
-      run: cd page-tests-playwright && npx playwright test --project ${{ inputs.project }} --grep "axe-core"
+      run: cd page-tests-playwright && npx playwright test --project "${{ inputs.project }}" --grep "axe-core"
 
     - name: Stop FixtureServerMain
       if: always() && inputs.kind == 'playwright'
