@@ -198,48 +198,8 @@
 </head>
 <body>
 
-<script>
-  var _POSTER_RETRY_MAX = 4;
-  function _posterDelay(attempt) {
-    var c = Math.max(0, Math.min(attempt, _POSTER_RETRY_MAX));
-    var v = 2;
-    for (var i = 0; i < c; i++) v *= 3;
-    return v;
-  }
-  function schedulePosterRetry(img) {
-    var attempt = parseInt(img.dataset.retryAttempt || '0', 10);
-    img.dataset.retryAttempt = String(attempt + 1);
-    img._posterTimer = setTimeout(function() {
-      var gen = (parseInt(img.dataset.retryGen || '0', 10)) + 1;
-      img.dataset.retryGen = String(gen);
-      var original = img.dataset.originalSrc;
-      var originalFb = img.dataset.originalFallbacks || '';
-      if (originalFb) img.dataset.fallbacks = originalFb;
-      else img.removeAttribute('data-fallbacks');
-      img.style.display = '';
-      img.nextElementSibling.style.display = 'none';
-      var sep = original.indexOf('?') === -1 ? '?' : '&';
-      img.src = gen === 0 ? original : original + sep + '_kinowo_t=' + gen;
-    }, _posterDelay(attempt) * 1000);
-  }
-  document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState !== 'visible') return;
-    document.querySelectorAll('img[data-retry-attempt]').forEach(function(img) {
-      if (img._posterTimer) { clearTimeout(img._posterTimer); img._posterTimer = null; }
-      img.dataset.retryAttempt = '0';
-      var gen = (parseInt(img.dataset.retryGen || '0', 10)) + 1;
-      img.dataset.retryGen = String(gen);
-      var original = img.dataset.originalSrc;
-      var originalFb = img.dataset.originalFallbacks || '';
-      if (originalFb) img.dataset.fallbacks = originalFb;
-      else img.removeAttribute('data-fallbacks');
-      img.style.display = '';
-      img.nextElementSibling.style.display = 'none';
-      var sep = original.indexOf('?') === -1 ? '?' : '&';
-      img.src = gen === 0 ? original : original + sep + '_kinowo_t=' + gen;
-    });
-  });
-</script>
+@_sharedJsConfig(Seq.empty, currentUser, oauthProviders)
+<script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 <nav class="navbar px-4 py-3 d-flex align-items-center justify-content-between">
   <a href="/" class="back-link">← Repertuar</a>
@@ -412,51 +372,9 @@
 
 @_minified(devMode) {
 <script>
-  // Whole-movie favourite — same `favouriteMovies` localStorage key as the
-  // listing page's poster button (`_sharedJs.toggleFavMovie`), so a film
-  // starred from /film?title=… shows up on /ulubione without a reload, and
-  // vice versa. Reading the title from `data-title` on the poster wrapper
-  // keeps the inline script untyped (no need to escape the title into the
-  // JS source).
-  function toggleFavMovie(btn) {
-    const title = btn.closest('[data-title]').dataset.title;
-    let cur = [];
-    try { cur = JSON.parse(localStorage.getItem('favouriteMovies')) || []; } catch {}
-    const idx = cur.indexOf(title);
-    if (idx >= 0) cur.splice(idx, 1); else cur.push(title);
-    try { localStorage.setItem('favouriteMovies', JSON.stringify(cur)); } catch {}
-    btn.classList.toggle('is-fav', idx < 0);
-  }
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.querySelector('.fav-poster-btn');
-    if (!btn) return;
-    const title = btn.closest('[data-title]').dataset.title;
-    try {
-      const titles = JSON.parse(localStorage.getItem('favouriteMovies')) || [];
-      if (titles.includes(title)) btn.classList.add('is-fav');
-    } catch {}
-  });
-
-  function toggleAuthMenu(event) {
-    event.stopPropagation();
-    var menu = document.getElementById('auth-menu');
-    if (menu) menu.classList.toggle('open');
-  }
-  function openLoginModal() {
-    var m = document.getElementById('login-modal-backdrop');
-    if (m) m.classList.add('open');
-  }
-  function closeLoginModal() {
-    var m = document.getElementById('login-modal-backdrop');
-    if (m) m.classList.remove('open');
-  }
-  document.addEventListener('click', function() {
-    var menu = document.getElementById('auth-menu');
-    if (menu) menu.classList.remove('open');
-  });
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeLoginModal();
-  });
+  const IS_FAVOURITES_PAGE = false;
+  function buildIndex() {}
+  function applyFilters() {}
 </script>
 }
 
