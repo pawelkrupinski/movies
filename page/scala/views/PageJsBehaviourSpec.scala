@@ -650,6 +650,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── /film page poster ────────────────────────────────────────────────────
+
+  "the /film page poster" should "not be position:absolute (shared-style leak)" in {
+    val target = "/film?title=" + java.net.URLEncoder.encode(
+      "Diabeł ubiera się u Prady 2", "UTF-8")
+    onPath(target) { page =>
+      val position = page.evalString(
+        "getComputedStyle(document.querySelector('.poster-img')).position"
+      )
+      position should not be "absolute"
+    }
+  }
+
   // ── /film page mobile sweep ──────────────────────────────────────────────
   //
   // /film has its own stylesheet block (no `_sharedStyles`) — the
