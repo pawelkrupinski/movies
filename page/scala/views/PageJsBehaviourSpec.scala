@@ -650,16 +650,59 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // ── /film page poster ────────────────────────────────────────────────────
+  // ── /film page element visibility ────────────────────────────────────────
+  //
+  // Every key element on the /film detail page — poster, title, ratings,
+  // metadata, showtimes — must be visible (non-zero bounding rect) at
+  // both desktop and mobile widths. Catches CSS leaks like _sharedStyles'
+  // aspect-ratio box rules collapsing the poster to zero height.
 
-  "the /film page poster" should "not be position:absolute (shared-style leak)" in {
-    val target = "/film?title=" + java.net.URLEncoder.encode(
-      "Diabeł ubiera się u Prady 2", "UTF-8")
-    onPath(target) { page =>
-      val position = page.evalString(
-        "getComputedStyle(document.querySelector('.poster-img')).position"
-      )
-      position should not be "absolute"
+  private val filmTarget = "/film?title=" + java.net.URLEncoder.encode(
+    "Diabeł ubiera się u Prady 2", "UTF-8")
+
+  // Elements that must be visible on the /film page. Each pair is
+  // (label for diagnostics, CSS selector). The selector must match at
+  // least one element and that element must have a non-zero bounding
+  // rect (width > 0 AND height > 0).
+  private val filmVisibleElements = Seq(
+    "poster"    -> ".poster-img",
+    "title"     -> ".film-title",
+    "showtimes" -> ".badge-time",
+  )
+
+  "the /film page elements" should "all be visible at desktop width" in {
+    onPath(filmTarget) { page =>
+      page.setDesktopViewport(1280, 900)
+      val failures = filmVisibleElements.flatMap { case (label, sel) =>
+        val visible = page.evalBool(
+          s"(function(){ var el = document.querySelector('$sel');" +
+          "if (!el) return false; var r = el.getBoundingClientRect();" +
+          "return r.width > 0 && r.height > 0; })()"
+        )
+        if (visible) None else Some(label)
+      }
+      page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
+      withClue(s"Not visible at 1280px desktop: ${failures.mkString(", ")}\n") {
+        failures shouldBe empty
+      }
+    }
+  }
+
+  it should "all be visible at mobile width (375px)" in {
+    onPath(filmTarget) { page =>
+      page.setViewport(375, 800)
+      val failures = filmVisibleElements.flatMap { case (label, sel) =>
+        val visible = page.evalBool(
+          s"(function(){ var el = document.querySelector('$sel');" +
+          "if (!el) return false; var r = el.getBoundingClientRect();" +
+          "return r.width > 0 && r.height > 0; })()"
+        )
+        if (visible) None else Some(label)
+      }
+      page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
+      withClue(s"Not visible at 375px mobile: ${failures.mkString(", ")}\n") {
+        failures shouldBe empty
+      }
     }
   }
 
