@@ -99,18 +99,8 @@
     .film-title { font-size: 1.6rem; font-weight: 700; margin-bottom: .5rem; }
     .meta-label { font-size: .75rem; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .15rem; margin-top: .9rem; }
     .meta-value { font-size: .9rem; color: #ddd; }
-    .meta-link {
-      display: inline-block;
-      background: #3a3a6e;
-      color: #aad4ff;
-      border-radius: 8px;
-      padding: .25rem .65rem;
-      font-size: .85rem;
-      text-decoration: none;
-      margin-right: .3rem;
-      margin-top: .3rem;
-    }
-    .meta-link:hover { background: #5a5a9e; color: #fff; }
+    .meta-link { color: #aad4ff; text-decoration: none; }
+    .meta-link:hover { color: #fff; text-decoration: underline; }
     .cinema-link {
       display: inline-block;
       background: #3a3a6e;
@@ -190,7 +180,7 @@
       .film-title { font-size: calc(1.6rem * var(--mobile-scale)); }
       .meta-label { font-size: calc(.75rem * var(--mobile-scale)); }
       .meta-value { font-size: calc(.9rem  * var(--mobile-scale)); }
-      .cinema-link, .trailer-link, .meta-link {
+      .cinema-link, .trailer-link {
         font-size: calc(.85rem * var(--mobile-scale));
         padding:   calc(.35rem * var(--mobile-scale)) calc(.8rem * var(--mobile-scale));
       }
@@ -325,7 +315,9 @@
         case Some(text) => {
           @defining(text.split(",").map(_.trim).filter(_.nonEmpty)) { names =>
           <div class="meta-label">Reżyseria</div>
-          <div class="meta-value">@for(name <- names) {<a href="@BrowseHref.director(name)" class="meta-link">@name</a>}</div>
+          <div class="meta-value">@for((name, i) <- names.zipWithIndex) {<!--
+            -->@if(i > 0){, }<a href="@BrowseHref.director(name)" class="meta-link">@name</a><!--
+          -->}</div>
           }
         }
         case None => {}
@@ -335,7 +327,9 @@
         case Some(text) => {
           @defining(text.split(",").map(_.trim).filter(_.nonEmpty)) { names =>
           <div class="meta-label">Obsada</div>
-          <div class="meta-value">@for(name <- names) {<a href="@BrowseHref.actor(name)" class="meta-link">@name</a>}</div>
+          <div class="meta-value">@for((name, i) <- names.zipWithIndex) {<!--
+            -->@if(i > 0){, }<a href="@BrowseHref.actor(name)" class="meta-link">@name</a><!--
+          -->}</div>
           }
         }
         case None => {}
@@ -343,7 +337,9 @@
 
       @if(film.movie.countries.nonEmpty) {
         <div class="meta-label">Kraj(e) produkcji</div>
-        <div class="meta-value">@for(country <- film.movie.countries) {<a href="@BrowseHref.country(country)" class="meta-link">@country</a>}</div>
+        <div class="meta-value">@for((country, i) <- film.movie.countries.zipWithIndex) {<!--
+          -->@if(i > 0){, }<a href="@BrowseHref.country(country)" class="meta-link">@country</a><!--
+        -->}</div>
       }
 
       @* Distinct trailer embed URLs across every cinema's slot. Dedupe by the
