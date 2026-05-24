@@ -115,6 +115,11 @@
     document.getElementById('from-hour').value       = '';
     document.getElementById('from-minute').value     = '0';
     document.querySelectorAll('#country-list input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
+    var countryList = document.getElementById('country-list');
+    if (countryList) countryList.style.display = 'none';
+    var chevron = document.getElementById('country-chevron');
+    if (chevron) chevron.classList.remove('open');
+    updateCountryCount();
     document.getElementById('format-panel').style.display = 'none';
     onFormatChange();
   }
@@ -125,6 +130,27 @@
     return [...document.querySelectorAll('#country-list input[type="checkbox"]')]
       .filter(function(cb) { return cb.checked; })
       .map(function(cb) { return cb.value; });
+  }
+
+  function toggleCountrySubmenu() {
+    var list = document.getElementById('country-list');
+    var chevron = document.getElementById('country-chevron');
+    if (!list) return;
+    var opening = list.style.display === 'none';
+    list.style.display = opening ? '' : 'none';
+    if (chevron) chevron.classList.toggle('open', opening);
+  }
+
+  function updateCountryCount() {
+    var count = getCountryFilter().length;
+    var badge = document.getElementById('country-row-count');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
   }
 
   function buildCountryPanel() {
@@ -142,7 +168,7 @@
       var cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.value = country;
-      cb.onchange = function() { updateFormatBtn(); applyFilters(); };
+      cb.onchange = function() { updateCountryCount(); updateFormatBtn(); applyFilters(); };
       label.appendChild(cb);
       label.appendChild(document.createTextNode(' ' + country));
       list.appendChild(label);

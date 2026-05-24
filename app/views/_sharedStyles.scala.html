@@ -236,6 +236,18 @@
     letter-spacing: .06em;
     padding: 4px 8px 2px;
   }
+  .country-submenu-row { justify-content: space-between; }
+  .country-submenu-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .country-row-count {
+    background: #5a5a9e; color: #fff; font-size: .65rem; font-weight: 600;
+    min-width: 18px; height: 18px; line-height: 18px; text-align: center;
+    border-radius: 9px; padding: 0 5px;
+  }
+  .country-chevron {
+    display: inline-block; font-size: 1rem; color: #888;
+    transition: transform .15s ease;
+  }
+  .country-chevron.open { transform: rotate(90deg); }
   .nav-tab {
     color: #aad4ff;
     text-decoration: none;

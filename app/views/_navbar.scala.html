@@ -62,8 +62,14 @@
         <div class="panel-divider"></div>
       }
 
-      <div class="panel-section-label">Kraj produkcji</div>
-      <div id="country-list"></div>
+      <div id="country-row" class="panel-label country-submenu-row" onclick="toggleCountrySubmenu()">
+        <span>Kraj produkcji</span>
+        <span class="country-submenu-right">
+          <span id="country-row-count" class="country-row-count" style="display:none"></span>
+          <span id="country-chevron" class="country-chevron">&#8250;</span>
+        </span>
+      </div>
+      <div id="country-list" style="display:none"></div>
       <div class="panel-divider"></div>
 
       <div class="panel-section-label">Wymiar</div>
