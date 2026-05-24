@@ -128,7 +128,7 @@
      two overflow, so the logo clips via max-width. */
   @@media (max-width: 290px) {
     .navbar-search { display: none; }
-    nav.navbar { padding: 0 !important; column-gap: 0 !important; row-gap: .3rem !important; }
+    nav.navbar { padding: 0 !important; column-gap: 0 !important; row-gap: calc(.2 * var(--ms)) !important; }
     .navbar > div:first-child { max-width: 60% !important; overflow: hidden; }
     .navbar-auth { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40% !important; }
     .navbar-date { max-width: 60% !important; overflow: hidden; }
@@ -588,8 +588,7 @@
        uniform ratios between the navbar and the grid beneath it. */
     .navbar {
       padding: calc(.5 * var(--ms)) min(calc(.75 * var(--ms)), 2.5vw) !important;
-      column-gap: calc(.2 * var(--ms));
-      row-gap: max(.3rem, calc(.35 * var(--ms)));
+      gap: calc(.2 * var(--ms));
       --navbar-fs: calc(.875 * var(--ms));
       --navbar-px: min(calc(.6 * var(--ms)), 2.5vw);
     }
