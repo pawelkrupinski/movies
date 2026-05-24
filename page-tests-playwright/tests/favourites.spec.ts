@@ -86,4 +86,22 @@ test.describe('/ulubione page', () => {
     // `/ulubione` should narrow to the seeded set (order may differ).
     expect(visibleTitles.sort()).toEqual([...titles].sort());
   });
+
+  test('unfavouriting a film on /ulubione hides its card immediately', async ({ page }) => {
+    await page.goto('/');
+    const titles = (await getVisibleTitles(page)).slice(0, 2);
+    expect(titles).toHaveLength(2);
+    await setLocalStorageJson(page, 'favouriteMovies', titles);
+
+    await page.goto('/ulubione');
+    await waitForCards(page);
+    expect(await getVisibleTitles(page)).toHaveLength(2);
+
+    // Click the ★ button on the first card to unfavourite it.
+    const btn = page.locator(`.col[data-title="${titles[0]}"] .fav-poster-btn`);
+    await btn.click();
+
+    const remaining = await getVisibleTitles(page);
+    expect(remaining).toEqual([titles[1]]);
+  });
 });

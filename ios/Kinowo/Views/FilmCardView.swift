@@ -114,7 +114,7 @@ private struct PosterView: View {
 
     private var favButton: some View {
         Button {
-            prefs.toggleFavouriteMovie(film.title)
+            withAnimation { prefs.toggleFavouriteMovie(film.title) }
         } label: {
             Image(systemName: prefs.favouriteMovies.contains(film.title) ? "star.fill" : "star")
                 .font(.system(size: 12, weight: .semibold))
