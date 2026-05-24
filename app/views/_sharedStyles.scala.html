@@ -745,10 +745,11 @@
       padding-right: 8px !important;
       gap: 3px;
     }
-    .navbar-logo { gap: 4px !important; flex-shrink: 1; min-width: 0; }
-    .navbar-search { min-width: 0; }
-    .navbar-search .search-input { min-width: 60px; width: 100%; }
-    .navbar-auth { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .navbar-logo { gap: 4px !important; flex-shrink: 0; min-width: 0; }
+    .navbar-logo > .d-flex { gap: 2px; }
+    .navbar-search { min-width: 0; flex-shrink: 10; overflow: hidden; }
+    .navbar-search .search-input { min-width: 0; width: 100%; }
+    .navbar-auth { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex-shrink: 0; }
     .navbar .nav-tab,
     .navbar .nav-tab-login,
     .navbar .refresh-btn,
@@ -760,20 +761,13 @@
       padding-right: 5px;
     }
     .navbar .nav-tab-fav  { font-size: calc(.9 * var(--ms)); min-width: 0; padding-left: 4px; padding-right: 4px; }
-    .navbar .btn.date-nav-btn { font-size: calc(.95 * var(--ms)); min-width: 28px; }
+    .navbar .btn.date-nav-btn { font-size: calc(.95 * var(--ms)); min-width: 0; padding-left: 3px; padding-right: 3px; }
     .navbar .filter-select,
     .navbar .search-input { padding-top: 0; padding-bottom: 0; }
-    .navbar-search { flex-shrink: 1; }
-    .navbar-logo > .d-flex { gap: 2px; }
-    .navbar-date { align-items: center; }
+    .navbar-date { align-items: center; flex-shrink: 1; min-width: 0; }
+    .navbar-date .filter-select { min-width: 0; }
 
-    /* Cap the Filtry pill + ellipsis on the button text so a maxed-
-       out label ("Filtry (kina 9/10, 3D, NAP, IMAX, od 18:30)") can't
-       blow up past the row width on narrow landscape phones. The
-       portrait `(max-width: 575px)` block has its own 40 % cap; the
-       landscape cap is 30 % because the row has to host the logo
-       cluster too. */
-    .navbar-filtry { max-width: 30%; min-width: 0; }
+    .navbar-filtry { min-width: 0; flex-shrink: 0; }
     #format-filter-btn {
       max-width: 100%;
       overflow: hidden;

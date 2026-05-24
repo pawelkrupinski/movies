@@ -413,7 +413,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "            const btn = document.createElement('button');" +
         "            btn.type = 'button';" +
         "            btn.className = 'nav-tab nav-tab-login';" +
-        "            btn.textContent = 'Zaloguj się';" +
+        "            btn.textContent = 'Zaloguj';" +
         "            a.appendChild(btn);" +
         "          } })()"
       )
@@ -538,7 +538,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           "            const btn = document.createElement('button');" +
           "            btn.type = 'button';" +
           "            btn.className = 'nav-tab nav-tab-login';" +
-          "            btn.textContent = 'Zaloguj się';" +
+          "            btn.textContent = 'Zaloguj';" +
           "            a.appendChild(btn);" +
           "          } })()"
         )
@@ -799,7 +799,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           "            const btn = document.createElement('button');" +
           "            btn.type = 'button';" +
           "            btn.className = 'nav-tab nav-tab-login';" +
-          "            btn.textContent = 'Zaloguj się';" +
+          "            btn.textContent = 'Zaloguj';" +
           "            a.appendChild(btn);" +
           "          } })()"
         )
