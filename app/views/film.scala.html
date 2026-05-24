@@ -293,6 +293,11 @@
         case None => {}
       }
 
+      @if(film.movie.countries.nonEmpty) {
+        <div class="meta-label">Kraj(e) produkcji</div>
+        <div class="meta-value">@film.movie.countries.mkString(", ")</div>
+      }
+
       @* Distinct trailer embed URLs across every cinema's slot. Dedupe by the
          normalised embed URL (TrailerEmbed.embedUrlFor returns the same shape
          regardless of which `youtube.com/watch?v=ID` / `youtu.be/ID` form a
