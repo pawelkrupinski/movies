@@ -32,6 +32,31 @@ class GoogleOauthProviderSpec extends AnyFlatSpec with Matchers {
     p.authUrl("s", "https://x") should include ("prompt=select_account")
   }
 
+  it should "include device_id and device_name when the redirect URI uses a private IP" in {
+    val p   = new GoogleOauthProvider(scripted(Map.empty), Client, Secret)
+    val url = p.authUrl("s", "http://172.20.10.3:9000/auth/google/callback")
+    url should include ("device_id=")
+    url should include ("device_name=")
+  }
+
+  it should "omit device_id and device_name for public hosts" in {
+    val p   = new GoogleOauthProvider(scripted(Map.empty), Client, Secret)
+    val url = p.authUrl("s", "https://kinowo.fly.dev/auth/google/callback")
+    url should not include "device_id"
+    url should not include "device_name"
+  }
+
+  "isPrivateIp" should "match all RFC 1918 ranges and localhost" in {
+    import GoogleOauthProvider.isPrivateIp
+    isPrivateIp("http://10.0.0.1:9000/cb")      shouldBe true
+    isPrivateIp("http://172.16.0.1:9000/cb")     shouldBe true
+    isPrivateIp("http://172.31.255.1:9000/cb")   shouldBe true
+    isPrivateIp("http://192.168.1.100:9000/cb")  shouldBe true
+    isPrivateIp("http://127.0.0.1:9000/cb")      shouldBe true
+    isPrivateIp("https://kinowo.fly.dev/cb")     shouldBe false
+    isPrivateIp("http://172.32.0.1:9000/cb")     shouldBe false
+  }
+
   "Google.exchangeCode" should "POST form-encoded credentials to /token then GET /userinfo with the token" in {
     val fake = scripted(Map(
       "oauth2.googleapis.com/token"           -> """{"access_token":"ya29.tok","scope":"openid email profile","token_type":"Bearer"}""",

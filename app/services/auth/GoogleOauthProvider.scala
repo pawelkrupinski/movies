@@ -33,18 +33,20 @@ class GoogleOauthProvider(http: HttpFetch, clientId: String, clientSecret: Strin
 
   def name: String = "google"
 
-  def authUrl(state: String, redirectUri: String): String =
-    AuthEndpoint + "?" + formEncode(Seq(
+  def authUrl(state: String, redirectUri: String): String = {
+    val base = Seq(
       "client_id"     -> clientId,
       "redirect_uri"  -> redirectUri,
       "response_type" -> "code",
       "scope"         -> "openid email profile",
       "state"         -> state,
-      // `select_account` so a user with multiple Google accounts is
-      // prompted each time instead of silently re-using the last one
-      // they used elsewhere in the browser.
       "prompt"        -> "select_account"
-    ))
+    )
+    val params = if (isPrivateIp(redirectUri)) {
+      base ++ Seq("device_id" -> clientId, "device_name" -> "local-dev")
+    } else base
+    AuthEndpoint + "?" + formEncode(params)
+  }
 
   def exchangeCode(code: String, redirectUri: String): OauthProfile = {
     val tokenBody = formEncode(Seq(
@@ -74,6 +76,11 @@ object GoogleOauthProvider {
   val AuthEndpoint     = "https://accounts.google.com/o/oauth2/v2/auth"
   val TokenEndpoint    = "https://oauth2.googleapis.com/token"
   val UserinfoEndpoint = "https://www.googleapis.com/oauth2/v3/userinfo"
+
+  private val PrivateIpPattern =
+    """https?://(?:10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.|127\.)""".r.unanchored
+
+  def isPrivateIp(uri: String): Boolean = PrivateIpPattern.findFirstIn(uri).isDefined
 
   def formEncode(pairs: Seq[(String, String)]): String =
     pairs.map { case (k, v) => s"${urlEncode(k)}=${urlEncode(v)}" }.mkString("&")
