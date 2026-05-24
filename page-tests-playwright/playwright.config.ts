@@ -28,6 +28,14 @@ const IPHONES: Phone[] = [
   { slug: 'iphone-17-pro-max',   width: 440, height: 870 },
 ];
 
+// Firefox subset: narrowest, middle, widest — enough to catch Gecko
+// rendering bugs without full-spectrum coverage.
+const FIREFOX_PHONES: Phone[] = [
+  ANDROID_PHONES[0],  // galaxy-s10       360 px
+  ANDROID_PHONES[3],  // galaxy-s25-ultra  412 px
+  ANDROID_PHONES[5],  // pixel-9-pro       427 px
+];
+
 const ALL_PHONES = [...ANDROID_PHONES, ...IPHONES];
 
 // 150% display zoom → viewport shrinks to 2/3 of normal.
@@ -73,13 +81,13 @@ function chromiumUse(p: Phone) {
 
 const projects: Project[] = [
 
-  // ─── Firefox — Android phones only, portrait + landscape, normal + 150% zoom
+  // ─── Firefox — 3 Android phones (S10 / S25 Ultra / Pixel 9 Pro),
+  // portrait + landscape, normal + 150% zoom.
   //
-  // Gecko engine diverges enough from Blink / WebKit that mobile bugs
-  // frequently surface here first. iPhone users don't run Firefox
-  // (iOS forces WebKit for all browsers), so Firefox tests cover
-  // Android viewports only.
-  ...ANDROID_PHONES.flatMap(p => variants(p).map(v => ({
+  // Subset of ANDROID_PHONES — narrowest, middle, widest — enough to
+  // catch Gecko-specific rendering bugs. Full Android breadth is
+  // covered by Chromium.
+  ...FIREFOX_PHONES.flatMap(p => variants(p).map(v => ({
     name: `firefox-${v.slug}`,
     use: firefoxUse(v),
   }))),

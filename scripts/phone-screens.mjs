@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Per-device screenshots of `/`, `/kina`, `/filmy`, and `/film` on
 // phones spanning the size spectrum (small Android → large iPhone),
-// in both portrait and landscape, on BOTH the native engine (Chromium
-// for Android, WebKit for iPhone) AND Firefox.
+// in both portrait and landscape, on the native engine (Chromium for
+// Android, WebKit for iPhone). Galaxy S10 also gets Firefox shots.
 //
 // "Two screen heights" — the browser viewport stays at the device's
 // actual dimensions so `@media` queries fire correctly, but the
@@ -171,7 +171,7 @@ try {
   for (const pg of PAGES) {
     const url = `${baseUrl}${pg.path}`;
     for (const phone of PHONES) {
-      const engineList = phone.android
+      const engineList = phone.slug === 'galaxy-s10'
         ? [phone.nativeEngine, 'firefox']
         : [phone.nativeEngine];
       for (const engine of engineList) {
@@ -220,7 +220,7 @@ try {
 }
 
 const files = PHONES.flatMap(p => {
-  const engineList = p.android ? [p.nativeEngine, 'firefox'] : [p.nativeEngine];
+  const engineList = p.slug === 'galaxy-s10' ? [p.nativeEngine, 'firefox'] : [p.nativeEngine];
   return engineList.flatMap(engine =>
     ZOOM_LEVELS.flatMap(zoom =>
       PAGES.flatMap(pg => [
