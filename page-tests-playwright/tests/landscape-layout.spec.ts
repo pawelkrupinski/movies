@@ -115,32 +115,32 @@ test.describe('mobile landscape layout', () => {
     expect(display).toBe('none');
   });
 
-  test('search, date, filtry, auth are right-aligned', async ({ page }) => {
+  test('rightmost navbar item is flush with the right edge', async ({ page }) => {
+    // On wide landscape viewports (≥ 700 px), margin-left:auto on
+    // .navbar-search absorbs remaining space and pushes the
+    // search+date+filtry+auth cluster to the right edge. On narrow
+    // zoomed-landscape viewports (< 600 px) the items fill the row
+    // naturally, so there's no slack — the cluster sits flush-right
+    // simply because it spans the full width. Either way, the
+    // rightmost visible item should be within 20 px of the navbar's
+    // right edge.
     const layout = await page.evaluate(() => {
       const r = (sel: string) => {
         const el = document.querySelector(sel);
         return el ? el.getBoundingClientRect() : null;
       };
       return {
-        navbar:  r('.navbar'),
-        search:  r('.navbar-search'),
-        auth:    r('.navbar-auth') || r('.nav-tab-login'),
+        navbar: r('.navbar'),
+        auth:   r('.navbar-auth') || r('.nav-tab-login'),
+        filtry: r('.navbar-filtry'),
       };
     });
     expect(layout.navbar).toBeTruthy();
-    expect(layout.search).toBeTruthy();
     const navbar = layout.navbar!;
-    const search = layout.search!;
     const navRight = navbar.left + navbar.width;
-    // The search cluster must sit in the right half of the navbar.
-    // margin-left:auto pushes it right; without it the cluster
-    // hugs the logo+tabs on the left edge.
-    expect(search.left).toBeGreaterThan(navbar.left + navbar.width * 0.3);
-    // Auth (rightmost item) should be near the navbar's right edge.
-    if (layout.auth) {
-      const auth = layout.auth;
-      expect(navRight - (auth.left + auth.width)).toBeLessThan(20);
-    }
+    const rightmost = layout.auth || layout.filtry;
+    expect(rightmost).toBeTruthy();
+    expect(navRight - (rightmost!.left + rightmost!.width)).toBeLessThan(20);
   });
 
   // ── Card density: separate concern, stays in landscape ────────
