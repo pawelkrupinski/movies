@@ -6,7 +6,8 @@ import services.movies.MovieCache
 import services.events.{EventBus, MovieRecordCreated}
 import tools.DaemonExecutors
 
-import java.util.concurrent.TimeUnit
+import java.io.IOException
+import java.util.concurrent.{TimeUnit, TimeoutException}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 
@@ -66,6 +67,15 @@ class ShowtimeCache(
     ec.shutdown()
   }
 
+  // Network/HTTP errors from external cinema sites — expected and not actionable.
+  // Log at WARN (invisible to Sentry) instead of ERROR.
+  private[services] def isTransientHttpError(e: Throwable): Boolean = e match {
+    case _: IOException       => true  // timeouts, SSL, connection errors
+    case _: TimeoutException  => true  // Future timeouts
+    case e: RuntimeException  => e.getMessage != null && e.getMessage.startsWith("HTTP ")
+    case _                    => false
+  }
+
   private def refreshOne(scraper: CinemaScraper): Unit = {
     val cinema = scraper.cinema
     logger.debug(s"Refreshing ${cinema.displayName}")
@@ -96,7 +106,10 @@ class ShowtimeCache(
     } catch {
       case e: Exception =>
         val elapsed = System.currentTimeMillis() - t0
-        logger.error(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms", e)
+        if (isTransientHttpError(e))
+          logger.warn(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms: ${e.getMessage}")
+        else
+          logger.error(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms", e)
     }
   }
 }
