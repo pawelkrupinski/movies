@@ -259,6 +259,7 @@ struct FilmDetailView: View {
             fallbackPosterURLs: film.fallbackPosterURLs,
             runtimeMinutes: film.runtimeMinutes,
             ratings: film.ratings,
+            countries: film.countries,
             showings: days
         )
     }
