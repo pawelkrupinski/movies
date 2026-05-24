@@ -389,6 +389,12 @@
     if (fav) { toggleFavMovie(fav); return; }
     const hide = e.target.closest('.hide-btn');
     if (hide) { hideFilm(hide); return; }
+    if (e.target.closest('a, button, .showings-more')) return;
+    const card = e.target.closest('.card');
+    if (card) {
+      const col = card.closest('.col[data-title]');
+      if (col) window.location.href = '/film?title=' + encodeURIComponent(col.dataset.title);
+    }
   });
 
   // On boot: paint the existing favourite state onto every star in the
