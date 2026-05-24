@@ -225,6 +225,33 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── shared.js globals ────────────────────────────────────────────────────
+
+  // The inline <script> blocks in repertoire.scala.html and kina.scala.html
+  // call functions exported by shared.js (undoTruncation, truncateAllShowings,
+  // schedulePosterRetry, applyFilters, applyFiltersDebounced). If shared.js
+  // fails to load — stale cache, broken fingerprinting, wrong load order —
+  // every page interaction breaks with a ReferenceError.
+  "shared.js globals" should "be defined on / before any user interaction" in {
+    onPath("/") { page =>
+      page.evalBool("typeof undoTruncation === 'function'") shouldBe true
+      page.evalBool("typeof truncateAllShowings === 'function'") shouldBe true
+      page.evalBool("typeof schedulePosterRetry === 'function'") shouldBe true
+      page.evalBool("typeof applyFilters === 'function'") shouldBe true
+      page.evalBool("typeof applyFiltersDebounced === 'function'") shouldBe true
+    }
+  }
+
+  it should "be defined on /kina before any user interaction" in {
+    onPath("/kina") { page =>
+      page.evalBool("typeof undoTruncation === 'function'") shouldBe true
+      page.evalBool("typeof truncateAllShowings === 'function'") shouldBe true
+      page.evalBool("typeof schedulePosterRetry === 'function'") shouldBe true
+      page.evalBool("typeof applyFilters === 'function'") shouldBe true
+      page.evalBool("typeof applyFiltersDebounced === 'function'") shouldBe true
+    }
+  }
+
   // ── / page filters ───────────────────────────────────────────────────────
 
   "the / page search input" should "filter visible film cards by title substring" in {
