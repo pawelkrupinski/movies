@@ -26,6 +26,9 @@ inputs:
   browser:
     description: Engine binary to install when kind=playwright (chromium|firefox|webkit|msedge).
     required: false
+  shard:
+    description: Playwright shard when kind=playwright (e.g. `1/2`).
+    required: false
 
 runs:
   using: composite
@@ -122,7 +125,18 @@ runs:
     - name: Run Playwright behaviour specs (blocking)
       if: inputs.kind == 'playwright'
       shell: bash
-      run: cd page-tests-playwright && npx playwright test --project "${{ inputs.project }}" --grep-invert "axe-core"
+      env:
+        PW_PROJECT: ${{ inputs.project }}
+        PW_SHARD: ${{ inputs.shard }}
+      run: |
+        cd page-tests-playwright
+        set -f
+        PROJECT_FLAGS=""
+        IFS=',' read -ra PROJS <<< "$PW_PROJECT"
+        for p in "${PROJS[@]}"; do PROJECT_FLAGS+=" --project \"$p\""; done
+        SHARD_FLAG=""
+        [ -n "$PW_SHARD" ] && SHARD_FLAG="--shard $PW_SHARD"
+        eval npx playwright test $PROJECT_FLAGS --grep-invert "axe-core" $SHARD_FLAG
 
     - name: Run Playwright axe-core a11y audit (informational)
       if: inputs.kind == 'playwright' && inputs.project == 'chromium-desktop'

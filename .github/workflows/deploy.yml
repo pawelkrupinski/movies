@@ -299,21 +299,28 @@ jobs:
     # bg) that aren't worth blocking deploys over.
 
     page-tests-chrome:
-        name: page tests (chrome / ${{ matrix.variant }})
+        name: page tests (chrome / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
         strategy:
             fail-fast: false
             matrix:
                 include:
-                    - { variant: stable,             kind: chrome,     version: stable }
-                    - { variant: '128',              kind: chrome,     version: '128' }
-                    - { variant: '120',              kind: chrome,     version: '120' }
-                    - { variant: '113',              kind: chrome,     version: '113' }
-                    - { variant: pw galaxy-s10,      kind: playwright, project: 'chromium-galaxy-s10*',  browser: chromium }
-                    - { variant: pw galaxy-s23,      kind: playwright, project: 'chromium-galaxy-s23*',  browser: chromium }
-                    - { variant: pw galaxy-s25,      kind: playwright, project: 'chromium-galaxy-s25*',  browser: chromium }
-                    - { variant: pw pixel-7,         kind: playwright, project: 'chromium-pixel-7*',     browser: chromium }
-                    - { variant: pw pixel-9,         kind: playwright, project: 'chromium-pixel-9*',     browser: chromium }
-                    - { variant: pw desktop,         kind: playwright, project: chromium-desktop,        browser: chromium }
+                    - { variant: stable,         kind: chrome,     version: stable }
+                    - { variant: '128',          kind: chrome,     version: '128' }
+                    - { variant: '120',          kind: chrome,     version: '120' }
+                    - { variant: '113',          kind: chrome,     version: '113' }
+                    - { variant: pw galaxy-s10,  kind: playwright, project: 'chromium-galaxy-s10*',  browser: chromium, shard: '1/2' }
+                    - { variant: pw galaxy-s10,  kind: playwright, project: 'chromium-galaxy-s10*',  browser: chromium, shard: '2/2' }
+                    - { variant: pw galaxy-s23,  kind: playwright, project: 'chromium-galaxy-s23*',  browser: chromium, shard: '1/2' }
+                    - { variant: pw galaxy-s23,  kind: playwright, project: 'chromium-galaxy-s23*',  browser: chromium, shard: '2/2' }
+                    - { variant: pw galaxy-s25,  kind: playwright, project: 'chromium-galaxy-s25*',  browser: chromium, shard: '1/2' }
+                    - { variant: pw galaxy-s25,  kind: playwright, project: 'chromium-galaxy-s25*',  browser: chromium, shard: '2/2' }
+                    - { variant: pw pixel-7,     kind: playwright, project: 'chromium-pixel-7*',     browser: chromium, shard: '1/2' }
+                    - { variant: pw pixel-7,     kind: playwright, project: 'chromium-pixel-7*',     browser: chromium, shard: '2/2' }
+                    - { variant: pw pixel-9,     kind: playwright, project: 'chromium-pixel-9,chromium-pixel-9-zoomed,chromium-pixel-9-landscape,chromium-pixel-9-zoomed-landscape', browser: chromium, shard: '1/2' }
+                    - { variant: pw pixel-9,     kind: playwright, project: 'chromium-pixel-9,chromium-pixel-9-zoomed,chromium-pixel-9-landscape,chromium-pixel-9-zoomed-landscape', browser: chromium, shard: '2/2' }
+                    - { variant: pw pixel-9-pro, kind: playwright, project: 'chromium-pixel-9-pro*', browser: chromium, shard: '1/2' }
+                    - { variant: pw pixel-9-pro, kind: playwright, project: 'chromium-pixel-9-pro*', browser: chromium, shard: '2/2' }
+                    - { variant: pw desktop,     kind: playwright, project: chromium-desktop,        browser: chromium }
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -323,19 +330,27 @@ jobs:
                   version:       ${{ matrix.version }}
                   project:       ${{ matrix.project }}
                   browser:       ${{ matrix.browser }}
+                  shard:         ${{ matrix.shard }}
 
     page-tests-safari:
-        name: page tests (safari / ${{ matrix.variant }})
+        name: page tests (safari / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
         strategy:
             fail-fast: false
             matrix:
                 include:
-                    - { variant: pw iphone-se,       kind: playwright, project: 'webkit-iphone-se*',  browser: webkit }
-                    - { variant: pw iphone-13,       kind: playwright, project: 'webkit-iphone-13*',  browser: webkit }
-                    - { variant: pw iphone-15,       kind: playwright, project: 'webkit-iphone-15*',  browser: webkit }
-                    - { variant: pw iphone-16,       kind: playwright, project: 'webkit-iphone-16*',  browser: webkit }
-                    - { variant: pw iphone-17,       kind: playwright, project: 'webkit-iphone-17*',  browser: webkit }
-                    - { variant: pw desktop,         kind: playwright, project: webkit-desktop,       browser: webkit }
+                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, shard: '1/2' }
+                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, shard: '2/2' }
+                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, shard: '1/2' }
+                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, shard: '2/2' }
+                    - { variant: pw iphone-15,         kind: playwright, project: 'webkit-iphone-15*',         browser: webkit, shard: '1/2' }
+                    - { variant: pw iphone-15,         kind: playwright, project: 'webkit-iphone-15*',         browser: webkit, shard: '2/2' }
+                    - { variant: pw iphone-16,         kind: playwright, project: 'webkit-iphone-16*',         browser: webkit, shard: '1/2' }
+                    - { variant: pw iphone-16,         kind: playwright, project: 'webkit-iphone-16*',         browser: webkit, shard: '2/2' }
+                    - { variant: pw iphone-17,         kind: playwright, project: 'webkit-iphone-17,webkit-iphone-17-zoomed,webkit-iphone-17-landscape,webkit-iphone-17-zoomed-landscape', browser: webkit, shard: '1/2' }
+                    - { variant: pw iphone-17,         kind: playwright, project: 'webkit-iphone-17,webkit-iphone-17-zoomed,webkit-iphone-17-landscape,webkit-iphone-17-zoomed-landscape', browser: webkit, shard: '2/2' }
+                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '1/2' }
+                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '2/2' }
+                    - { variant: pw desktop,           kind: playwright, project: webkit-desktop,              browser: webkit }
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -344,6 +359,7 @@ jobs:
                   kind:          ${{ matrix.kind }}
                   project:       ${{ matrix.project }}
                   browser:       ${{ matrix.browser }}
+                  shard:         ${{ matrix.shard }}
 
     page-tests-edge:
         name: page tests (edge / ${{ matrix.variant }})
@@ -364,17 +380,24 @@ jobs:
                   browser:       ${{ matrix.browser }}
 
     page-tests-firefox:
-        name: page tests (firefox / ${{ matrix.variant }})
+        name: page tests (firefox / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
         strategy:
             fail-fast: false
             matrix:
                 include:
-                    - { variant: pw galaxy-s10,      kind: playwright, project: 'firefox-galaxy-s10*',  browser: firefox }
-                    - { variant: pw galaxy-s23,      kind: playwright, project: 'firefox-galaxy-s23*',  browser: firefox }
-                    - { variant: pw galaxy-s25,      kind: playwright, project: 'firefox-galaxy-s25*',  browser: firefox }
-                    - { variant: pw pixel-7,         kind: playwright, project: 'firefox-pixel-7*',     browser: firefox }
-                    - { variant: pw pixel-9,         kind: playwright, project: 'firefox-pixel-9*',     browser: firefox }
-                    - { variant: pw desktop,         kind: playwright, project: firefox-desktop,        browser: firefox }
+                    - { variant: pw galaxy-s10,  kind: playwright, project: 'firefox-galaxy-s10*',  browser: firefox, shard: '1/2' }
+                    - { variant: pw galaxy-s10,  kind: playwright, project: 'firefox-galaxy-s10*',  browser: firefox, shard: '2/2' }
+                    - { variant: pw galaxy-s23,  kind: playwright, project: 'firefox-galaxy-s23*',  browser: firefox, shard: '1/2' }
+                    - { variant: pw galaxy-s23,  kind: playwright, project: 'firefox-galaxy-s23*',  browser: firefox, shard: '2/2' }
+                    - { variant: pw galaxy-s25,  kind: playwright, project: 'firefox-galaxy-s25*',  browser: firefox, shard: '1/2' }
+                    - { variant: pw galaxy-s25,  kind: playwright, project: 'firefox-galaxy-s25*',  browser: firefox, shard: '2/2' }
+                    - { variant: pw pixel-7,     kind: playwright, project: 'firefox-pixel-7*',     browser: firefox, shard: '1/2' }
+                    - { variant: pw pixel-7,     kind: playwright, project: 'firefox-pixel-7*',     browser: firefox, shard: '2/2' }
+                    - { variant: pw pixel-9,     kind: playwright, project: 'firefox-pixel-9,firefox-pixel-9-zoomed,firefox-pixel-9-landscape,firefox-pixel-9-zoomed-landscape', browser: firefox, shard: '1/2' }
+                    - { variant: pw pixel-9,     kind: playwright, project: 'firefox-pixel-9,firefox-pixel-9-zoomed,firefox-pixel-9-landscape,firefox-pixel-9-zoomed-landscape', browser: firefox, shard: '2/2' }
+                    - { variant: pw pixel-9-pro, kind: playwright, project: 'firefox-pixel-9-pro*', browser: firefox, shard: '1/2' }
+                    - { variant: pw pixel-9-pro, kind: playwright, project: 'firefox-pixel-9-pro*', browser: firefox, shard: '2/2' }
+                    - { variant: pw desktop,     kind: playwright, project: firefox-desktop,        browser: firefox }
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
@@ -383,6 +406,7 @@ jobs:
                   kind:          ${{ matrix.kind }}
                   project:       ${{ matrix.project }}
                   browser:       ${{ matrix.browser }}
+                  shard:         ${{ matrix.shard }}
 
     deploy:
         needs: [lint, test, integration-test, ios-local-server, page-tests-chrome, page-tests-safari, page-tests-edge, page-tests-firefox]
