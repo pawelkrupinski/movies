@@ -32,7 +32,7 @@ object CountryNames {
     "Japonia", "Chiny", "Korea Południowa", "Korea Północna", "Iran", "Izrael",
     "Brazylia", "Argentyna", "Australia", "Kanada", "Meksyk", "Nowa Zelandia",
     "Egipt", "RPA", "Hongkong", "Tajwan", "Wietnam", "Palestyna", "Katar",
-    "Islandia", "Słowenia", "Chorwacja", "Serbia", "ZSRR"
+    "Islandia", "Słowenia", "Chorwacja", "Serbia", "Luksemburg", "ZSRR"
   )
 
   /** Aliases → canonical. Keys are lowercased for case-insensitive lookup
@@ -133,7 +133,9 @@ object CountryNames {
       "bulgaria"                    -> "Bułgaria",
       "hungary"                     -> "Węgry",
       "belgium"                     -> "Belgia",
-      "morocco"                     -> "Maroko"
+      "morocco"                     -> "Maroko",
+      "luxembourg"                  -> "Luksemburg",
+      "luxemburg"                   -> "Luksemburg"
     )
   )
 
