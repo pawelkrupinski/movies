@@ -58,7 +58,8 @@ const VIEWPORTS: Phone[] = [
   // ── Small Android phones (the narrow band where the navbar
   // crowds first — Galaxy S10 / A50 share a 360 px width). ─────
   { name: 'Galaxy S10 / A50',     width: 360, height: 760 },
-  { name: 'Galaxy S22',           width: 360, height: 780 },
+  { name: 'Galaxy S23–S26',        width: 360, height: 780 },
+  { name: 'Pixel 9',              width: 360, height: 808 },
   { name: 'Pixel 4a',             width: 393, height: 851 },
 
   // ── iPhones — heights are post-safe-area effective viewports
@@ -68,17 +69,20 @@ const VIEWPORTS: Phone[] = [
   // native CSS landscape width. ────────────────────────────────
   { name: 'iPhone SE (3rd gen)',  width: 375, height: 667 },  // no DI/notch
   { name: 'iPhone 13 mini',       width: 375, height: 740 },  // native 812 → ~740
-  { name: 'iPhone 13/14/15/16',   width: 390, height: 760 },  // native 844 → ~760
-  { name: 'iPhone 15 Pro / 17',   width: 393, height: 770 },  // native 852 → ~770
-  { name: 'iPhone 17 Pro',        width: 402, height: 790 },  // native 874 → ~790
+  { name: 'iPhone 13 / 14',       width: 390, height: 760 },  // native 844 → ~760
+  { name: 'iPhone 15 / 16 / 17',  width: 393, height: 770 },  // native 852 → ~770
+  { name: 'iPhone 16 Pro',        width: 402, height: 790 },  // native 874 → ~790
   { name: 'iPhone 14 Plus',       width: 428, height: 840 },  // native 926 → ~840
-  { name: 'iPhone 15 Pro Max',    width: 430, height: 850 },  // native 932 → ~850
-  { name: 'iPhone 17 Pro Max',    width: 440, height: 870 },  // native 956 → ~870
+  { name: 'iPhone 14/15 Pro Max', width: 430, height: 850 },  // native 932 → ~850
+  { name: 'iPhone 16/17 Pro Max', width: 440, height: 870 },  // native 956 → ~870
 
   // ── Larger Android phones — no inset shrinkage. ─────────────
-  { name: 'Galaxy S24',           width: 384, height: 824 },
-  { name: 'Pixel 7 / 8',          width: 412, height: 915 },
+  { name: 'Galaxy S24+',           width: 384, height: 824 },
+  { name: 'Galaxy S25–S26 Ultra/+', width: 412, height: 891 },
+  { name: 'Galaxy A54 / A55',     width: 412, height: 892 },
   { name: 'Galaxy Note 20 Ultra', width: 412, height: 883 },
+  { name: 'Pixel 7 / 8',          width: 412, height: 915 },
+  { name: 'Pixel 9 Pro',          width: 427, height: 952 },
   { name: 'Pixel 8 Pro',          width: 448, height: 992 },
 ];
 
@@ -159,6 +163,24 @@ async function navbarRowCount(page: Page, tolerance = 6): Promise<number> {
     return rows;
   }, tolerance);
 }
+
+// Baseline assertion: the navbar at the project's own viewport (no
+// stress, no viewport override) must stay at ≤ 2 rows. Runs on every
+// project — portrait, landscape, zoomed, every engine. Catches CSS
+// regressions that push "Zaloguj się" or the date row onto a third line.
+test.describe('navbar row count at project viewport', () => {
+  test('≤ 2 rows in default state', async ({ page }) => {
+    await page.goto('/');
+    await waitForCards(page);
+
+    const rowCount = await navbarRowCount(page);
+    const vp = page.viewportSize()!;
+    expect(
+      rowCount,
+      `navbar at ${vp.width}×${vp.height} has ${rowCount} rows; should be ≤ 2`,
+    ).toBeLessThanOrEqual(2);
+  });
+});
 
 test.describe('navbar overflow under maxed filters + long logged-in name', () => {
   test.beforeEach(async ({ page }) => {

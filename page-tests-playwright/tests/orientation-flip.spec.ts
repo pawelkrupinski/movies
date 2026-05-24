@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForCards, pinDateFilterAnytime } from './helpers';
+import { waitForCards, pinDateFilterAnytime, measureGridRatio } from './helpers';
 
 // iPhone 17 Pro Max dimensions.
 const PORTRAIT  = { width: 440, height: 956 };
@@ -23,19 +23,6 @@ async function measureNavbar(page: import('@playwright/test').Page) {
       if (h > 0) heights[sel] = h;
     }
     return { heights, navHeight: nav.getBoundingClientRect().height };
-  });
-}
-
-async function measureGridRatio(page: import('@playwright/test').Page) {
-  return page.evaluate(() => {
-    const grid = document.querySelector('#film-grid') as HTMLElement;
-    const col = grid?.querySelector(':scope > .col') as HTMLElement;
-    if (!grid || !col) return -1;
-    const prev = col.style.display;
-    col.style.display = 'block';
-    const r = col.getBoundingClientRect().width / grid.getBoundingClientRect().width;
-    col.style.display = prev;
-    return r;
   });
 }
 

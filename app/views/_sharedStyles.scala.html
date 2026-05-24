@@ -128,11 +128,19 @@
   .search-input::placeholder { color: #778; }
   .search-input:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; width: 220px; }
   @@media (max-width: 575px) { .search-input, .search-input:focus { width: 90px; } }
-  /* Sub-iPhone-SE widths can't fit [logo+tabs] [search] [auth] on one
-     row without shrinking the input further. Drop to 70 px so the
-     intended two-row layout (search adjacent to auth on row 1)
-     survives down to ~360 px viewports. */
   @@media (max-width: 379px) { .search-input, .search-input:focus { width: 70px; } }
+  /* Row-1 items (logo+tabs 152 px + search 70 px + auth 79 px = 301 px)
+     overflow below ~305 px. Hide search so the remaining items
+     (152 + 79 = 231 px) fit comfortably. Below 235 px even those
+     two overflow, so the logo clips via max-width. */
+  @@media (max-width: 305px) {
+    .navbar-search { display: none; }
+    nav.navbar { padding: 0 !important; gap: 0 !important; }
+    .navbar > div:first-child { max-width: 60% !important; overflow: hidden; }
+    .navbar-auth { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40% !important; }
+    .navbar-date { max-width: 60% !important; overflow: hidden; }
+    .navbar-filtry { max-width: 40% !important; }
+  }
 
   /* `#date-filter` is the day-picker `<select>`. Its natural width is
      driven by the widest option ("Następne 7 dni" / "Pią 29 maja" /
@@ -672,6 +680,12 @@
        ~150 px iPhone-SE card. Scaling card text by the same factor
        as the navbar keeps the two visual zones in proportion at every
        mobile width. */
+    .container-fluid {
+      padding-left:  calc(.75rem * var(--mobile-scale)) !important;
+      padding-right: calc(.75rem * var(--mobile-scale)) !important;
+    }
+    #film-grid,
+    .cinema-section .row { --bs-gutter-x: calc(1rem * var(--mobile-scale)); }
     .card-body         { padding: calc(1rem * var(--mobile-scale)); }
     .card-title a      { font-size: calc(.95rem * var(--mobile-scale)); }
     /* Runtime + the year/format pills that appear next to the title. */
@@ -776,6 +790,10 @@
       display: block;
     }
 
+    .container-fluid {
+      padding-left:  8px !important;
+      padding-right: 8px !important;
+    }
     .card-body         { padding: calc(.6rem * var(--mobile-scale)); }
     .card-title a      { font-size: calc(.95rem * var(--mobile-scale)); }
     .pill              { font-size: calc(.72rem * var(--mobile-scale)); padding: 0 calc(5px * var(--mobile-scale)); }

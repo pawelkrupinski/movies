@@ -84,6 +84,25 @@ export async function getVisibleTitles(page: Page): Promise<string[]> {
 }
 
 /**
+ * Ratio of one card column's width to the full grid width. Returns
+ * ~0.5 for a 2-column layout, ~0.25 for 4 columns, ~1.0 for a single
+ * column, etc. Temporarily forces `display: block` on the first `.col`
+ * so the measurement is valid even if `applyFilters` hid it.
+ */
+export async function measureGridRatio(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const grid = document.querySelector('#film-grid') as HTMLElement;
+    const col = grid?.querySelector(':scope > .col') as HTMLElement;
+    if (!grid || !col) return -1;
+    const prev = col.style.display;
+    col.style.display = 'block';
+    const r = col.getBoundingClientRect().width / grid.getBoundingClientRect().width;
+    col.style.display = prev;
+    return r;
+  });
+}
+
+/**
  * First card whose inline `style.display` isn't `none` AND whose
  * `<img>` is still visible (i.e. the `onerror` fallback chain didn't
  * `display:none` it). `applyFilters` re-appends visible cards after
