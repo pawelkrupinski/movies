@@ -42,7 +42,9 @@ test.describe('/film detail page favourite ★', () => {
     // Seed BEFORE the reload — the DOMContentLoaded handler on /film
     // reads `favouriteMovies` and paints the button.
     await setLocalStorageJson(page, 'favouriteMovies', [title]);
-    await page.reload();
+    // Use goto(url) instead of reload() — WebKit on Linux can lose
+    // localStorage written via CDP on a bare reload().
+    await page.goto(page.url());
 
     await expect(page.locator('.fav-poster-btn')).toHaveClass(/is-fav/);
   });
