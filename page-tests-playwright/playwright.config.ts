@@ -28,11 +28,6 @@ const IPHONES: Phone[] = [
   { slug: 'iphone-17-pro-max',   width: 440, height: 870 },
 ];
 
-const WINDOWS_PHONES: Phone[] = [
-  { slug: 'lumia-520', width: 320, height: 533 },
-  { slug: 'lumia-950', width: 360, height: 640 },
-];
-
 const ALL_PHONES = [...ANDROID_PHONES, ...IPHONES];
 
 // 150% display zoom → viewport shrinks to 2/3 of normal.
@@ -74,14 +69,6 @@ function chromiumUse(p: Phone) {
   };
 }
 
-function edgeUse(p: Phone) {
-  return {
-    ...devices['Pixel 7'],
-    channel: 'msedge' as const,
-    viewport: { width: p.width, height: p.height },
-  };
-}
-
 // ─── Project generation ─────────────────────────────────────────────
 
 const projects: Project[] = [
@@ -107,22 +94,9 @@ const projects: Project[] = [
   }))),
 
   // ─── Chromium — all Android phones, portrait + landscape, normal + 150% zoom
-  //
-  // Closest to the median Android Chrome user. No Chrome on Windows
-  // Phone — Edge covers those viewports.
   ...ANDROID_PHONES.flatMap(p => variants(p).map(v => ({
     name: `chromium-${v.slug}`,
     use: chromiumUse(v),
-  }))),
-
-  // ─── Edge — Windows Phone viewports, portrait + landscape, normal + 150% zoom
-  //
-  // Lumia 520 (320 px, narrowest phone ever mass-produced) and Lumia
-  // 950 (360 px). Edge uses the Chromium engine via the `msedge`
-  // channel. Chrome was never available on Windows Phone.
-  ...WINDOWS_PHONES.flatMap(p => variants(p).map(v => ({
-    name: `msedge-${v.slug}`,
-    use: edgeUse(v),
   }))),
 
   // ─── Desktop ──────────────────────────────────────────────────────

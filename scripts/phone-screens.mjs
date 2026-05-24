@@ -45,9 +45,6 @@ const PHONES = [
   { slug: 'iphone-se',         label: 'iPhone SE (3rd gen)',     width: 375, height: 667, nativeEngine: 'webkit',   device: 'iPhone 13', android: false },
   { slug: 'iphone-17',         label: 'iPhone 15 / 16 / 17',    width: 393, height: 770, nativeEngine: 'webkit',   device: 'iPhone 13', android: false },
   { slug: 'iphone-17-pro-max', label: 'iPhone 16/17 Pro Max',   width: 440, height: 870, nativeEngine: 'webkit',   device: 'iPhone 13', android: false },
-  // 2 Windows Phones
-  { slug: 'lumia-520',          label: 'Lumia 520',              width: 320, height: 533, nativeEngine: 'chromium', device: 'Pixel 7',   android: false },
-  { slug: 'lumia-950',          label: 'Lumia 950',              width: 360, height: 640, nativeEngine: 'chromium', device: 'Pixel 7',   android: false },
 ];
 
 // Every phone is shot on its native engine + Firefox.

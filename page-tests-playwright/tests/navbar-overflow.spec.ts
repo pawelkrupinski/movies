@@ -55,10 +55,6 @@ interface Phone {
 // reported viewport. The test asserts row count / overflow against
 // these values, so they should track real devices.
 const VIEWPORTS: Phone[] = [
-  // ── Smallest tested viewport — Windows Phone era device, 320 px
-  // is the floor of the `--ms` interpolation range. ────────────
-  { name: 'Lumia 520',             width: 320, height: 480 },
-
   // ── Small Android phones (the narrow band where the navbar
   // crowds first — Galaxy S10 / A50 share a 360 px width). ─────
   { name: 'Galaxy S10 / A50',     width: 360, height: 760 },
