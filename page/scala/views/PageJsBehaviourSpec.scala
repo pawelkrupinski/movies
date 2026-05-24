@@ -89,8 +89,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case None    => "<html><body>Film not found</body></html>"
         }
       }
+      val ulubioneHtml: String = views.html.repertoire(
+        schedules, cinemas, devMode = false,
+        currentUser = anon, oauthProviders = noOauth,
+        favouriteMovies = noFav, favouriteScreenings = noFav,
+        favouritesMode = true
+      ).body
+
       server = new TestHttpServer({
         case "/"                          => indexHtml
+        case "/ulubione"                  => ulubioneHtml
         case "/kina"                      => renderKina(None)
         case p if p.startsWith("/kina/") =>
           val raw    = URLDecoder.decode(p.stripPrefix("/kina/"), "UTF-8")
@@ -925,7 +933,334 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Filtry dropdown ───────────────────────────────────────────────────────
+
+  "the Filtry dropdown" should "narrow badges to 3D-only when Wymiar = 3D" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      val before = visibleBadgeCount(page)
+      before should be > 0
+
+      page.eval("document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').click()")
+      val after = visibleBadgeCount(page)
+      after should be > 0
+      after should be < before
+      page.evalBool(
+        "[...document.querySelectorAll('.badge-time')]" +
+          ".filter(b => b.style.display !== 'none')" +
+          ".every(b => (b.dataset.format || '').split(' ').includes('3D'))"
+      ) shouldBe true
+    }
+  }
+
+  it should "narrow badges to NAP-only when Wersja = NAP" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      val before = visibleBadgeCount(page)
+
+      page.eval("document.querySelector('input[name=\"format-lang\"][value=\"NAP\"]').click()")
+      val after = visibleBadgeCount(page)
+      after should be > 0
+      after should be < before
+      page.evalBool(
+        "[...document.querySelectorAll('.badge-time')]" +
+          ".filter(b => b.style.display !== 'none')" +
+          ".every(b => (b.dataset.format || '').split(' ').includes('NAP'))"
+      ) shouldBe true
+    }
+  }
+
+  it should "narrow badges to IMAX-only when IMAX is checked" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      val before = visibleBadgeCount(page)
+
+      page.eval("document.getElementById('format-imax').click()")
+      val after = visibleBadgeCount(page)
+      after should be > 0
+      after should be < before
+      page.evalBool(
+        "[...document.querySelectorAll('.badge-time')]" +
+          ".filter(b => b.style.display !== 'none')" +
+          ".every(b => (b.dataset.format || '').split(' ').includes('IMAX'))"
+      ) shouldBe true
+    }
+  }
+
+  it should "hide earlier showings when Od godziny = 18:00" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      val before = visibleBadgeCount(page)
+
+      page.eval("document.getElementById('from-hour').value = '18'; onFormatChange()")
+      val after = visibleBadgeCount(page)
+      after should be > 0
+      after should be < before
+      page.evalBool(
+        "[...document.querySelectorAll('.badge-time')]" +
+          ".filter(b => b.style.display !== 'none')" +
+          ".every(b => { const [h,m] = (b.dataset.time||'').split(':').map(Number); return h*60+m >= 18*60; })"
+      ) shouldBe true
+    }
+  }
+
+  it should "AND-narrow the set when multiple filters are active" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      page.eval(
+        "document.querySelector('input[name=\"format-dim\"][value=\"2D\"]').click(); " +
+        "document.querySelector('input[name=\"format-lang\"][value=\"NAP\"]').click()"
+      )
+      val after = visibleBadgeCount(page)
+      after should be > 0
+      page.evalBool(
+        "[...document.querySelectorAll('.badge-time')]" +
+          ".filter(b => b.style.display !== 'none')" +
+          ".every(b => { const t = (b.dataset.format||'').split(' '); return t.includes('2D') && t.includes('NAP'); })"
+      ) shouldBe true
+    }
+  }
+
+  it should "reflect active axes in the Filtry button label" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      page.evalString("document.getElementById('format-filter-btn').textContent.trim()") shouldBe "Filtry"
+      page.eval("document.querySelector('input[name=\"format-dim\"][value=\"2D\"]').click()")
+      val label = page.evalString("document.getElementById('format-filter-btn').textContent.trim()")
+      label should not be "Filtry"
+      label should include ("2D")
+    }
+  }
+
+  // ── Date filter narrowing ──────────────────────────────────────────────────
+
+  "the date filter" should "produce a today ≤ week ≤ anytime ordering" in {
+    onPath("/") { page =>
+      page.eval("document.getElementById('date-filter').value = 'anytime'; applyFilters()")
+      val anytime = visibleCardCount(page)
+      page.eval("document.getElementById('date-filter').value = 'week'; applyFilters()")
+      val week = visibleCardCount(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; applyFilters()")
+      val today = visibleCardCount(page)
+
+      anytime should be > 0
+      today should be <= week
+      week should be <= anytime
+    }
+  }
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+
+  "the #no-films empty state" should "show when the search yields zero matches and hide when cleared" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      page.evalString("document.getElementById('no-films').style.display") shouldBe "none"
+
+      page.eval("document.getElementById('search-input').value = 'zzzzz_no_match'; applyFilters()")
+      visibleCardCount(page) shouldBe 0
+      page.evalString("document.getElementById('no-films').style.display") should not be "none"
+      page.evalBool("document.getElementById('no-films').textContent.includes('Brak repertuaru.')") shouldBe true
+
+      page.eval("document.getElementById('search-input').value = ''; applyFilters()")
+      visibleCardCount(page) should be > 0
+      page.evalString("document.getElementById('no-films').style.display") shouldBe "none"
+    }
+  }
+
+  // ── Favourites flow ────────────────────────────────────────────────────────
+
+  "the poster ★ button" should "toggle the title in favouriteMovies localStorage" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val title = firstVisibleTitle(page)
+
+      page.eval(
+        s"(() => { const btn = document.querySelector('.col[data-title=${jsString(title)}] .fav-poster-btn');" +
+        "  toggleFavMovie(btn); })()"
+      )
+      page.evalBool(
+        s"JSON.parse(localStorage.getItem('favouriteMovies') || '[]').includes(${jsString(title)})"
+      ) shouldBe true
+      page.evalBool(
+        s"document.querySelector('.col[data-title=${jsString(title)}] .fav-poster-btn').classList.contains('is-fav')"
+      ) shouldBe true
+
+      page.eval(
+        s"(() => { const btn = document.querySelector('.col[data-title=${jsString(title)}] .fav-poster-btn');" +
+        "  toggleFavMovie(btn); })()"
+      )
+      page.evalBool(
+        s"JSON.parse(localStorage.getItem('favouriteMovies') || '[]').includes(${jsString(title)})"
+      ) shouldBe false
+    }
+  }
+
+  "/ulubione" should "render only the favourited cards" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val titles = page.evalString(
+        "[...document.querySelectorAll('.col[data-title]')]" +
+          ".filter(c => c.style.display !== 'none').slice(0,2)" +
+          ".map(c => c.dataset.title).join('|')"
+      ).split('|').toSeq
+      titles should have length 2
+
+      page.eval(s"localStorage.setItem('favouriteMovies', ${jsString(titles.mkString("[\"", "\",\"", "\"]"))})")
+    }
+    onPath("/ulubione") { page =>
+      val visible = page.evalString(
+        "[...document.querySelectorAll('.col[data-title]')]" +
+          ".filter(c => c.style.display !== 'none')" +
+          ".map(c => c.dataset.title).sort().join('|')"
+      ).split('|').toSeq.sorted
+      visible should not be empty
+    }
+  }
+
+  // ── /film detail favourite ★ ───────────────────────────────────────────────
+
+  "the /film ★ button" should "write the title to favouriteMovies localStorage" in {
+    onPath(filmTarget) { page =>
+      page.eval("(() => { const btn = document.querySelector('.fav-poster-btn'); toggleFavMovie(btn); })()")
+      page.evalBool(
+        "JSON.parse(localStorage.getItem('favouriteMovies') || '[]').includes(" +
+        "document.querySelector('.poster-wrap[data-title]').dataset.title)"
+      ) shouldBe true
+      page.evalBool("document.querySelector('.fav-poster-btn').classList.contains('is-fav')") shouldBe true
+    }
+  }
+
+  it should "paint .is-fav on boot when the title is already in localStorage" in {
+    onPath(filmTarget) { page =>
+      val title = page.evalString("document.querySelector('.poster-wrap[data-title]').dataset.title")
+      page.eval(s"localStorage.setItem('favouriteMovies', JSON.stringify([${jsString(title)}]))")
+      page.reload()
+      page.evalBool("document.querySelector('.fav-poster-btn').classList.contains('is-fav')") shouldBe true
+    }
+  }
+
+  // ── Per-screening favourite ★ ──────────────────────────────────────────────
+
+  "the per-screening ★" should "toggle screeningId in favouriteScreenings localStorage" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val screeningId = page.evalString(
+        "(() => { const b = [...document.querySelectorAll('.badge-time')].find(b => b.style.display !== 'none');" +
+        "  const t = b.closest('[data-title]').dataset.title;" +
+        "  const c = b.closest('.cinema-group').dataset.cinema;" +
+        "  const d = b.closest('.date-group').dataset.date;" +
+        "  return t + '|' + c + '|' + d + 'T' + b.dataset.time; })()"
+      )
+      screeningId should include ("|")
+
+      page.eval(
+        s"(() => { const bs = [...document.querySelectorAll('.badge-time')];" +
+        s"  const b = bs.find(b => { const t = b.closest('[data-title]').dataset.title;" +
+        s"    const c = b.closest('.cinema-group').dataset.cinema;" +
+        s"    const d = b.closest('.date-group').dataset.date;" +
+        s"    return (t+'|'+c+'|'+d+'T'+b.dataset.time) === ${jsString(screeningId)}; });" +
+        "  b.querySelector('.fav-star').dispatchEvent(new MouseEvent('click', {bubbles:true})); })()"
+      )
+      page.evalBool(
+        s"JSON.parse(localStorage.getItem('favouriteScreenings') || '[]').includes(${jsString(screeningId)})"
+      ) shouldBe true
+      page.evalBool(
+        s"(() => { const bs = [...document.querySelectorAll('.badge-time')];" +
+        s"  const b = bs.find(b => { const t = b.closest('[data-title]').dataset.title;" +
+        s"    const c = b.closest('.cinema-group').dataset.cinema;" +
+        s"    const d = b.closest('.date-group').dataset.date;" +
+        s"    return (t+'|'+c+'|'+d+'T'+b.dataset.time) === ${jsString(screeningId)}; });" +
+        "  return b.querySelector('.fav-star').classList.contains('is-fav'); })()"
+      ) shouldBe true
+
+      // Second click removes it
+      page.eval(
+        s"(() => { const bs = [...document.querySelectorAll('.badge-time')];" +
+        s"  const b = bs.find(b => { const t = b.closest('[data-title]').dataset.title;" +
+        s"    const c = b.closest('.cinema-group').dataset.cinema;" +
+        s"    const d = b.closest('.date-group').dataset.date;" +
+        s"    return (t+'|'+c+'|'+d+'T'+b.dataset.time) === ${jsString(screeningId)}; });" +
+        "  b.querySelector('.fav-star').dispatchEvent(new MouseEvent('click', {bubbles:true})); })()"
+      )
+      page.evalBool(
+        s"JSON.parse(localStorage.getItem('favouriteScreenings') || '[]').includes(${jsString(screeningId)})"
+      ) shouldBe false
+    }
+  }
+
+  // ── Hide-film flow ─────────────────────────────────────────────────────────
+
+  "the hide-film flow" should "write to hiddenFilms localStorage and hide the card" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val title = firstVisibleTitle(page)
+
+      page.eval(
+        s"(() => { const btn = document.querySelector('.col[data-title=${jsString(title)}] .hide-btn');" +
+        "  hideFilm(btn); })()"
+      )
+      page.evalBool(
+        s"JSON.parse(localStorage.getItem('hiddenFilms') || '[]').includes(${jsString(title)})"
+      ) shouldBe true
+      page.evalString(
+        s"document.querySelector('.col[data-title=${jsString(title)}]').style.display"
+      ) shouldBe "none"
+    }
+  }
+
+  it should "show hidden titles in the modal and restore on unhide" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val title = firstVisibleTitle(page)
+      page.eval(s"localStorage.setItem('hiddenFilms', JSON.stringify([${jsString(title)}]))")
+      page.reload()
+      pinDateFilterAnytime(page)
+
+      page.evalString(
+        s"document.querySelector('.col[data-title=${jsString(title)}]').style.display"
+      ) shouldBe "none"
+
+      page.eval("openHiddenModal()")
+      page.evalBool(
+        s"[...document.querySelectorAll('#hidden-modal-list .panel-item')]" +
+        s".some(i => i.textContent.trim() === ${jsString(title)})"
+      ) shouldBe true
+
+      page.eval(s"restoreFilm(${jsString(title)})")
+      page.evalString(
+        s"document.querySelector('.col[data-title=${jsString(title)}]').style.display"
+      ) should not be "none"
+      page.evalBool(
+        s"JSON.parse(localStorage.getItem('hiddenFilms') || '[]').includes(${jsString(title)})"
+      ) shouldBe false
+    }
+  }
+
   // ── helpers ──────────────────────────────────────────────────────────────
+
+  private def clearLocalStorage(page: CdpPage): Unit =
+    page.eval("localStorage.clear(); applyFilters()")
+
+  private def visibleBadgeCount(page: CdpPage): Int =
+    page.evalInt("[...document.querySelectorAll('.badge-time')].filter(b => b.style.display !== 'none').length")
+
+  private def visibleCardCount(page: CdpPage): Int =
+    page.evalInt("[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length")
+
+  private def firstVisibleTitle(page: CdpPage): String =
+    page.evalString(
+      "(() => { const cols = [...document.querySelectorAll('.col[data-title]')];" +
+      "  for (const c of cols) { if (c.style.display === 'none') continue;" +
+      "    const img = c.querySelector('.poster-wrap > a img');" +
+      "    if (img && img.style.display !== 'none') return c.dataset.title; }" +
+      "  return cols.find(c => c.style.display !== 'none')?.dataset.title || ''; })()"
+    )
 
   /** Pin every visible element on the page to Arial / Liberation Sans
    *  before layout-sensitive measurements. Why: the layout sweeps below
