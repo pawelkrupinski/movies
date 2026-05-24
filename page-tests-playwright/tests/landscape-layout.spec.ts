@@ -124,6 +124,34 @@ test.describe('mobile landscape layout', () => {
     expect(display).toBe('none');
   });
 
+  test('search, date, filtry, auth are right-aligned', async ({ page }) => {
+    const layout = await page.evaluate(() => {
+      const r = (sel: string) => {
+        const el = document.querySelector(sel);
+        return el ? el.getBoundingClientRect() : null;
+      };
+      return {
+        navbar:  r('.navbar'),
+        search:  r('.navbar-search'),
+        auth:    r('.navbar-auth') || r('.nav-tab-login'),
+      };
+    });
+    expect(layout.navbar).toBeTruthy();
+    expect(layout.search).toBeTruthy();
+    const navbar = layout.navbar!;
+    const search = layout.search!;
+    const navRight = navbar.left + navbar.width;
+    // The search cluster must sit in the right half of the navbar.
+    // margin-left:auto pushes it right; without it the cluster
+    // hugs the logo+tabs on the left edge.
+    expect(search.left).toBeGreaterThan(navbar.left + navbar.width * 0.3);
+    // Auth (rightmost item) should be near the navbar's right edge.
+    if (layout.auth) {
+      const auth = layout.auth;
+      expect(navRight - (auth.left + auth.width)).toBeLessThan(20);
+    }
+  });
+
   // ── Card density: separate concern, stays in landscape ────────
 
   test('film grid column count matches viewport width', async ({ page }) => {
