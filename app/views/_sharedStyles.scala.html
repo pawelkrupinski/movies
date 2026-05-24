@@ -55,8 +55,8 @@
     letter-spacing: .03em;
   }
   .card-body { padding: 1rem; }
-  .card-title { min-height: 2.5rem; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .3rem; }
-  .card-title a { font-size: .95rem; font-weight: 600; color: #fff; text-decoration: none; }
+  .card-title { min-height: 2.5rem; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .3rem; overflow-wrap: break-word; }
+  .card-title a { font-size: .95rem; font-weight: 600; color: #fff; text-decoration: none; min-width: 0; }
   .card-title a:hover { color: #aad4ff; }
   .pill { background: #252540; border: 1px solid #3a3a6e; border-radius: 3px; padding: 0 5px; font-size: .72rem; color: #99b; white-space: nowrap; }
   .runtime { font-size: .75rem; color: #888; }
@@ -121,12 +121,12 @@
   .search-input::placeholder { color: #778; }
   .search-input:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; width: 220px; }
   @@media (max-width: 575px) { .search-input, .search-input:focus { width: 90px; } }
-  @@media (max-width: 379px) { .search-input, .search-input:focus { width: 70px; } }
-  /* Row-1 items (logo+tabs 152 px + search 70 px + auth 79 px = 301 px)
-     overflow below ~305 px. Hide search so the remaining items
+  @@media (max-width: 379px) { .search-input, .search-input:focus { width: 55px; } }
+  /* Row-1 items (logo+tabs 152 px + search 55 px + auth 79 px = 286 px)
+     overflow below ~290 px. Hide search so the remaining items
      (152 + 79 = 231 px) fit comfortably. Below 235 px even those
      two overflow, so the logo clips via max-width. */
-  @@media (max-width: 305px) {
+  @@media (max-width: 290px) {
     .navbar-search { display: none; }
     nav.navbar { padding: 0 !important; gap: 0 !important; }
     .navbar > div:first-child { max-width: 60% !important; overflow: hidden; }
@@ -587,11 +587,12 @@
        the desktop ceiling at the breakpoint top. Single scale knob =
        uniform ratios between the navbar and the grid beneath it. */
     .navbar {
-      padding: calc(.5 * var(--ms)) calc(.75 * var(--ms)) !important;
+      padding: calc(.5 * var(--ms)) min(calc(.75 * var(--ms)), 2.5vw) !important;
       gap: calc(.2 * var(--ms));
       --navbar-fs: calc(.875 * var(--ms));
-      --navbar-px: calc(.6 * var(--ms));
+      --navbar-px: min(calc(.6 * var(--ms)), 2.5vw);
     }
+    .navbar-logo { gap: min(1rem, 3vw) !important; }
     .navbar > div:first-child {
       height: 28px;
       max-height: 28px;
@@ -674,12 +675,12 @@
        as the navbar keeps the two visual zones in proportion at every
        mobile width. */
     .container-fluid {
-      padding-left:  calc(.75 * var(--ms)) !important;
-      padding-right: calc(.75 * var(--ms)) !important;
+      padding-left:  min(calc(.75 * var(--ms)), 2.5vw) !important;
+      padding-right: min(calc(.75 * var(--ms)), 2.5vw) !important;
     }
     #film-grid,
-    .cinema-section .row { --bs-gutter-x: var(--ms); }
-    .card-body         { padding: var(--ms); }
+    .cinema-section .row { --bs-gutter-x: min(var(--ms), 3.5vw); }
+    .card-body         { padding: min(var(--ms), 4vw); }
     .card-title a      { font-size: calc(.95 * var(--ms)); }
     .pill              { font-size: calc(.72 * var(--ms)); padding: 0 calc(5 * var(--ms-px)); }
     .date-label        { font-size: calc(.7 * var(--ms)); }
