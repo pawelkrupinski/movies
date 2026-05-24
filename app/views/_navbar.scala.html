@@ -62,14 +62,34 @@
         <div class="panel-divider"></div>
       }
 
-      <div id="country-row" class="panel-label country-submenu-row" onclick="toggleCountrySubmenu()">
+      <div id="country-row" class="panel-label submenu-row" onclick="toggleSubmenu('country')">
         <span>Kraj produkcji</span>
-        <span class="country-submenu-right">
-          <span id="country-row-count" class="country-row-count" style="display:none"></span>
-          <span id="country-chevron" class="country-chevron">&#8250;</span>
+        <span class="submenu-right">
+          <span id="country-row-count" class="submenu-row-count" style="display:none"></span>
+          <span id="country-chevron" class="submenu-chevron">&#8250;</span>
         </span>
       </div>
-      <div id="country-list" style="display:none"></div>
+      <div id="country-list" class="submenu-list" style="display:none"></div>
+      <div class="panel-divider"></div>
+
+      <div id="director-row" class="panel-label submenu-row" onclick="toggleSubmenu('director')">
+        <span>Reżyseria</span>
+        <span class="submenu-right">
+          <span id="director-row-count" class="submenu-row-count" style="display:none"></span>
+          <span id="director-chevron" class="submenu-chevron">&#8250;</span>
+        </span>
+      </div>
+      <div id="director-list" class="submenu-list" style="display:none"></div>
+      <div class="panel-divider"></div>
+
+      <div id="cast-row" class="panel-label submenu-row" onclick="toggleSubmenu('cast')">
+        <span>Obsada</span>
+        <span class="submenu-right">
+          <span id="cast-row-count" class="submenu-row-count" style="display:none"></span>
+          <span id="cast-chevron" class="submenu-chevron">&#8250;</span>
+        </span>
+      </div>
+      <div id="cast-list" class="submenu-list" style="display:none"></div>
       <div class="panel-divider"></div>
 
       <div class="panel-section-label">Wymiar</div>

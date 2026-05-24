@@ -77,10 +77,10 @@
         parts.push('kina ' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.length);
       }
     }
-    var countries = getCountryFilter();
-    if (countries.length > 0) {
-      parts.push(countries.length === 1 ? countries[0] : countries.length + ' krajów');
-    }
+    var sm = getSubmenuSummaries();
+    if (sm.country)  parts.push(sm.country);
+    if (sm.director) parts.push(sm.director);
+    if (sm.cast)     parts.push(sm.cast);
     const btn = document.getElementById('format-filter-btn');
     if (!btn) return;  // /ulubione: Filtry button not rendered.
     btn.textContent = parts.length === 0 ? 'Filtry' : 'Filtry (' + parts.join(', ') + ')';
@@ -114,73 +114,134 @@
     document.getElementById('format-imax').checked   = false;
     document.getElementById('from-hour').value       = '';
     document.getElementById('from-minute').value     = '0';
-    document.querySelectorAll('#country-list input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
-    var countryList = document.getElementById('country-list');
-    if (countryList) countryList.style.display = 'none';
-    var chevron = document.getElementById('country-chevron');
-    if (chevron) chevron.classList.remove('open');
-    updateCountryCount();
+    ['country', 'director', 'cast'].forEach(function(key) {
+      var list = document.getElementById(key + '-list');
+      if (list) {
+        list.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.checked = true; });
+        list.style.display = 'none';
+      }
+      var chevron = document.getElementById(key + '-chevron');
+      if (chevron) chevron.classList.remove('open');
+      updateSubmenuCount(key);
+    });
     document.getElementById('format-panel').style.display = 'none';
     onFormatChange();
   }
 
-  // ── Country filter ──────────────────────────────────────────────────────
+  // ── Submenu filters (country / director / cast) ─────────────────────────
+  //
+  // All three use the same pattern: a collapsible checkbox list with a
+  // "Wszystkie" toggle, a count badge on the header row, and an entry
+  // per unique value with a film count. By default every checkbox is
+  // checked (all included); unchecking narrows the visible set.
 
-  function getCountryFilter() {
-    return [...document.querySelectorAll('#country-list input[type="checkbox"]')]
-      .filter(function(cb) { return cb.checked; })
-      .map(function(cb) { return cb.value; });
+  function getSubmenuFilter(key) {
+    var list = document.getElementById(key + '-list');
+    if (!list) return null;
+    var boxes = [...list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)')];
+    var checked = boxes.filter(function(cb) { return cb.checked; });
+    if (checked.length === boxes.length) return null;
+    return checked.map(function(cb) { return cb.value; });
   }
 
-  function toggleCountrySubmenu() {
-    var list = document.getElementById('country-list');
-    var chevron = document.getElementById('country-chevron');
+  function getCountryFilter()  { return getSubmenuFilter('country'); }
+  function getDirectorFilter() { return getSubmenuFilter('director'); }
+  function getCastFilter()     { return getSubmenuFilter('cast'); }
+
+  function toggleSubmenu(key) {
+    var list = document.getElementById(key + '-list');
+    var chevron = document.getElementById(key + '-chevron');
     if (!list) return;
     var opening = list.style.display === 'none';
     list.style.display = opening ? '' : 'none';
     if (chevron) chevron.classList.toggle('open', opening);
   }
 
-  function updateCountryCount() {
-    var count = getCountryFilter().length;
-    var badge = document.getElementById('country-row-count');
-    if (!badge) return;
-    if (count > 0) {
-      badge.textContent = count;
+  function updateSubmenuCount(key) {
+    var list = document.getElementById(key + '-list');
+    var badge = document.getElementById(key + '-row-count');
+    if (!badge || !list) return;
+    var boxes = [...list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)')];
+    var unchecked = boxes.filter(function(cb) { return !cb.checked; }).length;
+    if (unchecked > 0) {
+      badge.textContent = boxes.length - unchecked + '/' + boxes.length;
       badge.style.display = '';
     } else {
       badge.style.display = 'none';
     }
+    var allCb = list.querySelector('.submenu-all');
+    if (allCb) allCb.checked = unchecked === 0;
   }
 
-  function buildCountryPanel() {
-    var list = document.getElementById('country-list');
+  function getSubmenuSummaries() {
+    var result = {};
+    [['country', 'krajów'], ['director', 'reż.'], ['cast', 'aktorów']].forEach(function(pair) {
+      var key = pair[0], suffix = pair[1];
+      var filter = getSubmenuFilter(key);
+      if (filter !== null) {
+        result[key] = filter.length === 1 ? filter[0] : filter.length + ' ' + suffix;
+      }
+    });
+    return result;
+  }
+
+  function buildSubmenuPanel(key, dataAttr, splitter) {
+    var list = document.getElementById(key + '-list');
     if (!list) return;
-    var countryCount = {};
-    document.querySelectorAll('.col[data-countries]').forEach(function(col) {
-      (col.dataset.countries || '').split('|').filter(Boolean).forEach(function(c) {
-        countryCount[c] = (countryCount[c] || 0) + 1;
+    var valueCounts = {};
+    document.querySelectorAll('.col[' + dataAttr + ']').forEach(function(col) {
+      splitter(col.dataset[dataAttr.replace('data-', '')] || '').forEach(function(v) {
+        valueCounts[v] = (valueCounts[v] || 0) + 1;
       });
     });
-    var sorted = Object.keys(countryCount).sort(function(a, b) {
-      return (countryCount[b] - countryCount[a]) || a.localeCompare(b, 'pl');
+    var sorted = Object.keys(valueCounts).sort(function(a, b) {
+      return (valueCounts[b] - valueCounts[a]) || a.localeCompare(b, 'pl');
     });
     list.innerHTML = '';
-    sorted.forEach(function(country) {
+
+    var allLabel = document.createElement('label');
+    allLabel.className = 'panel-label';
+    allLabel.style.borderBottom = '1px solid #3a3a6e';
+    allLabel.style.marginBottom = '4px';
+    allLabel.style.paddingBottom = '8px';
+    var allCb = document.createElement('input');
+    allCb.type = 'checkbox';
+    allCb.checked = true;
+    allCb.className = 'submenu-all';
+    allCb.onchange = function() {
+      list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(function(cb) { cb.checked = allCb.checked; });
+      updateSubmenuCount(key); updateFormatBtn(); applyFilters();
+    };
+    allLabel.appendChild(allCb);
+    allLabel.appendChild(document.createTextNode(' Wszystkie'));
+    list.appendChild(allLabel);
+
+    sorted.forEach(function(value) {
       var label = document.createElement('label');
       label.className = 'panel-label';
       var cb = document.createElement('input');
       cb.type = 'checkbox';
-      cb.value = country;
-      cb.onchange = function() { updateCountryCount(); updateFormatBtn(); applyFilters(); };
+      cb.value = value;
+      cb.checked = true;
+      cb.onchange = function() { updateSubmenuCount(key); updateFormatBtn(); applyFilters(); };
       label.appendChild(cb);
-      label.appendChild(document.createTextNode(' ' + country));
+      label.appendChild(document.createTextNode(' ' + value));
       var cnt = document.createElement('span');
-      cnt.className = 'country-film-count';
-      cnt.textContent = '(' + countryCount[country] + ')';
+      cnt.className = 'submenu-film-count';
+      cnt.textContent = '(' + valueCounts[value] + ')';
       label.appendChild(cnt);
       list.appendChild(label);
     });
+  }
+
+  function buildCountryPanel() {
+    buildSubmenuPanel('country', 'data-countries', function(s) { return s.split('|').filter(Boolean); });
+  }
+  function buildDirectorPanel() {
+    buildSubmenuPanel('director', 'data-director', function(s) { return s.split(',').map(function(v) { return v.trim(); }).filter(Boolean); });
+  }
+  function buildCastPanel() {
+    buildSubmenuPanel('cast', 'data-cast', function(s) { return s.split(',').map(function(v) { return v.trim(); }).filter(Boolean); });
   }
 
   // ── Hidden-films + disabled-cinemas storage ───────────────────────────────
@@ -1086,6 +1147,8 @@
     // at boot so the first open of Filtry has the checkboxes ready.
     buildCinemaPanel();
     buildCountryPanel();
+    buildDirectorPanel();
+    buildCastPanel();
     updateFormatBtn();
     paintFavourites();
     applyFilters();

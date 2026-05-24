@@ -1,7 +1,7 @@
 @import controllers.FilmSchedule
 @(films: Seq[FilmSchedule], favouriteMovies: Set[String] = Set.empty, favouriteScreenings: Set[String] = Set.empty)
 @for(film <- films) {
-<div class="col" data-title="@film.movie.title" data-countries="@film.movie.countries.mkString("|")">
+<div class="col" data-title="@film.movie.title" data-countries="@film.movie.countries.mkString("|")"@film.director.map { d => data-director="@d" }@film.cast.map { c => data-cast="@c" }>
   @_movieCard(film.movie, film.posterUrl, film.enrichment, favouriteMovies.contains(film.movie.title)) {
     @_filmShowings(film, favouriteScreenings = favouriteScreenings)
   }
