@@ -759,10 +759,12 @@
       padding-left:  5px;
       padding-right: 5px;
     }
-    .navbar .nav-tab-fav  { font-size: calc(.9 * var(--ms)); }
+    .navbar .nav-tab-fav  { font-size: calc(.9 * var(--ms)); min-width: 0; padding-left: 4px; padding-right: 4px; }
     .navbar .btn.date-nav-btn { font-size: calc(.95 * var(--ms)); min-width: 28px; }
     .navbar .filter-select,
     .navbar .search-input { padding-top: 0; padding-bottom: 0; }
+    .navbar-search { flex-shrink: 1; }
+    .navbar-logo > .d-flex { gap: 2px; }
     .navbar-date { align-items: center; }
 
     /* Cap the Filtry pill + ellipsis on the button text so a maxed-
