@@ -179,6 +179,19 @@ struct CinemaPillsRow: View {
     let allCinemas: [String]
     @Binding var pinnedCinema: String?
 
+    static let pillNames: [String: String] = [
+        "Cinema City Kinepolis": "Kinepolis",
+        "Cinema City Poznań Plaza": "Poznań Plaza",
+        "Helios Posnania": "Helios",
+        "Kino Apollo": "Apollo",
+        "Kino Bułgarska 19": "Bułgarska 19",
+        "Kino Malta Charlie Monroe": "Malta Charlie Monroe",
+        "Kino Muza": "Muza",
+        "Kino Pałacowe": "Pałacowe",
+        "Kino Rialto": "Rialto",
+        "Multikino Stary Browar": "Multikino",
+    ]
+
     private var selection: Binding<String> {
         Binding(
             get: { pinnedCinema ?? "" },
@@ -190,7 +203,7 @@ struct CinemaPillsRow: View {
         Picker("Kino", selection: selection) {
             Text("Wszystkie").tag("")
             ForEach(allCinemas, id: \.self) { cinema in
-                Text(cinema).tag(cinema)
+                Text(Self.pillNames[cinema] ?? cinema).tag(cinema)
             }
         }
         .pickerStyle(.wheel)
@@ -321,7 +334,7 @@ struct FiltersSheet: View {
                             }
                         ))
                         ForEach(allCinemas, id: \.self) { cinema in
-                            Toggle(cinema, isOn: Binding(
+                            Toggle(CinemaPillsRow.pillNames[cinema] ?? cinema, isOn: Binding(
                                 get: { !prefs.disabledCinemas.contains(cinema) },
                                 set: { on in prefs.toggleCinema(cinema, disabled: !on) }
                             ))
