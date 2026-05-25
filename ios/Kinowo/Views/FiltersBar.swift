@@ -232,7 +232,6 @@ struct TabLabelOverlay: View {
                 switch text {
                 case "Filmy":    return A11y.TabOverlay.filmy
                 case "Kina":     return A11y.TabOverlay.kina
-                case "Ulubione": return A11y.TabOverlay.ulubione
                 default:         return A11y.TabOverlay.filmy
                 }
             }())
@@ -339,15 +338,21 @@ struct FiltersSheet: View {
                 }
 
                 if !allCountries.isEmpty {
-                    Section("Kraj produkcji") {
-                        ForEach(allCountries, id: \.self) { country in
-                            Toggle(country, isOn: Binding(
-                                get: { selectedCountries.contains(country) },
-                                set: { on in
-                                    if on { selectedCountries.insert(country) }
-                                    else  { selectedCountries.remove(country) }
+                    Section {
+                        NavigationLink {
+                            CountryFilterList(
+                                allCountries: allCountries,
+                                selectedCountries: $selectedCountries
+                            )
+                        } label: {
+                            HStack {
+                                Text("Kraj produkcji")
+                                Spacer()
+                                if !selectedCountries.isEmpty {
+                                    Text("\(selectedCountries.count)/\(allCountries.count)")
+                                        .foregroundStyle(.secondary)
                                 }
-                            ))
+                            }
                         }
                     }
                 }
@@ -451,6 +456,37 @@ struct HiddenFilmsList: View {
         .onChange(of: prefs.hiddenFilms) { new in
             if new.isEmpty { dismiss() }
         }
+    }
+}
+
+struct CountryFilterList: View {
+    let allCountries: [String]
+    @Binding var selectedCountries: Set<String>
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Wszystkie", isOn: Binding(
+                    get: { selectedCountries.count == allCountries.count },
+                    set: { on in
+                        selectedCountries = on ? Set(allCountries) : []
+                    }
+                ))
+            }
+            Section {
+                ForEach(allCountries, id: \.self) { country in
+                    Toggle(country, isOn: Binding(
+                        get: { selectedCountries.contains(country) },
+                        set: { on in
+                            if on { selectedCountries.insert(country) }
+                            else  { selectedCountries.remove(country) }
+                        }
+                    ))
+                }
+            }
+        }
+        .navigationTitle("Kraj produkcji")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
