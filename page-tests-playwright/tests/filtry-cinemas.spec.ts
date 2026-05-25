@@ -23,14 +23,9 @@ test.describe('Filtry > Kina checkboxes', () => {
   });
 
   test('unchecking a cinema hides its .cinema-group elements + writes localStorage', async ({ page }) => {
-    // Pick the first cinema in the checkbox list. `buildCinemaPanel`
-    // emits the labels in `ALL_CINEMAS` order; reading the visible
-    // text gives the cinema's display name to disable.
-    const firstCinema = await page.evaluate(() => {
-      const label = document.querySelector<HTMLLabelElement>('#cinema-list .panel-label');
-      // Strip the leading space `buildCinemaPanel` adds before the name.
-      return label?.textContent?.trim() ?? null;
-    });
+    // `ALL_CINEMAS` is the canonical list; localStorage stores these
+    // raw names, not the pill display names from `CINEMA_PILLS`.
+    const firstCinema = await page.evaluate<string>(`ALL_CINEMAS[0]`);
     expect(firstCinema).toBeTruthy();
 
     const beforeVisible = await visibleCinemaGroups(page);
