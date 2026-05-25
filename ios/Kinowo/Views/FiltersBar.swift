@@ -262,6 +262,7 @@ struct FiltersSheet: View {
     let allDirectors: [(name: String, count: Int)]
     let allCast: [(name: String, count: Int)]
     var showCinemaSection: Bool = true
+    @EnvironmentObject var authService: AuthService
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -417,6 +418,38 @@ struct FiltersSheet: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
+
+                // ── Account ──────────────────────────────────────
+                if let user = authService.user {
+                    Section("Konto") {
+                        HStack {
+                            Image(systemName: providerIcon(user.provider))
+                            Text(user.displayName ?? user.email ?? user.provider)
+                        }
+                        Button("Wyloguj") {
+                            Task { await authService.signOut() }
+                        }
+                        Button("Usuń konto", role: .destructive) {
+                            Task {
+                                await authService.deleteAccount()
+                                prefs.unhideAll()
+                                prefs.setDisabledCinemas([])
+                            }
+                        }
+                    }
+                } else {
+                    Section("Zaloguj się") {
+                        Button { Task { await authService.signInWithApple() } } label: {
+                            Label("Zaloguj przez Apple", systemImage: "apple.logo")
+                        }
+                        Button { Task { await authService.signInWithGoogle() } } label: {
+                            Label("Zaloguj przez Google", systemImage: "g.circle.fill")
+                        }
+                        Button { Task { await authService.signInWithFacebook() } } label: {
+                            Label("Zaloguj przez Facebook", systemImage: "f.circle.fill")
+                        }
+                    }
+                }
             }
             .navigationTitle("Filtry")
             .navigationBarTitleDisplayMode(.inline)
@@ -427,6 +460,15 @@ struct FiltersSheet: View {
                 }
             }
             .accessibilityIdentifier(A11y.FiltersSheet.root)
+        }
+    }
+
+    private func providerIcon(_ provider: String) -> String {
+        switch provider {
+        case "apple":    return "apple.logo"
+        case "google":   return "g.circle.fill"
+        case "facebook": return "f.circle.fill"
+        default:         return "person.circle"
         }
     }
 }

@@ -14,6 +14,8 @@
 		DD00000000000000000006 /* Filters.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000006 /* Filters.swift */; };
 		DD00000000000000000007 /* RepertoireClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000007 /* RepertoireClient.swift */; };
 		DD00000000000000000030 /* RepertoireCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000030 /* RepertoireCache.swift */; };
+		DD00000000000000000031 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000031 /* AuthService.swift */; };
+		DD00000000000000000032 /* StateSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000032 /* StateSyncService.swift */; };
 		DD00000000000000000008 /* HTMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000008 /* HTMLParser.swift */; };
 		DD00000000000000000009 /* HTMLDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000009 /* HTMLDecoding.swift */; };
 		DD0000000000000000000A /* UserPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000A /* UserPreferences.swift */; };
@@ -59,6 +61,8 @@
 		CC00000000000000000006 /* Filters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Filters.swift; sourceTree = "<group>"; };
 		CC00000000000000000007 /* RepertoireClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepertoireClient.swift; sourceTree = "<group>"; };
 		CC00000000000000000030 /* RepertoireCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepertoireCache.swift; sourceTree = "<group>"; };
+		CC00000000000000000031 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		CC00000000000000000032 /* StateSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StateSyncService.swift; sourceTree = "<group>"; };
 		CC00000000000000000008 /* HTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLParser.swift; sourceTree = "<group>"; };
 		CC00000000000000000009 /* HTMLDecoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLDecoding.swift; sourceTree = "<group>"; };
 		CC0000000000000000000A /* UserPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferences.swift; sourceTree = "<group>"; };
@@ -118,6 +122,7 @@
 				CC00000000000000000002 /* KinowoApp.swift */,
 				CC00000000000000000003 /* ContentView.swift */,
 				CC0000000000000000001B /* AccessibilityIdentifiers.swift */,
+				BB00000000000000000009 /* Auth */,
 				BB00000000000000000004 /* Models */,
 				BB00000000000000000005 /* Networking */,
 				BB00000000000000000006 /* Storage */,
@@ -134,6 +139,15 @@
 				CC0000000000000000001A /* KinowoUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		BB00000000000000000009 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				CC00000000000000000031 /* AuthService.swift */,
+				CC00000000000000000032 /* StateSyncService.swift */,
+			);
+			path = Auth;
 			sourceTree = "<group>";
 		};
 		BB00000000000000000004 /* Models */ = {
@@ -293,6 +307,8 @@
 				DD00000000000000000006 /* Filters.swift in Sources */,
 				DD00000000000000000007 /* RepertoireClient.swift in Sources */,
 				DD00000000000000000030 /* RepertoireCache.swift in Sources */,
+				DD00000000000000000031 /* AuthService.swift in Sources */,
+				DD00000000000000000032 /* StateSyncService.swift in Sources */,
 				DD00000000000000000008 /* HTMLParser.swift in Sources */,
 				DD00000000000000000009 /* HTMLDecoding.swift in Sources */,
 				DD0000000000000000000A /* UserPreferences.swift in Sources */,

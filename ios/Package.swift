@@ -47,6 +47,7 @@ let package = Package(
                 "Views/ShowingsView.swift",
                 "ContentView.swift",
                 "KinowoApp.swift",
+                "Auth",
                 // Combine (`ObservableObject` / `@Published`) — not on
                 // Linux. Logic in these files is a thin URLSession +
                 // parser-delegation shim; the parser layer below is
