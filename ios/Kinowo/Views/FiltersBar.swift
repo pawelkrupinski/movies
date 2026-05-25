@@ -204,10 +204,16 @@ struct CinemaPillsRow: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
         .background {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .opacity(0.55)
-                .ignoresSafeArea(edges: .horizontal)
+            if #available(iOS 26.0, macOS 26.0, *) {
+                Rectangle()
+                    .fill(.clear)
+                    .glassEffect(in: Rectangle())
+                    .ignoresSafeArea(edges: .horizontal)
+            } else {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .ignoresSafeArea(edges: .horizontal)
+            }
         }
     }
 }
@@ -256,30 +262,15 @@ struct BounceButtonStyle: ButtonStyle {
 }
 
 // Translucent capsule background for the search pill. On iOS 26+ uses
-// the Liquid-Glass `.glassEffect` modifier, which refracts the film
-// grid scrolling underneath — that's the "distorting like a fish eye"
-// feel the user asked for. On iOS 16-25 we fall back to a Capsule
-// filled with `.ultraThinMaterial`. Both paths get dialed-down opacity
-// so the grid shows through more strongly than the default.
-//
-// Not used for the top bar — the glassEffect refraction edge + the
-// content-wide opacity made the bar feel like a floating box rather
-// than a flush translucent strip, so the bar uses a plain
-// `Rectangle().fill(.ultraThinMaterial).opacity(0.55)` background
-// inline instead.
+// the Liquid-Glass `.glassEffect` modifier; on iOS 16-25 falls back
+// to `.ultraThinMaterial`.
 private struct GlassyPillBackground: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {
-            content
-                .glassEffect(in: Capsule())
-                .opacity(0.8)
+            content.glassEffect(in: Capsule())
         } else {
-            content.background {
-                Capsule()
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.55)
-            }
+            content.background(.ultraThinMaterial, in: Capsule())
         }
     }
 }
