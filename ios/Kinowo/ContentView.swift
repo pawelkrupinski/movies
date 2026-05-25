@@ -7,7 +7,7 @@ struct ContentView: View {
 
     @State private var dateFilter: DateFilter = .today
     @State private var formatFilter: FormatFilter = .empty
-    @State private var selectedCountries: Set<String> = []
+    @State private var excludedCountries: Set<String> = []
     @State private var search: String = ""
     /// Active tab — swipe-left/right on the TabView flips between
     /// `.films` (`/`) and `.cinemas` (`/kina`). Each writes a brief
@@ -70,7 +70,7 @@ struct ContentView: View {
                 .sheet(isPresented: $showFilters) {
                     FiltersSheet(
                         formatFilter: $formatFilter,
-                        selectedCountries: $selectedCountries,
+                        excludedCountries: $excludedCountries,
                         prefs: prefs,
                         allCinemas: allCinemas,
                         allCountries: allCountries,
@@ -227,7 +227,7 @@ struct ContentView: View {
         !formatFilter.isEmpty
             || !prefs.disabledCinemas.isEmpty
             || !prefs.hiddenFilms.isEmpty
-            || !selectedCountries.isEmpty
+            || !excludedCountries.isEmpty
     }
 
     private var filmsForFilmsTab: [Film] {
@@ -237,7 +237,7 @@ struct ContentView: View {
             query: search,
             hidden: prefs.hiddenFilms,
             disabledCinemas: prefs.disabledCinemas,
-            countries: selectedCountries
+            excludedCountries: excludedCountries
         )
     }
 
@@ -256,7 +256,7 @@ struct ContentView: View {
             query: search,
             hidden: prefs.hiddenFilms,
             disabledCinemas: disabled,
-            countries: selectedCountries
+            excludedCountries: excludedCountries
         )
     }
 

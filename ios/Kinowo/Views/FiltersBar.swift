@@ -290,7 +290,7 @@ private struct GlassyPillBackground: ViewModifier {
 // state owned by ContentView.
 struct FiltersSheet: View {
     @Binding var formatFilter: FormatFilter
-    @Binding var selectedCountries: Set<String>
+    @Binding var excludedCountries: Set<String>
     @ObservedObject var prefs: UserPreferences
     let allCinemas: [String]
     let allCountries: [(name: String, count: Int)]
@@ -342,14 +342,14 @@ struct FiltersSheet: View {
                         NavigationLink {
                             CountryFilterList(
                                 allCountries: allCountries,
-                                selectedCountries: $selectedCountries
+                                excludedCountries: $excludedCountries
                             )
                         } label: {
                             HStack {
                                 Text("Kraj produkcji")
                                 Spacer()
-                                if !selectedCountries.isEmpty {
-                                    Text("\(selectedCountries.count)/\(allCountries.count)")
+                                if !excludedCountries.isEmpty {
+                                    Text("\(allCountries.count - excludedCountries.count)/\(allCountries.count)")
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -398,7 +398,7 @@ struct FiltersSheet: View {
                 Section {
                     Button(role: .destructive) {
                         formatFilter = .empty
-                        selectedCountries = []
+                        excludedCountries = []
                         prefs.setDisabledCinemas([])
                     } label: {
                         Text("Wyczyść")
@@ -461,7 +461,7 @@ struct HiddenFilmsList: View {
 
 struct CountryFilterList: View {
     let allCountries: [(name: String, count: Int)]
-    @Binding var selectedCountries: Set<String>
+    @Binding var excludedCountries: Set<String>
 
     private var allNames: Set<String> { Set(allCountries.map(\.name)) }
 
@@ -469,19 +469,19 @@ struct CountryFilterList: View {
         Form {
             Section {
                 Toggle("Wszystkie", isOn: Binding(
-                    get: { selectedCountries.count == allCountries.count },
+                    get: { excludedCountries.isEmpty },
                     set: { on in
-                        selectedCountries = on ? allNames : []
+                        excludedCountries = on ? [] : allNames
                     }
                 ))
             }
             Section {
                 ForEach(allCountries, id: \.name) { entry in
                     Toggle(isOn: Binding(
-                        get: { selectedCountries.contains(entry.name) },
+                        get: { !excludedCountries.contains(entry.name) },
                         set: { on in
-                            if on { selectedCountries.insert(entry.name) }
-                            else  { selectedCountries.remove(entry.name) }
+                            if on { excludedCountries.remove(entry.name) }
+                            else  { excludedCountries.insert(entry.name) }
                         }
                     )) {
                         HStack {

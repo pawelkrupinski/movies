@@ -182,14 +182,14 @@ extension Sequence where Element == Film {
         query: String,
         hidden: Set<String>,
         disabledCinemas: Set<String>,
-        countries: Set<String> = [],
+        excludedCountries: Set<String> = [],
         now: Date = Date()
     ) -> [Film] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return self.compactMap { film in
             if hidden.contains(film.title) { return nil }
             if !q.isEmpty && !film.title.lowercased().contains(q) { return nil }
-            if !countries.isEmpty && countries.isDisjoint(with: film.countries) { return nil }
+            if !excludedCountries.isEmpty && Set(film.countries).isSubset(of: excludedCountries) { return nil }
             let days: [DayShowings] = film.showings.compactMap { day in
                 if !date.matches(date: day.date, now: now) { return nil }
                 let cinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
