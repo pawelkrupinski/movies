@@ -192,23 +192,29 @@ struct CinemaPillsRow: View {
         "Multikino Stary Browar": "Multikino",
     ]
 
-    private var selection: Binding<String> {
-        Binding(
-            get: { pinnedCinema ?? "" },
-            set: { pinnedCinema = $0.isEmpty ? nil : $0 }
-        )
-    }
-
     var body: some View {
-        Picker("Kino", selection: selection) {
-            Text("Wszystkie").tag("")
+        FlowLayout(spacing: 6, lineSpacing: 6) {
             ForEach(allCinemas, id: \.self) { cinema in
-                Text(Self.pillNames[cinema] ?? cinema).tag(cinema)
+                Button {
+                    pinnedCinema = (pinnedCinema == cinema) ? nil : cinema
+                } label: {
+                    Text(Self.pillNames[cinema] ?? cinema)
+                        .font(.system(size: 13, weight: .medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            pinnedCinema == cinema
+                                ? Color.accentColor.opacity(0.85)
+                                : Color(.systemGray5),
+                            in: Capsule()
+                        )
+                        .foregroundColor(pinnedCinema == cinema ? .white : .primary)
+                }
+                .buttonStyle(BounceButtonStyle())
             }
         }
-        .pickerStyle(.wheel)
-        .frame(height: 100)
-        .padding(.vertical, -16)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
     }
 }
 
