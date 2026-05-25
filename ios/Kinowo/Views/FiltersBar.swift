@@ -293,7 +293,7 @@ struct FiltersSheet: View {
     @Binding var selectedCountries: Set<String>
     @ObservedObject var prefs: UserPreferences
     let allCinemas: [String]
-    let allCountries: [String]
+    let allCountries: [(name: String, count: Int)]
     var showCinemaSection: Bool = true
     @Environment(\.dismiss) private var dismiss
 
@@ -460,8 +460,10 @@ struct HiddenFilmsList: View {
 }
 
 struct CountryFilterList: View {
-    let allCountries: [String]
+    let allCountries: [(name: String, count: Int)]
     @Binding var selectedCountries: Set<String>
+
+    private var allNames: Set<String> { Set(allCountries.map(\.name)) }
 
     var body: some View {
         Form {
@@ -469,19 +471,26 @@ struct CountryFilterList: View {
                 Toggle("Wszystkie", isOn: Binding(
                     get: { selectedCountries.count == allCountries.count },
                     set: { on in
-                        selectedCountries = on ? Set(allCountries) : []
+                        selectedCountries = on ? allNames : []
                     }
                 ))
             }
             Section {
-                ForEach(allCountries, id: \.self) { country in
-                    Toggle(country, isOn: Binding(
-                        get: { selectedCountries.contains(country) },
+                ForEach(allCountries, id: \.name) { entry in
+                    Toggle(isOn: Binding(
+                        get: { selectedCountries.contains(entry.name) },
                         set: { on in
-                            if on { selectedCountries.insert(country) }
-                            else  { selectedCountries.remove(country) }
+                            if on { selectedCountries.insert(entry.name) }
+                            else  { selectedCountries.remove(entry.name) }
                         }
-                    ))
+                    )) {
+                        HStack {
+                            Text(entry.name)
+                            Spacer()
+                            Text("(\(entry.count))")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
         }

@@ -209,15 +209,18 @@ struct ContentView: View {
         return out.sorted()
     }
 
-    private var allCountries: [String] {
-        var seen = Set<String>()
-        var out: [String] = []
+    private var allCountries: [(name: String, count: Int)] {
+        var counts: [String: Int] = [:]
         for film in store.films {
-            for c in film.countries where seen.insert(c).inserted {
-                out.append(c)
+            for c in film.countries {
+                counts[c, default: 0] += 1
             }
         }
-        return out.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        return counts.map { (name: $0.key, count: $0.value) }
+            .sorted {
+                if $0.count != $1.count { return $0.count > $1.count }
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
     }
 
     private var filtersActive: Bool {
