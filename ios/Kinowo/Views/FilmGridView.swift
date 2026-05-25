@@ -77,7 +77,6 @@ struct CinemaSectionedGridView: View {
                     }
                 }
                 .padding(.horizontal, 12)
-                .padding(.top, 56)
                 .padding(.bottom, 70)
             }
             .scrollDismissesKeyboard(.immediately)

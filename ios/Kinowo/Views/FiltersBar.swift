@@ -185,7 +185,7 @@ struct CinemaPillsRow: View {
                         .background(
                             pinnedCinema == cinema
                                 ? Color.accentColor.opacity(0.85)
-                                : Color(.systemGray5),
+                                : Color.clear,
                             in: Capsule()
                         )
                         .foregroundColor(pinnedCinema == cinema ? .white : .primary)
