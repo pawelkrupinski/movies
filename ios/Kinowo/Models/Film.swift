@@ -1,6 +1,6 @@
 import Foundation
 
-struct Film: Identifiable, Hashable {
+struct Film: Identifiable, Hashable, Codable {
     var id: String { title }
     let title: String
     let posterURL: URL?
@@ -29,7 +29,7 @@ struct Film: Identifiable, Hashable {
     let cast: [String]
     let showings: [DayShowings]
 
-    struct Ratings: Hashable {
+    struct Ratings: Hashable, Codable {
         let imdb: Double?
         let imdbURL: URL?
         let metascore: Int?
@@ -52,7 +52,7 @@ struct Film: Identifiable, Hashable {
     }
 }
 
-struct DayShowings: Hashable {
+struct DayShowings: Hashable, Codable {
     /// `YYYY-MM-DD` — comparable as a string thanks to ISO layout.
     let date: String
     /// Polish day-and-date label exactly as the web app renders it
@@ -62,13 +62,13 @@ struct DayShowings: Hashable {
     let cinemas: [CinemaShowings]
 }
 
-struct CinemaShowings: Hashable {
+struct CinemaShowings: Hashable, Codable {
     let cinema: String
     let cinemaURL: URL?
     let showtimes: [Showtime]
 }
 
-struct Showtime: Hashable, Identifiable {
+struct Showtime: Hashable, Identifiable, Codable {
     var id: String { "\(time)|\(format)|\(bookingURL?.absoluteString ?? "")" }
     /// `HH:MM`.
     let time: String

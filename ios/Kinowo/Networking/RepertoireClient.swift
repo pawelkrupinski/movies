@@ -1,11 +1,7 @@
 import Foundation
 
-/// Production URL. Top-level so it isn't main-actor-isolated and can be used
-/// as a default argument from a nonisolated init context.
-let kinowoProductionURL = URL(string: "https://kinowo.fly.dev/")!
+let kinowoProductionURL = URL(string: "https://kinowo.fly.dev/api/repertoire")!
 
-/// Fetches the kinowo.fly.dev `/` page and hands the body to `HTMLParser`.
-/// Keeps the parsed films in `@Published` state so views auto-refresh.
 @MainActor
 final class RepertoireStore: ObservableObject {
     @Published var films: [Film] = []
@@ -16,15 +12,17 @@ final class RepertoireStore: ObservableObject {
     private let session: URLSession
     private var lastReloadedAt: Date?
 
-    /// Below this age, `reloadIfStale` is a no-op. 60s is long enough
-    /// that a quick swipe-up-to-notification-centre-and-back doesn't
-    /// hit `/`, and short enough that an actual return-from-background
-    /// after the user did something else for a minute does.
     private let staleAfter: TimeInterval = 60
 
     init(url: URL = kinowoProductionURL, session: URLSession = .shared) {
         self.url = url
         self.session = session
+    }
+
+    func loadCachedData(now: Date = Date()) {
+        if films.isEmpty, let cached = RepertoireCache.load() {
+            films = cached
+        }
     }
 
     func reload(now: Date = Date()) async {
@@ -40,24 +38,16 @@ final class RepertoireStore: ObservableObject {
                !(200..<300).contains(http.statusCode) {
                 throw URLError(.badServerResponse)
             }
-            guard let html = String(data: data, encoding: .utf8) else {
-                throw URLError(.cannotDecodeContentData)
-            }
-            self.films = HTMLParser.parse(html: html)
+            let decoded = try JSONDecoder().decode([Film].self, from: data)
+            self.films = decoded
             self.lastReloadedAt = now
+            let filmsCopy = decoded
+            Task.detached { RepertoireCache.save(filmsCopy) }
         } catch {
             self.error = error
         }
     }
 
-    /// Called when the app comes back to the foreground. Refreshes the
-    /// payload if the last successful load is older than `staleAfter`
-    /// — newly-added screenings, swapped poster URLs (e.g. a cinema
-    /// rotated their CDN), and any other server-side change land
-    /// without the user having to pull-to-refresh.
-    ///
-    /// On a load failure `lastReloadedAt` stays nil, so the first
-    /// re-foreground after an error reliably retries.
     func reloadIfStale(now: Date = Date()) async {
         if let last = lastReloadedAt, now.timeIntervalSince(last) < staleAfter {
             return
@@ -65,13 +55,6 @@ final class RepertoireStore: ObservableObject {
         await reload(now: now)
     }
 
-    /// Drop showtimes that have slipped into the past since the cached
-    /// payload was loaded (and re-sort cinemas inside each day by the
-    /// new earliest slot). The server already does this at fetch time,
-    /// so a fresh `reload()` is a no-op here; the call earns its keep
-    /// when the app comes back from background hours after the last
-    /// fetch — the web's same `now - 30min` rule then runs locally,
-    /// without a round-trip.
     func pruneStaleShowings(now: Date = Date()) {
         let pruned = films.prunedPastShowings(now: now)
         if pruned != films { films = pruned }

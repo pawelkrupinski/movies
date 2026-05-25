@@ -2,13 +2,86 @@ package controllers
 
 import models._
 import play.api.Logging
+import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 import play.api.Mode
 import services.movies.{MovieService, StoredMovieRecord, TitleNormalizer}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.format.DateTimeFormatter
 
 case class CinemaShowtimes(cinema: Cinema, showtimes: Seq[Showtime])
+
+// ── JSON API types ──────────────────────────────────────────────────────
+case class ApiShowtime(time: String, format: String, room: Option[String], bookingURL: Option[String])
+case class ApiCinemaShowings(cinema: String, cinemaURL: Option[String], showtimes: Seq[ApiShowtime])
+case class ApiDayShowings(date: String, label: String, cinemas: Seq[ApiCinemaShowings])
+case class ApiRatings(
+  imdb: Option[Double], imdbURL: Option[String],
+  metascore: Option[Int], metacriticURL: Option[String],
+  rottenTomatoes: Option[Int], rottenTomatoesURL: Option[String],
+  filmweb: Option[Double], filmwebURL: Option[String]
+)
+case class ApiFilm(
+  title: String, posterURL: Option[String], fallbackPosterURLs: Seq[String],
+  runtimeMinutes: Option[Int], ratings: ApiRatings,
+  countries: Seq[String], directors: Seq[String], cast: Seq[String],
+  showings: Seq[ApiDayShowings]
+)
+
+object ApiFilm {
+  implicit val apiShowtimeWrites: Writes[ApiShowtime] = Json.writes[ApiShowtime]
+  implicit val apiCinemaShowingsWrites: Writes[ApiCinemaShowings] = Json.writes[ApiCinemaShowings]
+  implicit val apiDayShowingsWrites: Writes[ApiDayShowings] = Json.writes[ApiDayShowings]
+  implicit val apiRatingsWrites: Writes[ApiRatings] = Json.writes[ApiRatings]
+  implicit val apiFilmWrites: Writes[ApiFilm] = Json.writes[ApiFilm]
+
+  private val TimeFmt = DateTimeFormatter.ofPattern("HH:mm")
+
+  def from(fs: FilmSchedule): ApiFilm = {
+    val e = fs.enrichment
+    val cinemaUrlMap = fs.cinemaFilmUrls.map { case (c, url) => c.displayName -> url }.toMap
+    ApiFilm(
+      title            = fs.movie.title,
+      posterURL        = fs.posterUrl,
+      fallbackPosterURLs = e.map(_.fallbackPosterUrls).getOrElse(Seq.empty),
+      runtimeMinutes   = fs.movie.runtimeMinutes,
+      ratings          = ApiRatings(
+        imdb              = e.flatMap(_.imdbRating),
+        imdbURL           = e.flatMap(_.imdbUrl),
+        metascore         = e.flatMap(_.metascore),
+        metacriticURL     = e.map(_.metacriticHref(fs.movie.title)),
+        rottenTomatoes    = e.flatMap(_.rottenTomatoes),
+        rottenTomatoesURL = e.map(_.rottenTomatoesHref(fs.movie.title)),
+        filmweb           = e.flatMap(_.filmwebRating),
+        filmwebURL        = e.map(_.filmwebHref(fs.movie.title))
+      ),
+      countries        = fs.movie.countries,
+      directors        = fs.director,
+      cast             = fs.cast,
+      showings         = fs.showings.map { case (date, cinemas) =>
+        ApiDayShowings(
+          date    = date.toString,
+          label   = DateFormatter.format(date),
+          cinemas = cinemas.map { cs =>
+            ApiCinemaShowings(
+              cinema    = cs.cinema.displayName,
+              cinemaURL = cinemaUrlMap.get(cs.cinema.displayName),
+              showtimes = cs.showtimes.map { st =>
+                ApiShowtime(
+                  time       = st.dateTime.format(TimeFmt),
+                  format     = st.format.mkString(" "),
+                  room       = st.room,
+                  bookingURL = st.bookingUrl
+                )
+              }
+            )
+          }
+        )
+      }
+    )
+  }
+}
 
 case class FilmSchedule(
                          movie: Movie,
@@ -194,6 +267,11 @@ class MovieController( cc: ControllerComponents,
     val allCinemas = Cinema.all.map(_.displayName)
     val pinned = pinnedCinema.filter(allCinemas.contains)
     Ok(views.html.kina(movieControllerService.toCinemaSchedules(), allCinemas, Cinema.pillMap, devMode, user, oauthProviders, pinned))
+  }
+
+  def apiRepertoire(): Action[AnyContent] = Action {
+    val films = movieControllerService.toSchedules().map(ApiFilm.from)
+    Ok(Json.toJson(films))
   }
 
   def debug(): Action[AnyContent] = Action {

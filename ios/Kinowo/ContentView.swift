@@ -95,7 +95,9 @@ struct ContentView: View {
             }
         }
         .task {
-            if store.films.isEmpty { await store.reload() }
+            store.loadCachedData()
+            store.pruneStaleShowings()
+            await store.reload()
         }
         .onAppear {
             // Briefly name the starting tab so the user sees the same

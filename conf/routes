@@ -5,6 +5,9 @@ GET     /kina                       controllers.MovieController.kina()
 GET     /kina/:cinema               controllers.MovieController.kinaPinned(cinema: String)
 GET     /filmy                      controllers.MovieController.browse(kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None)
 
+# ── API (JSON) ────────────────────────────────────────────────────────────────
+GET     /api/repertoire              controllers.MovieController.apiRepertoire()
+
 # ── Debug ─────────────────────────────────────────────────────────────────────
 GET     /debug                      controllers.MovieController.debug()
 # Drop one row from cache+Mongo and re-fetch all upstream sources. Writes
