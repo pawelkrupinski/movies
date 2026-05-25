@@ -15,9 +15,13 @@ final class FilteredForTests: XCTestCase {
         DayShowings(date: date, label: date, cinemas: cinemas)
     }
 
-    private func film(_ title: String, _ days: [DayShowings], countries: [String] = []) -> Film {
+    private func film(
+        _ title: String, _ days: [DayShowings],
+        countries: [String] = [], directors: [String] = [], cast: [String] = []
+    ) -> Film {
         Film(title: title, posterURL: nil, fallbackPosterURLs: [],
-             runtimeMinutes: 100, ratings: .empty, countries: countries, showings: days)
+             runtimeMinutes: 100, ratings: .empty, countries: countries,
+             directors: directors, cast: cast, showings: days)
     }
 
     private let today: String = DateFilter.iso(Date())
@@ -146,9 +150,9 @@ final class FilteredForTests: XCTestCase {
         XCTAssertEqual(filtered[0].showings.map(\.date), [fixedToday])
     }
 
-    // MARK: - Country filter
+    // MARK: - Country filter (excluded semantics)
 
-    func testCountryFilterShowsOnlyMatchingFilms() {
+    func testExcludedCountryHidesFilmsOnlyFromThatCountry() {
         let films = [
             film("Polish Film", [day(today, [cinema("A", [slot("18:00")])])], countries: ["Polska"]),
             film("US Film",     [day(today, [cinema("A", [slot("19:00")])])], countries: ["USA"]),
@@ -156,33 +160,101 @@ final class FilteredForTests: XCTestCase {
         ]
         let filtered = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], countries: ["USA"]
+            hidden: [], disabledCinemas: [], excludedCountries: ["Polska"]
         )
-        XCTAssertEqual(filtered.map(\.title), ["US Film"])
+        XCTAssertEqual(filtered.map(\.title).sorted(), ["Co-prod", "US Film"])
     }
 
-    func testCountryFilterORSemantics() {
+    func testExcludedCountryHidesCoProductionOnlyWhenAllExcluded() {
         let films = [
-            film("Polish Film",  [day(today, [cinema("A", [slot("18:00")])])], countries: ["Polska"]),
-            film("French Film",  [day(today, [cinema("A", [slot("19:00")])])], countries: ["Francja"]),
-            film("German Film",  [day(today, [cinema("A", [slot("20:00")])])], countries: ["Niemcy"]),
+            film("Co-prod", [day(today, [cinema("A", [slot("18:00")])])], countries: ["Polska", "Francja"]),
         ]
-        let filtered = films.filteredFor(
+        let still = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], countries: ["Polska", "Francja"]
+            hidden: [], disabledCinemas: [], excludedCountries: ["Polska"]
         )
-        XCTAssertEqual(filtered.map(\.title).sorted(), ["French Film", "Polish Film"])
+        XCTAssertEqual(still.count, 1, "co-prod stays when only one country is excluded")
+
+        let gone = films.filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: [], excludedCountries: ["Polska", "Francja"]
+        )
+        XCTAssertEqual(gone.count, 0, "co-prod drops when all its countries are excluded")
     }
 
-    func testEmptyCountryFilterShowsAll() {
+    func testEmptyExcludedCountriesShowsAll() {
         let films = [
             film("A", [day(today, [cinema("A", [slot("18:00")])])], countries: ["Polska"]),
             film("B", [day(today, [cinema("A", [slot("19:00")])])], countries: ["USA"]),
         ]
         let filtered = films.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], disabledCinemas: [], countries: []
+            hidden: [], disabledCinemas: [], excludedCountries: []
         )
         XCTAssertEqual(filtered.count, 2)
+    }
+
+    // MARK: - Director filter
+
+    func testExcludedDirectorHidesFilm() {
+        let films = [
+            film("A", [day(today, [cinema("X", [slot("18:00")])])], directors: ["Spielberg"]),
+            film("B", [day(today, [cinema("X", [slot("19:00")])])], directors: ["Nolan"]),
+            film("C", [day(today, [cinema("X", [slot("20:00")])])], directors: ["Spielberg", "Nolan"]),
+        ]
+        let filtered = films.filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: [], excludedDirectors: ["Spielberg"]
+        )
+        XCTAssertEqual(filtered.map(\.title).sorted(), ["B", "C"])
+    }
+
+    func testExcludedDirectorKeepsFilmWithNoDirector() {
+        let films = [
+            film("Known",   [day(today, [cinema("X", [slot("18:00")])])], directors: ["Spielberg"]),
+            film("Unknown", [day(today, [cinema("X", [slot("19:00")])])], directors: []),
+        ]
+        let filtered = films.filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: [], excludedDirectors: ["Spielberg"]
+        )
+        XCTAssertEqual(filtered.map(\.title), ["Unknown"])
+    }
+
+    // MARK: - Cast filter
+
+    func testExcludedCastHidesFilm() {
+        let films = [
+            film("A", [day(today, [cinema("X", [slot("18:00")])])], cast: ["DiCaprio", "Pitt"]),
+            film("B", [day(today, [cinema("X", [slot("19:00")])])], cast: ["Hanks"]),
+        ]
+        let filtered = films.filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: [], excludedCast: ["DiCaprio", "Pitt"]
+        )
+        XCTAssertEqual(filtered.map(\.title), ["B"])
+    }
+
+    func testExcludedCastKeepsFilmWhenOnlyPartialOverlap() {
+        let films = [
+            film("A", [day(today, [cinema("X", [slot("18:00")])])], cast: ["DiCaprio", "Pitt"]),
+        ]
+        let filtered = films.filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: [], excludedCast: ["DiCaprio"]
+        )
+        XCTAssertEqual(filtered.count, 1, "film stays when only part of its cast is excluded")
+    }
+
+    func testExcludedCastKeepsFilmWithNoCast() {
+        let films = [
+            film("Known",   [day(today, [cinema("X", [slot("18:00")])])], cast: ["Hanks"]),
+            film("Unknown", [day(today, [cinema("X", [slot("19:00")])])], cast: []),
+        ]
+        let filtered = films.filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: [], excludedCast: ["Hanks"]
+        )
+        XCTAssertEqual(filtered.map(\.title), ["Unknown"])
     }
 }

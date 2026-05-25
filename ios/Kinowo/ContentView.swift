@@ -8,6 +8,8 @@ struct ContentView: View {
     @State private var dateFilter: DateFilter = .today
     @State private var formatFilter: FormatFilter = .empty
     @State private var excludedCountries: Set<String> = []
+    @State private var excludedDirectors: Set<String> = []
+    @State private var excludedCast: Set<String> = []
     @State private var search: String = ""
     /// Active tab — swipe-left/right on the TabView flips between
     /// `.films` (`/`) and `.cinemas` (`/kina`). Each writes a brief
@@ -71,13 +73,13 @@ struct ContentView: View {
                     FiltersSheet(
                         formatFilter: $formatFilter,
                         excludedCountries: $excludedCountries,
+                        excludedDirectors: $excludedDirectors,
+                        excludedCast: $excludedCast,
                         prefs: prefs,
                         allCinemas: allCinemas,
                         allCountries: allCountries,
-                        // Hide Filtry's Kina checkbox section on /kina —
-                        // that screen owns its own pinned-cinema picker
-                        // via the pill row, so duplicating the choice
-                        // inside Filtry would be confusing.
+                        allDirectors: allDirectors,
+                        allCast: allCast,
                         showCinemaSection: tab == .films
                     )
                 }
@@ -223,11 +225,41 @@ struct ContentView: View {
             }
     }
 
+    private var allDirectors: [(name: String, count: Int)] {
+        var counts: [String: Int] = [:]
+        for film in store.films {
+            for d in film.directors {
+                counts[d, default: 0] += 1
+            }
+        }
+        return counts.map { (name: $0.key, count: $0.value) }
+            .sorted {
+                if $0.count != $1.count { return $0.count > $1.count }
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+    }
+
+    private var allCast: [(name: String, count: Int)] {
+        var counts: [String: Int] = [:]
+        for film in store.films {
+            for a in film.cast {
+                counts[a, default: 0] += 1
+            }
+        }
+        return counts.map { (name: $0.key, count: $0.value) }
+            .sorted {
+                if $0.count != $1.count { return $0.count > $1.count }
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+    }
+
     private var filtersActive: Bool {
         !formatFilter.isEmpty
             || !prefs.disabledCinemas.isEmpty
             || !prefs.hiddenFilms.isEmpty
             || !excludedCountries.isEmpty
+            || !excludedDirectors.isEmpty
+            || !excludedCast.isEmpty
     }
 
     private var filmsForFilmsTab: [Film] {
@@ -237,7 +269,9 @@ struct ContentView: View {
             query: search,
             hidden: prefs.hiddenFilms,
             disabledCinemas: prefs.disabledCinemas,
-            excludedCountries: excludedCountries
+            excludedCountries: excludedCountries,
+            excludedDirectors: excludedDirectors,
+            excludedCast: excludedCast
         )
     }
 
@@ -256,7 +290,9 @@ struct ContentView: View {
             query: search,
             hidden: prefs.hiddenFilms,
             disabledCinemas: disabled,
-            excludedCountries: excludedCountries
+            excludedCountries: excludedCountries,
+            excludedDirectors: excludedDirectors,
+            excludedCast: excludedCast
         )
     }
 

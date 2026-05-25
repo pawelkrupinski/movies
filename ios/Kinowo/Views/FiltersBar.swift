@@ -291,9 +291,13 @@ private struct GlassyPillBackground: ViewModifier {
 struct FiltersSheet: View {
     @Binding var formatFilter: FormatFilter
     @Binding var excludedCountries: Set<String>
+    @Binding var excludedDirectors: Set<String>
+    @Binding var excludedCast: Set<String>
     @ObservedObject var prefs: UserPreferences
     let allCinemas: [String]
     let allCountries: [(name: String, count: Int)]
+    let allDirectors: [(name: String, count: Int)]
+    let allCast: [(name: String, count: Int)]
     var showCinemaSection: Bool = true
     @Environment(\.dismiss) private var dismiss
 
@@ -340,9 +344,10 @@ struct FiltersSheet: View {
                 if !allCountries.isEmpty {
                     Section {
                         NavigationLink {
-                            CountryFilterList(
-                                allCountries: allCountries,
-                                excludedCountries: $excludedCountries
+                            NameFilterList(
+                                title: "Kraj produkcji",
+                                allEntries: allCountries,
+                                excluded: $excludedCountries
                             )
                         } label: {
                             HStack {
@@ -350,6 +355,48 @@ struct FiltersSheet: View {
                                 Spacer()
                                 if !excludedCountries.isEmpty {
                                     Text("\(allCountries.count - excludedCountries.count)/\(allCountries.count)")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !allDirectors.isEmpty {
+                    Section {
+                        NavigationLink {
+                            NameFilterList(
+                                title: "Reżyseria",
+                                allEntries: allDirectors,
+                                excluded: $excludedDirectors
+                            )
+                        } label: {
+                            HStack {
+                                Text("Reżyseria")
+                                Spacer()
+                                if !excludedDirectors.isEmpty {
+                                    Text("\(allDirectors.count - excludedDirectors.count)/\(allDirectors.count)")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !allCast.isEmpty {
+                    Section {
+                        NavigationLink {
+                            NameFilterList(
+                                title: "Obsada",
+                                allEntries: allCast,
+                                excluded: $excludedCast
+                            )
+                        } label: {
+                            HStack {
+                                Text("Obsada")
+                                Spacer()
+                                if !excludedCast.isEmpty {
+                                    Text("\(allCast.count - excludedCast.count)/\(allCast.count)")
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -399,6 +446,8 @@ struct FiltersSheet: View {
                     Button(role: .destructive) {
                         formatFilter = .empty
                         excludedCountries = []
+                        excludedDirectors = []
+                        excludedCast = []
                         prefs.setDisabledCinemas([])
                     } label: {
                         Text("Wyczyść")
@@ -459,29 +508,30 @@ struct HiddenFilmsList: View {
     }
 }
 
-struct CountryFilterList: View {
-    let allCountries: [(name: String, count: Int)]
-    @Binding var excludedCountries: Set<String>
+struct NameFilterList: View {
+    let title: String
+    let allEntries: [(name: String, count: Int)]
+    @Binding var excluded: Set<String>
 
-    private var allNames: Set<String> { Set(allCountries.map(\.name)) }
+    private var allNames: Set<String> { Set(allEntries.map(\.name)) }
 
     var body: some View {
         Form {
             Section {
                 Toggle("Wszystkie", isOn: Binding(
-                    get: { excludedCountries.isEmpty },
+                    get: { excluded.isEmpty },
                     set: { on in
-                        excludedCountries = on ? [] : allNames
+                        excluded = on ? [] : allNames
                     }
                 ))
             }
             Section {
-                ForEach(allCountries, id: \.name) { entry in
+                ForEach(allEntries, id: \.name) { entry in
                     Toggle(isOn: Binding(
-                        get: { !excludedCountries.contains(entry.name) },
+                        get: { !excluded.contains(entry.name) },
                         set: { on in
-                            if on { excludedCountries.remove(entry.name) }
-                            else  { excludedCountries.insert(entry.name) }
+                            if on { excluded.remove(entry.name) }
+                            else  { excluded.insert(entry.name) }
                         }
                     )) {
                         HStack {
@@ -494,7 +544,7 @@ struct CountryFilterList: View {
                 }
             }
         }
-        .navigationTitle("Kraj produkcji")
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

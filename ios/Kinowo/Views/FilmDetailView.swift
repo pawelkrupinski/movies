@@ -259,6 +259,8 @@ struct FilmDetailView: View {
             runtimeMinutes: film.runtimeMinutes,
             ratings: film.ratings,
             countries: film.countries,
+            directors: film.directors,
+            cast: film.cast,
             showings: days
         )
     }

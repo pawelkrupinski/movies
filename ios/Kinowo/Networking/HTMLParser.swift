@@ -74,6 +74,12 @@ enum HTMLParser {
         let countries = (HTMLPrimitives.capture(chunk, #"data-countries="([^"]*)""#) ?? "")
                           .split(separator: "|", omittingEmptySubsequences: true)
                           .map { String($0).htmlDecoded() }
+        let directors = (HTMLPrimitives.capture(chunk, #"data-director="([^"]*)""#) ?? "")
+                          .split(separator: ",", omittingEmptySubsequences: true)
+                          .map { String($0).trimmingCharacters(in: .whitespaces).htmlDecoded() }
+        let cast = (HTMLPrimitives.capture(chunk, #"data-cast="([^"]*)""#) ?? "")
+                          .split(separator: ",", omittingEmptySubsequences: true)
+                          .map { String($0).trimmingCharacters(in: .whitespaces).htmlDecoded() }
         let ratings  = RatingsParser.parseRatings(in: chunk)
         let showings = ShowingsParser.parseShowings(in: chunk)
         return Film(
@@ -83,6 +89,8 @@ enum HTMLParser {
             runtimeMinutes: runtime,
             ratings: ratings,
             countries: countries,
+            directors: directors,
+            cast: cast,
             showings: showings
         )
     }

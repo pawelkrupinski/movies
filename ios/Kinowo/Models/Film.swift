@@ -25,6 +25,8 @@ struct Film: Identifiable, Hashable {
     let runtimeMinutes: Int?
     let ratings: Ratings
     let countries: [String]
+    let directors: [String]
+    let cast: [String]
     let showings: [DayShowings]
 
     struct Ratings: Hashable {

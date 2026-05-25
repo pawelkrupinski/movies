@@ -160,6 +160,8 @@ extension Sequence where Element == Film {
                 runtimeMinutes: film.runtimeMinutes,
                 ratings: film.ratings,
                 countries: film.countries,
+                directors: film.directors,
+                cast: film.cast,
                 showings: days
             )
         }
@@ -183,6 +185,8 @@ extension Sequence where Element == Film {
         hidden: Set<String>,
         disabledCinemas: Set<String>,
         excludedCountries: Set<String> = [],
+        excludedDirectors: Set<String> = [],
+        excludedCast: Set<String> = [],
         now: Date = Date()
     ) -> [Film] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -190,6 +194,8 @@ extension Sequence where Element == Film {
             if hidden.contains(film.title) { return nil }
             if !q.isEmpty && !film.title.lowercased().contains(q) { return nil }
             if !excludedCountries.isEmpty && Set(film.countries).isSubset(of: excludedCountries) { return nil }
+            if !excludedDirectors.isEmpty && !film.directors.isEmpty && Set(film.directors).isSubset(of: excludedDirectors) { return nil }
+            if !excludedCast.isEmpty && !film.cast.isEmpty && Set(film.cast).isSubset(of: excludedCast) { return nil }
             let days: [DayShowings] = film.showings.compactMap { day in
                 if !date.matches(date: day.date, now: now) { return nil }
                 let cinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
@@ -211,6 +217,8 @@ extension Sequence where Element == Film {
                 runtimeMinutes: film.runtimeMinutes,
                 ratings: film.ratings,
                 countries: film.countries,
+                directors: film.directors,
+                cast: film.cast,
                 showings: days
             )
         }
@@ -251,6 +259,8 @@ extension Sequence where Element == Film {
                     runtimeMinutes: film.runtimeMinutes,
                     ratings: film.ratings,
                     countries: film.countries,
+                    directors: film.directors,
+                    cast: film.cast,
                     showings: days
                 ))
             }

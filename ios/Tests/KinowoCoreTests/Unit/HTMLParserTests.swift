@@ -68,6 +68,35 @@ final class HTMLParserTests: XCTestCase {
         }
     }
 
+    func testDirectorsAndCastParsedFromHomeFixture() throws {
+        let html = try Fixtures.load("home")
+        let films = HTMLParser.parse(html: html)
+        let withDirectors = films.filter { !$0.directors.isEmpty }.count
+        let withCast = films.filter { !$0.cast.isEmpty }.count
+        XCTAssertGreaterThanOrEqual(withDirectors, 1, "expected at least one film with directors; got \(withDirectors)")
+        XCTAssertGreaterThanOrEqual(withCast, 1, "expected at least one film with cast; got \(withCast)")
+    }
+
+    func testDirectorAndCastParsedFromMinimalCard() throws {
+        let chunk = """
+        <div class="col" data-title="Test" data-countries="" data-director="Christopher Nolan" data-cast="DiCaprio, Tom Hardy, Elliot Page">
+        </div>
+        """
+        let films = HTMLParser.parse(html: chunk)
+        XCTAssertEqual(films.first?.directors, ["Christopher Nolan"])
+        XCTAssertEqual(films.first?.cast, ["DiCaprio", "Tom Hardy", "Elliot Page"])
+    }
+
+    func testMissingDirectorAndCastDefaultToEmpty() throws {
+        let chunk = """
+        <div class="col" data-title="Test" data-countries="">
+        </div>
+        """
+        let films = HTMLParser.parse(html: chunk)
+        XCTAssertEqual(films.first?.directors, [])
+        XCTAssertEqual(films.first?.cast, [])
+    }
+
     func testRuntimeParseExamples() throws {
         // The home fixture contains "2h 7min", "2h 12min", "1h 49min", "1h 34min".
         // Reconstruct the smallest possible card to exercise the runtime branch
