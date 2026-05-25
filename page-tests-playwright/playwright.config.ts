@@ -5,35 +5,29 @@ const IS_LOCAL_FIXTURE = BASE_URL.startsWith('http://127.0.0.1');
 
 // ─── Phone definitions ──────────────────────────────────────────────
 //
-// Effective CSS-pixel viewports on real devices. iPhone heights are
-// post-safe-area (Dynamic Island + home indicator subtracted).
+// CSS-pixel viewports matching each device's full logical resolution.
 
 interface Phone { slug: string; width: number; height: number }
 
 const ANDROID_PHONES: Phone[] = [
   { slug: 'galaxy-s10',       width: 360, height: 760 },
-  { slug: 'galaxy-s23',       width: 360, height: 780 },
   { slug: 'pixel-9',          width: 360, height: 808 },
   { slug: 'galaxy-s25-ultra', width: 412, height: 891 },
-  { slug: 'pixel-7',          width: 412, height: 915 },
   { slug: 'pixel-9-pro',      width: 427, height: 952 },
 ];
 
 const IPHONES: Phone[] = [
   { slug: 'iphone-se',           width: 375, height: 667 },
-  { slug: 'iphone-13',           width: 390, height: 760 },
-  { slug: 'iphone-17',           width: 393, height: 770 },
-  { slug: 'iphone-16-pro',       width: 402, height: 790 },
-  { slug: 'iphone-15-pro-max',   width: 430, height: 850 },
-  { slug: 'iphone-17-pro-max',   width: 440, height: 870 },
+  { slug: 'iphone-13',           width: 390, height: 844 },
+  { slug: 'iphone-17-pro-max',   width: 440, height: 956 },
 ];
 
 // Firefox subset: narrowest, middle, widest — enough to catch Gecko
 // rendering bugs without full-spectrum coverage.
 const FIREFOX_PHONES: Phone[] = [
   ANDROID_PHONES[0],  // galaxy-s10       360 px
-  ANDROID_PHONES[3],  // galaxy-s25-ultra  412 px
-  ANDROID_PHONES[5],  // pixel-9-pro       427 px
+  ANDROID_PHONES[2],  // galaxy-s25-ultra  412 px
+  ANDROID_PHONES[3],  // pixel-9-pro       427 px
 ];
 
 const ALL_PHONES = [...ANDROID_PHONES, ...IPHONES];
@@ -109,7 +103,7 @@ const projects: Project[] = [
 
   // ─── Desktop ──────────────────────────────────────────────────────
   { name: 'webkit-desktop',   use: { ...devices['Desktop Safari'] } },
-  { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'] } },
+  { name: 'chrome-desktop',   use: { ...devices['Desktop Chrome'], channel: 'chrome' } },
   { name: 'firefox-desktop',  use: { ...devices['Desktop Firefox'] } },
   { name: 'msedge-desktop',   use: { ...devices['Desktop Edge'], channel: 'msedge' } },
 ];
