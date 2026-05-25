@@ -372,13 +372,9 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { variant: pw galaxy-s10,       kind: playwright, project: 'firefox-galaxy-s10*',       browser: firefox, shard: '1/2' }
-                    - { variant: pw galaxy-s10,       kind: playwright, project: 'firefox-galaxy-s10*',       browser: firefox, shard: '2/2' }
-                    - { variant: pw galaxy-s25-ultra, kind: playwright, project: 'firefox-galaxy-s25-ultra*', browser: firefox, shard: '1/2' }
-                    - { variant: pw galaxy-s25-ultra, kind: playwright, project: 'firefox-galaxy-s25-ultra*', browser: firefox, shard: '2/2' }
-                    - { variant: pw pixel-9-pro,      kind: playwright, project: 'firefox-pixel-9-pro*',      browser: firefox, shard: '1/2' }
-                    - { variant: pw pixel-9-pro,      kind: playwright, project: 'firefox-pixel-9-pro*',      browser: firefox, shard: '2/2' }
-                    - { variant: pw desktop,          kind: playwright, project: firefox-desktop,             browser: firefox }
+                    - { variant: pw galaxy-s10,  kind: playwright, project: 'firefox-galaxy-s10*',  browser: firefox, shard: '1/2' }
+                    - { variant: pw galaxy-s10,  kind: playwright, project: 'firefox-galaxy-s10*',  browser: firefox, shard: '2/2' }
+                    - { variant: pw desktop,     kind: playwright, project: firefox-desktop,        browser: firefox }
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4

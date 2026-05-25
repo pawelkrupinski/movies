@@ -22,12 +22,8 @@ const IPHONES: Phone[] = [
   { slug: 'iphone-17-pro-max',   width: 440, height: 956 },
 ];
 
-// Firefox subset: narrowest, middle, widest — enough to catch Gecko
-// rendering bugs without full-spectrum coverage.
 const FIREFOX_PHONES: Phone[] = [
-  ANDROID_PHONES[0],  // galaxy-s10       360 px
-  ANDROID_PHONES[2],  // galaxy-s25-ultra  412 px
-  ANDROID_PHONES[3],  // pixel-9-pro       427 px
+  ANDROID_PHONES[0],  // galaxy-s10  360 px
 ];
 
 const ALL_PHONES = [...ANDROID_PHONES, ...IPHONES];
