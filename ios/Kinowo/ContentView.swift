@@ -144,7 +144,7 @@ struct ContentView: View {
             // the floating Filmy / Kina label is the only "where am I"
             // affordance.
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .ignoresSafeArea(edges: .bottom)
+            .ignoresSafeArea(edges: [.bottom, .horizontal])
             // Resolves NavigationLink(value: Film) from both grids to
             // the per-film detail screen, the iOS counterpart of
             // /film?title=… on the web.
