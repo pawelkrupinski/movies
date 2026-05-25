@@ -66,7 +66,7 @@ struct ContentView: View {
                         onTapFilters: { showFilters = true }
                     )
                 }
-                .safeAreaInset(edge: .bottom, spacing: 0) {
+                .overlay(alignment: .bottom) {
                     SearchBar(search: $search, focused: $searchFocused)
                 }
                 .sheet(isPresented: $showFilters) {

@@ -165,12 +165,6 @@ struct SearchBar: View {
         .padding(.vertical, 14)
         .modifier(GlassyPillBackground())
         .padding(.horizontal, 24)
-        // Pull the pill 14pt past the safeAreaInset edge into the
-        // home-indicator zone, so it sits thumb-anchored at the
-        // very bottom of the screen. `.offset` only paints lower —
-        // the safeAreaInset still reserves the original layout slot,
-        // so the grid stays out from under the pill above the
-        // home indicator.
         .offset(y: 14)
     }
 }

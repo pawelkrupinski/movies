@@ -39,7 +39,7 @@ struct FilmGridView: View {
                     }
                 }
                 .padding(.horizontal, 12)
-                .padding(.bottom, 24)
+                .padding(.bottom, 70)
             }
             // Drag-to-dismiss the search keyboard: scrolling the grid at
             // all hides the keyboard immediately. Tap-to-dismiss is
@@ -79,7 +79,7 @@ struct CinemaSectionedGridView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
-                .padding(.bottom, 24)
+                .padding(.bottom, 70)
             }
             .scrollDismissesKeyboard(.immediately)
         }
