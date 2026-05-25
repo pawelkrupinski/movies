@@ -59,7 +59,7 @@ struct ContentView: View {
                 // so the HStack gets the full screen width to spread
                 // across.
                 .toolbar(.hidden, for: .navigationBar)
-                .safeAreaInset(edge: .top, spacing: 0) {
+                .overlay(alignment: .top) {
                     TopBar(
                         dateFilter: $dateFilter,
                         filtersActive: filtersActive,

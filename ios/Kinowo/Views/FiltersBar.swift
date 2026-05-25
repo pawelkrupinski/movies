@@ -60,18 +60,17 @@ struct TopBar: View {
         // grid scrolling beneath it.
         .padding(.top, 2 * s)
         .padding(.bottom, 8 * s)
-        // Plain translucent material strip — no glassEffect refraction
-        // edge, no content-wide opacity. Just the background shape gets
-        // dialed down so the grid scrolls visibly behind the bar.
-        // `.ignoresSafeArea(edges: .top)` pushes the rectangle up past
-        // the safeAreaInset slot, all the way to the device's rounded
-        // top corners, so the status bar reads as part of the same
-        // translucent strip instead of a separate opaque band above it.
         .background {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .opacity(0.55)
-                .ignoresSafeArea(edges: .top)
+            if #available(iOS 26.0, macOS 26.0, *) {
+                Rectangle()
+                    .fill(.clear)
+                    .glassEffect(in: Rectangle())
+                    .ignoresSafeArea(edges: .top)
+            } else {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .ignoresSafeArea(edges: .top)
+            }
         }
     }
 
@@ -119,7 +118,7 @@ struct DatePillsRow: View {
                         .background(
                             dateFilter == f
                                 ? Color.accentColor.opacity(0.85)
-                                : Color(.systemGray5),
+                                : Color.clear,
                             in: Capsule()
                         )
                         .foregroundColor(dateFilter == f ? .white : .primary)
