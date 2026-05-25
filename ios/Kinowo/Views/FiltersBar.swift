@@ -439,9 +439,6 @@ struct FiltersSheet: View {
                     }
                 } else {
                     Section("Zaloguj się") {
-                        Button { Task { await authService.signInWithApple() } } label: {
-                            Label("Zaloguj przez Apple", systemImage: "apple.logo")
-                        }
                         Button { Task { await authService.signInWithGoogle() } } label: {
                             Label("Zaloguj przez Google", systemImage: "g.circle.fill")
                         }
