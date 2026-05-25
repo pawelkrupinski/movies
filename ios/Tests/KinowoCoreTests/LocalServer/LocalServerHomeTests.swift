@@ -124,8 +124,9 @@ final class LocalServerHomeTests: LocalServerTestCase {
         let films = try parseHome()
         let sections = films.groupedByCinema()
         let names = sections.map(\.cinema)
-        XCTAssertEqual(names, names.sorted(),
-                       "sections not alphabetical: \(names)")
+        let expected = names.sorted { CinemaSection.pillName(for: $0) < CinemaSection.pillName(for: $1) }
+        XCTAssertEqual(names, expected,
+                       "sections not alphabetical by pill name: \(names)")
     }
 
     func testUnionOfCinemasInOneSectionIsTheSectionCinema() throws {
