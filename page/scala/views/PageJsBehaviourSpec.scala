@@ -114,6 +114,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   "the /kina pill row" should "filter to only the pinned cinema's section on click" in {
     onPath("/kina") { page =>
+      setDateAnytime(page)
       val totalSections = page.evalInt("document.querySelectorAll('.cinema-section').length")
       totalSections should be > 1
 
@@ -137,6 +138,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "restore every cinema section when the active pill is clicked again" in {
     onPath("/kina") { page =>
+      setDateAnytime(page)
       val totalVisibleAtBoot = page.evalInt(
         "[...document.querySelectorAll('.cinema-section')].filter(s => s.style.display !== 'none').length"
       )
@@ -194,6 +196,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     // Kinepolis has 84 Prada showtimes alone — reliably present.
     val target = "Cinema City Kinepolis"
     onPath("/kina/" + java.net.URLEncoder.encode(target, "UTF-8")) { page =>
+      setDateAnytime(page)
       page.evalString("_kinaPinned") shouldBe target
       page.evalInt("document.querySelectorAll('#cinema-pills .cinema-pill.active').length") shouldBe 1
       page.evalString(
@@ -1164,6 +1167,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  internal `const` doesn't bleed into the per-page evaluation scope
    *  (every `Runtime.evaluate` shares one execution context — two calls
    *  with the same top-level `const` would `SyntaxError`). */
+  private def setDateAnytime(page: CdpPage): Unit =
+    page.eval("document.getElementById('date-filter').value = 'anytime'; applyFilters()")
+
   private def clickPill(page: CdpPage, cinema: String): Unit = {
     val js =
       s"(() => { const p = [...document.querySelectorAll('#cinema-pills .cinema-pill')]" +
