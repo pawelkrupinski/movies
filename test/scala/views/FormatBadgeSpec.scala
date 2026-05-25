@@ -17,8 +17,8 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
       movie          = Movie("Test movie", Some(120)),
       posterUrl      = None,
       synopsis       = None,
-      cast           = None,
-      director       = None,
+      cast           = Seq.empty,
+      director       = Seq.empty,
       cinemaFilmUrls = Nil,
       showings       = Seq(LocalDate.of(2026, 5, 13) -> Seq(CinemaShowtimes(Helios, showtimes)))
     )

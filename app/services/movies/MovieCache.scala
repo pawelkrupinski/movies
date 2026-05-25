@@ -374,7 +374,7 @@ class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus(
           // the truncated tail first, then Title-Case the result.
           // Applied here rather than per-cinema so any future source
           // that ships ALL CAPS or truncates inherits the fix.
-          cast           = cm.cast.map(s => TextNormalization.titleCaseIfAllCaps(TextNormalization.dropTrailingPartialNameIfLong(s))),
+          cast           = cm.cast.map(TextNormalization.titleCaseIfAllCaps),
           director       = cm.director.map(TextNormalization.titleCaseIfAllCaps),
           // Some cinema feeds surface runtime as a raw integer that lands as
           // 0 when the upstream field is empty (CC's `length`, Multikino's

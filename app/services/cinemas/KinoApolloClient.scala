@@ -102,8 +102,8 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
         m.copy(
           movie      = m.movie.copy(runtimeMinutes = meta.runtime, countries = meta.countries),
           synopsis   = meta.synopsis.orElse(m.synopsis),
-          director   = meta.director.orElse(m.director),
-          cast       = meta.cast.orElse(m.cast),
+          director   = if (meta.director.nonEmpty) meta.director else m.director,
+          cast       = if (meta.cast.nonEmpty) meta.cast else m.cast,
           trailerUrl = meta.trailerUrl.orElse(m.trailerUrl)
         )
       }
@@ -113,13 +113,13 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
   case class DetailMeta(
     runtime:    Option[Int],
     synopsis:   Option[String],
-    director:   Option[String],
-    cast:       Option[String],
+    director:   Seq[String],
+    cast:       Seq[String],
     countries:  Seq[String],
     trailerUrl: Option[String]
   )
 
-  private val EmptyDetailMeta = DetailMeta(None, None, None, None, Seq.empty, None)
+  private val EmptyDetailMeta = DetailMeta(None, None, Seq.empty, Seq.empty, Seq.empty, None)
 
   private def fetchDetails(urls: Seq[String]): Map[String, DetailMeta] =
     ParallelDetailFetch("kino-apollo-details", urls, 1.minute)(fetchDetail)
@@ -142,8 +142,8 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
     DetailMeta(
       runtime    = parseRuntime(html),
       synopsis   = parseSynopsis(html),
-      director   = DirectorPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty),
-      cast       = CastPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim.stripSuffix(",").trim).filter(_.nonEmpty),
+      director   = DirectorPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      cast       = CastPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim.stripSuffix(",").trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       countries  = parseCountries(html),
       trailerUrl = parseTrailer(html)
     )
@@ -244,8 +244,8 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
           posterUrl = sorted.flatMap(_.posterUrl).headOption,
           filmUrl   = pickFilmUrl(sorted.flatMap(_.detailUrl)),
           synopsis  = None,
-          cast      = None,
-          director  = None,
+          cast      = Seq.empty,
+          director  = Seq.empty,
           showtimes = sorted.map(r => Showtime(r.dateTime, Some(r.bookingUrl)))
         )
       }

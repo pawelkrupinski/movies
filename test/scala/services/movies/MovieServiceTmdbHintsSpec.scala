@@ -71,7 +71,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // Helios slot shape — minimal SourceData with director populated.
   private val heliosSlot = SourceData(
     title    = Some(Title),
-    director = Some(Director)
+    director = Seq(Director)
   )
 
   // ── Fix 1 — bus path: new director hint must bypass the negative cache ────

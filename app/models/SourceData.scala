@@ -20,8 +20,8 @@ case class SourceData(
   title:          Option[String]  = None,
   originalTitle:  Option[String]  = None,
   synopsis:       Option[String]  = None,
-  cast:           Option[String]  = None,
-  director:       Option[String]  = None,
+  cast:           Seq[String]     = Seq.empty,
+  director:       Seq[String]     = Seq.empty,
   runtimeMinutes: Option[Int]     = None,
   releaseYear:    Option[Int]     = None,
   // Production countries — one entry per country, kept verbatim per source.

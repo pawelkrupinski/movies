@@ -263,7 +263,7 @@ countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/wystawy/rafael-plakat.jpg?rev=e127f4cbbb104fde8a20d94cf4ba7dc0
 synopsis.length:   605
 cast:              —
-director:           Massimo Ferrari
+director:          Massimo Ferrari
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -967,7 +967,7 @@ countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drama/drama-plakat-final-cut.jpg?rev=99e50bcc8ce449fab18d52c1caef4c08
 synopsis.length:   667
 cast:              Robert Pattinson, Zendaya Coleman, Alana Haim, Hailey Gates
-director:          Kristoffer Borgli 
+director:          Kristoffer Borgli
 tmdbId:            1325734
 imdbId:            tt33071426
 originalTitle:     The Drama
@@ -2024,7 +2024,7 @@ releaseYear:       2026
 countries:         Indie
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8203S2R.jpg
 synopsis.length:   95
-cast:              Prakash Raj, Kaali Venkat, TRISHA KRISHNAN, Yogi Babu, Suriya, RJ Balaji, Indrans, Mansoor Ali Khan, Swasika Vijay
+cast:              Prakash Raj, Kaali Venkat, Trisha Krishnan, Yogi Babu, Suriya, RJ Balaji, Indrans, Mansoor Ali Khan, Swasika Vijay
 director:          RJ Balaji
 tmdbId:            1367220
 imdbId:            tt33988385
@@ -5571,7 +5571,7 @@ countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/tadc/tadc_plakat1.jpg?rev=6804403f06ff476592b3fb32300bcdf8
 synopsis.length:   586
 cast:              Lizzie Freeman, Michael Kovach, Marissa Lenti, Ashley Nichols
-director:          Gooseworx  
+director:          Gooseworx
 tmdbId:            1667198
 imdbId:            tt38692727
 originalTitle:     The Amazing Digital Circus: The Last Act
@@ -5727,8 +5727,7 @@ releaseYear:       1986
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/top-gun-rocznica40.jpg?rev=9d8790a579a34b90a653b01fa16444c9
 synopsis.length:   528
-cast:              Tom Cruise, Tom Skerritt, Kelly McGillis, Val Kilmer, 
-Anthony Edwards, Tim Robbins
+cast:              Tom Cruise, Tom Skerritt, Kelly McGillis, Val Kilmer, Anthony Edwards, Tim Robbins
 director:          Tony Scott
 tmdbId:            744
 imdbId:            tt0092099

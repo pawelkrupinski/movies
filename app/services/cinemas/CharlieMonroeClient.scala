@@ -90,8 +90,8 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
           posterUrl = details.posterUrl.orElse(sorted.flatMap(_.posterUrl).headOption),
           filmUrl   = details.filmUrl,
           synopsis  = details.synopsis,
-          cast      = None,
-          director  = None,
+          cast      = Seq.empty,
+          director  = Seq.empty,
           showtimes = sorted.map { event =>
             val dateKey = "%02d.%02d.%d".format(event.dateTime.getDayOfMonth, event.dateTime.getMonthValue, event.dateTime.getYear)
             val timeKey = "%02d:%02d".format(event.dateTime.getHour, event.dateTime.getMinute)

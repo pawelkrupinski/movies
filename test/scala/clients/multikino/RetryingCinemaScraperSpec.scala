@@ -17,8 +17,8 @@ class RetryingCinemaScraperSpec extends AnyFlatSpec with Matchers {
       posterUrl = None,
       filmUrl   = None,
       synopsis  = None,
-      cast      = None,
-      director  = None,
+      cast      = Seq.empty,
+      director  = Seq.empty,
       showtimes = Seq(Showtime(LocalDateTime.now(), Some("https://book")))
     )
   )

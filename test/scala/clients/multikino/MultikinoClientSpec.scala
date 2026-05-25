@@ -426,80 +426,80 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
   // ── Directors ─────────────────────────────────────────────────────────────
 
   it should "return correct director for movies that have one" in {
-    byTitle("90. urodziny Pavarottiego").director                                          shouldBe Some("Luigi Antonini, Matteo Parmeggiani")
-    byTitle("Art Beats: Lotto i Berenson - splecione losy. Śladami renesansowego mistrza").director shouldBe Some("Simona Risi")
-    byTitle("Art Beats: Muzeum Prado - kolekcja cudów").director                           shouldBe Some("Valeria Parisi")
-    byTitle("Art Beats: Nenufary Moneta - cuda z wody i światła").director                 shouldBe Some("Giovanni Troilo")
-    byTitle("Art Beats: Rafael. Młody geniusz").director                                   shouldBe Some(" Massimo Ferrari")
-    byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour").director                     shouldBe Some("James Cameron")
-    byTitle("Bluey w kinie: Kolekcja Zabawy z przyjaciółmi").director                      shouldBe Some("Joe Brumm")
-    byTitle("Caravaggio. Arcydzieła niepokornego geniusza").director                       shouldBe Some("David Bickerstaff, Phil Grabsky")
-    byTitle("Cirque du Soleil: Kooza").director                                            shouldBe Some("Mario Janelle, David Shiner")
-    byTitle("Cirque du Soleil: Kurios - Gabinet osobliwości").director                     shouldBe Some("Michel Laprise")
-    byTitle("Diabeł ubiera się u Prady 2").director                                        shouldBe Some("David Frankel")
-    byTitle("Drama").director                                                              shouldBe Some("Kristoffer Borgli ")
-    byTitle("Erupcja").director                                                            shouldBe Some("Pete Ohs")
-    byTitle("Fantastyczne zwierzęta i jak je znaleźć").director                            shouldBe Some("David Yates")
-    byTitle("Fantastyczne zwierzęta: Tajemnice Dumbledorea").director                      shouldBe Some("David Yates")
-    byTitle("Harry Potter i Czara ognia").director                                         shouldBe Some("Mike Newell")
-    byTitle("Harry Potter i Insygnia Śmierci cz. 1").director                              shouldBe Some("David Yates")
-    byTitle("Harry Potter i Insygnia Śmierci cz. 2").director                              shouldBe Some("David Yates")
-    byTitle("Harry Potter i Kamień filozoficzny").director                                 shouldBe Some("Chris Columbus")
-    byTitle("Harry Potter i Komnata Tajemnic").director                                    shouldBe Some("Chris Columbus")
-    byTitle("Harry Potter i Książę Półkrwi").director                                      shouldBe Some("David Yates")
-    byTitle("Harry Potter i Więzień Azkabanu").director                                    shouldBe Some("David Yates")
-    byTitle("Harry Potter i Zakon Feniksa").director                                       shouldBe Some("David Yates")
-    byTitle("Hopnięci").director                                                           shouldBe Some("Daniel Chong")
-    byTitle("Iron Maiden: Burning Ambition").director                                      shouldBe Some("Malcolm Venville")
-    byTitle("John Williams - A Tribute").director                                          shouldBe Some("Antony Hermus")
-    byTitle("Klątwa doliny węży -  z autorską narracją Łony").director                     shouldBe Some("Marek Piestrak")
-    byTitle("O dziewczynie skaczącej przez czas").director         shouldBe Some("Mamoru Hosoda")
-    byTitle("Kosmiczny mecz").director                                                     shouldBe Some("Joe Pytka")
-    byTitle("Kurozając i Świątynia Świstaka").director                                     shouldBe Some("Benjamin Mousquet")
-    byTitle("La Traviata Verdiego z Arena di Verona").director                             shouldBe Some("Michele Olcese, Francesco Ivan Ciampa")
-    byTitle("Mandalorian i Grogu").director                                                shouldBe Some("Jon Favreau")
-    byTitle("Merrily We Roll Along").director                                              shouldBe Some("Maria Friedman")
-    byTitle("Michael").director                                                            shouldBe Some("Antoine Fuqua")
-    byTitle("Milczenie owiec").director                                                    shouldBe Some("Jonathan Demme")
-    byTitle("Milcząca przyjaciółka").director                                              shouldBe Some("Ildikó Enyedi")
-    byTitle("Mortal Kombat 2").director                                                    shouldBe Some("Simon McQuoid")
-    byTitle("Moulin Rouge! – wersja oryginalna").director                                  shouldBe Some("Baz Luhrmann")
-    byTitle("Mumia: Film Lee Cronina").director                                            shouldBe Some("Lee Cronin")
-    byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").director                      shouldBe Some("Elżbieta Wąsik, Paweł Wendorff\t")
-    byTitle("Odlot").director                                                              shouldBe Some("Pete Docter, Bob Peterson")
-    byTitle("Odrodzony jako galareta. Film: Łzy Morza Lazurowego").director                shouldBe Some(" Yasuhito Kikuchi ")
-    byTitle("Piep*zyć Mickiewicza 3").director                                             shouldBe Some("Sara Bustamante-Drozdek")
-    byTitle("Podziemny krąg").director                                                     shouldBe Some("David Fincher")
-    byTitle("Powrót do przyszłości").director                                              shouldBe Some("Robert Zemeckis")
-    byTitle("Powrót do przyszłości II").director                                           shouldBe Some("Robert Zemeckis")
-    byTitle("Powrót do przyszłości III").director                                          shouldBe Some("Robert Zemeckis")
-    byTitle("Projekt Hail Mary").director                                                  shouldBe Some("Phil Lord, Christopher Miller")
-    byTitle("Pucio").director                                                              shouldBe Some("Marta Stróżycka")
-    byTitle("Rambo: Pierwsza krew").director                                               shouldBe Some("Ted Kotcheff")
-    byTitle("Romeo i Julia – wersja oryginalna").director                                  shouldBe Some("Baz Luhrmann")
-    byTitle("Sprawiedliwość owiec").director                                               shouldBe Some("Kyle Balda")
-    byTitle("Super Mario Galaxy Film").director                                            shouldBe Some("Aaron Horvath, Michael Jelenic")
-    byTitle("The Amazing Digital Circus: Ostatni Akt").director                            shouldBe Some("Gooseworx  ")
-    byTitle("Top Gun").director                                                            shouldBe Some("Tony Scott")
-    byTitle("Top Gun: Maverick").director                                                  shouldBe Some("Joseph Kosinski")
-    byTitle("Werdykt").director                                                            shouldBe Some("David Merriman, Jim Sheridan")
-    byTitle("Wolność po włosku").director                                                  shouldBe Some("Mario Martone")
-    byTitle("Za duży na bajki 3").director                                                 shouldBe Some("Kristoffer Rus")
-    byTitle("Zaplątani").director                                                          shouldBe Some("Nathan Greno, Byron Howard")
-    byTitle("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana").director            shouldBe Some("Terry Jones")
-    byTitle("Drugie życie").director                                                       shouldBe None
-    byTitle("Drzewo magii").director                                                       shouldBe None
-    byTitle("Fantastyczne zwierzęta: zbrodnie grindelwalda").director                      shouldBe None
-    byTitle("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC").director  shouldBe None
-    byTitle("Maraton: Powrót do przyszłości").director                                     shouldBe None
-    byTitle("NT Live: Audiencja").director                                                 shouldBe None
-    byTitle("NT Live: Niebezpieczne związki").director                                     shouldBe None
-    byTitle("NT Live: Playboy zachodniego świata").director                                shouldBe None
-    byTitle("NT Live: Wszyscy moi synowie").director                                       shouldBe None
-    byTitle("Obsesja").director                                                            shouldBe None
-    byTitle("Straszny film").director                                                      shouldBe None
-    byTitle("Zaproszenie").director                                                        shouldBe None
-    byTitle("Zawieście czerwone latarnie").director                                        shouldBe None
+    byTitle("90. urodziny Pavarottiego").director                                          shouldBe Seq("Luigi Antonini", "Matteo Parmeggiani")
+    byTitle("Art Beats: Lotto i Berenson - splecione losy. Śladami renesansowego mistrza").director shouldBe Seq("Simona Risi")
+    byTitle("Art Beats: Muzeum Prado - kolekcja cudów").director                           shouldBe Seq("Valeria Parisi")
+    byTitle("Art Beats: Nenufary Moneta - cuda z wody i światła").director                 shouldBe Seq("Giovanni Troilo")
+    byTitle("Art Beats: Rafael. Młody geniusz").director                                   shouldBe Seq("Massimo Ferrari")
+    byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour").director                     shouldBe Seq("James Cameron")
+    byTitle("Bluey w kinie: Kolekcja Zabawy z przyjaciółmi").director                      shouldBe Seq("Joe Brumm")
+    byTitle("Caravaggio. Arcydzieła niepokornego geniusza").director                       shouldBe Seq("David Bickerstaff", "Phil Grabsky")
+    byTitle("Cirque du Soleil: Kooza").director                                            shouldBe Seq("Mario Janelle", "David Shiner")
+    byTitle("Cirque du Soleil: Kurios - Gabinet osobliwości").director                     shouldBe Seq("Michel Laprise")
+    byTitle("Diabeł ubiera się u Prady 2").director                                        shouldBe Seq("David Frankel")
+    byTitle("Drama").director                                                              shouldBe Seq("Kristoffer Borgli")
+    byTitle("Erupcja").director                                                            shouldBe Seq("Pete Ohs")
+    byTitle("Fantastyczne zwierzęta i jak je znaleźć").director                            shouldBe Seq("David Yates")
+    byTitle("Fantastyczne zwierzęta: Tajemnice Dumbledorea").director                      shouldBe Seq("David Yates")
+    byTitle("Harry Potter i Czara ognia").director                                         shouldBe Seq("Mike Newell")
+    byTitle("Harry Potter i Insygnia Śmierci cz. 1").director                              shouldBe Seq("David Yates")
+    byTitle("Harry Potter i Insygnia Śmierci cz. 2").director                              shouldBe Seq("David Yates")
+    byTitle("Harry Potter i Kamień filozoficzny").director                                 shouldBe Seq("Chris Columbus")
+    byTitle("Harry Potter i Komnata Tajemnic").director                                    shouldBe Seq("Chris Columbus")
+    byTitle("Harry Potter i Książę Półkrwi").director                                      shouldBe Seq("David Yates")
+    byTitle("Harry Potter i Więzień Azkabanu").director                                    shouldBe Seq("David Yates")
+    byTitle("Harry Potter i Zakon Feniksa").director                                       shouldBe Seq("David Yates")
+    byTitle("Hopnięci").director                                                           shouldBe Seq("Daniel Chong")
+    byTitle("Iron Maiden: Burning Ambition").director                                      shouldBe Seq("Malcolm Venville")
+    byTitle("John Williams - A Tribute").director                                          shouldBe Seq("Antony Hermus")
+    byTitle("Klątwa doliny węży -  z autorską narracją Łony").director                     shouldBe Seq("Marek Piestrak")
+    byTitle("O dziewczynie skaczącej przez czas").director         shouldBe Seq("Mamoru Hosoda")
+    byTitle("Kosmiczny mecz").director                                                     shouldBe Seq("Joe Pytka")
+    byTitle("Kurozając i Świątynia Świstaka").director                                     shouldBe Seq("Benjamin Mousquet")
+    byTitle("La Traviata Verdiego z Arena di Verona").director                             shouldBe Seq("Michele Olcese", "Francesco Ivan Ciampa")
+    byTitle("Mandalorian i Grogu").director                                                shouldBe Seq("Jon Favreau")
+    byTitle("Merrily We Roll Along").director                                              shouldBe Seq("Maria Friedman")
+    byTitle("Michael").director                                                            shouldBe Seq("Antoine Fuqua")
+    byTitle("Milczenie owiec").director                                                    shouldBe Seq("Jonathan Demme")
+    byTitle("Milcząca przyjaciółka").director                                              shouldBe Seq("Ildikó Enyedi")
+    byTitle("Mortal Kombat 2").director                                                    shouldBe Seq("Simon McQuoid")
+    byTitle("Moulin Rouge! – wersja oryginalna").director                                  shouldBe Seq("Baz Luhrmann")
+    byTitle("Mumia: Film Lee Cronina").director                                            shouldBe Seq("Lee Cronin")
+    byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").director                      shouldBe Seq("Elżbieta Wąsik", "Paweł Wendorff")
+    byTitle("Odlot").director                                                              shouldBe Seq("Pete Docter", "Bob Peterson")
+    byTitle("Odrodzony jako galareta. Film: Łzy Morza Lazurowego").director                shouldBe Seq("Yasuhito Kikuchi")
+    byTitle("Piep*zyć Mickiewicza 3").director                                             shouldBe Seq("Sara Bustamante-Drozdek")
+    byTitle("Podziemny krąg").director                                                     shouldBe Seq("David Fincher")
+    byTitle("Powrót do przyszłości").director                                              shouldBe Seq("Robert Zemeckis")
+    byTitle("Powrót do przyszłości II").director                                           shouldBe Seq("Robert Zemeckis")
+    byTitle("Powrót do przyszłości III").director                                          shouldBe Seq("Robert Zemeckis")
+    byTitle("Projekt Hail Mary").director                                                  shouldBe Seq("Phil Lord", "Christopher Miller")
+    byTitle("Pucio").director                                                              shouldBe Seq("Marta Stróżycka")
+    byTitle("Rambo: Pierwsza krew").director                                               shouldBe Seq("Ted Kotcheff")
+    byTitle("Romeo i Julia – wersja oryginalna").director                                  shouldBe Seq("Baz Luhrmann")
+    byTitle("Sprawiedliwość owiec").director                                               shouldBe Seq("Kyle Balda")
+    byTitle("Super Mario Galaxy Film").director                                            shouldBe Seq("Aaron Horvath", "Michael Jelenic")
+    byTitle("The Amazing Digital Circus: Ostatni Akt").director                            shouldBe Seq("Gooseworx")
+    byTitle("Top Gun").director                                                            shouldBe Seq("Tony Scott")
+    byTitle("Top Gun: Maverick").director                                                  shouldBe Seq("Joseph Kosinski")
+    byTitle("Werdykt").director                                                            shouldBe Seq("David Merriman", "Jim Sheridan")
+    byTitle("Wolność po włosku").director                                                  shouldBe Seq("Mario Martone")
+    byTitle("Za duży na bajki 3").director                                                 shouldBe Seq("Kristoffer Rus")
+    byTitle("Zaplątani").director                                                          shouldBe Seq("Nathan Greno", "Byron Howard")
+    byTitle("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana").director            shouldBe Seq("Terry Jones")
+    byTitle("Drugie życie").director                                                       shouldBe empty
+    byTitle("Drzewo magii").director                                                       shouldBe empty
+    byTitle("Fantastyczne zwierzęta: zbrodnie grindelwalda").director                      shouldBe empty
+    byTitle("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC").director  shouldBe empty
+    byTitle("Maraton: Powrót do przyszłości").director                                     shouldBe empty
+    byTitle("NT Live: Audiencja").director                                                 shouldBe empty
+    byTitle("NT Live: Niebezpieczne związki").director                                     shouldBe empty
+    byTitle("NT Live: Playboy zachodniego świata").director                                shouldBe empty
+    byTitle("NT Live: Wszyscy moi synowie").director                                       shouldBe empty
+    byTitle("Obsesja").director                                                            shouldBe empty
+    byTitle("Straszny film").director                                                      shouldBe empty
+    byTitle("Zaproszenie").director                                                        shouldBe empty
+    byTitle("Zawieście czerwone latarnie").director                                        shouldBe empty
   }
 
   // ── Showtime counts ───────────────────────────────────────────────────────

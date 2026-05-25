@@ -319,8 +319,8 @@ class MovieService(
             title          = d.title.orElse(Some(hit.title).filter(_.nonEmpty)).orElse(existingTmdbSlot.title),
             originalTitle  = d.originalTitle.orElse(hit.originalTitle).orElse(existingTmdbSlot.originalTitle),
             synopsis       = d.synopsis.orElse(existingTmdbSlot.synopsis),
-            cast           = d.cast.orElse(existingTmdbSlot.cast),
-            director       = d.director.orElse(existingTmdbSlot.director),
+            cast           = if (d.cast.nonEmpty) d.cast else existingTmdbSlot.cast,
+            director       = if (d.director.nonEmpty) d.director else existingTmdbSlot.director,
             runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
             releaseYear    = d.releaseYear.orElse(hit.releaseYear).orElse(existingTmdbSlot.releaseYear),
             // Canonicalise TMDB's English country names ("United States of
@@ -421,7 +421,7 @@ class MovieService(
     logger.info(s"TMDB retry: cleared negatives + re-scheduling ${targets.size} row(s) with missing tmdbId.")
     targets.foreach { case (k, e) =>
       val origHint = e.cinemaOriginalTitle
-      val dirHint  = e.director
+      val dirHint  = if (e.director.nonEmpty) Some(e.director.mkString(", ")) else None
       if (pending.add(k)) {
         Future(try runTmdbStage(k, origHint, dirHint) finally pending.remove(k))(using ec)
         ()

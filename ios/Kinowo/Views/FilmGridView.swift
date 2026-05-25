@@ -53,35 +53,46 @@ struct FilmGridView: View {
 /// (cinema → movie → screening) — the section header announces the
 /// cinema, so the inner cards run with `showCinemaHeaders=false` to
 /// drop the now-redundant per-card cinema label.
-struct CinemaSectionedGridView: View {
+struct CinemaSectionedGridView<Header: View>: View {
     let sections: [CinemaSection]
+    let header: () -> Header
+
+    init(sections: [CinemaSection], @ViewBuilder header: @escaping () -> Header = { EmptyView() }) {
+        self.sections = sections
+        self.header = header
+    }
 
     var body: some View {
-        if sections.isEmpty {
-            EmptyRepertoireView()
-        } else {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 20) {
-                    ForEach(sections) { section in
-                        VStack(alignment: .leading, spacing: 12) {
-                            sectionHeader(CinemaSection.pillName(for: section.cinema))
-                            LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
-                                ForEach(section.films) { film in
-                                    NavigationLink(value: film) {
-                                        FilmCardView(film: film, showCinemaHeaders: false)
+        ScrollView {
+            VStack(spacing: 0) {
+                header()
+                if sections.isEmpty {
+                    EmptyRepertoireView()
+                        .frame(minHeight: 300)
+                } else {
+                    LazyVStack(alignment: .leading, spacing: 20) {
+                        ForEach(sections) { section in
+                            VStack(alignment: .leading, spacing: 12) {
+                                sectionHeader(CinemaSection.pillName(for: section.cinema))
+                                LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
+                                    ForEach(section.films) { film in
+                                        NavigationLink(value: film) {
+                                            FilmCardView(film: film, showCinemaHeaders: false)
+                                        }
+                                        .buttonStyle(.plain)
                                     }
-                                    .buttonStyle(.plain)
                                 }
                             }
                         }
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 70)
             }
-            .scrollDismissesKeyboard(.immediately)
-            .modifier(ScrollClipDisabledIfAvailable())
+            .padding(.horizontal, 12)
+            .padding(.top, 64)
+            .padding(.bottom, 70)
         }
+        .scrollDismissesKeyboard(.immediately)
+        .modifier(ScrollClipDisabledIfAvailable())
     }
 
     @ViewBuilder

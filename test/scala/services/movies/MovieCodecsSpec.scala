@@ -77,8 +77,8 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val cinemaSlot = SourceData(
       title          = Some("Test PL"),
       synopsis       = Some("cinema synopsis"),
-      cast           = Some("cast list"),
-      director       = Some("dir"),
+      cast           = Seq("cast list"),
+      director       = Seq("dir"),
       runtimeMinutes = Some(123),
       releaseYear    = Some(2025),
       countries      = Seq("Polska", "Francja"),

@@ -151,13 +151,13 @@ case class MovieRecord(
   def synopsis: Option[String] =
     data.values.flatMap(_.synopsis).toSeq.sortBy(-_.length).headOption
 
-  /** Longest non-empty cast string across all sources. */
-  def cast: Option[String] =
-    data.values.flatMap(_.cast).toSeq.sortBy(-_.length).headOption
+  /** Longest non-empty cast list across all sources. */
+  def cast: Seq[String] =
+    data.values.map(_.cast).filter(_.nonEmpty).toSeq.sortBy(-_.length).headOption.getOrElse(Seq.empty)
 
-  /** First non-empty director across sources in priority order. */
-  def director: Option[String] =
-    prioritized.iterator.flatMap(_._2.director).nextOption()
+  /** First non-empty director list across sources in priority order. */
+  def director: Seq[String] =
+    prioritized.iterator.map(_._2.director).find(_.nonEmpty).getOrElse(Seq.empty)
 
   /** First non-None runtime across sources in priority order. */
   def runtimeMinutes: Option[Int] =

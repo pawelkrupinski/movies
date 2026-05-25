@@ -203,30 +203,30 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return correct directors for REST-enriched movies" in {
-    byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour").director shouldBe Some("James Cameron, Billie Eilish")
-    byTitle("Diabeł ubiera się u Prady 2").director                    shouldBe Some("David Frankel")
-    byTitle("Drama").director                                          shouldBe Some("Kristoffer Borgli")
-    byTitle("Drzewo magii").director                                   shouldBe Some("Ben Gregor")
-    byTitle("Dyyavol Nosyt' Prada 2 - UA ").director                  shouldBe Some("Девід Франкель")
-    byTitle("Kurozając i Świątynia Świstaka").director                 shouldBe Some("Benjamin Mousquet")
-    byTitle("Michael").director                                        shouldBe Some("Antoine Fuqua")
-    byTitle("Mortal Kombat II").director                               shouldBe Some("Simon McQuoid")
-    byTitle("Mortal Kombat II - UA").director                         shouldBe Some("Саймон Макквойд")
-    byTitle("Mumia: Film Lee Cronina").director                        shouldBe Some("Lee Cronin")
-    byTitle("Nawet myszy idą do nieba").director                       shouldBe Some("Jan Bubenicek, Denisa Grimmova")
-    byTitle("O psie, który jeździł koleją ").director                  shouldBe Some("Magdalena Nieć")
-    byTitle("Obsesja").director                                        shouldBe Some("Curry Barker")
-    byTitle("Projekt Hail Mary").director                              shouldBe Some("Christopher Miller, Phil Lord")
-    byTitle("Pucio").director                                          shouldBe Some("Marta Stróżycka")
-    byTitle("Sprawiedliwość owiec").director                           shouldBe Some("Kyle Balda")
-    byTitle("Super Mario Galaxy Film").director                        shouldBe Some("Aaron Horvath, Michael Jelenic")
-    byTitle("Za duży na bajki 3").director                             shouldBe Some("Kristoffer Rus")
+    byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour").director shouldBe Seq("James Cameron", "Billie Eilish")
+    byTitle("Diabeł ubiera się u Prady 2").director                    shouldBe Seq("David Frankel")
+    byTitle("Drama").director                                          shouldBe Seq("Kristoffer Borgli")
+    byTitle("Drzewo magii").director                                   shouldBe Seq("Ben Gregor")
+    byTitle("Dyyavol Nosyt' Prada 2 - UA ").director                  shouldBe Seq("Девід Франкель")
+    byTitle("Kurozając i Świątynia Świstaka").director                 shouldBe Seq("Benjamin Mousquet")
+    byTitle("Michael").director                                        shouldBe Seq("Antoine Fuqua")
+    byTitle("Mortal Kombat II").director                               shouldBe Seq("Simon McQuoid")
+    byTitle("Mortal Kombat II - UA").director                         shouldBe Seq("Саймон Макквойд")
+    byTitle("Mumia: Film Lee Cronina").director                        shouldBe Seq("Lee Cronin")
+    byTitle("Nawet myszy idą do nieba").director                       shouldBe Seq("Jan Bubenicek", "Denisa Grimmova")
+    byTitle("O psie, który jeździł koleją ").director                  shouldBe Seq("Magdalena Nieć")
+    byTitle("Obsesja").director                                        shouldBe Seq("Curry Barker")
+    byTitle("Projekt Hail Mary").director                              shouldBe Seq("Christopher Miller", "Phil Lord")
+    byTitle("Pucio").director                                          shouldBe Seq("Marta Stróżycka")
+    byTitle("Sprawiedliwość owiec").director                           shouldBe Seq("Kyle Balda")
+    byTitle("Super Mario Galaxy Film").director                        shouldBe Seq("Aaron Horvath", "Michael Jelenic")
+    byTitle("Za duży na bajki 3").director                             shouldBe Seq("Kristoffer Rus")
   }
 
   it should "return REST-enriched synopsis and cast for a covered movie" in {
     // Mortal Kombat II is fully REST-enriched. Lock in that synopsis and cast both flow through.
     val mk = byTitle("Mortal Kombat II")
-    mk.cast     shouldBe Some("Hiroyuki Sanada, Karl Urban, Tadanobu Asano")
+    mk.cast     shouldBe Seq("Hiroyuki Sanada", "Karl Urban", "Tadanobu Asano")
     mk.synopsis.map(_.take(80)) shouldBe Some("Oczekiwanie prawie dobiega końca! Mortal Kombat II w kinach od 8 maja. New Line ")
   }
 
@@ -556,8 +556,8 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     mando.posterUrl shouldBe Some("https://img.helios.pl/pliki/film/mandalorian-grogu/mandalorian-grogu-plakat-224.jpg")
     mando.filmUrl   shouldBe Some("https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347")
     mando.synopsis  shouldBe None
-    mando.cast      shouldBe None
-    mando.director  shouldBe None
+    mando.cast      shouldBe empty
+    mando.director  shouldBe empty
     mando.movie.releaseYear shouldBe None
 
     // Iron Maiden is a NUXT-only event
@@ -565,8 +565,8 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     ironMaiden.posterUrl shouldBe Some("https://img.helios.pl/pliki/film/iron-maiden-burning-ambition/iron-maiden-burning-ambition-plakat-67489.jpg")
     ironMaiden.filmUrl   shouldBe Some("https://helios.pl/poznan/kino-helios/wydarzenie/iron-maiden-burning-ambition-w-helios-na-scenie-2503")
     ironMaiden.synopsis  shouldBe None
-    ironMaiden.cast      shouldBe None
-    ironMaiden.director  shouldBe None
+    ironMaiden.cast      shouldBe empty
+    ironMaiden.director  shouldBe empty
   }
 
   // ── REST vs NUXT showtime enrichment ──────────────────────────────────────
@@ -628,8 +628,8 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     // They share underlying screening UUIDs but appear in their own sources under distinct titles.
     val latin    = byTitle("Dyyavol Nosyt' Prada 2 - UA ")
     val cyrillic = byTitle("ДИЯВОЛ НОСИТЬ ПРАДА 2")
-    latin.director    shouldBe Some("Девід Франкель")
-    cyrillic.director shouldBe None
+    latin.director    shouldBe Seq("Девід Франкель")
+    cyrillic.director shouldBe empty
     latin.posterUrl    shouldBe Some("https://movies.helios.pl/images/Diabelubierasieuprady2UA.jpg")
     cyrillic.posterUrl shouldBe Some("https://img.helios.pl/pliki/film/dyyavol-nosyt-prada-2-ua/dyyavol-nosyt-prada-2-ua-plakat-161.jpg")
   }

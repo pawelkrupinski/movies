@@ -166,7 +166,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
       bus.subscribe(svc.onMovieRecordCreated)
       for (s <- ordering.tail) {
         cache.recordCinemaScrape(s.cinema, Seq(s.cm))
-        bus.publish(MovieRecordCreated(s.title, s.year, s.cm.movie.originalTitle, s.cm.director))
+        bus.publish(MovieRecordCreated(s.title, s.year, s.cm.movie.originalTitle, if (s.cm.director.nonEmpty) Some(s.cm.director.mkString(", ")) else None))
       }
 
       def isMk2(e: MovieRecord): Boolean =

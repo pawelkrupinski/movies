@@ -73,7 +73,7 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
     eventUrl:       String,
     posterUrl:      Option[String],
     synopsis:       Option[String],
-    director:       Option[String],
+    director:       Seq[String],
     runtimeMinutes: Option[Int]     = None,
     releaseYear:    Option[Int]     = None,
     countries:      Seq[String]     = Seq.empty
@@ -103,7 +103,7 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
           posterUrl = primary.posterUrl,
           filmUrl   = Some(primary.eventUrl),
           synopsis  = primary.synopsis,
-          cast      = None,
+          cast      = Seq.empty,
           director  = primary.director,
           showtimes = allShowtimes
         ))
@@ -128,10 +128,10 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
                           .map(_.attr("src"))
 
         val (synopsis, director, runtime, year, countries) = Option(block.selectFirst("span.text")) match {
-          case None => (None, None, None, None, Seq.empty[String])
+          case None => (None, Seq.empty[String], None, None, Seq.empty[String])
           case Some(span) =>
             val lines    = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
-            val dir      = lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim)
+            val dir      = lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
             val emptyIdx = lines.indexWhere(_.isEmpty)
             val synLines = if (emptyIdx >= 0) lines.drop(emptyIdx + 1) else Array.empty[String]
             val synText  = synLines.filter(_.nonEmpty).mkString(" ").trim

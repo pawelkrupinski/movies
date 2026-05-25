@@ -101,7 +101,7 @@ class ShowtimeCache(
       logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms ($publishable new)")
       touched.foreach { case (cm, key, isNew) =>
         if (isNew)
-          bus.publish(MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, cm.director))
+          bus.publish(MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None))
       }
     } catch {
       case e: Exception =>

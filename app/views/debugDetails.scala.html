@@ -37,16 +37,10 @@
   <dd>@e.runtimeMinutes.map(m => s"$m min").getOrElse("—")</dd>
 
   <dt>director (resolved)</dt>
-  <dd>@e.director match {
-    case Some(d) => { @d }
-    case None    => { <span class="miss">—</span> }
-  }</dd>
+  <dd>@if(e.director.nonEmpty) { @e.director.mkString(", ") } else { <span class="miss">—</span> }</dd>
 
   <dt>cast (resolved)</dt>
-  <dd>@e.cast match {
-    case Some(c) => { @c }
-    case None    => { <span class="miss">—</span> }
-  }</dd>
+  <dd>@if(e.cast.nonEmpty) { @e.cast.mkString(", ") } else { <span class="miss">—</span> }</dd>
 
   <dt>synopsis (resolved)</dt>
   <dd>@e.synopsis match {
@@ -82,8 +76,8 @@
         @slot.originalTitle.map { t  => <span>orig: <em>@t</em></span> }
         @slot.releaseYear.map { y    => <span>year: @y</span> }
         @slot.runtimeMinutes.map { m => <span>runtime: @m min</span> }
-        @slot.director.map { d       => <span>dir: @d</span> }
-        @slot.cast.map { c           => <span>cast: <em>@c</em></span> }
+        @if(slot.director.nonEmpty) { <span>dir: @slot.director.mkString(", ")</span> }
+        @if(slot.cast.nonEmpty) { <span>cast: <em>@slot.cast.mkString(", ")</em></span> }
         @if(slot.countries.nonEmpty) { <span>countries: @slot.countries.mkString(", ")</span> }
         @slot.posterUrl.map { u      => <span>poster: <a href="@u" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗</a></span> }
       </div>

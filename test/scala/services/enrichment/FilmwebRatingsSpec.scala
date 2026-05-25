@@ -117,7 +117,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
         data = Map[Source, SourceData](
           Multikino -> SourceData(
             title    = Some("Diuna: Część druga"),
-            director = Some("Denis Villeneuve")
+            director = Seq("Denis Villeneuve")
           ),
           Tmdb -> SourceData(originalTitle = Some("Dune: Part Two"))
         )

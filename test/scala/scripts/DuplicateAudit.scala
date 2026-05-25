@@ -46,8 +46,8 @@ object DuplicateAudit {
     // Helpers — the sanitized title is the same form the production docId
     // already uses, just without the |year suffix.
     def titleKey(t: String): String = MovieService.normalize(t)
-    def directorKey(d: Option[String]): String =
-      d.map(MovieService.normalize).getOrElse("")
+    def directorKey(d: Seq[String]): String =
+      if (d.nonEmpty) MovieService.normalize(d.mkString(", ")) else ""
 
     auditStrategy("Strategy 1: by sanitized title alone (drop year)", rows)(r => titleKey(r.title))
     auditStrategy("Strategy 2: by (sanitized title, normalized director)", rows) { r =>
@@ -84,7 +84,7 @@ object DuplicateAudit {
       unsafe.toSeq.sortBy(-_._2.size).foreach { case (key, group) =>
         println(s"  key='$key'  rows=${group.size}  imdbIds=${group.flatMap(_.record.imdbId).toSet.mkString(", ")}")
         group.foreach(r =>
-          println(s"    · '${r.title}' (${r.year.getOrElse("?")})  imdb=${r.record.imdbId.getOrElse("—")}  director=${r.record.director.getOrElse("—")}")
+          println(s"    · '${r.title}' (${r.year.getOrElse("?")})  imdb=${r.record.imdbId.getOrElse("—")}  director=${if (r.record.director.nonEmpty) r.record.director.mkString(", ") else "—"}")
         )
       }
     }

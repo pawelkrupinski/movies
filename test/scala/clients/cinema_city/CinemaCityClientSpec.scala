@@ -166,12 +166,12 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   it should "parse director / cast / synopsis from the per-film details page" in {
     val byTitle = kinepolis.map(m => m.movie.title -> m).toMap
     val prada   = byTitle("Diabeł ubiera się u Prady 2")
-    prada.director shouldBe Some("David Frankel")
-    prada.cast     shouldBe Some("Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci")
+    prada.director shouldBe Seq("David Frankel")
+    prada.cast     shouldBe Seq("Meryl Streep", "Anne Hathaway", "Emily Blunt", "Stanley Tucci")
     prada.synopsis.exists(_.startsWith("Wśród wielu niesamowitych filmów")) shouldBe true
     // Detail-page fixture absent → these fields stay None.
-    byTitle("Mortal Kombat II").director shouldBe None
-    byTitle("Mortal Kombat II").cast     shouldBe None
+    byTitle("Mortal Kombat II").director shouldBe empty
+    byTitle("Mortal Kombat II").cast     shouldBe empty
     byTitle("Mortal Kombat II").synopsis shouldBe None
   }
 

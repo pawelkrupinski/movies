@@ -89,7 +89,7 @@ class ImdbRatings(cache: MovieCache, imdb: ImdbClient)
       posterUrl      = d.posterUrl
     )
     val hasContent = slot.title.isDefined || slot.originalTitle.isDefined ||
-                     slot.cast.isDefined || slot.director.isDefined || slot.runtimeMinutes.isDefined ||
+                     slot.cast.nonEmpty || slot.director.nonEmpty || slot.runtimeMinutes.isDefined ||
                      slot.releaseYear.isDefined || slot.countries.nonEmpty ||
                      slot.posterUrl.isDefined
     if (hasContent) Some(slot) else None

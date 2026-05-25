@@ -83,8 +83,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
     title:         Option[String],
     duration:      Option[Int],
     description:   Option[String],
-    cast:          Option[String],
-    director:      Option[String],
+    cast:          Seq[String],
+    director:      Seq[String],
     year:          Option[Int],
     premierePl:    Option[java.time.LocalDate],
     premiereWorld: Option[java.time.LocalDate],
@@ -101,8 +101,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
           title         = Some(title),
           duration      = (js \ "duration").asOpt[Int],
           description   = (js \ "description").asOpt[String].filter(_.nonEmpty).map(tools.TextNormalization.stripHtml),
-          cast          = (js \ "filmCast").asOpt[String].filter(_.nonEmpty),
-          director      = (js \ "director").asOpt[String].filter(_.nonEmpty),
+          cast          = (js \ "filmCast").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+          director      = (js \ "director").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
           year          = (js \ "yearOfProduction").asOpt[String].flatMap(s => Try(s.take(4).toInt).toOption),
           premierePl    = (js \ "premiereDate").asOpt[String]
                             .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption),
@@ -165,8 +165,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
         ),
         posterUrl  = restInfo.flatMap(_.posterUrl).orElse(cm.posterUrl),
         synopsis   = restInfo.flatMap(_.description),
-        cast       = restInfo.flatMap(_.cast),
-        director   = restInfo.flatMap(_.director),
+        cast       = restInfo.map(_.cast).getOrElse(Seq.empty),
+        director   = restInfo.map(_.director).getOrElse(Seq.empty),
         trailerUrl = restInfo.flatMap(_.trailerUrl).orElse(cm.trailerUrl),
         showtimes  = cm.showtimes.map(enrichShowtime(_, rest))
       )

@@ -57,8 +57,8 @@ object MultikinoParser {
       posterUrl   = (film \ "posterImageSrc").asOpt[String].filter(_.nonEmpty),
       filmUrl     = absoluteUrl((film \ "filmUrl").asOpt[String]),
       synopsis    = (film \ "synopsisShort").asOpt[String].filter(_.nonEmpty).map(tools.TextNormalization.stripHtml),
-      cast        = (film \ "cast").asOpt[String].filter(_.nonEmpty),
-      director    = (film \ "director").asOpt[String].filter(_.nonEmpty),
+      cast        = (film \ "cast").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      director    = (film \ "director").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       showtimes   = sessions.flatMap(parseSession).toSeq,
       externalIds = (multikinoId.map("mk" -> _) ++ mxcId.map("mxc" -> _)).toMap,
       // Multikino's API exposes `trailers: [<url>]` on films that have one

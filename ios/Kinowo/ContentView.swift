@@ -160,15 +160,16 @@ struct ContentView: View {
 
     @ViewBuilder
     private var cinemasPage: some View {
-        VStack(spacing: 0) {
-            CinemaPillsRow(
-                allCinemas: allCinemas,
-                pinnedCinema: $pinnedCinema
-            )
-            .padding(.top, 56)
-            CinemaSectionedGridView(sections: filmsForCinemasTab.groupedByCinema())
-                .refreshable { await store.reload() }
-        }
+        CinemaSectionedGridView(
+            sections: filmsForCinemasTab.groupedByCinema(),
+            header: {
+                CinemaPillsRow(
+                    allCinemas: allCinemas,
+                    pinnedCinema: $pinnedCinema
+                )
+            }
+        )
+        .refreshable { await store.reload() }
     }
 
     private var loadingState: some View {

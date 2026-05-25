@@ -1,10 +1,10 @@
 package services.movies
 
 import models.{MovieRecord, Showtime, Source, SourceData}
+import org.bson.{BsonReader, BsonType, BsonWriter}
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
-import org.bson.codecs.configuration.CodecRegistry
+import org.bson.codecs.configuration.{CodecProvider, CodecRegistry}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
-import org.bson.{BsonReader, BsonWriter}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.codecs.Macros
 
@@ -90,15 +90,79 @@ object MovieCodecs {
     override def getEncoderClass: Class[LocalDateTime] = classOf[LocalDateTime]
   }
 
+  private val macroSourceDataCodec: Codec[SourceData] =
+    Macros.createCodecProviderIgnoreNone[SourceData]()
+      .get(classOf[SourceData], fromRegistries(
+        fromCodecs(new LocalDateTimeCodec),
+        fromProviders(Macros.createCodecProviderIgnoreNone[Showtime]()),
+        DEFAULT_CODEC_REGISTRY
+      ))
+
+  private class BackwardCompatibleSourceDataCodec extends Codec[SourceData] {
+    override def getEncoderClass: Class[SourceData] = classOf[SourceData]
+
+    override def encode(w: BsonWriter, v: SourceData, c: EncoderContext): Unit =
+      macroSourceDataCodec.encode(w, v, c)
+
+    override def decode(r: BsonReader, c: DecoderContext): SourceData = {
+      val doc = org.bson.codecs.BsonDocumentCodec().decode(r, c)
+      def optStr(key: String): Option[String] =
+        if (doc.containsKey(key) && doc.get(key).isString) Some(doc.getString(key).getValue)
+        else None
+      def optInt(key: String): Option[Int] =
+        if (doc.containsKey(key) && doc.get(key).isInt32) Some(doc.getInt32(key).getValue)
+        else None
+      def seqStr(key: String): Seq[String] =
+        if (!doc.containsKey(key) || doc.get(key).isNull) Seq.empty
+        else if (doc.get(key).isString) {
+          val s = doc.getString(key).getValue
+          if (s.isEmpty) Seq.empty else s.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+        }
+        else if (doc.get(key).isArray) {
+          val arr = doc.getArray(key)
+          (0 until arr.size()).map(i => arr.get(i).asString().getValue).toSeq
+        }
+        else Seq.empty
+      def showtimes: Seq[Showtime] =
+        if (!doc.containsKey("showtimes") || doc.get("showtimes").isNull) Seq.empty
+        else {
+          val arr = doc.getArray("showtimes")
+          val stCodec = macroSourceDataCodec // reuse the registry's Showtime codec
+          (0 until arr.size()).map { i =>
+            val stDoc = arr.get(i).asDocument()
+            val stReader = new org.bson.BsonDocumentReader(stDoc)
+            Macros.createCodecProviderIgnoreNone[Showtime]()
+              .get(classOf[Showtime], fromRegistries(fromCodecs(new LocalDateTimeCodec), DEFAULT_CODEC_REGISTRY))
+              .decode(stReader, c)
+          }.toSeq
+        }
+      SourceData(
+        title          = optStr("title"),
+        originalTitle  = optStr("originalTitle"),
+        synopsis       = optStr("synopsis"),
+        cast           = seqStr("cast"),
+        director       = seqStr("director"),
+        runtimeMinutes = optInt("runtimeMinutes"),
+        releaseYear    = optInt("releaseYear"),
+        countries      = seqStr("countries"),
+        posterUrl      = optStr("posterUrl"),
+        filmUrl        = optStr("filmUrl"),
+        trailerUrl     = optStr("trailerUrl"),
+        showtimes      = showtimes
+      )
+    }
+  }
+
+  private val sourceDataProvider: CodecProvider = new CodecProvider {
+    override def get[T](clazz: Class[T], registry: CodecRegistry): Codec[T] =
+      if (clazz == classOf[SourceData]) new BackwardCompatibleSourceDataCodec().asInstanceOf[Codec[T]]
+      else null
+  }
+
   val registry: CodecRegistry = fromRegistries(
     fromCodecs(new LocalDateTimeCodec),
-    // IgnoreNone omits Optional fields when None instead of writing BsonNull.
-    // Matches the prior `SourceData` / `Showtime` encoders, which used
-    // `foreach` to skip empty fields rather than persist BsonNull. The
-    // top-level `MovieRecord` Optionals (imdbId, …) DID write BsonNull, so
-    // `StoredMovieDto` uses the plain provider.
     fromProviders(
-      Macros.createCodecProviderIgnoreNone[SourceData](),
+      sourceDataProvider,
       Macros.createCodecProviderIgnoreNone[Showtime](),
       Macros.createCodecProvider[StoredMovieDto]()
     ),

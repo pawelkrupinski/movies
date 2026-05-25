@@ -56,11 +56,11 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   it should "extract director from each film page's meta line" in {
     val directors = results.map(m => m.movie.title -> m.director).toMap
     // Multiple co-directors before the country are captured together.
-    directors("Chłopiec na krańcach świata") shouldBe Some("Grzegorz Wacławek, Marta Szymańska")
-    directors("Giulietta i duchy")           shouldBe Some("Federico Fellini")
-    directors("Głos z księżyca")             shouldBe Some("Federico Fellini")
-    directors("Osiem i pół")                 shouldBe Some("Federico Fellini")
-    directors("Słodkie życie")               shouldBe Some("Federico Fellini")
+    directors("Chłopiec na krańcach świata") shouldBe Seq("Grzegorz Wacławek", "Marta Szymańska")
+    directors("Giulietta i duchy")           shouldBe Seq("Federico Fellini")
+    directors("Głos z księżyca")             shouldBe Seq("Federico Fellini")
+    directors("Osiem i pół")                 shouldBe Seq("Federico Fellini")
+    directors("Słodkie życie")               shouldBe Seq("Federico Fellini")
   }
 
   it should "extract countries (one or many) from each film page" in {

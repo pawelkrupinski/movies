@@ -156,19 +156,19 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
   // ── Directors ─────────────────────────────────────────────────────────────
 
   it should "return correct director for films that have one" in {
-    byTitle("Człowiek z marmuru").director                                shouldBe Some("Andrzej Wajda")
-    byTitle("Diabeł ubiera się u prady 2").director                      shouldBe Some("David Frankel")
-    byTitle("Filmowe spotkania z psychoanalizą: dobry chłopiec").director shouldBe Some("Jan Komasa")
-    byTitle("Mavka. Prawdziwy mit").director                              shouldBe Some("Katya Tsarik")
-    byTitle("Modigliani: portret odarty z legendy").director              shouldBe Some("Valeria Parisi")
-    byTitle("Munch: miłość, duchy i wampirzyce").director                shouldBe Some("Michele Mally")
-    byTitle("Młode matki").director                                       shouldBe Some("Jean-Pierre Dardenne, Luc Dardenne")
-    byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").director     shouldBe Some("Paweł Wendorff, Elżbieta Wąsik; Jarosław Szyszko, Barbara Koniecka, Mateusz Kmieć, Natalia Bartska-Kmieć")
-    byTitle("Szepty lasu").director                                       shouldBe Some("Krzysztof Sarapata, Tomasz Kotaś")
-    byTitle("Sprawiedliwość owiec").director                              shouldBe Some("Kyle Balda")
-    byTitle("Top gun | 40 rocznica").director                             shouldBe Some("Tony Scott")
-    byTitle("Van gogh. Pola zbóż i zachmurzone niebiosa").director       shouldBe Some("Giovanni Piscaglia")
-    byTitle("Znaki pana śliwki").director                                 shouldBe Some("Urszula Morga, Bartosz Mikołajczyk")
+    byTitle("Człowiek z marmuru").director                                shouldBe Seq("Andrzej Wajda")
+    byTitle("Diabeł ubiera się u prady 2").director                      shouldBe Seq("David Frankel")
+    byTitle("Filmowe spotkania z psychoanalizą: dobry chłopiec").director shouldBe Seq("Jan Komasa")
+    byTitle("Mavka. Prawdziwy mit").director                              shouldBe Seq("Katya Tsarik")
+    byTitle("Modigliani: portret odarty z legendy").director              shouldBe Seq("Valeria Parisi")
+    byTitle("Munch: miłość, duchy i wampirzyce").director                shouldBe Seq("Michele Mally")
+    byTitle("Młode matki").director                                       shouldBe Seq("Jean-Pierre Dardenne", "Luc Dardenne")
+    byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").director     shouldBe Seq("Paweł Wendorff", "Elżbieta Wąsik; Jarosław Szyszko", "Barbara Koniecka", "Mateusz Kmieć", "Natalia Bartska-Kmieć")
+    byTitle("Szepty lasu").director                                       shouldBe Seq("Krzysztof Sarapata", "Tomasz Kotaś")
+    byTitle("Sprawiedliwość owiec").director                              shouldBe Seq("Kyle Balda")
+    byTitle("Top gun | 40 rocznica").director                             shouldBe Seq("Tony Scott")
+    byTitle("Van gogh. Pola zbóż i zachmurzone niebiosa").director       shouldBe Seq("Giovanni Piscaglia")
+    byTitle("Znaki pana śliwki").director                                 shouldBe Seq("Urszula Morga", "Bartosz Mikołajczyk")
   }
 
   // ── Synopses ──────────────────────────────────────────────────────────────

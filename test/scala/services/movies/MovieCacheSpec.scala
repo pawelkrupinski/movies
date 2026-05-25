@@ -448,8 +448,8 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       posterUrl = poster,
       filmUrl   = None,
       synopsis  = None,
-      cast      = None,
-      director  = None,
+      cast      = Seq.empty,
+      director  = Seq.empty,
       showtimes = showtimes
     )
 

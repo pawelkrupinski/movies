@@ -146,14 +146,14 @@ object CinemaCityClient {
    *  the same shape the in-page React component renders from. */
   case class Details(
     synopsis:   Option[String],
-    cast:       Option[String],
-    director:   Option[String],
+    cast:       Seq[String],
+    director:   Seq[String],
     countries:  Seq[String],
     trailerUrl: Option[String]
   )
 
   object Details {
-    val empty: Details = Details(None, None, None, Seq.empty, None)
+    val empty: Details = Details(None, Seq.empty, Seq.empty, Seq.empty, None)
   }
 
   // Embedded JS object: `var filmDetails = { ... };`. Single-line, JSON-valued.
@@ -172,8 +172,11 @@ object CinemaCityClient {
   /** Parse the film-details page. Public for the spec. */
   def parseDetails(html: String): Details = {
     val js  = FilmDetailsRe.findFirstMatchIn(html).flatMap(m => Try(Json.parse(m.group(1))).toOption)
-    val cast      = js.flatMap(j => (j \ "cast").asOpt[String]).filter(_.nonEmpty)
+    val castRaw   = js.flatMap(j => (j \ "cast").asOpt[String]).filter(_.nonEmpty)
+    val cast      = castRaw.map(s => tools.TextNormalization.dropTrailingPartialNameIfLong(s))
+                      .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
     val director  = js.flatMap(j => (j \ "directors").asOpt[String]).filter(_.nonEmpty)
+                      .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
     val synopsis  = js.flatMap(j => (j \ "synopsis").asOpt[String]).filter(_.nonEmpty)
       .map(tools.TextNormalization.stripHtml)
     val countries = parseCountries(html)

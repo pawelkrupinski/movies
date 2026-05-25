@@ -133,10 +133,10 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       // IMDb both ship the same four names in different orders — exact
       // string varies tick-to-tick depending on Map iteration, so assert
       // on the set rather than the comma-separated order.
-      regular.cast.map(_.split(",\\s*").toSet) shouldBe Some(Set(
+      regular.cast.toSet shouldBe Set(
         "Anne Hathaway", "Meryl Streep", "Stanley Tucci", "Emily Blunt"
-      ))
-      regular.director shouldBe Some("David Frankel")
+      )
+      regular.director shouldBe Seq("David Frankel")
 
       // Every cinema that's scraping Prada exposes a deep-link to its own
       // film page. Test the set rather than the order — `MovieRecord.cinemaShowings`
@@ -262,8 +262,8 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       // synopsis when `fullDetails` lands a fixture; here the fullDetails
       // call goes unrecorded so those stay None for the dub.
       dub.movie.releaseYear     shouldBe Some(2026)
-      dub.cast                  shouldBe None
-      dub.director              shouldBe None
+      dub.cast                  shouldBe empty
+      dub.director              shouldBe empty
       dub.synopsis              shouldBe None
       dub.cinemaFilmUrls shouldBe Seq(
         Helios -> "https://helios.pl/poznan/kino-helios/filmy/dyyavol-nosyt-prada-2-ua-4496"
@@ -365,8 +365,8 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       s"countries:         ${if (s.movie.countries.isEmpty) "—" else s.movie.countries.mkString(", ")}",
       s"posterUrl:         ${s.posterUrl.getOrElse("—")}",
       s"synopsis.length:   ${s.synopsis.map(_.length.toString).getOrElse("—")}",
-      s"cast:              ${s.cast.getOrElse("—")}",
-      s"director:          ${s.director.getOrElse("—")}",
+      s"cast:              ${if (s.cast.nonEmpty) s.cast.mkString(", ") else "—"}",
+      s"director:          ${if (s.director.nonEmpty) s.director.mkString(", ") else "—"}",
       s"tmdbId:            ${e.flatMap(_.tmdbId).map(_.toString).getOrElse("—")}",
       s"imdbId:            ${e.flatMap(_.imdbId).getOrElse("—")}",
       s"originalTitle:     ${e.flatMap(_.originalTitle).getOrElse("—")}",

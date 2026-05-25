@@ -33,14 +33,14 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
   private val TrailerPat = """<a[^>]*class="gallery__movie[^"]*"[^>]*href="(https?://(?:www\.)?(?:youtube\.com|youtu\.be|player\.vimeo\.com|vimeo\.com)/[^"]+)"""".r
 
   private case class FilmMeta(
-    director:    Option[String],
+    director:    Seq[String],
     countries:   Seq[String],
     releaseYear: Option[Int],
     runtime:     Option[Int],
     trailerUrl:  Option[String]
   )
 
-  private val EmptyMeta = FilmMeta(None, Seq.empty, None, None, None)
+  private val EmptyMeta = FilmMeta(Seq.empty, Seq.empty, None, None, None)
 
   private def fetchFilmMeta(filmUrl: String): FilmMeta =
     Try(http.get(filmUrl)).toOption.flatMap(parseFilmMeta).getOrElse(EmptyMeta)
@@ -62,7 +62,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
         // country" rule so we still produce something for an exotic origin.
         else (parts.dropRight(1), parts.takeRight(1))
       FilmMeta(
-        director    = Some(directorParts.mkString(", ")).filter(_.nonEmpty),
+        director    = directorParts.filter(_.nonEmpty),
         countries   = countryParts,
         releaseYear = Try(m.group(2).toInt).toOption,
         runtime     = Try(m.group(3).toInt).toOption.filter(n => n >= 30 && n <= 300),
@@ -112,7 +112,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
           posterUrl = first.posterUrl,
           filmUrl   = first.filmUrl,
           synopsis   = first.synopsis,
-          cast       = None,
+          cast       = Seq.empty,
           director   = meta.director,
           showtimes  = sorted.map(entry => Showtime(entry.dateTime, entry.bookingUrl, entry.room)),
           trailerUrl = meta.trailerUrl

@@ -14,8 +14,8 @@ case class FilmSchedule(
                          movie: Movie,
                          posterUrl: Option[String],
                          synopsis: Option[String],
-                         cast: Option[String],
-                         director: Option[String],
+                         cast: Seq[String],
+                         director: Seq[String],
                          cinemaFilmUrls: Seq[(Cinema, String)],
                          showings: Seq[(LocalDate, Seq[CinemaShowtimes])],
                          enrichment: Option[MovieRecord] = None
@@ -43,7 +43,7 @@ class MovieControllerService(movieService: MovieService) {
       title,
       year,
       hint.flatMap(_.cinemaOriginalTitle),
-      hint.flatMap(_.director)
+      hint.map(_.director).filter(_.nonEmpty).map(_.mkString(", "))
     )
   }
 
@@ -164,8 +164,8 @@ class MovieController( cc: ControllerComponents,
     val all = movieControllerService.toSchedules()
     val (heading, films) = (kraj, rezyser, aktor) match {
       case (Some(name), _, _) => name -> all.filter(_.movie.countries.contains(name))
-      case (_, Some(name), _) => name -> all.filter(_.director.exists(_.split(",").map(_.trim).contains(name)))
-      case (_, _, Some(name)) => name -> all.filter(_.cast.exists(_.split(",").map(_.trim).contains(name)))
+      case (_, Some(name), _) => name -> all.filter(_.director.contains(name))
+      case (_, _, Some(name)) => name -> all.filter(_.cast.contains(name))
       case _                  => "Filmy" -> all
     }
     renderBrowse(heading, films, request)

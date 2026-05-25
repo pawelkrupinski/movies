@@ -12,14 +12,14 @@
   <h5 class="cinema-section-title px-1 mb-3">@cs.cinema.displayName</h5>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6">
     @for(film <- cs.movies) {
-    <div class="col" data-title="@film.movie.title" data-countries="@film.movie.countries.mkString("|")"@film.enrichment.flatMap(_.director).map { d => data-director="@d" }@film.enrichment.flatMap(_.cast).map { c => data-cast="@c" }>
+    <div class="col" data-title="@film.movie.title" data-countries="@film.movie.countries.mkString("|")"@if(film.enrichment.exists(_.director.nonEmpty)){ data-director="@film.enrichment.get.director.mkString(", ")"}@if(film.enrichment.exists(_.cast.nonEmpty)){ data-cast="@film.enrichment.get.cast.mkString(", ")"}>
       @_movieCard(film.movie, film.posterUrl, film.enrichment) {
         @defining(FilmSchedule(
           movie          = film.movie,
           posterUrl      = film.posterUrl,
           synopsis       = None,
-          cast           = None,
-          director       = None,
+          cast           = Seq.empty,
+          director       = Seq.empty,
           cinemaFilmUrls = film.filmUrl.map(cs.cinema -> _).toSeq,
           showings       = film.showings.map { case (date, slots) =>
                              (date, Seq(CinemaShowtimes(cs.cinema, slots)))

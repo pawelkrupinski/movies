@@ -120,15 +120,15 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
   // ── Directors ─────────────────────────────────────────────────────────────
 
   it should "return correct director for every movie" in {
-    byTitle("Chronologia wody").director             shouldBe Some("Kristen Stewart")
-    byTitle("Father mother sister brother").director shouldBe Some("Jim Jarmusch")
-    byTitle("La grazia").director                    shouldBe Some("Paolo Sorrentino")
-    byTitle("Maryja. matka papieża").director        shouldBe Some("Jan Sobierajski")
-    byTitle("Miłość w czasach apokalipsy").director  shouldBe Some("Anne Émond")
-    byTitle("Na rauszu").director                    shouldBe Some("Thomas Vinterberg")
-    byTitle("Ostatnia sesja w paryżu").director      shouldBe Some("Rebecca Zlotowski")
-    byTitle("Sirât").director                        shouldBe Some("Oliver Laxe")
-    byTitle("Wpatrując się w słońce").director       shouldBe Some("Mascha Schilinski")
+    byTitle("Chronologia wody").director             shouldBe Seq("Kristen Stewart")
+    byTitle("Father mother sister brother").director shouldBe Seq("Jim Jarmusch")
+    byTitle("La grazia").director                    shouldBe Seq("Paolo Sorrentino")
+    byTitle("Maryja. matka papieża").director        shouldBe Seq("Jan Sobierajski")
+    byTitle("Miłość w czasach apokalipsy").director  shouldBe Seq("Anne Émond")
+    byTitle("Na rauszu").director                    shouldBe Seq("Thomas Vinterberg")
+    byTitle("Ostatnia sesja w paryżu").director      shouldBe Seq("Rebecca Zlotowski")
+    byTitle("Sirât").director                        shouldBe Seq("Oliver Laxe")
+    byTitle("Wpatrując się w słońce").director       shouldBe Seq("Mascha Schilinski")
   }
 
   // ── Synopses ──────────────────────────────────────────────────────────────

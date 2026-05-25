@@ -249,28 +249,18 @@
         case None => {}
       }
 
-      @film.director match {
-        case Some(text) => {
-          @defining(text.split(",").map(_.trim).filter(_.nonEmpty)) { names =>
+      @if(film.director.nonEmpty) {
           <div class="meta-label">Reżyseria</div>
-          <div class="meta-value">@for((name, i) <- names.zipWithIndex) {<!--
+          <div class="meta-value">@for((name, i) <- film.director.zipWithIndex) {<!--
             -->@if(i > 0){, }<a href="@BrowseHref.director(name)" class="meta-link">@name</a><!--
           -->}</div>
-          }
-        }
-        case None => {}
       }
 
-      @film.cast match {
-        case Some(text) => {
-          @defining(text.split(",").map(_.trim).filter(_.nonEmpty)) { names =>
+      @if(film.cast.nonEmpty) {
           <div class="meta-label">Obsada</div>
-          <div class="meta-value">@for((name, i) <- names.zipWithIndex) {<!--
+          <div class="meta-value">@for((name, i) <- film.cast.zipWithIndex) {<!--
             -->@if(i > 0){, }<a href="@BrowseHref.actor(name)" class="meta-link">@name</a><!--
           -->}</div>
-          }
-        }
-        case None => {}
       }
 
       @if(film.movie.countries.nonEmpty) {

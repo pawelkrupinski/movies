@@ -20,8 +20,8 @@ class KinoMuzaSynopsisRefresherSpec extends AnyFlatSpec with Matchers {
       posterUrl = None,
       filmUrl   = Some(filmUrl),
       synopsis  = None,
-      cast      = None,
-      director  = None,
+      cast      = Seq.empty,
+      director  = Seq.empty,
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 5, 21, 18, 0), bookingUrl = None))
     )
 

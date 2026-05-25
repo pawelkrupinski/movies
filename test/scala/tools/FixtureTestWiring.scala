@@ -32,7 +32,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
         val touched = movieCache.recordCinemaScrape(cinema, movies)
         touched.foreach { case (cm, key, isNew) =>
           if (isNew)
-            eventBus.publish(MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, cm.director))
+            eventBus.publish(MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None))
         }
       } catch {
         case _: Exception => () // mirror ShowtimeCache.refreshOne's catch

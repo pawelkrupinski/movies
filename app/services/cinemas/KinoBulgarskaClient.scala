@@ -56,21 +56,21 @@ class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
   // movie-meta is formatted "reż. <DIRECTORS…>, <COUNTRIES…>, YEAR r., DURATION min."
   // First comma-separated chunk is the director, all chunks between director
   // and the year are production countries.
-  private def extractMeta(section: Element): (Option[String], Seq[String], Option[Int], Option[Int]) =
+  private def extractMeta(section: Element): (Seq[String], Seq[String], Option[Int], Option[Int]) =
     Option(section.selectFirst("p.movie-meta")).map { meta =>
       val text = meta.text()
-      if (!text.startsWith("reż. ")) (None, Seq.empty, None, None)
+      if (!text.startsWith("reż. ")) (Seq.empty, Seq.empty, None, None)
       else {
         val afterRez  = text.stripPrefix("reż. ")
         val parts     = afterRez.split(",\\s*").map(_.trim)
         val yearIdx   = parts.indexWhere(_.matches("\\d{4} r\\."))
-        val director  = if (yearIdx >= 1) Some(parts(0)).filter(_.nonEmpty) else None
+        val director  = if (yearIdx >= 1) parts(0).split(",").map(_.trim).filter(_.nonEmpty).toSeq else Seq.empty
         val countries = if (yearIdx > 1) parts.slice(1, yearIdx).filter(_.nonEmpty).toSeq else Seq.empty
         val year      = if (yearIdx >= 0) Try(parts(yearIdx).replaceAll("[^0-9]", "").toInt).toOption else None
         val runtime   = RuntimePat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)
         (director, countries, year, runtime)
       }
-    }.getOrElse((None, Seq.empty, None, None))
+    }.getOrElse((Seq.empty, Seq.empty, None, None))
 
   def fetch(): Seq[CinemaMovie] = {
     val movies     = parseHtml(http.get(PageUrl))
@@ -101,7 +101,7 @@ class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val doc            = Jsoup.parse(html)
-    val filmByUrl      = collection.mutable.Map[String, (String, Option[String], Option[String], Option[String], Seq[String], Option[Int], Option[Int])]()
+    val filmByUrl      = collection.mutable.Map[String, (String, Option[String], Option[String], Seq[String], Seq[String], Option[Int], Option[Int])]()
     val showtimesByUrl = collection.mutable.Map[String, collection.mutable.ListBuffer[Showtime]]()
 
     doc.select("article").asScala.foreach { article =>
@@ -148,7 +148,7 @@ class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
           posterUrl = posterUrl,
           filmUrl   = Some(filmUrl),
           synopsis  = synopsis,
-          cast      = None,
+          cast      = Seq.empty,
           director  = director,
           showtimes = slots.toSeq.sortBy(_.dateTime)
         )

@@ -60,18 +60,7 @@ struct TopBar: View {
         // grid scrolling beneath it.
         .padding(.top, 2 * s)
         .padding(.bottom, 8 * s)
-        .background {
-            if #available(iOS 26.0, macOS 26.0, *) {
-                Rectangle()
-                    .fill(.clear)
-                    .glassEffect(in: Rectangle())
-                    .ignoresSafeArea(edges: .top)
-            } else {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .ignoresSafeArea(edges: .top)
-            }
-        }
+        .background(.ultraThinMaterial, ignoresSafeAreaEdges: .top)
     }
 
     /// Linear scale relative to the iPhone 17 viewport (393pt wide).
@@ -84,6 +73,7 @@ struct TopBar: View {
         let w = UIScreen.main.bounds.width
         return max(0.85, min(1.2, w / 393))
     }()
+
 }
 
 // Three short pills (Dziś / Jutro / 7 dni) share one width via
@@ -164,7 +154,7 @@ struct SearchBar: View {
         .padding(.vertical, 14)
         .modifier(GlassyPillBackground())
         .padding(.horizontal, 24)
-        .offset(y: 14)
+        .padding(.top, 14)
     }
 }
 
@@ -196,18 +186,6 @@ struct CinemaPillsRow: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
-        .background {
-            if #available(iOS 26.0, macOS 26.0, *) {
-                Rectangle()
-                    .fill(.clear)
-                    .glassEffect(in: Rectangle())
-                    .ignoresSafeArea(edges: .horizontal)
-            } else {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .ignoresSafeArea(edges: .horizontal)
-            }
-        }
     }
 }
 

@@ -237,17 +237,17 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     // Drzewo Magii's detail page carries the modern layout:
     //   `Reżyseria: <a>Ben Gregor</a>` + `Obsada: <a>name1, …</a>`.
     val drzewo = byTitle("Drzewo Magii")
-    drzewo.director shouldBe Some("Ben Gregor")
+    drzewo.director shouldBe Seq("Ben Gregor")
     drzewo.cast     should not be empty
-    drzewo.cast.get should startWith ("Andrew Garfield")
+    drzewo.cast.mkString(", ") should startWith ("Andrew Garfield")
   }
 
   it should "extract obsada/cast from the Wajda-cycle layout (no director field)" in {
     // Cycle pages don't carry a structured `Reżyseria:` line (the director
     // is implicit in the cycle name) but do carry `<strong>obsada/cast:</strong>`.
     val niewinni = byTitle("Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)")
-    niewinni.director shouldBe None
-    niewinni.cast     shouldBe Some("Tadeusz Łomnicki, Krystyna Stypułkowska, Roman Polański")
+    niewinni.director shouldBe empty
+    niewinni.cast     shouldBe Seq("Tadeusz Łomnicki", "Krystyna Stypułkowska", "Roman Polański")
   }
 
   it should "extract a synopsis paragraph from the detail page" in {
@@ -263,8 +263,8 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
 
   it should "leave director / cast / synopsis None when the detail page is unreachable" in {
     val milczaca = byTitle("Milcząca przyjaciółka")
-    milczaca.director shouldBe None
-    milczaca.cast     shouldBe None
+    milczaca.director shouldBe empty
+    milczaca.cast     shouldBe empty
     milczaca.synopsis shouldBe None
   }
 

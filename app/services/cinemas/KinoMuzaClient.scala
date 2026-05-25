@@ -112,6 +112,7 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
       val director  = infoLines.headOption
         .map(_.replaceFirst("(?i)^\\s*reż\\.\\s*", "").trim)
         .filter(_.nonEmpty)
+        .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
       // Line 1, if present, is the country list. Skip it if it instead carries a
       // year/runtime token (some entries omit the country line entirely).
       // Split on "," for co-productions ("Polska, Niemcy" → two entries).
@@ -158,7 +159,7 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
           posterUrl = None,
           filmUrl   = filmUrl,
           synopsis  = None,
-          cast      = None,
+          cast      = Seq.empty,
           director  = director,
           showtimes = showtimes.sortBy(_.dateTime)
         )

@@ -1,7 +1,7 @@
 @import controllers.FilmSchedule
 @(films: Seq[FilmSchedule])
 @for(film <- films) {
-<div class="col" data-title="@film.movie.title" data-countries="@film.movie.countries.mkString("|")"@film.director.map { d => data-director="@d" }@film.cast.map { c => data-cast="@c" }>
+<div class="col" data-title="@film.movie.title" data-countries="@film.movie.countries.mkString("|")"@if(film.director.nonEmpty){ data-director="@film.director.mkString(", ")"}@if(film.cast.nonEmpty){ data-cast="@film.cast.mkString(", ")"}>
   @_movieCard(film.movie, film.posterUrl, film.enrichment) {
     @_filmShowings(film)
   }

@@ -50,8 +50,8 @@ object HeliosNuxt {
           posterUrl = movies.flatMap(_.posterUrl).headOption,
           filmUrl   = urls.find(_.contains("/filmy/")).orElse(urls.headOption),
           synopsis  = None,
-          cast      = None,
-          director  = None,
+          cast      = Seq.empty,
+          director  = Seq.empty,
           showtimes = slots.map { case (dateTime, screeningId, format) =>
             Showtime(
               dateTime   = dateTime,
