@@ -179,39 +179,23 @@ struct CinemaPillsRow: View {
     let allCinemas: [String]
     @Binding var pinnedCinema: String?
 
+    private var selection: Binding<String> {
+        Binding(
+            get: { pinnedCinema ?? "" },
+            set: { pinnedCinema = $0.isEmpty ? nil : $0 }
+        )
+    }
+
     var body: some View {
-        HStack {
-            Menu {
-                Button {
-                    pinnedCinema = nil
-                } label: {
-                    if pinnedCinema == nil { Label("Wszystkie", systemImage: "checkmark") }
-                    else { Text("Wszystkie") }
-                }
-                ForEach(allCinemas, id: \.self) { cinema in
-                    Button {
-                        pinnedCinema = (pinnedCinema == cinema) ? nil : cinema
-                    } label: {
-                        if pinnedCinema == cinema { Label(cinema, systemImage: "checkmark") }
-                        else { Text(cinema) }
-                    }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(pinnedCinema ?? "Wszystkie kina")
-                        .font(.system(size: 14, weight: .medium))
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color(.systemGray5), in: Capsule())
-                .foregroundColor(.primary)
+        Picker("Kino", selection: selection) {
+            Text("Wszystkie").tag("")
+            ForEach(allCinemas, id: \.self) { cinema in
+                Text(cinema).tag(cinema)
             }
-            Spacer()
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .pickerStyle(.wheel)
+        .frame(height: 100)
+        .padding(.vertical, -16)
     }
 }
 
