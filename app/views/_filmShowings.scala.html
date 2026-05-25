@@ -1,18 +1,15 @@
 @import controllers.{FilmSchedule, DateFormatter, FilmHref}
-@(film: FilmSchedule, showCinemaHeaders: Boolean = true, favouriteScreenings: Set[String] = Set.empty)
+@(film: FilmSchedule, showCinemaHeaders: Boolean = true)
 @*
    One film's showings, grouped by date → cinema → time slots.
 
    Used by:
-   - `_filmCards` (the listing page and /ulubione): one card per film,
-     multiple cinemas per card → cinema sub-headers visible.
+   - `_filmCards` (the listing page): one card per film, multiple cinemas
+     per card → cinema sub-headers visible.
    - `film.scala.html` (the per-film page): same shape.
    - `_cinemaCards` (the /kina page): one card per (cinema, film), so the
      parent section already announces the cinema → `showCinemaHeaders=false`
-     suppresses the redundant per-card cinema label. The `<div
-     class="cinema-group">` wrapper still emits so the shared JS
-     (`reflowFavStarSpacing`) finds a per-row container the same way
-     across all three pages.
+     suppresses the redundant per-card cinema label.
 
    Cinema name links to that cinema's page for the film when available;
    per-cinema common format tokens are stripped from each slot's badge.
@@ -47,11 +44,8 @@
               val roomAttr   = slot.room.map(r => s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""").getOrElse("")
               val fmtAttr    = slot.format.mkString(" ")
               val time       = slot.dateTime.toLocalTime.toString
-              val screening  = s"${film.movie.title}|${cinemaShowtimes.cinema.displayName}|${slot.dateTime}"
-              val starClass  = if (favouriteScreenings.contains(screening)) "fav-star is-fav" else "fav-star"
-              val star       = s"""<span class="$starClass">★</span>"""
               val attrs      = s"""$roomAttr data-format="${play.twirl.api.HtmlFormat.escape(fmtAttr)}" data-time="$time""""
-              val body       = s"$time$fmtBadge$star"
+              val body       = s"$time$fmtBadge"
               val tag        = slot.bookingUrl match {
                 case Some(url) => s"""<a href="${play.twirl.api.HtmlFormat.escape(url)}" class="badge-time" target="_blank"$attrs>$body</a>"""
                 case None      => s"""<span class="badge-time"$attrs>$body</span>"""

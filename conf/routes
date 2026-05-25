@@ -3,7 +3,6 @@ GET     /                           controllers.MovieController.index()
 GET     /film                       controllers.MovieController.film(title: String)
 GET     /kina                       controllers.MovieController.kina()
 GET     /kina/:cinema               controllers.MovieController.kinaPinned(cinema: String)
-GET     /ulubione                   controllers.MovieController.favourites()
 GET     /filmy                      controllers.MovieController.browse(kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None)
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
@@ -29,7 +28,7 @@ GET     /auth/:provider/callback    controllers.AuthController.callback(provider
 + nocsrf
 POST    /auth/logout                controllers.AuthController.logout()
 
-# ── Per-user state (favourites / hidden / disabled-cinemas) ──────────────────
+# ── Per-user state (hidden / disabled-cinemas) ──────────────────────────────
 # The browser JS (Phase D) calls these when logged in instead of writing to
 # localStorage. Anonymous requests get 401 and the JS falls back to
 # localStorage on its own.

@@ -295,98 +295,8 @@
   function getDisabledCinemas()  { return _lsGet('disabledCinemas') || []; }
   function setDisabledCinemas(l) { _lsSet('disabledCinemas', l);    scheduleServerSync(); }
 
-  // ── Favourites (per-movie + per-screening) ────────────────────────────────
-  //
-  // Two parallel sets:
-  //   - favouriteMovies:     titles (the [data-title] string)
-  //   - favouriteScreenings: stable per-pill ids
-  //                          ("title|cinema|ISO-datetime", set on the
-  //                          badge's data-screening-id attribute server-side)
-  //
-  // Cookies were the spec — localStorage is what we use here because the
-  // hidden-films / disabled-cinemas migration above proved cookies silently
-  // drop writes past the ~4 KB cap, which per-screening favourites would hit
-  // quickly. /ulubione's filter runs client-side; the server never sees the
-  // list. `IS_FAVOURITES_PAGE` is set by the page template (true on /ulubione,
-  // false on /), and applyFilters() consults it.
-
-  function getFavMovies()        { return _lsGet('favouriteMovies')     || []; }
-  function setFavMovies(titles)  { _lsSet('favouriteMovies',     titles); scheduleServerSync(); }
-  function getFavScreenings()    { return _lsGet('favouriteScreenings') || []; }
-  function setFavScreenings(ids) { _lsSet('favouriteScreenings', ids);   scheduleServerSync(); }
-
-  function toggleFavMovie(btn) {
-    const title = btn.closest('[data-title]').dataset.title;
-    const cur   = getFavMovies();
-    const idx   = cur.indexOf(title);
-    if (idx >= 0) cur.splice(idx, 1); else cur.push(title);
-    setFavMovies(cur);
-    btn.classList.toggle('is-fav', idx < 0);
-    if (idx < 0) maybeShowAnonymousNag();   // only nag when ADDING a favourite, not removing
-    // Re-filter only on the ulubione page — on the main page nothing should
-    // disappear when you star a movie (it just toggles the visual state).
-    if (IS_FAVOURITES_PAGE) preserveScroll(() => applyFilters());
-  }
-
-  // Reconstruct a screening's stable id (`title|cinema|datetime`) from
-  // the badge's ancestor chain at click time instead of inlining the
-  // id on every <a class="badge-time"> element. The structural data is
-  // already there: `closest('[data-title]')` is the film card on / and
-  // /kina or the `.showtimes-section` wrapper on /film; `closest('.cinema-group')`
-  // is the per-cinema wrapper; `closest('.date-group')` is the per-date
-  // wrapper. Server-side `_filmShowings` emits these attributes from
-  // the same field values that used to feed `data-screening-id`, so
-  // the reconstructed string is byte-identical to what was inlined
-  // before — existing localStorage entries continue to round-trip.
-  function badgeScreeningId(badge) {
-    const titleEl  = badge.closest('[data-title]');
-    const cinemaEl = badge.closest('.cinema-group');
-    const dateEl   = badge.closest('.date-group');
-    if (!titleEl || !cinemaEl || !dateEl) return '';
-    return titleEl.dataset.title + '|' + cinemaEl.dataset.cinema + '|' + dateEl.dataset.date + 'T' + badge.dataset.time;
-  }
-
-  // Pill star click — runs inside an <a class="badge-time">, so we have to
-  // stop the booking-link navigation from firing too.
-  function toggleFavScreening(event, star) {
-    event.preventDefault();
-    event.stopPropagation();
-    const badge = star.closest('.badge-time');
-    if (!badge) return;
-    const id  = badgeScreeningId(badge);
-    if (!id) return;
-    const cur = getFavScreenings();
-    const idx = cur.indexOf(id);
-    if (idx >= 0) cur.splice(idx, 1); else cur.push(id);
-    setFavScreenings(cur);
-    star.classList.toggle('is-fav', idx < 0);
-    if (idx < 0) maybeShowAnonymousNag();   // only on ADD, not remove
-    if (IS_FAVOURITES_PAGE) preserveScroll(() => applyFilters());
-    // Toggle changes the pill's permanent width (is-fav stars are always
-    // visible); the row may need a fresh end-of-row pre-wrap pass.
-    scheduleReflow();
-  }
-
-  // One document-level delegated listener for every `.fav-star` click,
-  // instead of an inline `onclick="toggleFavScreening(event, this)"` on
-  // each of the ~2,600 showtime spans the / page renders. The byte
-  // savings on the wire are modest (~30 KB gzipped) but the browser
-  // also stops materialising ~2,600 per-element function references
-  // during HTML parse — a real CPU / heap win on mobile. Uses `closest`
-  // so the click target can be the ★ glyph node itself or anything
-  // inside the span (currently it's just text, but future styling
-  // wrappers don't break the handler).
+  // Delegated click handler for hide-film buttons and card-tap navigation.
   document.addEventListener('click', e => {
-    const star = e.target.closest('.fav-star');
-    if (star) { toggleFavScreening(e, star); return; }
-    // Card poster ★ and ✕ buttons — one delegated listener instead of
-    // a per-card inline `onclick="toggleFavMovie(this)"` and
-    // `onclick="hideFilm(this)"`. ~190 cards × 2 buttons each ≈ 380
-    // inline-onclick attributes that don't need to be inlined and
-    // would otherwise re-materialise as function references during
-    // HTML parse on every page load.
-    const fav = e.target.closest('.fav-poster-btn');
-    if (fav) { toggleFavMovie(fav); return; }
     const hide = e.target.closest('.hide-btn');
     if (hide) { hideFilm(hide); return; }
     if (e.target.closest('a, button, .showings-more')) return;
@@ -396,110 +306,6 @@
       if (col) window.location.href = '/film?title=' + encodeURIComponent(col.dataset.title);
     }
   });
-
-  // On boot: paint the existing favourite state onto every star in the
-  // freshly-rendered DOM. Runs once before applyFilters() so the filter on
-  // /ulubione sees the right .is-fav classes.
-  function paintFavourites() {
-    const favMovies     = new Set(getFavMovies());
-    const favScreenings = new Set(getFavScreenings());
-    document.querySelectorAll('.fav-poster-btn').forEach(btn => {
-      const titled = btn.closest('[data-title]');
-      if (titled) btn.classList.toggle('is-fav', favMovies.has(titled.dataset.title));
-    });
-    document.querySelectorAll('.badge-time').forEach(badge => {
-      const star = badge.querySelector('.fav-star');
-      if (star) star.classList.toggle('is-fav', favScreenings.has(badgeScreeningId(badge)));
-    });
-  }
-
-  // ── End-of-row pre-wrap for fav-star hover ───────────────────────────────
-  //
-  // Pills are compact at rest; the star adds width on hover. Without this,
-  // the last pill on a wrap-row would expand under the cursor and jump to
-  // the next line. We scan each cinema-group, find the rightmost pill on
-  // each row, and if its remaining row-space is less than the star width
-  // we add `.needs-star-room` (CSS adds the equivalent padding-right). The
-  // padding pushes the pill onto the next line BEFORE the user hovers —
-  // when they hover, the star slides into the now-existing slack and the
-  // pill stays put.
-  //
-  // Iterates up to 3 passes: adding the class on one pill can shift row
-  // membership and make a previously mid-row pill the new end-of-row, so
-  // a second / third pass picks up cascade cases.
-  const _STAR_WIDTH_PX = 18;
-  // Hover doesn't fire on touch devices — the hover-expand CSS is gated
-  // by `@media (hover: hover)`, so the pre-wrap calculation does nothing
-  // useful there. Skip the entire reflow on touch. Caching the
-  // matchMedia result at boot saves a media-query lookup per call; the
-  // value never changes for the lifetime of a tab (devices don't grow
-  // hover support mid-session). On desktop where it does matter, the
-  // reflow runs as before.
-  const _hasHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
-  function reflowFavStarSpacing() {
-    if (!_hasHover) return;
-    document.querySelectorAll('.cinema-group').forEach(group => {
-      // Cheap ancestor-visibility short-circuit. One layout read per
-      // group, vs N per-badge `offsetParent` + `getComputedStyle` reads
-      // (each of which would have forced a synchronous style/layout
-      // recompute). A group inside a hidden section/col has rect.width = 0.
-      const groupRect = group.getBoundingClientRect();
-      if (groupRect.width === 0) return;
-      // `style.display` is set by `applyFilters → setVisible` and reads
-      // from the cached attribute — no layout flush. The earlier
-      // `b.classList.contains('hidden')` check was dead (no code writes
-      // a `.hidden` class to badges anywhere in the app).
-      const badges = [...group.querySelectorAll('.badge-time')].filter(b =>
-        b.style.display !== 'none'
-      );
-      if (!badges.length) return;
-      badges.forEach(b => b.classList.remove('needs-star-room'));
-      for (let pass = 0; pass < 3; pass++) {
-        let changed = false;
-        // `.needs-star-room` only widens an end-of-row badge by 18 px of
-        // padding-right — the group's outer width is unchanged across
-        // passes, so the rect we already read is good for every pass.
-        const containerRight = groupRect.right;
-        for (let i = 0; i < badges.length; i++) {
-          const b = badges[i];
-          // Favourited pills already have the star permanently visible, so
-          // their full width is already in the wrap calc — skip.
-          const star = b.querySelector('.fav-star');
-          if (star && star.classList.contains('is-fav')) continue;
-          const next = badges[i + 1];
-          const rect = b.getBoundingClientRect();
-          const isEndOfRow = !next || next.getBoundingClientRect().top > rect.top;
-          if (!isEndOfRow) continue;
-          if (containerRight - rect.right >= _STAR_WIDTH_PX) continue;
-          // Push the would-jump pill onto its own row by adding the margin
-          // to the PREVIOUS sibling on the same row — that way the 18 px
-          // hangs off the right edge of the old row (past `containerRight`,
-          // so invisible) and the would-jump pill drops cleanly to the next
-          // row with no leading gap. If there's no previous same-row pill
-          // (this one is alone on its row), we can't prevent the jump
-          // without visible side-effects — accept it for the degenerate
-          // case.
-          const prev = badges[i - 1];
-          if (prev && prev.getBoundingClientRect().top === rect.top
-              && !prev.classList.contains('needs-star-room')) {
-            prev.classList.add('needs-star-room');
-            changed = true;
-          }
-        }
-        if (!changed) break;
-      }
-    });
-  }
-
-  // Debounce a reflow call. Used by applyFilters() and the toggle handlers
-  // (every filter / star click can change which pill is end-of-row); also
-  // by the resize listener. Same setTimeout id for both paths.
-  let _reflowDebounce = 0;
-  function scheduleReflow(delayMs) {
-    clearTimeout(_reflowDebounce);
-    _reflowDebounce = setTimeout(reflowFavStarSpacing, delayMs || 16);
-  }
-  window.addEventListener('resize', () => scheduleReflow(120));
 
 
   // ── Showings truncation ─────────────────────────────────────────────────
@@ -919,13 +725,7 @@
     const noFilms = document.getElementById('no-films');
     const counter = document.getElementById('film-counter');
     if (visibleCount === 0) {
-      // On /ulubione with no favourites stored at all, point the user at
-      // the action instead of saying the catalogue is empty.
-      const onFavPage   = typeof IS_FAVOURITES_PAGE !== 'undefined' && IS_FAVOURITES_PAGE;
-      const noFavsAtAll = onFavPage && getFavMovies().length === 0 && getFavScreenings().length === 0;
-      noFilms.textContent = noFavsAtAll
-        ? 'Brak ulubionych. Dodaj ulubione filmy lub seanse na innych stronach.'
-        : 'Brak repertuaru.';
+      noFilms.textContent = 'Brak repertuaru.';
       noFilms.style.display = '';
       counter.style.display = 'none';
     } else {
@@ -1016,10 +816,8 @@
       method:  'PUT',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        favouriteMovies:     getFavMovies(),
-        favouriteScreenings: getFavScreenings(),
-        hiddenFilms:         getHidden(),
-        disabledCinemas:     getDisabledCinemas()
+        hiddenFilms:     getHidden(),
+        disabledCinemas: getDisabledCinemas()
       })
     }).catch(() => { /* offline / 401 — localStorage still has the write */ });
   }
@@ -1038,18 +836,11 @@
       const remote = await resp.json();
       const merge  = (local, srv) => [...new Set([...(local || []), ...(srv || [])])].sort();
 
-      // Write through the underlying _lsSet, NOT via setFavMovies — the
-      // wrapped setters would each fire their own scheduleServerSync(),
-      // racing 4 PUTs at boot. After the merge we issue one explicit
-      // pushStateToServer() at the end.
-      _lsSet('favouriteMovies',     merge(getFavMovies(),        remote.favouriteMovies));
-      _lsSet('favouriteScreenings', merge(getFavScreenings(),    remote.favouriteScreenings));
       _lsSet('hiddenFilms',         merge(getHidden(),           remote.hiddenFilms));
       _lsSet('disabledCinemas',     merge(getDisabledCinemas(),  remote.disabledCinemas));
 
       pushStateToServer();
-      paintFavourites();  // repaint with the unioned state
-      applyFilters();     // hidden / disabled-cinemas may have grown
+      applyFilters();
     } catch (e) { /* network blew up — localStorage is still usable */ }
   }
 
@@ -1156,7 +947,6 @@
     buildDirectorPanel();
     buildCastPanel();
     updateFormatBtn();
-    paintFavourites();
     applyFilters();
     bootMergeFromServer();
   });

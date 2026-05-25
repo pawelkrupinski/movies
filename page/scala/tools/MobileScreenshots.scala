@@ -56,19 +56,15 @@ object MobileScreenshots {
       val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(now)
       val anon    = Option.empty[models.User]
       val noOauth = Set.empty[String]
-      val noFav   = Set.empty[String]
 
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, devMode = false,
-        currentUser    = anon, oauthProviders = noOauth,
-        favouriteMovies = noFav, favouriteScreenings = noFav,
-        favouritesMode = false
+        currentUser    = anon, oauthProviders = noOauth
       ).body
 
       val kinaHtml: String = views.html.kina(
         cinemaSchedules, cinemas, devMode = false,
         currentUser    = anon, oauthProviders = noOauth,
-        favouriteMovies = noFav, favouriteScreenings = noFav,
         pinnedCinema = None
       ).body
 
@@ -82,8 +78,7 @@ object MobileScreenshots {
         sys.exit(3)
       }
       val filmHtml: String = views.html.film(
-        filmSchedule, "http://test.local/film", "", isFavourite = false,
-        favouriteScreenings = noFav, devMode = false
+        filmSchedule, "http://test.local/film", "", devMode = false
       ).body
       val filmQuery = "/film?title=" +
         java.net.URLEncoder.encode(filmTitle, "UTF-8")

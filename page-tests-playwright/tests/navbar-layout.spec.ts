@@ -12,14 +12,13 @@ import { waitForCards, pinDateFilterAnytime, measureGridRatio } from './helpers'
 // ── Shared measurement helpers ──────────────────────────────────────
 
 const NAV_CONTROLS = {
-  text:  ['.nav-tab:not(.nav-tab-fav)', '.nav-tab-login', '.refresh-btn:not(.date-nav-btn)', '.auth-name'],
-  glyph: ['.nav-tab-fav', '.date-nav-btn'],
+  text:  ['.nav-tab', '.nav-tab-login', '.refresh-btn:not(.date-nav-btn)', '.auth-name'],
+  glyph: ['.date-nav-btn'],
   input: ['.search-input', '#date-filter'],
 };
 
 const ALL_CONTROL_SELS = [
-  '.nav-tab:not(.nav-tab-fav)',
-  '.nav-tab-fav',
+  '.nav-tab',
   '.nav-tab-login',
   '.refresh-btn:not(.date-nav-btn)',
   '.date-nav-btn',

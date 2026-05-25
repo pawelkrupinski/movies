@@ -80,7 +80,7 @@ test.describe('zoomed portrait card gaps', () => {
       const nav = document.querySelector('.navbar') as HTMLElement;
       if (!nav) return null;
 
-      const row1Sels = ['.navbar-logo', '.nav-tab', '.nav-tab-fav', '.navbar-auth'];
+      const row1Sels = ['.navbar-logo', '.nav-tab', '.navbar-auth'];
       const row2Sels = ['.navbar-date', '.navbar-filtry'];
 
       let row1Bottom = 0;

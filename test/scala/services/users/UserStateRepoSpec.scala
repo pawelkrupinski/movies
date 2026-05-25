@@ -18,12 +18,10 @@ class UserStateRepoSpec extends AnyFlatSpec with Matchers {
   it should "round-trip an upserted state via find" in {
     val repo = new InMemoryUserStateRepo
     val s = UserState(
-      userId              = "u1",
-      favouriteMovies     = Set("Conclave", "Dune Part Two"),
-      favouriteScreenings = Set("Conclave|Multikino|2026-05-20T18:00"),
-      hiddenFilms         = Set("Madagaskar"),
-      disabledCinemas     = Set("Kino Apollo"),
-      updatedAt           = Now
+      userId          = "u1",
+      hiddenFilms     = Set("Madagaskar"),
+      disabledCinemas = Set("Kino Apollo"),
+      updatedAt       = Now
     )
     repo.upsert(s)
     repo.find("u1") shouldBe Some(s)
@@ -31,25 +29,24 @@ class UserStateRepoSpec extends AnyFlatSpec with Matchers {
 
   it should "let upsert overwrite the previous state — second write wins" in {
     val repo = new InMemoryUserStateRepo
-    repo.upsert(UserState("u1", Set("A"),    Set.empty, Set.empty,    Set.empty,         Now))
-    repo.upsert(UserState("u1", Set("A","B"), Set.empty, Set("Hidden"), Set("Kino Foo"), Now.plusSeconds(60)))
+    repo.upsert(UserState("u1", Set.empty,    Set.empty,         Now))
+    repo.upsert(UserState("u1", Set("Hidden"), Set("Kino Foo"), Now.plusSeconds(60)))
     val got = repo.find("u1").value
-    got.favouriteMovies  shouldBe Set("A", "B")
     got.hiddenFilms      shouldBe Set("Hidden")
     got.disabledCinemas  shouldBe Set("Kino Foo")
   }
 
   it should "keep states for different users isolated" in {
     val repo = new InMemoryUserStateRepo
-    repo.upsert(UserState("u1", Set("Conclave"), Set.empty, Set.empty, Set.empty, Now))
-    repo.upsert(UserState("u2", Set("Dune"),     Set.empty, Set.empty, Set.empty, Now))
-    repo.find("u1").value.favouriteMovies shouldBe Set("Conclave")
-    repo.find("u2").value.favouriteMovies shouldBe Set("Dune")
+    repo.upsert(UserState("u1", Set("A"), Set.empty, Now))
+    repo.upsert(UserState("u2", Set("B"), Set.empty, Now))
+    repo.find("u1").value.hiddenFilms shouldBe Set("A")
+    repo.find("u2").value.hiddenFilms shouldBe Set("B")
   }
 
   "UserStateRepo.delete" should "remove the row, leaving subsequent finds empty" in {
     val repo = new InMemoryUserStateRepo
-    repo.upsert(UserState("u1", Set("A"), Set.empty, Set.empty, Set.empty, Now))
+    repo.upsert(UserState("u1", Set("A"), Set.empty, Now))
     repo.find("u1") should be (defined)
     repo.delete("u1")
     repo.find("u1") shouldBe empty
@@ -62,12 +59,10 @@ class UserStateRepoSpec extends AnyFlatSpec with Matchers {
 
   "UserState.empty" should "produce a state with everything blank" in {
     val s = UserState.empty("u1", Now)
-    s.userId              shouldBe "u1"
-    s.favouriteMovies     shouldBe empty
-    s.favouriteScreenings shouldBe empty
-    s.hiddenFilms         shouldBe empty
-    s.disabledCinemas     shouldBe empty
-    s.updatedAt           shouldBe Now
+    s.userId          shouldBe "u1"
+    s.hiddenFilms     shouldBe empty
+    s.disabledCinemas shouldBe empty
+    s.updatedAt       shouldBe Now
   }
 
 }

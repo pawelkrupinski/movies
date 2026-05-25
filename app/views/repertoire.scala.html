@@ -1,11 +1,11 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], favouriteMovies: Set[String] = Set.empty, favouriteScreenings: Set[String] = Set.empty, favouritesMode: Boolean = false)
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
 <!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@if(favouritesMode){Ulubione – }Repertuar kinowy Poznań</title>
+  <title>Repertuar kinowy Poznań</title>
   @_errorTracking()
   @_analytics()
   @* Bootstrap self-hosted — see kina.scala.html for the reasoning. *@
@@ -35,7 +35,7 @@
 </head>
 <body>
 
-@_navbar(if(favouritesMode) "favourites" else "films", devMode, currentUser, oauthProviders)
+@_navbar("films", devMode, currentUser, oauthProviders)
 @_loginModal(oauthProviders)
 @_hiddenModal()
 
@@ -46,16 +46,12 @@
   <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
-    @_filmCards(films, favouriteMovies, favouriteScreenings)
+    @_filmCards(films)
   </div>
 </div>
 
 @_minified(devMode) {
 <script>
-  // True only on /ulubione — toggles the favourites-filter branch in
-  // applyFilters(). On /, the same page renders unfiltered.
-  const IS_FAVOURITES_PAGE = @favouritesMode;
-
   // ── DOM index ─────────────────────────────────────────────────────────────
 
   let INDEX = null;
@@ -83,24 +79,16 @@
           // dataset.format / parsing "HH:MM" on every filter pass adds up —
           // these never change.
           badges:  [...cg.querySelectorAll('.badge-time')].map(b => {
-            // `data-time` is the canonical clock string injected by the
-            // template. We used to read it from `b.firstChild.textContent`,
-            // but the per-screening fav star (a leading `<span>`) now occupies
-            // that position, so the parse fell back to -1 for every badge.
             const t = (b.dataset.time || '').trim();
             const colon = t.indexOf(':');
             const timeMin = colon > 0
               ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10)
-              : -1;   // -1 = "no parseable time"; never filtered out
+              : -1;
             return {
               el:          b,
               time:        t,
               timeMin:     timeMin,
               formats:     new Set((b.dataset.format || '').split(' ').filter(Boolean)),
-              // Compute once at index-build time; the value is per-badge
-              // constant for the page's lifetime. Saves N per-filter-pass
-              // calls to `badgeScreeningId` (a 3× closest() walk each).
-              screeningId: badgeScreeningId(b),
               visible:     true
             };
           })
@@ -129,11 +117,6 @@
   function applyFilters() {
     if (!INDEX) return;
     undoTruncation();
-    // /ulubione hides the filter UI entirely — fall back to "anytime"
-    // for dates and "" for search so the favourite-films set isn't
-    // narrowed further. Server already pre-filtered to favourites for
-    // logged-in users; for anonymous, IS_FAVOURITES_PAGE alone drives
-    // the filter to the localStorage-favourited subset.
     const filter    = document.getElementById('date-filter')?.value || 'anytime';
     const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
     const hidden    = new Set(getHidden());
@@ -148,13 +131,6 @@
     const hasDirector    = directorFilter !== null;
     const castFilter     = getCastFilter();
     const hasCast        = castFilter !== null;
-    // Favourites: on /ulubione, every other filter still applies, AND a
-    // movie is visible only if it's in `favMovies` OR has at least one
-    // screening in `favScreenings`. Per-badge filter: visible if its parent
-    // movie is a favourite, or its own screeningId is favourited.
-    const favMode       = IS_FAVOURITES_PAGE;
-    const favMovies     = favMode ? new Set(getFavMovies())     : null;
-    const favScreenings = favMode ? new Set(getFavScreenings()) : null;
     const { today, tomorrow, in7Days } = dateBounds();
 
     const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
@@ -177,11 +153,6 @@
         earlyMap[i] = null;
         continue;
       }
-      // Favourites mode: a whole-movie favourite shows ALL screenings;
-      // otherwise only individually-favourited screenings show. Compute
-      // once per col so the inner badge loop just checks the set.
-      const colMovieFav = favMode && favMovies.has(col.rawTitle);
-
       let colVisible = false, colEarliest = null;
 
       for (const group of col.groups) {
@@ -192,13 +163,12 @@
           if (disabled.has(cg.cinema)) { setVisible(cg, false); continue; }
 
           let cgVisibleCount = 0, cgFirstTime = null;
-          const needsBadgeLoop = hasFmt || hasFrom || favMode;
+          const needsBadgeLoop = hasFmt || hasFrom;
           if (needsBadgeLoop) {
             for (const badge of cg.badges) {
               const fmtOk  = !hasFmt  || badgeFormatMatch(badge.formats, fmtTokens);
               const timeOk = !hasFrom || badge.timeMin < 0 || badge.timeMin >= fromMin;
-              const favOk  = !favMode || colMovieFav || favScreenings.has(badge.screeningId);
-              const ok = fmtOk && timeOk && favOk;
+              const ok = fmtOk && timeOk;
               setVisible(badge, ok);
               if (ok) {
                 cgVisibleCount++;
@@ -240,7 +210,6 @@
     sortByEarliestVisible(earlyMap);
     truncateAllShowings(true);
     updateCounter(visibleCount, showtimeCount);
-    scheduleReflow();
   }
 
   function sortByEarliestVisible(earlyMap) {

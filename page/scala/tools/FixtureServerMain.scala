@@ -53,7 +53,6 @@ object FixtureServerMain {
     // tests get the production-shaped DOM directly so flows like the
     // anonymous-nag toast lifecycle can be tested end-to-end.
     val noOauth = Set("google")
-    val noFav   = Set.empty[String]
     val cinemas = Cinema.all.map(_.displayName)
     val schedules       = wiring.movieControllerService.toSchedules(now)
     val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(now)
@@ -61,33 +60,17 @@ object FixtureServerMain {
     def renderKina(pinned: Option[String]): String = views.html.kina(
       cinemaSchedules, cinemas, devMode = false,
       currentUser = anon, oauthProviders = noOauth,
-      favouriteMovies = noFav, favouriteScreenings = noFav,
       pinnedCinema = pinned
     ).body
 
     val indexHtml: String = views.html.repertoire(
       schedules, cinemas, devMode = false,
-      currentUser = anon, oauthProviders = noOauth,
-      favouriteMovies = noFav, favouriteScreenings = noFav,
-      favouritesMode = false
-    ).body
-
-    // /ulubione re-renders `repertoire` with `favouritesMode = true`
-    // so the page's inline `applyFilters` switches to the favourites
-    // branch. Server side passes the same schedules; client side
-    // narrows to `getFavMovies() ∪ getFavScreenings()` per the
-    // localStorage state Playwright tests can seed.
-    val ulubioneHtml: String = views.html.repertoire(
-      schedules, cinemas, devMode = false,
-      currentUser = anon, oauthProviders = noOauth,
-      favouriteMovies = noFav, favouriteScreenings = noFav,
-      favouritesMode = true
+      currentUser = anon, oauthProviders = noOauth
     ).body
 
     val filmyHtml: String = views.html.browse(
       schedules, "Filmy", devMode = false,
-      currentUser = anon, oauthProviders = noOauth,
-      favouriteMovies = noFav, favouriteScreenings = noFav
+      currentUser = anon, oauthProviders = noOauth
     ).body
 
     def renderFilm(title: String): String = {
@@ -95,15 +78,13 @@ object FixtureServerMain {
       schedules.find(_.movie.title == target) match {
         case Some(s) =>
           views.html.film(s, s"http://test.local/film?title=$title",
-            ogDescription = "", isFavourite = false,
-            favouriteScreenings = noFav, devMode = false).body
+            ogDescription = "", devMode = false).body
         case None    => "<html><body>Film not found</body></html>"
       }
     }
 
     val server = new TestHttpServer({
       case "/"                          => indexHtml
-      case "/ulubione"                  => ulubioneHtml
       case "/filmy"                     => filmyHtml
       case "/kina"                      => renderKina(None)
       case p if p.startsWith("/kina/") =>

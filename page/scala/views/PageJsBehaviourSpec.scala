@@ -52,7 +52,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       wiring.bootStartup()
       val anon    = Option.empty[models.User]
       val noOauth = Set.empty[String]
-      val noFav   = Set.empty[String]
       val cinemas = Cinema.all.map(_.displayName)
       val schedules       = wiring.movieControllerService.toSchedules(now)
       val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(now)
@@ -60,15 +59,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       def renderKina(pinned: Option[String]): String = views.html.kina(
         cinemaSchedules, cinemas, devMode = false,
         currentUser = anon, oauthProviders = noOauth,
-        favouriteMovies = noFav, favouriteScreenings = noFav,
         pinnedCinema = pinned
       ).body
 
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, devMode = false,
-        currentUser = anon, oauthProviders = noOauth,
-        favouriteMovies = noFav, favouriteScreenings = noFav,
-        favouritesMode = false
+        currentUser = anon, oauthProviders = noOauth
       ).body
 
       // `/kina/X` mirrors the controller's `kinaPinned` action: filter the
@@ -84,21 +80,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         schedules.find(_.movie.title == target) match {
           case Some(s) =>
             views.html.film(s, s"http://test.local/film?title=$title",
-              ogDescription = "", isFavourite = false,
-              favouriteScreenings = noFav, devMode = false).body
+              ogDescription = "", devMode = false).body
           case None    => "<html><body>Film not found</body></html>"
         }
       }
-      val ulubioneHtml: String = views.html.repertoire(
-        schedules, cinemas, devMode = false,
-        currentUser = anon, oauthProviders = noOauth,
-        favouriteMovies = noFav, favouriteScreenings = noFav,
-        favouritesMode = true
-      ).body
-
       server = new TestHttpServer({
         case "/"                          => indexHtml
-        case "/ulubione"                  => ulubioneHtml
         case "/kina"                      => renderKina(None)
         case p if p.startsWith("/kina/") =>
           val raw    = URLDecoder.decode(p.stripPrefix("/kina/"), "UTF-8")
@@ -188,7 +175,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/kina") { page =>
       // Pre-seed localStorage as if Filtry on `/` had set it. /kina
       // ignores this on load AND must not overwrite it when a pill is
-      // clicked — the persistent filter on / / /ulubione stays intact.
+      // clicked — the persistent filter on / stays intact.
       val preset = """["Multikino Stary Browar","Helios Posnania"]"""
       page.eval(s"localStorage.setItem('disabledCinemas', ${jsString(preset)})")
       page.reload()
@@ -1070,127 +1057,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("document.getElementById('search-input').value = ''; applyFilters()")
       visibleCardCount(page) should be > 0
       page.evalString("document.getElementById('no-films').style.display") shouldBe "none"
-    }
-  }
-
-  // ── Favourites flow ────────────────────────────────────────────────────────
-
-  "the poster ★ button" should "toggle the title in favouriteMovies localStorage" in {
-    onPath("/") { page =>
-      pinDateFilterAnytime(page)
-      val title = firstVisibleTitle(page)
-
-      page.eval(
-        s"(() => { const btn = document.querySelector('.col[data-title=${jsString(title)}] .fav-poster-btn');" +
-        "  toggleFavMovie(btn); })()"
-      )
-      page.evalBool(
-        s"JSON.parse(localStorage.getItem('favouriteMovies') || '[]').includes(${jsString(title)})"
-      ) shouldBe true
-      page.evalBool(
-        s"document.querySelector('.col[data-title=${jsString(title)}] .fav-poster-btn').classList.contains('is-fav')"
-      ) shouldBe true
-
-      page.eval(
-        s"(() => { const btn = document.querySelector('.col[data-title=${jsString(title)}] .fav-poster-btn');" +
-        "  toggleFavMovie(btn); })()"
-      )
-      page.evalBool(
-        s"JSON.parse(localStorage.getItem('favouriteMovies') || '[]').includes(${jsString(title)})"
-      ) shouldBe false
-    }
-  }
-
-  "/ulubione" should "render only the favourited cards" in {
-    onPath("/") { page =>
-      pinDateFilterAnytime(page)
-      val titles = page.evalString(
-        "[...document.querySelectorAll('.col[data-title]')]" +
-          ".filter(c => c.style.display !== 'none').slice(0,2)" +
-          ".map(c => c.dataset.title).join('|')"
-      ).split('|').toSeq
-      titles should have length 2
-
-      page.eval(s"localStorage.setItem('favouriteMovies', ${jsString(titles.mkString("[\"", "\",\"", "\"]"))})")
-    }
-    onPath("/ulubione") { page =>
-      val visible = page.evalString(
-        "[...document.querySelectorAll('.col[data-title]')]" +
-          ".filter(c => c.style.display !== 'none')" +
-          ".map(c => c.dataset.title).sort().join('|')"
-      ).split('|').toSeq.sorted
-      visible should not be empty
-    }
-  }
-
-  // ── /film detail favourite ★ ───────────────────────────────────────────────
-
-  "the /film ★ button" should "write the title to favouriteMovies localStorage" in {
-    onPath(filmTarget) { page =>
-      page.eval("(() => { const btn = document.querySelector('.fav-poster-btn'); toggleFavMovie(btn); })()")
-      page.evalBool(
-        "JSON.parse(localStorage.getItem('favouriteMovies') || '[]').includes(" +
-        "document.querySelector('.poster-wrap[data-title]').dataset.title)"
-      ) shouldBe true
-      page.evalBool("document.querySelector('.fav-poster-btn').classList.contains('is-fav')") shouldBe true
-    }
-  }
-
-  it should "paint .is-fav on boot when the title is already in localStorage" in {
-    onPath(filmTarget) { page =>
-      val title = page.evalString("document.querySelector('.poster-wrap[data-title]').dataset.title")
-      page.eval(s"localStorage.setItem('favouriteMovies', JSON.stringify([${jsString(title)}]))")
-      page.reload()
-      page.evalBool("document.querySelector('.fav-poster-btn').classList.contains('is-fav')") shouldBe true
-    }
-  }
-
-  // ── Per-screening favourite ★ ──────────────────────────────────────────────
-
-  "the per-screening ★" should "toggle screeningId in favouriteScreenings localStorage" in {
-    onPath("/") { page =>
-      pinDateFilterAnytime(page)
-      val screeningId = page.evalString(
-        "(() => { const b = [...document.querySelectorAll('.badge-time')].find(b => b.style.display !== 'none');" +
-        "  const t = b.closest('[data-title]').dataset.title;" +
-        "  const c = b.closest('.cinema-group').dataset.cinema;" +
-        "  const d = b.closest('.date-group').dataset.date;" +
-        "  return t + '|' + c + '|' + d + 'T' + b.dataset.time; })()"
-      )
-      screeningId should include ("|")
-
-      page.eval(
-        s"(() => { const bs = [...document.querySelectorAll('.badge-time')];" +
-        s"  const b = bs.find(b => { const t = b.closest('[data-title]').dataset.title;" +
-        s"    const c = b.closest('.cinema-group').dataset.cinema;" +
-        s"    const d = b.closest('.date-group').dataset.date;" +
-        s"    return (t+'|'+c+'|'+d+'T'+b.dataset.time) === ${jsString(screeningId)}; });" +
-        "  b.querySelector('.fav-star').dispatchEvent(new MouseEvent('click', {bubbles:true})); })()"
-      )
-      page.evalBool(
-        s"JSON.parse(localStorage.getItem('favouriteScreenings') || '[]').includes(${jsString(screeningId)})"
-      ) shouldBe true
-      page.evalBool(
-        s"(() => { const bs = [...document.querySelectorAll('.badge-time')];" +
-        s"  const b = bs.find(b => { const t = b.closest('[data-title]').dataset.title;" +
-        s"    const c = b.closest('.cinema-group').dataset.cinema;" +
-        s"    const d = b.closest('.date-group').dataset.date;" +
-        s"    return (t+'|'+c+'|'+d+'T'+b.dataset.time) === ${jsString(screeningId)}; });" +
-        "  return b.querySelector('.fav-star').classList.contains('is-fav'); })()"
-      ) shouldBe true
-
-      // Second click removes it
-      page.eval(
-        s"(() => { const bs = [...document.querySelectorAll('.badge-time')];" +
-        s"  const b = bs.find(b => { const t = b.closest('[data-title]').dataset.title;" +
-        s"    const c = b.closest('.cinema-group').dataset.cinema;" +
-        s"    const d = b.closest('.date-group').dataset.date;" +
-        s"    return (t+'|'+c+'|'+d+'T'+b.dataset.time) === ${jsString(screeningId)}; });" +
-        "  b.querySelector('.fav-star').dispatchEvent(new MouseEvent('click', {bubbles:true})); })()"
-      )
-      page.evalBool(
-        s"JSON.parse(localStorage.getItem('favouriteScreenings') || '[]').includes(${jsString(screeningId)})"
-      ) shouldBe false
     }
   }
 

@@ -247,8 +247,7 @@ struct FilmDetailView: View {
         }
     }
 
-    /// `ShowingsView` consumes a `Film` (it needs title + showings for
-    /// the screening-id favourite key). Build a thin synthetic Film
+    /// `ShowingsView` consumes a `Film`. Build a thin synthetic Film
     /// from whichever set of `days` we ended up rendering — the listing
     /// row's showings before the fetch resolves, the full /film tree
     /// after.

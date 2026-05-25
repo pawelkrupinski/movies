@@ -89,16 +89,9 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
     rendered should include ("dataset.fallbacks")
   }
 
-  // The whole-movie favourites star (drives /ulubione + the visual yellow
-  // state). Lives next to the existing hide button on the poster.
-  it should "render a poster-overlay favourite button paired with the hide button" in {
+  it should "render a poster-overlay hide button with delegated click handler" in {
     val rendered = views.html._movieCard(movie, None)(Html("")).body
-    rendered should include ("""class="fav-poster-btn"""")
     rendered should include ("""class="hide-btn"""")
-    // No per-button onclick — a single delegated click handler in
-    // `_sharedJs` routes `.fav-poster-btn` / `.hide-btn` taps to the
-    // respective JS functions. Saves ~13 KB raw across ~190 cards.
-    rendered should not include "onclick=\"toggleFavMovie"
     rendered should not include "onclick=\"hideFilm"
   }
 }

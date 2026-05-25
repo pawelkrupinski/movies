@@ -1,16 +1,11 @@
 @import controllers.{CinemaSchedule, CinemaShowtimes, FilmSchedule}
-@(cinemas: Seq[CinemaSchedule], favouriteMovies: Set[String] = Set.empty, favouriteScreenings: Set[String] = Set.empty)
+@(cinemas: Seq[CinemaSchedule])
 @*
    /kina renders one section per cinema, with that cinema's films as cards.
    Each card's interior is "showings, grouped by date → slots". That's the
    same shape `_filmShowings` already emits — we just feed it a per-cinema
    `FilmSchedule` (one cinema, the films's slots only) and ask it to skip
    the inner cinema-label since the section header already names it.
-
-   This keeps the badge HTML, the per-screening favourite star, and the
-   end-of-row wrap behaviour identical to the listing card and film page —
-   one source of truth for "what a pill looks like" lives in
-   `_filmShowings`.
 *@
 @for(cs <- cinemas) {
 <div class="cinema-section mb-5" data-cinema="@cs.cinema.displayName">
@@ -18,7 +13,7 @@
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6">
     @for(film <- cs.movies) {
     <div class="col" data-title="@film.movie.title" data-countries="@film.movie.countries.mkString("|")"@film.enrichment.flatMap(_.director).map { d => data-director="@d" }@film.enrichment.flatMap(_.cast).map { c => data-cast="@c" }>
-      @_movieCard(film.movie, film.posterUrl, film.enrichment, favouriteMovies.contains(film.movie.title)) {
+      @_movieCard(film.movie, film.posterUrl, film.enrichment) {
         @defining(FilmSchedule(
           movie          = film.movie,
           posterUrl      = film.posterUrl,
@@ -31,7 +26,7 @@
                            },
           enrichment     = film.enrichment
         )) { fs =>
-          @_filmShowings(fs, showCinemaHeaders = false, favouriteScreenings = favouriteScreenings)
+          @_filmShowings(fs, showCinemaHeaders = false)
         }
       }
     </div>

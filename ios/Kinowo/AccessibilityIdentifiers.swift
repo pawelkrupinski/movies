@@ -38,11 +38,6 @@ enum A11y {
     enum TabOverlay {
         static let filmy     = "tab.label.filmy"
         static let kina      = "tab.label.kina"
-        static let ulubione  = "tab.label.ulubione"
-    }
-
-    enum Favourites {
-        static let emptyState = "favourites.empty"
     }
 
     enum EmptyState {

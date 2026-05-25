@@ -159,22 +159,6 @@
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
-  .fav-poster-btn {
-    position: absolute;
-    top: 6px; left: 6px;
-    z-index: 10;
-    background: rgba(0,0,0,.55);
-    border: none;
-    color: #fff;
-    border-radius: 50%;
-    width: 26px; height: 26px;
-    font-size: 1rem;
-    line-height: 1;
-    cursor: pointer;
-    transition: color .15s;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .fav-poster-btn.is-fav { color: #ffd24a; }
   .dropdown-panel {
     position: absolute;
     top: calc(100% + 6px);
@@ -274,18 +258,6 @@
   }
   .nav-tab:hover { background: #3a3a6e; color: #fff; }
   .nav-tab.active { background: #3a3a6e; color: #fff; }
-  /* Favourites tab renders as a yellow star instead of text — matches the
-     fav-star colour used on listing-card and film-page poster buttons so
-     the whole "favourite" idea is visually consistent. Slightly larger
-     than the text tabs so the glyph reads cleanly at the navbar height. */
-  /* inline-flex + align-items: center so the ★ glyph sits in the optical
-     centre of the pill — the surrounding flex row stretches every tab to
-     the tallest sibling's height, and without explicit centering the
-     short-line-height star floats to the top of that stretched box. */
-  .nav-tab-fav { color: #ffd24a; font-size: 1.05rem; line-height: 1; padding: .25rem .6rem; display: inline-flex; align-items: center; justify-content: center; min-width: 35px; }
-  .nav-tab-fav:hover { color: #ffd24a; background: #3a3a6e; }
-  .nav-tab-fav.active { color: #ffd24a; background: #3a3a6e; }
-
   /* ── Auth pill / dropdown / login modal ──────────────────────────────── */
   .nav-tab-login {
     cursor: pointer;
@@ -607,8 +579,6 @@
       padding-left:  var(--navbar-px);
       padding-right: var(--navbar-px);
     }
-    /* Icon-only controls scale on glyph cap height — ★, < and >. */
-    .navbar .nav-tab-fav  { font-size: calc(1.05 * var(--mobile-scale)); }
     .navbar .date-nav-btn { font-size: calc(1.1 * var(--mobile-scale)); min-width: min(35px, 8vw); flex-shrink: 1; }
     /* Navbar search + date-filter selects ride the SAME
        `--navbar-fs` as the surrounding tabs and Filtry button so
@@ -717,7 +687,6 @@
        doesn't shift the row height. Locked in by
        `navbar-orientation-uniformity.spec.ts`. */
     .navbar .nav-tab,
-    .navbar .nav-tab-fav,
     .navbar .nav-tab-login,
     .navbar .refresh-btn,
     .navbar .date-nav-btn,
@@ -762,7 +731,6 @@
       padding-left:  5px;
       padding-right: 5px;
     }
-    .navbar .nav-tab-fav  { font-size: calc(.9 * var(--mobile-scale)); min-width: 0; padding-left: 4px; padding-right: 4px; }
     .navbar .btn.date-nav-btn { font-size: calc(.95 * var(--mobile-scale)); min-width: 0; padding-left: 3px; padding-right: 3px; }
     .navbar .filter-select,
     .navbar .search-input { padding-top: 0; padding-bottom: 0; }
@@ -835,7 +803,6 @@
       padding-bottom: 3px !important;
     }
     .navbar .nav-tab,
-    .navbar .nav-tab-fav,
     .navbar .nav-tab-login,
     .navbar .refresh-btn,
     .navbar .date-nav-btn,

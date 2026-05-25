@@ -1,5 +1,5 @@
 @import controllers.CinemaSchedule
-@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], favouriteMovies: Set[String] = Set.empty, favouriteScreenings: Set[String] = Set.empty, pinnedCinema: Option[String] = None)
+@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pinnedCinema: Option[String] = None)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -122,7 +122,7 @@
   <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
   <div id="film-grid">
-    @_cinemaCards(cinemas, favouriteMovies, favouriteScreenings)
+    @_cinemaCards(cinemas)
   </div>
 </div>
 
@@ -157,9 +157,6 @@
           visible: true,
           // Pre-parse each badge's format Set + numeric minutes-since-midnight
           // for the from-hour filter; never re-read dataset on filter.
-          // `data-time` is the canonical clock injected by the template — the
-          // pill body now also carries a trailing `.fav-star` <span>, so
-          // reading the time off `firstChild.textContent` is fragile.
           badges:  [...group.querySelectorAll('.badge-time')].map(b => {
             const t = (b.dataset.time || '').trim();
             const colon = t.indexOf(':');
@@ -291,7 +288,6 @@
 
     truncateAllShowings(false);
     updateCounter(visibleCount, showtimeCount);
-    scheduleReflow();
   }
 
   // ── Cinema-picker pills ───────────────────────────────────────────────────

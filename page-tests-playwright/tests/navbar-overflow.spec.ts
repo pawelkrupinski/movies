@@ -289,7 +289,7 @@ async function assertFiltryButtonContained(page: Page, viewportWidth: number): P
       btnText: btn.textContent ?? '',
     };
   });
-  if (probe === null) return; // Filtry not rendered (e.g. /ulubione).
+  if (probe === null) return;
   // The wrapper must sit inside the viewport.
   expect(
     probe.wrapperRight,

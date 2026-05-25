@@ -64,10 +64,7 @@ private struct PosterView: View {
                 .frame(maxWidth: .infinity)
                 .aspectRatio(2.0/3.0, contentMode: .fit)
                 .clipped()
-            // Mirror the web layout: ★ on top-left (favourite,
-            // `.fav-poster-btn`), X on top-right (hide, `.hide-btn`).
             HStack {
-                favButton
                 Spacer()
                 hideButton
             }
@@ -112,18 +109,6 @@ private struct PosterView: View {
         .buttonStyle(.plain)
     }
 
-    private var favButton: some View {
-        Button {
-            withAnimation { prefs.toggleFavouriteMovie(film.title) }
-        } label: {
-            Image(systemName: prefs.favouriteMovies.contains(film.title) ? "star.fill" : "star")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(prefs.favouriteMovies.contains(film.title) ? .yellow : .white.opacity(0.85))
-                .frame(width: 26, height: 26)
-                .background(.black.opacity(0.55), in: Circle())
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 /// Walking AsyncImage: tries `primary`, then every entry in `fallbacks`

@@ -34,8 +34,6 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val result   = ctl.get()(request)
     status(result)              shouldBe OK
     contentAsJson(result)       shouldBe Json.obj(
-      "favouriteMovies"     -> Json.arr(),
-      "favouriteScreenings" -> Json.arr(),
       "hiddenFilms"         -> Json.arr(),
       "disabledCinemas"     -> Json.arr()
     )
@@ -43,12 +41,10 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "return the stored state sorted (deterministic wire format)" in {
     val stored = UserState(
-      userId              = "u1",
-      favouriteMovies     = Set("Dune", "Conclave"),
-      favouriteScreenings = Set("Conclave|Multikino|2026-05-20T18:00"),
-      hiddenFilms         = Set("Madagaskar"),
-      disabledCinemas     = Set("Kino Apollo"),
-      updatedAt           = Instant.parse("2026-05-19T12:00:00Z")
+      userId          = "u1",
+      hiddenFilms     = Set("Madagaskar", "ABC"),
+      disabledCinemas = Set("Kino Apollo"),
+      updatedAt       = Instant.parse("2026-05-19T12:00:00Z")
     )
     val (ctl, _, _) = fixture(Some(stored))
     val request  = FakeRequest("GET", "/api/me/state").withSession("userId" -> "u1")
@@ -56,8 +52,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
     status(result) shouldBe OK
     val js = contentAsJson(result)
-    (js \ "favouriteMovies").as[Seq[String]] shouldBe Seq("Conclave", "Dune")   // alpha-sorted
-    (js \ "hiddenFilms").as[Seq[String]]     shouldBe Seq("Madagaskar")
+    (js \ "hiddenFilms").as[Seq[String]]     shouldBe Seq("ABC", "Madagaskar")
   }
 
   // ── PUT /api/me/state ─────────────────────────────────────────────────────
@@ -65,7 +60,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   "PUT /api/me/state" should "401 anonymous requests without writing anything" in {
     val (ctl, repo, _) = fixture()
     val request = FakeRequest("PUT", "/api/me/state")
-      .withBody(Json.obj("favouriteMovies" -> Json.arr("X")))
+      .withBody(Json.obj("hiddenFilms" -> Json.arr("X")))
       .withHeaders("Content-Type" -> "application/json")
     val result = ctl.put()(request)
     status(result)              shouldBe UNAUTHORIZED
@@ -73,12 +68,11 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "replace the user's state with the request body" in {
-    val initial = UserState("u1", Set("OLD"), Set.empty, Set.empty, Set.empty, Instant.now())
+    val initial = UserState("u1", Set("OLD"), Set.empty, Instant.now())
     val (ctl, repo, _) = fixture(Some(initial))
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
       .withBody(Json.obj(
-        "favouriteMovies" -> Json.arr("Conclave", "Dune"),
         "hiddenFilms"     -> Json.arr("Hidden A")
       ))
 
@@ -86,32 +80,28 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe OK
 
     val stored = repo.find("u1").value
-    stored.favouriteMovies shouldBe Set("Conclave", "Dune")    // OLD is gone — replace, not merge
     stored.hiddenFilms     shouldBe Set("Hidden A")
-    // Fields omitted from the body default to empty (lets the client
-    // ship a focused payload when only one field changed).
-    stored.favouriteScreenings shouldBe empty
-    stored.disabledCinemas     shouldBe empty
+    stored.disabledCinemas shouldBe empty
   }
 
   it should "echo the saved state in the response so the client confirms what landed" in {
     val (ctl, _, _) = fixture()
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
-      .withBody(Json.obj("favouriteMovies" -> Json.arr("A")))
+      .withBody(Json.obj("hiddenFilms" -> Json.arr("A")))
     val result = ctl.put()(request)
 
-    (contentAsJson(result) \ "favouriteMovies").as[Seq[String]] shouldBe Seq("A")
+    (contentAsJson(result) \ "hiddenFilms").as[Seq[String]] shouldBe Seq("A")
   }
 
   it should "400 a malformed payload (wrong type) and not touch storage" in {
     val (ctl, repo, _) = fixture()
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
-      .withBody(Json.obj("favouriteMovies" -> "not-an-array"))
+      .withBody(Json.obj("hiddenFilms" -> "not-an-array"))
     val result = ctl.put()(request)
     status(result)               shouldBe BAD_REQUEST
-    (contentAsJson(result) \ "error").as[String] should include ("favouriteMovies")
+    (contentAsJson(result) \ "error").as[String] should include ("hiddenFilms")
     repo.find("u1")              shouldBe empty
   }
 
@@ -123,7 +113,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "remove the user + state rows AND clear the session" in {
-    val initialState = UserState("u1", Set("Conclave"), Set.empty, Set.empty, Set.empty, Instant.now())
+    val initialState = UserState("u1", Set("Conclave"), Set.empty, Instant.now())
     val (ctl, stateRepo, userRepo) = fixture(Some(initialState))
     userRepo.upsert(models.User(
       id = "u1", provider = "google", providerSub = "G-1",
@@ -135,11 +125,11 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val result  = ctl.deleteAccount()(request)
 
     status(result)               shouldBe NO_CONTENT
-    stateRepo.find("u1")         shouldBe empty   // state row gone
-    userRepo.findById("u1")      shouldBe empty   // user row gone
+    stateRepo.find("u1")         shouldBe empty
+    userRepo.findById("u1")      shouldBe empty
     val sess = session(result)
-    sess.get("userId")           shouldBe empty   // session cleared
-    sess.get("extra")            shouldBe empty   // entire session dropped (.withNewSession), not just userId
+    sess.get("userId")           shouldBe empty
+    sess.get("extra")            shouldBe empty
   }
 
   // ── Pure helpers (also covered indirectly by the action specs above) ────
@@ -147,8 +137,8 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   "UserStateController.fromJson" should "treat missing fields as empty sets" in {
     UserStateController.fromJson("u1", Json.obj()) match {
       case Right(s) =>
-        s.favouriteMovies     shouldBe empty
-        s.favouriteScreenings shouldBe empty
+        s.hiddenFilms     shouldBe empty
+        s.disabledCinemas shouldBe empty
       case Left(reason) => fail(s"expected Right, got Left($reason)")
     }
   }

@@ -10,26 +10,12 @@ import java.time.Instant
 
 /**
  * REST endpoint for the authenticated user's personalization state —
- * favourites + hidden films + disabled cinemas. The browser-side JS
- * (Phase D) uses this to:
- *
- *   - On page load when logged in: GET /api/me/state, merge into
- *     localStorage, PUT the merged state back so the next device
- *     sees the union (the "migrate on entry" behaviour the spec asked
- *     for).
- *   - On every toggle (favourite, hide, disable cinema): PUT the full
- *     new state. Replace, not patch — keeps the wire shape trivial
- *     and the conflict story bounded (last-write-wins per user, which
- *     is fine for this scale of UX).
- *
- * Anonymous requests get 401 — JS falls back to localStorage on its
- * own.
+ * hidden films + disabled cinemas. The browser-side JS (Phase D) uses
+ * this to sync localStorage with the server on login.
  *
  * Shape (both directions):
- *   { "favouriteMovies":     [titles…],
- *     "favouriteScreenings": [screening ids…],
- *     "hiddenFilms":         [titles…],
- *     "disabledCinemas":     [cinema display names…] }
+ *   { "hiddenFilms":     [titles…],
+ *     "disabledCinemas": [cinema display names…] }
  */
 class UserStateController(
   cc:            ControllerComponents,
@@ -88,10 +74,8 @@ object UserStateController {
    *  spec assertions stable); the in-memory model stays a Set.
    */
   def toJson(state: UserState): JsValue = Json.obj(
-    "favouriteMovies"     -> state.favouriteMovies.toSeq.sorted,
-    "favouriteScreenings" -> state.favouriteScreenings.toSeq.sorted,
-    "hiddenFilms"         -> state.hiddenFilms.toSeq.sorted,
-    "disabledCinemas"     -> state.disabledCinemas.toSeq.sorted
+    "hiddenFilms"     -> state.hiddenFilms.toSeq.sorted,
+    "disabledCinemas" -> state.disabledCinemas.toSeq.sorted
   )
 
   /** Parse a wire JSON into `UserState` bound to `userId`. Missing
@@ -110,10 +94,8 @@ object UserStateController {
           }
       }
     for {
-      fm <- stringSet("favouriteMovies")
-      fs <- stringSet("favouriteScreenings")
       hf <- stringSet("hiddenFilms")
       dc <- stringSet("disabledCinemas")
-    } yield UserState(userId, fm, fs, hf, dc, Instant.now())
+    } yield UserState(userId, hf, dc, Instant.now())
   }
 }

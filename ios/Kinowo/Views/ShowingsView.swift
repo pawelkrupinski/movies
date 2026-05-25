@@ -46,7 +46,7 @@ struct ShowingsView: View {
                         }
                         FlowLayout(spacing: 4, lineSpacing: 4) {
                             ForEach(cinema.showtimes) { st in
-                                ShowtimeBadge(film: film, cinema: cinema.cinema, day: day, showtime: st)
+                                ShowtimeBadge(showtime: st)
                             }
                         }
                     }
@@ -237,17 +237,9 @@ struct ShowingsView: View {
 }
 
 private struct ShowtimeBadge: View {
-    let film: Film
-    let cinema: String
-    let day: DayShowings
     let showtime: Showtime
-    @EnvironmentObject var prefs: UserPreferences
 
     var body: some View {
-        let id = UserPreferences.screeningId(
-            title: film.title, cinema: cinema, date: day.date, time: showtime.time
-        )
-        let isFav = prefs.favouriteScreenings.contains(id)
         let trimmedFormat = showtime.format.trimmingCharacters(in: .whitespacesAndNewlines)
 
         let body = HStack(spacing: 4) {
@@ -259,14 +251,6 @@ private struct ShowtimeBadge: View {
                     .font(.system(size: 9, weight: .medium))
                     .foregroundColor(.secondary)
             }
-            Button {
-                prefs.toggleFavouriteScreening(id)
-            } label: {
-                Image(systemName: isFav ? "star.fill" : "star")
-                    .font(.system(size: 9))
-                    .foregroundColor(isFav ? .yellow : .gray.opacity(0.55))
-            }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 4)

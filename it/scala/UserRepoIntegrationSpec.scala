@@ -14,21 +14,6 @@ import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-/**
- * Live integration coverage for `MongoUserRepo` + `MongoUserStateRepo`
- * against MongoDB Atlas. Mirrors `MovieRepoIntegrationSpec`: writes
- * sentinel rows with the `__integration-test-…` id convention, asserts
- * round-trip semantics, cleans up.
- *
- * Catches the codec-shape failures the in-memory specs can't:
- *   - the `Macros.createCodecProviderIgnoreNone` macro derives the
- *     right BSON shape for `User` (mix of `String`, `Option[String]`,
- *     `Instant`)
- *   - `Set[String]` round-trips correctly on `UserState`
- *   - case-insensitive `findByEmail` works against the actual Mongo
- *     regex (the Java regex flag in the driver maps to PCRE i flag)
- *   - `delete(id)` matches by the same key the writes index by
- */
 class UserRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
@@ -36,8 +21,6 @@ class UserRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAf
   private val users  = new MongoUserRepo()
   private val states = new MongoUserStateRepo()
 
-  // Strip every sentinel doc from both collections at exit so the row count
-  // doesn't grow across CI runs.
   override protected def afterAll(): Unit = try {
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
@@ -50,9 +33,6 @@ class UserRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAf
 
   private val Now = Instant.parse("2026-05-19T12:00:00Z")
 
-  // Scala 3 doesn't let one default param see another, so the "no
-  // email override" case calls `sentinelUser(suffix, email = None)`
-  // explicitly rather than relying on a default referencing `suffix`.
   private def sentinelUser(suffix: String, email: Option[String]) = User(
     id          = s"__integration-test-$suffix",
     provider    = "google",
@@ -91,7 +71,6 @@ class UserRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     val u = sentinelUser("by-sub")
     users.upsert(u)
     users.findByProviderSub("google", u.providerSub).value shouldBe u
-    // Wrong provider must NOT match same sub.
     users.findByProviderSub("facebook", u.providerSub) shouldBe empty
   }
 
@@ -129,12 +108,10 @@ class UserRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAf
 
   it should "round-trip a UserState (Set[String] fields survive the BSON Array codec)" in {
     val s = UserState(
-      userId              = "__integration-test-state-rt",
-      favouriteMovies     = Set("Conclave", "Dune Part Two"),
-      favouriteScreenings = Set("Conclave|Multikino|2026-05-20T18:00", "Dune|Helios|2026-05-21T20:30"),
-      hiddenFilms         = Set("Madagaskar"),
-      disabledCinemas     = Set("Kino Apollo", "Cinema City"),
-      updatedAt           = Now
+      userId          = "__integration-test-state-rt",
+      hiddenFilms     = Set("Madagaskar"),
+      disabledCinemas = Set("Kino Apollo", "Cinema City"),
+      updatedAt       = Now
     )
     states.upsert(s)
     states.find(s.userId).value shouldBe s
@@ -145,15 +122,15 @@ class UserRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAf
   }
 
   it should "let upsert replace the previous state — last write wins, not merge" in {
-    val first  = UserState("__integration-test-state-replace", Set("A"),    Set.empty, Set.empty, Set.empty, Now)
-    val second = UserState(first.userId,                       Set("A","B"), Set.empty, Set.empty, Set.empty, Now.plusSeconds(60))
+    val first  = UserState("__integration-test-state-replace", Set.empty,    Set.empty, Now)
+    val second = UserState(first.userId,                       Set("Hidden"), Set.empty, Now.plusSeconds(60))
     states.upsert(first)
     states.upsert(second)
-    states.find(first.userId).value.favouriteMovies shouldBe Set("A", "B")
+    states.find(first.userId).value.hiddenFilms shouldBe Set("Hidden")
   }
 
   it should "delete the state row by userId" in {
-    val s = UserState("__integration-test-state-delete", Set("X"), Set.empty, Set.empty, Set.empty, Now)
+    val s = UserState("__integration-test-state-delete", Set("X"), Set.empty, Now)
     states.upsert(s)
     states.find(s.userId) should be (defined)
     states.delete(s.userId)

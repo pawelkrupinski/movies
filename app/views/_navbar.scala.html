@@ -1,7 +1,7 @@
 @(activePage: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
 @*
    Navbar layout:
-     - Logo + tab links (Filmy / Kina / ★ / Debug)            — left
+     - Logo + tab links (Filmy / Kina / Debug)                  — left
      - Search + date                                            — right cluster
      - Hidden-films flyout button (auto-shown when set)        — right cluster
      - Filtry dropdown (now includes the Kina cinema picker)   — right cluster
@@ -18,20 +18,12 @@
     <div class="d-flex gap-1 align-items-center">
       <a href="/" class="nav-tab@if(activePage == "films"){ active}">Filmy</a>
       <a href="/kina" class="nav-tab@if(activePage == "kina"){ active}">Kina</a>
-      <a href="/ulubione" class="nav-tab nav-tab-fav@if(activePage == "favourites"){ active}" title="Ulubione" aria-label="Ulubione">★</a>
       @if(devMode) {
         <a href="/debug" class="nav-tab nav-tab-debug">Debug</a>
       }
     </div>
   </div>
 
-  @* Filter UI (hidden-films flyout, Filtry dropdown, search + date) is
-     omitted entirely on /ulubione — the page is a clean view of the
-     user's favourites; the existing filters would either be no-ops
-     (cinema picker, format) or actively confusing (hidden-films
-     flyout would show titles that aren't on this page). The JS
-     gracefully no-ops when these element ids are missing. *@
-  @if(activePage != "favourites") {
   <div id="filtry-wrapper" class="navbar-filtry" style="position:relative">
     <button id="format-filter-btn" onclick="toggleFormatPanel(event)" class="btn refresh-btn btn-sm">Filtry</button>
     <div id="format-panel" class="dropdown-panel" style="display:none" onclick="event.stopPropagation()">
@@ -141,17 +133,8 @@
     </select>
     <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
   </div>
-  }
 
-  @* Mobile row break — invisible 100%-wide zero-height flex item that
-     sits between row-1 items (search + auth) and row-2 items (date +
-     filtry). Without this the browser would let row-2 items slide
-     onto row-1 whenever there's any horizontal slack, which on most
-     iPhone widths happens often enough to fall back to a one-line
-     layout. Set `display: none` on desktop where it isn't needed. *@
-  @if(activePage != "favourites") {
-    <div class="navbar-row-break" aria-hidden="true"></div>
-  }
+  <div class="navbar-row-break" aria-hidden="true"></div>
 
   @* Auth: own slot so CSS can pin it to the far right on desktop and
      to the row-1 right on mobile (replacing the spot the old Kina

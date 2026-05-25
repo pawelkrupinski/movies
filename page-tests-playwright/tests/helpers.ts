@@ -28,7 +28,7 @@ export async function setDateFilter(page: Page, value: string): Promise<void> {
 }
 
 /**
- * Wait for the home / favourites listing to have rendered at least
+ * Wait for the home listing to have rendered at least
  * one `.col[data-title]` card into the DOM. `state: 'attached'` is
  * deliberate: the page's inline `applyFilters` hides out-of-window
  * cards with `display:none` and shuffles them to the front of DOM

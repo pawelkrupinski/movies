@@ -24,14 +24,12 @@ struct ContentView: View {
     @State private var tabLabel: String? = nil
     @State private var tabLabelTask: Task<Void, Never>?
 
-    enum Tab: Hashable { case films, cinemas, favourites }
+    enum Tab: Hashable { case films, cinemas }
 
-    /// Tab → centre-screen label flashed on swipe arrival.
     private func tabLabel(for tab: Tab) -> String {
         switch tab {
         case .films:      return "Filmy"
         case .cinemas:    return "Kina"
-        case .favourites: return "Ulubione"
         }
     }
 
@@ -138,8 +136,6 @@ struct ContentView: View {
                     .tag(Tab.films)
                 cinemasPage
                     .tag(Tab.cinemas)
-                favouritesPage
-                    .tag(Tab.favourites)
             }
             // `.page(indexDisplayMode: .never)` gives horizontal swipe
             // between pages without the dot indicator at the bottom —
@@ -155,22 +151,6 @@ struct ContentView: View {
             .onChange(of: tab) { new in
                 showTabLabel(tabLabel(for: new))
             }
-        }
-    }
-
-    @ViewBuilder
-    private var favouritesPage: some View {
-        // The TopBar's date pills still drive `dateFilter` here, so
-        // tapping Dziś / Jutro / 7 dni / Wszystkie narrows the
-        // favourites view to that window. When the result is empty
-        // the dedicated empty state distinguishes "you have no
-        // favourites yet" from "no favourites play in this window".
-        let films = filmsForFavouritesTab
-        if films.isEmpty {
-            FavouritesEmptyView(hasAnyFavourites: hasAnyFavourites)
-        } else {
-            FilmGridView(films: films)
-                .refreshable { await store.reload() }
         }
     }
 
@@ -253,22 +233,6 @@ struct ContentView: View {
             format: formatFilter,
             query: search,
             hidden: prefs.hiddenFilms,
-            disabledCinemas: prefs.disabledCinemas,
-            countries: selectedCountries
-        )
-    }
-
-    private var hasAnyFavourites: Bool {
-        !prefs.favouriteMovies.isEmpty || !prefs.favouriteScreenings.isEmpty
-    }
-
-    private var filmsForFavouritesTab: [Film] {
-        store.films.filteredForFavourites(
-            date: dateFilter,
-            format: formatFilter,
-            query: search,
-            favouriteMovies: prefs.favouriteMovies,
-            favouriteScreenings: prefs.favouriteScreenings,
             disabledCinemas: prefs.disabledCinemas,
             countries: selectedCountries
         )
