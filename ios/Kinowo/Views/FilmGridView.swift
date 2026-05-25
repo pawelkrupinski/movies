@@ -43,6 +43,7 @@ struct FilmGridView: View {
                 .padding(.bottom, 70)
             }
             .scrollDismissesKeyboard(.immediately)
+            .scrollClipDisabled()
         }
     }
 }
@@ -79,6 +80,7 @@ struct CinemaSectionedGridView: View {
                 .padding(.bottom, 70)
             }
             .scrollDismissesKeyboard(.immediately)
+            .scrollClipDisabled()
         }
     }
 

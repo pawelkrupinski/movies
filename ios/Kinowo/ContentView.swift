@@ -58,6 +58,7 @@ struct ContentView: View {
                 // and render our own top chrome via `safeAreaInset(top)`,
                 // so the HStack gets the full screen width to spread
                 // across.
+                .ignoresSafeArea(edges: [.bottom, .horizontal])
                 .toolbar(.hidden, for: .navigationBar)
                 .overlay(alignment: .top) {
                     TopBar(
