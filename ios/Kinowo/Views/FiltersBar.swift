@@ -175,38 +175,34 @@ struct SearchBar: View {
     }
 }
 
-// Cinema-picker row, shown only on the Kina tab. Mirrors the web's
-// `.cinema-nav-row` directly under the main navbar on `/kina`: one
-// pill per cinema, single-select (tap a pill → pin to that cinema,
-// tap the pinned pill → unpin and show all). Wraps onto multiple
-// lines via FlowLayout so all ~10 cinema names stay visible without
-// horizontal scrolling, matching the web's `flex-wrap: wrap`.
 struct CinemaPillsRow: View {
     let allCinemas: [String]
     @Binding var pinnedCinema: String?
 
     var body: some View {
-        FlowLayout(spacing: 6, lineSpacing: 6) {
-            ForEach(allCinemas, id: \.self) { cinema in
-                Button {
-                    pinnedCinema = (pinnedCinema == cinema) ? nil : cinema
-                } label: {
-                    Text(cinema)
-                        .font(.system(size: 13, weight: .medium))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(
-                            pinnedCinema == cinema
-                                ? Color.accentColor.opacity(0.85)
-                                : Color(.systemGray5),
-                            in: Capsule()
-                        )
-                        .foregroundColor(pinnedCinema == cinema ? .white : .primary)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(allCinemas, id: \.self) { cinema in
+                    Button {
+                        pinnedCinema = (pinnedCinema == cinema) ? nil : cinema
+                    } label: {
+                        Text(cinema)
+                            .font(.system(size: 13, weight: .medium))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(
+                                pinnedCinema == cinema
+                                    ? Color.accentColor.opacity(0.85)
+                                    : Color(.systemGray5),
+                                in: Capsule()
+                            )
+                            .foregroundColor(pinnedCinema == cinema ? .white : .primary)
+                    }
+                    .buttonStyle(BounceButtonStyle())
                 }
-                .buttonStyle(BounceButtonStyle())
             }
+            .padding(.horizontal, 14)
         }
-        .padding(.horizontal, 14)
         .padding(.vertical, 8)
     }
 }
