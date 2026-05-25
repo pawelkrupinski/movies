@@ -36,7 +36,7 @@ Live at **<https://kinowo.fly.dev>**.
 | Frontend    | Twirl templates + vanilla JS                |
 | Database    | MongoDB (official Scala driver 5)           |
 | Cache       | Caffeine (in-process, write-through to Mongo) |
-| Scraping    | jsoup, with ScrapingAnt / Zyte for JS-heavy sources |
+| Scraping    | jsoup, with Zyte proxy for bot-blocked sources |
 | DI          | Guice                                       |
 | Build       | sbt 1.12, JDK 25 → Java 21 bytecode         |
 | iOS         | SwiftUI                                     |

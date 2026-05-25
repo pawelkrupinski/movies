@@ -41,25 +41,21 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "keep rolling through every failing backend until one succeeds" in {
     val chain = new FallbackHttpFetch(Seq(
-      "zyte"        -> boom("zyte 5xx"),
-      "scrapingAnt" -> boom("scrapingAnt 423"),
-      "direct"      -> ok("direct-finally-worked")
+      "zyte"   -> boom("zyte 5xx"),
+      "direct" -> ok("direct-finally-worked")
     ))
     chain.get("https://example") shouldBe "direct-finally-worked"
   }
 
   it should "throw with all named failures aggregated when every backend fails" in {
     val chain = new FallbackHttpFetch(Seq(
-      "zyte"        -> boom("z-failure"),
-      "scrapingAnt" -> boom("sa-failure"),
-      "direct"      -> boom("d-failure")
+      "zyte"   -> boom("z-failure"),
+      "direct" -> boom("d-failure")
     ))
     val ex = intercept[RuntimeException](chain.get("https://example"))
-    ex.getMessage should include ("All 3 backends failed")
+    ex.getMessage should include ("All 2 backends failed")
     ex.getMessage should include ("zyte:")
     ex.getMessage should include ("z-failure")
-    ex.getMessage should include ("scrapingAnt:")
-    ex.getMessage should include ("sa-failure")
     ex.getMessage should include ("direct:")
     ex.getMessage should include ("d-failure")
   }

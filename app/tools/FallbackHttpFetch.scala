@@ -10,9 +10,9 @@ import scala.collection.mutable
  * if every backend fails, throws a single composite exception that
  * names each failure.
  *
- * Used by Multikino's composition: Zyte primary → ScrapingAnt fallback
- * → direct fetch as last resort. None of the backends know about each
- * other — each is just an `HttpFetch`.
+ * Used by Multikino's composition: Zyte primary → direct fetch as
+ * last resort. None of the backends know about each other — each is
+ * just an `HttpFetch`.
  *
  * Single-backend lists are a degenerate case: prefer just using that
  * backend directly. Empty lists are a wiring bug — throws at

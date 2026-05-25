@@ -1007,7 +1007,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   //   (a) The cinema is genuinely showing zero films right now (a holiday, a
   //       closure, or a brand-new site with no schedule yet).
   //   (b) The scraper failed silently — Cloudflare challenge, parser regex
-  //       mismatch, ScrapingAnt 503, blank HTML, etc. — and returned [] even
+  //       mismatch, proxy 503, blank HTML, etc. — and returned [] even
   //       though the cinema is actually screening films normally.
   //
   // In case (b) the prune-on-tick would wipe EVERY slot that cinema holds

@@ -8,7 +8,7 @@ import scala.util.control.NonFatal
 /**
  * Generic attempts-bounded retry with exponential backoff for production
  * code. Use for any operation whose failure mode is dominated by transient
- * upstream blips (cinema HTML 5xx, ScrapingAnt 409, Mongo connection
+ * upstream blips (cinema HTML 5xx, proxy 409, Mongo connection
  * hiccup) where one more try after a short wait usually works.
  *
  * Defaults: 3 attempts, 1s initial backoff (1s, 2s sleeps before attempts

@@ -29,11 +29,9 @@ trait Wiring {
   // list — adding a new cinema is a new entry here plus its scraper class.
   lazy val cinemaCityClient = new CinemaCityClient(httoFetch)
 
-  // Single override point for Multikino's transport. `fetchFor` decides at
-  // composition time whether to route through ScrapingAnt (production, where
-  // Multikino blocks datacenter IPs) or hit the API directly. Tests override
-  // this field with the fixture-replaying `FakeHttpFetch` and the routing
-  // decision drops out entirely.
+  // Single override point for Multikino's transport. `fetchFor` builds a
+  // Zyte → direct fallback chain. Tests override this field with
+  // `FakeHttpFetch` and the routing decision drops out entirely.
   lazy val multikinoFetch: HttpFetch = MultikinoClient.fetchFor(httoFetch)
 
   // Named so `KinoMuzaSynopsisRefresher` can share the same instance — the
@@ -45,8 +43,8 @@ trait Wiring {
   // transient upstream blip (5xx, dropped connection, momentarily broken
   // HTML block) doesn't leave the cinema's slot empty for an entire
   // refresh cycle. Multikino retains its own internal retry layers (Zyte
-  // → ScrapingAnt → direct + homepage warm-up); the outer wrapper only
-  // adds extra coverage when every inner layer is exhausted.
+  // → direct + homepage warm-up); the outer wrapper only adds extra
+  // coverage when every inner layer is exhausted.
   lazy val cinemaScrapers: Seq[CinemaScraper] = Seq(
     new MultikinoClient(multikinoFetch),
     new CharlieMonroeClient(httoFetch),

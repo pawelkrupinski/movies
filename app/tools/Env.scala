@@ -11,7 +11,7 @@ import scala.util.Try
  *   3. `.env.local` in the working directory — a gitignored file for local dev.
  *      Format: simple `KEY=VALUE` lines, `#` for comments, optional quoting.
  *
- * The `.env.local` route is meant for putting secrets like SCRAPINGANT_KEY in
+ * The `.env.local` route is meant for putting secrets like ZYTE_API_KEY in
  * a local file without polluting the shell or the repo.
  */
 object Env {

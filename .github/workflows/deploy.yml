@@ -57,7 +57,6 @@ jobs:
             - run: sbt test
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
-                  SCRAPINGANT_KEY: ${{ secrets.SCRAPINGANT_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
@@ -211,7 +210,6 @@ jobs:
             - run: sbt IntegrationTest/test
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
-                  SCRAPINGANT_KEY: ${{ secrets.SCRAPINGANT_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
@@ -251,7 +249,6 @@ jobs:
             - run: sbt clean coverage test coverageReport
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
-                  SCRAPINGANT_KEY: ${{ secrets.SCRAPINGANT_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}

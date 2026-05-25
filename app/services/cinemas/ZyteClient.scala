@@ -10,12 +10,10 @@ import java.util.{Base64, UUID}
 
 /**
  * Wrapper around Zyte API's `/v1/extract` endpoint, used as the primary
- * Multikino backend after ScrapingAnt's datacenter ASN got blocked across
- * every country pool. Zyte sits on different ASNs that Multikino's WAF
- * doesn't (yet) score as bot traffic — empirically confirmed by the
- * `ProbeZyteMultikino` script before this was wired.
+ * Multikino proxy backend. Zyte's residential ASNs avoid the WAF blocks
+ * that datacenter IPs hit.
  *
- * The cookie-carryover pattern mirrors `ScrapingAntClient.getWithCookies`:
+ * Cookie-carryover pattern:
  *
  *   1. POST `cookieSourceUrl` (homepage) with a fresh `session.id` UUID.
  *      Zyte fetches the homepage, parks the upstream's Set-Cookie in a
@@ -46,7 +44,7 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
     // care that Zyte successfully fetched it and parked cookies in the
     // session. A non-2xx upstream here usually means the homepage itself
     // is blocked, which is a strong signal the target's hostile; bail
-    // early so the caller falls back to ScrapingAnt without burning a
+    // early so the caller falls back to direct without burning a
     // second credit on a doomed API call.
     val warmupStatus = extractStatus(post(cookieSourceUrl, sessionId))
     if (warmupStatus < 200 || warmupStatus >= 300)

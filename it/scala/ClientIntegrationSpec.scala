@@ -12,7 +12,7 @@ import tools.TestWiring
  * production `Wiring` (via [[TestWiring]] — same wiring, just with
  * controllerComponents / environmentMode stubs) so this spec exercises the
  * exact construction graph the running app uses. A wiring-level regression
- * (wrong fetch passed to a cinema, ScrapingAnt routing dropped, …) lands
+ * (wrong fetch passed to a cinema, Zyte routing dropped, …) lands
  * here as a real 401/403/timeout against the live cinema API.
  *
  * One explicit `it should "fetch films"` per cinema so each is individually

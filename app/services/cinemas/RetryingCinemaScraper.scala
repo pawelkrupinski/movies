@@ -14,7 +14,7 @@ import scala.concurrent.duration._
  *
  * Composition layering: most cinemas have *no* retry logic of their own
  * — this is the first line of defense. Multikino does have an internal
- * session-handling retry plus Zyte/ScrapingAnt's own per-call retry, so
+ * session-handling retry plus Zyte's own per-call retry, so
  * the outer retry only fires if every inner layer is exhausted. That's
  * fine: extra coverage in the worst case, no extra calls in the happy
  * path.

@@ -55,13 +55,6 @@ class AppComponents(context: Context)
     with AssetsComponents with Wiring {
   def environmentMode: Mode = environment.mode
 
-  // Fail fast if the scraping key is missing — gated on the production
-  // composition root so tests and recording scripts that extend `Wiring`
-  // directly (and don't need ScrapingAnt — they read fixtures) aren't
-  // blocked by the missing env var on a clean CI runner.
-  if (Env.get("SCRAPINGANT_KEY").isEmpty)
-    throw new RuntimeException("SCRAPINGANT_KEY must be set")
-
   // ── Router + filters ──────────────────────────────────────────────────────
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)
   override def httpFilters: Seq[EssentialFilter] =

@@ -342,7 +342,7 @@ class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus(
    *  re-pay the full enrichment cost on its next scrape. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
-    // challenge, parser regex mismatch, ScrapingAnt 503, blank HTML), not a
+    // challenge, parser regex mismatch, proxy 503, blank HTML), not a
     // cinema that's genuinely showing zero films right now. Without this
     // safeguard, the prune step below would wipe EVERY slot that cinema
     // holds across the cache, and the next successful tick would re-add them
