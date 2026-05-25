@@ -173,7 +173,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val result  = ctl.callback("google")(request)
 
     status(result) shouldBe INTERNAL_SERVER_ERROR
-    repo.findByProviderSub("google", "anything") shouldBe empty   // nothing persisted
+    repo.findById("anything") shouldBe empty   // nothing persisted
   }
 
   // ── /auth/logout ─────────────────────────────────────────────────────────
@@ -231,58 +231,41 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   // ── Account linking by email ────────────────────────────────────────────
 
-  "AuthController.upsertUser" should "attach a new provider to an existing user when emails match (same person, two providers)" in {
+  "AuthController.upsertUser" should "merge providers sharing the same email into one user" in {
     val googleProvider = new FakeProvider("google",   Profile)
     val fbProfile      = OauthProfile(sub = "FB-99", email = Some("alice@example.com"), displayName = Some("Alice on FB"), avatarUrl = None)
     val fbProvider     = new FakeProvider("facebook", fbProfile)
     val (ctl, repo)    = fixture(googleProvider, fbProvider)
 
-    // First: sign in with Google.
     val googleSession = session(ctl.callback("google")(
       FakeRequest("GET", "/auth/google/callback?code=C1&state=S1")
         .withSession("oauthState" -> "S1", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
     ))
     val firstUserId = googleSession.get("userId").value
+    firstUserId shouldBe "alice@example.com"
 
-    // Then: sign in with Facebook using the SAME email. Should NOT create a
-    // second user — should attach FB to the existing one.
     val fbSession = session(ctl.callback("facebook")(
       FakeRequest("GET", "/auth/facebook/callback?code=C2&state=S2")
         .withSession("oauthState" -> "S2", "oauthProvider" -> "facebook", "oauthStateTs" -> NowMs.toString)
     ))
-    fbSession.get("userId").value shouldBe firstUserId    // same id, account merged
+    fbSession.get("userId").value shouldBe firstUserId
 
-    // Only one row should exist now (lookup by either provider/sub finds it,
-    // but the current row's `provider` is the most-recently-used one).
     val linked = repo.findById(firstUserId).value
-    linked.provider    shouldBe "facebook"   // newest wins per the linking rule
+    linked.provider    shouldBe "facebook"
     linked.providerSub shouldBe "FB-99"
     linked.email       shouldBe Some("alice@example.com")
-
-    // Sanity: looking up by the old (provider, sub) pair no longer finds
-    // anything — the row has migrated to the new pair.
-    repo.findByProviderSub("google", "G-1") shouldBe empty
   }
 
-  it should "NOT link accounts when the new provider returned no email" in {
-    // Email is the link key. If FB doesn't share email (user declined the
-    // scope), we must NOT silently attach to whoever else has email='' —
-    // the existing user's email is None too, but matching None ↔ None
-    // would link arbitrary strangers. Verify a fresh signup happens.
-    val (ctl, repo) = fixture(
-      new FakeProvider("google",   Profile),                                             // creates user A with email
-      new FakeProvider("facebook", OauthProfile(sub = "FB-99", email = None, None, None)) // would link to A on a bug
+  it should "reject a provider that returns no email" in {
+    val (ctl, _) = fixture(
+      new FakeProvider("facebook", OauthProfile(sub = "FB-99", email = None, None, None))
     )
 
-    val first = session(ctl.callback("google")(
-      FakeRequest("GET", "/auth/google/callback?code=C1&state=S1")
-        .withSession("oauthState" -> "S1", "oauthProvider" -> "google", "oauthStateTs" -> NowMs.toString)
-    ))
-    val fbSession = session(ctl.callback("facebook")(
-      FakeRequest("GET", "/auth/facebook/callback?code=C2&state=S2")
-        .withSession("oauthState" -> "S2", "oauthProvider" -> "facebook", "oauthStateTs" -> NowMs.toString)
-    ))
-    first.get("userId").value should not be fbSession.get("userId").value
+    val result = ctl.callback("facebook")(
+      FakeRequest("GET", "/auth/facebook/callback?code=C1&state=S1")
+        .withSession("oauthState" -> "S1", "oauthProvider" -> "facebook", "oauthStateTs" -> NowMs.toString)
+    )
+    status(result) shouldBe INTERNAL_SERVER_ERROR
   }
 
 }

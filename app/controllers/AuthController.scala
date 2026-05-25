@@ -93,13 +93,14 @@ class AuthController(
         BadRequest(s"OAuth callback failed: $reason")
       case Right((p, code)) =>
         val redirectUri = callbackUrl(provider, request)
-        Try(p.exchangeCode(code, redirectUri)) match {
+        Try {
+          val profile = p.exchangeCode(code, redirectUri)
+          upsertUser(provider, profile)
+        } match {
           case Failure(ex) =>
-            logger.error(s"OAuth code exchange failed for $provider: ${ex.getMessage}", ex)
+            logger.error(s"OAuth sign-in failed for $provider: ${ex.getMessage}", ex)
             InternalServerError("Couldn't complete sign-in. Please try again.")
-          case Success(profile) =>
-            val user = upsertUser(provider, profile)
-            // Drop the one-shot CSRF state, keep everything else, add userId.
+          case Success(user) =>
             val nextSession = request.session
               - "oauthState" - "oauthProvider" - "oauthStateTs"
               + ("userId" -> user.id)
@@ -114,24 +115,48 @@ class AuthController(
       case (None, _) => BadRequest(Json.obj("error" -> "missing provider"))
       case (_, None) => BadRequest(Json.obj("error" -> "missing token"))
       case (Some(provider), Some(tokenStr)) =>
-        val fullName = (body \ "fullName").asOpt[String]
+        val fullName    = (body \ "fullName").asOpt[String]
+        val redirectUri = (body \ "redirectUri").asOpt[String]
         Try(provider match {
-          case "google"   => googleTokenValidator.getOrElse(throw new RuntimeException("Google not configured")).validate(tokenStr)
-          case "facebook" => facebookTokenValidator.getOrElse(throw new RuntimeException("Facebook not configured")).validate(tokenStr)
-          case "apple"    => appleTokenValidator.getOrElse(throw new RuntimeException("Apple not configured")).validate(tokenStr, fullName)
-          case other      => throw new RuntimeException(s"Unknown provider: $other")
+          case "apple" =>
+            appleTokenValidator.getOrElse(throw new RuntimeException("Apple not configured"))
+              .validate(tokenStr, fullName)
+          case "google" =>
+            redirectUri match {
+              case Some(uri) =>
+                providers.getOrElse("google", throw new RuntimeException("Google not configured"))
+                  .exchangeCode(tokenStr, uri)
+              case None =>
+                googleTokenValidator.getOrElse(throw new RuntimeException("Google not configured"))
+                  .validate(tokenStr)
+            }
+          case "facebook" =>
+            redirectUri match {
+              case Some(uri) =>
+                providers.getOrElse("facebook", throw new RuntimeException("Facebook not configured"))
+                  .exchangeCode(tokenStr, uri)
+              case None =>
+                facebookTokenValidator.getOrElse(throw new RuntimeException("Facebook not configured"))
+                  .validate(tokenStr)
+            }
+          case other => throw new RuntimeException(s"Unknown provider: $other")
         }) match {
           case Failure(ex) =>
             logger.warn(s"Token validation failed for $provider: ${ex.getMessage}")
             Unauthorized(Json.obj("error" -> ex.getMessage))
           case Success(profile) =>
-            val user = upsertUser(provider, profile)
-            Ok(Json.obj(
-              "displayName" -> user.displayName,
-              "email"       -> user.email,
-              "avatarUrl"   -> user.avatarUrl,
-              "provider"    -> user.provider
-            )).withSession("userId" -> user.id)
+            Try(upsertUser(provider, profile)) match {
+              case Failure(ex) =>
+                logger.error(s"Token sign-in failed for $provider: ${ex.getMessage}", ex)
+                InternalServerError(Json.obj("error" -> "Couldn't complete sign-in."))
+              case Success(user) =>
+                Ok(Json.obj(
+                  "displayName" -> user.displayName,
+                  "email"       -> user.email,
+                  "avatarUrl"   -> user.avatarUrl,
+                  "provider"    -> user.provider
+                )).withSession("userId" -> user.id)
+            }
         }
     }
   }
@@ -153,57 +178,30 @@ class AuthController(
   }
 
   private def upsertUser(provider: String, profile: OauthProfile): User = {
-    val now = clock.instant()
-    // Resolution precedence:
-    //   1. Exact (provider, sub) hit — returning user, same provider.
-    //   2. Email hit on a different provider — account LINKING. The
-    //      OAuth callback's profile has a verified email (Google +
-    //      Facebook both verify before exposing); if it matches an
-    //      existing user, attach the new provider to that row rather
-    //      than fork a duplicate account. The existing user's
-    //      `(provider, providerSub)` get overwritten so the next
-    //      login via either provider resolves to the same id — see
-    //      the comment below for the trade-off.
-    //   3. No match — fresh signup.
-    val user = userRepo.findByProviderSub(provider, profile.sub) match {
+    val now   = clock.instant()
+    val email = profile.email.getOrElse(
+      throw new RuntimeException(s"OAuth $provider profile has no email — cannot identify user")
+    ).toLowerCase
+    val user = userRepo.findById(email) match {
       case Some(existing) =>
         existing.copy(
-          email       = profile.email.orElse(existing.email),
+          provider    = provider,
+          providerSub = profile.sub,
           displayName = profile.displayName.orElse(existing.displayName),
           avatarUrl   = profile.avatarUrl.orElse(existing.avatarUrl),
           lastSeenAt  = now
         )
       case None =>
-        profile.email.flatMap(userRepo.findByEmail) match {
-          case Some(linked) =>
-            // Account linking: the matched user signed up via a
-            // different provider earlier. Rewrite (provider, sub) to
-            // this login's pair — that means the user can ONLY log in
-            // via the most-recently-used provider going forward. The
-            // alternative is a `providers: Set[(name, sub)]` collection
-            // on User, which is cleaner but a bigger schema change.
-            // Defer that until someone actually reports needing both
-            // providers active simultaneously.
-            logger.info(s"OAuth $provider link — attaching to user ${linked.id} via email match")
-            linked.copy(
-              provider    = provider,
-              providerSub = profile.sub,
-              displayName = profile.displayName.orElse(linked.displayName),
-              avatarUrl   = profile.avatarUrl.orElse(linked.avatarUrl),
-              lastSeenAt  = now
-            )
-          case None =>
-            User(
-              id          = UUID.randomUUID().toString,
-              provider    = provider,
-              providerSub = profile.sub,
-              email       = profile.email,
-              displayName = profile.displayName,
-              avatarUrl   = profile.avatarUrl,
-              createdAt   = now,
-              lastSeenAt  = now
-            )
-        }
+        User(
+          id          = email,
+          provider    = provider,
+          providerSub = profile.sub,
+          email       = Some(email),
+          displayName = profile.displayName,
+          avatarUrl   = profile.avatarUrl,
+          createdAt   = now,
+          lastSeenAt  = now
+        )
     }
     userRepo.upsert(user)
     user

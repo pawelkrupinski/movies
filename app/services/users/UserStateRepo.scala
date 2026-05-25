@@ -46,6 +46,7 @@ class MongoUserStateRepo(sharedDb: Option[MongoDatabase] = None) extends UserSta
     sharedDb match {
       case Some(db) =>
         val coll = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
+        scala.util.Try(scala.concurrent.Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("userId")).toFuture(), 10.seconds))
         (None, Some(coll))
       case None => init()
     }
@@ -98,6 +99,7 @@ class MongoUserStateRepo(sharedDb: Option[MongoDatabase] = None) extends UserSta
           val db     = client.getDatabase(dbName).withCodecRegistry(UserCodecs.registry)
           val coll   = db.getCollection[UserState]("userStates")
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
+          Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("userId")).toFuture(), 10.seconds)
           logger.info(s"MongoUserStateRepo connected to $dbName.userStates")
           (client, coll)
         }.recover {

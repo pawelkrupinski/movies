@@ -12,9 +12,9 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /**
- * Persistent store for authenticated users — one document per
- * `(provider, providerSub)`. Lookups happen on every authenticated
- * request (session cookie carries `userId`, repo dereferences).
+ * Persistent store for authenticated users. Identity is the user's
+ * email (lowercased) — logging in with Google, Facebook, or Apple
+ * using the same email accesses the same account and state.
  *
  * The trait is what callers (AuthController, UserStateController) see;
  * `MongoUserRepo` is the production impl, `InMemoryUserRepo` the test
@@ -23,28 +23,16 @@ import scala.util.Try
 trait UserRepo {
   def enabled: Boolean
 
-  /** Look up by our own UUID (used on every request after session decode). */
+  /** Look up by id (= lowercased email). Used on every authenticated
+   *  request after session decode, and during OAuth callback. */
   def findById(id: String): Option[User]
 
-  /** Look up by upstream identity — used in the OAuth callback to decide
-   *  "is this a returning user or a fresh signup?". */
   def findByProviderSub(provider: String, providerSub: String): Option[User]
 
-  /** Look up by email (case-insensitive) for account linking. Used when
-   *  the OAuth callback's profile carries an email that already belongs
-   *  to a user signed up via a different provider — attaches the new
-   *  provider to the existing row instead of forking a duplicate
-   *  account. `None` when the provider didn't return an email (e.g. FB
-   *  decline) or when no user has that email yet. */
   def findByEmail(email: String): Option[User]
 
-  /** Remove the user row. Used by the account-deletion endpoint. */
   def delete(id: String): Unit
 
-  /** Upsert by `id`. Used both for first-login creation and for
-   *  `lastSeenAt` bumps. Best-effort — failures are logged, never
-   *  thrown; the caller continues with the user object it already has
-   *  in hand. */
   def upsert(user: User): Unit
 
   def close(): Unit
@@ -71,6 +59,7 @@ class MongoUserRepo(sharedDb: Option[MongoDatabase] = None) extends UserRepo wit
     sharedDb match {
       case Some(db) =>
         val coll = db.withCodecRegistry(UserCodecs.registry).getCollection[User]("users")
+        Try(Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("id")).toFuture(), 10.seconds))
         (None, Some(coll))
       case None => init()
     }
@@ -153,6 +142,7 @@ class MongoUserRepo(sharedDb: Option[MongoDatabase] = None) extends UserRepo wit
           val db     = client.getDatabase(dbName).withCodecRegistry(UserCodecs.registry)
           val coll   = db.getCollection[User]("users")
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
+          Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("id")).toFuture(), 10.seconds)
           logger.info(s"MongoUserRepo connected to $dbName.users")
           (client, coll)
         }.recover {
