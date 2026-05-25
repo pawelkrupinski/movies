@@ -60,7 +60,19 @@ struct TopBar: View {
         // grid scrolling beneath it.
         .padding(.top, 2 * s)
         .padding(.bottom, 8 * s)
-        .modifier(GlassyBarBackground())
+        // Plain translucent material strip — no glassEffect refraction
+        // edge, no content-wide opacity. Just the background shape gets
+        // dialed down so the grid scrolls visibly behind the bar.
+        // `.ignoresSafeArea(edges: .top)` pushes the rectangle up past
+        // the safeAreaInset slot, all the way to the device's rounded
+        // top corners, so the status bar reads as part of the same
+        // translucent strip instead of a separate opaque band above it.
+        .background {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .opacity(0.55)
+                .ignoresSafeArea(edges: .top)
+        }
     }
 
     /// Linear scale relative to the iPhone 17 viewport (393pt wide).
@@ -236,24 +248,18 @@ struct BounceButtonStyle: ButtonStyle {
     }
 }
 
-private struct GlassyBarBackground: ViewModifier {
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            content
-                .glassEffect(in: Rectangle())
-                .ignoresSafeArea(edges: .top)
-        } else {
-            content.background {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.55)
-                    .ignoresSafeArea(edges: .top)
-            }
-        }
-    }
-}
-
+// Translucent capsule background for the search pill. On iOS 26+ uses
+// the Liquid-Glass `.glassEffect` modifier, which refracts the film
+// grid scrolling underneath — that's the "distorting like a fish eye"
+// feel the user asked for. On iOS 16-25 we fall back to a Capsule
+// filled with `.ultraThinMaterial`. Both paths get dialed-down opacity
+// so the grid shows through more strongly than the default.
+//
+// Not used for the top bar — the glassEffect refraction edge + the
+// content-wide opacity made the bar feel like a floating box rather
+// than a flush translucent strip, so the bar uses a plain
+// `Rectangle().fill(.ultraThinMaterial).opacity(0.55)` background
+// inline instead.
 private struct GlassyPillBackground: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
