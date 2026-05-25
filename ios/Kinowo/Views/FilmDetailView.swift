@@ -30,6 +30,7 @@ struct FilmDetailView: View {
             .padding(.bottom, 24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .ignoresSafeArea(edges: [.bottom, .horizontal])
         .background(Color(red: 0.067, green: 0.067, blue: 0.067).ignoresSafeArea())
         .navigationTitle(film.title)
         .navigationBarTitleDisplayMode(.inline)
