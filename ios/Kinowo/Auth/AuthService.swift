@@ -17,9 +17,13 @@ final class AuthService: NSObject, ObservableObject {
     @Published var isLoading = false
 
     private let session: URLSession
+    private let googleClientId: String
+    private let facebookAppId: String
 
     override init() {
         self.session = URLSession.shared
+        self.googleClientId = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String ?? ""
+        self.facebookAppId = Bundle.main.object(forInfoDictionaryKey: "FacebookAppID") as? String ?? ""
         super.init()
     }
 
@@ -55,31 +59,78 @@ final class AuthService: NSObject, ObservableObject {
         }
     }
 
-    // MARK: - Google Sign-In (native SDK)
+    // MARK: - Google Sign-In
 
-    func signInWithGoogle(presenting: Any? = nil) async {
-        // Placeholder — requires GoogleSignIn SDK integration.
-        // When the SDK is added:
-        // 1. GIDSignIn.sharedInstance.signIn(withPresenting: viewController)
-        // 2. Extract user.idToken.tokenString
-        // 3. Call sendToken(provider: "google", token: idToken)
+    func signInWithGoogle() async {
+        guard !googleClientId.isEmpty else { return }
+        isLoading = true
+        defer { isLoading = false }
+        let redirectScheme = googleClientId.components(separatedBy: ".").reversed().joined(separator: ".")
+        let redirectUri = "\(redirectScheme):/oauth2callback"
+        var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
+        components.queryItems = [
+            URLQueryItem(name: "client_id", value: googleClientId),
+            URLQueryItem(name: "redirect_uri", value: redirectUri),
+            URLQueryItem(name: "response_type", value: "code"),
+            URLQueryItem(name: "scope", value: "openid email profile"),
+            URLQueryItem(name: "prompt", value: "select_account"),
+        ]
+        guard let authURL = components.url else { return }
+        do {
+            let callbackURL = try await openWebAuth(url: authURL, scheme: redirectScheme)
+            guard let code = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)?
+                    .queryItems?.first(where: { $0.name == "code" })?.value else { return }
+            try await sendToken(provider: "google", token: code, redirectUri: redirectUri)
+        } catch {
+            // User cancelled
+        }
     }
 
-    // MARK: - Facebook Login (native SDK)
+    // MARK: - Facebook Login
 
     func signInWithFacebook() async {
-        // Placeholder — requires FacebookLogin SDK integration.
-        // When the SDK is added:
-        // 1. LoginManager().logIn(permissions: ["public_profile", "email"])
-        // 2. Extract AccessToken.current.tokenString
-        // 3. Call sendToken(provider: "facebook", token: accessToken)
+        guard !facebookAppId.isEmpty else { return }
+        isLoading = true
+        defer { isLoading = false }
+        let redirectUri = "fb\(facebookAppId)://authorize"
+        var components = URLComponents(string: "https://www.facebook.com/v18.0/dialog/oauth")!
+        components.queryItems = [
+            URLQueryItem(name: "client_id", value: facebookAppId),
+            URLQueryItem(name: "redirect_uri", value: redirectUri),
+            URLQueryItem(name: "response_type", value: "code"),
+            URLQueryItem(name: "scope", value: "email,public_profile"),
+        ]
+        guard let authURL = components.url else { return }
+        do {
+            let callbackURL = try await openWebAuth(url: authURL, scheme: "fb\(facebookAppId)")
+            guard let code = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)?
+                    .queryItems?.first(where: { $0.name == "code" })?.value else { return }
+            try await sendToken(provider: "facebook", token: code, redirectUri: redirectUri)
+        } catch {
+            // User cancelled
+        }
+    }
+
+    // MARK: - ASWebAuthenticationSession helper
+
+    private func openWebAuth(url: URL, scheme: String) async throws -> URL {
+        try await withCheckedThrowingContinuation { cont in
+            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: scheme) { url, error in
+                if let error { cont.resume(throwing: error); return }
+                guard let url else { cont.resume(throwing: URLError(.cancelled)); return }
+                cont.resume(returning: url)
+            }
+            session.prefersEphemeralWebBrowserSession = false
+            session.start()
+        }
     }
 
     // MARK: - Server communication
 
-    private func sendToken(provider: String, token: String, fullName: String? = nil) async throws {
+    private func sendToken(provider: String, token: String, fullName: String? = nil, redirectUri: String? = nil) async throws {
         var body: [String: String] = ["provider": provider, "token": token]
         if let name = fullName { body["fullName"] = name }
+        if let uri = redirectUri { body["redirectUri"] = uri }
         var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("auth/token"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -98,17 +149,13 @@ final class AuthService: NSObject, ObservableObject {
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
             self.user = try JSONDecoder().decode(UserProfile.self, from: data)
-        } catch {
-            // Not logged in or network error — stay logged out
-        }
+        } catch {}
     }
 
     func signOut() async {
-        do {
-            var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("auth/logout"))
-            request.httpMethod = "POST"
-            _ = try? await session.data(for: request)
-        }
+        var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("auth/logout"))
+        request.httpMethod = "POST"
+        _ = try? await session.data(for: request)
         user = nil
         if let cookies = HTTPCookieStorage.shared.cookies(for: kinowoBaseURL) {
             cookies.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
@@ -116,11 +163,9 @@ final class AuthService: NSObject, ObservableObject {
     }
 
     func deleteAccount() async {
-        do {
-            var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("api/me"))
-            request.httpMethod = "DELETE"
-            _ = try? await session.data(for: request)
-        }
+        var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("api/me"))
+        request.httpMethod = "DELETE"
+        _ = try? await session.data(for: request)
         user = nil
         if let cookies = HTTPCookieStorage.shared.cookies(for: kinowoBaseURL) {
             cookies.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
