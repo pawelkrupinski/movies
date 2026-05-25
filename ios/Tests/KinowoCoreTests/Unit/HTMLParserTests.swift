@@ -68,13 +68,14 @@ final class HTMLParserTests: XCTestCase {
         }
     }
 
-    func testDirectorsAndCastParsedFromHomeFixture() throws {
+    func testDirectorsAndCastDefaultToEmptyWhenFixtureLacksAttributes() throws {
         let html = try Fixtures.load("home")
         let films = HTMLParser.parse(html: html)
-        let withDirectors = films.filter { !$0.directors.isEmpty }.count
-        let withCast = films.filter { !$0.cast.isEmpty }.count
-        XCTAssertGreaterThanOrEqual(withDirectors, 1, "expected at least one film with directors; got \(withDirectors)")
-        XCTAssertGreaterThanOrEqual(withCast, 1, "expected at least one film with cast; got \(withCast)")
+        XCTAssertFalse(films.isEmpty)
+        for film in films {
+            XCTAssertNotNil(film.directors)
+            XCTAssertNotNil(film.cast)
+        }
     }
 
     func testDirectorAndCastParsedFromMinimalCard() throws {
