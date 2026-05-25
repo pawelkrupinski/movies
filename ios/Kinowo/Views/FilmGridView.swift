@@ -43,7 +43,7 @@ struct FilmGridView: View {
                 .padding(.bottom, 70)
             }
             .scrollDismissesKeyboard(.immediately)
-            .scrollClipDisabled()
+            .modifier(ScrollClipDisabledIfAvailable())
         }
     }
 }
@@ -80,7 +80,7 @@ struct CinemaSectionedGridView: View {
                 .padding(.bottom, 70)
             }
             .scrollDismissesKeyboard(.immediately)
-            .scrollClipDisabled()
+            .modifier(ScrollClipDisabledIfAvailable())
         }
     }
 
@@ -99,5 +99,15 @@ struct CinemaSectionedGridView: View {
                     .frame(height: 1)
             }
             .accessibilityIdentifier(A11y.CinemaPage.sectionHeader)
+    }
+}
+
+private struct ScrollClipDisabledIfAvailable: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content.scrollClipDisabled()
+        } else {
+            content
+        }
     }
 }
