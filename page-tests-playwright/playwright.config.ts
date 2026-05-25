@@ -101,7 +101,6 @@ const projects: Project[] = [
   { name: 'webkit-desktop',   use: { ...devices['Desktop Safari'] } },
   { name: 'chrome-desktop',   use: { ...devices['Desktop Chrome'], channel: 'chrome' } },
   { name: 'firefox-desktop',  use: { ...devices['Desktop Firefox'] } },
-  { name: 'msedge-desktop',   use: { ...devices['Desktop Edge'], channel: 'msedge' } },
 ];
 
 export default defineConfig({

@@ -4,9 +4,8 @@ description: |
 
   Two execution kinds:
 
-  - `chrome` / `edge`: install the matching browser via
-    `browser-actions/setup-*`, then `sbt PageTest/test` with
-    `CDP_BROWSER_BIN` pointing at it.
+  - `chrome`: install Chrome via `browser-actions/setup-chrome`,
+    then `sbt PageTest/test` with `CDP_BROWSER_BIN` pointing at it.
 
   - `playwright`: install Node + the one engine binary specified
     by `browser`, boot `FixtureServerMain` over a kernel-assigned
@@ -15,16 +14,16 @@ description: |
 
 inputs:
   kind:
-    description: chrome | edge | playwright
+    description: chrome | playwright
     required: true
   version:
-    description: Browser version when kind=chrome|edge (e.g. `stable`, `128`).
+    description: Browser version when kind=chrome (e.g. `stable`).
     required: false
   project:
     description: Playwright project name when kind=playwright.
     required: false
   browser:
-    description: Engine binary to install when kind=playwright (chromium|firefox|webkit|msedge).
+    description: Engine binary to install when kind=playwright (chromium|chrome|firefox|webkit).
     required: false
   shard:
     description: Playwright shard when kind=playwright (e.g. `1/2`).
@@ -47,11 +46,7 @@ runs:
       with:
         chrome-version: ${{ inputs.version }}
 
-    - uses: browser-actions/setup-edge@v1
-      if: inputs.kind == 'edge'
-      id: setup-edge
-      with:
-        edge-version: ${{ inputs.version }}
+
 
     - uses: actions/cache@v4
       with:
@@ -116,10 +111,10 @@ runs:
     # at boot, so a failure has the version diff in its log without
     # extra plumbing.
     - name: Run Scala PageTest
-      if: inputs.kind == 'chrome' || inputs.kind == 'edge'
+      if: inputs.kind == 'chrome'
       shell: bash
       env:
-        CDP_BROWSER_BIN: ${{ inputs.kind == 'chrome' && steps.setup-chrome.outputs.chrome-path || steps.setup-edge.outputs.edge-path }}
+        CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
       run: sbt PageTest/test
 
     - name: Run Playwright behaviour specs (blocking)

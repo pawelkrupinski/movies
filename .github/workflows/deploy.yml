@@ -269,10 +269,10 @@ jobs:
     # see `.github/actions/run-page-test/action.yml` for the step
     # body that's identical across all four jobs.
     #
-    # `kind` (chrome | edge | playwright) drives which steps execute:
+    # `kind` (chrome | playwright) drives which steps execute:
     #
-    # - `chrome` / `edge`: install the matching browser, then
-    #   `sbt PageTest/test` with `CDP_BROWSER_BIN` pointing at it.
+    # - `chrome`: install Chrome via browser-actions/setup-chrome,
+    #   then `sbt PageTest/test` with `CDP_BROWSER_BIN` pointing at it.
     #
     # - `playwright`: install Node + the one engine binary specified
     #   by `browser`, boot `FixtureServerMain` over a free port, then
@@ -348,24 +348,6 @@ jobs:
                   browser:       ${{ matrix.browser }}
                   shard:         ${{ matrix.shard }}
 
-    page-tests-edge:
-        name: page tests (edge / ${{ matrix.variant }})
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - { variant: stable,             kind: edge,       version: stable }
-                    - { variant: pw desktop,         kind: playwright, project: msedge-desktop, browser: msedge }
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: ./.github/actions/run-page-test
-              with:
-                  kind:          ${{ matrix.kind }}
-                  version:       ${{ matrix.version }}
-                  project:       ${{ matrix.project }}
-                  browser:       ${{ matrix.browser }}
-
     page-tests-firefox:
         name: page tests (firefox / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
         strategy:
@@ -386,7 +368,7 @@ jobs:
                   shard:         ${{ matrix.shard }}
 
     deploy:
-        needs: [lint, test, integration-test, ios-local-server, page-tests-chrome, page-tests-safari, page-tests-edge, page-tests-firefox]
+        needs: [lint, test, integration-test, ios-local-server, page-tests-chrome, page-tests-safari, page-tests-firefox]
         runs-on: ubuntu-latest
         # Serialize deploys so two passing builds can't race flyctl.
         # cancel-in-progress is false — a queued deploy still runs once
