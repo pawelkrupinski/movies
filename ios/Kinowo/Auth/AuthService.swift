@@ -17,6 +17,7 @@ final class AuthService: NSObject, ObservableObject {
     @Published var isLoading = false
 
     private let session: URLSession
+    private var webAuthSession: ASWebAuthenticationSession?
 
     override init() {
         self.session = URLSession.shared
@@ -41,16 +42,22 @@ final class AuthService: NSObject, ObservableObject {
         components.queryItems = [URLQueryItem(name: "platform", value: "ios")]
         guard let url = components.url else { return }
         do {
-            _ = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<URL, Error>) in
-                let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "kinowo") { url, error in
+            let callbackURL = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<URL, Error>) in
+                let webAuth = ASWebAuthenticationSession(url: url, callbackURLScheme: "kinowo") { [weak self] url, error in
+                    self?.webAuthSession = nil
                     if let error { cont.resume(throwing: error); return }
                     guard let url else { cont.resume(throwing: URLError(.cancelled)); return }
                     cont.resume(returning: url)
                 }
-                session.prefersEphemeralWebBrowserSession = false
-                session.start()
+                webAuth.presentationContextProvider = self
+                webAuth.prefersEphemeralWebBrowserSession = false
+                self.webAuthSession = webAuth
+                webAuth.start()
             }
-            await fetchMe()
+            if let code = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "code" })?.value {
+                try await exchangeCode(code)
+            }
         } catch {
             // User cancelled
         }
@@ -87,6 +94,18 @@ final class AuthService: NSObject, ObservableObject {
     }
 
     // MARK: - Server communication
+
+    private func exchangeCode(_ code: String) async throws {
+        var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("auth/exchange"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["code": code])
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw URLError(.userAuthenticationRequired)
+        }
+        self.user = try JSONDecoder().decode(UserProfile.self, from: data)
+    }
 
     private func sendToken(provider: String, token: String, fullName: String? = nil) async throws {
         var body: [String: String] = ["provider": provider, "token": token]
@@ -134,6 +153,16 @@ final class AuthService: NSObject, ObservableObject {
         if let cookies = HTTPCookieStorage.shared.cookies(for: kinowoBaseURL) {
             cookies.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
         }
+    }
+}
+
+// MARK: - ASWebAuthenticationPresentationContextProviding
+
+extension AuthService: ASWebAuthenticationPresentationContextProviding {
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first?.windows.first { $0.isKeyWindow } ?? ASPresentationAnchor()
     }
 }
 

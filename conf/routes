@@ -34,6 +34,8 @@ POST    /auth/logout                controllers.AuthController.logout()
 GET     /api/me                     controllers.AuthController.me()
 + nocsrf
 POST    /auth/token                 controllers.AuthController.token()
++ nocsrf
+POST    /auth/exchange              controllers.AuthController.exchange()
 
 # ── Per-user state (hidden / disabled-cinemas) ──────────────────────────────
 # The browser JS (Phase D) calls these when logged in instead of writing to

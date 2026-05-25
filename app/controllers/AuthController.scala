@@ -106,8 +106,13 @@ class AuthController(
             val nextSession = request.session
               - "oauthState" - "oauthProvider" - "oauthStateTs" - "iosClient"
               + ("userId" -> user.id)
-            val target = if (request.session.get("iosClient").contains("1")) "kinowo://auth-done" else "/"
-            Redirect(target).withSession(nextSession)
+            if (request.session.get("iosClient").contains("1")) {
+              val code = UUID.randomUUID().toString
+              AuthController.pendingExchangeCodes.put(code, user.id)
+              Redirect(s"kinowo://auth-done?code=$code").withSession(nextSession)
+            } else {
+              Redirect("/").withSession(nextSession)
+            }
         }
     }
   }
@@ -221,10 +226,41 @@ class AuthController(
   // internet can't reach us to forge these). Falls back to
   // `request.secure` / `request.host` when the headers are absent
   // (local dev hitting localhost:9000 directly).
+  def exchange(): Action[JsValue] = Action(parse.json) { request =>
+    (request.body \ "code").asOpt[String].flatMap { code =>
+      Option(AuthController.pendingExchangeCodes.getIfPresent(code)).map { userId =>
+        AuthController.pendingExchangeCodes.invalidate(code)
+        userId
+      }
+    } match {
+      case None =>
+        Unauthorized(Json.obj("error" -> "invalid or expired code"))
+      case Some(userId) =>
+        userRepo.findById(userId) match {
+          case None =>
+            Unauthorized(Json.obj("error" -> "user not found"))
+          case Some(user) =>
+            Ok(Json.obj(
+              "displayName" -> user.displayName,
+              "email"       -> user.email,
+              "avatarUrl"   -> user.avatarUrl,
+              "provider"    -> user.provider
+            )).withSession("userId" -> user.id)
+        }
+    }
+  }
+
   private def callbackUrl(provider: String, request: RequestHeader): String = {
     val scheme = request.headers.get("X-Forwarded-Proto")
       .getOrElse(if (request.secure) "https" else "http")
     val host   = request.headers.get("X-Forwarded-Host").getOrElse(request.host)
     s"$scheme://$host/auth/$provider/callback"
   }
+}
+
+object AuthController {
+  import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
+  import java.util.concurrent.TimeUnit
+  val pendingExchangeCodes: Cache[String, String] =
+    Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.MINUTES).maximumSize(100).build()
 }
