@@ -195,6 +195,7 @@ struct CinemaPillsRow: View {
         }
         .pickerStyle(.wheel)
         .frame(height: 100)
+        .padding(.top, -16)
     }
 }
 
