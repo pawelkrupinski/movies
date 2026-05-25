@@ -13,7 +13,8 @@ enum FlowLayoutMath {
         maxWidth: CGFloat,
         spacing: CGFloat,
         lineSpacing: CGFloat,
-        justified: Bool = false
+        justified: Bool = false,
+        centered: Bool = false
     ) -> Result {
         var positions: [CGPoint] = []
         positions.reserveCapacity(sizes.count)
@@ -26,20 +27,28 @@ enum FlowLayoutMath {
         var lineStart = 0
 
         func finishLine(end: Int) {
-            guard justified, maxWidth.isFinite, end > lineStart else { return }
+            guard maxWidth.isFinite, end > lineStart else { return }
             let count = end - lineStart
-            let naturalWidth = positions.suffix(count).enumerated().reduce(CGFloat(0)) { acc, pair in
-                acc + sizes[lineStart + pair.offset].width.rounded(.up)
+            let naturalWidth = (lineStart..<end).reduce(CGFloat(0)) { acc, i in
+                acc + sizes[i].width.rounded(.up)
             } + spacing * CGFloat(count - 1)
             let extra = maxWidth - naturalWidth
             guard extra > 0 else { return }
-            let perItem = extra / CGFloat(count)
-            var newX: CGFloat = 0
-            for i in lineStart..<end {
-                positions[i] = CGPoint(x: newX, y: positions[i].y)
-                let w = sizes[i].width.rounded(.up) + perItem
-                proposedWidths[i] = w
-                newX += w + spacing
+
+            if justified {
+                let perItem = extra / CGFloat(count)
+                var newX: CGFloat = 0
+                for i in lineStart..<end {
+                    positions[i] = CGPoint(x: newX, y: positions[i].y)
+                    let w = sizes[i].width.rounded(.up) + perItem
+                    proposedWidths[i] = w
+                    newX += w + spacing
+                }
+            } else if centered {
+                let offset = extra / 2
+                for i in lineStart..<end {
+                    positions[i] = CGPoint(x: positions[i].x + offset, y: positions[i].y)
+                }
             }
         }
 

@@ -5,6 +5,7 @@ struct FlowLayout: Layout {
     var spacing: CGFloat = 4
     var lineSpacing: CGFloat = 4
     var justified: Bool = false
+    var centered: Bool = false
 
     struct Cache { var size: CGSize = .zero }
 
@@ -18,7 +19,8 @@ struct FlowLayout: Layout {
             maxWidth: proposal.width ?? .infinity,
             spacing: spacing,
             lineSpacing: lineSpacing,
-            justified: justified
+            justified: justified,
+            centered: centered
         ).totalSize
     }
 
@@ -29,7 +31,8 @@ struct FlowLayout: Layout {
             maxWidth: bounds.width,
             spacing: spacing,
             lineSpacing: lineSpacing,
-            justified: justified
+            justified: justified,
+            centered: centered
         )
         for (i, sub) in subviews.enumerated() {
             let p: ProposedViewSize = justified

@@ -180,7 +180,7 @@ struct CinemaPillsRow: View {
     @Binding var pinnedCinema: String?
 
     var body: some View {
-        FlowLayout(spacing: 6, lineSpacing: 6) {
+        FlowLayout(spacing: 6, lineSpacing: 6, centered: true) {
             ForEach(allCinemas, id: \.self) { cinema in
                 Button {
                     pinnedCinema = (pinnedCinema == cinema) ? nil : cinema
