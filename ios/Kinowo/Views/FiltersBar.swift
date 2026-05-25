@@ -180,14 +180,14 @@ struct CinemaPillsRow: View {
     @Binding var pinnedCinema: String?
 
     var body: some View {
-        FlowLayout(spacing: 6, lineSpacing: 6, justified: true) {
+        FlowLayout(spacing: 6, lineSpacing: 6) {
             ForEach(allCinemas, id: \.self) { cinema in
                 Button {
                     pinnedCinema = (pinnedCinema == cinema) ? nil : cinema
                 } label: {
                     Text(CinemaSection.pillName(for: cinema))
                         .font(.system(size: 13, weight: .medium))
-                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 10)
                         .padding(.vertical, 5)
                         .background(
                             pinnedCinema == cinema
@@ -202,6 +202,13 @@ struct CinemaPillsRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .opacity(0.55)
+                .ignoresSafeArea(edges: .horizontal)
+        }
     }
 }
 
