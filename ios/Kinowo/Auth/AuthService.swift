@@ -17,14 +17,43 @@ final class AuthService: NSObject, ObservableObject {
     @Published var isLoading = false
 
     private let session: URLSession
-    private let googleClientId: String
-    private let facebookAppId: String
 
     override init() {
         self.session = URLSession.shared
-        self.googleClientId = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String ?? ""
-        self.facebookAppId = Bundle.main.object(forInfoDictionaryKey: "FacebookAppID") as? String ?? ""
         super.init()
+    }
+
+    // MARK: - Web OAuth (Google / Facebook)
+
+    func signInWithGoogle() async {
+        await signInWithWeb(provider: "google")
+    }
+
+    func signInWithFacebook() async {
+        await signInWithWeb(provider: "facebook")
+    }
+
+    private func signInWithWeb(provider: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        let startURL = kinowoBaseURL.appendingPathComponent("auth/\(provider)/start")
+        var components = URLComponents(url: startURL, resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "platform", value: "ios")]
+        guard let url = components.url else { return }
+        do {
+            _ = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<URL, Error>) in
+                let session = ASWebAuthenticationSession(url: url, callbackURLScheme: "kinowo") { url, error in
+                    if let error { cont.resume(throwing: error); return }
+                    guard let url else { cont.resume(throwing: URLError(.cancelled)); return }
+                    cont.resume(returning: url)
+                }
+                session.prefersEphemeralWebBrowserSession = false
+                session.start()
+            }
+            await fetchMe()
+        } catch {
+            // User cancelled
+        }
     }
 
     // MARK: - Apple Sign-In
@@ -54,83 +83,14 @@ final class AuthService: NSObject, ObservableObject {
                 if !parts.isEmpty { fullName = parts.joined(separator: " ") }
             }
             try await sendToken(provider: "apple", token: token, fullName: fullName)
-        } catch {
-            // User cancelled or auth failed
-        }
-    }
-
-    // MARK: - Google Sign-In
-
-    func signInWithGoogle() async {
-        guard !googleClientId.isEmpty else { return }
-        isLoading = true
-        defer { isLoading = false }
-        let redirectScheme = googleClientId.components(separatedBy: ".").reversed().joined(separator: ".")
-        let redirectUri = "\(redirectScheme):/oauth2callback"
-        var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
-        components.queryItems = [
-            URLQueryItem(name: "client_id", value: googleClientId),
-            URLQueryItem(name: "redirect_uri", value: redirectUri),
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "scope", value: "openid email profile"),
-            URLQueryItem(name: "prompt", value: "select_account"),
-        ]
-        guard let authURL = components.url else { return }
-        do {
-            let callbackURL = try await openWebAuth(url: authURL, scheme: redirectScheme)
-            guard let code = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)?
-                    .queryItems?.first(where: { $0.name == "code" })?.value else { return }
-            try await sendToken(provider: "google", token: code, redirectUri: redirectUri)
-        } catch {
-            // User cancelled
-        }
-    }
-
-    // MARK: - Facebook Login
-
-    func signInWithFacebook() async {
-        guard !facebookAppId.isEmpty else { return }
-        isLoading = true
-        defer { isLoading = false }
-        let redirectUri = "fb\(facebookAppId)://authorize"
-        var components = URLComponents(string: "https://www.facebook.com/v18.0/dialog/oauth")!
-        components.queryItems = [
-            URLQueryItem(name: "client_id", value: facebookAppId),
-            URLQueryItem(name: "redirect_uri", value: redirectUri),
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "scope", value: "email,public_profile"),
-        ]
-        guard let authURL = components.url else { return }
-        do {
-            let callbackURL = try await openWebAuth(url: authURL, scheme: "fb\(facebookAppId)")
-            guard let code = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)?
-                    .queryItems?.first(where: { $0.name == "code" })?.value else { return }
-            try await sendToken(provider: "facebook", token: code, redirectUri: redirectUri)
-        } catch {
-            // User cancelled
-        }
-    }
-
-    // MARK: - ASWebAuthenticationSession helper
-
-    private func openWebAuth(url: URL, scheme: String) async throws -> URL {
-        try await withCheckedThrowingContinuation { cont in
-            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: scheme) { url, error in
-                if let error { cont.resume(throwing: error); return }
-                guard let url else { cont.resume(throwing: URLError(.cancelled)); return }
-                cont.resume(returning: url)
-            }
-            session.prefersEphemeralWebBrowserSession = false
-            session.start()
-        }
+        } catch {}
     }
 
     // MARK: - Server communication
 
-    private func sendToken(provider: String, token: String, fullName: String? = nil, redirectUri: String? = nil) async throws {
+    private func sendToken(provider: String, token: String, fullName: String? = nil) async throws {
         var body: [String: String] = ["provider": provider, "token": token]
         if let name = fullName { body["fullName"] = name }
-        if let uri = redirectUri { body["redirectUri"] = uri }
         var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("auth/token"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -142,7 +102,7 @@ final class AuthService: NSObject, ObservableObject {
         self.user = try JSONDecoder().decode(UserProfile.self, from: data)
     }
 
-    func checkSession() async {
+    func fetchMe() async {
         do {
             var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("api/me"))
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
@@ -150,6 +110,10 @@ final class AuthService: NSObject, ObservableObject {
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
             self.user = try JSONDecoder().decode(UserProfile.self, from: data)
         } catch {}
+    }
+
+    func checkSession() async {
+        await fetchMe()
     }
 
     func signOut() async {
