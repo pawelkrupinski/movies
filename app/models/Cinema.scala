@@ -1,38 +1,40 @@
 package models
 
-sealed abstract class Cinema(val displayName: String) extends Source
+sealed abstract class Cinema(val displayName: String, val pillName: String) extends Source
 
-case object CinemaCityKinepolis extends Cinema("Cinema City Kinepolis")
+case object KinoApollo extends Cinema("Kino Apollo", "Apollo")
 
-case object CinemaCityPoznanPlaza extends Cinema("Cinema City Poznań Plaza")
+case object KinoBulgarska extends Cinema("Kino Bułgarska 19", "Bułgarska 19")
 
-case object Helios extends Cinema("Helios Posnania")
+case object CharlieMonroe extends Cinema("Kino Malta Charlie Monroe", "Malta Charlie Monroe")
 
-case object KinoApollo extends Cinema("Kino Apollo")
+case object Helios extends Cinema("Helios Posnania", "Helios")
 
-case object KinoBulgarska extends Cinema("Kino Bułgarska 19")
+case object CinemaCityKinepolis extends Cinema("Cinema City Kinepolis", "Kinepolis")
 
-case object CharlieMonroe extends Cinema("Kino Malta Charlie Monroe")
+case object KinoMuza extends Cinema("Kino Muza", "Muza")
 
-case object KinoMuza extends Cinema("Kino Muza")
+case object Multikino extends Cinema("Multikino Stary Browar", "Multikino")
 
-case object KinoPalacowe extends Cinema("Kino Pałacowe")
+case object KinoPalacowe extends Cinema("Kino Pałacowe", "Pałacowe")
 
-case object Rialto extends Cinema("Kino Rialto")
+case object CinemaCityPoznanPlaza extends Cinema("Cinema City Poznań Plaza", "Poznań Plaza")
 
-case object Multikino extends Cinema("Multikino Stary Browar")
+case object Rialto extends Cinema("Kino Rialto", "Rialto")
 
 object Cinema {
   val all: Seq[Cinema] = Seq(
-    CinemaCityKinepolis,
-    CinemaCityPoznanPlaza,
-    Helios,
     KinoApollo,
     KinoBulgarska,
     CharlieMonroe,
+    Helios,
+    CinemaCityKinepolis,
     KinoMuza,
-    KinoPalacowe,
-    Rialto,
     Multikino,
+    KinoPalacowe,
+    CinemaCityPoznanPlaza,
+    Rialto,
   )
+
+  val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }

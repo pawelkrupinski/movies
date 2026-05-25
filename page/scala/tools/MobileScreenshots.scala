@@ -57,13 +57,14 @@ object MobileScreenshots {
       val anon    = Option.empty[models.User]
       val noOauth = Set.empty[String]
 
+      val pills = Cinema.pillMap
       val indexHtml: String = views.html.repertoire(
-        schedules, cinemas, devMode = false,
+        schedules, cinemas, pills, devMode = false,
         currentUser    = anon, oauthProviders = noOauth
       ).body
 
       val kinaHtml: String = views.html.kina(
-        cinemaSchedules, cinemas, devMode = false,
+        cinemaSchedules, cinemas, pills, devMode = false,
         currentUser    = anon, oauthProviders = noOauth,
         pinnedCinema = None
       ).body

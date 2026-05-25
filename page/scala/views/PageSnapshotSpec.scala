@@ -29,6 +29,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       val html: String = views.html.repertoire(
         movieControllerService.toSchedules(now),
         Cinema.all.map(_.displayName),
+        Cinema.pillMap,
         devMode = false,
         currentUser = anonymousUser,
         oauthProviders = noOauthProviders
@@ -42,6 +43,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       val html: String = views.html.kina(
         movieControllerService.toCinemaSchedules(now),
         Cinema.all.map(_.displayName),
+        Cinema.pillMap,
         devMode = false,
         currentUser = anonymousUser,
         oauthProviders = noOauthProviders
@@ -55,6 +57,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       val html: String = views.html.kina(
         movieControllerService.toCinemaSchedules(now),
         Cinema.all.map(_.displayName),
+        Cinema.pillMap,
         devMode = false,
         currentUser = anonymousUser,
         oauthProviders = noOauthProviders,

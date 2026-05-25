@@ -1062,8 +1062,8 @@ showings:
 displayTitle:      Drzewo Magii
 cinemaTitles:      Drzewo Magii | Drzewo magii
 runtimeMinutes:    110
-releaseYear:       2025
-countries:         Wielka Brytania, USA, Francja
+releaseYear:       2026
+countries:         Francja, USA, Wielka Brytania
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drzewo-magii/drzewo-magii_plakat-glowny_plakat.jpg?rev=78ae4df57ddb40d98d5535803ff32357
 synopsis.length:   1271
 cast:              Andrew Garfield („Sztuka pięknego życia”), Claire Foy (serial „The Crown”) Rebecca Ferguson („Diuna”), Nicola Coughlan (serial „Brigertonowie”), Jessica Gunning (serial „Reniferek”)
@@ -2802,10 +2802,10 @@ showings:
 === Liga Mistrzów UEFA - Finał ===
 displayTitle:      Liga Mistrzów UEFA - Finał
 cinemaTitles:      Liga Mistrzów UEFA - Finał
-runtimeMinutes:    140
+runtimeMinutes:    180
 releaseYear:       2026
 countries:         —
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8063O2R.jpg
+posterUrl:         https://img.helios.pl/pliki/film/liga-mistrzow-uefa-final/liga-mistrzow-uefa-final-plakat-14784.png
 synopsis.length:   466
 cast:              —
 director:          —
@@ -4686,7 +4686,7 @@ showings:
 === Podziemny krąg ===
 displayTitle:      Podziemny krąg
 cinemaTitles:      Podziemny krąg
-runtimeMinutes:    140
+runtimeMinutes:    139
 releaseYear:       1999
 countries:         Niemcy, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/podziemny-krag_online_cut.jpg?rev=8b4016e21dd74d46a7dc788b826c7a8e
@@ -5080,10 +5080,10 @@ showings:
 === Romería ===
 displayTitle:      Romería
 cinemaTitles:      Romeria | Romería
-runtimeMinutes:    114
+runtimeMinutes:    115
 releaseYear:       2025
 countries:         Hiszpania
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7807S2R.jpg
+posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Romeria-B1.jpg
 synopsis.length:   954
 cast:              Tristán Ulloa, Sara Casasnovas, Miryam Gallego
 director:          Carla Simón
@@ -5839,10 +5839,10 @@ showings:
 === Wartość sentymentalna ===
 displayTitle:      Wartość sentymentalna
 cinemaTitles:      Wartość sentymentalna
-runtimeMinutes:    135
+runtimeMinutes:    133
 releaseYear:       2025
 countries:         Norwegia, Niemcy, Dania
-posterUrl:         https://img.helios.pl/pliki/film/wartosc-sentymentalna/wartosc-sentymentalna-plakat-66574.jpeg
+posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/02/WartoscSentymentalna_plakat_NET-po-zmniejszeniu-200x288.jpg
 synopsis.length:   286
 cast:              —
 director:          Joachim Trier
@@ -6238,7 +6238,7 @@ cinemaTitles:      Władcy Wszechświata | Władcy wszechświata
 runtimeMinutes:    141
 releaseYear:       2026
 countries:         USA
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7992S2R.jpg
+posterUrl:         https://img.helios.pl/pliki/film/wladcy-wszechswiata/wladcy-wszechswiata-plakat-895.jpg
 synopsis.length:   395
 cast:              Nicholas Galitzine, Camila, MendesIdris Elba
 director:          Travis Knight

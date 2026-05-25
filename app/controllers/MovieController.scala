@@ -152,7 +152,7 @@ class MovieController( cc: ControllerComponents,
 
   def index(): Action[AnyContent] = Action { request =>
     val user = currentUser(request)
-    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), devMode, user, oauthProviders))
+    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), Cinema.pillMap, devMode, user, oauthProviders))
   }
 
   private def renderBrowse(heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
@@ -193,7 +193,7 @@ class MovieController( cc: ControllerComponents,
     val user = currentUser(request)
     val allCinemas = Cinema.all.map(_.displayName)
     val pinned = pinnedCinema.filter(allCinemas.contains)
-    Ok(views.html.kina(movieControllerService.toCinemaSchedules(), allCinemas, devMode, user, oauthProviders, pinned))
+    Ok(views.html.kina(movieControllerService.toCinemaSchedules(), allCinemas, Cinema.pillMap, devMode, user, oauthProviders, pinned))
   }
 
   def debug(): Action[AnyContent] = Action {

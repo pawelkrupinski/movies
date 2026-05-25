@@ -1,5 +1,5 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -39,7 +39,7 @@
 @_loginModal(oauthProviders)
 @_hiddenModal()
 
-@_sharedJsConfig(allCinemas, currentUser, oauthProviders)
+@_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 <div class="container-fluid py-4 px-4">

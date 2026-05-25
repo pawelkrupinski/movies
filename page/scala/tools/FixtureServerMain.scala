@@ -57,14 +57,15 @@ object FixtureServerMain {
     val schedules       = wiring.movieControllerService.toSchedules(now)
     val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(now)
 
+    val pills = Cinema.pillMap
     def renderKina(pinned: Option[String]): String = views.html.kina(
-      cinemaSchedules, cinemas, devMode = false,
+      cinemaSchedules, cinemas, pills, devMode = false,
       currentUser = anon, oauthProviders = noOauth,
       pinnedCinema = pinned
     ).body
 
     val indexHtml: String = views.html.repertoire(
-      schedules, cinemas, devMode = false,
+      schedules, cinemas, pills, devMode = false,
       currentUser = anon, oauthProviders = noOauth
     ).body
 

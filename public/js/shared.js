@@ -623,7 +623,7 @@
         applyFilters();
       };
       label.appendChild(cb);
-      label.appendChild(document.createTextNode(' ' + cinema));
+      label.appendChild(document.createTextNode(' ' + (CINEMA_PILLS[cinema] || cinema)));
       list.appendChild(label);
     });
     syncAllCheckbox();

@@ -1,5 +1,5 @@
 @import controllers.CinemaSchedule
-@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pinnedCinema: Option[String] = None)
+@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pinnedCinema: Option[String] = None)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -106,7 +106,7 @@
 @_loginModal(oauthProviders)
 @_hiddenModal()
 
-@_sharedJsConfig(allCinemas, currentUser, oauthProviders)
+@_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 @* Cinema-picker as a second navbar row — populated from JS at boot off
@@ -309,7 +309,7 @@
       pill.type = 'button';
       pill.className = 'cinema-pill' + (cinema === _kinaPinned ? ' active' : '');
       pill.dataset.cinema = cinema;
-      pill.textContent = cinema;
+      pill.textContent = CINEMA_PILLS[cinema] || cinema;
       pill.onclick = () => toggleCinemaPill(cinema);
       row.appendChild(pill);
     });

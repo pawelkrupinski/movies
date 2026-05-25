@@ -177,7 +177,7 @@
 </head>
 <body>
 
-@_sharedJsConfig(Seq.empty, currentUser, oauthProviders)
+@_sharedJsConfig(Seq.empty, Map.empty[String, String], currentUser, oauthProviders)
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 <nav class="navbar px-4 py-3 d-flex align-items-center justify-content-between">

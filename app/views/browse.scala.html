@@ -54,7 +54,7 @@
 
 @_loginModal(oauthProviders)
 
-@_sharedJsConfig(Seq.empty, currentUser, oauthProviders)
+@_sharedJsConfig(Seq.empty, Map.empty[String, String], currentUser, oauthProviders)
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 <div class="container-fluid py-4 px-4">
