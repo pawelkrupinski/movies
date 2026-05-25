@@ -179,31 +179,22 @@ struct CinemaPillsRow: View {
     let allCinemas: [String]
     @Binding var pinnedCinema: String?
 
+    private var selection: Binding<String> {
+        Binding(
+            get: { pinnedCinema ?? "" },
+            set: { pinnedCinema = $0.isEmpty ? nil : $0 }
+        )
+    }
+
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(allCinemas, id: \.self) { cinema in
-                    Button {
-                        pinnedCinema = (pinnedCinema == cinema) ? nil : cinema
-                    } label: {
-                        Text(cinema)
-                            .font(.system(size: 13, weight: .medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(
-                                pinnedCinema == cinema
-                                    ? Color.accentColor.opacity(0.85)
-                                    : Color(.systemGray5),
-                                in: Capsule()
-                            )
-                            .foregroundColor(pinnedCinema == cinema ? .white : .primary)
-                    }
-                    .buttonStyle(BounceButtonStyle())
-                }
+        Picker("Kino", selection: selection) {
+            Text("Wszystkie").tag("")
+            ForEach(allCinemas, id: \.self) { cinema in
+                Text(cinema).tag(cinema)
             }
-            .padding(.horizontal, 14)
         }
-        .padding(.vertical, 8)
+        .pickerStyle(.wheel)
+        .frame(height: 100)
     }
 }
 
