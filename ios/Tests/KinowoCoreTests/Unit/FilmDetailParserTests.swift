@@ -46,6 +46,16 @@ final class FilmDetailParserTests: XCTestCase {
         XCTAssertNotNil(detail.cast, "expected an Obsada block")
     }
 
+    func testDirectorAndCastContainNoHTMLTags() throws {
+        let detail = try loadMandalorian()
+        for field in [detail.director, detail.cast] {
+            guard let value = field else { continue }
+            XCTAssertFalse(value.contains("<a "),    "field contains <a> tags: \(value)")
+            XCTAssertFalse(value.contains("</a>"),   "field contains </a> tags: \(value)")
+            XCTAssertFalse(value.contains("<!--"),   "field contains HTML comments: \(value)")
+        }
+    }
+
     func testTrailersAreYoutubeEmbedURLsWhenPresent() throws {
         let detail = try loadMandalorian()
         // Trailers may legitimately be empty — assert only that we don't

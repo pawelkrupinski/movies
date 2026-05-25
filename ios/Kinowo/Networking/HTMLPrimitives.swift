@@ -41,6 +41,12 @@ enum HTMLPrimitives {
         return ns.substring(with: r)
     }
 
+    static func stripTags(_ html: String) -> String {
+        html.replacingOccurrences(of: "<!--.*?-->", with: "", options: .regularExpression)
+            .replacingOccurrences(of: "<[^>]+>",    with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// Named attribute value from a tag's attribute-blob (e.g. the
     /// substring between `<a ` and `>`). Attribute order doesn't
     /// matter; the regex is anchored on the attribute name.

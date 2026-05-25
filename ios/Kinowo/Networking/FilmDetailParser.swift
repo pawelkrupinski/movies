@@ -108,9 +108,10 @@ enum FilmDetailParser {
         // Labels are literal ASCII / Polish text, safe to embed in the
         // regex without escaping.
         let pattern = #"<div class="meta-label">\#(label)</div>\s*<div class="meta-value">(.*?)</div>"#
-        return HTMLPrimitives.capture(html, pattern)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .htmlDecoded()
+        return HTMLPrimitives.capture(html, pattern)
+            .map(HTMLPrimitives.stripTags)
+            .map { $0.htmlDecoded() }
+            .flatMap { $0.isEmpty ? nil : $0 }
     }
 
     // MARK: – trailers
