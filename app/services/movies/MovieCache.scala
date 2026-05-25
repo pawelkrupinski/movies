@@ -47,6 +47,9 @@ trait MovieCache {
   /** Stable snapshot for debug tooling — sorted by title (case-insensitive). */
   def snapshot(): Seq[StoredMovieRecord]
 
+  /** Wall-clock instant of the most recent data mutation. */
+  def lastModified: java.time.Instant
+
   /** Reload the positive cache from the repo: drop every in-memory positive
    *  entry, then `repo.findAll()` and put each row. Returns the number of
    *  rows loaded. Leaves the negative cache (24h-TTL TMDB miss markers)
@@ -97,6 +100,10 @@ class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus(
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
   private val negative: Cache[CacheKey, java.lang.Boolean] =
     Caffeine.newBuilder().expireAfterWrite(24, TimeUnit.HOURS).build()
+
+  @volatile private var _lastModified: java.time.Instant = java.time.Instant.now()
+  def lastModified: java.time.Instant = _lastModified
+  private def touch(): Unit = { _lastModified = java.time.Instant.now() }
 
   // Per-normalised-title locks for `recordCinemaScrape`. Two cinemas
   // first-scraping the same brand-new film concurrently used to each see an
@@ -180,6 +187,7 @@ class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus(
     val clean = withoutZeroRatings(e)
     positive.put(key, clean)
     repo.upsert(key.cleanTitle, key.year, clean)
+    touch()
   }
 
   // Rating sources occasionally hand us a literal zero — MC/RT search pages
@@ -254,6 +262,7 @@ class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus(
     })
     if (updated != null) {
       repo.updateIfPresent(key.cleanTitle, key.year, before.get(), updated)
+      touch()
       true
     } else false
   }
@@ -271,6 +280,7 @@ class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus(
   private[services] def invalidate(key: CacheKey): Unit = {
     positive.invalidate(key)
     repo.delete(key.cleanTitle, key.year)
+    touch()
   }
 
   /** Atomically rename a row from `oldKey` to `newKey`, computing the new
@@ -540,6 +550,7 @@ class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus(
       .filterNot(nextKeys.contains)
       .foreach(positive.invalidate)
     if (rows.nonEmpty) logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo.")
+    touch()
     rows.size
   }
 

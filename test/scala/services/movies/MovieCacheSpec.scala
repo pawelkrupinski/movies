@@ -1095,4 +1095,31 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
     cache.snapshot().map(_.title) shouldBe Seq("alpha", "Beta", "Zorro")
   }
+
+  "lastModified" should "advance on put" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val before = cache.lastModified
+    Thread.sleep(2)
+    cache.put(cache.keyOf("X", Some(2024)), mkEnrichment("tt1"))
+    cache.lastModified.isAfter(before) shouldBe true
+  }
+
+  it should "advance on putIfPresent" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    val key = cache.keyOf("X", Some(2024))
+    cache.put(key, mkEnrichment("tt1"))
+    val before = cache.lastModified
+    Thread.sleep(2)
+    cache.putIfPresent(key, _.copy(imdbRating = Some(9.0)))
+    cache.lastModified.isAfter(before) shouldBe true
+  }
+
+  it should "advance on rehydrate" in {
+    val repo = new InMemoryMovieRepo(Seq(("Film", Some(2024), mkEnrichment("tt1"))))
+    val cache = new CaffeineMovieCache(repo)
+    val before = cache.lastModified
+    Thread.sleep(2)
+    cache.rehydrate()
+    cache.lastModified.isAfter(before) shouldBe true
+  }
 }

@@ -5,7 +5,7 @@ import play.api.Logging
 import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 import play.api.Mode
-import services.movies.{MovieService, StoredMovieRecord, TitleNormalizer}
+import services.movies.{MovieCache, MovieService, StoredMovieRecord, TitleNormalizer}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
@@ -210,6 +210,7 @@ class MovieControllerService(movieService: MovieService) {
 
 class MovieController( cc: ControllerComponents,
                        movieControllerService: MovieControllerService,
+                       movieCache: MovieCache,
                        userRepo: services.users.UserRepo,
                        oauthProviders: Set[String],
                        environment: Mode
@@ -269,9 +270,23 @@ class MovieController( cc: ControllerComponents,
     Ok(views.html.kina(movieControllerService.toCinemaSchedules(), allCinemas, Cinema.pillMap, devMode, user, oauthProviders, pinned))
   }
 
-  def apiRepertoire(): Action[AnyContent] = Action {
-    val films = movieControllerService.toSchedules().map(ApiFilm.from)
-    Ok(Json.toJson(films))
+  def apiRepertoire(): Action[AnyContent] = Action { request =>
+    val lastMod = movieCache.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
+    val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
+      .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
+
+    val notModified = request.headers.get("If-Modified-Since").exists { ims =>
+      scala.util.Try(java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.parse(ims))
+        .map(java.time.Instant.from)
+        .toOption
+        .exists(!lastMod.isAfter(_))
+    }
+
+    if (notModified) NotModified
+    else {
+      val films = movieControllerService.toSchedules().map(ApiFilm.from)
+      Ok(Json.toJson(films)).withHeaders("Last-Modified" -> httpDate)
+    }
   }
 
   def debug(): Action[AnyContent] = Action {

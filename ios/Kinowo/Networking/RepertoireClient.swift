@@ -33,14 +33,26 @@ final class RepertoireStore: ObservableObject {
             var request = URLRequest(url: url)
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalCacheData
+            if let lm = RepertoireCache.loadLastModified() {
+                request.setValue(lm, forHTTPHeaderField: "If-Modified-Since")
+            }
             let (data, response) = try await session.data(for: request)
-            if let http = response as? HTTPURLResponse,
-               !(200..<300).contains(http.statusCode) {
+            guard let http = response as? HTTPURLResponse else {
+                throw URLError(.badServerResponse)
+            }
+            if http.statusCode == 304 {
+                self.lastReloadedAt = now
+                return
+            }
+            guard (200..<300).contains(http.statusCode) else {
                 throw URLError(.badServerResponse)
             }
             let decoded = try JSONDecoder().decode([Film].self, from: data)
             self.films = decoded
             self.lastReloadedAt = now
+            if let lm = http.value(forHTTPHeaderField: "Last-Modified") {
+                Task.detached { RepertoireCache.saveLastModified(lm) }
+            }
             let filmsCopy = decoded
             Task.detached { RepertoireCache.save(filmsCopy) }
         } catch {

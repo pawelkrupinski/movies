@@ -43,6 +43,7 @@ class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
     new MovieController(
       cc                     = Helpers.stubControllerComponents(),
       movieControllerService = movieControllerService,
+      movieCache             = cache,
       userRepo               = new services.users.InMemoryUserRepo,
       oauthProviders         = Set.empty,
       environment            = Mode.Test
