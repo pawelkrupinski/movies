@@ -31,6 +31,10 @@ GET     /auth/:provider/callback    controllers.AuthController.callback(provider
 + nocsrf
 POST    /auth/logout                controllers.AuthController.logout()
 
+GET     /api/me                     controllers.AuthController.me()
++ nocsrf
+POST    /auth/token                 controllers.AuthController.token()
+
 # ── Per-user state (hidden / disabled-cinemas) ──────────────────────────────
 # The browser JS (Phase D) calls these when logged in instead of writing to
 # localStorage. Anonymous requests get 401 and the JS falls back to

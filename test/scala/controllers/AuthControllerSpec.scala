@@ -46,7 +46,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
       Helpers.stubControllerComponents(),
       providers.map(p => p.name -> p).toMap,
       repo,
-      fixedClk
+      clock = fixedClk
     )
     (ctl, repo)
   }
@@ -114,7 +114,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val updatedProfile = Profile.copy(displayName = Some("Alice (married)"))
     val provider2     = new FakeProvider("google", updatedProfile)
     val (ctl2, repo2) = (
-      new AuthController(Helpers.stubControllerComponents(), Map("google" -> provider2), repo, fixedClk),
+      new AuthController(Helpers.stubControllerComponents(), Map("google" -> provider2), repo, clock = fixedClk),
       repo
     )
     val secondSession = session(ctl2.callback("google")(

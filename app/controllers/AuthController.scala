@@ -2,8 +2,9 @@ package controllers
 
 import models.User
 import play.api.Logging
+import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
-import services.auth.{OauthProfile, OauthProvider}
+import services.auth.{AppleTokenValidator, FacebookTokenValidator, GoogleTokenValidator, OauthProfile, OauthProvider}
 import services.users.UserRepo
 
 import java.time.Clock
@@ -37,10 +38,13 @@ import scala.util.{Failure, Success, Try}
  *   - `userId`        — set on successful callback, dropped on logout
  */
 class AuthController(
-  cc:        ControllerComponents,
-  providers: Map[String, OauthProvider],
-  userRepo:  UserRepo,
-  clock:     Clock = Clock.systemUTC()
+  cc:                     ControllerComponents,
+  providers:              Map[String, OauthProvider],
+  userRepo:               UserRepo,
+  googleTokenValidator:   Option[GoogleTokenValidator] = None,
+  facebookTokenValidator: Option[FacebookTokenValidator] = None,
+  appleTokenValidator:    Option[AppleTokenValidator] = None,
+  clock:                  Clock = Clock.systemUTC()
 ) extends AbstractController(cc) with Logging {
 
   // OAuth state cookie expires after this — long enough that the user
@@ -101,6 +105,46 @@ class AuthController(
               + ("userId" -> user.id)
             Redirect("/").withSession(nextSession)
         }
+    }
+  }
+
+  def token(): Action[JsValue] = Action(parse.json) { request =>
+    val body = request.body
+    ((body \ "provider").asOpt[String], (body \ "token").asOpt[String]) match {
+      case (None, _) => BadRequest(Json.obj("error" -> "missing provider"))
+      case (_, None) => BadRequest(Json.obj("error" -> "missing token"))
+      case (Some(provider), Some(tokenStr)) =>
+        val fullName = (body \ "fullName").asOpt[String]
+        Try(provider match {
+          case "google"   => googleTokenValidator.getOrElse(throw new RuntimeException("Google not configured")).validate(tokenStr)
+          case "facebook" => facebookTokenValidator.getOrElse(throw new RuntimeException("Facebook not configured")).validate(tokenStr)
+          case "apple"    => appleTokenValidator.getOrElse(throw new RuntimeException("Apple not configured")).validate(tokenStr, fullName)
+          case other      => throw new RuntimeException(s"Unknown provider: $other")
+        }) match {
+          case Failure(ex) =>
+            logger.warn(s"Token validation failed for $provider: ${ex.getMessage}")
+            Unauthorized(Json.obj("error" -> ex.getMessage))
+          case Success(profile) =>
+            val user = upsertUser(provider, profile)
+            Ok(Json.obj(
+              "displayName" -> user.displayName,
+              "email"       -> user.email,
+              "avatarUrl"   -> user.avatarUrl,
+              "provider"    -> user.provider
+            )).withSession("userId" -> user.id)
+        }
+    }
+  }
+
+  def me(): Action[AnyContent] = Action { request =>
+    request.session.get("userId").flatMap(userRepo.findById) match {
+      case None => Unauthorized(Json.obj("error" -> "not logged in"))
+      case Some(user) => Ok(Json.obj(
+        "displayName" -> user.displayName,
+        "email"       -> user.email,
+        "avatarUrl"   -> user.avatarUrl,
+        "provider"    -> user.provider
+      ))
     }
   }
 

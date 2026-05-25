@@ -6,7 +6,7 @@ import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, ShowtimeCache, Stoppable}
-import services.auth.{FacebookOauthProvider, GoogleOauthProvider, OauthProvider}
+import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
 import services.cinemas._
 import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
@@ -139,10 +139,23 @@ trait Wiring {
     Seq(google, facebook).flatten.map(p => p.name -> (p: OauthProvider)).toMap
   }
 
+  lazy val googleTokenValidator: Option[GoogleTokenValidator] =
+    Env.get("GOOGLE_CLIENT_ID").map(id => new GoogleTokenValidator(httoFetch, id))
+
+  lazy val facebookTokenValidator: Option[FacebookTokenValidator] =
+    for {
+      id     <- Env.get("FACEBOOK_APP_ID")
+      secret <- Env.get("FACEBOOK_APP_SECRET")
+    } yield new FacebookTokenValidator(httoFetch, id, secret)
+
+  lazy val appleTokenValidator: Option[AppleTokenValidator] =
+    Env.get("APPLE_BUNDLE_ID").orElse(Some("dev.kinowo.Kinowo"))
+      .map(bundleId => new AppleTokenValidator(httoFetch, bundleId))
+
   // ── Controllers ───────────────────────────────────────────────────────────
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, movieCache, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
-  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo)
+  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, userRepo)
 
   // Subscribe BEFORE ShowtimeCache.start() so the bus's first MovieRecordCreated
