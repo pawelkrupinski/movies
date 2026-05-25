@@ -179,26 +179,13 @@ struct CinemaPillsRow: View {
     let allCinemas: [String]
     @Binding var pinnedCinema: String?
 
-    static let pillNames: [String: String] = [
-        "Cinema City Kinepolis": "Kinepolis",
-        "Cinema City Poznań Plaza": "Poznań Plaza",
-        "Helios Posnania": "Helios",
-        "Kino Apollo": "Apollo",
-        "Kino Bułgarska 19": "Bułgarska 19",
-        "Kino Malta Charlie Monroe": "Malta Charlie Monroe",
-        "Kino Muza": "Muza",
-        "Kino Pałacowe": "Pałacowe",
-        "Kino Rialto": "Rialto",
-        "Multikino Stary Browar": "Multikino",
-    ]
-
     var body: some View {
         FlowLayout(spacing: 6, lineSpacing: 6) {
             ForEach(allCinemas, id: \.self) { cinema in
                 Button {
                     pinnedCinema = (pinnedCinema == cinema) ? nil : cinema
                 } label: {
-                    Text(Self.pillNames[cinema] ?? cinema)
+                    Text(CinemaSection.pillName(for: cinema))
                         .font(.system(size: 13, weight: .medium))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
@@ -340,7 +327,7 @@ struct FiltersSheet: View {
                             }
                         ))
                         ForEach(allCinemas, id: \.self) { cinema in
-                            Toggle(CinemaPillsRow.pillNames[cinema] ?? cinema, isOn: Binding(
+                            Toggle(CinemaSection.pillName(for: cinema), isOn: Binding(
                                 get: { !prefs.disabledCinemas.contains(cinema) },
                                 set: { on in prefs.toggleCinema(cinema, disabled: !on) }
                             ))

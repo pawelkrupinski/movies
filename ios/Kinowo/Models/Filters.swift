@@ -120,6 +120,23 @@ struct CinemaSection: Identifiable, Hashable {
     var id: String { cinema }
     let cinema: String
     let films: [Film]
+
+    static let pillNames: [String: String] = [
+        "Cinema City Kinepolis": "Kinepolis",
+        "Cinema City Poznań Plaza": "Poznań Plaza",
+        "Helios Posnania": "Helios",
+        "Kino Apollo": "Apollo",
+        "Kino Bułgarska 19": "Bułgarska 19",
+        "Kino Malta Charlie Monroe": "Malta Charlie Monroe",
+        "Kino Muza": "Muza",
+        "Kino Pałacowe": "Pałacowe",
+        "Kino Rialto": "Rialto",
+        "Multikino Stary Browar": "Multikino",
+    ]
+
+    static func pillName(for cinema: String) -> String {
+        pillNames[cinema] ?? cinema
+    }
 }
 
 extension Sequence where Element == Film {
@@ -265,7 +282,7 @@ extension Sequence where Element == Film {
                 ))
             }
         }
-        return perCinema.keys.sorted().map { name in
+        return perCinema.keys.sorted { CinemaSection.pillName(for: $0) < CinemaSection.pillName(for: $1) }.map { name in
             CinemaSection(cinema: name, films: perCinema[name]!)
         }
     }

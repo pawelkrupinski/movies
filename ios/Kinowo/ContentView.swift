@@ -208,7 +208,7 @@ struct ContentView: View {
                 }
             }
         }
-        return out.sorted()
+        return out.sorted { CinemaSection.pillName(for: $0) < CinemaSection.pillName(for: $1) }
     }
 
     private var allCountries: [(name: String, count: Int)] {

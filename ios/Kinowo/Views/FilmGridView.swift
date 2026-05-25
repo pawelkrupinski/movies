@@ -65,7 +65,7 @@ struct CinemaSectionedGridView: View {
                 LazyVStack(alignment: .leading, spacing: 20) {
                     ForEach(sections) { section in
                         VStack(alignment: .leading, spacing: 12) {
-                            sectionHeader(section.cinema)
+                            sectionHeader(CinemaSection.pillName(for: section.cinema))
                             LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
                                 ForEach(section.films) { film in
                                     NavigationLink(value: film) {
