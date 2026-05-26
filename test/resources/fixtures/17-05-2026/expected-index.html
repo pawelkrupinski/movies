@@ -11,7 +11,7 @@
   
   <link rel="stylesheet" href="/assets/css/bootstrap-5.3.3.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   
-<style>html{touch-action:manipulation}body{background:#111;color:#eee;overflow-x:hidden}.navbar{background:#1a1a2e;flex-wrap:wrap;position:sticky;top:0;z-index:10;gap:.4rem}.navbar-logo{flex-shrink:0}.card{background:#1e1e2e;border:none;border-radius:12px;overflow:hidden;height:100%;transition:transform .2s;cursor:pointer}.card:hover{transform:translateY(-4px)}.poster-wrap{position:relative;padding-top:148%;background:#2a2a3e;overflow:hidden}.poster-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.no-poster{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:#99a;font-style:italic;letter-spacing:.03em}.card-body{padding:1rem}.card-title{min-height:2.5rem;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.3rem;overflow-wrap:break-word}.card-title a{font-size:.95rem;font-weight:600;color:#fff;text-decoration:none;min-width:0}.card-title a:hover{color:#aad4ff}.pill{background:#252540;border:1px solid #3a3a6e;border-radius:3px;padding:0 5px;font-size:.72rem;color:#99b;white-space:nowrap}.runtime{font-size:.75rem;color:#888}.date-label{font-size:.7rem;color:#888;margin-bottom:.2rem;margin-top:.5rem}#room-tooltip{position:fixed;background:#0e0e1e;color:#ccc;font-size:.68rem;padding:2px 7px;border-radius:4px;white-space:nowrap;border:1px solid #3a3a6e;pointer-events:none;z-index:20;display:none}.refresh-btn{background:#3a3a6e;border:none;color:#aad4ff;white-space:nowrap;flex-shrink:0;height:35px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}.refresh-btn:hover{background:#5a5a9e;color:#fff}.date-nav-btn{padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;touch-action:manipulation;height:35px;box-sizing:border-box;min-width:35px}.filter-select{background:#3a3a6e;color:#aad4ff;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.875rem;cursor:pointer;flex-shrink:0;height:35px;box-sizing:border-box}.filter-select:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.search-input{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:160px;min-height:35px}.search-input::placeholder{color:#778}.search-input:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e;width:220px}@media (max-width:575px){.search-input,.search-input:focus{width:90px}}@media (max-width:379px){.search-input,.search-input:focus{width:55px}}@media (max-width:290px){.navbar-search{display:none}nav.navbar{padding:0 !important;column-gap:0 !important;row-gap:calc(.05 * var(--mobile-scale)) !important}.navbar > div:first-child{max-width:60% !important;overflow:hidden}.navbar-auth{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40% !important}.navbar-date{max-width:60% !important;overflow:hidden}.navbar-filtry{max-width:40% !important}}@media (max-width:575px){#date-filter{max-width:6.5rem}}@media (max-width:379px){#date-filter{max-width:5rem}}.hide-btn{position:absolute;top:6px;right:6px;z-index:10;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:26px;height:26px;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center}.dropdown-panel{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:8px;z-index:1000;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:220px;max-width:calc(100vw - 1rem);max-height:70vh;overflow-y:auto}.panel-item{padding:5px 8px;cursor:pointer;border-radius:4px;font-size:.8rem;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}.panel-item:hover{background:#3a3a6e}.panel-label{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;font-size:.8rem;color:#eee;border-radius:4px}.panel-label:hover{background:#3a3a6e}.panel-divider{border-top:1px solid #3a3a6e;margin:6px 0;padding-top:2px}.dropdown-panel,.hidden-modal-list{scrollbar-width:thin;scrollbar-color:#3a3a6e transparent}.dropdown-panel::-webkit-scrollbar,.hidden-modal-list::-webkit-scrollbar{width:8px;height:8px}.dropdown-panel::-webkit-scrollbar-track,.hidden-modal-list::-webkit-scrollbar-track{background:transparent}.dropdown-panel::-webkit-scrollbar-thumb,.hidden-modal-list::-webkit-scrollbar-thumb{background:#3a3a6e;border-radius:4px}.dropdown-panel::-webkit-scrollbar-thumb:hover,.hidden-modal-list::-webkit-scrollbar-thumb:hover{background:#5a5a9e}.panel-section-label{font-size:.65rem;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:4px 8px 2px}.submenu-row{justify-content:space-between}.submenu-right{display:flex;align-items:center;gap:6px;margin-left:auto}.submenu-row-count{background:#5a5a9e;color:#fff;font-size:.65rem;font-weight:600;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:9px;padding:0 5px}.submenu-film-count{margin-left:auto;font-size:.7rem;color:#888}.submenu-chevron{display:inline-block;font-size:1rem;color:#888;transition:transform .15s ease}.submenu-chevron.open{transform:rotate(90deg)}.submenu-list{max-height:40vh;overflow-y:auto}.nav-tab{color:#aad4ff;text-decoration:none;font-size:.875rem;padding:.25rem .6rem;border-radius:6px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;display:inline-flex;align-items:center;justify-content:center;min-height:35px}.nav-tab:hover{background:#3a3a6e;color:#fff}.nav-tab.active{background:#3a3a6e;color:#fff}.nav-tab-login{cursor:pointer;border:none;font:inherit;font-size:.875rem;background:#3a3a6e;color:#aad4ff;padding:.2rem .7rem}.nav-tab-login:hover{background:#5a5a9e;color:#fff}.auth-menu{position:relative;display:inline-flex;align-items:center;gap:.35rem;background:#3a3a6e;color:#aad4ff;border-radius:6px;padding:.15rem .55rem .15rem .25rem;font-size:.875rem;cursor:pointer;-webkit-user-select:none;user-select:none;min-height:35px}.auth-menu:hover{background:#5a5a9e;color:#fff}.auth-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;display:block}.auth-avatar-fallback{width:22px;height:22px;border-radius:50%;background:#1a1a2e;color:#ffd24a;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:600}.auth-name{font-size:.875rem;max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.auth-name{display:none}}.auth-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:6px;min-width:160px;display:none;z-index:50}.auth-menu.open .auth-dropdown{display:block}.auth-logout-form{margin:0}.auth-logout-btn{width:100%;background:transparent;border:none;color:#eee;text-align:left;padding:.4rem .6rem;cursor:pointer;border-radius:6px;font-size:.875rem;min-height:35px;display:flex;align-items:center}.auth-logout-btn:hover{background:#3a3a6e;color:#fff}.login-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.login-modal-backdrop.open{display:flex}.login-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.5rem 1.6rem 1.4rem;max-width:360px;width:92%;position:relative}.login-modal-title{font-size:1.2rem;font-weight:600;margin-bottom:.5rem}.login-modal-sub{font-size:.85rem;color:#aab;margin-bottom:1.1rem}.login-modal-close{position:absolute;top:.4rem;right:.55rem;background:transparent;border:none;color:#888;font-size:1.5rem;line-height:1;cursor:pointer}.login-modal-close:hover{color:#fff}.login-modal-buttons{display:flex;flex-direction:column;gap:.55rem}.hidden-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.hidden-modal-backdrop.open{display:flex}.hidden-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.4rem 1.4rem 1.1rem;max-width:420px;width:92%;max-height:80vh;display:flex;flex-direction:column;position:relative}.hidden-modal-search{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:100%;margin-top:.6rem;min-height:35px;flex-shrink:0}.hidden-modal-search::placeholder{color:#778}.hidden-modal-search:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.hidden-modal-list{overflow-y:auto;margin:.35rem -.4rem .9rem;padding:0 .4rem}.hidden-modal-list .panel-item{max-width:none}.hidden-modal-actions{display:flex;gap:.55rem}.hidden-row-count{font-size:.7rem;color:#aab;background:#3a3a6e;border-radius:10px;padding:1px 8px;min-width:22px;text-align:center}.login-btn{display:flex;align-items:center;gap:.75rem;padding:.65rem .9rem;border-radius:8px;font-size:.95rem;font-weight:500;text-decoration:none;cursor:pointer;transition:filter .12s}.login-btn:hover{filter:brightness(1.1)}.login-btn-icon{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem}.login-btn-google{background:#fff;color:#222}.login-btn-google .login-btn-icon{background:#4285F4;color:#fff}.login-btn-facebook{background:#1877F2;color:#fff}.login-btn-facebook .login-btn-icon{background:#fff;color:#1877F2}.anon-nag-toast{position:fixed;bottom:16px;right:16px;max-width:380px;background:#1e1e2e;border:1px solid #3a3a6e;border-left:3px solid #ffd24a;border-radius:8px;padding:.65rem .9rem .65rem .8rem;color:#eee;font-size:.85rem;line-height:1.35;display:none;z-index:150;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer}.anon-nag-toast.open{display:block}.anon-nag-toast strong{color:#ffd24a}.anon-nag-toast .anon-nag-close{position:absolute;top:2px;right:6px;background:transparent;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:2px 6px}.anon-nag-toast .anon-nag-close:hover{color:#fff}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3}.navbar-auth{order:4}.navbar-row-break{display:none}@media (min-width:576px){.navbar{padding-top:.25rem;padding-bottom:.25rem}.container-fluid{padding-top:.75rem !important}#film-counter{margin-bottom:.75rem !important}}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.nav-tab-debug{display:none}#film-counter{display:none !important}.container-fluid{padding-top:.375rem !important}}@media (max-width:575px){.navbar{padding:calc(.5 * var(--mobile-scale)) min(calc(.75 * var(--mobile-scale)),2.5vw) !important;gap:calc(.2 * var(--mobile-scale));--navbar-fs:calc(.875 * var(--mobile-scale));--navbar-px:min(calc(.6 * var(--mobile-scale)),2.5vw)}.navbar-logo{gap:min(1rem,3vw) !important}.navbar > div:first-child{height:28px;max-height:28px;overflow:visible}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar .date-nav-btn{font-size:calc(1.1 * var(--mobile-scale));min-width:min(35px,8vw);flex-shrink:1}.navbar .search-input,.navbar .filter-select{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar-title{display:none}.navbar-search{order:2;margin-left:auto}.navbar-auth{order:3}.navbar-row-break{display:block;order:4;width:100%;flex-shrink:0;height:0;margin:0;padding:0}.navbar-date{order:5;margin-left:0}.navbar-filtry{order:6;margin-left:auto;max-width:40%;min-width:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}input,select{font-size:16px}.container-fluid{padding-left:min(calc(.75 * var(--mobile-scale)),2.5vw) !important;padding-right:min(calc(.75 * var(--mobile-scale)),2.5vw) !important}#film-grid,.cinema-section .row{--bs-gutter-x:min(var(--mobile-scale),3.5vw)}.card-body{padding:min(var(--mobile-scale),4vw)}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.login-modal-title{font-size:calc(1.2 * var(--mobile-scale))}.login-modal-sub{font-size:calc(.85 * var(--mobile-scale))}.login-btn{font-size:calc(.95 * var(--mobile-scale));padding:calc(.65 * var(--mobile-scale)) calc(.9 * var(--mobile-scale))}.panel-item{font-size:calc(.8 * var(--mobile-scale))}.panel-label{font-size:calc(.8 * var(--mobile-scale))}.panel-section-label{font-size:calc(.65 * var(--mobile-scale))}.auth-logout-btn{font-size:calc(.875 * var(--mobile-scale))}.anon-nag-toast{font-size:calc(.85 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}@media (max-height:500px) and (orientation:landscape){.navbar-title{display:none}.navbar-row-break{display:none}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3;margin-left:0}.navbar-auth{order:4}.navbar{flex-wrap:nowrap;padding-left:8px !important;padding-right:8px !important;gap:3px}.navbar-logo{gap:4px !important;flex-shrink:0;min-width:0}.navbar-logo > .d-flex{gap:2px}.navbar-search{min-width:0;flex-shrink:10;overflow:hidden}.navbar-search .search-input{min-width:0;width:100%}.navbar-auth{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:0}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name,.navbar .filter-select,.navbar .search-input{font-size:calc(.8 * var(--mobile-scale));padding-left:5px;padding-right:5px}.navbar .btn.date-nav-btn{font-size:calc(.95 * var(--mobile-scale));min-width:0;padding-left:3px;padding-right:3px}.navbar .filter-select,.navbar .search-input{padding-top:0;padding-bottom:0}.navbar-date{align-items:center;flex-shrink:0;min-width:0}.navbar-date .filter-select{min-width:0}.navbar-filtry{min-width:0;flex-shrink:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}.container-fluid{padding-left:8px !important;padding-right:8px !important}.card-body{padding:calc(.6 * var(--mobile-scale))}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.cinema-label{font-size:calc(.65 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}#film-grid,.cinema-section .row{--bs-gutter-x:.5rem}#film-grid > .col,.cinema-section .row > .col{flex:0 0 25%;max-width:25%}}@media (max-height:500px) and (orientation:landscape) and (min-width:800px){#film-grid > .col,.cinema-section .row > .col{flex:0 0 calc(100% / 6);max-width:calc(100% / 6)}}@media (max-height:500px) and (orientation:landscape){.navbar{padding-top:3px !important;padding-bottom:3px !important}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}</style>
+<style>html{touch-action:manipulation}body{background:#111;color:#eee;overflow-x:hidden}.navbar{background:#1a1a2e;flex-wrap:wrap;position:sticky;top:0;z-index:10;gap:.4rem}.navbar-logo{flex-shrink:0}.card{background:#1e1e2e;border:none;border-radius:12px;overflow:hidden;height:100%;transition:transform .2s;cursor:pointer}.card:hover{transform:translateY(-4px)}.poster-wrap{position:relative;padding-top:148%;background:#2a2a3e;overflow:hidden}.poster-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.no-poster{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:#99a;font-style:italic;letter-spacing:.03em}.card-body{padding:1rem}.card-title{min-height:2.5rem;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.3rem;overflow-wrap:break-word}.card-title a{font-size:.95rem;font-weight:600;color:#fff;text-decoration:none;min-width:0}.card-title a:hover{color:#aad4ff}.pill{background:#252540;border:1px solid #3a3a6e;border-radius:3px;padding:0 5px;font-size:.72rem;color:#99b;white-space:nowrap}.runtime{font-size:.75rem;color:#888}.year{font-size:.75rem;color:#99b;background:transparent;border:1px solid #3a3a6e}.date-label{font-size:.7rem;color:#888;margin-bottom:.2rem;margin-top:.5rem}#room-tooltip{position:fixed;background:#0e0e1e;color:#ccc;font-size:.68rem;padding:2px 7px;border-radius:4px;white-space:nowrap;border:1px solid #3a3a6e;pointer-events:none;z-index:20;display:none}.refresh-btn{background:#3a3a6e;border:none;color:#aad4ff;white-space:nowrap;flex-shrink:0;height:35px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}.refresh-btn:hover{background:#5a5a9e;color:#fff}.date-nav-btn{padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;touch-action:manipulation;height:35px;box-sizing:border-box;min-width:35px}.filter-select{background:#3a3a6e;color:#aad4ff;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.875rem;cursor:pointer;flex-shrink:0;height:35px;box-sizing:border-box}.filter-select:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.search-input{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:160px;min-height:35px}.search-input::placeholder{color:#778}.search-input:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e;width:220px}@media (max-width:575px){.search-input,.search-input:focus{width:90px}}@media (max-width:379px){.search-input,.search-input:focus{width:55px}}@media (max-width:290px){.navbar-search{display:none}nav.navbar{padding:0 !important;column-gap:0 !important;row-gap:calc(.05 * var(--mobile-scale)) !important}.navbar > div:first-child{max-width:60% !important;overflow:hidden}.navbar-auth{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40% !important}.navbar-date{max-width:60% !important;overflow:hidden}.navbar-filtry{max-width:40% !important}}@media (max-width:575px){#date-filter{max-width:6.5rem}}@media (max-width:379px){#date-filter{max-width:5rem}}.hide-btn{position:absolute;top:6px;right:6px;z-index:10;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:26px;height:26px;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center}.dropdown-panel{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:8px;z-index:1000;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:220px;max-width:calc(100vw - 1rem);max-height:70vh;overflow-y:auto}.panel-item{padding:5px 8px;cursor:pointer;border-radius:4px;font-size:.8rem;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}.panel-item:hover{background:#3a3a6e}.panel-label{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;font-size:.8rem;color:#eee;border-radius:4px}.panel-label:hover{background:#3a3a6e}.panel-divider{border-top:1px solid #3a3a6e;margin:6px 0;padding-top:2px}.dropdown-panel,.hidden-modal-list{scrollbar-width:thin;scrollbar-color:#3a3a6e transparent}.dropdown-panel::-webkit-scrollbar,.hidden-modal-list::-webkit-scrollbar{width:8px;height:8px}.dropdown-panel::-webkit-scrollbar-track,.hidden-modal-list::-webkit-scrollbar-track{background:transparent}.dropdown-panel::-webkit-scrollbar-thumb,.hidden-modal-list::-webkit-scrollbar-thumb{background:#3a3a6e;border-radius:4px}.dropdown-panel::-webkit-scrollbar-thumb:hover,.hidden-modal-list::-webkit-scrollbar-thumb:hover{background:#5a5a9e}.panel-section-label{font-size:.65rem;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:4px 8px 2px}.submenu-row{justify-content:space-between}.submenu-right{display:flex;align-items:center;gap:6px;margin-left:auto}.submenu-row-count{background:#5a5a9e;color:#fff;font-size:.65rem;font-weight:600;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:9px;padding:0 5px}.submenu-film-count{margin-left:auto;font-size:.7rem;color:#888}.submenu-chevron{display:inline-block;font-size:1rem;color:#888;transition:transform .15s ease}.submenu-chevron.open{transform:rotate(90deg)}.submenu-list{max-height:40vh;overflow-y:auto}.nav-tab{color:#aad4ff;text-decoration:none;font-size:.875rem;padding:.25rem .6rem;border-radius:6px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;display:inline-flex;align-items:center;justify-content:center;min-height:35px}.nav-tab:hover{background:#3a3a6e;color:#fff}.nav-tab.active{background:#3a3a6e;color:#fff}.nav-tab-login{cursor:pointer;border:none;font:inherit;font-size:.875rem;background:#3a3a6e;color:#aad4ff;padding:.2rem .7rem}.nav-tab-login:hover{background:#5a5a9e;color:#fff}.auth-menu{position:relative;display:inline-flex;align-items:center;gap:.35rem;background:#3a3a6e;color:#aad4ff;border-radius:6px;padding:.15rem .55rem .15rem .25rem;font-size:.875rem;cursor:pointer;-webkit-user-select:none;user-select:none;min-height:35px}.auth-menu:hover{background:#5a5a9e;color:#fff}.auth-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;display:block}.auth-avatar-fallback{width:22px;height:22px;border-radius:50%;background:#1a1a2e;color:#ffd24a;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:600}.auth-name{font-size:.875rem;max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.auth-name{display:none}}.auth-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:6px;min-width:160px;display:none;z-index:50}.auth-menu.open .auth-dropdown{display:block}.auth-logout-form{margin:0}.auth-logout-btn{width:100%;background:transparent;border:none;color:#eee;text-align:left;padding:.4rem .6rem;cursor:pointer;border-radius:6px;font-size:.875rem;min-height:35px;display:flex;align-items:center}.auth-logout-btn:hover{background:#3a3a6e;color:#fff}.login-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.login-modal-backdrop.open{display:flex}.login-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.5rem 1.6rem 1.4rem;max-width:360px;width:92%;position:relative}.login-modal-title{font-size:1.2rem;font-weight:600;margin-bottom:.5rem}.login-modal-sub{font-size:.85rem;color:#aab;margin-bottom:1.1rem}.login-modal-close{position:absolute;top:.4rem;right:.55rem;background:transparent;border:none;color:#888;font-size:1.5rem;line-height:1;cursor:pointer}.login-modal-close:hover{color:#fff}.login-modal-buttons{display:flex;flex-direction:column;gap:.55rem}.hidden-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.hidden-modal-backdrop.open{display:flex}.hidden-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.4rem 1.4rem 1.1rem;max-width:420px;width:92%;max-height:80vh;display:flex;flex-direction:column;position:relative}.hidden-modal-search{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:100%;margin-top:.6rem;min-height:35px;flex-shrink:0}.hidden-modal-search::placeholder{color:#778}.hidden-modal-search:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.hidden-modal-list{overflow-y:auto;margin:.35rem -.4rem .9rem;padding:0 .4rem}.hidden-modal-list .panel-item{max-width:none}.hidden-modal-actions{display:flex;gap:.55rem}.hidden-row-count{font-size:.7rem;color:#aab;background:#3a3a6e;border-radius:10px;padding:1px 8px;min-width:22px;text-align:center}.login-btn{display:flex;align-items:center;gap:.75rem;padding:.65rem .9rem;border-radius:8px;font-size:.95rem;font-weight:500;text-decoration:none;cursor:pointer;transition:filter .12s}.login-btn:hover{filter:brightness(1.1)}.login-btn-icon{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem}.login-btn-google{background:#fff;color:#222}.login-btn-google .login-btn-icon{background:#4285F4;color:#fff}.login-btn-facebook{background:#1877F2;color:#fff}.login-btn-facebook .login-btn-icon{background:#fff;color:#1877F2}.anon-nag-toast{position:fixed;bottom:16px;right:16px;max-width:380px;background:#1e1e2e;border:1px solid #3a3a6e;border-left:3px solid #ffd24a;border-radius:8px;padding:.65rem .9rem .65rem .8rem;color:#eee;font-size:.85rem;line-height:1.35;display:none;z-index:150;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer}.anon-nag-toast.open{display:block}.anon-nag-toast strong{color:#ffd24a}.anon-nag-toast .anon-nag-close{position:absolute;top:2px;right:6px;background:transparent;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:2px 6px}.anon-nag-toast .anon-nag-close:hover{color:#fff}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3}.navbar-auth{order:4}.navbar-row-break{display:none}@media (min-width:576px){.navbar{padding-top:.25rem;padding-bottom:.25rem}.container-fluid{padding-top:.75rem !important}#film-counter{margin-bottom:.75rem !important}}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.nav-tab-debug{display:none}#film-counter{display:none !important}.container-fluid{padding-top:.375rem !important}}@media (max-width:575px){.navbar{padding:calc(.5 * var(--mobile-scale)) min(calc(.75 * var(--mobile-scale)),2.5vw) !important;gap:calc(.2 * var(--mobile-scale));--navbar-fs:calc(.875 * var(--mobile-scale));--navbar-px:min(calc(.6 * var(--mobile-scale)),2.5vw)}.navbar-logo{gap:min(1rem,3vw) !important}.navbar > div:first-child{height:28px;max-height:28px;overflow:visible}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar .date-nav-btn{font-size:calc(1.1 * var(--mobile-scale));min-width:min(35px,8vw);flex-shrink:1}.navbar .search-input,.navbar .filter-select{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar-title{display:none}.navbar-search{order:2;margin-left:auto}.navbar-auth{order:3}.navbar-row-break{display:block;order:4;width:100%;flex-shrink:0;height:0;margin:0;padding:0}.navbar-date{order:5;margin-left:0}.navbar-filtry{order:6;margin-left:auto;max-width:40%;min-width:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}input,select{font-size:16px}.container-fluid{padding-left:min(calc(.75 * var(--mobile-scale)),2.5vw) !important;padding-right:min(calc(.75 * var(--mobile-scale)),2.5vw) !important}#film-grid,.cinema-section .row{--bs-gutter-x:min(var(--mobile-scale),3.5vw)}.card-body{padding:min(var(--mobile-scale),4vw)}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.login-modal-title{font-size:calc(1.2 * var(--mobile-scale))}.login-modal-sub{font-size:calc(.85 * var(--mobile-scale))}.login-btn{font-size:calc(.95 * var(--mobile-scale));padding:calc(.65 * var(--mobile-scale)) calc(.9 * var(--mobile-scale))}.panel-item{font-size:calc(.8 * var(--mobile-scale))}.panel-label{font-size:calc(.8 * var(--mobile-scale))}.panel-section-label{font-size:calc(.65 * var(--mobile-scale))}.auth-logout-btn{font-size:calc(.875 * var(--mobile-scale))}.anon-nag-toast{font-size:calc(.85 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}@media (max-height:500px) and (orientation:landscape){.navbar-title{display:none}.navbar-row-break{display:none}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3;margin-left:0}.navbar-auth{order:4}.navbar{flex-wrap:nowrap;padding-left:8px !important;padding-right:8px !important;gap:3px}.navbar-logo{gap:4px !important;flex-shrink:0;min-width:0}.navbar-logo > .d-flex{gap:2px}.navbar-search{min-width:0;flex-shrink:10;overflow:hidden}.navbar-search .search-input{min-width:0;width:100%}.navbar-auth{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:0}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name,.navbar .filter-select,.navbar .search-input{font-size:calc(.8 * var(--mobile-scale));padding-left:5px;padding-right:5px}.navbar .btn.date-nav-btn{font-size:calc(.95 * var(--mobile-scale));min-width:0;padding-left:3px;padding-right:3px}.navbar .filter-select,.navbar .search-input{padding-top:0;padding-bottom:0}.navbar-date{align-items:center;flex-shrink:0;min-width:0}.navbar-date .filter-select{min-width:0}.navbar-filtry{min-width:0;flex-shrink:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}.container-fluid{padding-left:8px !important;padding-right:8px !important}.card-body{padding:calc(.6 * var(--mobile-scale))}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.cinema-label{font-size:calc(.65 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}#film-grid,.cinema-section .row{--bs-gutter-x:.5rem}#film-grid > .col,.cinema-section .row > .col{flex:0 0 25%;max-width:25%}}@media (max-height:500px) and (orientation:landscape) and (min-width:800px){#film-grid > .col,.cinema-section .row > .col{flex:0 0 calc(100% / 6);max-width:calc(100% / 6)}}@media (max-height:500px) and (orientation:landscape){.navbar{padding-top:3px !important;padding-bottom:3px !important}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}</style>
 
 <style>:root{--mobile-scale:clamp(0.85rem,calc(0.6618rem + 0.9412vw),1rem);--mobile-scale-px:clamp(0.85px,calc(0.6618px + 0.05882vw),1px)}@media (max-height:500px) and (orientation:landscape){:root{--mobile-scale:0.85rem;--mobile-scale-px:0.85px}}.badge-time{background:#3a3a6e;color:#aad4ff;font-size:.72rem;padding:.25em .5em;border-radius:6px;margin:1px 2px 1px 0;display:inline-block;text-decoration:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}a.badge-time:hover{background:#5a5a9e;color:#fff}.badge-fmt{font-size:.62rem;opacity:.7;margin-left:2px}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.badge-time{font-size:calc(.72 * var(--mobile-scale));padding:.2em .5em}.badge-fmt{font-size:calc(.62 * var(--mobile-scale))}}.showings-more{display:inline-block;margin-top:.35rem;font-size:.7rem;color:#6ab;text-decoration:none;background:rgba(255,255,255,.06);padding:.2em .6em;border-radius:10px}.showings-more:hover{color:#9df;background:rgba(255,255,255,.1)}</style>
 
@@ -195,7 +195,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Michael">Michael</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 7min</span>
 
@@ -870,7 +870,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Diabe%C5%82+ubiera+si%C4%99+u+Prady+2">Diabeł ubiera się u Prady 2</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h</span>
 
@@ -1854,7 +1854,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kurozaj%C4%85c+i+%C5%9Awi%C4%85tynia+%C5%9Awistaka">Kurozając i Świątynia Świstaka</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 29min</span>
 
@@ -2380,7 +2380,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Pucio">Pucio</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">0h 45min</span>
 
@@ -2812,7 +2812,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Super+Mario+Galaxy+Film">Super Mario Galaxy Film</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 40min</span>
 
@@ -3270,7 +3270,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Hopni%C4%99ci">Hopnięci</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 44min</span>
 
@@ -3463,7 +3463,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Sprawiedliwo%C5%9B%C4%87+owiec">Sprawiedliwość owiec</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 49min</span>
 
@@ -4010,7 +4010,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Billie+Eilish+-+Hit+Me+Hard+and+Soft%3A+The+Tour">Billie Eilish - Hit Me Hard and Soft: The Tour</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 45min</span>
 
@@ -4490,7 +4490,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Normal">Normal</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 30min</span>
 
@@ -4635,7 +4635,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Projekt+Hail+Mary">Projekt Hail Mary</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 37min</span>
 
@@ -5045,7 +5045,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Mortal+Kombat+II">Mortal Kombat II</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 56min</span>
 
@@ -5649,7 +5649,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Za+du%C5%BCy+na+bajki+3">Za duży na bajki 3</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 30min</span>
 
@@ -5819,7 +5819,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=By%C5%82+sobie+%C5%9Bnieg">Był sobie śnieg</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 8min</span>
 
@@ -5892,7 +5892,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Drzewo+Magii">Drzewo Magii</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 50min</span>
 
@@ -6217,7 +6217,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Niesamowite+przygody+skarpetek+2.+Skarpetki+g%C3%B3r%C4%85%21">Niesamowite przygody skarpetek 2. Skarpetki górą!</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">0h 55min</span>
 
@@ -6276,7 +6276,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=K%C5%82opotliwy+nied%C5%BAwied%C5%BA">Kłopotliwy niedźwiedź</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 30min</span>
 
@@ -6355,7 +6355,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Mumia%3A+Film+Lee+Cronina">Mumia: Film Lee Cronina</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
     </div>
     
@@ -6512,7 +6512,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Drama">Drama</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 46min</span>
 
@@ -7019,7 +7019,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Caravaggio.+Arcydzie%C5%82a+niepokornego+geniusza">Caravaggio. Arcydzieła niepokornego geniusza</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 40min</span>
 
@@ -7164,7 +7164,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=%D0%94%D0%98%D0%AF%D0%92%D0%9E%D0%9B+%D0%9D%D0%9E%D0%A1%D0%98%D0%A2%D0%AC+%D0%9F%D0%A0%D0%90%D0%94%D0%90+2">ДИЯВОЛ НОСИТЬ ПРАДА 2</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 5min</span>
 
@@ -7243,7 +7243,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Wpatruj%C4%85c+si%C4%99+w+s%C5%82o%C5%84ce">Wpatrując się w słońce</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 29min</span>
 
@@ -7447,7 +7447,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kicia+Kocia+ma+braciszka">Kicia Kocia ma braciszka</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">0h 45min</span>
 
@@ -7506,7 +7506,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Nied%C5%BAwiedzica">Niedźwiedzica</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 36min</span>
 
@@ -7569,7 +7569,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Orwell%3A+2+%2B+2+%3D+5">Orwell: 2 + 2 = 5</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 59min</span>
 
@@ -7648,7 +7648,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Znaki+Pana+%C5%9Aliwki">Znaki Pana Śliwki</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 12min</span>
 
@@ -7985,7 +7985,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Obsesja">Obsesja</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 49min</span>
 
@@ -8453,7 +8453,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=%C5%9Acie%C5%BCki+%C5%BCycia">Ścieżki życia</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 55min</span>
 
@@ -8552,7 +8552,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Maryja.+Matka+Papie%C5%BCa">Maryja. Matka Papieża</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 20min</span>
 
@@ -8774,7 +8774,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Moulin+Rouge%21">Moulin Rouge!</a>
-  <span class="pill runtime">2001</span>
+  <span class="pill year">2001</span>
 
     </div>
     
@@ -8871,7 +8871,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Niewinni+czarodzieje">Niewinni czarodzieje</a>
-  <span class="pill runtime">1960</span>
+  <span class="pill year">1960</span>
 
   <span class="pill runtime">1h 24min</span>
 
@@ -8968,7 +8968,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Odrodzony+jako+galareta.+Film%3A+%C5%81zy+Morza+Lazurowego">Odrodzony jako galareta. Film: Łzy Morza Lazurowego</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 45min</span>
 
@@ -9125,7 +9125,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Widmo+wolno%C5%9Bci">Widmo wolności</a>
-  <span class="pill runtime">1974</span>
+  <span class="pill year">1974</span>
 
   <span class="pill runtime">1h 45min</span>
 
@@ -9202,7 +9202,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Romer%C3%ADa">Romería</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 55min</span>
 
@@ -9620,7 +9620,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Top+Gun">Top Gun</a>
-  <span class="pill runtime">1986</span>
+  <span class="pill year">1986</span>
 
   <span class="pill runtime">1h 50min</span>
 
@@ -9977,7 +9977,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Najstarsza+osoba+na+%C5%9Bwiecie">Najstarsza osoba na świecie</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 27min</span>
 
@@ -10042,7 +10042,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Yu-Gi-Oh%21+The+Dark+Side+of+Dimensions">Yu-Gi-Oh! The Dark Side of Dimensions</a>
-  <span class="pill runtime">2016</span>
+  <span class="pill year">2016</span>
 
   <span class="pill runtime">2h 10min</span>
 
@@ -10115,7 +10115,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Wolno%C5%9B%C4%87+po+w%C5%82osku">Wolność po włosku</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 57min</span>
 
@@ -10339,7 +10339,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Harry+Angel">Harry Angel</a>
-  <span class="pill runtime">1987</span>
+  <span class="pill year">1987</span>
 
   <span class="pill runtime">1h 54min</span>
 
@@ -10418,7 +10418,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Iron+Maiden%3A+Burning+Ambition">Iron Maiden: Burning Ambition</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 46min</span>
 
@@ -10872,7 +10872,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Left-Handed+Girl.+To+by%C5%82a+r%C4%99ka...+diab%C5%82a%21">Left-Handed Girl. To była ręka... diabła!</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 49min</span>
 
@@ -10941,7 +10941,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Id%C5%BA+z+dusz%C4%85+na+d%C5%82oni">Idź z duszą na dłoni</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 53min</span>
 
@@ -11020,7 +11020,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Milcz%C4%85ca+przyjaci%C3%B3%C5%82ka">Milcząca przyjaciółka</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 27min</span>
 
@@ -11469,7 +11469,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Ex+Machina">Ex Machina</a>
-  <span class="pill runtime">2014</span>
+  <span class="pill year">2014</span>
 
   <span class="pill runtime">1h 48min</span>
 
@@ -11548,7 +11548,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Nie+ma+duch%C3%B3w+w+mieszkaniu+na+Dobrej">Nie ma duchów w mieszkaniu na Dobrej</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 30min</span>
 
@@ -11701,7 +11701,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Pos%C5%82ani">Posłani</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 23min</span>
 
@@ -11786,7 +11786,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Mortal+Kombat+II+ukrai%C5%84ski+dubbing">Mortal Kombat II ukraiński dubbing</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 56min</span>
 
@@ -11931,7 +11931,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Perfect+Days">Perfect Days</a>
-  <span class="pill runtime">2023</span>
+  <span class="pill year">2023</span>
 
   <span class="pill runtime">2h 5min</span>
 
@@ -12010,7 +12010,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Bez+wyj%C5%9Bcia">Bez wyjścia</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 19min</span>
 
@@ -12125,7 +12125,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Top+Gun%3A+Maverick">Top Gun: Maverick</a>
-  <span class="pill runtime">2020</span>
+  <span class="pill year">2020</span>
 
   <span class="pill runtime">2h 10min</span>
 
@@ -12285,7 +12285,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Pieni%C4%85dze+to+wszystko">Pieniądze to wszystko</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 36min</span>
 
@@ -12362,7 +12362,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Matador">Matador</a>
-  <span class="pill runtime">1986</span>
+  <span class="pill year">1986</span>
 
   <span class="pill runtime">1h 46min</span>
 
@@ -12479,7 +12479,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Ostatnia+sesja+w+Pary%C5%BCu">Ostatnia sesja w Paryżu</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 45min</span>
 
@@ -12677,7 +12677,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Sny+o+s%C5%82oniach">Sny o słoniach</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 39min</span>
 
@@ -12756,7 +12756,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Mi%C5%82o%C5%9B%C4%87+w+czasach+apokalipsy">Miłość w czasach apokalipsy</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 40min</span>
 
@@ -12855,7 +12855,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Karuppu">Karuppu</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 30min</span>
 
@@ -12924,7 +12924,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Diabe%C5%82+ubiera+si%C4%99+u+Prady+2+ukrai%C5%84ski+dubbing">Diabeł ubiera się u Prady 2 ukraiński dubbing</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 59min</span>
 
@@ -13069,7 +13069,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Father+Mother+Sister+Brother">Father Mother Sister Brother</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 50min</span>
 
@@ -13188,7 +13188,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=La+Grazia">La Grazia</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 11min</span>
 
@@ -13322,7 +13322,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Athiradi">Athiradi</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 37min</span>
 
@@ -13391,7 +13391,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Erupcja">Erupcja</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 11min</span>
 
@@ -13492,7 +13492,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Op%C4%99tanie">Opętanie</a>
-  <span class="pill runtime">1981</span>
+  <span class="pill year">1981</span>
 
   <span class="pill runtime">2h 4min</span>
 
@@ -13583,7 +13583,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Pie%C5%9Bni+lasu">Pieśni lasu</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 34min</span>
 
@@ -13656,7 +13656,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Sir%C3%A2t">Sirât</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h</span>
 
@@ -13749,7 +13749,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Broken+English">Broken English</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 36min</span>
 
@@ -13828,7 +13828,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Przepis+na+morderstwo">Przepis na morderstwo</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 45min</span>
 
@@ -13987,7 +13987,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Zabawa+w+pochowanego+2">Zabawa w pochowanego 2</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 44min</span>
 
@@ -14146,7 +14146,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Niesamowite+przygody+skarpetek+3.+Ale+ko">Niesamowite przygody skarpetek 3. Ale ko</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">0h 55min</span>
 
@@ -14205,7 +14205,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Dziecko+z+py%C5%82u">Dziecko z pyłu</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 33min</span>
 
@@ -14318,7 +14318,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kopn%C4%99%C5%82abym+ci%C4%99%2C+gdybym+mog%C5%82a">Kopnęłabym cię, gdybym mogła</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 53min</span>
 
@@ -14411,7 +14411,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Layla">Layla</a>
-  <span class="pill runtime">2024</span>
+  <span class="pill year">2024</span>
 
   <span class="pill runtime">1h 40min</span>
 
@@ -14550,7 +14550,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Chronologia+wody">Chronologia wody</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 8min</span>
 
@@ -14879,7 +14879,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Arcybiskup+Lefebvre+%E2%80%93+dlaczego%3F">Arcybiskup Lefebvre – dlaczego?</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 8min</span>
 
@@ -15005,7 +15005,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Hamnet">Hamnet</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 5min</span>
 
@@ -15144,7 +15144,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Warto%C5%9B%C4%87+sentymentalna">Wartość sentymentalna</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 13min</span>
 
@@ -15328,7 +15328,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Wysokie+i+niskie+tony">Wysokie i niskie tony</a>
-  <span class="pill runtime">2024</span>
+  <span class="pill year">2024</span>
 
   <span class="pill runtime">1h 43min</span>
 
@@ -15405,7 +15405,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Mi%C5%82o%C5%9B%C4%87%2C+kt%C3%B3ra+zostaje">Miłość, która zostaje</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 55min</span>
 
@@ -15524,7 +15524,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kino+bez+barier%3A+Arco+%28AD+%2B+CC%29">Kino bez barier: Arco (AD + CC)</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 28min</span>
 
@@ -15589,7 +15589,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Ba%C5%82tyk">Bałtyk</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 6min</span>
 
@@ -15656,7 +15656,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=FILMOCZULE+DLA+EDUKACJI+z+ODN+i+WZiSS+UMP+%E2%80%93+Babystar">FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 38min</span>
 
@@ -15715,7 +15715,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=%C5%BB%C4%85d%C5%82o">Żądło</a>
-  <span class="pill runtime">1973</span>
+  <span class="pill year">1973</span>
 
   <span class="pill runtime">2h 9min</span>
 
@@ -15794,7 +15794,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Pan+Nikt+kontra+Putin">Pan Nikt kontra Putin</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 30min</span>
 
@@ -15893,7 +15893,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Camper">Camper</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 17min</span>
 
@@ -15966,7 +15966,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=G%C5%82os+Hind+Rajab">Głos Hind Rajab</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 29min</span>
 
@@ -16045,7 +16045,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Arco">Arco</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 28min</span>
 
@@ -16110,7 +16110,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=By%C4%87+kochan%C4%85">Być kochaną</a>
-  <span class="pill runtime">2024</span>
+  <span class="pill year">2024</span>
 
   <span class="pill runtime">1h 45min</span>
 
@@ -16250,7 +16250,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kino+bez+barier%3A+Arco+%28AD+%2B+CC+%2B+PJM%29">Kino bez barier: Arco (AD + CC + PJM)</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 28min</span>
 
@@ -16315,7 +16315,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Mandalorian+i+Grogu">Mandalorian i Grogu</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 12min</span>
 
@@ -16934,7 +16934,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Zemsta+Embriona">Zemsta Embriona</a>
-  <span class="pill runtime">1990</span>
+  <span class="pill year">1990</span>
 
   <span class="pill runtime">1h 29min</span>
 
@@ -17031,7 +17031,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Pod+sk%C3%B3r%C4%85">Pod skórą</a>
-  <span class="pill runtime">2014</span>
+  <span class="pill year">2014</span>
 
   <span class="pill runtime">1h 48min</span>
 
@@ -17110,7 +17110,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Gwiezdne+Wojny%3A+Mandalorian+i+Grogu+-+ukrai%C5%84ski+dubbing">Gwiezdne Wojny: Mandalorian i Grogu - ukraiński dubbing</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 12min</span>
 
@@ -17215,7 +17215,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=M%C5%82ode+matki">Młode matki</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 44min</span>
 
@@ -17316,7 +17316,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Niesamowite+przygody+skarpetek+3.+Ale+kosmos%21">Niesamowite przygody skarpetek 3. Ale kosmos!</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">0h 55min</span>
 
@@ -17604,7 +17604,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Mawka.+Prawdziwy+mit">Mawka. Prawdziwy mit</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 40min</span>
 
@@ -17673,7 +17673,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Powr%C3%B3t+do+przysz%C5%82o%C5%9Bci">Powrót do przyszłości</a>
-  <span class="pill runtime">1985</span>
+  <span class="pill year">1985</span>
 
   <span class="pill runtime">1h 56min</span>
 
@@ -17812,7 +17812,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Wszyscy+moi+synowie+-+National+Theatre+Live+2026">Wszyscy moi synowie - National Theatre Live 2026</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 31min</span>
 
@@ -17980,7 +17980,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=%C5%BBywot+Briana">Żywot Briana</a>
-  <span class="pill runtime">1979</span>
+  <span class="pill year">1979</span>
 
   <span class="pill runtime">1h 34min</span>
 
@@ -18122,7 +18122,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Ale+mam+%7C+%D0%BD%D1%83+%D0%BC%D0%B0%D0%BC+%7C+wersja+ukrai%C5%84ska+z+ang.+napisami">Ale mam | ну мам | wersja ukraińska z ang. napisami</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 30min</span>
 
@@ -18189,7 +18189,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=2026+TXT+MOA+CON+IN+JAPAN%3A+LIVE+VIEWING">2026 TXT MOA CON IN JAPAN: LIVE VIEWING</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">3h 45min</span>
 
@@ -18254,7 +18254,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=La+Traviata+Verdiego+z+Arena+di+Verona">La Traviata Verdiego z Arena di Verona</a>
-  <span class="pill runtime">2021</span>
+  <span class="pill year">2021</span>
 
   <span class="pill runtime">2h 40min</span>
 
@@ -18437,7 +18437,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Zawie%C5%9Bcie+czerwone+latarnie">Zawieście czerwone latarnie</a>
-  <span class="pill runtime">1991</span>
+  <span class="pill year">1991</span>
 
   <span class="pill runtime">2h 22min</span>
 
@@ -18585,7 +18585,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Miejskie+%C5%9Awi%C4%99to+Rowerowe%3A+Pokaz+filmu+Cycling+Cities">Miejskie Święto Rowerowe: Pokaz filmu Cycling Cities</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 24min</span>
 
@@ -18650,7 +18650,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Filmowe+spotkania+z+psychoanaliz%C4%85%3A+dobry+ch%C5%82opiec">Filmowe spotkania z psychoanalizą: dobry chłopiec</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 50min</span>
 
@@ -18715,7 +18715,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Milczenie+owiec">Milczenie owiec</a>
-  <span class="pill runtime">1991</span>
+  <span class="pill year">1991</span>
 
     </div>
     
@@ -18814,7 +18814,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Zawie%C5%9Bcie+czerwone+latarnie+%7C+przed+filmem+wst%C4%99p+prof.+Marek+hendrykowski">Zawieście czerwone latarnie | przed filmem wstęp prof. Marek hendrykowski</a>
-  <span class="pill runtime">1991</span>
+  <span class="pill year">1991</span>
 
   <span class="pill runtime">2h 5min</span>
 
@@ -18879,7 +18879,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kino+bez+barier%3A+M%C5%82ode+matki+%28AD+%2B+CC+%2B+PJM%29">Kino bez barier: Młode matki (AD + CC + PJM)</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 35min</span>
 
@@ -18978,7 +18978,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=M%C3%B3w+mi+jimpa">Mów mi jimpa</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 53min</span>
 
@@ -19057,7 +19057,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=90.+urodziny+Pavarottiego+-+Koncert+gwiazd+z+Arena+di+Verona">90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 32min</span>
 
@@ -19172,7 +19172,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Wind%C4%85+na+szafot">Windą na szafot</a>
-  <span class="pill runtime">1958</span>
+  <span class="pill year">1958</span>
 
   <span class="pill runtime">1h 30min</span>
 
@@ -19251,7 +19251,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Nomadland">Nomadland</a>
-  <span class="pill runtime">2020</span>
+  <span class="pill year">2020</span>
 
   <span class="pill runtime">1h 48min</span>
 
@@ -19330,7 +19330,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kl%C4%85twa+doliny+w%C4%99%C5%BCy+%7C+autorska+audiodeskrypcja+%C5%82ony+%7Cprzed+filmem+wyk%C5%82ad+prof.+Marka+hendrykowskiego">Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego</a>
-  <span class="pill runtime">1987</span>
+  <span class="pill year">1987</span>
 
   <span class="pill runtime">1h 39min</span>
 
@@ -19395,7 +19395,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Cirque+du+Soleil%3A+Kooza">Cirque du Soleil: Kooza</a>
-  <span class="pill runtime">2008</span>
+  <span class="pill year">2008</span>
 
   <span class="pill runtime">1h 30min</span>
 
@@ -19478,7 +19478,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Nie+ogl%C4%85daj+si%C4%99+teraz">Nie oglądaj się teraz</a>
-  <span class="pill runtime">1973</span>
+  <span class="pill year">1973</span>
 
   <span class="pill runtime">1h 50min</span>
 
@@ -19553,7 +19553,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=On+drive">On drive</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 55min</span>
 
@@ -19624,7 +19624,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Tom+i+Jerry%3A+Przygoda+w+muzeum">Tom i Jerry: Przygoda w muzeum</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 40min</span>
 
@@ -19771,7 +19771,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Van+gogh.+Pola+zb%C3%B3%C5%BC+i+zachmurzone+niebiosa">Van gogh. Pola zbóż i zachmurzone niebiosa</a>
-  <span class="pill runtime">2018</span>
+  <span class="pill year">2018</span>
 
   <span class="pill runtime">1h 25min</span>
 
@@ -19844,7 +19844,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Liga+Mistrz%C3%B3w+UEFA+-+Fina%C5%82">Liga Mistrzów UEFA - Finał</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">3h</span>
 
@@ -20000,7 +20000,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Drugie+%C5%BCycie">Drugie życie</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 56min</span>
 
@@ -20154,7 +20154,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Sabota%C5%BCysta+5">Sabotażysta 5</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
     </div>
     
@@ -20474,7 +20474,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=SpoilerMaster+Tour%3A+Mikey+i+Nicky">SpoilerMaster Tour: Mikey i Nicky</a>
-  <span class="pill runtime">1976</span>
+  <span class="pill year">1976</span>
 
   <span class="pill runtime">1h 46min</span>
 
@@ -20614,7 +20614,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kino+bez+barier%3A+Milcz%C4%85ca+przyjaci%C3%B3%C5%82ka+%28AD+%2B+CC%29">Kino bez barier: Milcząca przyjaciółka (AD + CC)</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 27min</span>
 
@@ -20693,7 +20693,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Cz%C5%82owiek+z+marmuru">Człowiek z marmuru</a>
-  <span class="pill runtime">1977</span>
+  <span class="pill year">1977</span>
 
   <span class="pill runtime">2h 33min</span>
 
@@ -20850,7 +20850,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Straszny+film">Straszny film</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 34min</span>
 
@@ -21376,7 +21376,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Belle">Belle</a>
-  <span class="pill runtime">2021</span>
+  <span class="pill year">2021</span>
 
   <span class="pill runtime">2h 1min</span>
 
@@ -21455,7 +21455,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=The+Amazing+Digital+Circus%3A+Ostatni+Akt">The Amazing Digital Circus: Ostatni Akt</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 33min</span>
 
@@ -21618,7 +21618,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=The+Amazing+Digital+Circus%3A+The+Last+Act">The Amazing Digital Circus: The Last Act</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 33min</span>
 
@@ -22006,7 +22006,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Podziemny+kr%C4%85g">Podziemny krąg</a>
-  <span class="pill runtime">1999</span>
+  <span class="pill year">1999</span>
 
   <span class="pill runtime">2h 19min</span>
 
@@ -22290,7 +22290,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kino+bez+barier%3A+Milcz%C4%85ca+przyjaci%C3%B3%C5%82ka+%28AD+%2B+CC+%2B+PJM%29">Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM)</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 27min</span>
 
@@ -22492,7 +22492,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=W%C5%82adcy+wszech%C5%9Bwiata">Władcy wszechświata</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 21min</span>
 
@@ -22771,7 +22771,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kosmiczny+mecz">Kosmiczny mecz</a>
-  <span class="pill runtime">1996</span>
+  <span class="pill year">1996</span>
 
   <span class="pill runtime">1h 28min</span>
 
@@ -23088,7 +23088,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Rozmowa">Rozmowa</a>
-  <span class="pill runtime">1974</span>
+  <span class="pill year">1974</span>
 
   <span class="pill runtime">1h 53min</span>
 
@@ -23187,7 +23187,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Romeo+i+Julia">Romeo i Julia</a>
-  <span class="pill runtime">1996</span>
+  <span class="pill year">1996</span>
 
     </div>
     
@@ -23280,7 +23280,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Follemente.+W+tym+szale%C5%84stwie+jest+metoda">Follemente. W tym szaleństwie jest metoda</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 37min</span>
 
@@ -23357,7 +23357,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kino+bez+barier%3A+Freak+Show+%28AD+%2B+CC%29">Kino bez barier: Freak Show (AD + CC)</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 15min</span>
 
@@ -23422,7 +23422,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=S%C5%82odkie+%C5%BCycie+%7C+przed+filmem+wyk%C5%82ad+prof.+Marka+hendrykowskiego">Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego</a>
-  <span class="pill runtime">1960</span>
+  <span class="pill year">1960</span>
 
   <span class="pill runtime">2h 56min</span>
 
@@ -23501,7 +23501,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Wilcze+dzieci">Wilcze dzieci</a>
-  <span class="pill runtime">2012</span>
+  <span class="pill year">2012</span>
 
   <span class="pill runtime">1h 57min</span>
 
@@ -23574,7 +23574,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Prze%C5%BCyj+to+sam">Przeżyj to sam</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 56min</span>
 
@@ -23639,7 +23639,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Pokaz+sensorycznie+przyjazny%3A+Delfinek+i+ja+2">Pokaz sensorycznie przyjazny: Delfinek i ja 2</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 36min</span>
 
@@ -23704,7 +23704,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kino+bez+barier%3A+Freak+Show+%28AD+%2B+CC+%2B+PJM%29">Kino bez barier: Freak Show (AD + CC + PJM)</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">1h 15min</span>
 
@@ -23763,7 +23763,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Obcy">Obcy</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 2min</span>
 
@@ -23842,7 +23842,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kumotry">Kumotry</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 10min</span>
 
@@ -23909,7 +23909,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Nowa+fala">Nowa fala</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 45min</span>
 
@@ -23982,7 +23982,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Guru">Guru</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 6min</span>
 
@@ -24057,7 +24057,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=O+dziewczynie+skacz%C4%85cej+przez+czas">O dziewczynie skaczącej przez czas</a>
-  <span class="pill runtime">2006</span>
+  <span class="pill year">2006</span>
 
   <span class="pill runtime">1h 38min</span>
 
@@ -24247,7 +24247,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Munch%3A+mi%C5%82o%C5%9B%C4%87%2C+duchy+i+wampirzyce">Munch: miłość, duchy i wampirzyce</a>
-  <span class="pill runtime">2022</span>
+  <span class="pill year">2022</span>
 
   <span class="pill runtime">1h 30min</span>
 
@@ -24310,7 +24310,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=M%C5%82odsza+siostra">Młodsza siostra</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 46min</span>
 
@@ -24383,7 +24383,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Wypadek+fortepianowy">Wypadek fortepianowy</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 28min</span>
 
@@ -24450,7 +24450,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Wielki+%C5%81uk">Wielki Łuk</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 46min</span>
 
@@ -24521,7 +24521,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Mi+Amor">Mi Amor</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 53min</span>
 
@@ -24580,7 +24580,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Poczta+g%C5%82osowa">Poczta głosowa</a>
-  <span class="pill runtime">2024</span>
+  <span class="pill year">2024</span>
 
   <span class="pill runtime">1h 42min</span>
 
@@ -24728,7 +24728,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Wa%C5%82konie">Wałkonie</a>
-  <span class="pill runtime">1953</span>
+  <span class="pill year">1953</span>
 
   <span class="pill runtime">1h 43min</span>
 
@@ -24827,7 +24827,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kino+bez+barier%3A+Drugie+%C5%BCycie+%28AD+%2B+CC%29">Kino bez barier: Drugie życie (AD + CC)</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 56min</span>
 
@@ -24906,7 +24906,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Narodziny+gwiazdy">Narodziny gwiazdy</a>
-  <span class="pill runtime">2018</span>
+  <span class="pill year">2018</span>
 
   <span class="pill runtime">2h 15min</span>
 
@@ -24994,7 +24994,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Fa%C5%82szerz+stulecia">Fałszerz stulecia</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">2h 8min</span>
 
@@ -25059,7 +25059,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Summer+Wars">Summer Wars</a>
-  <span class="pill runtime">2009</span>
+  <span class="pill year">2009</span>
 
   <span class="pill runtime">1h 54min</span>
 
@@ -25138,7 +25138,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kino+bez+barier%3A+Drugie+%C5%BCycie+%28AD+%2B+CC+%2B+PJM%29">Kino bez barier: Drugie życie (AD + CC + PJM)</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 56min</span>
 
@@ -25217,7 +25217,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=All+You+Need+Is+Kill">All You Need Is Kill</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 23min</span>
 
@@ -25415,7 +25415,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kicia+Kocia+w+podr%C3%B3%C5%BCy">Kicia Kocia w podróży</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">0h 45min</span>
 
@@ -25484,7 +25484,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Playboy+zachodniego+%C5%9Bwiata+-+National+Theatre+Live+2026">Playboy zachodniego świata - National Theatre Live 2026</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 30min</span>
 
@@ -25569,7 +25569,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Powr%C3%B3t+do+przysz%C5%82o%C5%9Bci+II">Powrót do przyszłości II</a>
-  <span class="pill runtime">1989</span>
+  <span class="pill year">1989</span>
 
   <span class="pill runtime">1h 48min</span>
 
@@ -25708,7 +25708,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Powr%C3%B3t+do+przysz%C5%82o%C5%9Bci+III">Powrót do przyszłości III</a>
-  <span class="pill runtime">1990</span>
+  <span class="pill year">1990</span>
 
   <span class="pill runtime">1h 58min</span>
 
@@ -25887,7 +25887,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Noce+Cabirii">Noce Cabirii</a>
-  <span class="pill runtime">1957</span>
+  <span class="pill year">1957</span>
 
   <span class="pill runtime">1h 50min</span>
 
@@ -26067,7 +26067,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kino+bez+barier%3A+B%C5%82%C4%99kitny+szlak+%28AD+%2B+CC+%2B+PJM%29">Kino bez barier: Błękitny szlak (AD + CC + PJM)</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 25min</span>
 
@@ -26152,7 +26152,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Takie+jest+%C5%BCycie">Takie jest życie</a>
-  <span class="pill runtime">2001</span>
+  <span class="pill year">2001</span>
 
     </div>
     
@@ -26283,7 +26283,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Ch%C5%82opiec+na+kra%C5%84cach+%C5%9Bwiata">Chłopiec na krańcach świata</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 28min</span>
 
@@ -26372,7 +26372,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=S%C5%82odkie+%C5%BCycie">Słodkie życie</a>
-  <span class="pill runtime">1960</span>
+  <span class="pill year">1960</span>
 
   <span class="pill runtime">2h 56min</span>
 
@@ -26471,7 +26471,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kino+bez+barier%3A+Pie%C5%9Bni+lasu+%28AD+%2B+CC+%2B+PJM%29">Kino bez barier: Pieśni lasu (AD + CC + PJM)</a>
-  <span class="pill runtime">2025</span>
+  <span class="pill year">2025</span>
 
   <span class="pill runtime">1h 33min</span>
 
@@ -26544,7 +26544,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Zaproszenie">Zaproszenie</a>
-  <span class="pill runtime">2022</span>
+  <span class="pill year">2022</span>
 
     </div>
     
@@ -26617,7 +26617,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Fantastyczne+zwierz%C4%99ta+i+jak+je+znale%C5%BA%C4%87">Fantastyczne zwierzęta i jak je znaleźć</a>
-  <span class="pill runtime">2016</span>
+  <span class="pill year">2016</span>
 
     </div>
     
@@ -26714,7 +26714,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Osiem+i+p%C3%B3%C5%82">Osiem i pół</a>
-  <span class="pill runtime">1963</span>
+  <span class="pill year">1963</span>
 
   <span class="pill runtime">2h 18min</span>
 
@@ -26813,7 +26813,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Fantastyczne+zwierz%C4%99ta%3A+zbrodnie+grindelwalda">Fantastyczne zwierzęta: zbrodnie grindelwalda</a>
-  <span class="pill runtime">2018</span>
+  <span class="pill year">2018</span>
 
     </div>
     
@@ -26910,7 +26910,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Niebezpieczne+zwi%C4%85zki+-+National+Theatre+Live+2026">Niebezpieczne związki - National Theatre Live 2026</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 30min</span>
 
@@ -27078,7 +27078,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Giulietta+i+duchy">Giulietta i duchy</a>
-  <span class="pill runtime">1965</span>
+  <span class="pill year">1965</span>
 
   <span class="pill runtime">2h 19min</span>
 
@@ -27171,7 +27171,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Brzezina">Brzezina</a>
-  <span class="pill runtime">1970</span>
+  <span class="pill year">1970</span>
 
   <span class="pill runtime">1h 39min</span>
 
@@ -27311,7 +27311,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=G%C5%82os+z+ksi%C4%99%C5%BCyca">Głos z księżyca</a>
-  <span class="pill runtime">1990</span>
+  <span class="pill year">1990</span>
 
   <span class="pill runtime">2h 1min</span>
 
@@ -27408,7 +27408,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Fantastyczne+zwierz%C4%99ta%3A+Tajemnice+Dumbledorea">Fantastyczne zwierzęta: Tajemnice Dumbledorea</a>
-  <span class="pill runtime">2022</span>
+  <span class="pill year">2022</span>
 
   <span class="pill runtime">2h 22min</span>
 
@@ -27501,7 +27501,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Kronika+wypadk%C3%B3w+mi%C5%82osnych">Kronika wypadków miłosnych</a>
-  <span class="pill runtime">1985</span>
+  <span class="pill year">1985</span>
 
   <span class="pill runtime">1h 54min</span>
 
@@ -27574,7 +27574,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Zapl%C4%85tani">Zaplątani</a>
-  <span class="pill runtime">2010</span>
+  <span class="pill year">2010</span>
 
     </div>
     
@@ -27671,7 +27671,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Audiencja+-+National+Theatre+Live+2026">Audiencja - National Theatre Live 2026</a>
-  <span class="pill runtime">2026</span>
+  <span class="pill year">2026</span>
 
   <span class="pill runtime">2h 45min</span>
 
@@ -27756,7 +27756,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Odlot">Odlot</a>
-  <span class="pill runtime">2009</span>
+  <span class="pill year">2009</span>
 
     </div>
     
@@ -28062,7 +28062,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Harry+Potter+i+Kamie%C5%84+filozoficzny">Harry Potter i Kamień filozoficzny</a>
-  <span class="pill runtime">2001</span>
+  <span class="pill year">2001</span>
 
     </div>
     
@@ -28259,7 +28259,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Harry+Potter+i+Komnata+Tajemnic">Harry Potter i Komnata Tajemnic</a>
-  <span class="pill runtime">2002</span>
+  <span class="pill year">2002</span>
 
     </div>
     
@@ -28397,7 +28397,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Harry+Potter+i+Czara+ognia">Harry Potter i Czara ognia</a>
-  <span class="pill runtime">2005</span>
+  <span class="pill year">2005</span>
 
     </div>
     
@@ -28474,7 +28474,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Harry+Potter+i+Zakon+Feniksa">Harry Potter i Zakon Feniksa</a>
-  <span class="pill runtime">2007</span>
+  <span class="pill year">2007</span>
 
     </div>
     
@@ -28551,7 +28551,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Harry+Potter+i+Ksi%C4%85%C5%BC%C4%99+P%C3%B3%C5%82krwi">Harry Potter i Książę Półkrwi</a>
-  <span class="pill runtime">2009</span>
+  <span class="pill year">2009</span>
 
     </div>
     
@@ -28622,7 +28622,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Krajobraz+po+bitwie">Krajobraz po bitwie</a>
-  <span class="pill runtime">1970</span>
+  <span class="pill year">1970</span>
 
   <span class="pill runtime">1h 41min</span>
 
@@ -28760,7 +28760,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Harry+Potter+i+Insygnia+%C5%9Amierci+cz.+2">Harry Potter i Insygnia Śmierci cz. 2</a>
-  <span class="pill runtime">2011</span>
+  <span class="pill year">2011</span>
 
     </div>
     
@@ -28892,7 +28892,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Bez+znieczulenia">Bez znieczulenia</a>
-  <span class="pill runtime">1978</span>
+  <span class="pill year">1978</span>
 
   <span class="pill runtime">2h 5min</span>
 
@@ -29026,7 +29026,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Ziemia+obiecana">Ziemia obiecana</a>
-  <span class="pill runtime">1974</span>
+  <span class="pill year">1974</span>
 
   <span class="pill runtime">2h 59min</span>
 
@@ -29099,7 +29099,7 @@
   <div class="card-body">
     <div class="card-title">
       <a href="/film?title=Wszystko+na+sprzeda%C5%BC">Wszystko na sprzedaż</a>
-  <span class="pill runtime">1968</span>
+  <span class="pill year">1968</span>
 
   <span class="pill runtime">1h 34min</span>
 
