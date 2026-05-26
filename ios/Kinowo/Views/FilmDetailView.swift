@@ -307,13 +307,11 @@ private struct DetailPosterImage<NoPoster: View>: View {
 #if canImport(WebKit)
 import WebKit
 
-/// Lightweight WKWebView wrapper for an embedded YouTube trailer.
-/// SwiftUI's `VideoPlayer` doesn't speak the `/embed/<id>` URL the
-/// web template hands us, and the embed page is the simplest
-/// cross-platform way to play arbitrary `youtube.com` / `youtu.be`
-/// IDs without an API key.
 private struct TrailerEmbedView: UIViewRepresentable {
     let url: URL
+
+    final class Coordinator { var loadedURL: URL? }
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -327,20 +325,13 @@ private struct TrailerEmbedView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        // Append `autoplay=1` (matches the web's playTrailer) so tapping
-        // the trailer pill starts playback without a second tap inside
-        // the player chrome. YouTube's mobile embed honours the param.
-        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        var items = components?.queryItems ?? []
-        if !items.contains(where: { $0.name == "autoplay" }) {
-            items.append(URLQueryItem(name: "autoplay", value: "1"))
-            items.append(URLQueryItem(name: "playsinline", value: "1"))
-            components?.queryItems = items
-        }
-        let final = components?.url ?? url
-        if webView.url != final {
-            webView.load(URLRequest(url: final))
-        }
+        let embedURL = TrailerEmbedHTML.withAutoplay(url)
+        guard context.coordinator.loadedURL != embedURL else { return }
+        context.coordinator.loadedURL = embedURL
+        webView.loadHTMLString(
+            TrailerEmbedHTML.embedPage(videoURL: embedURL),
+            baseURL: kinowoBaseURL
+        )
     }
 }
 #else
