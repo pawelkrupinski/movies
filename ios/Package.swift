@@ -20,6 +20,28 @@ import PackageDescription
 // - `KinowoCoreTests` — unit + integration + smoke XCTest cases,
 //   resourced with captured production HTML fixtures.
 // - `KinowoAuthTests` — sync-service tests (Combine; macOS/iOS only).
+#if canImport(Combine)
+let authTargets: [Target] = [
+    .target(
+        name: "KinowoAuth",
+        path: "Kinowo",
+        sources: [
+            "Auth/UserProfile.swift",
+            "Auth/UserStateClient.swift",
+            "Auth/StateSyncService.swift",
+            "Storage/UserPreferences.swift",
+        ]
+    ),
+    .testTarget(
+        name: "KinowoAuthTests",
+        dependencies: ["KinowoAuth"],
+        path: "Tests/KinowoAuthTests"
+    ),
+]
+#else
+let authTargets: [Target] = []
+#endif
+
 let package = Package(
     name: "Kinowo",
     platforms: [
@@ -63,16 +85,6 @@ let package = Package(
                 "Assets.xcassets",
             ]
         ),
-        .target(
-            name: "KinowoAuth",
-            path: "Kinowo",
-            sources: [
-                "Auth/UserProfile.swift",
-                "Auth/UserStateClient.swift",
-                "Auth/StateSyncService.swift",
-                "Storage/UserPreferences.swift",
-            ]
-        ),
         .testTarget(
             name: "KinowoCoreTests",
             dependencies: ["KinowoCore"],
@@ -85,10 +97,5 @@ let package = Package(
                 .copy("Fixtures"),
             ]
         ),
-        .testTarget(
-            name: "KinowoAuthTests",
-            dependencies: ["KinowoAuth"],
-            path: "Tests/KinowoAuthTests"
-        ),
-    ]
+    ] + authTargets
 )
