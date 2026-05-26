@@ -6,7 +6,7 @@ import PackageDescription
 // second view of the same files so we can run XCTest cases via
 // `swift test` on Linux/Docker without a full Xcode install.
 //
-// Two targets:
+// Three targets:
 // - `KinowoCore` — Foundation-only sources (Models + parser layer of
 //   Networking). The Views/, Storage/, ContentView, KinowoApp,
 //   RepertoireClient, FilmDetailStore files are excluded because they
@@ -14,8 +14,12 @@ import PackageDescription
 //   swift-corelibs-foundation. The Xcode app still compiles those
 //   files for the real device build — they live in `Kinowo/` and
 //   `xcodebuild` picks them up through the `.pbxproj`.
+// - `KinowoAuth` — Combine-dependent auth/sync layer (macOS/iOS only).
+//   Compiled as a separate module so StateSyncService can be tested via
+//   `swift test` on macOS without pulling SwiftUI into KinowoCore.
 // - `KinowoCoreTests` — unit + integration + smoke XCTest cases,
 //   resourced with captured production HTML fixtures.
+// - `KinowoAuthTests` — sync-service tests (Combine; macOS/iOS only).
 let package = Package(
     name: "Kinowo",
     platforms: [
@@ -59,6 +63,16 @@ let package = Package(
                 "Assets.xcassets",
             ]
         ),
+        .target(
+            name: "KinowoAuth",
+            path: "Kinowo",
+            sources: [
+                "Auth/UserProfile.swift",
+                "Auth/UserStateClient.swift",
+                "Auth/StateSyncService.swift",
+                "Storage/UserPreferences.swift",
+            ]
+        ),
         .testTarget(
             name: "KinowoCoreTests",
             dependencies: ["KinowoCore"],
@@ -70,6 +84,11 @@ let package = Package(
                 // and is loaded via `Bundle.module.url(forResource:…)`.
                 .copy("Fixtures"),
             ]
+        ),
+        .testTarget(
+            name: "KinowoAuthTests",
+            dependencies: ["KinowoAuth"],
+            path: "Tests/KinowoAuthTests"
         ),
     ]
 )

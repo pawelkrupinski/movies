@@ -16,6 +16,8 @@
 		DD00000000000000000030 /* RepertoireCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000030 /* RepertoireCache.swift */; };
 		DD00000000000000000031 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000031 /* AuthService.swift */; };
 		DD00000000000000000032 /* StateSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000032 /* StateSyncService.swift */; };
+		DD00000000000000000033 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000033 /* UserProfile.swift */; };
+		DD00000000000000000034 /* UserStateClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000034 /* UserStateClient.swift */; };
 		DD00000000000000000008 /* HTMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000008 /* HTMLParser.swift */; };
 		DD00000000000000000009 /* HTMLDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000009 /* HTMLDecoding.swift */; };
 		DD0000000000000000000A /* UserPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000A /* UserPreferences.swift */; };
@@ -63,6 +65,8 @@
 		CC00000000000000000030 /* RepertoireCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepertoireCache.swift; sourceTree = "<group>"; };
 		CC00000000000000000031 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		CC00000000000000000032 /* StateSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StateSyncService.swift; sourceTree = "<group>"; };
+		CC00000000000000000033 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
+		CC00000000000000000034 /* UserStateClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserStateClient.swift; sourceTree = "<group>"; };
 		CC00000000000000000008 /* HTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLParser.swift; sourceTree = "<group>"; };
 		CC00000000000000000009 /* HTMLDecoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLDecoding.swift; sourceTree = "<group>"; };
 		CC0000000000000000000A /* UserPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferences.swift; sourceTree = "<group>"; };
@@ -146,6 +150,8 @@
 			children = (
 				CC00000000000000000031 /* AuthService.swift */,
 				CC00000000000000000032 /* StateSyncService.swift */,
+				CC00000000000000000033 /* UserProfile.swift */,
+				CC00000000000000000034 /* UserStateClient.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -309,6 +315,8 @@
 				DD00000000000000000030 /* RepertoireCache.swift in Sources */,
 				DD00000000000000000031 /* AuthService.swift in Sources */,
 				DD00000000000000000032 /* StateSyncService.swift in Sources */,
+				DD00000000000000000033 /* UserProfile.swift in Sources */,
+				DD00000000000000000034 /* UserStateClient.swift in Sources */,
 				DD00000000000000000008 /* HTMLParser.swift in Sources */,
 				DD00000000000000000009 /* HTMLDecoding.swift in Sources */,
 				DD0000000000000000000A /* UserPreferences.swift in Sources */,

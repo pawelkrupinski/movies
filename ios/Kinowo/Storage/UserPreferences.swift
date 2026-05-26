@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// UserDefaults-backed per-device hidden-films + disabled-cinemas state.
 /// Mirrors what the web app stores in `localStorage` for anonymous users.
