@@ -26,10 +26,10 @@
   </div>
   <div class="card-body">
     <div class="card-title">
-      <a href="@FilmHref(movie.title)">@movie.title</a>@movie.releaseYear.map { y =>
-  <span class="pill year">@y</span>
-}@movie.runtimeMinutes.filter(_ > 0).map { mins =>
+      <a href="@FilmHref(movie.title)">@movie.title</a>@movie.runtimeMinutes.filter(_ > 0).map { mins =>
   <span class="pill runtime">@{mins / 60}h@if(mins % 60 != 0){ @{mins % 60}min}</span>
+}@movie.releaseYear.map { y =>
+  <span class="pill year">@y</span>
 }
     </div>
     @_ratingBadges(enrichment, movie.title)
