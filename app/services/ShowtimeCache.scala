@@ -107,7 +107,7 @@ class ShowtimeCache(
       }
     } catch {
       case e: Exception =>
-        uptimeMonitor.recordFailure(cinema.displayName)
+        uptimeMonitor.recordFailure(cinema.displayName, s"${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("")}".take(200))
         val elapsed = System.currentTimeMillis() - t0
         if (isTransientHttpError(e))
           logger.warn(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms: ${e.getMessage}")

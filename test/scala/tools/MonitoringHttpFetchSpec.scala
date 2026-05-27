@@ -78,11 +78,13 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
     monitor.history("TMDB").head.failures shouldBe 0
   }
 
-  it should "record failure on connection error" in {
+  it should "record failure with error message on connection error" in {
     val (fetch, delegate, monitor) = fixture
     delegate.nextError = Some(new IOException("Connection refused"))
     intercept[IOException] { fetch.get("https://api.themoviedb.org/3/search") }
-    monitor.history("TMDB").head.failures shouldBe 1
+    val bucket = monitor.history("TMDB").head
+    bucket.failures shouldBe 1
+    bucket.errors.head should include ("Connection refused")
   }
 
   it should "record success on HTTP 404 (service reachable)" in {
@@ -91,13 +93,16 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
     intercept[RuntimeException] { fetch.get("https://api.themoviedb.org/x") }
     monitor.history("TMDB").head.successes shouldBe 1
     monitor.history("TMDB").head.failures shouldBe 0
+    monitor.history("TMDB").head.errors shouldBe empty
   }
 
-  it should "record failure on HTTP 503" in {
+  it should "record failure with error message on HTTP 503" in {
     val (fetch, delegate, monitor) = fixture
     delegate.nextError = Some(new RuntimeException("HTTP 503 for GET https://www.filmweb.pl/x"))
     intercept[RuntimeException] { fetch.get("https://www.filmweb.pl/x") }
-    monitor.history("Filmweb").head.failures shouldBe 1
+    val bucket = monitor.history("Filmweb").head
+    bucket.failures shouldBe 1
+    bucket.errors.head should include ("HTTP 503")
   }
 
   it should "not record cinema domain calls" in {

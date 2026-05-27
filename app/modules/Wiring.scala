@@ -15,7 +15,7 @@ import services.users.{MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRep
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
 trait Wiring {
-  lazy val uptimeMonitor = new UptimeMonitor()
+  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database)
   lazy val httoFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)
 
   // ── External API clients ──────────────────────────────────────────────────

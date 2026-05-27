@@ -47,6 +47,12 @@ class MonitoringHttpFetch(delegate: HttpFetch, monitor: UptimeMonitor) extends H
     case _                   => false
   }
 
+  private def errorDescription(e: Throwable): String = {
+    val name = e.getClass.getSimpleName
+    val msg  = Option(e.getMessage).getOrElse("")
+    s"$name: $msg".take(200)
+  }
+
   private def monitored[T](url: String)(block: => T): T = {
     classify(url) match {
       case None => block
@@ -57,7 +63,7 @@ class MonitoringHttpFetch(delegate: HttpFetch, monitor: UptimeMonitor) extends H
           result
         } catch {
           case e: Exception =>
-            if (isConnectionFailure(e)) monitor.recordFailure(service)
+            if (isConnectionFailure(e)) monitor.recordFailure(service, errorDescription(e))
             else monitor.recordSuccess(service)
             throw e
         }
@@ -78,7 +84,7 @@ class MonitoringHttpFetch(delegate: HttpFetch, monitor: UptimeMonitor) extends H
           if (ex == null) monitor.recordSuccess(service)
           else {
             val cause = unwrap(ex)
-            if (isConnectionFailure(cause)) monitor.recordFailure(service)
+            if (isConnectionFailure(cause)) monitor.recordFailure(service, errorDescription(cause))
             else monitor.recordSuccess(service)
           }
         }

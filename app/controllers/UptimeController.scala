@@ -1,5 +1,6 @@
 package controllers
 
+import play.api.libs.json.{JsArray, JsString, Json, JsValue, Writes}
 import play.api.mvc._
 import services.UptimeMonitor
 import services.UptimeMonitor._
@@ -19,27 +20,29 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor) extends
     "TMDB", "IMDb", "Filmweb", "Metacritic", "Rotten Tomatoes"
   )
 
-  private val timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.of("Europe/Warsaw"))
+  private val warsawZone = ZoneId.of("Europe/Warsaw")
+  private val timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(warsawZone)
+  private val dateFmt = DateTimeFormatter.ofPattern("d MMM").withZone(warsawZone)
 
   def index: Action[AnyContent] = Action {
     val now = System.currentTimeMillis()
     val currentBucket = bucketTimestamp(now)
-    val numBuckets = MaxBuckets
-    val slots = (0 until numBuckets).reverse.map(i => currentBucket - i * BucketDurationMs)
-
+    val slots = (0 until MaxBuckets).reverse.map(i => currentBucket - i * BucketDurationMs)
     val active = monitor.services
 
-    def barsFor(name: String): Seq[Bar] = {
-      val history = monitor.history(name).map(b => b.timestamp -> b).toMap
+    def barsFor(serviceName: String): Seq[BarData] = {
+      val history = monitor.history(serviceName).map(b => b.timestamp -> b).toMap
       slots.map { ts =>
-        val status = history.get(ts).map(_.status).getOrElse("empty")
-        val label = timeFmt.format(Instant.ofEpochMilli(ts))
-        val endLabel = timeFmt.format(Instant.ofEpochMilli(ts + BucketDurationMs))
-        val tooltip = history.get(ts) match {
-          case Some(b) => s"$label–$endLabel: ${b.successes} ok, ${b.failures} failed"
-          case None    => s"$label–$endLabel: no data"
+        val from = Instant.ofEpochMilli(ts)
+        val to   = Instant.ofEpochMilli(ts + BucketDurationMs)
+        history.get(ts) match {
+          case Some(b) =>
+            BarData(serviceName, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
+              b.status, b.successes, b.failures, b.errors)
+          case None =>
+            BarData(serviceName, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
+              "empty", 0, 0, Seq.empty)
         }
-        Bar(status, tooltip)
       }
     }
 
@@ -51,5 +54,28 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor) extends
   }
 }
 
-case class Bar(status: String, tooltip: String)
-case class ServiceRow(name: String, bars: Seq[Bar])
+case class BarData(
+  service: String,
+  timeFrom: String,
+  timeTo: String,
+  dateLabel: String,
+  status: String,
+  successes: Int,
+  failures: Int,
+  errors: Seq[String]
+)
+
+object BarData {
+  implicit val writes: Writes[BarData] = (b: BarData) => Json.obj(
+    "service"   -> b.service,
+    "timeFrom"  -> b.timeFrom,
+    "timeTo"    -> b.timeTo,
+    "dateLabel" -> b.dateLabel,
+    "status"    -> b.status,
+    "successes" -> b.successes,
+    "failures"  -> b.failures,
+    "errors"    -> b.errors
+  )
+}
+
+case class ServiceRow(name: String, bars: Seq[BarData])
