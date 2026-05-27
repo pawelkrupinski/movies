@@ -77,7 +77,7 @@ struct CinemaSectionedGridView<Header: View>: View {
                                 LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
                                     ForEach(section.films) { film in
                                         NavigationLink(value: film) {
-                                            FilmCardView(film: film, showCinemaHeaders: false)
+                                            FilmCardView(film: film, showCinemaHeaders: false, collapsible: false)
                                         }
                                         .buttonStyle(.plain)
                                     }
