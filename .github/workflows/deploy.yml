@@ -279,7 +279,8 @@ jobs:
                 include:
                     - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, shard: '1/2' }
                     - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, shard: '2/2' }
-                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit }
+                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, shard: '1/2' }
+                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, shard: '2/2' }
                     - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '1/2' }
                     - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '2/2' }
                     - { variant: pw desktop,           kind: playwright, project: webkit-desktop,              browser: webkit }
