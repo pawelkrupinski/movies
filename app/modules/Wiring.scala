@@ -119,6 +119,7 @@ trait Wiring {
 
   def controllerComponents: ControllerComponents
   def environmentMode: Mode
+  implicit def materializer: org.apache.pekko.stream.Materializer
 
   // ── OAuth providers ──────────────────────────────────────────────────────
   // Each provider is wired only when its env vars are present. The result
@@ -154,7 +155,7 @@ trait Wiring {
   // ── Controllers ───────────────────────────────────────────────────────────
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, movieCache, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
-  lazy val uptimeController = new UptimeController(controllerComponents, uptimeMonitor)
+  lazy val uptimeController = new UptimeController(controllerComponents, uptimeMonitor)(using materializer)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, userRepo)
 

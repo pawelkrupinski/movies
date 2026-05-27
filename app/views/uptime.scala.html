@@ -6,7 +6,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="60">
   <title>Uptime — Kinowo</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -99,18 +98,14 @@
   <div id="overlay"></div>
 
   <script>
-    var allBars = @Html(Json.toJson(
-      (cinemas ++ services ++ other).flatMap(_.bars)
-    )(play.api.libs.json.Writes.seq(BarData.writes)).toString);
-
     var overlay = document.getElementById('overlay');
-    var barEls = document.querySelectorAll('.bar');
     var statusLabels = {green:'All OK',yellow:'Degraded',red:'Unavailable',empty:'No data'};
 
-    barEls.forEach(function(el, i) {
+    function attachBarHover(el) {
       el.addEventListener('mouseenter', function(ev) {
-        var d = allBars[i];
-        if (!d) return;
+        var raw = el.dataset.info;
+        if (!raw) return;
+        var d = JSON.parse(raw);
         var html = '<div class="ov-service">' + esc(d.service) + '</div>'
           + '<div class="ov-time">' + esc(d.dateLabel) + ', ' + esc(d.timeFrom) + ' – ' + esc(d.timeTo) + '</div>'
           + '<div class="ov-status ' + d.status + '">' + statusLabels[d.status] + '</div>'
@@ -127,7 +122,7 @@
       });
       el.addEventListener('mousemove', positionOverlay);
       el.addEventListener('mouseleave', function() { overlay.classList.remove('visible'); });
-    });
+    }
 
     function positionOverlay(ev) {
       var x = ev.clientX + 12, y = ev.clientY - overlay.offsetHeight - 8;
@@ -140,16 +135,42 @@
     function esc(s) {
       var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
     }
+
+    document.querySelectorAll('.bar').forEach(attachBarHover);
+
+    // ── SSE live updates ────────────────────────────────────────────────
+    var es = new EventSource('/uptime/stream');
+    es.onmessage = function(ev) {
+      var d = JSON.parse(ev.data);
+      var ts = String(d.bucketTs);
+      var rows = document.querySelectorAll('.row[data-service="' + CSS.escape(d.service) + '"]');
+      rows.forEach(function(row) {
+        var barsDiv = row.querySelector('.bars');
+        var bar = barsDiv.querySelector('.bar[data-ts="' + ts + '"]');
+        if (bar) {
+          bar.className = 'bar ' + d.status;
+          bar.dataset.info = JSON.stringify(d);
+        } else {
+          var nb = document.createElement('div');
+          nb.className = 'bar ' + d.status;
+          nb.dataset.ts = ts;
+          nb.dataset.info = JSON.stringify(d);
+          attachBarHover(nb);
+          barsDiv.appendChild(nb);
+          if (barsDiv.children.length > 288) barsDiv.removeChild(barsDiv.firstElementChild);
+        }
+      });
+    };
   </script>
 </body>
 </html>
 
 @serviceRow(s: ServiceRow) = {
-  <div class="row">
+  <div class="row" data-service="@s.name">
     <div class="name" title="@s.name">@s.name</div>
     <div class="bars">
       @for(b <- s.bars) {
-        <div class="bar @b.status"></div>
+        <div class="bar @b.status" data-ts="@b.bucketTs" data-info="@{Json.toJson(b)(BarData.writes).toString}"></div>
       }
     </div>
   </div>

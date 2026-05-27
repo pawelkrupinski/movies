@@ -1,14 +1,17 @@
 package controllers
 
-import play.api.libs.json.{JsArray, JsString, Json, JsValue, Writes}
+import org.apache.pekko.stream.{Materializer, OverflowStrategy}
+import org.apache.pekko.stream.scaladsl.Source
+import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 import services.UptimeMonitor
 import services.UptimeMonitor._
 
 import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
+import scala.concurrent.ExecutionContext
 
-class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor) extends AbstractController(cc) {
+class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using mat: Materializer) extends AbstractController(cc) {
 
   private val cinemaNames = Seq(
     "Multikino Stary Browar", "Kino Malta Charlie Monroe", "Kino Pałacowe",
@@ -37,10 +40,10 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor) extends
         val to   = Instant.ofEpochMilli(ts + BucketDurationMs)
         history.get(ts) match {
           case Some(b) =>
-            BarData(serviceName, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
+            BarData(serviceName, ts, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
               b.status, b.successes, b.failures, b.errors)
           case None =>
-            BarData(serviceName, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
+            BarData(serviceName, ts, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
               "empty", 0, 0, Seq.empty)
         }
       }
@@ -52,10 +55,40 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor) extends
 
     Ok(views.html.uptime(cinemas, services, other))
   }
+
+  def stream: Action[AnyContent] = Action {
+    val (queue, source) = Source.queue[String](256, OverflowStrategy.dropHead)
+      .preMaterialize()
+
+    val listener: BucketListener = { (service, snapshot) =>
+      val json = Json.obj(
+        "service"   -> service,
+        "bucketTs"  -> snapshot.timestamp,
+        "timeFrom"  -> timeFmt.format(Instant.ofEpochMilli(snapshot.timestamp)),
+        "timeTo"    -> timeFmt.format(Instant.ofEpochMilli(snapshot.timestamp + BucketDurationMs)),
+        "dateLabel" -> dateFmt.format(Instant.ofEpochMilli(snapshot.timestamp)),
+        "status"    -> snapshot.status,
+        "successes" -> snapshot.successes,
+        "failures"  -> snapshot.failures,
+        "errors"    -> snapshot.errors
+      )
+      queue.offer(s"data: $json\n\n")
+    }
+
+    monitor.addListener(listener)
+
+    Ok.chunked(
+      source.watchTermination() { (_, done) =>
+        done.onComplete(_ => monitor.removeListener(listener))(using ExecutionContext.global)
+        org.apache.pekko.NotUsed
+      }
+    ).as("text/event-stream")
+  }
 }
 
 case class BarData(
   service: String,
+  bucketTs: Long,
   timeFrom: String,
   timeTo: String,
   dateLabel: String,
@@ -68,6 +101,7 @@ case class BarData(
 object BarData {
   implicit val writes: Writes[BarData] = (b: BarData) => Json.obj(
     "service"   -> b.service,
+    "bucketTs"  -> b.bucketTs,
     "timeFrom"  -> b.timeFrom,
     "timeTo"    -> b.timeTo,
     "dateLabel" -> b.dateLabel,

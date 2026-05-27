@@ -50,6 +50,7 @@ DELETE  /api/me                     controllers.UserStateController.deleteAccoun
 # ── Health / Uptime ───────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check
 GET     /uptime                     controllers.UptimeController.index()
+GET     /uptime/stream              controllers.UptimeController.stream()
 
 # ── robots.txt ────────────────────────────────────────────────────────────────
 # Returning a 404 on /robots.txt confused Facebook's link-preview scraper

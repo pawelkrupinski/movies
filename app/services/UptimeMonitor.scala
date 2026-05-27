@@ -17,6 +17,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None) extends Logging {
   import UptimeMonitor._
 
   private val data = new ConcurrentHashMap[String, java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]]()
+  private val listeners = new java.util.concurrent.CopyOnWriteArrayList[BucketListener]()
 
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("uptimeBuckets"))
 
@@ -33,9 +34,14 @@ class UptimeMonitor(db: Option[MongoDatabase] = None) extends Logging {
     hydrate(c)
   }
 
+  def addListener(f: BucketListener): Unit = { listeners.add(f); () }
+  def removeListener(f: BucketListener): Unit = { listeners.remove(f); () }
+
   def recordSuccess(service: String): Unit = {
-    currentBucket(service).successes.incrementAndGet()
+    val bucket = currentBucket(service)
+    bucket.successes.incrementAndGet()
     mongoUpsertSuccess(service)
+    notifyListeners(service, bucket)
   }
 
   def recordFailure(service: String, error: String): Unit = {
@@ -43,6 +49,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None) extends Logging {
     bucket.failures.incrementAndGet()
     if (bucket.errors.size() < MaxErrorsPerBucket) bucket.errors.add(error)
     mongoUpsertFailure(service, error)
+    notifyListeners(service, bucket)
   }
 
   def history(service: String): Seq[BucketSnapshot] = {
@@ -96,6 +103,12 @@ class UptimeMonitor(db: Option[MongoDatabase] = None) extends Logging {
     )
   }
 
+  private def notifyListeners(service: String, bucket: Bucket): Unit =
+    if (!listeners.isEmpty) {
+      val snap = BucketSnapshot(bucket.timestamp, bucket.successes.get(), bucket.failures.get(), bucket.errors.asScala.toSeq)
+      listeners.forEach(f => Try(f(service, snap)))
+    }
+
   private def hydrate(c: MongoCollection[Document]): Unit = Try {
     val docs = Await.result(c.find().toFuture(), 10.seconds)
     var count = 0
@@ -120,6 +133,8 @@ class UptimeMonitor(db: Option[MongoDatabase] = None) extends Logging {
 }
 
 object UptimeMonitor {
+  type BucketListener = (String, BucketSnapshot) => Unit
+
   val BucketDurationMs: Long = 5 * 60 * 1000L
   val MaxBuckets: Int = 288
   val MaxErrorsPerBucket: Int = 10

@@ -12,6 +12,8 @@ trait TestWiring extends Wiring {
 
   override def environmentMode: Mode = Mode.Test
 
+  override implicit def materializer: org.apache.pekko.stream.Materializer = null
+
   // Inject a stub TMDB API key so the test doesn't depend on a
   // `TMDB_API_KEY` env var. `TmdbClient.search` short-circuits to `None`
   // when the key is absent — without an override, every CI runner (and
