@@ -59,7 +59,7 @@ class AppComponents(context: Context)
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)
   override def httpFilters: Seq[EssentialFilter] =
     super.httpFilters :+ corsFilter :+ cspFilter
-  lazy val router: Router = new Routes(httpErrorHandler, movieController, authController, userStateController, healthController, assets)
+  lazy val router: Router = new Routes(httpErrorHandler, movieController, authController, userStateController, healthController, uptimeController, assets)
 
   start()
 

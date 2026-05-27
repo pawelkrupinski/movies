@@ -19,9 +19,10 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  *  Per CLAUDE.md OCP guidance: adding a new cinema is a new `CinemaScraper`
  *  wired in `AppLoader`; this class never names a specific cinema. */
 class ShowtimeCache(
-  scrapers:   Seq[CinemaScraper],
-  bus:        EventBus,
-  movieCache: MovieCache
+  scrapers:      Seq[CinemaScraper],
+  bus:           EventBus,
+  movieCache:    MovieCache,
+  uptimeMonitor: UptimeMonitor
 ) extends Stoppable with Logging {
 
   private val ec: ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("showtime-fetch")
@@ -98,6 +99,7 @@ class ShowtimeCache(
       // when a brand new film shows up.
       val touched     = movieCache.recordCinemaScrape(cinema, movies)
       val publishable = touched.count(_._3)
+      uptimeMonitor.recordSuccess(cinema.displayName)
       logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms ($publishable new)")
       touched.foreach { case (cm, key, isNew) =>
         if (isNew)
@@ -105,6 +107,7 @@ class ShowtimeCache(
       }
     } catch {
       case e: Exception =>
+        uptimeMonitor.recordFailure(cinema.displayName)
         val elapsed = System.currentTimeMillis() - t0
         if (isTransientHttpError(e))
           logger.warn(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms: ${e.getMessage}")

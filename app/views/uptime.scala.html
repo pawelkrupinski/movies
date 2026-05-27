@@ -1,0 +1,89 @@
+@import controllers.{Bar, ServiceRow}
+@(cinemas: Seq[ServiceRow], services: Seq[ServiceRow], other: Seq[ServiceRow])
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="60">
+  <title>Uptime — Kinowo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 13px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 24px; }
+    h2 {
+      font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase;
+      letter-spacing: 1px; margin: 28px 0 10px; padding-bottom: 6px;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .row { display: flex; align-items: center; margin-bottom: 4px; }
+    .name {
+      width: 170px; flex-shrink: 0; color: #aaa; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; font-size: 12px;
+    }
+    .bars { display: flex; gap: 1px; overflow: hidden; }
+    .bar {
+      width: 3px; height: 26px; border-radius: 1px; flex-shrink: 0;
+      position: relative; cursor: default;
+    }
+    .bar.green  { background: #2ecc40; }
+    .bar.yellow { background: #f0ad4e; }
+    .bar.red    { background: #e74c3c; }
+    .bar.empty  { background: #161616; }
+    .bar:hover  { opacity: 0.75; }
+    .tip {
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
+      transform: translateX(-50%); background: #222; color: #ccc; padding: 4px 8px;
+      border-radius: 3px; font-size: 10px; white-space: nowrap; z-index: 10;
+      pointer-events: none; border: 1px solid #333;
+    }
+    .bar:hover .tip { display: block; }
+    .legend {
+      display: flex; gap: 16px; margin-top: 32px; font-size: 11px; color: #666;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
+    .empty-msg { color: #444; font-size: 12px; margin: 12px 0; }
+  </style>
+</head>
+<body>
+  <h1>Service Uptime</h1>
+
+  @if(cinemas.isEmpty && services.isEmpty && other.isEmpty) {
+    <p class="empty-msg">No data yet — bars will appear after the first scrape cycle.</p>
+  }
+
+  @if(cinemas.nonEmpty) {
+    <h2>Cinemas</h2>
+    @for(s <- cinemas) { @serviceRow(s) }
+  }
+
+  @if(services.nonEmpty) {
+    <h2>Enrichment Services</h2>
+    @for(s <- services) { @serviceRow(s) }
+  }
+
+  @if(other.nonEmpty) {
+    <h2>Other</h2>
+    @for(s <- other) { @serviceRow(s) }
+  }
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#2ecc40"></div> all ok</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#f0ad4e"></div> some failures</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#e74c3c"></div> all failed</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#161616; border:1px solid #333"></div> no data</div>
+  </div>
+</body>
+</html>
+
+@serviceRow(s: ServiceRow) = {
+  <div class="row">
+    <div class="name">@s.name</div>
+    <div class="bars">
+      @for(b <- s.bars) {
+        <div class="bar @b.status"><div class="tip">@b.tooltip</div></div>
+      }
+    </div>
+  </div>
+}

@@ -1,21 +1,22 @@
 package modules
 
 import clients.TmdbClient
-import controllers.{AuthController, HealthController, MovieController, MovieControllerService, UserStateController}
+import controllers.{AuthController, HealthController, MovieController, MovieControllerService, UptimeController, UserStateController}
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
-import services.{MongoConnection, ShowtimeCache, Stoppable}
+import services.{MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
 import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
 import services.cinemas._
 import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
 import services.movies._
 import services.users.{MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
-import tools.{Env, HttpFetch, RealHttpFetch}
+import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
 trait Wiring {
-  lazy val httoFetch: HttpFetch = new RealHttpFetch()
+  lazy val uptimeMonitor = new UptimeMonitor()
+  lazy val httoFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)
 
   // ── External API clients ──────────────────────────────────────────────────
   lazy val tmdbClient = new TmdbClient(httoFetch)
@@ -114,7 +115,7 @@ trait Wiring {
   lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────
-  lazy val showtimeCache = new ShowtimeCache(cinemaScrapers, eventBus, movieCache)
+  lazy val showtimeCache = new ShowtimeCache(cinemaScrapers, eventBus, movieCache, uptimeMonitor)
 
   def controllerComponents: ControllerComponents
   def environmentMode: Mode
@@ -153,6 +154,7 @@ trait Wiring {
   // ── Controllers ───────────────────────────────────────────────────────────
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, movieCache, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
+  lazy val uptimeController = new UptimeController(controllerComponents, uptimeMonitor)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, userRepo)
 
