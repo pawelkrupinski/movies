@@ -6,7 +6,7 @@ struct FilmCardView: View {
     /// already name the cinema, so cards in that layout drop the
     /// duplicate label — see `CinemaSectionedGridView`.
     var showCinemaHeaders: Bool = true
-    var collapsible: Bool = true
+    var truncatable: Bool = true
     @EnvironmentObject var prefs: UserPreferences
 
     var body: some View {
@@ -39,7 +39,7 @@ struct FilmCardView: View {
                         // of which row the last pill ended up on.
                         .padding(.bottom, 14)
                 }
-                ShowingsView(film: film, showCinemaHeaders: showCinemaHeaders, collapsible: collapsible)
+                ShowingsView(film: film, showCinemaHeaders: showCinemaHeaders, truncatable: truncatable)
             }
             .padding(12)
         }

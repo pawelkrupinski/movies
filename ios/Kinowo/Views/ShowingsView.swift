@@ -8,29 +8,18 @@ struct ShowingsView: View {
     /// to avoid duplication. Mirrors the web's `_filmShowings`
     /// `showCinemaHeaders` flag, which `_cinemaCards` flips to false.
     var showCinemaHeaders: Bool = true
-    /// When true, anything beyond `maxCollapsedLines` worth of
-    /// vertical content hides behind an expand toggle. Listing cards
-    /// (`FilmCardView`) pass true so a daily-for-two-weeks film
-    /// doesn't take a screen-and-a-half on the grid. The /film detail
-    /// screen leaves this false so it always shows the full schedule.
-    var collapsible: Bool = false
-    /// Soft cap on the visual height of the showings rail when
-    /// collapsed, counted in "lines": each day header is 1, each
-    /// cinema header is 1, and each row the pills wrap into is 1.
-    /// Pill rows are computed from the actual rendered pill widths
-    /// (variable by format tag — "IMAX 3D NAP" is far wider than
-    /// "2D" or no format at all) against the actual card content
-    /// width (derived from screen width, so a 13 mini packs fewer
-    /// pills per row than a 17 Pro Max). 13 keeps a typical Dziś
-    /// card under ~½ a screen height; lower further by passing in.
-    var maxCollapsedLines: Int = 13
-    @State private var isExpanded: Bool = false
+    /// When true, showtimes beyond `maxVisibleLines` are truncated and
+    /// a "… +N seansów" label appears at the bottom. Tapping the card
+    /// navigates to the film detail page (the whole card is a
+    /// NavigationLink), matching the web's "więcej" behavior.
+    var truncatable: Bool = false
+    var maxVisibleLines: Int = 13
 
     var body: some View {
         let allDays = film.showings
-        let (visibleDays, hiddenShowtimes) = collapsed(allDays)
-        let canCollapse = collapsible && hiddenShowtimes > 0
-        let days = (canCollapse && !isExpanded) ? visibleDays : allDays
+        let (visibleDays, hiddenShowtimes) = truncated(allDays)
+        let shouldTruncate = truncatable && hiddenShowtimes > 0
+        let days = shouldTruncate ? visibleDays : allDays
 
         VStack(alignment: .leading, spacing: 6) {
             ForEach(days, id: \.date) { day in
@@ -56,27 +45,13 @@ struct ShowingsView: View {
                     }
                 }
             }
-            if canCollapse {
-                expandToggleButton(hiddenShowtimes: hiddenShowtimes)
+            if shouldTruncate {
+                moreLabel(hiddenShowtimes: hiddenShowtimes)
             }
         }
     }
 
-    /// Walk the full day/cinema/showtime tree once, accumulating a
-    /// line-count estimate. Stop adding new cinemas the moment the
-    /// next one would push past `maxCollapsedLines`; everything beyond
-    /// counts toward `hidden`. Always truncates at cinema boundaries
-    /// (never mid-cinema) so the visible block never reads as half a
-    /// cinema's slots.
-    ///
-    /// If the truncation would only hide a few screenings
-    /// (≤ `minHiddenShowtimes`), skip it and return the full list
-    /// — tucking a 1- or 2-pill remainder behind a tap is more
-    /// friction than it's worth, even when those pills happen to
-    /// span multiple cinema labels (line-count would tick over the
-    /// threshold while the user still reads it as "just two more
-    /// seanse").
-    private func collapsed(_ allDays: [DayShowings]) -> (visible: [DayShowings], hidden: Int) {
+    private func truncated(_ allDays: [DayShowings]) -> (visible: [DayShowings], hidden: Int) {
         var lineCount = 0
         var visibleDays: [DayShowings] = []
         var hidden = 0
@@ -84,38 +59,29 @@ struct ShowingsView: View {
 
         for day in allDays {
             var keptCinemas: [CinemaShowings] = []
-            var dayLines = 1  // the date label itself
+            var dayLines = 1
             for cinema in day.cinemas {
                 let commonTokens = FormatTokenFilter.commonTokens(cinema)
                 let pillRows = Self.pillRowCount(cinema.showtimes, commonTokens: commonTokens, contentWidth: contentWidth)
-                let cinemaLines = 1 + pillRows  // cinema label + pill rows
-                if lineCount + dayLines + cinemaLines <= maxCollapsedLines {
+                let cinemaLines = 1 + pillRows
+                if lineCount + dayLines + cinemaLines <= maxVisibleLines {
                     keptCinemas.append(cinema)
                     dayLines += cinemaLines
                 } else {
                     hidden += cinema.showtimes.count
                 }
             }
-            if keptCinemas.isEmpty {
-                // The cap is already saturated; this whole day is
-                // hidden (its showtimes were already counted into
-                // `hidden` in the inner loop).
-                continue
-            }
+            if keptCinemas.isEmpty { continue }
             visibleDays.append(DayShowings(date: day.date, label: day.label, cinemas: keptCinemas))
             lineCount += dayLines
         }
 
-        // "+1 seans" / "+2 seanse" / "+3 seanse" toggles aren't worth
-        // a tap — render the whole list instead.
         if hidden <= minHiddenShowtimes {
             return (allDays, 0)
         }
         return (visibleDays, hidden)
     }
 
-    /// Don't bother collapsing when the truncation would only tuck
-    /// this many screenings or fewer behind the toggle.
     private let minHiddenShowtimes: Int = 3
 
     // MARK: – pill-row sizing
@@ -203,30 +169,19 @@ struct ShowingsView: View {
         }
     }
 
-    /// "… +N seansów" / "↑ zwiń" toggle sitting at the bottom of the
-    /// showings rail when the card overflows the line cap. Same blue
-    /// as the cinema label so it reads as part of the showings, not
-    /// chrome from elsewhere.
     @ViewBuilder
-    private func expandToggleButton(hiddenShowtimes: Int) -> some View {
+    private func moreLabel(hiddenShowtimes: Int) -> some View {
         let labelColor = Color(red: 0.40, green: 0.67, blue: 0.87)
-        Button {
-            withAnimation(.easeInOut(duration: 0.15)) { isExpanded.toggle() }
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: isExpanded ? "chevron.up" : "ellipsis")
-                    .font(.system(size: 9, weight: .semibold))
-                Text(isExpanded ? "zwiń" : "+\(hiddenShowtimes) \(showtimeNoun(hiddenShowtimes))")
-                    .font(.system(size: 11, weight: .medium))
-            }
-            .foregroundColor(labelColor)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            // Subtle dark fill so the toggle reads as a button, not
-            // floating text — same value as the showtime badge.
-            .background(Color.white.opacity(0.06), in: Capsule())
+        HStack(spacing: 4) {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 9, weight: .semibold))
+            Text("+\(hiddenShowtimes) \(showtimeNoun(hiddenShowtimes))")
+                .font(.system(size: 11, weight: .medium))
         }
-        .buttonStyle(.plain)
+        .foregroundColor(labelColor)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.white.opacity(0.06), in: Capsule())
         .padding(.top, 6)
     }
 
