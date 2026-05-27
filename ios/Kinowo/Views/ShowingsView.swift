@@ -40,13 +40,17 @@ struct ShowingsView: View {
                     .tracking(0.5)
                     .padding(.top, 4)
                 ForEach(day.cinemas, id: \.cinema) { cinema in
+                    let commonTokens = FormatTokenFilter.commonTokens(cinema)
                     VStack(alignment: .leading, spacing: 4) {
                         if showCinemaHeaders {
                             cinemaLabel(cinema)
                         }
                         FlowLayout(spacing: 4, lineSpacing: 4) {
                             ForEach(cinema.showtimes) { st in
-                                ShowtimeBadge(showtime: st)
+                                ShowtimeBadge(
+                                    showtime: st,
+                                    displayFormat: FormatTokenFilter.filter(st.format, removing: commonTokens)
+                                )
                             }
                         }
                     }
@@ -82,7 +86,8 @@ struct ShowingsView: View {
             var keptCinemas: [CinemaShowings] = []
             var dayLines = 1  // the date label itself
             for cinema in day.cinemas {
-                let pillRows = Self.pillRowCount(cinema.showtimes, contentWidth: contentWidth)
+                let commonTokens = FormatTokenFilter.commonTokens(cinema)
+                let pillRows = Self.pillRowCount(cinema.showtimes, commonTokens: commonTokens, contentWidth: contentWidth)
                 let cinemaLines = 1 + pillRows  // cinema label + pill rows
                 if lineCount + dayLines + cinemaLines <= maxCollapsedLines {
                     keptCinemas.append(cinema)
@@ -120,12 +125,12 @@ struct ShowingsView: View {
     /// new row when the next pill won't fit. Returns the row count
     /// that the on-screen layout will actually produce — no
     /// per-device special casing, just measurement.
-    private static func pillRowCount(_ showtimes: [Showtime], contentWidth: CGFloat) -> Int {
+    private static func pillRowCount(_ showtimes: [Showtime], commonTokens: Set<String> = [], contentWidth: CGFloat) -> Int {
         guard !showtimes.isEmpty else { return 0 }
         var rows = 1
         var rowWidth: CGFloat = 0
         for st in showtimes {
-            let w = pillWidth(for: st)
+            let w = pillWidth(for: st, commonTokens: commonTokens)
             if rowWidth == 0 {
                 rowWidth = w
             } else if rowWidth + pillGap + w <= contentWidth {
@@ -145,9 +150,10 @@ struct ShowingsView: View {
     /// `(NSString).size(withAttributes:)` returns the same width
     /// SwiftUI's Text uses, so the estimate tracks pill-by-pill
     /// reality (no average / no fudge).
-    private static func pillWidth(for st: Showtime) -> CGFloat {
+    private static func pillWidth(for st: Showtime, commonTokens: Set<String> = []) -> CGFloat {
         let timeWidth = textWidth(st.time, font: timeFont)
-        let trimmedFormat = st.format.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedFormat = FormatTokenFilter.filter(st.format, removing: commonTokens)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         let formatWidth: CGFloat = trimmedFormat.isEmpty
             ? 0
             : pillInternalGap + textWidth(trimmedFormat, font: formatFont)
@@ -238,9 +244,10 @@ struct ShowingsView: View {
 
 private struct ShowtimeBadge: View {
     let showtime: Showtime
+    var displayFormat: String = ""
 
     var body: some View {
-        let trimmedFormat = showtime.format.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedFormat = displayFormat.trimmingCharacters(in: .whitespacesAndNewlines)
 
         let body = HStack(spacing: 4) {
             Text(showtime.time)
