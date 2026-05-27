@@ -43,6 +43,7 @@
 		DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001B /* AccessibilityIdentifiers.swift */; };
 
 		DD00000000000000000022 /* RetryBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000022 /* RetryBackoff.swift */; };
+		DD00000000000000000036 /* FormatTokenFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000036 /* FormatTokenFilter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -93,6 +94,7 @@
 		CC0000000000000000001E /* FilterSheetUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterSheetUITests.swift; sourceTree = "<group>"; };
 
 		CC00000000000000000022 /* RetryBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryBackoff.swift; sourceTree = "<group>"; };
+		CC00000000000000000036 /* FormatTokenFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatTokenFilter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -205,6 +207,7 @@
 				CC0000000000000000000F /* FiltersBar.swift */,
 				CC00000000000000000011 /* FlowLayout.swift */,
 				CC00000000000000000019 /* FlowLayoutMath.swift */,
+				CC00000000000000000036 /* FormatTokenFilter.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -340,6 +343,7 @@
 				DD00000000000000000019 /* FlowLayoutMath.swift in Sources */,
 				DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */,
 				DD00000000000000000022 /* RetryBackoff.swift in Sources */,
+				DD00000000000000000036 /* FormatTokenFilter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
