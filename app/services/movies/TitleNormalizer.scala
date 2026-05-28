@@ -47,7 +47,8 @@ object TitleNormalizer {
     ("""(?i)^(?:Kino\s+bez\s+barier|""" +
      """Pokaz\s+sensorycznie\s+przyjazny|""" +
      """Filmowe\s+Poranki|""" +
-     """Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]):\s+""").r
+     """Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|""" +
+     """Plenerowe\s+Pa[łl]acowe):\s+""").r
   // Trailing accessibility tag — "(AD)", "(AD + CC)", "(AD + CC + PJM)" or
   // a truncated variant where the closing paren got chopped during display
   // clipping. AD = Audio Description, CC = Closed Captions, PJM = Polish
