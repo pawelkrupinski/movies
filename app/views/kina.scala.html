@@ -321,8 +321,11 @@
   // refresh keeps whatever the user picked.
   function toggleCinemaPill(cinema) {
     _kinaPinned = (_kinaPinned === cinema) ? null : cinema;
-    const url = _kinaPinned ? '/kina/' + encodeURIComponent(_kinaPinned) : '/kina';
-    history.replaceState(null, '', url);
+    // Preserve query string (e.g. `?date=tomorrow`) when rewriting the path —
+    // the date selector also lives in the URL and shouldn't get dropped when
+    // the user pins/unpins a cinema.
+    const path = _kinaPinned ? '/kina/' + encodeURIComponent(_kinaPinned) : '/kina';
+    history.replaceState(null, '', path + window.location.search + window.location.hash);
     buildCinemaPills();
     applyFilters();
   }

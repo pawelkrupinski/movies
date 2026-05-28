@@ -86,11 +86,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         }
       }
       server = new TestHttpServer({
-        case "/"                          => indexHtml
-        case "/kina"                      => renderKina(None)
+        // `/` and `/kina` accept arbitrary query strings (e.g. `?date=tomorrow`)
+        // — the real Play routes do too, and the day-selector ↔ URL tests need
+        // to boot the page with the param already in `location.search`.
+        case p if p == "/"     || p.startsWith("/?")     => indexHtml
+        case p if p == "/kina" || p.startsWith("/kina?") => renderKina(None)
         case p if p.startsWith("/kina/") =>
-          val raw    = URLDecoder.decode(p.stripPrefix("/kina/"), "UTF-8")
-          val pinned = cinemas.find(_ == raw)
+          // Strip optional query string before resolving the pinned cinema.
+          val rawWithQuery = p.stripPrefix("/kina/")
+          val raw          = URLDecoder.decode(rawWithQuery.takeWhile(_ != '?'), "UTF-8")
+          val pinned       = cinemas.find(_ == raw)
           renderKina(pinned)
         case p if p.startsWith("/film?title=") =>
           renderFilm(p.stripPrefix("/film?title="))
@@ -1043,6 +1048,58 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       anytime should be > 0
       today should be <= week
       week should be <= anytime
+    }
+  }
+
+  // ── Date filter ↔ URL round-trip ───────────────────────────────────────────
+  //
+  // `?date=` is the pasteable representation of the navbar's #date-filter:
+  // selecting a day must rewrite the URL (so the link survives a copy/paste),
+  // and opening a URL that already carries the param must seed the selector
+  // before `applyFilters()` runs.
+
+  "the date filter ↔ URL sync" should "add ?date= when a non-default day is selected" in {
+    onPath("/") { page =>
+      page.eval("document.getElementById('date-filter').value = 'tomorrow'; onDateChange()")
+      page.evalString("new URL(location.href).searchParams.get('date')") shouldBe "tomorrow"
+    }
+  }
+
+  it should "strip ?date= when the user returns to the 'today' default" in {
+    onPath("/?date=tomorrow") { page =>
+      page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      page.evalBool("new URL(location.href).searchParams.has('date')") shouldBe false
+    }
+  }
+
+  it should "apply ?date= on first paint so showtimes load pre-filtered" in {
+    onPath("/?date=anytime") { page =>
+      page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
+    }
+  }
+
+  it should "ignore an unrecognised ?date= value and keep the 'today' default" in {
+    onPath("/?date=bogus") { page =>
+      page.evalString("document.getElementById('date-filter').value") shouldBe "today"
+    }
+  }
+
+  it should "round-trip ?date= on /kina the same way" in {
+    onPath("/kina?date=week") { page =>
+      page.evalString("document.getElementById('date-filter').value") shouldBe "week"
+      page.eval("document.getElementById('date-filter').value = 'tomorrow'; onDateChange()")
+      page.evalString("new URL(location.href).searchParams.get('date')") shouldBe "tomorrow"
+      page.evalString("location.pathname") shouldBe "/kina"
+    }
+  }
+
+  it should "preserve ?date= when a /kina cinema pill is toggled" in {
+    onPath("/kina?date=tomorrow") { page =>
+      val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
+      clickPill(page, pinTarget)
+      page.evalString("new URL(location.href).searchParams.get('date')") shouldBe "tomorrow"
+      java.net.URLDecoder.decode(page.evalString("location.pathname"), "UTF-8") shouldBe ("/kina/" + pinTarget)
     }
   }
 

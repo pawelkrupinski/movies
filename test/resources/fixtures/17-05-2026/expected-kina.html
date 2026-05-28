@@ -119,7 +119,7 @@
   </div>
   <div class="d-flex align-items-stretch navbar-date" style="gap:2px">
     <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
-    <select id="date-filter" class="filter-select" aria-label="Filtruj według daty" onchange="applyFilters()">
+    <select id="date-filter" class="filter-select" aria-label="Filtruj według daty" onchange="onDateChange()">
       <option value="today">Dzisiaj</option>
       <option value="tomorrow">Jutro</option>
       <option value="week">Następne 7 dni</option>
@@ -36192,8 +36192,8 @@ row.appendChild(pill);
 }
 function toggleCinemaPill(cinema) {
 _kinaPinned = (_kinaPinned === cinema) ? null : cinema;
-const url = _kinaPinned ? '/kina/' + encodeURIComponent(_kinaPinned) : '/kina';
-history.replaceState(null, '', url);
+const path = _kinaPinned ? '/kina/' + encodeURIComponent(_kinaPinned) : '/kina';
+history.replaceState(null, '', path + window.location.search + window.location.hash);
 buildCinemaPills();
 applyFilters();
 }

@@ -778,7 +778,55 @@
   function stepDate(dir) {
     const sel  = document.getElementById('date-filter');
     const next = sel.selectedIndex + dir;
-    if (next >= 0 && next < sel.options.length) { sel.selectedIndex = next; applyFilters(); }
+    if (next >= 0 && next < sel.options.length) { sel.selectedIndex = next; onDateChange(); }
+  }
+
+  // Single entry point for "the day selector changed" — keeps the URL's
+  // `?date=` param in lock-step with the select before filtering. Used by
+  // the `<select onchange>` in `_navbar` and by `stepDate`'s arrow buttons.
+  function onDateChange() {
+    syncDateFilterToURL();
+    applyFilters();
+  }
+
+  // Write the current select value into the URL (`?date=tomorrow`, `?date=2026-05-30`,
+  // …) so the page can be reopened in the same state. `today` is the page default;
+  // omit the param in that case to keep the unshared/just-arrived URL clean.
+  // `replaceState` matches the cinema-pin convention on /kina and keeps the
+  // back-button history free of filter churn.
+  function syncDateFilterToURL() {
+    const sel = document.getElementById('date-filter');
+    if (!sel) return;  // /ulubione: no date filter in the navbar.
+    const url = new URL(window.location.href);
+    if (sel.value === 'today') url.searchParams.delete('date');
+    else url.searchParams.set('date', sel.value);
+    history.replaceState(null, '', url.pathname + url.search + url.hash);
+  }
+
+  // Boot path: if the URL carries `?date=`, set the select to it before
+  // `applyFilters` runs, so the page renders pre-filtered. Accepts the four
+  // named presets and any ISO `YYYY-MM-DD`; an ISO date outside the
+  // `populateDayOptions` range (today+2..today+6) gets an option added on the
+  // fly so the select reflects the chosen value rather than silently snapping
+  // back to "today".
+  function applyDateFilterFromURL() {
+    const sel = document.getElementById('date-filter');
+    if (!sel) return;
+    const val = new URLSearchParams(window.location.search).get('date');
+    if (!val) return;
+    const ALLOWED = ['today', 'tomorrow', 'week', 'anytime'];
+    const isIso = /^\d{4}-\d{2}-\d{2}$/.test(val);
+    if (!ALLOWED.includes(val) && !isIso) return;
+    if (isIso && !Array.from(sel.options).some(o => o.value === val)) {
+      const opt = document.createElement('option');
+      opt.value = val;
+      const [y, mo, da] = val.split('-').map(Number);
+      const dow = new Date(y, mo - 1, da).getDay();
+      opt.textContent = DAY2[dow] + ' ' + da + ' ' + MONTHS[mo - 1];
+      const weekOpt = sel.querySelector('option[value="week"]');
+      if (weekOpt) sel.insertBefore(opt, weekOpt); else sel.appendChild(opt);
+    }
+    sel.value = val;
   }
 
   function squareDateNavBtns() {
@@ -938,6 +986,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     buildIndex();
     populateDayOptions();
+    applyDateFilterFromURL();
     squareDateNavBtns();
     updateNavbar();
     // Cinema picker lives in the Filtry dropdown now — populate the list

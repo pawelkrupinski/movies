@@ -11,18 +11,19 @@ export async function pinDateFilterAnytime(page: Page): Promise<void> {
 }
 
 /**
- * Drive the `#date-filter` `<select>` and trigger the page's inline
- * `applyFilters()` so the visible-cards set reflects the new value
- * before assertions run. Used by every spec that needs deterministic
- * showtime visibility — `pinDateFilterAnytime` is just this with
- * `value = 'anytime'`.
+ * Drive the `#date-filter` `<select>` and trigger the page's
+ * `onDateChange()` so the visible-cards set AND the URL's `?date=`
+ * param reflect the new value before assertions run. Used by every
+ * spec that needs deterministic showtime visibility —
+ * `pinDateFilterAnytime` is just this with `value = 'anytime'`.
  */
 export async function setDateFilter(page: Page, value: string): Promise<void> {
   await page.evaluate((v) => {
     const sel = document.getElementById('date-filter') as HTMLSelectElement | null;
     if (sel) {
       sel.value = v;
-      (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.();
+      const g = globalThis as unknown as { onDateChange?: () => void; applyFilters?: () => void };
+      (g.onDateChange ?? g.applyFilters)?.();
     }
   }, value);
 }
