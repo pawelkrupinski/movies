@@ -595,50 +595,8 @@ class CaffeineMovieCache(
       .filterNot(nextKeys.contains)
       .foreach(positive.invalidate)
     if (rows.nonEmpty) logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo.")
-    dedupeOrphanYearless()
     touch()
     rows.size
-  }
-
-  /** Clean up the duplicate-row residue from the asyncHydrate vs. first-scrape
-   *  race that shipped briefly: a scrape that landed before hydrate sometimes
-   *  created a year-less twin of the Mongo-canonical row (cinema feed dropped
-   *  releaseYear, `redirectToExistingVariant` had no candidates to fold onto).
-   *  The runtime fix (`hydrationDone` latch) prevents new instances; this
-   *  pass merges + removes the rows that already made it to Mongo.
-   *
-   *  Conservative: only fires when the year-less row carries **no** TMDB
-   *  enrichment (tmdbId / imdbId both empty). A genuinely orphan film without
-   *  a release year that happens to share a normalised title with a sequel
-   *  is left alone. */
-  private def dedupeOrphanYearless(): Unit = {
-    import scala.jdk.CollectionConverters._
-    val all = positive.asMap().asScala.toMap
-    val byNormTitle = all.groupBy { case (k, _) => MovieService.normalize(k.cleanTitle) }
-    byNormTitle.values.foreach { group =>
-      if (group.size > 1) {
-        val (yearless, withYear) = group.partition(_._1.year.isEmpty)
-        val mergeable = yearless.filter { case (_, r) => r.tmdbId.isEmpty && r.imdbId.isEmpty }
-        if (mergeable.nonEmpty && withYear.nonEmpty) {
-          // Prefer a canonical that's been TMDB-resolved (richer enrichment).
-          val canonical = withYear.toSeq.maxBy { case (_, r) => r.tmdbId.isDefined }
-          withTitleLock(canonical._1.cleanTitle) {
-            val mergedData = mergeable.foldLeft(canonical._2.data) {
-              case (acc, (_, r)) => r.data ++ acc  // canonical wins for same-cinema collisions
-            }
-            val merged = canonical._2.copy(data = mergedData)
-            positive.put(canonical._1, merged)
-            mergeable.foreach { case (k, _) =>
-              positive.invalidate(k)
-              repo.delete(k.cleanTitle, k.year)
-            }
-            repo.upsert(canonical._1.cleanTitle, canonical._1.year, merged)
-          }
-          logger.warn(s"dedupe: merged ${mergeable.size} year-less row(s) into ${canonical._1} " +
-                      s"('${canonical._1.cleanTitle}') — async-hydrate-race residue.")
-        }
-      }
-    }
   }
 
   // ── Periodic Mongo → cache sync ───────────────────────────────────────────
