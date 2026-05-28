@@ -1167,7 +1167,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "unchecking a country" should "encode the unchecked list as ?country=" in {
+  "unchecking a country" should "leave ?country= listing the still-checked countries (inclusion set)" in {
     onPath("/") { page =>
       clearLocalStorage(page)
       val firstCountry = page.evalString(
@@ -1177,30 +1177,38 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval(
         "document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').click()"
       )
-      val raw = page.evalString("new URL(location.href).searchParams.get('country')")
-      java.net.URLDecoder.decode(raw, "UTF-8") shouldBe firstCountry
+      val included = page.evalString(
+        "new URL(location.href).searchParams.getAll('country').join('|')"
+      ).split('|').toSet
+      included should not contain firstCountry
+      included.size should be > 0
     }
   }
 
-  "?country= on boot" should "uncheck exactly the named countries" in {
+  "?country= on boot" should "check exactly the named countries (inclusion set)" in {
     onPath("/") { page =>
       clearLocalStorage(page)
-      // Pick a country known to be in the corpus, then drive a second tab via
-      // the URL-derived state and assert the matching checkbox is off.
+      // Pick one country known to be in the corpus, then drive a second tab
+      // via the URL-derived state and assert ONLY that country is checked.
       val firstCountry = page.evalString(
         "document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )
       onPath("/?country=" + java.net.URLEncoder.encode(firstCountry, "UTF-8")) { page2 =>
-        val checked = page2.evalBool(
+        val firstChecked = page2.evalBool(
           "[...document.querySelectorAll('#country-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
             ".find(cb => cb.value === " + jsString(firstCountry) + ").checked"
         )
-        checked shouldBe false
+        firstChecked shouldBe true
+        val anyOtherChecked = page2.evalBool(
+          "[...document.querySelectorAll('#country-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
+            ".some(cb => cb.value !== " + jsString(firstCountry) + " && cb.checked)"
+        )
+        anyOtherChecked shouldBe false
       }
     }
   }
 
-  "disabling a cinema in Filtry" should "encode the disabled list as ?cinema=" in {
+  "disabling a cinema in Filtry" should "leave ?cinema= listing the still-enabled cinemas (inclusion set)" in {
     onPath("/") { page =>
       clearLocalStorage(page)
       // The cinema-picker checkbox has no `value` attribute (the cinema name
@@ -1212,16 +1220,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           "  return cb.parentElement.textContent.trim(); })()"
       )
       cinema should not be ""
-      val raw = page.evalString("new URL(location.href).searchParams.get('cinema')")
-      // The label uses CINEMA_PILLS short names; the URL carries the canonical
-      // disabledCinemas value (the original cinema displayName). Look it up via
-      // the same mapping rather than trusting label-to-name equality.
-      val canonical = page.evalString(
+      val enabled = page.evalString(
+        "new URL(location.href).searchParams.getAll('cinema').join('|')"
+      ).split('|').toSet
+      // The URL carries the canonical cinema displayNames of every enabled
+      // cinema (i.e. ALL_CINEMAS minus the one just disabled). Look up what
+      // landed in disabledCinemas to find the canonical for the one we toggled.
+      val disabled = page.evalString(
         "(() => { const dis = JSON.parse(localStorage.getItem('disabledCinemas') || '[]');" +
           "  return dis[0] || ''; })()"
       )
-      java.net.URLDecoder.decode(raw, "UTF-8") shouldBe canonical
-      cinema should not be ""
+      enabled should not contain disabled
+      enabled.size should be > 0
       // Reset the LS so neighbouring tests start with the default all-enabled
       // cinema set. localStorage persists across tabs inside the same Chrome
       // session — without this, "Empty state" et al. would silently filter
@@ -1349,7 +1359,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "round-trip the unchecked rooms through ?room=" in {
+  it should "leave the still-checked (cinema|room) pairs in ?room= (inclusion set)" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
       val targetPair = page.evalString(
@@ -1358,23 +1368,31 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval(
         "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').click()"
       )
-      val raw = page.evalString("new URL(location.href).searchParams.get('room')")
-      java.net.URLDecoder.decode(raw, "UTF-8") shouldBe targetPair
+      val included = page.evalString(
+        "new URL(location.href).searchParams.getAll('room').join('||')"
+      ).split("\\|\\|").toSet
+      included should not contain targetPair
+      included.size should be > 0
     }
   }
 
-  it should "apply ?room= to uncheck exactly the named (cinema|room) pair on boot" in {
+  it should "apply ?room= to check ONLY the named (cinema|room) pair on boot (inclusion set)" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
       val targetPair = page.evalString(
         "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )
       onPath("/?date=anytime&room=" + java.net.URLEncoder.encode(targetPair, "UTF-8")) { page2 =>
-        val checked = page2.evalBool(
+        val targetChecked = page2.evalBool(
           "[...document.querySelectorAll('#room-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
             ".find(cb => cb.value === " + jsString(targetPair) + ").checked"
         )
-        checked shouldBe false
+        targetChecked shouldBe true
+        val anyOtherChecked = page2.evalBool(
+          "[...document.querySelectorAll('#room-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
+            ".some(cb => cb.value !== " + jsString(targetPair) + " && cb.checked)"
+        )
+        anyOtherChecked shouldBe false
       }
     }
   }

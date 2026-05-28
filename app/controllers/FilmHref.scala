@@ -10,5 +10,10 @@ import java.nio.charset.StandardCharsets
  *  with `URLEncoder.encode(title, "UTF-8")` repeated verbatim. */
 object FilmHref {
   def apply(title: String): String =
-    s"/film?title=${URLEncoder.encode(title, StandardCharsets.UTF_8)}"
+    // `URLEncoder.encode` is form-urlencoded (spaces → `+`). Browsers accept
+    // both in query strings, but some link-preview scrapers (Facebook's
+    // among them) flag `+` as "URL malformed" and refuse to follow. Swap to
+    // the RFC 3986 form (`%20`) so the canonical URL we emit as og:url and
+    // every `<a href>` in the app round-trips cleanly through every crawler.
+    s"/film?title=${URLEncoder.encode(title, StandardCharsets.UTF_8).replace("+", "%20")}"
 }

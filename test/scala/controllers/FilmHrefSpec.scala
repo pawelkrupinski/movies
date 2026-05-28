@@ -10,12 +10,14 @@ class FilmHrefSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "encode spaces, colons, and diacritics so the link round-trips" in {
-    // Spaces become '+' (form-encoding); colon → %3A; UTF-8 multi-byte
-    // diacritics → their %xx %yy pair.
-    FilmHref("Mandalorian i Grogu") shouldBe "/film?title=Mandalorian+i+Grogu"
+    // Spaces become %20 (RFC 3986); colon → %3A; UTF-8 multi-byte
+    // diacritics → their %xx %yy pair. We post-process the URLEncoder output
+    // to swap `+` → `%20` because some link-preview scrapers (Facebook)
+    // reject `+` for spaces as a malformed URL.
+    FilmHref("Mandalorian i Grogu") shouldBe "/film?title=Mandalorian%20i%20Grogu"
     FilmHref("Gwiezdne Wojny: Mandalorian i Grogu") shouldBe
-      "/film?title=Gwiezdne+Wojny%3A+Mandalorian+i+Grogu"
+      "/film?title=Gwiezdne%20Wojny%3A%20Mandalorian%20i%20Grogu"
     FilmHref("Diabeł ubiera się u Prady 2") shouldBe
-      "/film?title=Diabe%C5%82+ubiera+si%C4%99+u+Prady+2"
+      "/film?title=Diabe%C5%82%20ubiera%20si%C4%99%20u%20Prady%202"
   }
 }

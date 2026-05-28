@@ -959,18 +959,19 @@
   //   lang    — format-lang radio (NAP / DUB)
   //   imax    — format-imax checkbox ("1" when on)
   //   from    — from-hour:minute composite (HH:MM)
-  //   country, director, cast, room — comma-list of UNCHECKED items
-  //                                   (smaller set wins; encoded per value)
-  //   cinema  — comma-list of disabled cinemas (LS-backed, /-only; /kina
-  //             uses its URL-path pin instead)
-
-  function _encodeListParam(items) {
-    return items.map(encodeURIComponent).join(',');
-  }
-  function _decodeListParam(value) {
-    if (!value) return [];
-    return value.split(',').map(decodeURIComponent);
-  }
+  //   country, director, cast, room — repeated `?key=value` entries listing the
+  //             CHECKED items (the inclusion set). Omitted when every box is
+  //             ticked — the no-filter default → empty URL. Previously stored
+  //             UNCHECKED items, which made navigating onto /kina/<one cinema>
+  //             carry the rooms of every other cinema into the URL.
+  //   cinema  — same inclusion semantics: enabled cinemas (LS-backed; /-only,
+  //             /kina uses its URL-path pin instead).
+  //
+  // Append-per-value (not a comma-joined string) so the browser does exactly
+  // one round of percent-encoding — the previous shape ran `encodeURIComponent`
+  // by hand and then `URLSearchParams.set` encoded the result a second time
+  // (rooms like "Cinema City Kinepolis|Sala 1" ended up as
+  // `Cinema%2520City%2520Kinepolis%257CSala%25201`).
 
   function syncFiltersToURL() {
     const url = new URL(window.location.href);
@@ -1002,18 +1003,24 @@
     }
 
     ['country', 'director', 'cast', 'room'].forEach(key => {
+      p.delete(key);
       const list = document.getElementById(key + '-list');
-      if (!list) { p.delete(key); return; }
-      const unchecked = [...list.querySelectorAll('input[type="checkbox"]:not(.submenu-all):not(:checked)')]
-        .map(cb => cb.value);
-      setOrDel(key, _encodeListParam(unchecked));
+      if (!list) return;
+      const boxes = [...list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)')];
+      const checked = boxes.filter(cb => cb.checked).map(cb => cb.value);
+      if (checked.length === boxes.length) return;  // all-on default → empty URL
+      checked.forEach(v => p.append(key, v));
     });
 
     // Cinema filter only lives in Filtry on / (the /kina page surfaces the
     // same axis as the URL-path pin and ignores `disabledCinemas`). Gate the
     // param on the picker's presence so /kina URLs stay clean.
     if (document.getElementById('cinema-list')) {
-      setOrDel('cinema', _encodeListParam(getDisabledCinemas()));
+      p.delete('cinema');
+      const disabled = getDisabledCinemas();
+      if (disabled.length > 0) {
+        ALL_CINEMAS.filter(c => !disabled.includes(c)).forEach(v => p.append('cinema', v));
+      }
     }
 
     history.replaceState(null, '', url.pathname + url.search + url.hash);
@@ -1069,13 +1076,18 @@
       if (mSel) mSel.value = String(parseInt(m, 10));
     }
 
+    // URL values are the INCLUSION set (checked items). Empty/absent → all
+    // checked (the no-filter default, no-op). Tolerate legacy single-value
+    // comma-lists by flattening on `,` so an old shared link still narrows
+    // down rather than dropping into a single nonexistent value.
     ['country', 'director', 'cast', 'room'].forEach(key => {
-      const excluded = new Set(_decodeListParam(p.get(key)));
-      if (excluded.size === 0) return;
+      const checked = p.getAll(key).flatMap(v => v.split(','));
+      if (checked.length === 0) return;
       const list = document.getElementById(key + '-list');
       if (!list) return;
+      const checkedSet = new Set(checked);
       list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(cb => {
-        if (excluded.has(cb.value)) cb.checked = false;
+        cb.checked = checkedSet.has(cb.value);
       });
       updateSubmenuCount(key);
       // Room is the two-level submenu — refresh each cinema's "x/y" badge so
@@ -1086,13 +1098,13 @@
       }
     });
 
-    // Cinema filter: write the URL list into localStorage so the cinema-panel
-    // checkboxes (and the Filtry button label) reflect it on first render.
-    // Same write-through semantics the user gets when ticking a box —
-    // pasting a `?cinema=` link is the equivalent of toggling those cinemas
-    // off in Filtry. /kina has no `#cinema-list`, so this branch no-ops there.
+    // Cinema filter: write the URL inclusion list into localStorage so the
+    // cinema-panel checkboxes (and the Filtry button label) reflect it on
+    // first render. The internal LS shape still stores DISABLED cinemas, so
+    // invert. /kina has no `#cinema-list`, so this branch no-ops there.
     if (document.getElementById('cinema-list') && p.has('cinema')) {
-      setDisabledCinemas(_decodeListParam(p.get('cinema')));
+      const enabled = p.getAll('cinema').flatMap(v => v.split(','));
+      setDisabledCinemas(ALL_CINEMAS.filter(c => !enabled.includes(c)));
       buildCinemaPanel();
     }
 

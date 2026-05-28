@@ -20,8 +20,14 @@
   <meta property="og:type"        content="video.movie">
   <meta property="og:url"         content="@canonicalUrl">
   <meta property="og:site_name"   content="Repertuar kinowy Poznań">
+  @* Route the poster through PosterProxy so HTTP-only origins (Kino
+     Bułgarska 19) become HTTPS — Facebook silently drops mixed-content
+     og:images, leaving the share preview imageless. The proxy also caps
+     megabyte-scale poster masters at 480×720, which keeps the scrape
+     fast and bounds the bytes a slow client downloads to render the
+     preview. *@
   @film.posterUrl match {
-    case Some(url) => { <meta property="og:image" content="@url"> }
+    case Some(url) => { <meta property="og:image" content="@tools.PosterProxy.proxy(url)"> }
     case None      => {}
   }
   @if(ogDescription.nonEmpty) { <meta property="og:description" content="@ogDescription"> }
@@ -31,7 +37,7 @@
   <meta name="twitter:title" content="@film.movie.title">
   @if(ogDescription.nonEmpty) { <meta name="twitter:description" content="@ogDescription"> }
   @film.posterUrl match {
-    case Some(url) => { <meta name="twitter:image" content="@url"> }
+    case Some(url) => { <meta name="twitter:image" content="@tools.PosterProxy.proxy(url)"> }
     case None      => {}
   }
 
