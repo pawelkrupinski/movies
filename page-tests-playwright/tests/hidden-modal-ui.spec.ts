@@ -13,7 +13,13 @@ test.describe('hidden films modal UI', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await setLocalStorageJson(page, 'hiddenFilms', ['Avatar', 'Cars']);
-    await page.reload();
+    // `reload()` defaults to waiting for `load` — that needs every poster
+    // (~190 cards, each routed through `images.weserv.nl`) to finish, which
+    // on the CI webkit-iphone-13 runner regularly blows past the 30s test
+    // timeout. We only need the page's `DOMContentLoaded`-bound init to
+    // run so `updateNavbar()` picks up the localStorage we just set —
+    // image fetches are irrelevant to anything this spec asserts.
+    await page.reload({ waitUntil: 'domcontentloaded' });
   });
 
   test('the Ukryte filmy row opens the modal + the count badge reflects the set size', async ({ page }) => {
