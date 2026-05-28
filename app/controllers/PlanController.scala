@@ -12,12 +12,18 @@ import java.time.format.DateTimeFormatter
 // scheduler. Flat by design — the client builds movie / cinema / day
 // indexes on the fly because the filter axes interact and a server-side
 // pre-grouping would just have to be re-flattened on every toggle.
+//
+// `format` carries the same token list `_filmShowings` writes onto each
+// `<span class="badge-time" data-format>` — the picker / scheduler use it
+// to honour the navbar's Wymiar/Wersja/IMAX filters without re-deriving
+// from the page DOM.
 case class PlanShowing(
   movie:  String,
   cinema: String,
   room:   Option[String],
   date:   String,
-  time:   String
+  time:   String,
+  format: Seq[String]
 )
 
 object PlanShowing {
@@ -88,7 +94,8 @@ object PlanController {
               cinema = cs.cinema.displayName,
               room   = st.room.map(_.trim).filter(_.nonEmpty),
               date   = date.format(DateFmt),
-              time   = st.dateTime.format(TimeFmt)
+              time   = st.dateTime.format(TimeFmt),
+              format = st.format
             )
           }
         }

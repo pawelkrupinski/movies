@@ -1,6 +1,6 @@
 @import models.{Movie, MovieRecord}
 @import controllers.FilmHref
-@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord])
+@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord], director: Seq[String], cast: Seq[String])
 @*
    Picker card on /plan. Same visual top as `_movieCard` (poster +
    title link + runtime/year pills + rating badges) but:
@@ -9,12 +9,18 @@
      - the class is `plan-card` (not `card`) so the shared.js
        document-level card-click handler — which navigates `.card`
        clicks to `/film` — doesn't fire;
-     - no hide button (the picker is the opposite axis from "Ukryj");
      - the title link still opens `/film` as on every other page.
+
+   `data-countries|director|cast` mirror `_filmCards` so the navbar's
+   Filtry → Kraj/Reż./Obsada panels populate from the picker grid and
+   `applyFilters` can narrow it the same way it narrows / and /kina.
+   The `.hide-btn` reuses shared.js's hide flow (the click handler
+   reads `.closest('[data-title]')`, which lands on this `.col`).
 *@
-<div class="col plan-card-col" data-title="@movie.title">
+<div class="col plan-card-col" data-title="@movie.title" data-countries="@movie.countries.mkString("|")"@if(director.nonEmpty){ data-director="@director.mkString(", ")"}@if(cast.nonEmpty){ data-cast="@cast.mkString(", ")"}>
   <div class="plan-card" data-title="@movie.title">
     <div class="poster-wrap">
+      <button type="button" class="hide-btn" title="Ukryj film">✕</button>
       @_moviePoster(movie, posterUrl, enrichment)
       <span class="plan-check" aria-hidden="true">✓</span>
     </div>

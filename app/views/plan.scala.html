@@ -49,17 +49,6 @@
     }
     .cinema-pill.active { background: #3a3a6e; color: #fff; border-color: #3a3a6e; }
 
-    /* Search input for the cards grid below. */
-    .movie-search {
-      width: 100%; max-width: 320px;
-      padding: .35rem .6rem;
-      margin-bottom: .6rem;
-      border-radius: 6px;
-      border: 1px solid #3a3a6e;
-      background: #11113a;
-      color: #ddd;
-    }
-
     /* Picker card grid. Reuses the `_movieCard` visual top via
        `_planCard` so each entry looks like a / homepage card (poster +
        title + runtime/year + ratings) minus showings. Clicks anywhere
@@ -157,11 +146,10 @@
 
   <section class="plan-section">
     <h5>Filmy</h5>
-    <p class="help">Kliknij plakat, aby dodać film do planu. Tytuł otwiera stronę filmu.</p>
-    <input type="search" class="movie-search" id="movie-search" placeholder="Szukaj filmu…" oninput="filterPlanMovies()">
+    <p class="help">Kliknij plakat, aby dodać film do planu. Tytuł otwiera stronę filmu. Filtry z paska nawigacji (kraj, reżyser, obsada, format, godzina, sale) zawężają listę.</p>
     <div id="plan-movies-row" class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6">
       @for(film <- data.films) {
-        @_planCard(film.movie, film.posterUrl, film.enrichment)
+        @_planCard(film.movie, film.posterUrl, film.enrichment, film.director, film.cast)
       }
     </div>
   </section>
@@ -233,6 +221,12 @@
     if (disabled.has(cinema)) disabled.delete(cinema); else disabled.add(cinema);
     setDisabledCinemas([...disabled].sort());
     buildPlanCinemaPills();
+    // The Filtry → Kina checkboxes share state via `disabledCinemas` but
+    // their `checked` attributes are only set when `buildCinemaPanel`
+    // runs. Rebuild so a toggle from the pill row reflects in the panel
+    // immediately, and the Filtry pill label's "kina N/M" count is fresh.
+    buildCinemaPanel();
+    updateFormatBtn();
     refreshRoomsVisibility();
     renderPlan();
   }
@@ -273,20 +267,13 @@
     renderPlan();
   }
 
-  function filterPlanMovies() {
-    const q = (document.getElementById('movie-search').value || '').trim().toLowerCase();
-    document.querySelectorAll('.plan-card-col').forEach(col => {
-      const t = (col.dataset.title || '').toLowerCase();
-      col.style.display = (!q || t.includes(q)) ? '' : 'none';
-    });
-  }
-
-  // Delegate clicks at the document level. The title `<a>` and any
-  // rating-badge link fall through to the browser (those open the
-  // film / external rating page). Everything else on the card toggles
-  // the selection.
+  // Delegate clicks at the document level. The title `<a>`, any
+  // rating-badge link, and the per-card `<button>`s (hide-btn) fall
+  // through (shared.js handles `.hide-btn`; native nav handles links).
+  // Everything else on the card toggles the selection.
   document.addEventListener('click', e => {
-    if (e.target.closest('a')) return;
+    if (!(e.target instanceof Element)) return;
+    if (e.target.closest('a, button')) return;
     const card = e.target.closest('.plan-card');
     if (card) togglePlanMovie(card);
   });
@@ -322,17 +309,23 @@
     return d.getFullYear() + '-' + m + '-' + day;
   }
 
-  // Build a plan from the current localStorage state:
-  //   1. Filter SHOWINGS to the user's allowed movies/cinemas/rooms.
-  //   2. Sort selected movies by scarcity (fewest distinct days first).
-  //   3. Walk in scarcity order, assigning each movie its earliest
-  //      candidate day that isn't yet taken. One movie per day cap.
-  //   4. Collect per-movie limitation notes (single-cinema, last-day,
-  //      no-showings, day-collision).
-  function buildPlan() {
-    const selected = new Set(getSelectedMovies());
+  // Predicate matching a single SHOWING against every active navbar /
+  // localStorage filter axis (disabled cinemas, plan-side favourite rooms,
+  // navbar Wymiar/Wersja/IMAX, Od godziny, Filtry → Sale). Returns true
+  // when the showing survives every filter. Built once per render so the
+  // picker-grid pass and the scheduler share an identical view of what's
+  // "available right now" — anything hidden in the picker can't sneak into
+  // a schedule via stale per-movie state.
+  function buildShowingFilter() {
     const disabled = new Set(getDisabledCinemas());
     const favRooms = getFavouriteRooms();
+    const fmtTokens = getFormatFilter();
+    const hasFmt = fmtTokens.length > 0;
+    const fromMin = getFromMinutes();
+    const hasFrom = fromMin !== null;
+    const navRoomList = getSubmenuFilter('room');
+    const hasNavRoom = navRoomList !== null;
+    const navRoomSet = hasNavRoom ? new Set(navRoomList) : null;
 
     // Per-cinema favourite room set: only enforce when the user has
     // picked at least one room for THAT cinema. Other cinemas keep
@@ -349,8 +342,7 @@
 
     const today = todayKey();
 
-    const allowed = SHOWINGS.filter(s => {
-      if (!selected.has(s.movie)) return false;
+    return s => {
       if (disabled.has(s.cinema)) return false;
       if (s.date < today) return false;
       const required = favByCinema.get(s.cinema);
@@ -360,14 +352,92 @@
         // user picks any preferred room there.
         if (s.room && !required.has(s.room)) return false;
       }
+      if (hasNavRoom) {
+        // Navbar Sale is an include-list of `Cinema|Room` keys. A showing
+        // with no room can't match any entry → drops out, matching the
+        // grid-page behaviour.
+        if (!s.room) return false;
+        if (!navRoomSet.has(s.cinema + '|' + s.room)) return false;
+      }
+      if (hasFmt) {
+        const fset = s.format || [];
+        for (let i = 0; i < fmtTokens.length; i++) {
+          if (fset.indexOf(fmtTokens[i]) === -1) return false;
+        }
+      }
+      if (hasFrom) {
+        const colon = s.time.indexOf(':');
+        const tMin = colon > 0
+          ? parseInt(s.time.slice(0, colon), 10) * 60 + parseInt(s.time.slice(colon + 1), 10)
+          : -1;
+        if (tMin < 0 || tMin < fromMin) return false;
+      }
       return true;
+    };
+  }
+
+  // Hide/show picker cards based on hiddenFilms + the country/director/cast
+  // submenus + whether the movie has any showing surviving `buildShowingFilter`.
+  // Mirrors the / page's behaviour so the navbar's Filtry pill labels behave
+  // identically on /plan.
+  function filterPlanCards() {
+    const hidden = new Set(getHidden());
+    const countryFilter  = getCountryFilter();
+    const directorFilter = getDirectorFilter();
+    const castFilter     = getCastFilter();
+    const showingOk = buildShowingFilter();
+
+    // Bucket allowed showings per movie once — avoids a SHOWINGS rescan
+    // per card. Same data feeds the picker visibility pass below and the
+    // scheduler's per-movie candidate lists.
+    const allowedByMovie = new Map();
+    for (const s of SHOWINGS) {
+      if (!showingOk(s)) continue;
+      let bucket = allowedByMovie.get(s.movie);
+      if (!bucket) { bucket = []; allowedByMovie.set(s.movie, bucket); }
+      bucket.push(s);
+    }
+
+    document.querySelectorAll('.plan-card-col').forEach(col => {
+      const title = col.dataset.title || '';
+      if (hidden.has(title)) { col.style.display = 'none'; return; }
+      if (countryFilter && !countryFilter.some(c => (col.dataset.countries || '').split('|').includes(c))) {
+        col.style.display = 'none'; return;
+      }
+      const directors = (col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (directorFilter && !directorFilter.some(d => directors.includes(d))) {
+        col.style.display = 'none'; return;
+      }
+      const castList = (col.dataset.cast || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (castFilter && !castFilter.some(a => castList.includes(a))) {
+        col.style.display = 'none'; return;
+      }
+      if (!allowedByMovie.has(title)) { col.style.display = 'none'; return; }
+      col.style.display = '';
     });
 
+    return allowedByMovie;
+  }
+
+  // Build a plan from the current localStorage state:
+  //   1. Filter SHOWINGS to the user's allowed movies/cinemas/rooms.
+  //   2. Sort selected movies by scarcity (fewest distinct days first).
+  //   3. Walk in scarcity order, assigning each movie its earliest
+  //      candidate day that isn't yet taken. One movie per day cap.
+  //   4. Collect per-movie limitation notes (single-cinema, last-day,
+  //      no-showings, day-collision).
+  function buildPlan(allowedByMovie) {
+    const selected = new Set(getSelectedMovies());
+    const hidden = new Set(getHidden());
+    const today = todayKey();
+
+    // A hidden movie can't survive into a schedule — `selectedMovies`
+    // persists per-device, so a stale pick from before the hide would
+    // otherwise reappear in the proposed plan.
+    selected.forEach(m => { if (hidden.has(m)) selected.delete(m); });
+
     const perMovie = new Map();
-    selected.forEach(m => perMovie.set(m, []));
-    allowed.forEach(s => {
-      if (perMovie.has(s.movie)) perMovie.get(s.movie).push(s);
-    });
+    selected.forEach(m => perMovie.set(m, (allowedByMovie.get(m) || []).slice()));
     perMovie.forEach(arr => arr.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)));
 
     const distinctDays = m => new Set(perMovie.get(m).map(s => s.date)).size;
@@ -424,7 +494,12 @@
   }
 
   function renderPlan() {
-    const plan       = buildPlan();
+    // One filter pass per render: visibly hides cards whose movie has no
+    // surviving showing, AND seeds the per-movie candidate map the
+    // scheduler reads — so the proposed plan can never schedule a movie
+    // the picker just hid (off-cinema, off-room, off-format, etc.).
+    const allowedByMovie = filterPlanCards();
+    const plan       = buildPlan(allowedByMovie);
     const daysEl     = document.getElementById('plan-days');
     const summaryEl  = document.getElementById('plan-summary');
     const limitsEl   = document.getElementById('plan-limits');
@@ -480,21 +555,24 @@
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   // shared.js calls `applyFilters()` at boot AND at the end of
-  // `bootMergeFromServer()`. Wrapping it here means /plan re-renders both
-  // on initial paint and after the server-side state has been merged in
-  // (so a user logging in on a fresh device sees their picks materialise
-  // without a manual refresh). `applyFilters` is a sloppy-mode top-level
-  // function declaration in shared.js, so the reassignment lands on the
-  // same global binding both call sites already see.
-  const _origApplyFilters = applyFilters;
-  applyFilters = function plan_applyFilters() {
-    _origApplyFilters();
+  // `bootMergeFromServer()`. Defining it here as a function declaration
+  // means /plan re-renders both on initial paint and after the
+  // server-side state has been merged in (so a user logging in on a
+  // fresh device sees their picks materialise without a manual refresh).
+  // Function declarations are hoisted into the script global lexical
+  // environment, so shared.js's call sites resolve to this function.
+  //
+  // `buildIndex` is the matching stub — shared.js's DOMContentLoaded
+  // handler invokes it before applyFilters, and /plan has no
+  // grid-by-cinema DOM to index.
+  function buildIndex() {}
+  function applyFilters() {
     buildPlanCinemaPills();
     refreshRoomsVisibility();
     syncPlanMovieChecksFromStorage();
     syncPlanRoomChecksFromStorage();
     renderPlan();
-  };
+  }
 </script>
 }
 </body>

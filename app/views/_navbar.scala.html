@@ -18,7 +18,6 @@
     <div class="d-flex gap-1 align-items-center">
       <a href="/" class="nav-tab@if(activePage == "films"){ active}">Filmy</a>
       <a href="/kina" class="nav-tab@if(activePage == "kina"){ active}">Kina</a>
-      <a href="/plan" class="nav-tab@if(activePage == "plan"){ active}">Plan</a>
       @if(devMode) {
         <a href="/debug" class="nav-tab nav-tab-debug">Debug</a>
       }
@@ -134,20 +133,26 @@
      mobile layout can place them on different rows — search joins the
      login pill on row 1; the day stepper rides with Filtry on row 2.
      On desktop they sit side-by-side as one visual cluster (search
-     `margin-left: auto`, date adjacent with no left margin). *@
-  <div class="navbar-search">
-    <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()">
-  </div>
-  <div class="d-flex align-items-stretch navbar-date" style="gap:2px">
-    <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
-    <select id="date-filter" class="filter-select" aria-label="Filtruj według daty" onchange="onDateChange()">
-      <option value="today">Dzisiaj</option>
-      <option value="tomorrow">Jutro</option>
-      <option value="week">Następne 7 dni</option>
-      <option value="anytime">Kiedykolwiek</option>
-    </select>
-    <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
-  </div>
+     `margin-left: auto`, date adjacent with no left margin).
+
+     Both are hidden on /plan — the picker grid there has its own
+     selection axis and the schedule output ignores "show today only" /
+     free-text search semantics that these controls express. *@
+  @if(activePage != "plan") {
+    <div class="navbar-search">
+      <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()">
+    </div>
+    <div class="d-flex align-items-stretch navbar-date" style="gap:2px">
+      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
+      <select id="date-filter" class="filter-select" aria-label="Filtruj według daty" onchange="onDateChange()">
+        <option value="today">Dzisiaj</option>
+        <option value="tomorrow">Jutro</option>
+        <option value="week">Następne 7 dni</option>
+        <option value="anytime">Kiedykolwiek</option>
+      </select>
+      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
+    </div>
+  }
 
   <div class="navbar-row-break" aria-hidden="true"></div>
 

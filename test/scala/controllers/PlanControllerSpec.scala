@@ -12,11 +12,12 @@ class PlanControllerSpec extends AnyFlatSpec with Matchers {
     title:   String,
     cinema:  Cinema,
     date:    LocalDate,
-    times:   Seq[(String, Option[String])] // (HH:mm, room)
+    times:   Seq[(String, Option[String])], // (HH:mm, room)
+    format:  List[String] = Nil
   ): FilmSchedule = {
     val showtimes = times.map { case (hhmm, room) =>
       val Array(h, m) = hhmm.split(":")
-      Showtime(date.atTime(h.toInt, m.toInt), bookingUrl = None, room = room)
+      Showtime(date.atTime(h.toInt, m.toInt), bookingUrl = None, room = room, format = format)
     }
     FilmSchedule(
       movie     = Movie(title),
@@ -34,13 +35,14 @@ class PlanControllerSpec extends AnyFlatSpec with Matchers {
       "Tytuł",
       Multikino,
       LocalDate.of(2026, 5, 28),
-      Seq(("18:30", Some("Sala 5")), ("21:00", Some("Sala 5")))
+      Seq(("18:30", Some("Sala 5")), ("21:00", Some("Sala 5"))),
+      format = List("2D", "NAP")
     )
 
     val data = PlanController.viewData(Seq(fs))
     data.showings shouldBe Seq(
-      PlanShowing("Tytuł", "Multikino Stary Browar", Some("Sala 5"), "2026-05-28", "18:30"),
-      PlanShowing("Tytuł", "Multikino Stary Browar", Some("Sala 5"), "2026-05-28", "21:00")
+      PlanShowing("Tytuł", "Multikino Stary Browar", Some("Sala 5"), "2026-05-28", "18:30", Seq("2D", "NAP")),
+      PlanShowing("Tytuł", "Multikino Stary Browar", Some("Sala 5"), "2026-05-28", "21:00", Seq("2D", "NAP"))
     )
   }
 

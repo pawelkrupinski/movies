@@ -51,7 +51,6 @@
     <div class="d-flex gap-1 align-items-center">
       <a href="/" class="nav-tab active">Filmy</a>
       <a href="/kina" class="nav-tab">Kina</a>
-      <a href="/plan" class="nav-tab">Plan</a>
       
     </div>
   </div>
@@ -150,19 +149,21 @@
   </div>
 
   
-  <div class="navbar-search">
-    <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()">
-  </div>
-  <div class="d-flex align-items-stretch navbar-date" style="gap:2px">
-    <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
-    <select id="date-filter" class="filter-select" aria-label="Filtruj według daty" onchange="onDateChange()">
-      <option value="today">Dzisiaj</option>
-      <option value="tomorrow">Jutro</option>
-      <option value="week">Następne 7 dni</option>
-      <option value="anytime">Kiedykolwiek</option>
-    </select>
-    <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
-  </div>
+  
+    <div class="navbar-search">
+      <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()">
+    </div>
+    <div class="d-flex align-items-stretch navbar-date" style="gap:2px">
+      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
+      <select id="date-filter" class="filter-select" aria-label="Filtruj według daty" onchange="onDateChange()">
+        <option value="today">Dzisiaj</option>
+        <option value="tomorrow">Jutro</option>
+        <option value="week">Następne 7 dni</option>
+        <option value="anytime">Kiedykolwiek</option>
+      </select>
+      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
+    </div>
+  
 
   <div class="navbar-row-break" aria-hidden="true"></div>
 
