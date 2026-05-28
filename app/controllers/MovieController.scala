@@ -322,11 +322,12 @@ class MovieController( cc: ControllerComponents,
   def film(title: String): Action[AnyContent] = Action { request =>
     movieControllerService.film(title) match {
       case Some(schedule) =>
-        // Build absolute URL for og:url. Trust the proxy: Fly terminates TLS
-        // and forwards X-Forwarded-Proto, so request.secure is correct in
-        // production.
-        val proto = if (request.secure) "https" else "http"
-        val canonicalUrl = s"$proto://${request.host}${FilmHref(schedule.movie.title)}"
+        // `request.uri` would carry the raw inbound title-encoding; use the
+        // canonical FilmHref form instead so the og:url matches the link the
+        // page exposes elsewhere. Scheme/host come from PageMeta so the
+        // X-Forwarded-* workaround (Play 3.0's `request.secure` ignores the
+        // `trustedProxies` knob on this Fly setup) is in one place.
+        val canonicalUrl = PageMeta.origin(request) + FilmHref(schedule.movie.title)
         val user = currentUser(request)
         Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule), devMode, user, oauthProviders))
       case None => NotFound(s"Film not found: $title")

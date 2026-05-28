@@ -19,12 +19,22 @@ import play.api.mvc.RequestHeader
 object PageMeta {
 
   /** `https://kinowo.fly.dev/?date=tomorrow` for a typical prod request.
-   *  Trusts the `X-Forwarded-Proto` header that Fly's edge sets — that's
-   *  what `request.secure` reflects, mirroring the convention already used
-   *  by `MovieController.film`. */
-  def canonicalUrl(request: RequestHeader): String = {
-    val proto = if (request.secure) "https" else "http"
-    s"$proto://${request.host}${request.uri}"
+   *  `canonicalUrl(request) == origin(request) + request.uri`. */
+  def canonicalUrl(request: RequestHeader): String =
+    origin(request) + request.uri
+
+  /** `https://kinowo.fly.dev` — scheme + host without path/query.
+   *  Reads `X-Forwarded-Proto` / `X-Forwarded-Host` directly — the
+   *  `play.http.forwarded.trustedProxies` knob didn't make `request.secure`
+   *  reflect the proxied scheme on this Play 3.0 setup (see the comment on
+   *  `AuthController.callbackUrl`, which uses the same workaround). Safe
+   *  because Fly's edge is the only ingress; the internet can't reach our
+   *  container to forge these headers. */
+  def origin(request: RequestHeader): String = {
+    val proto = request.headers.get("X-Forwarded-Proto")
+      .getOrElse(if (request.secure) "https" else "http")
+    val host  = request.headers.get("X-Forwarded-Host").getOrElse(request.host)
+    s"$proto://$host"
   }
 
   /** `FB_APP_ID` is read once at boot — the value never changes per request,
