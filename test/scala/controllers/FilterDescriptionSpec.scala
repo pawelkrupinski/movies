@@ -63,6 +63,15 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     meta.title shouldBe "Kinowo — filmy jutro"
   }
 
+  "date=anytime" should "stay silent — it's the no-restriction default view" in {
+    // `?date=anytime` widens the date filter to show all dates. The page is
+    // already "every film" — no extra word in the OG belongs there. Only date
+    // values that actually narrow (today is silent too; tomorrow / week /
+    // specific ISO surface as their phrase) deserve a phrase.
+    val meta = FilterDescription.forIndex(Map("date" -> Seq("anytime")), schedules)
+    meta.title shouldBe "Kinowo"
+  }
+
   "date=2026-05-30" should "surface as the ISO date verbatim" in {
     val meta = FilterDescription.forIndex(Map("date" -> Seq("2026-05-30")), schedules)
     meta.title shouldBe "Kinowo — filmy 2026-05-30"
@@ -85,54 +94,66 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     FilterDescription.forIndex(Map("q" -> Seq("Diabeł")), schedules).title shouldBe "Kinowo — filmy „Diabeł”"
   }
 
-  // ── Room inclusion / exclusion (smaller set wins) ──────────────────────────
+  // ── Room inclusion (URL items = INCLUDED rooms) ────────────────────────────
 
-  "room= with all-but-one excluded" should "describe the single INCLUDED room" in {
-    // 5 rooms in the universe (Multikino × 4 + Helios × 1). Excluding 4 leaves 1.
-    val excluded = Seq(
+  "room=<single room> via per-value entries" should "describe the included room" in {
+    // JS writes `?room=A&room=B` (one entry per included item) — Play
+    // surfaces that as `Map("room" -> Seq("A", "B"))`. The helper treats the
+    // list as the inclusion set; with 1 in / 4 out, "w sali" wins.
+    val meta = FilterDescription.forIndex(
+      Map("room" -> Seq("Multikino Stary Browar|Sala 5")),
+      schedules,
+    )
+    meta.title shouldBe "Kinowo — filmy w sali Sala 5"
+  }
+
+  "room=<all-but-one>" should "describe as 'bez sal …' (smaller side wins)" in {
+    // 5 rooms in the universe. Including 4 leaves 1 excluded — excluded side
+    // is smaller, so we describe via 'bez'.
+    val included = Seq(
       "Multikino Stary Browar|Sala 5",
       "Multikino Stary Browar|Sala 9",
       "Multikino Stary Browar|Sala 10",
       "Helios Posnania|Sala 3",
-    ).mkString(",")
-    val meta = FilterDescription.forIndex(Map("room" -> Seq(excluded)), schedules)
-    meta.title shouldBe "Kinowo — filmy w sali Sala 7"
-  }
-
-  "room= excluding just one" should "describe as 'bez sal …'" in {
-    val meta = FilterDescription.forIndex(
-      Map("room" -> Seq("Multikino Stary Browar|Sala 5")),
-      schedules
     )
-    // Excluded set is the smaller one (1 vs 4 included) — describe via 'bez'.
-    meta.title shouldBe "Kinowo — filmy bez sal Sala 5"
+    val meta = FilterDescription.forIndex(Map("room" -> included), schedules)
+    meta.title shouldBe "Kinowo — filmy bez sal Sala 7"
   }
 
-  "room= excluding many rooms" should "summarise the count instead of listing them" in {
-    // Universe has 5 rooms. Pick exclusion such that BOTH sides are > 3 so
-    // the helper falls into the count branch.
+  "room=<legacy comma-list>" should "still narrow correctly for old shared URLs" in {
+    // Pre-flip URLs encoded the list as one comma-joined value. Stay
+    // compatible so a bookmarked `?room=A,B` doesn't break.
+    val meta = FilterDescription.forIndex(
+      Map("room" -> Seq("Multikino Stary Browar|Sala 5,Multikino Stary Browar|Sala 7")),
+      schedules,
+    )
+    meta.title shouldBe "Kinowo — filmy w salach Sala 5, Sala 7"
+  }
+
+  "room=<half-and-half summary>" should "fall back to a count when both sides are large" in {
     val schedulesBig = Seq(
       film("A", Multikino, Seq("Sala 1", "Sala 2", "Sala 3", "Sala 4", "Sala 5", "Sala 6", "Sala 7", "Sala 8"))
     )
-    val excluded = (1 to 4).map(i => s"Multikino Stary Browar|Sala $i").mkString(",")
-    val meta = FilterDescription.forIndex(Map("room" -> Seq(excluded)), schedulesBig)
-    // 4 included, 4 excluded — pickIncluded wins (≤ excluded.size), and 4 > 3 → count.
+    val included = (1 to 4).map(i => s"Multikino Stary Browar|Sala $i")
+    val meta = FilterDescription.forIndex(Map("room" -> included), schedulesBig)
+    // 4 included, 4 excluded — pickIncluded wins (≤ excluded.size), 4 > 3 → count.
     meta.title shouldBe "Kinowo — filmy 4 sal"
   }
 
-  // ── Cinema inclusion / exclusion ───────────────────────────────────────────
+  // ── Cinema inclusion (URL items = ENABLED cinemas) ─────────────────────────
 
-  "cinema= disabling all but two" should "describe the two included via pill names" in {
-    val excluded = Cinema.all.map(_.displayName)
-      .filterNot(c => c == Multikino.displayName || c == Helios.displayName)
-      .mkString(",")
-    val meta = FilterDescription.forIndex(Map("cinema" -> Seq(excluded)), schedules)
+  "cinema=<just two>" should "describe the two included via pill names" in {
+    val meta = FilterDescription.forIndex(
+      Map("cinema" -> Seq(Multikino.displayName, Helios.displayName)),
+      schedules,
+    )
     meta.title shouldBe "Kinowo — filmy w Helios, Multikino"
   }
 
-  "cinema= disabling one" should "describe as 'bez <pill name>'" in {
+  "cinema=<all but one>" should "describe as 'bez <pill name>'" in {
+    val included = Cinema.all.map(_.displayName).filterNot(_ == Multikino.displayName)
     FilterDescription.forIndex(
-      Map("cinema" -> Seq(Multikino.displayName)),
+      Map("cinema" -> included),
       schedules,
     ).title shouldBe "Kinowo — filmy bez Multikino"
   }
