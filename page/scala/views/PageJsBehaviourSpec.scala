@@ -256,6 +256,61 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Delegated event handlers tolerate non-Element targets ──────────────
+  //
+  // Regression for the Sentry-reported `e.target.closest is not a function`
+  // crash on Chrome Mobile. Browsers can dispatch click / mouseover /
+  // touchstart with `e.target` being something other than an Element
+  // (Text node, Document, etc.) — the handlers must `instanceof Element`-
+  // gate before calling `.closest()` or the whole page chain throws.
+  //
+  // Hard to reproduce the exact mobile path in CDP, so the test drives the
+  // failure mode directly: it dispatches a real Event whose target ends up
+  // as `document` (no `.closest`) and asserts the handlers neither throw
+  // nor leave the tooltip half-shown.
+
+  "delegated handlers" should "tolerate a click event whose target isn't an Element" in {
+    onPath("/") { page =>
+      val ok = page.evalBool(
+        """(() => {
+          |  try {
+          |    document.dispatchEvent(new MouseEvent('click', { bubbles: false }));
+          |    return true;
+          |  } catch (e) { return false; }
+          |})()""".stripMargin
+      )
+      ok shouldBe true
+    }
+  }
+
+  it should "tolerate a mouseover event whose target isn't an Element" in {
+    onPath("/kina") { page =>
+      val ok = page.evalBool(
+        """(() => {
+          |  try {
+          |    document.dispatchEvent(new MouseEvent('mouseover', { bubbles: false }));
+          |    return true;
+          |  } catch (e) { return false; }
+          |})()""".stripMargin
+      )
+      ok shouldBe true
+    }
+  }
+
+  it should "tolerate a touchstart event whose target isn't an Element" in {
+    onPath("/kina") { page =>
+      val ok = page.evalBool(
+        """(() => {
+          |  try {
+          |    document.dispatchEvent(new Event('touchstart', { bubbles: false }));
+          |    return true;
+          |  } catch (e) { return false; }
+          |})()""".stripMargin
+      )
+      ok shouldBe true
+    }
+  }
+
   // ── / page filters ───────────────────────────────────────────────────────
 
   "the / page search input" should "filter visible film cards by title substring" in {

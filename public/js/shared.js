@@ -462,7 +462,13 @@
   window.setFavouriteRooms = setFavouriteRooms;
 
   // Delegated click handler for hide-film buttons and card-tap navigation.
+  // Sentry caught `e.target.closest is not a function` on Chrome Mobile —
+  // browsers can fire delegated events with a Text node (no `closest`) or
+  // even `document` as the target, e.g. on synthetic dispatches or when a
+  // pointer leaves between hit-test and dispatch. Gate every handler on
+  // `Element` so the chain bails cleanly instead of crashing.
   document.addEventListener('click', e => {
+    if (!(e.target instanceof Element)) return;
     const hide = e.target.closest('.hide-btn');
     if (hide) { hideFilm(hide); return; }
     if (e.target.closest('a, button, .showings-more')) return;
@@ -836,8 +842,12 @@
 
   function hideRoomTooltip() { _roomTooltip.style.display = 'none'; }
 
-  // Desktop hover
+  // Desktop hover. `Element` guard mirrors the click handler — a
+  // mouseover targeted at a non-Element node (Text, document) used to
+  // throw `e.target.closest is not a function` on Chrome Mobile and
+  // abort the handler before the tooltip had a chance to hide.
   document.addEventListener('mouseover', e => {
+    if (!(e.target instanceof Element)) { hideRoomTooltip(); return; }
     const b = e.target.closest('.badge-time[data-room]');
     if (b) showRoomTooltip(b); else hideRoomTooltip();
   });
@@ -846,6 +856,7 @@
   let _roomTimer = null;
 
   document.addEventListener('touchstart', e => {
+    if (!(e.target instanceof Element)) return;
     const badge = e.target.closest('.badge-time[data-room]');
     if (!badge) return;
     _roomTimer = setTimeout(() => {

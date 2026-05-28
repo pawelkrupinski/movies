@@ -1,7 +1,8 @@
 package modules
 
-import controllers.AssetsComponents
+import controllers.{AssetsComponents, TruncationTolerantHttpErrorHandler}
 import play.api.ApplicationLoader.Context
+import play.api.http.{HttpErrorConfig, HttpErrorHandler}
 import play.api.mvc.EssentialFilter
 import play.api.routing.Router
 import play.api._
@@ -59,6 +60,18 @@ class AppComponents(context: Context)
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)
   override def httpFilters: Seq[EssentialFilter] =
     super.httpFilters :+ corsFilter :+ cspFilter
+
+  // Replace Play's default error handler with the truncation-tolerant
+  // variant so `EntityStreamException` from client-side body cutoffs
+  // (most of /uptime/img-event's beacon noise) lands at WARN rather
+  // than ERROR — see the class comment for the full rationale.
+  override lazy val httpErrorHandler: HttpErrorHandler = new TruncationTolerantHttpErrorHandler(
+    environment,
+    HttpErrorConfig(showDevErrors = environment.mode != Mode.Prod, playEditor = configuration.getOptional[String]("play.editor")),
+    devContext.map(_.sourceMapper),
+    Some(router)
+  )
+
   lazy val router: Router = new Routes(httpErrorHandler, movieController, planController, authController, userStateController, healthController, uptimeController, assets)
 
   start()

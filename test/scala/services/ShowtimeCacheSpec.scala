@@ -43,6 +43,24 @@ class ShowtimeCacheSpec extends AnyFlatSpec with Matchers {
     cache.isTransientHttpError(new RuntimeException("HTTP 429 for GET https://example.com")) shouldBe true
   }
 
+  // Regression: Sentry was getting Multikino's `All 2 backends failed`
+  // exhaustion through, because the predicate only matched messages
+  // starting with `HTTP `. Both Zyte and the direct fallback timing out
+  // in the same refresh tick is still a transient external blip — log
+  // WARN, let the next scrape recover.
+  it should "classify FallbackHttpFetch's 'All N backends failed' exhaustion as transient" in {
+    cache.isTransientHttpError(new RuntimeException(
+      "All 2 backends failed for get https://www.multikino.pl/api/microservice/showings/cinemas/0011/films:\n  zyte: ..."
+    )) shouldBe true
+    cache.isTransientHttpError(new RuntimeException(
+      "All 3 backends failed for post https://example.com:\n  ..."
+    )) shouldBe true
+  }
+
+  it should "not be fooled by an unrelated message that happens to start with 'All '" in {
+    cache.isTransientHttpError(new RuntimeException("All quiet on the western front")) shouldBe false
+  }
+
   it should "not classify parser errors as transient" in {
     cache.isTransientHttpError(new NoSuchElementException("head of empty list")) shouldBe false
     cache.isTransientHttpError(new NullPointerException()) shouldBe false
