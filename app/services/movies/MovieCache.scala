@@ -95,7 +95,15 @@ trait MovieCache {
  * effects — callers that want to *trigger* a lookup on miss go through
  * `MovieService` (which owns the worker pool + dedup).
  */
-class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus()) extends MovieCache with Stoppable with Logging {
+class CaffeineMovieCache(
+  repo: MovieRepo,
+  bus:  EventBus = new InProcessEventBus(),
+  // Wiring sets true so app boot doesn't block on the initial Mongo
+  // findAll (~12s for a few hundred docs over an Atlas RTT). Tests
+  // keep the default false — they seed data and expect to read it
+  // back synchronously on the next line.
+  asyncHydrate: Boolean = false
+) extends MovieCache with Stoppable with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
   private val negative: Cache[CacheKey, java.lang.Boolean] =
@@ -132,7 +140,23 @@ class CaffeineMovieCache(repo: MovieRepo, bus: EventBus = new InProcessEventBus(
   private def tmdbLockFor(tmdbId: Int): AnyRef =
     tmdbLocks.computeIfAbsent(tmdbId, _ => new Object())
 
-  rehydrate()
+  // Hydrate from Mongo. Sync by default (tests can seed + assert in
+  // the next line); async when wired by `Wiring`, so app boot returns
+  // immediately and the first request renders without blocking on the
+  // ~12s initial findAll. The 30-s periodic tick (see `start()` below)
+  // fills any gap a few seconds after async hydrate completes.
+  if (asyncHydrate) {
+    val t = new Thread(
+      () => Try(rehydrate()).failed.foreach(ex =>
+        logger.warn(s"MovieCache async hydrate failed: ${ex.getMessage}")
+      ),
+      "movie-cache-hydrate"
+    )
+    t.setDaemon(true)
+    t.start()
+  } else {
+    rehydrate()
+  }
 
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey =
     CacheKey(MovieService.searchTitle(title), year)

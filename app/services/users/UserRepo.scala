@@ -46,7 +46,10 @@ trait UserRepo {
  * "session-only" user that doesn't persist (Phase B will surface
  * that explicitly).
  */
-class MongoUserRepo(sharedDb: Option[MongoDatabase] = None) extends UserRepo with Logging {
+class MongoUserRepo(
+  sharedDb: Option[MongoDatabase] = None,
+  fallbackToOwnInit: Boolean = true
+) extends UserRepo with Logging {
 
   // When `sharedDb` is provided (production path via `MongoConnection`),
   // we apply our codec registry to it and grab the `users` collection
@@ -55,13 +58,18 @@ class MongoUserRepo(sharedDb: Option[MongoDatabase] = None) extends UserRepo wit
   // See `MongoConnection` for the rationale — Phase A originally
   // opened a third independent MongoClient per process, which is what
   // tipped RSS past the 512 MB Fly ceiling.
+  //
+  // `fallbackToOwnInit = false` in Wiring stops the double-init burn:
+  // a failed shared connection would otherwise re-hit the same DNS /
+  // TLS timeout here, adding another ~15s to boot when offline.
   private lazy val initResult: (Option[MongoClient], Option[MongoCollection[User]]) =
     sharedDb match {
       case Some(db) =>
         val coll = db.withCodecRegistry(UserCodecs.registry).getCollection[User]("users")
         Try(Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("id")).toFuture(), 10.seconds))
         (None, Some(coll))
-      case None => init()
+      case None if fallbackToOwnInit => init()
+      case None                      => (None, None)
     }
   private def clientOpt: Option[MongoClient]               = initResult._1
   private def coll:      Option[MongoCollection[User]]     = initResult._2

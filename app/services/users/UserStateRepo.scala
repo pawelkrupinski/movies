@@ -37,18 +37,25 @@ trait UserStateRepo {
   def close(): Unit
 }
 
-class MongoUserStateRepo(sharedDb: Option[MongoDatabase] = None) extends UserStateRepo with Logging {
+class MongoUserStateRepo(
+  sharedDb: Option[MongoDatabase] = None,
+  fallbackToOwnInit: Boolean = true
+) extends UserStateRepo with Logging {
 
   // Shares its MongoClient with the rest of the app via the
   // `MongoConnection` passed by Wiring. See MongoUserRepo for the
-  // sharedDb / legacy-init dual-path rationale.
+  // sharedDb / legacy-init dual-path rationale. `fallbackToOwnInit`
+  // exists for the same reason as on MongoMovieRepo: production sets
+  // it false so a failed shared connection doesn't trigger a duplicate
+  // 15s init timeout here.
   private lazy val initResult: (Option[MongoClient], Option[MongoCollection[UserState]]) =
     sharedDb match {
       case Some(db) =>
         val coll = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
         scala.util.Try(scala.concurrent.Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("userId")).toFuture(), 10.seconds))
         (None, Some(coll))
-      case None => init()
+      case None if fallbackToOwnInit => init()
+      case None                      => (None, None)
     }
   private def clientOpt: Option[MongoClient]                = initResult._1
   private def coll:      Option[MongoCollection[UserState]] = initResult._2

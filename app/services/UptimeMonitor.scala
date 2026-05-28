@@ -21,17 +21,25 @@ class UptimeMonitor(db: Option[MongoDatabase] = None) extends Logging {
 
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("uptimeBuckets"))
 
+  // Index creation + Mongo hydrate run in a daemon thread so app start
+  // doesn't block on Mongo round-trips. Records that arrive before
+  // hydration finishes write to the in-memory bucket regardless; once
+  // hydrate lands, counts merge additively.
   coll.foreach { c =>
-    Try {
-      Await.result(c.createIndex(
-        Indexes.ascending("bucket"),
-        new JIndexOptions().expireAfter(24L, TimeUnit.HOURS)
-      ).toFuture(), 10.seconds)
-      Await.result(c.createIndex(
-        Indexes.compoundIndex(Indexes.ascending("service"), Indexes.ascending("bucket"))
-      ).toFuture(), 10.seconds)
-    }.recover { case ex => logger.warn(s"Uptime index creation failed: ${ex.getMessage}") }
-    hydrate(c)
+    val t = new Thread(() => {
+      Try {
+        Await.result(c.createIndex(
+          Indexes.ascending("bucket"),
+          new JIndexOptions().expireAfter(24L, TimeUnit.HOURS)
+        ).toFuture(), 10.seconds)
+        Await.result(c.createIndex(
+          Indexes.compoundIndex(Indexes.ascending("service"), Indexes.ascending("bucket"))
+        ).toFuture(), 10.seconds)
+      }.recover { case ex => logger.warn(s"Uptime index creation failed: ${ex.getMessage}") }
+      hydrate(c)
+    }, "uptime-monitor-hydrate")
+    t.setDaemon(true)
+    t.start()
   }
 
   def addListener(f: BucketListener): Unit = { listeners.add(f); () }

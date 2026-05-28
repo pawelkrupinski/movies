@@ -72,18 +72,18 @@ trait Wiring {
   lazy val mongoConnection: MongoConnection = new MongoConnection
 
   // ── Users ─────────────────────────────────────────────────────────────────
-  lazy val userRepo:      UserRepo      = new MongoUserRepo(mongoConnection.database)
-  lazy val userStateRepo: UserStateRepo = new MongoUserStateRepo(mongoConnection.database)
+  lazy val userRepo:      UserRepo      = new MongoUserRepo(mongoConnection.database, fallbackToOwnInit = false)
+  lazy val userStateRepo: UserStateRepo = new MongoUserStateRepo(mongoConnection.database, fallbackToOwnInit = false)
 
   // ── MovieRecord ────────────────────────────────────────────────────────────
-  lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database)
+  lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
   // Cache publishes `CinemaMovieAdded` directly from `recordCinemaScrape`
   // so the event fires AFTER the slot is persisted — a downstream handler
   // that reads the cache for the just-added (cinema, title, year) tuple
   // always sees the new slot. The bus passes through the same instance
   // every other service shares for `MovieRecordCreated` / `TmdbResolved`
   // / `ImdbIdMissing` / `ImdbIdResolved`.
-  lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo, eventBus)
+  lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo, eventBus, asyncHydrate = true)
   // ImdbRatings / RottenTomatoesRatings own the hourly rating refresh + the
   // per-row event listener for their respective services. Pulled out of
   // MovieService so each external service has its own tempo and the TMDB

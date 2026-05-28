@@ -81,7 +81,16 @@ trait MovieRepo {
  * Lifecycle: caller (`AppLoader`) registers a shutdown hook that calls
  * `close()` — the class doesn't self-register.
  */
-class MongoMovieRepo(sharedDb: Option[MongoDatabase] = None) extends MovieRepo with Logging {
+class MongoMovieRepo(
+  sharedDb: Option[MongoDatabase] = None,
+  // Scripts pass `sharedDb = None` and expect us to connect from
+  // `MONGODB_URI` ourselves (default true). Wiring sets it to false:
+  // when `MongoConnection` is already attempted, an explicit `None`
+  // means it failed and re-running our own init would just hit the
+  // same DNS / TLS timeout twice. Saves ~15s of boot time on the
+  // offline / unreachable-cluster path.
+  fallbackToOwnInit: Boolean = true
+) extends MovieRepo with Logging {
 
   // Lazy so subclasses that override every wire method (e.g.
   // `InMemoryMovieRepo` in tests) never trigger a Mongo connection
@@ -102,7 +111,8 @@ class MongoMovieRepo(sharedDb: Option[MongoDatabase] = None) extends MovieRepo w
       case Some(db) =>
         val coll = db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredMovieDto]("movies")
         (None, Some(coll))
-      case None => init()
+      case None if fallbackToOwnInit => init()
+      case None                      => (None, None)
     }
   private def clientOpt: Option[MongoClient]                       = initResult._1
   private def coll:      Option[MongoCollection[StoredMovieDto]]   = initResult._2
