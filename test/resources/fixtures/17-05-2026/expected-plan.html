@@ -10310,52 +10310,16 @@ setFavouriteRooms([...fav].sort());
 renderPlan();
 }
 const PL_DAYS = ['niedziela','poniedziałek','wtorek','środa','czwartek','piątek','sobota'];
-const PL_DAYS_SHORT = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'];
 const PL_MONTHS = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
 function fmtDayLabel(dateStr) {
 const d = new Date(dateStr + 'T00:00:00');
 return PL_DAYS[d.getDay()] + ', ' + d.getDate() + ' ' + PL_MONTHS[d.getMonth()];
-}
-function fmtShortDay(dateStr) {
-const d = new Date(dateStr + 'T00:00:00');
-return PL_DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + ' ' + PL_MONTHS[d.getMonth()];
-}
-function daysBetween(fromIso, toIso) {
-return Math.round((new Date(toIso + 'T00:00:00') - new Date(fromIso + 'T00:00:00')) / 86400000);
 }
 function todayKey() {
 const d = new Date();
 const m = String(d.getMonth() + 1).padStart(2, '0');
 const day = String(d.getDate()).padStart(2, '0');
 return d.getFullYear() + '-' + m + '-' + day;
-}
-function movieAvailabilityNote(movie, candidates) {
-const dates = [...new Set(candidates.map(c => c.date))].sort();
-const cinemas = [...new Set(candidates.map(c => c.cinema))].sort((a, b) => a.localeCompare(b, 'pl'));
-const today = todayKey();
-const first = dates[0];
-const last = dates[dates.length - 1];
-const numDays = dates.length;
-const span = daysBetween(first, last) + 1;
-let dateText;
-if (numDays === 1) {
-dateText = 'tylko ' + fmtShortDay(first);
-} else if (numDays === 2) {
-dateText = fmtShortDay(first) + ' i ' + fmtShortDay(last);
-} else if (span - numDays <= 1) {
-dateText = 'od ' + fmtShortDay(first) + ' do ' + fmtShortDay(last);
-} else {
-dateText = 'tylko: ' + dates.map(fmtShortDay).join(', ');
-}
-let cinemaText = '';
-if (cinemas.length === 1) {
-cinemaText = ', w „' + cinemas[0] + '"';
-} else if (cinemas.length === 2) {
-cinemaText = ', w „' + cinemas[0] + '" i „' + cinemas[1] + '"';
-}
-const daysLeft = daysBetween(today, last);
-const kind = (daysLeft >= 0 && daysLeft <= 7) ? 'warn' : 'info';
-return { kind, text: '„' + movie + '" — ' + dateText + cinemaText + '.' };
 }
 function buildShowingFilter() {
 const disabled = new Set(getDisabledCinemas());
@@ -10473,7 +10437,16 @@ if (candidates.length === 0) {
 limits.push({ kind: 'error', text: '„' + movie + '" — brak pasujących seansów. Sprawdź wybrane kina i sale.' });
 return;
 }
-limits.push(movieAvailabilityNote(movie, candidates));
+const cinemas = new Set(candidates.map(c => c.cinema));
+if (cinemas.size === 1) {
+limits.push({ kind: 'info', text: '„' + movie + '" wyświetlany tylko w „' + [...cinemas][0] + '".' });
+}
+const lastDate = candidates[candidates.length - 1].date;
+const daysLeft = Math.round((new Date(lastDate + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
+if (daysLeft >= 0 && daysLeft <= 7) {
+const left = daysLeft + 1;
+limits.push({ kind: 'warn', text: '„' + movie + '" — ostatni seans ' + fmtDayLabel(lastDate) + ' (zostało ' + left + ' dni).' });
+}
 });
 unscheduled.forEach(u => {
 if (u.reason === 'day-collision') {
