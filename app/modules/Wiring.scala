@@ -196,6 +196,11 @@ trait Wiring {
   // every ratings service's stop() must drain its worker pool before the
   // repo's close() runs so in-flight upserts land.
   protected def start(): Unit = {
+    // Force Mongo connection at boot rather than waiting for the first
+    // lazy val that needs it. Connection errors / hydrate-from-Mongo
+    // delays surface here in the boot timeline instead of slipping into
+    // the middle of a user request.
+    mongoConnection.database
     movieCache.start()
     movieService.start()
     imdbRatings.start()

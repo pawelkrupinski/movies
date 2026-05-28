@@ -32,7 +32,11 @@ import scala.util.Try
  */
 class MongoConnection extends Logging {
 
-  private lazy val initResult: (Option[MongoClient], Option[MongoDatabase]) = init()
+  // Eager — connecting now (at construction) surfaces wiring / network
+  // problems at boot rather than at the first request. `Wiring` touches
+  // `database` at the top of `start()` so the chain fires before any
+  // background worker tries to read or write.
+  private val initResult: (Option[MongoClient], Option[MongoDatabase]) = init()
 
   /** The shared `MongoDatabase` view — pre-bound to `MONGODB_DB` (or
    *  `kinowo` as the default). Repos `.withCodecRegistry(...)` it. */
