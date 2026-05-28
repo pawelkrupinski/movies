@@ -6,6 +6,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Repertuar kinowy Poznań – Kina</title>
+  @_ogTagsApp(
+    pageTitle       = pinnedCinema.fold("Kina w Poznaniu — Repertuar kinowy")(c => s"$c — Repertuar kinowy Poznań"),
+    pageDescription = pinnedCinema.fold("Repertuar wszystkich kin w Poznaniu z aktualnymi seansami i ocenami filmów.")(c => s"Aktualny repertuar kina $c w Poznaniu z seansami i ocenami filmów.")
+  )
   @_errorTracking()
   @_analytics()
   @* Bootstrap self-hosted under `/assets/css/` so the render-blocking
