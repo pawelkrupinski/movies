@@ -34,6 +34,9 @@ lazy val root = (project in file("."))
     PageTest / resourceDirectory        := baseDirectory.value / "page" / "resources",
     PageTest / parallelExecution        := false,
     pipelineStages := Seq(digest),
+    // Eagerly trigger AppLoader on `sbt run` instead of waiting for the
+    // first request. See project/Warmup.scala.
+    PlayKeys.playRunHooks += Warmup(),
   )
 
 // ── Dependencies ──────────────────────────────────────────────────────────────
