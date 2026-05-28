@@ -1,5 +1,10 @@
 app = 'kinowo'
-primary_region = 'arn'
+# Frankfurt — Fly has no Dublin region, so colocation with the Atlas
+# cluster (aws/eu-west-1, Dublin) lands on the closest substitute: ~20 ms
+# Mongo RTT instead of the ~30 ms arn → Dublin hop. Frankfurt is also
+# closer to PL users than Stockholm (~25 ms vs ~30–40 ms), so the move
+# wins on both axes — anonymous + logged-in pageviews alike.
+primary_region = 'fra'
 
 [build]
   dockerfile = 'Dockerfile'
