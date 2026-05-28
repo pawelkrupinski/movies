@@ -140,22 +140,36 @@ class CaffeineMovieCache(
   private def tmdbLockFor(tmdbId: Int): AnyRef =
     tmdbLocks.computeIfAbsent(tmdbId, _ => new Object())
 
+  // Latch that gates `recordCinemaScrape` on the initial hydrate
+  // completing. Without this gate, a scrape arriving before hydrate
+  // loads the Mongo state can't see the canonical row that already
+  // exists there — `redirectToExistingVariant` walks an empty cache,
+  // returns None, and the scrape creates a *new* row at its own key
+  // (typically differing by a missing release year, since some cinema
+  // feeds drop that field intermittently). Hydrate then loads the
+  // Mongo row at the canonical key, and both rows end up in the cache
+  // → the page renders duplicate cards. The 30-s periodic tick can't
+  // fix it either: it pulls more Mongo rows into the cache but never
+  // merges two cache-side keys that share a normalised title.
+  private val hydrationDone = new java.util.concurrent.CountDownLatch(1)
+
   // Hydrate from Mongo. Sync by default (tests can seed + assert in
   // the next line); async when wired by `Wiring`, so app boot returns
   // immediately and the first request renders without blocking on the
-  // ~12s initial findAll. The 30-s periodic tick (see `start()` below)
-  // fills any gap a few seconds after async hydrate completes.
+  // ~12s initial findAll.
   if (asyncHydrate) {
     val t = new Thread(
-      () => Try(rehydrate()).failed.foreach(ex =>
-        logger.warn(s"MovieCache async hydrate failed: ${ex.getMessage}")
-      ),
+      () => try
+        Try(rehydrate()).failed.foreach(ex =>
+          logger.warn(s"MovieCache async hydrate failed: ${ex.getMessage}")
+        )
+      finally hydrationDone.countDown(),
       "movie-cache-hydrate"
     )
     t.setDaemon(true)
     t.start()
   } else {
-    rehydrate()
+    try rehydrate() finally hydrationDone.countDown()
   }
 
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey =
@@ -365,6 +379,13 @@ class CaffeineMovieCache(
    *  `UnscreenedCleanup`; a film that returns after the prune ran will
    *  re-pay the full enrichment cost on its next scrape. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)] = {
+    // Block on the initial hydrate. With `asyncHydrate = true` (production)
+    // the first scrape tick can fire before the Mongo round-trip completes;
+    // proceeding here without the canonical state would produce the
+    // duplicate-row race described next to `hydrationDone` above. Once the
+    // latch is down it's a no-op cost on every subsequent call.
+    hydrationDone.await()
+
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
     // challenge, parser regex mismatch, proxy 503, blank HTML), not a
     // cinema that's genuinely showing zero films right now. Without this
