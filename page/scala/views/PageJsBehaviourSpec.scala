@@ -1246,6 +1246,75 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  it should "group rooms under a cinema header that's clickable to expand" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val headerCount = page.evalInt("document.querySelectorAll('#room-list .room-cinema-header').length")
+      headerCount should be > 1
+
+      // Inner room list starts collapsed.
+      page.evalString(
+        "document.querySelector('#room-list .room-cinema-list').style.display"
+      ) shouldBe "none"
+
+      // Clicking the first cinema header expands it.
+      page.eval("document.querySelector('#room-list .room-cinema-header').click()")
+      page.evalString(
+        "document.querySelector('#room-list .room-cinema-list').style.display"
+      ) should not be "none"
+    }
+  }
+
+  it should "sort rooms inside a cinema naturally — Sala 10 after Sala 9, not after Sala 1" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+
+      // Pick a cinema known to have rooms numbered past 9 (Multikino Stary
+      // Browar / Cinema City sites in the fixture corpus). Then assert the
+      // DOM order matches natural-sort: the index of "Sala 9" is less than
+      // the index of "Sala 10", not the other way around.
+      val rooms = page.evalString(
+        "(() => { const headers = [...document.querySelectorAll('#room-list .room-cinema-header')];" +
+          "  for (const h of headers) {" +
+          "    const inner = h.nextElementSibling;" +
+          "    const rs = [...inner.querySelectorAll('input[type=\"checkbox\"]')].map(cb => cb.value.split('|')[1]);" +
+          "    if (rs.includes('Sala 9') && rs.includes('Sala 10')) return rs.join('|');" +
+          "  } return ''; })()"
+      )
+      rooms should not be ""
+      val list = rooms.split('|').toIndexedSeq
+      val ix9  = list.indexOf("Sala 9")
+      val ix10 = list.indexOf("Sala 10")
+      ix9  should be >= 0
+      ix10 should be >= 0
+      ix9 should be < ix10
+    }
+  }
+
+  it should "show a per-cinema count badge once a room is unchecked" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      // Pick a header whose inner list has ≥ 2 rooms so unchecking one
+      // leaves a visible "1/N" state instead of a hidden "0/N".
+      val headerInfo = page.evalString(
+        "(() => { const headers = [...document.querySelectorAll('#room-list .room-cinema-header')];" +
+          "  for (let i = 0; i < headers.length; i++) {" +
+          "    const inner = headers[i].nextElementSibling;" +
+          "    const boxes = inner.querySelectorAll('input[type=\"checkbox\"]');" +
+          "    if (boxes.length >= 2) { headers[i].click(); boxes[0].click(); return String(boxes.length); }" +
+          "  } return ''; })()"
+      )
+      headerInfo should not be ""
+      val total = headerInfo.toInt
+      val expectedBadge = (total - 1) + "/" + total
+      val badgeText = page.evalString(
+        "(() => { const c = document.querySelector('#room-list .room-cinema-header .room-cinema-count');" +
+          "  return c.style.display === 'none' ? '' : c.textContent; })()"
+      )
+      badgeText shouldBe expectedBadge
+    }
+  }
+
   it should "narrow visible badges to only the picked room when a single Sala is checked" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)

@@ -261,36 +261,139 @@
     buildSubmenuPanel('cast', 'data-cast', function(s) { return s.split(',').map(function(v) { return v.trim(); }).filter(Boolean); });
   }
 
-  // Sale: one checkbox per (cinema, room) pair found on any badge. The
-  // composite "Cinema|Room" value lets the filter narrow to a specific room
-  // inside a specific cinema (the same room name often exists across cinemas,
-  // so the cinema half is load-bearing). Display label is "Cinema — Room";
-  // counts reflect how many showtimes use that exact pair.
+  // Sale: two-level menu. The outer Sale row expands to a list of cinemas;
+  // each cinema is itself an expandable header that reveals its rooms,
+  // sorted naturally ("Sala 10" lands after "Sala 9", not after "Sala 1").
+  // Room checkboxes carry the composite "Cinema|Room" value so the filter
+  // logic in `applyFilters` stays unchanged — same value the URL sync writes
+  // out under `?room=` and reads back on boot. The cinema half is
+  // load-bearing because the same room name ("Sala 5") exists in multiple
+  // cinemas and the user typically wants to scope to one of them.
   function buildRoomPanel() {
-    var pairCounts = {};
+    var list = document.getElementById('room-list');
+    if (!list) return;
+
+    var byCinema = {};
     document.querySelectorAll('.cinema-group[data-cinema]').forEach(function(cg) {
       var cinema = cg.dataset.cinema;
       cg.querySelectorAll('.badge-time[data-room]').forEach(function(b) {
         var room = b.dataset.room;
         if (!room) return;
-        var key = cinema + '|' + room;
-        pairCounts[key] = (pairCounts[key] || 0) + 1;
+        if (!byCinema[cinema]) byCinema[cinema] = {};
+        byCinema[cinema][room] = (byCinema[cinema][room] || 0) + 1;
       });
     });
-    var entries = Object.keys(pairCounts).sort(function(a, b) {
-      return a.localeCompare(b, 'pl');
-    }).map(function(value) {
-      var idx = value.indexOf('|');
-      var cinema = value.substring(0, idx);
-      var room = value.substring(idx + 1);
-      return { value: value, label: cinema + ' — ' + room, count: pairCounts[value] };
-    });
-    // Hide the row entirely when no badge on the page carries `data-room` —
-    // a pre-loaded empty submenu reads as "the filter doesn't do anything"
-    // rather than "the cinemas your filter scraped don't report rooms today".
+
+    var cinemas = Object.keys(byCinema).sort(function(a, b) { return a.localeCompare(b, 'pl'); });
+
+    // Hide the Sale row entirely when no badge on the page carries `data-room`
+    // (e.g. /ulubione, or a fixture day where the scrapers returned no rooms).
     var row = document.getElementById('room-row');
-    if (row) row.style.display = entries.length === 0 ? 'none' : '';
-    renderSubmenuCheckboxes('room', entries);
+    if (row) row.style.display = cinemas.length === 0 ? 'none' : '';
+
+    list.innerHTML = '';
+
+    // Sale-level "Wszystkie" — flips every room checkbox at once. Same
+    // semantics as the existing country/director/cast Wszystkie row; the
+    // `submenu-all` class keeps it out of `getSubmenuFilter('room')` reads.
+    var allLabel = document.createElement('label');
+    allLabel.className = 'panel-label';
+    allLabel.style.borderBottom = '1px solid #3a3a6e';
+    allLabel.style.marginBottom = '4px';
+    allLabel.style.paddingBottom = '8px';
+    var allCb = document.createElement('input');
+    allCb.type = 'checkbox';
+    allCb.checked = true;
+    allCb.className = 'submenu-all';
+    allCb.onchange = function() {
+      list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(function(cb) {
+        cb.checked = allCb.checked;
+      });
+      list.querySelectorAll('.room-cinema-header').forEach(function(h) { _updateRoomCinemaCount(h); });
+      updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
+    };
+    allLabel.appendChild(allCb);
+    allLabel.appendChild(document.createTextNode(' Wszystkie'));
+    list.appendChild(allLabel);
+
+    cinemas.forEach(function(cinema) {
+      var rooms = Object.keys(byCinema[cinema]).sort(function(a, b) {
+        // `numeric: true` is the natural-sort knob — without it, the
+        // comparator treats "Sala 10" as < "Sala 2" because '1' < '2'
+        // lexicographically. With it, embedded numbers compare numerically.
+        return a.localeCompare(b, 'pl', { numeric: true });
+      });
+
+      var header = document.createElement('div');
+      header.className = 'panel-label submenu-row room-cinema-header';
+      header.style.cursor = 'pointer';
+      var headerLabel = document.createElement('span');
+      headerLabel.textContent = cinema;
+      header.appendChild(headerLabel);
+      var right = document.createElement('span');
+      right.className = 'submenu-right';
+      var cnt = document.createElement('span');
+      cnt.className = 'submenu-row-count room-cinema-count';
+      cnt.style.display = 'none';
+      right.appendChild(cnt);
+      var chevron = document.createElement('span');
+      chevron.className = 'submenu-chevron';
+      chevron.innerHTML = '&#8250;';
+      right.appendChild(chevron);
+      header.appendChild(right);
+      list.appendChild(header);
+
+      var inner = document.createElement('div');
+      inner.className = 'submenu-list room-cinema-list';
+      inner.style.display = 'none';
+      inner.style.marginLeft = '12px';
+
+      header.onclick = function() {
+        var opening = inner.style.display === 'none';
+        inner.style.display = opening ? '' : 'none';
+        chevron.classList.toggle('open', opening);
+      };
+
+      rooms.forEach(function(room) {
+        var label = document.createElement('label');
+        label.className = 'panel-label';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = cinema + '|' + room;
+        cb.checked = true;
+        cb.onchange = function() {
+          _updateRoomCinemaCount(header);
+          updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
+        };
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(' ' + room));
+        var roomCnt = document.createElement('span');
+        roomCnt.className = 'submenu-film-count';
+        roomCnt.textContent = '(' + byCinema[cinema][room] + ')';
+        label.appendChild(roomCnt);
+        inner.appendChild(label);
+      });
+
+      list.appendChild(inner);
+    });
+  }
+
+  // Per-cinema header badge inside Sale — surfaces "3/8" when 3 of 8 rooms
+  // in that cinema are checked, so the user knows which cinemas they've
+  // narrowed without expanding each one.
+  function _updateRoomCinemaCount(headerEl) {
+    var cnt = headerEl.querySelector('.room-cinema-count');
+    if (!cnt) return;
+    var inner = headerEl.nextElementSibling;
+    if (!inner) return;
+    var boxes = [...inner.querySelectorAll('input[type="checkbox"]')];
+    var unchecked = boxes.filter(function(b) { return !b.checked; }).length;
+    if (unchecked > 0) {
+      cnt.textContent = (boxes.length - unchecked) + '/' + boxes.length;
+      cnt.style.display = '';
+    } else {
+      cnt.style.display = 'none';
+    }
   }
 
   // ── Hidden-films + disabled-cinemas storage ───────────────────────────────
@@ -975,6 +1078,12 @@
         if (excluded.has(cb.value)) cb.checked = false;
       });
       updateSubmenuCount(key);
+      // Room is the two-level submenu — refresh each cinema's "x/y" badge so
+      // the user can see which cinemas the URL-applied filter touched without
+      // expanding every header by hand.
+      if (key === 'room') {
+        list.querySelectorAll('.room-cinema-header').forEach(_updateRoomCinemaCount);
+      }
     });
 
     // Cinema filter: write the URL list into localStorage so the cinema-panel
