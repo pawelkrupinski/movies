@@ -225,8 +225,19 @@ class MovieController( cc: ControllerComponents,
     request.session.get("userId").flatMap(userRepo.findById)
 
   def index(): Action[AnyContent] = Action { request =>
-    val user = currentUser(request)
-    Ok(views.html.repertoire(movieControllerService.toSchedules(), Cinema.all.map(_.displayName), Cinema.pillMap, devMode, user, oauthProviders))
+    val user      = currentUser(request)
+    val schedules = movieControllerService.toSchedules()
+    // Read the same `?…` filter params that the in-page JS writes via
+    // `syncFiltersToURL`, then derive a Polish title + OG description so a
+    // shared link (e.g. `/?room=Multikino|Sala+5,…`) renders the matching
+    // phrasing in the FB / Twitter preview without needing JS to run on the
+    // crawler side.
+    val meta = FilterDescription.forIndex(request.queryString, schedules)
+    Ok(views.html.repertoire(
+      schedules, Cinema.all.map(_.displayName), Cinema.pillMap,
+      devMode, user, oauthProviders,
+      pageTitle = meta.title, pageDescription = meta.description
+    ))
   }
 
   private def renderBrowse(heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
