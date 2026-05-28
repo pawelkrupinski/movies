@@ -175,28 +175,45 @@
 
   function getSubmenuSummaries() {
     var result = {};
-    [['country', 'krajów'], ['director', 'reż.'], ['cast', 'aktorów']].forEach(function(pair) {
+    [['country', 'krajów'], ['director', 'reż.'], ['cast', 'aktorów'], ['room', 'sal']].forEach(function(pair) {
       var key = pair[0], suffix = pair[1];
       var filter = getSubmenuFilter(key);
       if (filter !== null) {
-        result[key] = filter.length === 1 ? filter[0] : filter.length + ' ' + suffix;
+        // Room values are "Cinema|Room" composites — the cinema half is
+        // implied by the rest of the badge context, so a single-selection
+        // summary just shows the room label.
+        if (key === 'room' && filter.length === 1) {
+          var pipe = filter[0].indexOf('|');
+          result[key] = pipe >= 0 ? filter[0].substring(pipe + 1) : filter[0];
+        } else {
+          result[key] = filter.length === 1 ? filter[0] : filter.length + ' ' + suffix;
+        }
       }
     });
     return result;
   }
 
   function buildSubmenuPanel(key, dataAttr, splitter) {
-    var list = document.getElementById(key + '-list');
-    if (!list) return;
     var valueCounts = {};
     document.querySelectorAll('.col[' + dataAttr + ']').forEach(function(col) {
       splitter(col.dataset[dataAttr.replace('data-', '')] || '').forEach(function(v) {
         valueCounts[v] = (valueCounts[v] || 0) + 1;
       });
     });
-    var sorted = Object.keys(valueCounts).sort(function(a, b) {
+    var entries = Object.keys(valueCounts).sort(function(a, b) {
       return (valueCounts[b] - valueCounts[a]) || a.localeCompare(b, 'pl');
-    });
+    }).map(function(v) { return { value: v, label: v, count: valueCounts[v] }; });
+    renderSubmenuCheckboxes(key, entries);
+  }
+
+  // Render a submenu's "Wszystkie" + per-value checkbox rows from a sorted
+  // entries list. Shared by `buildSubmenuPanel` (country / director / cast,
+  // values pulled from `.col` data attrs) and `buildRoomPanel` (values pulled
+  // from `.badge-time[data-room]` × cinema-group, with a composite key
+  // "Cinema|Room" that displays as "Cinema — Room").
+  function renderSubmenuCheckboxes(key, entries) {
+    var list = document.getElementById(key + '-list');
+    if (!list) return;
     list.innerHTML = '';
 
     var allLabel = document.createElement('label');
@@ -216,19 +233,19 @@
     allLabel.appendChild(document.createTextNode(' Wszystkie'));
     list.appendChild(allLabel);
 
-    sorted.forEach(function(value) {
+    entries.forEach(function(entry) {
       var label = document.createElement('label');
       label.className = 'panel-label';
       var cb = document.createElement('input');
       cb.type = 'checkbox';
-      cb.value = value;
+      cb.value = entry.value;
       cb.checked = true;
       cb.onchange = function() { updateSubmenuCount(key); updateFormatBtn(); applyFilters(); };
       label.appendChild(cb);
-      label.appendChild(document.createTextNode(' ' + value));
+      label.appendChild(document.createTextNode(' ' + entry.label));
       var cnt = document.createElement('span');
       cnt.className = 'submenu-film-count';
-      cnt.textContent = '(' + valueCounts[value] + ')';
+      cnt.textContent = '(' + entry.count + ')';
       label.appendChild(cnt);
       list.appendChild(label);
     });
@@ -242,6 +259,38 @@
   }
   function buildCastPanel() {
     buildSubmenuPanel('cast', 'data-cast', function(s) { return s.split(',').map(function(v) { return v.trim(); }).filter(Boolean); });
+  }
+
+  // Sale: one checkbox per (cinema, room) pair found on any badge. The
+  // composite "Cinema|Room" value lets the filter narrow to a specific room
+  // inside a specific cinema (the same room name often exists across cinemas,
+  // so the cinema half is load-bearing). Display label is "Cinema — Room";
+  // counts reflect how many showtimes use that exact pair.
+  function buildRoomPanel() {
+    var pairCounts = {};
+    document.querySelectorAll('.cinema-group[data-cinema]').forEach(function(cg) {
+      var cinema = cg.dataset.cinema;
+      cg.querySelectorAll('.badge-time[data-room]').forEach(function(b) {
+        var room = b.dataset.room;
+        if (!room) return;
+        var key = cinema + '|' + room;
+        pairCounts[key] = (pairCounts[key] || 0) + 1;
+      });
+    });
+    var entries = Object.keys(pairCounts).sort(function(a, b) {
+      return a.localeCompare(b, 'pl');
+    }).map(function(value) {
+      var idx = value.indexOf('|');
+      var cinema = value.substring(0, idx);
+      var room = value.substring(idx + 1);
+      return { value: value, label: cinema + ' — ' + room, count: pairCounts[value] };
+    });
+    // Hide the row entirely when no badge on the page carries `data-room` —
+    // a pre-loaded empty submenu reads as "the filter doesn't do anything"
+    // rather than "the cinemas your filter scraped don't report rooms today".
+    var row = document.getElementById('room-row');
+    if (row) row.style.display = entries.length === 0 ? 'none' : '';
+    renderSubmenuCheckboxes('room', entries);
   }
 
   // ── Hidden-films + disabled-cinemas storage ───────────────────────────────
@@ -781,52 +830,164 @@
     if (next >= 0 && next < sel.options.length) { sel.selectedIndex = next; onDateChange(); }
   }
 
-  // Single entry point for "the day selector changed" — keeps the URL's
-  // `?date=` param in lock-step with the select before filtering. Used by
-  // the `<select onchange>` in `_navbar` and by `stepDate`'s arrow buttons.
+  // Single entry point for "the day selector changed" — folds into the
+  // generic filter-change pipeline so the URL stays in lock-step with the
+  // select. Used by the `<select onchange>` in `_navbar` and by `stepDate`'s
+  // arrow buttons; both end in `applyFilters()`, which now calls
+  // `syncFiltersToURL()` at its head for every filter (not just the date).
   function onDateChange() {
-    syncDateFilterToURL();
     applyFilters();
   }
 
-  // Write the current select value into the URL (`?date=tomorrow`, `?date=2026-05-30`,
-  // …) so the page can be reopened in the same state. `today` is the page default;
-  // omit the param in that case to keep the unshared/just-arrived URL clean.
-  // `replaceState` matches the cinema-pin convention on /kina and keeps the
-  // back-button history free of filter churn.
-  function syncDateFilterToURL() {
-    const sel = document.getElementById('date-filter');
-    if (!sel) return;  // /ulubione: no date filter in the navbar.
+  // ── URL ↔ filter state sync ───────────────────────────────────────────────
+  //
+  // Every non-default filter is reflected as a query param so pages can be
+  // shared/bookmarked in their current filtered state. `syncFiltersToURL` is
+  // called at the start of `applyFilters` (so every change path — `onchange`,
+  // `applyFiltersDebounced`, `stepDate`, cinema-pill toggle — keeps the URL
+  // current with zero extra wiring per call site). `applyFiltersFromURL` is
+  // the boot-time inverse: walks every param and writes it back into the
+  // matching control before the first filter pass runs.
+  //
+  // Param map:
+  //   date    — date-filter select (today/tomorrow/week/anytime/YYYY-MM-DD)
+  //   q       — search-input text
+  //   dim     — format-dim radio  (2D / 3D)
+  //   lang    — format-lang radio (NAP / DUB)
+  //   imax    — format-imax checkbox ("1" when on)
+  //   from    — from-hour:minute composite (HH:MM)
+  //   country, director, cast, room — comma-list of UNCHECKED items
+  //                                   (smaller set wins; encoded per value)
+  //   cinema  — comma-list of disabled cinemas (LS-backed, /-only; /kina
+  //             uses its URL-path pin instead)
+
+  function _encodeListParam(items) {
+    return items.map(encodeURIComponent).join(',');
+  }
+  function _decodeListParam(value) {
+    if (!value) return [];
+    return value.split(',').map(decodeURIComponent);
+  }
+
+  function syncFiltersToURL() {
     const url = new URL(window.location.href);
-    if (sel.value === 'today') url.searchParams.delete('date');
-    else url.searchParams.set('date', sel.value);
+    const p   = url.searchParams;
+    const setOrDel = (k, v) => { if (v) p.set(k, v); else p.delete(k); };
+
+    const dateSel = document.getElementById('date-filter');
+    if (dateSel) setOrDel('date', dateSel.value === 'today' ? '' : dateSel.value);
+
+    const search = document.getElementById('search-input');
+    setOrDel('q', search ? (search.value || '').trim() : '');
+
+    const dim  = (document.querySelector('input[name="format-dim"]:checked')  || {}).value || '';
+    const lang = (document.querySelector('input[name="format-lang"]:checked') || {}).value || '';
+    setOrDel('dim',  dim);
+    setOrDel('lang', lang);
+
+    const imaxEl = document.getElementById('format-imax');
+    setOrDel('imax', imaxEl && imaxEl.checked ? '1' : '');
+
+    const fromH = document.getElementById('from-hour');
+    const fromM = document.getElementById('from-minute');
+    if (fromH && fromH.value !== '') {
+      const hh = String(parseInt(fromH.value, 10)).padStart(2, '0');
+      const mm = String(parseInt((fromM && fromM.value) || '0', 10)).padStart(2, '0');
+      p.set('from', hh + ':' + mm);
+    } else {
+      p.delete('from');
+    }
+
+    ['country', 'director', 'cast', 'room'].forEach(key => {
+      const list = document.getElementById(key + '-list');
+      if (!list) { p.delete(key); return; }
+      const unchecked = [...list.querySelectorAll('input[type="checkbox"]:not(.submenu-all):not(:checked)')]
+        .map(cb => cb.value);
+      setOrDel(key, _encodeListParam(unchecked));
+    });
+
+    // Cinema filter only lives in Filtry on / (the /kina page surfaces the
+    // same axis as the URL-path pin and ignores `disabledCinemas`). Gate the
+    // param on the picker's presence so /kina URLs stay clean.
+    if (document.getElementById('cinema-list')) {
+      setOrDel('cinema', _encodeListParam(getDisabledCinemas()));
+    }
+
     history.replaceState(null, '', url.pathname + url.search + url.hash);
   }
 
-  // Boot path: if the URL carries `?date=`, set the select to it before
-  // `applyFilters` runs, so the page renders pre-filtered. Accepts the four
-  // named presets and any ISO `YYYY-MM-DD`; an ISO date outside the
-  // `populateDayOptions` range (today+2..today+6) gets an option added on the
-  // fly so the select reflects the chosen value rather than silently snapping
-  // back to "today".
-  function applyDateFilterFromURL() {
-    const sel = document.getElementById('date-filter');
-    if (!sel) return;
-    const val = new URLSearchParams(window.location.search).get('date');
-    if (!val) return;
-    const ALLOWED = ['today', 'tomorrow', 'week', 'anytime'];
-    const isIso = /^\d{4}-\d{2}-\d{2}$/.test(val);
-    if (!ALLOWED.includes(val) && !isIso) return;
-    if (isIso && !Array.from(sel.options).some(o => o.value === val)) {
-      const opt = document.createElement('option');
-      opt.value = val;
-      const [y, mo, da] = val.split('-').map(Number);
-      const dow = new Date(y, mo - 1, da).getDay();
-      opt.textContent = DAY2[dow] + ' ' + da + ' ' + MONTHS[mo - 1];
-      const weekOpt = sel.querySelector('option[value="week"]');
-      if (weekOpt) sel.insertBefore(opt, weekOpt); else sel.appendChild(opt);
+  function applyFiltersFromURL() {
+    const p = new URLSearchParams(window.location.search);
+
+    const dateSel = document.getElementById('date-filter');
+    if (dateSel) {
+      const val   = p.get('date');
+      const ALLOW = ['today', 'tomorrow', 'week', 'anytime'];
+      const isIso = val && /^\d{4}-\d{2}-\d{2}$/.test(val);
+      if (val && (ALLOW.includes(val) || isIso)) {
+        if (isIso && !Array.from(dateSel.options).some(o => o.value === val)) {
+          // ISO date outside the populateDayOptions range (today+2..today+6):
+          // add an option on the fly so the select reflects the chosen value
+          // rather than silently snapping back to 'today'.
+          const opt = document.createElement('option');
+          opt.value = val;
+          const [y, mo, da] = val.split('-').map(Number);
+          const dow = new Date(y, mo - 1, da).getDay();
+          opt.textContent = DAY2[dow] + ' ' + da + ' ' + MONTHS[mo - 1];
+          const weekOpt = dateSel.querySelector('option[value="week"]');
+          if (weekOpt) dateSel.insertBefore(opt, weekOpt); else dateSel.appendChild(opt);
+        }
+        dateSel.value = val;
+      }
     }
-    sel.value = val;
+
+    const search = document.getElementById('search-input');
+    if (search) { const q = p.get('q'); if (q !== null) search.value = q; }
+
+    const dim = p.get('dim');
+    if (dim) {
+      const el = document.querySelector('input[name="format-dim"][value="' + CSS.escape(dim) + '"]');
+      if (el) el.checked = true;
+    }
+    const lang = p.get('lang');
+    if (lang) {
+      const el = document.querySelector('input[name="format-lang"][value="' + CSS.escape(lang) + '"]');
+      if (el) el.checked = true;
+    }
+    const imaxEl = document.getElementById('format-imax');
+    if (imaxEl && p.has('imax')) imaxEl.checked = p.get('imax') === '1';
+
+    const fromParam = p.get('from');
+    if (fromParam && /^\d{1,2}:\d{2}$/.test(fromParam)) {
+      const [h, m] = fromParam.split(':');
+      const hSel = document.getElementById('from-hour');
+      const mSel = document.getElementById('from-minute');
+      if (hSel) hSel.value = String(parseInt(h, 10));
+      if (mSel) mSel.value = String(parseInt(m, 10));
+    }
+
+    ['country', 'director', 'cast', 'room'].forEach(key => {
+      const excluded = new Set(_decodeListParam(p.get(key)));
+      if (excluded.size === 0) return;
+      const list = document.getElementById(key + '-list');
+      if (!list) return;
+      list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(cb => {
+        if (excluded.has(cb.value)) cb.checked = false;
+      });
+      updateSubmenuCount(key);
+    });
+
+    // Cinema filter: write the URL list into localStorage so the cinema-panel
+    // checkboxes (and the Filtry button label) reflect it on first render.
+    // Same write-through semantics the user gets when ticking a box —
+    // pasting a `?cinema=` link is the equivalent of toggling those cinemas
+    // off in Filtry. /kina has no `#cinema-list`, so this branch no-ops there.
+    if (document.getElementById('cinema-list') && p.has('cinema')) {
+      setDisabledCinemas(_decodeListParam(p.get('cinema')));
+      buildCinemaPanel();
+    }
+
+    updateFormatBtn();
   }
 
   function squareDateNavBtns() {
@@ -986,7 +1147,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     buildIndex();
     populateDayOptions();
-    applyDateFilterFromURL();
     squareDateNavBtns();
     updateNavbar();
     // Cinema picker lives in the Filtry dropdown now — populate the list
@@ -995,6 +1155,11 @@
     buildCountryPanel();
     buildDirectorPanel();
     buildCastPanel();
+    buildRoomPanel();
+    // URL → controls AFTER every panel/picker is built so the checkbox
+    // updates land on real DOM nodes; then a single `applyFilters()` pass
+    // renders the page already filtered.
+    applyFiltersFromURL();
     updateFormatBtn();
     applyFilters();
     bootMergeFromServer();

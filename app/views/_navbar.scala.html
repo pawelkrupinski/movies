@@ -84,6 +84,20 @@
       <div id="cast-list" class="submenu-list" style="display:none"></div>
       <div class="panel-divider"></div>
 
+      @* Sale: per-cinema room picker — entries are "Cinema — Sala N" pairs.
+         Populated by `buildRoomPanel()` from the (cinema-group × badge-room)
+         pairs in the rendered page; empty on /ulubione (no badges) and
+         self-hides when the page carries zero badges with a `data-room`. *@
+      <div id="room-row" class="panel-label submenu-row" onclick="toggleSubmenu('room')">
+        <span>Sale</span>
+        <span class="submenu-right">
+          <span id="room-row-count" class="submenu-row-count" style="display:none"></span>
+          <span id="room-chevron" class="submenu-chevron">&#8250;</span>
+        </span>
+      </div>
+      <div id="room-list" class="submenu-list" style="display:none"></div>
+      <div class="panel-divider"></div>
+
       <div class="panel-section-label">Wymiar</div>
       <label class="panel-label"><input type="radio" name="format-dim"  value=""   checked onchange="onFormatChange()"> Wszystkie</label>
       <label class="panel-label"><input type="radio" name="format-dim"  value="2D"         onchange="onFormatChange()"> 2D</label>

@@ -163,11 +163,17 @@
             const timeMin = colon > 0
               ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10)
               : -1;
+            const room = b.dataset.room || '';
             return {
               el:      b,
               time:    t,
               timeMin: timeMin,
               formats: new Set((b.dataset.format || '').split(' ').filter(Boolean)),
+              // Cinema is implicit on /kina — every badge in this section
+              // belongs to `section.cinema`. The room filter's composite key
+              // is "Cinema|Room" so the same filter param works on / and
+              // /kina; precompose to keep the inner loop free of concat.
+              roomKey: room ? (section.dataset.cinema + '|' + room) : '',
               visible: true
             };
           })
@@ -187,6 +193,10 @@
 
   function applyFilters() {
     if (!INDEX) return;
+    // Same URL-sync hook as /'s applyFilters — every filter-change path lands
+    // here, so reflecting the controls' state into `?…` once at the top covers
+    // every onchange/oninput/keyboard shortcut for free.
+    syncFiltersToURL();
     undoTruncation();
     const filter    = document.getElementById('date-filter').value;
     const query     = (document.getElementById('search-input').value || '').trim().toLowerCase();
@@ -208,6 +218,9 @@
     const hasDirector    = directorFilter !== null;
     const castFilter     = getCastFilter();
     const hasCast        = castFilter !== null;
+    const roomList       = getSubmenuFilter('room');
+    const hasRoom        = roomList !== null;
+    const roomSet        = hasRoom ? new Set(roomList) : null;
     const { today, tomorrow, in7Days } = dateBounds();
 
     const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
@@ -242,11 +255,14 @@
           if (!dateOk(group.date)) { setVisible(group, false); continue; }
 
           let groupVisibleCount = 0, groupFirstBadge = null;
-          if (hasFmt || hasFrom) {
+          if (hasFmt || hasFrom || hasRoom) {
             for (const badge of group.badges) {
               const fmtOk  = !hasFmt  || badgeFormatMatch(badge.formats, fmtTokens);
               const timeOk = !hasFrom || badge.timeMin < 0 || badge.timeMin >= fromMin;
-              const ok = fmtOk && timeOk;
+              // Empty roomKey (badge without `data-room`) can't satisfy the
+              // include-list — drops out as soon as the room filter is on.
+              const roomOk = !hasRoom || (badge.roomKey && roomSet.has(badge.roomKey));
+              const ok = fmtOk && timeOk && roomOk;
               setVisible(badge, ok);
               if (ok) {
                 groupVisibleCount++;

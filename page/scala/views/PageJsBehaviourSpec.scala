@@ -1103,6 +1103,213 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Generic filter ↔ URL sync ───────────────────────────────────────────────
+  //
+  // The date selector is one of ~nine filters; the same param-round-trip
+  // contract applies to every one of them, so every filter — radio / checkbox /
+  // text / submenu — should add a param when set off-default, strip it on
+  // return-to-default, and apply the param on first paint.
+
+  "format Wymiar = 3D" should "round-trip through ?dim=3D" in {
+    onPath("/") { page =>
+      page.eval("document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').click()")
+      page.evalString("new URL(location.href).searchParams.get('dim')") shouldBe "3D"
+    }
+    onPath("/?dim=3D") { page =>
+      page.evalBool("document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').checked") shouldBe true
+    }
+  }
+
+  "format Wersja = DUB" should "round-trip through ?lang=DUB" in {
+    onPath("/?lang=DUB") { page =>
+      page.evalBool("document.querySelector('input[name=\"format-lang\"][value=\"DUB\"]').checked") shouldBe true
+      page.eval("document.querySelector('input[name=\"format-lang\"][value=\"\"]').click()")
+      page.evalBool("new URL(location.href).searchParams.has('lang')") shouldBe false
+    }
+  }
+
+  "the IMAX checkbox" should "round-trip through ?imax=1" in {
+    onPath("/") { page =>
+      page.eval("document.getElementById('format-imax').click()")
+      page.evalString("new URL(location.href).searchParams.get('imax')") shouldBe "1"
+    }
+    onPath("/?imax=1") { page =>
+      page.evalBool("document.getElementById('format-imax').checked") shouldBe true
+    }
+  }
+
+  "the from-hour filter" should "round-trip through ?from=HH:MM" in {
+    onPath("/") { page =>
+      page.eval(
+        "document.getElementById('from-hour').value = '18';" +
+        "document.getElementById('from-minute').value = '30';" +
+        "onFormatChange()"
+      )
+      page.evalString("new URL(location.href).searchParams.get('from')") shouldBe "18:30"
+    }
+    onPath("/?from=20:15") { page =>
+      page.evalString("document.getElementById('from-hour').value")   shouldBe "20"
+      page.evalString("document.getElementById('from-minute').value") shouldBe "15"
+    }
+  }
+
+  "the search input" should "round-trip through ?q=" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      page.eval("document.getElementById('search-input').value = 'Diabeł'; applyFilters()")
+      page.evalString("new URL(location.href).searchParams.get('q')") shouldBe "Diabeł"
+    }
+    onPath("/?q=Diab%C5%82eb") { page =>
+      // The character class is round-tripped, not interpreted — the param
+      // lands in the input verbatim so the same `q=…` link reproduces the
+      // same filter result.
+      page.evalString("document.getElementById('search-input').value") shouldBe "Diabłeb"
+    }
+  }
+
+  "unchecking a country" should "encode the unchecked list as ?country=" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      val firstCountry = page.evalString(
+        "document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').value"
+      )
+      firstCountry should not be ""
+      page.eval(
+        "document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').click()"
+      )
+      val raw = page.evalString("new URL(location.href).searchParams.get('country')")
+      java.net.URLDecoder.decode(raw, "UTF-8") shouldBe firstCountry
+    }
+  }
+
+  "?country= on boot" should "uncheck exactly the named countries" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      // Pick a country known to be in the corpus, then drive a second tab via
+      // the URL-derived state and assert the matching checkbox is off.
+      val firstCountry = page.evalString(
+        "document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').value"
+      )
+      onPath("/?country=" + java.net.URLEncoder.encode(firstCountry, "UTF-8")) { page2 =>
+        val checked = page2.evalBool(
+          "[...document.querySelectorAll('#country-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
+            ".find(cb => cb.value === " + jsString(firstCountry) + ").checked"
+        )
+        checked shouldBe false
+      }
+    }
+  }
+
+  "disabling a cinema in Filtry" should "encode the disabled list as ?cinema=" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      // The cinema-picker checkbox has no `value` attribute (the cinema name
+      // is captured by closure in its `onchange` handler), so the cinema
+      // identity is in the adjacent label text, not on `cb.value`.
+      val cinema = page.evalString(
+        "(() => { const cb = document.querySelector('#cinema-list input[type=\"checkbox\"]');" +
+          "  if (!cb.checked) return ''; cb.click();" +
+          "  return cb.parentElement.textContent.trim(); })()"
+      )
+      cinema should not be ""
+      val raw = page.evalString("new URL(location.href).searchParams.get('cinema')")
+      // The label uses CINEMA_PILLS short names; the URL carries the canonical
+      // disabledCinemas value (the original cinema displayName). Look it up via
+      // the same mapping rather than trusting label-to-name equality.
+      val canonical = page.evalString(
+        "(() => { const dis = JSON.parse(localStorage.getItem('disabledCinemas') || '[]');" +
+          "  return dis[0] || ''; })()"
+      )
+      java.net.URLDecoder.decode(raw, "UTF-8") shouldBe canonical
+      cinema should not be ""
+      // Reset the LS so neighbouring tests start with the default all-enabled
+      // cinema set. localStorage persists across tabs inside the same Chrome
+      // session — without this, "Empty state" et al. would silently filter
+      // half the corpus out.
+      page.eval("localStorage.removeItem('disabledCinemas')")
+    }
+  }
+
+  // ── Cinema+room (Sale) filter ───────────────────────────────────────────────
+
+  "the Sale (room) submenu" should "list one entry per (cinema, room) pair on /" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val rowDisplay = page.evalString("document.getElementById('room-row').style.display")
+      rowDisplay should not be "none"
+      val rowCount = page.evalInt("document.querySelectorAll('#room-list input[type=\"checkbox\"]:not(.submenu-all)').length")
+      rowCount should be > 0
+      val firstValue = page.evalString(
+        "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').value"
+      )
+      firstValue should include ("|")
+    }
+  }
+
+  it should "narrow visible badges to only the picked room when a single Sala is checked" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val baseline = visibleBadgeCount(page)
+      baseline should be > 1
+
+      val targetPair = page.evalString(
+        "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').value"
+      )
+      val pipeIdx = targetPair.indexOf('|')
+      val cinema  = targetPair.substring(0, pipeIdx)
+      val room    = targetPair.substring(pipeIdx + 1)
+
+      page.eval(
+        "(() => { const boxes = [...document.querySelectorAll('#room-list input[type=\"checkbox\"]:not(.submenu-all)')];" +
+          s"  for (const cb of boxes) { if (cb.value !== ${jsString(targetPair)}) cb.click(); }" +
+          "  applyFilters(); return true; })()"
+      )
+
+      val narrowed = visibleBadgeCount(page)
+      narrowed should be < baseline
+      narrowed should be > 0
+
+      // Every visible badge must be in the picked (cinema, room) — the
+      // include-list filter excludes "no-room" badges entirely.
+      val allMatch = page.evalBool(
+        "[...document.querySelectorAll('.badge-time')].filter(b => b.style.display !== 'none')" +
+          s".every(b => b.dataset.room === ${jsString(room)} &&" +
+          s"            b.closest('.cinema-group')?.dataset.cinema === ${jsString(cinema)})"
+      )
+      allMatch shouldBe true
+    }
+  }
+
+  it should "round-trip the unchecked rooms through ?room=" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val targetPair = page.evalString(
+        "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').value"
+      )
+      page.eval(
+        "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').click()"
+      )
+      val raw = page.evalString("new URL(location.href).searchParams.get('room')")
+      java.net.URLDecoder.decode(raw, "UTF-8") shouldBe targetPair
+    }
+  }
+
+  it should "apply ?room= to uncheck exactly the named (cinema|room) pair on boot" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val targetPair = page.evalString(
+        "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').value"
+      )
+      onPath("/?date=anytime&room=" + java.net.URLEncoder.encode(targetPair, "UTF-8")) { page2 =>
+        val checked = page2.evalBool(
+          "[...document.querySelectorAll('#room-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
+            ".find(cb => cb.value === " + jsString(targetPair) + ").checked"
+        )
+        checked shouldBe false
+      }
+    }
+  }
+
   // ── Empty state ────────────────────────────────────────────────────────────
 
   "the #no-films empty state" should "show when the search yields zero matches and hide when cleared" in {

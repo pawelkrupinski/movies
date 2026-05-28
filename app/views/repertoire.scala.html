@@ -84,11 +84,18 @@
             const timeMin = colon > 0
               ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10)
               : -1;
+            const room = b.dataset.room || '';
             return {
               el:          b,
               time:        t,
               timeMin:     timeMin,
               formats:     new Set((b.dataset.format || '').split(' ').filter(Boolean)),
+              // Pre-compose the room-filter key so the applyFilters inner
+              // loop doesn't pay a string-concat per badge per pass. Empty
+              // when the badge carries no `data-room` — those badges fall
+              // out of view as soon as the user picks any room (the filter
+              // is an include-list and can't include "no room").
+              roomKey:     room ? (cg.dataset.cinema + '|' + room) : '',
               visible:     true
             };
           })
@@ -116,6 +123,12 @@
 
   function applyFilters() {
     if (!INDEX) return;
+    // Every filter-change path lands here, so reflecting the current control
+    // state into `?…` once at the top covers every onchange/oninput/keyboard
+    // shortcut without per-call-site wiring. Idempotent for non-filter callers
+    // (hide-film, restore-film, server-merge — they all leave the controls
+    // alone, so the URL stays as-is).
+    syncFiltersToURL();
     undoTruncation();
     const filter    = document.getElementById('date-filter')?.value || 'anytime';
     const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
@@ -131,6 +144,9 @@
     const hasDirector    = directorFilter !== null;
     const castFilter     = getCastFilter();
     const hasCast        = castFilter !== null;
+    const roomList       = getSubmenuFilter('room');
+    const hasRoom        = roomList !== null;
+    const roomSet        = hasRoom ? new Set(roomList) : null;
     const { today, tomorrow, in7Days } = dateBounds();
 
     const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
@@ -163,12 +179,15 @@
           if (disabled.has(cg.cinema)) { setVisible(cg, false); continue; }
 
           let cgVisibleCount = 0, cgFirstTime = null;
-          const needsBadgeLoop = hasFmt || hasFrom;
+          const needsBadgeLoop = hasFmt || hasFrom || hasRoom;
           if (needsBadgeLoop) {
             for (const badge of cg.badges) {
               const fmtOk  = !hasFmt  || badgeFormatMatch(badge.formats, fmtTokens);
               const timeOk = !hasFrom || badge.timeMin < 0 || badge.timeMin >= fromMin;
-              const ok = fmtOk && timeOk;
+              // Empty roomKey (badge with no `data-room`) can't match any
+              // include-list entry; treat as a miss when the room filter is on.
+              const roomOk = !hasRoom || (badge.roomKey && roomSet.has(badge.roomKey));
+              const ok = fmtOk && timeOk && roomOk;
               setVisible(badge, ok);
               if (ok) {
                 cgVisibleCount++;

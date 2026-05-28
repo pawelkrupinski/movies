@@ -82,6 +82,17 @@
       <div id="cast-list" class="submenu-list" style="display:none"></div>
       <div class="panel-divider"></div>
 
+      
+      <div id="room-row" class="panel-label submenu-row" onclick="toggleSubmenu('room')">
+        <span>Sale</span>
+        <span class="submenu-right">
+          <span id="room-row-count" class="submenu-row-count" style="display:none"></span>
+          <span id="room-chevron" class="submenu-chevron">&#8250;</span>
+        </span>
+      </div>
+      <div id="room-list" class="submenu-list" style="display:none"></div>
+      <div class="panel-divider"></div>
+
       <div class="panel-section-label">Wymiar</div>
       <label class="panel-label"><input type="radio" name="format-dim"  value=""   checked onchange="onFormatChange()"> Wszystkie</label>
       <label class="panel-label"><input type="radio" name="format-dim"  value="2D"         onchange="onFormatChange()"> 2D</label>
@@ -36069,11 +36080,13 @@ const colon = t.indexOf(':');
 const timeMin = colon > 0
 ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10)
 : -1;
+const room = b.dataset.room || '';
 return {
 el: b,
 time: t,
 timeMin: timeMin,
 formats: new Set((b.dataset.format || '').split(' ').filter(Boolean)),
+roomKey: room ? (section.dataset.cinema + '|' + room) : '',
 visible: true
 };
 })
@@ -36089,6 +36102,7 @@ node.visible = want;
 }
 function applyFilters() {
 if (!INDEX) return;
+syncFiltersToURL();
 undoTruncation();
 const filter = document.getElementById('date-filter').value;
 const query = (document.getElementById('search-input').value || '').trim().toLowerCase();
@@ -36106,6 +36120,9 @@ const directorFilter = getDirectorFilter();
 const hasDirector = directorFilter !== null;
 const castFilter = getCastFilter();
 const hasCast = castFilter !== null;
+const roomList = getSubmenuFilter('room');
+const hasRoom = roomList !== null;
+const roomSet = hasRoom ? new Set(roomList) : null;
 const { today, tomorrow, in7Days } = dateBounds();
 const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
 const dateOk = filter === 'today' ? d => d === today :
@@ -36132,11 +36149,12 @@ let colVisible = false, colEarliest = null, colShowtimes = 0;
 for (const group of col.groups) {
 if (!dateOk(group.date)) { setVisible(group, false); continue; }
 let groupVisibleCount = 0, groupFirstBadge = null;
-if (hasFmt || hasFrom) {
+if (hasFmt || hasFrom || hasRoom) {
 for (const badge of group.badges) {
 const fmtOk = !hasFmt || badgeFormatMatch(badge.formats, fmtTokens);
 const timeOk = !hasFrom || badge.timeMin < 0 || badge.timeMin >= fromMin;
-const ok = fmtOk && timeOk;
+const roomOk = !hasRoom || (badge.roomKey && roomSet.has(badge.roomKey));
+const ok = fmtOk && timeOk && roomOk;
 setVisible(badge, ok);
 if (ok) {
 groupVisibleCount++;
