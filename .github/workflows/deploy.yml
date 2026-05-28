@@ -272,8 +272,10 @@ jobs:
                     - { variant: pw galaxy-s10,  kind: playwright, project: 'chromium-galaxy-s10*',  browser: chromium, shard: '2/2' }
                     - { variant: pw galaxy-s25,  kind: playwright, project: 'chromium-galaxy-s25*',  browser: chromium, shard: '1/2' }
                     - { variant: pw galaxy-s25,  kind: playwright, project: 'chromium-galaxy-s25*',  browser: chromium, shard: '2/2' }
-                    - { variant: pw pixel-9,     kind: playwright, project: 'chromium-pixel-9,chromium-pixel-9-zoomed,chromium-pixel-9-landscape,chromium-pixel-9-zoomed-landscape', browser: chromium, shard: '1/2' }
-                    - { variant: pw pixel-9,     kind: playwright, project: 'chromium-pixel-9,chromium-pixel-9-zoomed,chromium-pixel-9-landscape,chromium-pixel-9-zoomed-landscape', browser: chromium, shard: '2/2' }
+                    # chromium pixel-9 (360 px) intentionally dropped — same width
+                    # as galaxy-s10; redundant for catching layout breaks. The
+                    # project stays in playwright.config.ts so a local
+                    # `npx playwright test --project chromium-pixel-9` still runs.
                     - { variant: pw pixel-9-pro, kind: playwright, project: 'chromium-pixel-9-pro*', browser: chromium, shard: '1/2' }
                     - { variant: pw pixel-9-pro, kind: playwright, project: 'chromium-pixel-9-pro*', browser: chromium, shard: '2/2' }
                     - { variant: pw desktop,     kind: playwright, project: chrome-desktop,          browser: chrome }
@@ -294,15 +296,18 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, shard: '1/3' }
-                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, shard: '2/3' }
-                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, shard: '3/3' }
-                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, shard: '1/3' }
-                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, shard: '2/3' }
-                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, shard: '3/3' }
-                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '1/3' }
-                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '2/3' }
-                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '3/3' }
+                    # Each iPhone family runs as 2 shards (was 3). The third
+                    # shard mostly slept on stragglers; 2 fits the per-job
+                    # slot budget (≤20 concurrent across the workflow) without
+                    # stretching the critical path much — each merged shard
+                    # is ~5 min, still under the chromium / safari desktop
+                    # leaders.
+                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, shard: '1/2' }
+                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, shard: '2/2' }
+                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, shard: '1/2' }
+                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, shard: '2/2' }
+                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '1/2' }
+                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '2/2' }
                     - { variant: pw desktop,           kind: playwright, project: webkit-desktop,              browser: webkit }
         runs-on: ubuntu-latest
         steps:
@@ -320,8 +325,12 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { variant: pw galaxy-s10,  kind: playwright, project: 'firefox-galaxy-s10*',  browser: firefox, shard: '1/2' }
-                    - { variant: pw galaxy-s10,  kind: playwright, project: 'firefox-galaxy-s10*',  browser: firefox, shard: '2/2' }
+                    # firefox-galaxy-s10 (mobile Gecko) intentionally not in CI
+                    # — Firefox mobile is <1 % of real traffic, and Gecko-engine
+                    # regressions still get caught by firefox-desktop below.
+                    # The project stays in playwright.config.ts so a local
+                    # `npx playwright test --project firefox-galaxy-s10` still
+                    # runs against it.
                     - { variant: pw desktop,     kind: playwright, project: firefox-desktop,        browser: firefox }
         runs-on: ubuntu-latest
         steps:
