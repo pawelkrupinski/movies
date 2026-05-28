@@ -32,7 +32,11 @@ object PlanShowing {
 case class PlanCinemaRooms(cinema: String, pillName: String, rooms: Seq[String])
 
 case class PlanViewData(
-  movies:      Seq[String],
+  // Carries the poster + enrichment so the picker can render full movie
+  // cards (poster, title link, runtime/year pills, rating badges) —
+  // visually identical to the / and /kina cards minus the showings
+  // block. Sorted by title for stable picker order.
+  films:       Seq[FilmSchedule],
   showings:    Seq[PlanShowing],
   cinemaRooms: Seq[PlanCinemaRooms]
 )
@@ -71,7 +75,7 @@ object PlanController {
   // fixture-pinned `toSchedules(now)` and render the template directly,
   // bypassing the controller's wall-clock dependency.
   def viewData(schedules: Seq[FilmSchedule]): PlanViewData = {
-    val movies: Seq[String] = schedules.map(_.movie.title).distinct.sorted
+    val films: Seq[FilmSchedule] = schedules.sortBy(_.movie.title.toLowerCase)
 
     val showings: Seq[PlanShowing] = schedules.flatMap { fs =>
       fs.showings.flatMap { case (date, cinemas) =>
@@ -97,6 +101,6 @@ object PlanController {
       else Some(PlanCinemaRooms(c.displayName, c.pillName, rooms))
     }
 
-    PlanViewData(movies, showings, cinemaRooms)
+    PlanViewData(films, showings, cinemaRooms)
   }
 }

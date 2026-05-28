@@ -44,12 +44,12 @@ class PlanControllerSpec extends AnyFlatSpec with Matchers {
     )
   }
 
-  it should "expose a sorted, deduplicated movies list (drives the picker)" in {
+  it should "sort films by title (case-insensitive) so the picker grid is alphabetical" in {
     val today = LocalDate.of(2026, 5, 28)
     val a     = schedule("Bravo", Multikino, today, Seq(("18:00", None)))
-    val b     = schedule("Alfa",  Helios,    today, Seq(("19:00", None)))
+    val b     = schedule("alfa",  Helios,    today, Seq(("19:00", None)))
     val data  = PlanController.viewData(Seq(a, b))
-    data.movies shouldBe Seq("Alfa", "Bravo")
+    data.films.map(_.movie.title) shouldBe Seq("alfa", "Bravo")
   }
 
   it should "group rooms per cinema, dropping cinemas with no room data" in {

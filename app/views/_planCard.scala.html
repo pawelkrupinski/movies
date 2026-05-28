@@ -1,0 +1,32 @@
+@import models.{Movie, MovieRecord}
+@import controllers.FilmHref
+@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord])
+@*
+   Picker card on /plan. Same visual top as `_movieCard` (poster +
+   title link + runtime/year pills + rating badges) but:
+     - no `<a>` wrapping the poster — clicks on the poster toggle
+       selection instead of navigating to the film page;
+     - the class is `plan-card` (not `card`) so the shared.js
+       document-level card-click handler — which navigates `.card`
+       clicks to `/film` — doesn't fire;
+     - no hide button (the picker is the opposite axis from "Ukryj");
+     - the title link still opens `/film` as on every other page.
+*@
+<div class="col plan-card-col" data-title="@movie.title">
+  <div class="plan-card" data-title="@movie.title">
+    <div class="poster-wrap">
+      @_moviePoster(movie, posterUrl, enrichment)
+      <span class="plan-check" aria-hidden="true">✓</span>
+    </div>
+    <div class="card-body">
+      <div class="card-title">
+        <a href="@FilmHref(movie.title)">@movie.title</a>@movie.runtimeMinutes.filter(_ > 0).map { mins =>
+  <span class="pill runtime">@{mins / 60}h@if(mins % 60 != 0){ @{mins % 60}min}</span>
+}@movie.releaseYear.map { y =>
+  <span class="pill year">@y</span>
+}
+      </div>
+      @_ratingBadges(enrichment, movie.title)
+    </div>
+  </div>
+</div>

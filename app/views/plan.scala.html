@@ -1,4 +1,5 @@
 @import controllers.PlanViewData
+@import controllers.FilmSchedule
 @(data: PlanViewData, allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
 <!DOCTYPE html>
 <html lang="pl">
@@ -46,8 +47,7 @@
     }
     .cinema-pill.active { background: #3a3a6e; color: #fff; border-color: #3a3a6e; }
 
-    /* Movies grid: responsive multi-column checkbox list. Each column
-       is a single label so the click target reaches the title text. */
+    /* Search input for the cards grid below. */
     .movie-search {
       width: 100%; max-width: 320px;
       padding: .35rem .6rem;
@@ -57,13 +57,50 @@
       background: #11113a;
       color: #ddd;
     }
-    .movies-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: .15rem .75rem;
+
+    /* Picker card grid. Reuses the `_movieCard` visual top via
+       `_planCard` so each entry looks like a / homepage card (poster +
+       title + runtime/year + ratings) minus showings. Clicks anywhere
+       on the card toggle selection except on the title `<a>`, which
+       opens /film as everywhere else in the app. */
+    #plan-movies-row { row-gap: .75rem; }
+    .plan-card {
+      background: #1e1e2e;
+      border-radius: 12px;
+      overflow: hidden;
+      height: 100%;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+      position: relative;
+      outline: 2px solid transparent;
+      outline-offset: -2px;
     }
-    .movie-check label { display: flex; align-items: center; gap: .4rem; padding: .15rem 0; color: #ddd; cursor: pointer; }
-    .movie-check input { flex-shrink: 0; }
+    .plan-card:hover { transform: translateY(-2px); }
+    .plan-card.selected {
+      outline-color: #6cd06c;
+      box-shadow: 0 0 0 1px #6cd06c33, 0 6px 18px rgba(108, 208, 108, .12);
+    }
+    /* The check overlay sits on the poster; only visible when the card
+       is selected. `aria-hidden` on the span keeps it out of the AT
+       tree — the selection state is communicated via the card's own
+       aria-pressed (set in JS). */
+    .plan-card .plan-check {
+      position: absolute;
+      top: 8px; left: 8px;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: #6cd06c;
+      color: #0a2a0a;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: .9rem;
+      font-weight: 800;
+      z-index: 5;
+      box-shadow: 0 2px 6px rgba(0,0,0,.4);
+      pointer-events: none;
+    }
+    .plan-card.selected .plan-check { display: flex; }
 
     /* Per-cinema room picker. Each cinema block is shown only when the
        cinema is enabled (a JS hook in `refreshRoomsVisibility` toggles
@@ -118,16 +155,11 @@
 
   <section class="plan-section">
     <h5>Filmy</h5>
-    <p class="help">Zaznacz filmy, które chcesz obejrzeć. Plan ułoży się z najbardziej napiętych terminów.</p>
+    <p class="help">Kliknij plakat, aby dodać film do planu. Tytuł otwiera stronę filmu.</p>
     <input type="search" class="movie-search" id="movie-search" placeholder="Szukaj filmu…" oninput="filterPlanMovies()">
-    <div class="movies-grid" id="movies-grid">
-      @for(title <- data.movies) {
-        <div class="movie-check" data-title="@title">
-          <label>
-            <input type="checkbox" class="movie-cb" data-title="@title" onchange="onPlanMovieToggle(this)">
-            <span>@title</span>
-          </label>
-        </div>
+    <div id="plan-movies-row" class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6">
+      @for(film <- data.films) {
+        @_planCard(film.movie, film.posterUrl, film.enrichment)
       }
     </div>
   </section>
@@ -217,27 +249,45 @@
   }
 
   // ── Movies picker ─────────────────────────────────────────────────────────
+  // Each `.plan-card` toggles its `selected` class as the user clicks
+  // through the grid. The card itself is the click target; the title
+  // `<a>` inside it falls through to the browser default (→ /film) so
+  // tapping the name still gives the user the deeper film page.
   function syncPlanMovieChecksFromStorage() {
     const sel = new Set(getSelectedMovies());
-    document.querySelectorAll('.movie-cb').forEach(cb => {
-      cb.checked = sel.has(cb.dataset.title);
+    document.querySelectorAll('.plan-card').forEach(card => {
+      const on = sel.has(card.dataset.title);
+      card.classList.toggle('selected', on);
+      card.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
   }
 
-  function onPlanMovieToggle(cb) {
+  function togglePlanMovie(card) {
     const sel = new Set(getSelectedMovies());
-    if (cb.checked) sel.add(cb.dataset.title); else sel.delete(cb.dataset.title);
+    const title = card.dataset.title;
+    if (sel.has(title)) sel.delete(title); else sel.add(title);
     setSelectedMovies([...sel].sort());
+    syncPlanMovieChecksFromStorage();
     renderPlan();
   }
 
   function filterPlanMovies() {
     const q = (document.getElementById('movie-search').value || '').trim().toLowerCase();
-    document.querySelectorAll('.movie-check').forEach(div => {
-      const t = (div.dataset.title || '').toLowerCase();
-      div.style.display = (!q || t.includes(q)) ? '' : 'none';
+    document.querySelectorAll('.plan-card-col').forEach(col => {
+      const t = (col.dataset.title || '').toLowerCase();
+      col.style.display = (!q || t.includes(q)) ? '' : 'none';
     });
   }
+
+  // Delegate clicks at the document level. The title `<a>` and any
+  // rating-badge link fall through to the browser (those open the
+  // film / external rating page). Everything else on the card toggles
+  // the selection.
+  document.addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    const card = e.target.closest('.plan-card');
+    if (card) togglePlanMovie(card);
+  });
 
   // ── Rooms picker ──────────────────────────────────────────────────────────
   function syncPlanRoomChecksFromStorage() {

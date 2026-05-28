@@ -5,23 +5,13 @@
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
     <a href="@FilmHref(movie.title)" style="display:block;height:100%">
-      @posterUrl match {
-        case Some(url) => {
-          @* `data-fallbacks` is a pipe-separated chain of poster URLs to
-             try when the primary 404/403s — every non-primary poster
-             we know about, in source-priority order (Cinema City after
-             Multikino, then other cinemas, then TMDB, then IMDb). Each
-             goes through PosterProxy too so weserv handles HTTPS
-             upgrade + resize + cache. The inline `onerror` pops the
-             next URL until the chain is empty, then falls through to
-             the `.no-poster` placeholder. *@
-          @defining(enrichment.toSeq.flatMap(_.fallbackPosterUrls).map(tools.PosterProxy.proxy).mkString("|")) { fallbacks =>
-            <img src="@tools.PosterProxy.proxy(url)" alt="@movie.title" loading="lazy" data-original-src="@tools.PosterProxy.proxy(url)"@if(fallbacks.nonEmpty){ data-fallbacks="@fallbacks" data-original-fallbacks="@fallbacks"} onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';schedulePosterRetry(this)">
-          }
-          <div class="no-poster" style="display:none">Brak plakatu</div>
-        }
-        case None      => { <div class="no-poster">Brak plakatu</div> }
-      }
+      @* `data-fallbacks` is a pipe-separated chain of poster URLs the
+         inline onerror tries when the primary 404/403s — every
+         non-primary poster we know about, in source-priority order
+         (Cinema City after Multikino, then other cinemas, then TMDB,
+         then IMDb). Shared with `_planCard` via `_moviePoster` so the
+         retry chain stays in one place. *@
+      @_moviePoster(movie, posterUrl, enrichment)
     </a>
   </div>
   <div class="card-body">
