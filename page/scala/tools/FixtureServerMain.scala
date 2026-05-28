@@ -85,12 +85,19 @@ object FixtureServerMain {
     }
 
     val server = new TestHttpServer({
-      case "/"                          => indexHtml
-      case "/filmy"                     => filmyHtml
-      case "/kina"                      => renderKina(None)
+      // Each top-level route accepts an arbitrary `?…` suffix — the real Play
+      // routes ignore unknown query params on these paths, and the
+      // day-selector ↔ URL Playwright tests boot directly with `?date=` in the
+      // request URL. Without the query-tolerant match the JDK HttpServer
+      // would 404 those requests, which Firefox surfaces as
+      // `NS_ERROR_NET_EMPTY_RESPONSE` rather than a clean status code.
+      case p if p == "/"      || p.startsWith("/?")       => indexHtml
+      case p if p == "/filmy" || p.startsWith("/filmy?")  => filmyHtml
+      case p if p == "/kina"  || p.startsWith("/kina?")   => renderKina(None)
       case p if p.startsWith("/kina/") =>
-        val raw    = URLDecoder.decode(p.stripPrefix("/kina/"), "UTF-8")
-        val pinned = cinemas.find(_ == raw)
+        val rawWithQuery = p.stripPrefix("/kina/")
+        val raw          = URLDecoder.decode(rawWithQuery.takeWhile(_ != '?'), "UTF-8")
+        val pinned       = cinemas.find(_ == raw)
         renderKina(pinned)
       case p if p.startsWith("/film?title=") =>
         renderFilm(p.stripPrefix("/film?title="))
