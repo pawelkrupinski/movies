@@ -236,13 +236,20 @@ class MovieController( cc: ControllerComponents,
     Ok(views.html.repertoire(
       schedules, Cinema.all.map(_.displayName), Cinema.pillMap,
       devMode, user, oauthProviders,
-      pageTitle = meta.title, pageDescription = meta.description
+      pageTitle       = meta.title,
+      pageDescription = meta.description,
+      pageUrl         = PageMeta.canonicalUrl(request),
+      fbAppId         = PageMeta.fbAppId,
     ))
   }
 
   private def renderBrowse(heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
     val user = currentUser(request)
-    Ok(views.html.browse(films, heading, devMode, user, oauthProviders))
+    Ok(views.html.browse(
+      films, heading, devMode, user, oauthProviders,
+      pageUrl = PageMeta.canonicalUrl(request),
+      fbAppId = PageMeta.fbAppId,
+    ))
   }
 
   def browse(kraj: Option[String], rezyser: Option[String], aktor: Option[String]): Action[AnyContent] = Action { request =>
@@ -278,7 +285,12 @@ class MovieController( cc: ControllerComponents,
     val user = currentUser(request)
     val allCinemas = Cinema.all.map(_.displayName)
     val pinned = pinnedCinema.filter(allCinemas.contains)
-    Ok(views.html.kina(movieControllerService.toCinemaSchedules(), allCinemas, Cinema.pillMap, devMode, user, oauthProviders, pinned))
+    Ok(views.html.kina(
+      movieControllerService.toCinemaSchedules(), allCinemas, Cinema.pillMap,
+      devMode, user, oauthProviders, pinned,
+      pageUrl = PageMeta.canonicalUrl(request),
+      fbAppId = PageMeta.fbAppId,
+    ))
   }
 
   def apiRepertoire(): Action[AnyContent] = Action { request =>

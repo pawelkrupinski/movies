@@ -1,12 +1,12 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageTitle: String = "Kinowo", pageDescription: String = "Repertuar wszystkich poznańskich kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.")
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageTitle: String = "Kinowo", pageDescription: String = "Repertuar wszystkich poznańskich kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@pageTitle</title>
-  @_ogTagsApp(pageTitle = pageTitle, pageDescription = pageDescription)
+  @_ogTagsApp(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = fbAppId)
   @_errorTracking()
   @_analytics()
   @* Bootstrap self-hosted — see kina.scala.html for the reasoning. *@

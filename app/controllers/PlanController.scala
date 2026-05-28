@@ -60,7 +60,9 @@ class PlanController(
       data,
       Cinema.all.map(_.displayName),
       Cinema.pillMap,
-      devMode, user, oauthProviders
+      devMode, user, oauthProviders,
+      pageUrl = PageMeta.canonicalUrl(request),
+      fbAppId = PageMeta.fbAppId,
     ))
   }
 

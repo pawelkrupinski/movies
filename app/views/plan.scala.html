@@ -1,6 +1,6 @@
 @import controllers.PlanViewData
 @import controllers.FilmSchedule
-@(data: PlanViewData, allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
+@(data: PlanViewData, allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -9,7 +9,9 @@
   <title>Plan — Repertuar kinowy Poznań</title>
   @_ogTagsApp(
     pageTitle       = "Zaplanuj wizyty w kinach — Repertuar kinowy Poznań",
-    pageDescription = "Wybierz filmy, kina i sale, a my zasugerujemy plan obejrzenia wszystkich filmów w kolejnych dniach."
+    pageDescription = "Wybierz filmy, kina i sale, a my zasugerujemy plan obejrzenia wszystkich filmów w kolejnych dniach.",
+    pageUrl         = pageUrl,
+    fbAppId         = fbAppId,
   )
   @_errorTracking()
   @_analytics()

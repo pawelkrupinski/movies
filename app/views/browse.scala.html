@@ -1,5 +1,5 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
+@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -8,7 +8,9 @@
   <title>@heading – Repertuar kinowy Poznań</title>
   @_ogTagsApp(
     pageTitle       = s"$heading — Repertuar kinowy Poznań",
-    pageDescription = s"Filmy z poznańskich kin: $heading. Z aktualnymi seansami, ocenami i opisami."
+    pageDescription = s"Filmy z poznańskich kin: $heading. Z aktualnymi seansami, ocenami i opisami.",
+    pageUrl         = pageUrl,
+    fbAppId         = fbAppId,
   )
   @_errorTracking()
   @_analytics()

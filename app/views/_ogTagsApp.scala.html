@@ -1,10 +1,9 @@
-@(pageTitle: String, pageDescription: String)
+@(pageTitle: String, pageDescription: String, pageUrl: String = "", fbAppId: Option[String] = None)
 @*
     Open Graph + Twitter Card meta for every non-/film page (index, kina,
-    browse, per-cinema). The /film template has its own block because there
-    we want the film's poster as og:image; everywhere else the app icon
-    is the right thing — none of the in-page posters represent the page as
-    a whole.
+    browse, plan). The /film template has its own block because there we want
+    the film's poster as og:image; everywhere else the app icon is the right
+    thing — none of the in-page posters represent the page as a whole.
 
     og:image is the absolute prod URL: Facebook requires an absolute https
     URL and aggressively caches per-URL, so pinning to kinowo.fly.dev means
@@ -12,18 +11,32 @@
     PR previews / local dev don't get shared, so the prod URL is correct
     for the only audience that scrapes us.
 
-    og:url is intentionally omitted — Facebook uses the request URL when
-    the meta is absent, which is what we want (the same /kina or /filmy
-    URL with the user's filter query intact, not a synthetic canonical).
+    og:url carries the request's canonical URL — Facebook's sharing debugger
+    flags it as a missing required property otherwise (and Messenger's link
+    preview, which shares FB's OG cache, occasionally drops cards whose
+    scrape returned no og:url). The default empty value omits the meta so
+    tests / fixture renders that don't have a request context still produce
+    valid HTML; controllers pass the real `https://host{path+query}` form.
+
+    fb:app_id silences the second "missing required property" warning in
+    FB's debugger. Optional — wire it via the `FB_APP_ID` config / env var
+    once you've registered a Facebook App at developers.facebook.com. Until
+    then the warning is informational, not blocking.
 *@
 <meta property="og:title"       content="@pageTitle">
 <meta property="og:type"        content="website">
 <meta property="og:site_name"   content="Kinowo">
+@if(pageUrl.nonEmpty) {
+<meta property="og:url"         content="@pageUrl">
+}
 <meta property="og:image"       content="https://kinowo.fly.dev/assets/img/og-image.png">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:description" content="@pageDescription">
 <meta name="description"        content="@pageDescription">
+@fbAppId.foreach { id =>
+<meta property="fb:app_id"      content="@id">
+}
 
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="@pageTitle">
