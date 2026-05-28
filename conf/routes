@@ -4,6 +4,7 @@ GET     /film                       controllers.MovieController.film(title: Stri
 GET     /kina                       controllers.MovieController.kina()
 GET     /kina/:cinema               controllers.MovieController.kinaPinned(cinema: String)
 GET     /filmy                      controllers.MovieController.browse(kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None)
+GET     /plan                       controllers.PlanController.plan()
 
 # ── API (JSON) ────────────────────────────────────────────────────────────────
 GET     /api/repertoire              controllers.MovieController.apiRepertoire()

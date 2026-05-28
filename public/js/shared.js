@@ -446,6 +446,20 @@
   function setHidden(titles)     { _lsSet('hiddenFilms',    titles); scheduleServerSync(); }
   function getDisabledCinemas()  { return _lsGet('disabledCinemas') || []; }
   function setDisabledCinemas(l) { _lsSet('disabledCinemas', l);    scheduleServerSync(); }
+  // /plan-side state. `selectedMovies` is the inverse of `hiddenFilms`
+  // (titles to schedule, not titles to skip). `favouriteRooms` are
+  // composite `"<Cinema displayName>|<Room>"` keys — same shape the
+  // grid pages' `data-room` badges and the Filtry → Sale list use, so
+  // a future "carry /plan's room picks into / and /kina" cross-page
+  // affordance can read the same set without a translation step.
+  function getSelectedMovies()   { return _lsGet('selectedMovies') || []; }
+  function setSelectedMovies(l)  { _lsSet('selectedMovies', l);    scheduleServerSync(); }
+  function getFavouriteRooms()   { return _lsGet('favouriteRooms') || []; }
+  function setFavouriteRooms(l)  { _lsSet('favouriteRooms', l);    scheduleServerSync(); }
+  window.getSelectedMovies = getSelectedMovies;
+  window.setSelectedMovies = setSelectedMovies;
+  window.getFavouriteRooms = getFavouriteRooms;
+  window.setFavouriteRooms = setFavouriteRooms;
 
   // Delegated click handler for hide-film buttons and card-tap navigation.
   document.addEventListener('click', e => {
@@ -1147,7 +1161,9 @@
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
         hiddenFilms:     getHidden(),
-        disabledCinemas: getDisabledCinemas()
+        disabledCinemas: getDisabledCinemas(),
+        selectedMovies:  getSelectedMovies(),
+        favouriteRooms:  getFavouriteRooms()
       })
     }).catch(() => { /* offline / 401 — localStorage still has the write */ });
   }
@@ -1168,6 +1184,8 @@
 
       _lsSet('hiddenFilms',         merge(getHidden(),           remote.hiddenFilms));
       _lsSet('disabledCinemas',     merge(getDisabledCinemas(),  remote.disabledCinemas));
+      _lsSet('selectedMovies',      merge(getSelectedMovies(),   remote.selectedMovies));
+      _lsSet('favouriteRooms',      merge(getFavouriteRooms(),   remote.favouriteRooms));
 
       pushStateToServer();
       applyFilters();

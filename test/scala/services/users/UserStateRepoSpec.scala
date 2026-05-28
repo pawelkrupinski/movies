@@ -21,7 +21,9 @@ class UserStateRepoSpec extends AnyFlatSpec with Matchers {
       userId          = "u1",
       hiddenFilms     = Set("Madagaskar"),
       disabledCinemas = Set("Kino Apollo"),
-      updatedAt       = Now
+      updatedAt       = Now,
+      selectedMovies  = Set("Conclave", "Substancja"),
+      favouriteRooms  = Set("Multikino Stary Browar|Sala 5", "Helios Posnania|Sala 7")
     )
     repo.upsert(s)
     repo.find("u1") shouldBe Some(s)
@@ -62,6 +64,8 @@ class UserStateRepoSpec extends AnyFlatSpec with Matchers {
     s.userId          shouldBe "u1"
     s.hiddenFilms     shouldBe empty
     s.disabledCinemas shouldBe empty
+    s.selectedMovies  shouldBe empty
+    s.favouriteRooms  shouldBe empty
     s.updatedAt       shouldBe Now
   }
 

@@ -35,7 +35,9 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     status(result)              shouldBe OK
     contentAsJson(result)       shouldBe Json.obj(
       "hiddenFilms"         -> Json.arr(),
-      "disabledCinemas"     -> Json.arr()
+      "disabledCinemas"     -> Json.arr(),
+      "selectedMovies"      -> Json.arr(),
+      "favouriteRooms"      -> Json.arr()
     )
   }
 
@@ -73,7 +75,9 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
       .withBody(Json.obj(
-        "hiddenFilms"     -> Json.arr("Hidden A")
+        "hiddenFilms"     -> Json.arr("Hidden A"),
+        "selectedMovies"  -> Json.arr("Conclave"),
+        "favouriteRooms"  -> Json.arr("Multikino Stary Browar|Sala 5")
       ))
 
     val result = ctl.put()(request)
@@ -82,6 +86,8 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val stored = repo.find("u1").value
     stored.hiddenFilms     shouldBe Set("Hidden A")
     stored.disabledCinemas shouldBe empty
+    stored.selectedMovies  shouldBe Set("Conclave")
+    stored.favouriteRooms  shouldBe Set("Multikino Stary Browar|Sala 5")
   }
 
   it should "echo the saved state in the response so the client confirms what landed" in {
@@ -139,6 +145,8 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
       case Right(s) =>
         s.hiddenFilms     shouldBe empty
         s.disabledCinemas shouldBe empty
+        s.selectedMovies  shouldBe empty
+        s.favouriteRooms  shouldBe empty
       case Left(reason) => fail(s"expected Right, got Left($reason)")
     }
   }

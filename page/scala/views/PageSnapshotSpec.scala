@@ -66,6 +66,21 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       html should include ("""let _kinaPinned = "Kino Apollo";""")
     }
 
+  "the /plan page" should "render the same HTML as the checked-in snapshot" in
+    new FixtureTestWiring("17-05-2026") {
+      bootStartup()
+      val data = controllers.PlanController.viewData(movieControllerService.toSchedules(now))
+      val html: String = views.html.plan(
+        data,
+        Cinema.all.map(_.displayName),
+        Cinema.pillMap,
+        devMode = false,
+        currentUser = anonymousUser,
+        oauthProviders = noOauthProviders
+      ).body
+      assertSnapshot(snapshotDir.resolve("expected-plan.html"), html)
+    }
+
   private def assertSnapshot(expectedPath: Path, actual: String): Unit = {
     if (!Files.exists(expectedPath)) {
       Files.write(expectedPath, actual.getBytes(StandardCharsets.UTF_8))

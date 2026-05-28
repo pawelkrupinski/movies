@@ -75,7 +75,9 @@ object UserStateController {
    */
   def toJson(state: UserState): JsValue = Json.obj(
     "hiddenFilms"     -> state.hiddenFilms.toSeq.sorted,
-    "disabledCinemas" -> state.disabledCinemas.toSeq.sorted
+    "disabledCinemas" -> state.disabledCinemas.toSeq.sorted,
+    "selectedMovies"  -> state.selectedMovies.toSeq.sorted,
+    "favouriteRooms"  -> state.favouriteRooms.toSeq.sorted
   )
 
   /** Parse a wire JSON into `UserState` bound to `userId`. Missing
@@ -96,6 +98,8 @@ object UserStateController {
     for {
       hf <- stringSet("hiddenFilms")
       dc <- stringSet("disabledCinemas")
-    } yield UserState(userId, hf, dc, Instant.now())
+      sm <- stringSet("selectedMovies")
+      fr <- stringSet("favouriteRooms")
+    } yield UserState(userId, hf, dc, Instant.now(), sm, fr)
   }
 }

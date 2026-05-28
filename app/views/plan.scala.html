@@ -1,0 +1,449 @@
+@import controllers.PlanViewData
+@(data: PlanViewData, allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plan — Repertuar kinowy Poznań</title>
+  @_ogTagsApp(
+    pageTitle       = "Zaplanuj wizyty w kinach — Repertuar kinowy Poznań",
+    pageDescription = "Wybierz filmy, kina i sale, a my zasugerujemy plan obejrzenia wszystkich filmów w kolejnych dniach."
+  )
+  @_errorTracking()
+  @_analytics()
+  <link rel="stylesheet" href="@routes.Assets.versioned("css/bootstrap-5.3.3.min.css")" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  @_sharedStyles(devMode)
+  @_minified(devMode) {
+  <style>
+    .plan-section {
+      border: 1px solid #2a2a4e;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+      background: #15153a;
+    }
+    .plan-section h5 { color: #aad4ff; font-weight: 600; margin: 0 0 .5rem 0; }
+    .plan-section .help { color: #8888aa; font-size: .85rem; margin: 0 0 .75rem 0; }
+
+    /* Cinema pills — same visual language as /kina, but multi-select
+       (a pill stays inactive when the cinema is in `disabledCinemas`).
+       Active = the cinema is enabled. */
+    .cinema-pill {
+      background: transparent;
+      color: #aad4ff;
+      border: 1px solid #3a3a6e;
+      border-radius: 6px;
+      padding: .25rem .6rem;
+      font-size: .875rem;
+      font-family: inherit;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    @@media (hover: hover) and (pointer: fine) {
+      .cinema-pill:hover { background: #3a3a6e; color: #fff; }
+    }
+    .cinema-pill.active { background: #3a3a6e; color: #fff; border-color: #3a3a6e; }
+
+    /* Movies grid: responsive multi-column checkbox list. Each column
+       is a single label so the click target reaches the title text. */
+    .movie-search {
+      width: 100%; max-width: 320px;
+      padding: .35rem .6rem;
+      margin-bottom: .6rem;
+      border-radius: 6px;
+      border: 1px solid #3a3a6e;
+      background: #11113a;
+      color: #ddd;
+    }
+    .movies-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: .15rem .75rem;
+    }
+    .movie-check label { display: flex; align-items: center; gap: .4rem; padding: .15rem 0; color: #ddd; cursor: pointer; }
+    .movie-check input { flex-shrink: 0; }
+
+    /* Per-cinema room picker. Each cinema block is shown only when the
+       cinema is enabled (a JS hook in `refreshRoomsVisibility` toggles
+       display based on `disabledCinemas`). */
+    .rooms-cinema { margin-top: .6rem; }
+    .rooms-cinema h6 { color: #aad4ff; font-size: .9rem; font-weight: 500; margin: 0 0 .25rem 0; }
+    .rooms-list { display: flex; flex-wrap: wrap; gap: .25rem .75rem; }
+    .room-check label { display: inline-flex; align-items: center; gap: .3rem; color: #ddd; cursor: pointer; }
+
+    /* Schedule output. One block per day, ordered chronologically. */
+    .plan-day {
+      border-left: 3px solid #3a3a6e;
+      padding: .35rem 0 .35rem 1rem;
+      margin-bottom: .6rem;
+    }
+    .plan-day .day-label { color: #aad4ff; font-weight: 600; margin-bottom: .15rem; }
+    .plan-pick .title    { color: #fff; font-weight: 500; }
+    .plan-pick .where    { color: #99a; font-size: .9rem; }
+    .plan-empty          { color: #66667a; font-style: italic; }
+
+    /* Limitations: one short line per item, colour-coded by severity. */
+    .plan-limit {
+      padding: .35rem .6rem;
+      border-left: 3px solid #5a5a8e;
+      margin-bottom: .25rem;
+      border-radius: 0 4px 4px 0;
+      background: rgba(255,255,255,.03);
+      color: #ddd;
+    }
+    .plan-limit.info  { border-left-color: #6a8;  color: #cfe; }
+    .plan-limit.warn  { border-left-color: #cb8;  color: #fec; }
+    .plan-limit.error { border-left-color: #b88;  color: #fcc; }
+  </style>
+  }
+</head>
+<body>
+
+@_navbar("plan", devMode, currentUser, oauthProviders)
+@_loginModal(oauthProviders)
+@_hiddenModal()
+
+@_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
+<script src="@routes.Assets.versioned("js/shared.js")"></script>
+
+<div class="container-fluid py-4 px-4">
+
+  <section class="plan-section">
+    <h5>Kina</h5>
+    <p class="help">Wybierz kina, do których jesteś gotów się udać. Kliknij, aby przełączyć.</p>
+    <div id="cinema-pills" class="d-flex align-items-center" style="flex-wrap:wrap; gap:.25rem"></div>
+  </section>
+
+  <section class="plan-section">
+    <h5>Filmy</h5>
+    <p class="help">Zaznacz filmy, które chcesz obejrzeć. Plan ułoży się z najbardziej napiętych terminów.</p>
+    <input type="search" class="movie-search" id="movie-search" placeholder="Szukaj filmu…" oninput="filterPlanMovies()">
+    <div class="movies-grid" id="movies-grid">
+      @for(title <- data.movies) {
+        <div class="movie-check" data-title="@title">
+          <label>
+            <input type="checkbox" class="movie-cb" data-title="@title" onchange="onPlanMovieToggle(this)">
+            <span>@title</span>
+          </label>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="plan-section" id="rooms-section">
+    <h5>Sale</h5>
+    <p class="help">Opcjonalnie zawęź seanse do wybranych sal. Brak zaznaczeń w danym kinie znaczy „dowolna sala".</p>
+    @for(cr <- data.cinemaRooms) {
+      <div class="rooms-cinema" data-cinema="@cr.cinema">
+        <h6>@cr.pillName</h6>
+        <div class="rooms-list">
+          @for(room <- cr.rooms) {
+            <span class="room-check">
+              <label>
+                <input type="checkbox" class="room-cb" data-room-key="@(cr.cinema)|@room" onchange="onPlanRoomToggle(this)">
+                <span>@room</span>
+              </label>
+            </span>
+          }
+        </div>
+      </div>
+    }
+  </section>
+
+  <section class="plan-section">
+    <h5>Proponowany plan</h5>
+    <p class="help" id="plan-summary">Wybierz filmy powyżej, aby zobaczyć propozycję planu.</p>
+    <div id="plan-days"></div>
+  </section>
+
+  <section class="plan-section" id="plan-limits-section" style="display:none">
+    <h5>Ograniczenia</h5>
+    <div id="plan-limits"></div>
+  </section>
+
+</div>
+
+@_minified(devMode) {
+<script>
+  // Server-injected snapshot of every future showing across every cinema.
+  // One flat list — the scheduler builds movie / day / cinema indexes on
+  // the fly because the filter axes interact and pre-grouping server-side
+  // would have to be re-flattened on every toggle.
+  const SHOWINGS = @Html(play.api.libs.json.Json.toJson(data.showings).toString);
+
+  // ── Cinema picker pills ───────────────────────────────────────────────────
+  // Same `disabledCinemas` localStorage axis as /kina and /, but the UI is
+  // multi-select: every cinema not in `disabledCinemas` is active. Toggling
+  // mirrors the change through `setDisabledCinemas` so the picker is in
+  // lockstep with whatever the other pages already had.
+  function buildPlanCinemaPills() {
+    const row = document.getElementById('cinema-pills');
+    if (!row) return;
+    row.innerHTML = '';
+    const disabled = new Set(getDisabledCinemas());
+    ALL_CINEMAS.forEach(cinema => {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'cinema-pill' + (disabled.has(cinema) ? '' : ' active');
+      pill.dataset.cinema = cinema;
+      pill.textContent = CINEMA_PILLS[cinema] || cinema;
+      pill.onclick = () => togglePlanCinema(cinema);
+      row.appendChild(pill);
+    });
+  }
+
+  function togglePlanCinema(cinema) {
+    const disabled = new Set(getDisabledCinemas());
+    if (disabled.has(cinema)) disabled.delete(cinema); else disabled.add(cinema);
+    setDisabledCinemas([...disabled].sort());
+    buildPlanCinemaPills();
+    refreshRoomsVisibility();
+    renderPlan();
+  }
+
+  function refreshRoomsVisibility() {
+    const disabled = new Set(getDisabledCinemas());
+    const sections = document.querySelectorAll('.rooms-cinema');
+    let anyVisible = false;
+    sections.forEach(el => {
+      const on = !disabled.has(el.dataset.cinema);
+      el.style.display = on ? '' : 'none';
+      if (on) anyVisible = true;
+    });
+    const wrapper = document.getElementById('rooms-section');
+    if (wrapper) wrapper.style.display = (anyVisible && sections.length > 0) ? '' : 'none';
+  }
+
+  // ── Movies picker ─────────────────────────────────────────────────────────
+  function syncPlanMovieChecksFromStorage() {
+    const sel = new Set(getSelectedMovies());
+    document.querySelectorAll('.movie-cb').forEach(cb => {
+      cb.checked = sel.has(cb.dataset.title);
+    });
+  }
+
+  function onPlanMovieToggle(cb) {
+    const sel = new Set(getSelectedMovies());
+    if (cb.checked) sel.add(cb.dataset.title); else sel.delete(cb.dataset.title);
+    setSelectedMovies([...sel].sort());
+    renderPlan();
+  }
+
+  function filterPlanMovies() {
+    const q = (document.getElementById('movie-search').value || '').trim().toLowerCase();
+    document.querySelectorAll('.movie-check').forEach(div => {
+      const t = (div.dataset.title || '').toLowerCase();
+      div.style.display = (!q || t.includes(q)) ? '' : 'none';
+    });
+  }
+
+  // ── Rooms picker ──────────────────────────────────────────────────────────
+  function syncPlanRoomChecksFromStorage() {
+    const fav = new Set(getFavouriteRooms());
+    document.querySelectorAll('.room-cb').forEach(cb => {
+      cb.checked = fav.has(cb.dataset.roomKey);
+    });
+  }
+
+  function onPlanRoomToggle(cb) {
+    const fav = new Set(getFavouriteRooms());
+    if (cb.checked) fav.add(cb.dataset.roomKey); else fav.delete(cb.dataset.roomKey);
+    setFavouriteRooms([...fav].sort());
+    renderPlan();
+  }
+
+  // ── Scheduler ─────────────────────────────────────────────────────────────
+  const PL_DAYS    = ['niedziela','poniedziałek','wtorek','środa','czwartek','piątek','sobota'];
+  const PL_MONTHS  = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
+
+  function fmtDayLabel(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return PL_DAYS[d.getDay()] + ', ' + d.getDate() + ' ' + PL_MONTHS[d.getMonth()];
+  }
+
+  function todayKey() {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+
+  // Build a plan from the current localStorage state:
+  //   1. Filter SHOWINGS to the user's allowed movies/cinemas/rooms.
+  //   2. Sort selected movies by scarcity (fewest distinct days first).
+  //   3. Walk in scarcity order, assigning each movie its earliest
+  //      candidate day that isn't yet taken. One movie per day cap.
+  //   4. Collect per-movie limitation notes (single-cinema, last-day,
+  //      no-showings, day-collision).
+  function buildPlan() {
+    const selected = new Set(getSelectedMovies());
+    const disabled = new Set(getDisabledCinemas());
+    const favRooms = getFavouriteRooms();
+
+    // Per-cinema favourite room set: only enforce when the user has
+    // picked at least one room for THAT cinema. Other cinemas keep
+    // "any room OK" semantics so a Multikino-only room preference
+    // doesn't accidentally hide every Apollo showing.
+    const favByCinema = new Map();
+    favRooms.forEach(key => {
+      const idx = key.indexOf('|');
+      if (idx < 0) return;
+      const cinema = key.slice(0, idx), room = key.slice(idx + 1);
+      if (!favByCinema.has(cinema)) favByCinema.set(cinema, new Set());
+      favByCinema.get(cinema).add(room);
+    });
+
+    const today = todayKey();
+
+    const allowed = SHOWINGS.filter(s => {
+      if (!selected.has(s.movie)) return false;
+      if (disabled.has(s.cinema)) return false;
+      if (s.date < today) return false;
+      const required = favByCinema.get(s.cinema);
+      if (required && required.size > 0) {
+        // Showings without a `room` value are kept — we'd otherwise wipe
+        // out entire cinemas that don't report room data the moment the
+        // user picks any preferred room there.
+        if (s.room && !required.has(s.room)) return false;
+      }
+      return true;
+    });
+
+    const perMovie = new Map();
+    selected.forEach(m => perMovie.set(m, []));
+    allowed.forEach(s => {
+      if (perMovie.has(s.movie)) perMovie.get(s.movie).push(s);
+    });
+    perMovie.forEach(arr => arr.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)));
+
+    const distinctDays = m => new Set(perMovie.get(m).map(s => s.date)).size;
+    const movies = [...selected].sort((a, b) => {
+      const da = distinctDays(a), db = distinctDays(b);
+      if (da !== db) return da - db;
+      return a.localeCompare(b, 'pl');
+    });
+
+    const usedDays    = new Set();
+    const picks       = new Map();
+    const unscheduled = [];
+
+    for (const movie of movies) {
+      const candidates = perMovie.get(movie);
+      if (candidates.length === 0) {
+        unscheduled.push({ movie, reason: 'no-showings' });
+        continue;
+      }
+      const slot = candidates.find(s => !usedDays.has(s.date));
+      if (slot) {
+        picks.set(movie, slot);
+        usedDays.add(slot.date);
+      } else {
+        unscheduled.push({ movie, reason: 'day-collision' });
+      }
+    }
+
+    const limits = [];
+    movies.forEach(movie => {
+      const candidates = perMovie.get(movie);
+      if (candidates.length === 0) {
+        limits.push({ kind: 'error', text: '„' + movie + '" — brak pasujących seansów. Sprawdź wybrane kina i sale.' });
+        return;
+      }
+      const cinemas = new Set(candidates.map(c => c.cinema));
+      if (cinemas.size === 1) {
+        limits.push({ kind: 'info', text: '„' + movie + '" wyświetlany tylko w „' + [...cinemas][0] + '".' });
+      }
+      const lastDate = candidates[candidates.length - 1].date;
+      const daysLeft = Math.round((new Date(lastDate + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
+      if (daysLeft >= 0 && daysLeft <= 7) {
+        const left = daysLeft + 1;
+        limits.push({ kind: 'warn', text: '„' + movie + '" — ostatni seans ' + fmtDayLabel(lastDate) + ' (zostało ' + left + ' dni).' });
+      }
+    });
+    unscheduled.forEach(u => {
+      if (u.reason === 'day-collision') {
+        limits.push({ kind: 'warn', text: '„' + u.movie + '" — wszystkie dostępne dni są już zajęte przez inne filmy.' });
+      }
+    });
+
+    return { picks, limits, movies };
+  }
+
+  function renderPlan() {
+    const plan       = buildPlan();
+    const daysEl     = document.getElementById('plan-days');
+    const summaryEl  = document.getElementById('plan-summary');
+    const limitsEl   = document.getElementById('plan-limits');
+    const limitsWrap = document.getElementById('plan-limits-section');
+    if (!daysEl) return;
+
+    daysEl.innerHTML = '';
+    if (plan.movies.length === 0) {
+      summaryEl.textContent = 'Wybierz filmy powyżej, aby zobaczyć propozycję planu.';
+    } else {
+      summaryEl.textContent = 'Zaplanowano ' + plan.picks.size + ' z ' + plan.movies.length + ' wybranych filmów.';
+      const entries = [...plan.picks.entries()]
+        .map(([movie, s]) => ({ movie, ...s }))
+        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+      entries.forEach(d => {
+        const where = d.cinema + (d.room ? ', ' + d.room : '') + ' — ' + d.time;
+        const block = document.createElement('div');
+        block.className = 'plan-day';
+        const label = document.createElement('div');
+        label.className = 'day-label';
+        label.textContent = fmtDayLabel(d.date);
+        const pick  = document.createElement('div');
+        pick.className = 'plan-pick';
+        const tEl = document.createElement('span'); tEl.className = 'title'; tEl.textContent = d.movie;
+        const wEl = document.createElement('span'); wEl.className = 'where'; wEl.textContent = ' ' + where;
+        pick.appendChild(tEl);
+        pick.appendChild(wEl);
+        block.appendChild(label);
+        block.appendChild(pick);
+        daysEl.appendChild(block);
+      });
+      if (entries.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'plan-empty';
+        empty.textContent = 'Brak możliwego planu — sprawdź ograniczenia poniżej.';
+        daysEl.appendChild(empty);
+      }
+    }
+
+    limitsEl.innerHTML = '';
+    if (plan.limits.length === 0) {
+      limitsWrap.style.display = 'none';
+    } else {
+      plan.limits.forEach(l => {
+        const d = document.createElement('div');
+        d.className = 'plan-limit ' + (l.kind || '');
+        d.textContent = l.text;
+        limitsEl.appendChild(d);
+      });
+      limitsWrap.style.display = '';
+    }
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  // shared.js calls `applyFilters()` at boot AND at the end of
+  // `bootMergeFromServer()`. Wrapping it here means /plan re-renders both
+  // on initial paint and after the server-side state has been merged in
+  // (so a user logging in on a fresh device sees their picks materialise
+  // without a manual refresh). `applyFilters` is a sloppy-mode top-level
+  // function declaration in shared.js, so the reassignment lands on the
+  // same global binding both call sites already see.
+  const _origApplyFilters = applyFilters;
+  applyFilters = function plan_applyFilters() {
+    _origApplyFilters();
+    buildPlanCinemaPills();
+    refreshRoomsVisibility();
+    syncPlanMovieChecksFromStorage();
+    syncPlanRoomChecksFromStorage();
+    renderPlan();
+  };
+</script>
+}
+</body>
+</html>

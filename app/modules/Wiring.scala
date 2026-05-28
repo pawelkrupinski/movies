@@ -1,7 +1,7 @@
 package modules
 
 import clients.TmdbClient
-import controllers.{AuthController, HealthController, MovieController, MovieControllerService, UptimeController, UserStateController}
+import controllers.{AuthController, HealthController, MovieController, MovieControllerService, PlanController, UptimeController, UserStateController}
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
@@ -154,6 +154,7 @@ trait Wiring {
 
   // ── Controllers ───────────────────────────────────────────────────────────
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, movieCache, userRepo, oauthProviders.keySet, environmentMode)
+  lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   lazy val uptimeController = new UptimeController(controllerComponents, uptimeMonitor)(using materializer)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
