@@ -6,7 +6,7 @@ on:
 
 # Pipeline shape:
 #
-#   lint ────────────┬─►  deploy ──► lighthouse
+#   lint ────────────┬─►  deploy
 #   test ────────────┤
 #   integration-test ┤
 #   ios-local-server ┤
@@ -16,6 +16,12 @@ on:
 # the `actions/cache` keyed on hashed sources so the second and third
 # jobs find zinc state warm. The test job also produces the Play
 # universal-stage dist for deploy, uploaded as the `stage` artifact.
+#
+# Lighthouse moved to lighthouse.yml — runs on `workflow_run` after
+# this workflow finishes (plus the every-6-h schedule). Keeping it
+# in-line added ~3 min of yellow workflow status after the site was
+# already live; splitting it lets the deploy.yml `green` arrive as
+# soon as the deploy job lands.
 #
 # `page-tests` is the only job that needs a browser: PageJsBehaviourSpec
 # drives a real headless Chrome over CDP to exercise the JS on the
@@ -368,34 +374,4 @@ jobs:
               if: steps.guard.outputs.skip != 'true'
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-    # Lighthouse audit against the freshly deployed site. Runs after
-    # deploy so the scores reflect the code that just shipped. Does NOT
-    # gate anything — `continue-on-error: true` and nothing lists it in
-    # `needs:`. Desktop + mobile form factors run because the audit
-    # verdict differs: mobile applies CPU/network throttling (4× slowdown,
-    # slow 4G). Thresholds live in `.lighthouserc.json` (desktop) and
-    # `.lighthouserc.mobile.json` (mobile).
-    lighthouse:
-        needs: [deploy]
-        runs-on: ubuntu-latest
-        continue-on-error: true
-        steps:
-            - uses: actions/checkout@v4
-
-            - name: Lighthouse CI (desktop)
-              uses: treosh/lighthouse-ci-action@v12
-              with:
-                  configPath: ./.lighthouserc.json
-                  uploadArtifacts: true
-                  artifactName: lighthouse-results-desktop
-                  temporaryPublicStorage: true
-
-            - name: Lighthouse CI (mobile)
-              uses: treosh/lighthouse-ci-action@v12
-              with:
-                  configPath: ./.lighthouserc.mobile.json
-                  uploadArtifacts: true
-                  artifactName: lighthouse-results-mobile
-                  temporaryPublicStorage: true
 

@@ -1,16 +1,28 @@
 name: Lighthouse
 
 on:
+    # Periodic drift catch (third-party script churn, CDN shifts, Fly
+    # cold-start regressions) between deploys.
     schedule:
         - cron: '0 */6 * * *'
+    # Manual re-run from the Actions tab.
     workflow_dispatch:
+    # Post-deploy audit — fires the moment `Deploy to Fly.io` finishes.
+    # Lives here rather than as a final job in deploy.yml so the deploy
+    # workflow's "all green" status arrives ~3 min sooner; the audit
+    # still runs against the freshly-deployed code, just in a separate
+    # workflow row.
+    workflow_run:
+        workflows: [Deploy to Fly.io]
+        types: [completed]
+        branches: [main]
 
-# Periodic audit of the live site — catches score drift between
-# deploys (e.g. third-party script changes, CDN shifts, Fly cold-start
-# regressions). The post-deploy Lighthouse job in deploy.yml covers
-# deploy-time; this one covers the gaps.
 jobs:
     lighthouse:
+        # workflow_run fires on ANY conclusion — gate to success so a
+        # red deploy doesn't audit the stale live site. Schedule + manual
+        # always run.
+        if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
