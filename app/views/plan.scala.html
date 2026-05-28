@@ -101,29 +101,51 @@
     .rooms-list { display: flex; flex-wrap: wrap; gap: .25rem .75rem; }
     .room-check label { display: inline-flex; align-items: center; gap: .3rem; color: #ddd; cursor: pointer; }
 
-    /* Schedule output. One block per day, ordered chronologically. */
-    .plan-day {
+    /* Schedule output. One block per selected movie carrying every
+       option, no auto-assignment — the user picks among them. The
+       border-left tracks the availability severity (warn for runs
+       ending within a week, info otherwise) so a quick glance
+       surfaces what's about to leave the repertoire. */
+    .plan-movie {
       border-left: 3px solid #3a3a6e;
-      padding: .35rem 0 .35rem 1rem;
-      margin-bottom: .6rem;
+      padding: .35rem 0 .55rem 1rem;
+      margin-bottom: .9rem;
     }
-    .plan-day .day-label { color: #aad4ff; font-weight: 600; margin-bottom: .15rem; }
-    .plan-pick .title    { color: #fff; font-weight: 500; }
-    .plan-pick .where    { color: #99a; font-size: .9rem; }
-    .plan-empty          { color: #66667a; font-style: italic; }
-
-    /* Limitations: one short line per item, colour-coded by severity. */
-    .plan-limit {
-      padding: .35rem .6rem;
-      border-left: 3px solid #5a5a8e;
-      margin-bottom: .25rem;
-      border-radius: 0 4px 4px 0;
-      background: rgba(255,255,255,.03);
+    .plan-movie.warn  { border-left-color: #cb8; }
+    .plan-movie.error { border-left-color: #b88; }
+    .plan-movie-title {
+      color: #fff;
+      font-weight: 600;
+      font-size: .98rem;
+      margin-bottom: .1rem;
+    }
+    .plan-movie-summary {
+      color: #aab;
+      font-size: .82rem;
+      margin-bottom: .35rem;
+    }
+    .plan-movie.warn  .plan-movie-summary { color: #fec; }
+    .plan-movie.error .plan-movie-summary { color: #fcc; }
+    .plan-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: .25rem .75rem;
+    }
+    .plan-option {
       color: #ddd;
+      font-size: .85rem;
+      padding: .15rem 0;
     }
-    .plan-limit.info  { border-left-color: #6a8;  color: #cfe; }
-    .plan-limit.warn  { border-left-color: #cb8;  color: #fec; }
-    .plan-limit.error { border-left-color: #b88;  color: #fcc; }
+    .plan-option .when   { color: #aad4ff; font-weight: 500; }
+    .plan-option .where  { color: #99a; }
+    .plan-options-more {
+      grid-column: 1 / -1;
+      color: #66667a;
+      font-size: .8rem;
+      font-style: italic;
+      margin-top: .1rem;
+    }
+    .plan-empty          { color: #66667a; font-style: italic; }
   </style>
   }
 </head>
@@ -175,14 +197,9 @@
   </section>
 
   <section class="plan-section">
-    <h5>Proponowany plan</h5>
-    <p class="help" id="plan-summary">Wybierz filmy powyżej, aby zobaczyć propozycję planu.</p>
+    <h5>Twoje filmy</h5>
+    <p class="help" id="plan-summary">Wybierz filmy powyżej, aby zobaczyć dostępne seanse.</p>
     <div id="plan-days"></div>
-  </section>
-
-  <section class="plan-section" id="plan-limits-section" style="display:none">
-    <h5>Ograniczenia</h5>
-    <div id="plan-limits"></div>
   </section>
 
 </div>
@@ -481,129 +498,114 @@
     return allowedByMovie;
   }
 
-  // Build a plan from the current localStorage state:
-  //   1. Filter SHOWINGS to the user's allowed movies/cinemas/rooms.
-  //   2. Sort selected movies by scarcity (fewest distinct days first).
-  //   3. Walk in scarcity order, assigning each movie its earliest
-  //      candidate day that isn't yet taken. One movie per day cap.
-  //   4. Collect per-movie limitation notes (single-cinema, last-day,
-  //      no-showings, day-collision).
+  // Per-movie candidate map for the current localStorage state. No
+  // conflict resolution — every selected movie surfaces with every one
+  // of its filtered showings so the user can browse options across
+  // days/cinemas/times and pick the slot that fits. A hidden movie can
+  // still sit in `selectedMovies` (the picker filtered it out of view),
+  // so drop it here too rather than letting it reappear in the output.
   function buildPlan(allowedByMovie) {
     const selected = new Set(getSelectedMovies());
     const hidden = new Set(getHidden());
-    const today = todayKey();
-
-    // A hidden movie can't survive into a schedule — `selectedMovies`
-    // persists per-device, so a stale pick from before the hide would
-    // otherwise reappear in the proposed plan.
     selected.forEach(m => { if (hidden.has(m)) selected.delete(m); });
 
+    const movies = [...selected].sort((a, b) => a.localeCompare(b, 'pl'));
     const perMovie = new Map();
-    selected.forEach(m => perMovie.set(m, (allowedByMovie.get(m) || []).slice()));
-    perMovie.forEach(arr => arr.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)));
-
-    const distinctDays = m => new Set(perMovie.get(m).map(s => s.date)).size;
-    const movies = [...selected].sort((a, b) => {
-      const da = distinctDays(a), db = distinctDays(b);
-      if (da !== db) return da - db;
-      return a.localeCompare(b, 'pl');
+    movies.forEach(m => {
+      const arr = (allowedByMovie.get(m) || []).slice();
+      arr.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+      perMovie.set(m, arr);
     });
+    return { movies, perMovie };
+  }
 
-    const usedDays    = new Set();
-    const picks       = new Map();
-    const unscheduled = [];
+  // Cap on options shown per movie — beyond this we render a "+ N
+  // więcej" line. Daily-for-a-month titles otherwise drown out the
+  // shorter-run movies the user picked alongside them.
+  const PLAN_OPTIONS_LIMIT = 8;
 
-    for (const movie of movies) {
-      const candidates = perMovie.get(movie);
-      if (candidates.length === 0) {
-        unscheduled.push({ movie, reason: 'no-showings' });
-        continue;
-      }
-      const slot = candidates.find(s => !usedDays.has(s.date));
-      if (slot) {
-        picks.set(movie, slot);
-        usedDays.add(slot.date);
-      } else {
-        unscheduled.push({ movie, reason: 'day-collision' });
-      }
+  function renderPlanMovieBlock(movie, candidates) {
+    const block = document.createElement('div');
+    block.className = 'plan-movie';
+
+    const title = document.createElement('div');
+    title.className = 'plan-movie-title';
+    title.textContent = movie;
+    block.appendChild(title);
+
+    if (candidates.length === 0) {
+      block.classList.add('error');
+      const empty = document.createElement('div');
+      empty.className = 'plan-movie-summary';
+      empty.textContent = 'Brak pasujących seansów — sprawdź wybrane kina, sale i filtry.';
+      block.appendChild(empty);
+      return block;
     }
 
-    const limits = [];
-    movies.forEach(movie => {
-      const candidates = perMovie.get(movie);
-      if (candidates.length === 0) {
-        limits.push({ kind: 'error', text: '„' + movie + '" — brak pasujących seansów. Sprawdź wybrane kina i sale.' });
-        return;
-      }
-      limits.push(movieAvailabilityNote(movie, candidates));
-    });
-    unscheduled.forEach(u => {
-      if (u.reason === 'day-collision') {
-        limits.push({ kind: 'warn', text: '„' + u.movie + '" — wszystkie dostępne dni są już zajęte przez inne filmy.' });
-      }
+    const note = movieAvailabilityNote(movie, candidates);
+    if (note.kind === 'warn' || note.kind === 'error') block.classList.add(note.kind);
+
+    // Strip the leading "„Movie" — " prefix from the existing note's text
+    // so it reads as the block's subtitle. The shared helper carries the
+    // title for the standalone-line use case; here the heading sits on
+    // its own line just above.
+    const summary = document.createElement('div');
+    summary.className = 'plan-movie-summary';
+    summary.textContent = note.text.replace(/^„[^"]+" — /, '');
+    block.appendChild(summary);
+
+    const list = document.createElement('div');
+    list.className = 'plan-options';
+
+    const shown = candidates.slice(0, PLAN_OPTIONS_LIMIT);
+    shown.forEach(s => {
+      const opt = document.createElement('div');
+      opt.className = 'plan-option';
+      const when = document.createElement('span');
+      when.className = 'when';
+      when.textContent = fmtShortDay(s.date) + ' • ' + s.time;
+      const where = document.createElement('span');
+      where.className = 'where';
+      where.textContent = ' — ' + s.cinema + (s.room ? ', ' + s.room : '');
+      opt.appendChild(when);
+      opt.appendChild(where);
+      list.appendChild(opt);
     });
 
-    return { picks, limits, movies };
+    if (candidates.length > PLAN_OPTIONS_LIMIT) {
+      const more = document.createElement('div');
+      more.className = 'plan-options-more';
+      more.textContent = '+ ' + (candidates.length - PLAN_OPTIONS_LIMIT) + ' więcej';
+      list.appendChild(more);
+    }
+
+    block.appendChild(list);
+    return block;
   }
 
   function renderPlan() {
     // One filter pass per render: visibly hides cards whose movie has no
     // surviving showing, AND seeds the per-movie candidate map the
-    // scheduler reads — so the proposed plan can never schedule a movie
-    // the picker just hid (off-cinema, off-room, off-format, etc.).
+    // option-list pass consumes — so a movie hidden in the picker can't
+    // sneak back into the plan via a stale `selectedMovies` entry.
     const allowedByMovie = filterPlanCards();
     const plan       = buildPlan(allowedByMovie);
     const daysEl     = document.getElementById('plan-days');
     const summaryEl  = document.getElementById('plan-summary');
-    const limitsEl   = document.getElementById('plan-limits');
-    const limitsWrap = document.getElementById('plan-limits-section');
     if (!daysEl) return;
 
     daysEl.innerHTML = '';
     if (plan.movies.length === 0) {
-      summaryEl.textContent = 'Wybierz filmy powyżej, aby zobaczyć propozycję planu.';
-    } else {
-      summaryEl.textContent = 'Zaplanowano ' + plan.picks.size + ' z ' + plan.movies.length + ' wybranych filmów.';
-      const entries = [...plan.picks.entries()]
-        .map(([movie, s]) => ({ movie, ...s }))
-        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-      entries.forEach(d => {
-        const where = d.cinema + (d.room ? ', ' + d.room : '') + ' — ' + d.time;
-        const block = document.createElement('div');
-        block.className = 'plan-day';
-        const label = document.createElement('div');
-        label.className = 'day-label';
-        label.textContent = fmtDayLabel(d.date);
-        const pick  = document.createElement('div');
-        pick.className = 'plan-pick';
-        const tEl = document.createElement('span'); tEl.className = 'title'; tEl.textContent = d.movie;
-        const wEl = document.createElement('span'); wEl.className = 'where'; wEl.textContent = ' ' + where;
-        pick.appendChild(tEl);
-        pick.appendChild(wEl);
-        block.appendChild(label);
-        block.appendChild(pick);
-        daysEl.appendChild(block);
-      });
-      if (entries.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'plan-empty';
-        empty.textContent = 'Brak możliwego planu — sprawdź ograniczenia poniżej.';
-        daysEl.appendChild(empty);
-      }
+      summaryEl.textContent = 'Wybierz filmy powyżej, aby zobaczyć dostępne seanse.';
+      return;
     }
+    summaryEl.textContent = plan.movies.length === 1
+      ? '1 wybrany film.'
+      : plan.movies.length + ' wybranych filmów.';
 
-    limitsEl.innerHTML = '';
-    if (plan.limits.length === 0) {
-      limitsWrap.style.display = 'none';
-    } else {
-      plan.limits.forEach(l => {
-        const d = document.createElement('div');
-        d.className = 'plan-limit ' + (l.kind || '');
-        d.textContent = l.text;
-        limitsEl.appendChild(d);
-      });
-      limitsWrap.style.display = '';
-    }
+    plan.movies.forEach(movie => {
+      daysEl.appendChild(renderPlanMovieBlock(movie, plan.perMovie.get(movie) || []));
+    });
   }
 
   // ── Boot ──────────────────────────────────────────────────────────────────

@@ -37,7 +37,7 @@
 
 
   
-  <style>.plan-section{border:1px solid #2a2a4e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;background:#15153a}.plan-section h5{color:#aad4ff;font-weight:600;margin:0 0 .5rem 0}.plan-section .help{color:#8888aa;font-size:.85rem;margin:0 0 .75rem 0}.cinema-pill{background:transparent;color:#aad4ff;border:1px solid #3a3a6e;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;font-family:inherit;cursor:pointer;-webkit-user-select:none;user-select:none}@media (hover:hover) and (pointer:fine){.cinema-pill:hover{background:#3a3a6e;color:#fff}}.cinema-pill.active{background:#3a3a6e;color:#fff;border-color:#3a3a6e}#plan-movies-row{row-gap:.75rem}.plan-card{background:#1e1e2e;border-radius:12px;overflow:hidden;height:100%;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;outline:2px solid transparent;outline-offset:-2px}.plan-card:hover{transform:translateY(-2px)}.plan-card.selected{outline-color:#6cd06c;box-shadow:0 0 0 1px #6cd06c33,0 6px 18px rgba(108,208,108,.12)}.plan-card .plan-check{position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#6cd06c;color:#0a2a0a;display:none;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;z-index:5;box-shadow:0 2px 6px rgba(0,0,0,.4);pointer-events:none}.plan-card.selected .plan-check{display:flex}.rooms-cinema{margin-top:.6rem}.rooms-cinema h6{color:#aad4ff;font-size:.9rem;font-weight:500;margin:0 0 .25rem 0}.rooms-list{display:flex;flex-wrap:wrap;gap:.25rem .75rem}.room-check label{display:inline-flex;align-items:center;gap:.3rem;color:#ddd;cursor:pointer}.plan-day{border-left:3px solid #3a3a6e;padding:.35rem 0 .35rem 1rem;margin-bottom:.6rem}.plan-day .day-label{color:#aad4ff;font-weight:600;margin-bottom:.15rem}.plan-pick .title{color:#fff;font-weight:500}.plan-pick .where{color:#99a;font-size:.9rem}.plan-empty{color:#66667a;font-style:italic}.plan-limit{padding:.35rem .6rem;border-left:3px solid #5a5a8e;margin-bottom:.25rem;border-radius:0 4px 4px 0;background:rgba(255,255,255,.03);color:#ddd}.plan-limit.info{border-left-color:#6a8;color:#cfe}.plan-limit.warn{border-left-color:#cb8;color:#fec}.plan-limit.error{border-left-color:#b88;color:#fcc}</style>
+  <style>.plan-section{border:1px solid #2a2a4e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;background:#15153a}.plan-section h5{color:#aad4ff;font-weight:600;margin:0 0 .5rem 0}.plan-section .help{color:#8888aa;font-size:.85rem;margin:0 0 .75rem 0}.cinema-pill{background:transparent;color:#aad4ff;border:1px solid #3a3a6e;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;font-family:inherit;cursor:pointer;-webkit-user-select:none;user-select:none}@media (hover:hover) and (pointer:fine){.cinema-pill:hover{background:#3a3a6e;color:#fff}}.cinema-pill.active{background:#3a3a6e;color:#fff;border-color:#3a3a6e}#plan-movies-row{row-gap:.75rem}.plan-card{background:#1e1e2e;border-radius:12px;overflow:hidden;height:100%;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;outline:2px solid transparent;outline-offset:-2px}.plan-card:hover{transform:translateY(-2px)}.plan-card.selected{outline-color:#6cd06c;box-shadow:0 0 0 1px #6cd06c33,0 6px 18px rgba(108,208,108,.12)}.plan-card .plan-check{position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#6cd06c;color:#0a2a0a;display:none;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;z-index:5;box-shadow:0 2px 6px rgba(0,0,0,.4);pointer-events:none}.plan-card.selected .plan-check{display:flex}.rooms-cinema{margin-top:.6rem}.rooms-cinema h6{color:#aad4ff;font-size:.9rem;font-weight:500;margin:0 0 .25rem 0}.rooms-list{display:flex;flex-wrap:wrap;gap:.25rem .75rem}.room-check label{display:inline-flex;align-items:center;gap:.3rem;color:#ddd;cursor:pointer}.plan-movie{border-left:3px solid #3a3a6e;padding:.35rem 0 .55rem 1rem;margin-bottom:.9rem}.plan-movie.warn{border-left-color:#cb8}.plan-movie.error{border-left-color:#b88}.plan-movie-title{color:#fff;font-weight:600;font-size:.98rem;margin-bottom:.1rem}.plan-movie-summary{color:#aab;font-size:.82rem;margin-bottom:.35rem}.plan-movie.warn .plan-movie-summary{color:#fec}.plan-movie.error .plan-movie-summary{color:#fcc}.plan-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.25rem .75rem}.plan-option{color:#ddd;font-size:.85rem;padding:.15rem 0}.plan-option .when{color:#aad4ff;font-weight:500}.plan-option .where{color:#99a}.plan-options-more{grid-column:1 / -1;color:#66667a;font-size:.8rem;font-style:italic;margin-top:.1rem}.plan-empty{color:#66667a;font-style:italic}</style>
   
 
 </head>
@@ -144,6 +144,7 @@
       </div>
       <div class="panel-divider"></div>
       <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100">Wyczyść</button>
+      <button onclick="copyFilterLinkToClipboard(this)" class="btn refresh-btn btn-sm w-100" style="margin-top:.4rem">Skopiuj link do schowka</button>
     </div>
   </div>
 
@@ -10224,14 +10225,9 @@
   </section>
 
   <section class="plan-section">
-    <h5>Proponowany plan</h5>
-    <p class="help" id="plan-summary">Wybierz filmy powyżej, aby zobaczyć propozycję planu.</p>
+    <h5>Twoje filmy</h5>
+    <p class="help" id="plan-summary">Wybierz filmy powyżej, aby zobaczyć dostępne seanse.</p>
     <div id="plan-days"></div>
-  </section>
-
-  <section class="plan-section" id="plan-limits-section" style="display:none">
-    <h5>Ograniczenia</h5>
-    <div id="plan-limits"></div>
   </section>
 
 </div>
@@ -10439,102 +10435,80 @@ return allowedByMovie;
 function buildPlan(allowedByMovie) {
 const selected = new Set(getSelectedMovies());
 const hidden = new Set(getHidden());
-const today = todayKey();
 selected.forEach(m => { if (hidden.has(m)) selected.delete(m); });
+const movies = [...selected].sort((a, b) => a.localeCompare(b, 'pl'));
 const perMovie = new Map();
-selected.forEach(m => perMovie.set(m, (allowedByMovie.get(m) || []).slice()));
-perMovie.forEach(arr => arr.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)));
-const distinctDays = m => new Set(perMovie.get(m).map(s => s.date)).size;
-const movies = [...selected].sort((a, b) => {
-const da = distinctDays(a), db = distinctDays(b);
-if (da !== db) return da - db;
-return a.localeCompare(b, 'pl');
+movies.forEach(m => {
+const arr = (allowedByMovie.get(m) || []).slice();
+arr.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+perMovie.set(m, arr);
 });
-const usedDays = new Set();
-const picks = new Map();
-const unscheduled = [];
-for (const movie of movies) {
-const candidates = perMovie.get(movie);
+return { movies, perMovie };
+}
+const PLAN_OPTIONS_LIMIT = 8;
+function renderPlanMovieBlock(movie, candidates) {
+const block = document.createElement('div');
+block.className = 'plan-movie';
+const title = document.createElement('div');
+title.className = 'plan-movie-title';
+title.textContent = movie;
+block.appendChild(title);
 if (candidates.length === 0) {
-unscheduled.push({ movie, reason: 'no-showings' });
-continue;
+block.classList.add('error');
+const empty = document.createElement('div');
+empty.className = 'plan-movie-summary';
+empty.textContent = 'Brak pasujących seansów — sprawdź wybrane kina, sale i filtry.';
+block.appendChild(empty);
+return block;
 }
-const slot = candidates.find(s => !usedDays.has(s.date));
-if (slot) {
-picks.set(movie, slot);
-usedDays.add(slot.date);
-} else {
-unscheduled.push({ movie, reason: 'day-collision' });
-}
-}
-const limits = [];
-movies.forEach(movie => {
-const candidates = perMovie.get(movie);
-if (candidates.length === 0) {
-limits.push({ kind: 'error', text: '„' + movie + '" — brak pasujących seansów. Sprawdź wybrane kina i sale.' });
-return;
-}
-limits.push(movieAvailabilityNote(movie, candidates));
+const note = movieAvailabilityNote(movie, candidates);
+if (note.kind === 'warn' || note.kind === 'error') block.classList.add(note.kind);
+const summary = document.createElement('div');
+summary.className = 'plan-movie-summary';
+summary.textContent = note.text.replace(/^„[^"]+" — /, '');
+block.appendChild(summary);
+const list = document.createElement('div');
+list.className = 'plan-options';
+const shown = candidates.slice(0, PLAN_OPTIONS_LIMIT);
+shown.forEach(s => {
+const opt = document.createElement('div');
+opt.className = 'plan-option';
+const when = document.createElement('span');
+when.className = 'when';
+when.textContent = fmtShortDay(s.date) + ' • ' + s.time;
+const where = document.createElement('span');
+where.className = 'where';
+where.textContent = ' — ' + s.cinema + (s.room ? ', ' + s.room : '');
+opt.appendChild(when);
+opt.appendChild(where);
+list.appendChild(opt);
 });
-unscheduled.forEach(u => {
-if (u.reason === 'day-collision') {
-limits.push({ kind: 'warn', text: '„' + u.movie + '" — wszystkie dostępne dni są już zajęte przez inne filmy.' });
+if (candidates.length > PLAN_OPTIONS_LIMIT) {
+const more = document.createElement('div');
+more.className = 'plan-options-more';
+more.textContent = '+ ' + (candidates.length - PLAN_OPTIONS_LIMIT) + ' więcej';
+list.appendChild(more);
 }
-});
-return { picks, limits, movies };
+block.appendChild(list);
+return block;
 }
 function renderPlan() {
 const allowedByMovie = filterPlanCards();
 const plan = buildPlan(allowedByMovie);
 const daysEl = document.getElementById('plan-days');
 const summaryEl = document.getElementById('plan-summary');
-const limitsEl = document.getElementById('plan-limits');
-const limitsWrap = document.getElementById('plan-limits-section');
 if (!daysEl) return;
 daysEl.innerHTML = '';
 if (plan.movies.length === 0) {
-summaryEl.textContent = 'Wybierz filmy powyżej, aby zobaczyć propozycję planu.';
-} else {
-summaryEl.textContent = 'Zaplanowano ' + plan.picks.size + ' z ' + plan.movies.length + ' wybranych filmów.';
-const entries = [...plan.picks.entries()]
-.map(([movie, s]) => ({ movie, ...s }))
-.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-entries.forEach(d => {
-const where = d.cinema + (d.room ? ', ' + d.room : '') + ' — ' + d.time;
-const block = document.createElement('div');
-block.className = 'plan-day';
-const label = document.createElement('div');
-label.className = 'day-label';
-label.textContent = fmtDayLabel(d.date);
-const pick = document.createElement('div');
-pick.className = 'plan-pick';
-const tEl = document.createElement('span'); tEl.className = 'title'; tEl.textContent = d.movie;
-const wEl = document.createElement('span'); wEl.className = 'where'; wEl.textContent = ' ' + where;
-pick.appendChild(tEl);
-pick.appendChild(wEl);
-block.appendChild(label);
-block.appendChild(pick);
-daysEl.appendChild(block);
+summaryEl.textContent = 'Wybierz filmy powyżej, aby zobaczyć dostępne seanse.';
+return;
+}
+summaryEl.textContent = plan.movies.length === 1
+? '1 wybrany film.'
+: plan.movies.length + ' wybranych filmów.';
+plan.movies.forEach(movie => {
+daysEl.appendChild(renderPlanMovieBlock(movie, plan.perMovie.get(movie) || []));
 });
-if (entries.length === 0) {
-const empty = document.createElement('div');
-empty.className = 'plan-empty';
-empty.textContent = 'Brak możliwego planu — sprawdź ograniczenia poniżej.';
-daysEl.appendChild(empty);
-}
-}
-limitsEl.innerHTML = '';
-if (plan.limits.length === 0) {
-limitsWrap.style.display = 'none';
-} else {
-plan.limits.forEach(l => {
-const d = document.createElement('div');
-d.className = 'plan-limit ' + (l.kind || '');
-d.textContent = l.text;
-limitsEl.appendChild(d);
-});
-limitsWrap.style.display = '';
-}
 }
 function buildIndex() {}
 function applyFilters() {
