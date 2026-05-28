@@ -86,4 +86,68 @@ class AsyncHydrateRaceSpec extends AnyFlatSpec with Matchers {
       titles should have size 1
     }
   }
+
+  // ── Cleanup of duplicates that already shipped to Mongo ───────────────────
+
+  private def mkCinemaSlot(cinema: Cinema): SourceData = SourceData(
+    title       = Some("X"),
+    showtimes   = Seq(Showtime(LocalDateTime.now(), None)),
+    releaseYear = None
+  )
+
+  "rehydrate" should "merge year-less duplicates into the year-having canonical row" in {
+    val repo = new InMemoryMovieRepo(Seq(
+      // Canonical: TMDB-resolved row from a prior boot.
+      ("Mandalorian i Grogu", Some(2026), MovieRecord(
+        tmdbId = Some(123),
+        imdbId = Some("tt9"),
+        data   = Map(Multikino -> mkCinemaSlot(Multikino))
+      )),
+      // Buggy twin from the async-hydrate race: new cinema slot from a
+      // post-bug scrape, no enrichment because it never went through TMDB.
+      ("Mandalorian i Grogu", None, MovieRecord(
+        data = Map(Helios -> mkCinemaSlot(Helios))
+      ))
+    ))
+
+    val cache = new CaffeineMovieCache(repo, new InProcessEventBus())
+
+    val snap = cache.snapshot()
+    snap should have size 1
+    val canonical = snap.head
+    canonical.year   shouldBe Some(2026)
+    canonical.record.tmdbId shouldBe Some(123)
+    // Slots from BOTH rows survive — Multikino from canonical, Helios from
+    // the merged year-less row.
+    canonical.record.data.keySet shouldBe Set(Multikino, Helios)
+    // Mongo side is also cleaned up.
+    repo.deletes.map(_._2) should contain (None)
+  }
+
+  it should "leave a year-less row alone when it carries its own TMDB enrichment" in {
+    // Two distinct rows that happen to normalise to the same title: one is
+    // a genuinely year-less but TMDB-resolved indie (rare but real), the
+    // other is the year-having sequel. Neither is buggy residue.
+    val repo = new InMemoryMovieRepo(Seq(
+      ("Mandalorian i Grogu", None,         MovieRecord(tmdbId = Some(999), imdbId = Some("tt8"))),
+      ("Mandalorian i Grogu", Some(2026),   MovieRecord(tmdbId = Some(123)))
+    ))
+
+    val cache = new CaffeineMovieCache(repo, new InProcessEventBus())
+
+    cache.snapshot() should have size 2
+    repo.deletes shouldBe empty
+  }
+
+  it should "leave two year-having rows alone (legitimate sequels with same normalised title)" in {
+    val repo = new InMemoryMovieRepo(Seq(
+      ("Heat", Some(1995), MovieRecord(tmdbId = Some(1))),
+      ("Heat", Some(2025), MovieRecord(tmdbId = Some(2)))
+    ))
+
+    val cache = new CaffeineMovieCache(repo, new InProcessEventBus())
+
+    cache.snapshot() should have size 2
+    repo.deletes shouldBe empty
+  }
 }
