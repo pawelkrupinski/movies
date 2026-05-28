@@ -4,6 +4,17 @@ on:
     push:
         branches: [main]
 
+# Workflow-level concurrency: a newer push cancels the older workflow
+# mid-flight, freeing its ~28 worker slots so the latest commit's jobs
+# don't queue behind stale work. (GitHub Actions exposes ~20 concurrent
+# Linux slots per account; two overlapping pushes would otherwise fight
+# for them.) The deploy JOB has its own `concurrency: fly-deploy` group
+# below — that's the flyctl race guard, a separate concern, and it
+# stays as-is.
+concurrency:
+    group: deploy-${{ github.ref }}
+    cancel-in-progress: true
+
 # Pipeline shape:
 #
 #   lint ────────────┬─►  deploy
