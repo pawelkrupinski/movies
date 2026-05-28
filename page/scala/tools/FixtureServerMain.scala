@@ -74,6 +74,12 @@ object FixtureServerMain {
       currentUser = anon, oauthProviders = noOauth
     ).body
 
+    val planHtml: String = {
+      val data = controllers.PlanController.viewData(schedules)
+      views.html.plan(data, cinemas, pills, devMode = false,
+        currentUser = anon, oauthProviders = noOauth).body
+    }
+
     def renderFilm(title: String): String = {
       val target = URLDecoder.decode(title, "UTF-8")
       schedules.find(_.movie.title == target) match {
@@ -94,6 +100,7 @@ object FixtureServerMain {
       case p if p == "/"      || p.startsWith("/?")       => indexHtml
       case p if p == "/filmy" || p.startsWith("/filmy?")  => filmyHtml
       case p if p == "/kina"  || p.startsWith("/kina?")   => renderKina(None)
+      case p if p == "/plan"  || p.startsWith("/plan?")   => planHtml
       case p if p.startsWith("/kina/") =>
         val rawWithQuery = p.stripPrefix("/kina/")
         val raw          = URLDecoder.decode(rawWithQuery.takeWhile(_ != '?'), "UTF-8")

@@ -193,7 +193,13 @@
   // One flat list — the scheduler builds movie / day / cinema indexes on
   // the fly because the filter axes interact and pre-grouping server-side
   // would have to be re-flattened on every toggle.
-  const SHOWINGS = @Html(play.api.libs.json.Json.toJson(data.showings).toString);
+  //
+  // Exposed on `window` so the Playwright suite can probe the corpus and
+  // pick movies matching specific date/cinema shapes; a bare top-level
+  // `const` lives only in the script's lexical environment and isn't
+  // reachable from `page.evaluate`.
+  window.SHOWINGS = @Html(play.api.libs.json.Json.toJson(data.showings).toString);
+  const SHOWINGS = window.SHOWINGS;
 
   // ── Cinema picker pills ───────────────────────────────────────────────────
   // Same `disabledCinemas` localStorage axis as /kina and /, but the UI is
@@ -294,12 +300,25 @@
   }
 
   // ── Scheduler ─────────────────────────────────────────────────────────────
-  const PL_DAYS    = ['niedziela','poniedziałek','wtorek','środa','czwartek','piątek','sobota'];
-  const PL_MONTHS  = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
+  const PL_DAYS       = ['niedziela','poniedziałek','wtorek','środa','czwartek','piątek','sobota'];
+  const PL_DAYS_SHORT = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'];
+  const PL_MONTHS     = ['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
 
   function fmtDayLabel(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
     return PL_DAYS[d.getDay()] + ', ' + d.getDate() + ' ' + PL_MONTHS[d.getMonth()];
+  }
+
+  // Short form for the per-movie availability note in Ograniczenia — three
+  // or four dates render comfortably on one line where the full
+  // "niedziela, 25 maja" form would wrap.
+  function fmtShortDay(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return PL_DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + ' ' + PL_MONTHS[d.getMonth()];
+  }
+
+  function daysBetween(fromIso, toIso) {
+    return Math.round((new Date(toIso + 'T00:00:00') - new Date(fromIso + 'T00:00:00')) / 86400000);
   }
 
   function todayKey() {
@@ -307,6 +326,49 @@
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return d.getFullYear() + '-' + m + '-' + day;
+  }
+
+  // Per-movie availability note for Ograniczenia:
+  //   - 1 day            → "tylko nd 25 maja"
+  //   - 2 days           → "nd 25 i pn 26 maja"
+  //   - 3+ days, ≤1 gap  → "od nd 25 do śr 28 maja"          (continuous run)
+  //   - otherwise        → "tylko: nd 25, wt 27, czw 29 maja" (sparse)
+  // followed by the cinema constraint when the movie plays at one or two
+  // cinemas. Severity is `warn` when the last play-date is within a week
+  // (urgency), `info` otherwise. Date constraints come first because
+  // that's the dimension the user can act on by toggling Plan picks;
+  // cinema follows because it's a fixed property of the film.
+  function movieAvailabilityNote(movie, candidates) {
+    const dates   = [...new Set(candidates.map(c => c.date))].sort();
+    const cinemas = [...new Set(candidates.map(c => c.cinema))].sort((a, b) => a.localeCompare(b, 'pl'));
+    const today   = todayKey();
+    const first   = dates[0];
+    const last    = dates[dates.length - 1];
+    const numDays = dates.length;
+    const span    = daysBetween(first, last) + 1;
+
+    let dateText;
+    if (numDays === 1) {
+      dateText = 'tylko ' + fmtShortDay(first);
+    } else if (numDays === 2) {
+      dateText = fmtShortDay(first) + ' i ' + fmtShortDay(last);
+    } else if (span - numDays <= 1) {
+      dateText = 'od ' + fmtShortDay(first) + ' do ' + fmtShortDay(last);
+    } else {
+      dateText = 'tylko: ' + dates.map(fmtShortDay).join(', ');
+    }
+
+    let cinemaText = '';
+    if (cinemas.length === 1) {
+      cinemaText = ', w „' + cinemas[0] + '"';
+    } else if (cinemas.length === 2) {
+      cinemaText = ', w „' + cinemas[0] + '" i „' + cinemas[1] + '"';
+    }
+
+    const daysLeft = daysBetween(today, last);
+    const kind = (daysLeft >= 0 && daysLeft <= 7) ? 'warn' : 'info';
+
+    return { kind, text: '„' + movie + '" — ' + dateText + cinemaText + '.' };
   }
 
   // Predicate matching a single SHOWING against every active navbar /
@@ -473,16 +535,7 @@
         limits.push({ kind: 'error', text: '„' + movie + '" — brak pasujących seansów. Sprawdź wybrane kina i sale.' });
         return;
       }
-      const cinemas = new Set(candidates.map(c => c.cinema));
-      if (cinemas.size === 1) {
-        limits.push({ kind: 'info', text: '„' + movie + '" wyświetlany tylko w „' + [...cinemas][0] + '".' });
-      }
-      const lastDate = candidates[candidates.length - 1].date;
-      const daysLeft = Math.round((new Date(lastDate + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
-      if (daysLeft >= 0 && daysLeft <= 7) {
-        const left = daysLeft + 1;
-        limits.push({ kind: 'warn', text: '„' + movie + '" — ostatni seans ' + fmtDayLabel(lastDate) + ' (zostało ' + left + ' dni).' });
-      }
+      limits.push(movieAvailabilityNote(movie, candidates));
     });
     unscheduled.forEach(u => {
       if (u.reason === 'day-collision') {
