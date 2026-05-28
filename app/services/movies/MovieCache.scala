@@ -97,12 +97,7 @@ trait MovieCache {
  */
 class CaffeineMovieCache(
   repo: MovieRepo,
-  bus:  EventBus = new InProcessEventBus(),
-  // Wiring sets true so app boot doesn't block on the initial Mongo
-  // findAll (~12s for a few hundred docs over an Atlas RTT). Tests
-  // keep the default false — they seed data and expect to read it
-  // back synchronously on the next line.
-  asyncHydrate: Boolean = false
+  bus:  EventBus = new InProcessEventBus()
 ) extends MovieCache with Stoppable with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
@@ -140,37 +135,11 @@ class CaffeineMovieCache(
   private def tmdbLockFor(tmdbId: Int): AnyRef =
     tmdbLocks.computeIfAbsent(tmdbId, _ => new Object())
 
-  // Latch that gates `recordCinemaScrape` on the initial hydrate
-  // completing. Without this gate, a scrape arriving before hydrate
-  // loads the Mongo state can't see the canonical row that already
-  // exists there — `redirectToExistingVariant` walks an empty cache,
-  // returns None, and the scrape creates a *new* row at its own key
-  // (typically differing by a missing release year, since some cinema
-  // feeds drop that field intermittently). Hydrate then loads the
-  // Mongo row at the canonical key, and both rows end up in the cache
-  // → the page renders duplicate cards. The 30-s periodic tick can't
-  // fix it either: it pulls more Mongo rows into the cache but never
-  // merges two cache-side keys that share a normalised title.
-  private val hydrationDone = new java.util.concurrent.CountDownLatch(1)
-
-  // Hydrate from Mongo. Sync by default (tests can seed + assert in
-  // the next line); async when wired by `Wiring`, so app boot returns
-  // immediately and the first request renders without blocking on the
-  // ~12s initial findAll.
-  if (asyncHydrate) {
-    val t = new Thread(
-      () => try
-        Try(rehydrate()).failed.foreach(ex =>
-          logger.warn(s"MovieCache async hydrate failed: ${ex.getMessage}")
-        )
-      finally hydrationDone.countDown(),
-      "movie-cache-hydrate"
-    )
-    t.setDaemon(true)
-    t.start()
-  } else {
-    try rehydrate() finally hydrationDone.countDown()
-  }
+  // Hydrate from Mongo on construction. Synchronous: Wiring builds the cache
+  // during `start()`, so the first HTTP request only lands after the initial
+  // findAll has completed. Pages render against a fully-populated cache; no
+  // first-request flicker, no scrape-vs-hydrate race.
+  rehydrate()
 
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey =
     CacheKey(MovieService.searchTitle(title), year)
@@ -379,13 +348,6 @@ class CaffeineMovieCache(
    *  `UnscreenedCleanup`; a film that returns after the prune ran will
    *  re-pay the full enrichment cost on its next scrape. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)] = {
-    // Block on the initial hydrate. With `asyncHydrate = true` (production)
-    // the first scrape tick can fire before the Mongo round-trip completes;
-    // proceeding here without the canonical state would produce the
-    // duplicate-row race described next to `hydrationDone` above. Once the
-    // latch is down it's a no-op cost on every subsequent call.
-    hydrationDone.await()
-
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
     // challenge, parser regex mismatch, proxy 503, blank HTML), not a
     // cinema that's genuinely showing zero films right now. Without this
