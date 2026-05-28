@@ -958,24 +958,25 @@
     if (next >= 0 && next < sel.options.length) { sel.selectedIndex = next; onDateChange(); }
   }
 
-  // Single entry point for "the day selector changed" — folds into the
-  // generic filter-change pipeline so the URL stays in lock-step with the
-  // select. Used by the `<select onchange>` in `_navbar` and by `stepDate`'s
-  // arrow buttons; both end in `applyFilters()`, which now calls
-  // `syncFiltersToURL()` at its head for every filter (not just the date).
+  // Single entry point for "the day selector changed" — funnels into
+  // `applyFilters()` so date stepping rebuilds the visible grid the same
+  // way every other filter does. `applyFilters` calls `syncDateToURL`
+  // (date-only); the other filters wait for the explicit Copy button.
   function onDateChange() {
     applyFilters();
   }
 
   // ── URL ↔ filter state sync ───────────────────────────────────────────────
   //
-  // Every non-default filter is reflected as a query param so pages can be
-  // shared/bookmarked in their current filtered state. `syncFiltersToURL` is
-  // called at the start of `applyFilters` (so every change path — `onchange`,
-  // `applyFiltersDebounced`, `stepDate`, cinema-pill toggle — keeps the URL
-  // current with zero extra wiring per call site). `applyFiltersFromURL` is
-  // the boot-time inverse: walks every param and writes it back into the
-  // matching control before the first filter pass runs.
+  // `applyFiltersFromURL` reads every supported param on boot and applies it
+  // to the matching control. The URL is the share/bookmark entry point.
+  //
+  // After boot only the day select is reflected back into the URL on change
+  // (via `syncDateToURL`, called from `applyFilters`) — the other filters
+  // stay local until the user explicitly hits "Skopiuj link do schowka",
+  // which calls `copyFilterLinkToClipboard` → `buildShareURL` to materialise
+  // the full current state into a URL and write it both to the address bar
+  // and the clipboard.
   //
   // Param map:
   //   date    — date-filter select (today/tomorrow/week/anytime/YYYY-MM-DD)
@@ -998,7 +999,22 @@
   // (rooms like "Cinema City Kinepolis|Sala 1" ended up as
   // `Cinema%2520City%2520Kinepolis%257CSala%25201`).
 
-  function syncFiltersToURL() {
+  // Lightweight: only the day select is reflected back to the URL in real
+  // time, so stepping through days keeps history meaningful without polluting
+  // the URL with every cast/country tick.
+  function syncDateToURL() {
+    const dateSel = document.getElementById('date-filter');
+    if (!dateSel) return;
+    const url = new URL(window.location.href);
+    if (dateSel.value === 'today') url.searchParams.delete('date');
+    else url.searchParams.set('date', dateSel.value);
+    history.replaceState(null, '', url.pathname + url.search + url.hash);
+  }
+
+  // Build (but don't apply) the URL that captures every current filter — used
+  // by the Copy-link button. Returns the same `pathname + search + hash`
+  // shape `history.replaceState` expects.
+  function buildShareURL() {
     const url = new URL(window.location.href);
     const p   = url.searchParams;
     const setOrDel = (k, v) => { if (v) p.set(k, v); else p.delete(k); };
@@ -1048,7 +1064,38 @@
       }
     }
 
-    history.replaceState(null, '', url.pathname + url.search + url.hash);
+    return url.pathname + url.search + url.hash;
+  }
+
+  // Filtry-panel "Skopiuj link do schowka" handler: materialise the current
+  // filter state into the address bar AND the clipboard. Briefly flips the
+  // button label so the user has visual confirmation it took.
+  function copyFilterLinkToClipboard(btn) {
+    const path = buildShareURL();
+    history.replaceState(null, '', path);
+    const url = window.location.origin + path;
+    const done = () => {
+      if (!btn) return;
+      const prev = btn.textContent;
+      btn.textContent = 'Skopiowano!';
+      setTimeout(() => { btn.textContent = prev; }, 1500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done, done);
+    } else {
+      // Older Safari / non-secure contexts: fall back to the deprecated
+      // execCommand path — still ubiquitous enough that "no clipboard" beats
+      // a silent failure.
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.position = 'fixed';
+      ta.style.opacity  = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (_) {}
+      document.body.removeChild(ta);
+      done();
+    }
   }
 
   function applyFiltersFromURL() {

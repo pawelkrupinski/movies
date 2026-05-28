@@ -124,12 +124,11 @@
 
   function applyFilters() {
     if (!INDEX) return;
-    // Every filter-change path lands here, so reflecting the current control
-    // state into `?…` once at the top covers every onchange/oninput/keyboard
-    // shortcut without per-call-site wiring. Idempotent for non-filter callers
-    // (hide-film, restore-film, server-merge — they all leave the controls
-    // alone, so the URL stays as-is).
-    syncFiltersToURL();
+    // Only the day select rides the URL in real time — every other filter
+    // stays local until the user opts in via the Filtry panel's "Skopiuj
+    // link do schowka" button. `syncDateToURL` covers the date dropdown,
+    // the `stepDate` arrows, and the URL-driven day-step keyboard shortcut.
+    syncDateToURL();
     undoTruncation();
     const filter    = document.getElementById('date-filter')?.value || 'anytime';
     const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();

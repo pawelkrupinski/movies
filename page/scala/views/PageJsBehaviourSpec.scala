@@ -1160,14 +1160,34 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // ── Generic filter ↔ URL sync ───────────────────────────────────────────────
   //
-  // The date selector is one of ~nine filters; the same param-round-trip
-  // contract applies to every one of them, so every filter — radio / checkbox /
-  // text / submenu — should add a param when set off-default, strip it on
-  // return-to-default, and apply the param on first paint.
+  // The date selector is the only filter that writes back to the URL on
+  // every change (so day-stepping survives a copy/paste). The rest of the
+  // panel — radio / checkbox / text / submenu — stays local until the user
+  // explicitly hits the Filtry "Skopiuj link do schowka" button, which calls
+  // `copyFilterLinkToClipboard()`. That helper folds the full filter state
+  // into the URL and pushes it to the clipboard. Tests below trip it
+  // directly (`copyFilterLinkToClipboard()`) to assert the URL shape per
+  // filter; boot-from-URL is asserted with the same `?param=` shape on a
+  // fresh page.
 
-  "format Wymiar = 3D" should "round-trip through ?dim=3D" in {
+  "a non-date filter change" should "leave the URL alone until the Copy button is pressed" in {
     onPath("/") { page =>
-      page.eval("document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').click()")
+      page.eval(
+        "document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').click();" +
+        "document.getElementById('format-imax').click()"
+      )
+      // Neither click is reflected in the URL — only Copy commits state.
+      page.evalBool("new URL(location.href).searchParams.has('dim')")  shouldBe false
+      page.evalBool("new URL(location.href).searchParams.has('imax')") shouldBe false
+    }
+  }
+
+  "format Wymiar = 3D" should "round-trip through ?dim=3D when the Copy button is used" in {
+    onPath("/") { page =>
+      page.eval(
+        "document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').click();" +
+        "copyFilterLinkToClipboard()"
+      )
       page.evalString("new URL(location.href).searchParams.get('dim')") shouldBe "3D"
     }
     onPath("/?dim=3D") { page =>
@@ -1175,17 +1195,20 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "format Wersja = DUB" should "round-trip through ?lang=DUB" in {
+  "format Wersja = DUB" should "round-trip through ?lang=DUB when the Copy button is used" in {
     onPath("/?lang=DUB") { page =>
       page.evalBool("document.querySelector('input[name=\"format-lang\"][value=\"DUB\"]').checked") shouldBe true
-      page.eval("document.querySelector('input[name=\"format-lang\"][value=\"\"]').click()")
+      page.eval(
+        "document.querySelector('input[name=\"format-lang\"][value=\"\"]').click();" +
+        "copyFilterLinkToClipboard()"
+      )
       page.evalBool("new URL(location.href).searchParams.has('lang')") shouldBe false
     }
   }
 
-  "the IMAX checkbox" should "round-trip through ?imax=1" in {
+  "the IMAX checkbox" should "round-trip through ?imax=1 when the Copy button is used" in {
     onPath("/") { page =>
-      page.eval("document.getElementById('format-imax').click()")
+      page.eval("document.getElementById('format-imax').click(); copyFilterLinkToClipboard()")
       page.evalString("new URL(location.href).searchParams.get('imax')") shouldBe "1"
     }
     onPath("/?imax=1") { page =>
@@ -1193,12 +1216,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "the from-hour filter" should "round-trip through ?from=HH:MM" in {
+  "the from-hour filter" should "round-trip through ?from=HH:MM when the Copy button is used" in {
     onPath("/") { page =>
       page.eval(
         "document.getElementById('from-hour').value = '18';" +
         "document.getElementById('from-minute').value = '30';" +
-        "onFormatChange()"
+        "onFormatChange(); copyFilterLinkToClipboard()"
       )
       page.evalString("new URL(location.href).searchParams.get('from')") shouldBe "18:30"
     }
@@ -1208,10 +1231,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "the search input" should "round-trip through ?q=" in {
+  "the search input" should "round-trip through ?q= when the Copy button is used" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
-      page.eval("document.getElementById('search-input').value = 'Diabeł'; applyFilters()")
+      page.eval(
+        "document.getElementById('search-input').value = 'Diabeł';" +
+        "applyFilters(); copyFilterLinkToClipboard()"
+      )
       page.evalString("new URL(location.href).searchParams.get('q')") shouldBe "Diabeł"
     }
     onPath("/?q=Diab%C5%82eb") { page =>
@@ -1222,7 +1248,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "unchecking a country" should "leave ?country= listing the still-checked countries (inclusion set)" in {
+  "unchecking a country" should "leave ?country= listing the still-checked countries (inclusion set, captured on Copy)" in {
     onPath("/") { page =>
       clearLocalStorage(page)
       val firstCountry = page.evalString(
@@ -1230,7 +1256,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       )
       firstCountry should not be ""
       page.eval(
-        "document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').click()"
+        "document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').click();" +
+        "copyFilterLinkToClipboard()"
       )
       val included = page.evalString(
         "new URL(location.href).searchParams.getAll('country').join('|')"
@@ -1263,7 +1290,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "disabling a cinema in Filtry" should "leave ?cinema= listing the still-enabled cinemas (inclusion set)" in {
+  "disabling a cinema in Filtry" should "leave ?cinema= listing the still-enabled cinemas (inclusion set, captured on Copy)" in {
     onPath("/") { page =>
       clearLocalStorage(page)
       // The cinema-picker checkbox has no `value` attribute (the cinema name
@@ -1275,6 +1302,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           "  return cb.parentElement.textContent.trim(); })()"
       )
       cinema should not be ""
+      page.eval("copyFilterLinkToClipboard()")
       val enabled = page.evalString(
         "new URL(location.href).searchParams.getAll('cinema').join('|')"
       ).split('|').toSet
@@ -1414,14 +1442,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "leave the still-checked (cinema|room) pairs in ?room= (inclusion set)" in {
+  it should "leave the still-checked (cinema|room) pairs in ?room= (inclusion set, captured on Copy)" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
       val targetPair = page.evalString(
         "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )
       page.eval(
-        "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').click()"
+        "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').click();" +
+        "copyFilterLinkToClipboard()"
       )
       val included = page.evalString(
         "new URL(location.href).searchParams.getAll('room').join('||')"

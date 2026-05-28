@@ -138,6 +138,7 @@
       </div>
       <div class="panel-divider"></div>
       <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100">Wyczyść</button>
+      <button onclick="copyFilterLinkToClipboard(this)" class="btn refresh-btn btn-sm w-100" style="margin-top:.4rem">Skopiuj link do schowka</button>
     </div>
   </div>
 
@@ -36869,7 +36870,7 @@ node.visible = want;
 }
 function applyFilters() {
 if (!INDEX) return;
-syncFiltersToURL();
+syncDateToURL();
 undoTruncation();
 const filter = document.getElementById('date-filter').value;
 const query = (document.getElementById('search-input').value || '').trim().toLowerCase();

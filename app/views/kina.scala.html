@@ -199,10 +199,9 @@
 
   function applyFilters() {
     if (!INDEX) return;
-    // Same URL-sync hook as /'s applyFilters — every filter-change path lands
-    // here, so reflecting the controls' state into `?…` once at the top covers
-    // every onchange/oninput/keyboard shortcut for free.
-    syncFiltersToURL();
+    // Only the day select rides the URL in real time; the other filters wait
+    // for the Filtry panel's "Skopiuj link do schowka" button.
+    syncDateToURL();
     undoTruncation();
     const filter    = document.getElementById('date-filter').value;
     const query     = (document.getElementById('search-input').value || '').trim().toLowerCase();

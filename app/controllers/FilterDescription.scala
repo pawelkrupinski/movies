@@ -3,10 +3,12 @@ package controllers
 import models.Cinema
 
 /** Translates the URL filter state on `/` into a Polish page title +
- *  Open Graph description. Filters are written by the in-page JS
- *  (`syncFiltersToURL`) as `?date=…&room=…&country=…&…`; this helper is
- *  the server-side inverse so link-preview crawlers (Facebook in particular)
- *  see the filtered phrasing in the OG tags without running JS.
+ *  Open Graph description. Filters are written into the URL by the
+ *  in-page JS — `?date=` on every day change, and the rest of the panel
+ *  (`?room=…&country=…&…`) on demand via `copyFilterLinkToClipboard`.
+ *  This helper is the server-side inverse so link-preview crawlers
+ *  (Facebook in particular) see the filtered phrasing in the OG tags
+ *  without running JS.
  *
  *  Default (no filters in the URL) → `"Kinowo"` + a short generic
  *  description. With filters → `"Kinowo — filmy <body>"` where `body` is a
