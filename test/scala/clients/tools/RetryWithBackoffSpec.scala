@@ -95,4 +95,49 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
       RetryWithBackoff("t", maxAttempts = 0)(())
     }
   }
+
+  "onAttempt" should "fire once with Success when the first attempt succeeds" in {
+    val (_, sleep) = withSleepLog()
+    val outcomes = mutable.ListBuffer.empty[RetryWithBackoff.AttemptOutcome]
+    RetryWithBackoff("t", maxAttempts = 3, initialBackoff = 1.millis, sleep = sleep, onAttempt = outcomes += _) {
+      "ok"
+    }
+    outcomes.toSeq shouldBe Seq(RetryWithBackoff.AttemptOutcome.Success(1))
+  }
+
+  it should "fire once per attempt: failures for each retry, then the final Success" in {
+    val (_, sleep) = withSleepLog()
+    val outcomes = mutable.ListBuffer.empty[RetryWithBackoff.AttemptOutcome]
+    var calls = 0
+    RetryWithBackoff("t", maxAttempts = 3, initialBackoff = 1.millis, sleep = sleep, onAttempt = outcomes += _) {
+      calls += 1
+      if (calls < 3) throw new RuntimeException(s"fail-$calls") else "ok"
+    }
+    outcomes.size shouldBe 3
+    outcomes(0) match {
+      case RetryWithBackoff.AttemptOutcome.Failure(1, e, isFinal) =>
+        e.getMessage shouldBe "fail-1"; isFinal shouldBe false
+      case other => fail(s"expected Failure(1, ...), got $other")
+    }
+    outcomes(1) match {
+      case RetryWithBackoff.AttemptOutcome.Failure(2, e, isFinal) =>
+        e.getMessage shouldBe "fail-2"; isFinal shouldBe false
+      case other => fail(s"expected Failure(2, ...), got $other")
+    }
+    outcomes(2) shouldBe RetryWithBackoff.AttemptOutcome.Success(3)
+  }
+
+  it should "mark the last attempt's failure as isFinal=true when all attempts fail" in {
+    val (_, sleep) = withSleepLog()
+    val outcomes = mutable.ListBuffer.empty[RetryWithBackoff.AttemptOutcome]
+    intercept[RuntimeException] {
+      RetryWithBackoff("t", maxAttempts = 2, initialBackoff = 1.millis, sleep = sleep, onAttempt = outcomes += _) {
+        throw new RuntimeException("always")
+      }
+    }
+    outcomes.last match {
+      case RetryWithBackoff.AttemptOutcome.Failure(2, _, true) => succeed
+      case other => fail(s"expected Failure(2, _, true), got $other")
+    }
+  }
 }

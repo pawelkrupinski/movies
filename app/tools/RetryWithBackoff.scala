@@ -23,6 +23,11 @@ import scala.util.control.NonFatal
  * interrupts pass through immediately rather than being papered over with
  * another attempt.
  *
+ * `onAttempt` fires once per attempt with the outcome — used by callers
+ * that want per-attempt observability (uptime monitor records each
+ * attempt, not just the final result, so a green-after-2-retries bucket
+ * still shows yellow for the failed first attempts).
+ *
  * Note: there's also `integration.RetryWithBackoff` in `it/scala`, which
  * is *budget*-based (give up after N seconds total). Different semantics,
  * different scope — the IT one wraps live-network probes that may take
@@ -32,21 +37,33 @@ import scala.util.control.NonFatal
  */
 object RetryWithBackoff extends Logging {
 
+  sealed trait AttemptOutcome { def attempt: Int }
+  object AttemptOutcome {
+    case class Success(attempt: Int) extends AttemptOutcome
+    case class Failure(attempt: Int, error: Throwable, isFinal: Boolean) extends AttemptOutcome
+  }
+
   def apply[T](
     label:          String,
     maxAttempts:    Int            = 3,
     initialBackoff: FiniteDuration = 1.second,
-    sleep:          Long => Unit   = Thread.sleep
+    sleep:          Long => Unit   = Thread.sleep,
+    onAttempt:      AttemptOutcome => Unit = _ => ()
   )(block: => T): T = {
     require(maxAttempts >= 1, s"maxAttempts must be ≥ 1 (got $maxAttempts)")
     var attempt                = 1
     var lastFailure: Throwable = null
     while (attempt <= maxAttempts) {
-      try return block
-      catch {
+      try {
+        val result = block
+        onAttempt(AttemptOutcome.Success(attempt))
+        return result
+      } catch {
         case NonFatal(t) =>
           lastFailure = t
-          if (attempt < maxAttempts) {
+          val isFinal = attempt >= maxAttempts
+          onAttempt(AttemptOutcome.Failure(attempt, t, isFinal))
+          if (!isFinal) {
             val wait = initialBackoff * (1L << (attempt - 1))   // 1×, 2×, 4×, …
             logger.warn(
               s"$label attempt $attempt/$maxAttempts failed: " +

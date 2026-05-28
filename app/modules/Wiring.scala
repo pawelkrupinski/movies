@@ -57,7 +57,7 @@ trait Wiring {
     new KinoBulgarskaClient(httoFetch),
     new KinoApolloClient(httoFetch),
     new RialtoClient(httoFetch)
-  ).map(s => new RetryingCinemaScraper(s))
+  ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Events ────────────────────────────────────────────────────────────────
   lazy val eventBus: EventBus = new InProcessEventBus()
@@ -115,7 +115,7 @@ trait Wiring {
   lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────
-  lazy val showtimeCache = new ShowtimeCache(cinemaScrapers, eventBus, movieCache, uptimeMonitor)
+  lazy val showtimeCache = new ShowtimeCache(cinemaScrapers, eventBus, movieCache)
 
   def controllerComponents: ControllerComponents
   def environmentMode: Mode

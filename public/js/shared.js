@@ -950,3 +950,49 @@
     applyFilters();
     bootMergeFromServer();
   });
+
+  // ── Image-fetch uptime tracker ────────────────────────────────────────────
+  //
+  // Captures browser-side img load/error outcomes — including the
+  // `images.weserv.nl` proxy that fronts every cinema poster — and
+  // batches them to /uptime/img-event so the uptime page can show
+  // per-host reliability bars. Event listeners are registered in the
+  // capture phase because `load` / `error` don't bubble on <img>.
+  (function() {
+    var pending = [];
+    var FLUSH_INTERVAL_MS = 10000;
+    var BATCH_SIZE_TRIGGER = 50;
+
+    function hostOf(src) {
+      try { return new URL(src, window.location.href).host || 'unknown'; }
+      catch (e) { return 'unknown'; }
+    }
+
+    function record(target, success) {
+      if (!target || target.tagName !== 'IMG') return;
+      var src = target.currentSrc || target.src;
+      if (!src) return;
+      var ev = { host: hostOf(src), success: success };
+      if (!success) ev.error = 'img load failed (' + src.substring(0, 120) + ')';
+      pending.push(ev);
+      if (pending.length >= BATCH_SIZE_TRIGGER) flush();
+    }
+
+    function flush() {
+      if (pending.length === 0) return;
+      var body = JSON.stringify({ events: pending });
+      pending = [];
+      try {
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/uptime/img-event', new Blob([body], { type: 'application/json' }));
+        } else {
+          fetch('/uptime/img-event', { method: 'POST', body: body, headers: { 'Content-Type': 'application/json' }, keepalive: true });
+        }
+      } catch (e) { /* tracker must never throw into page code */ }
+    }
+
+    document.addEventListener('load',  function(ev) { record(ev.target, true);  }, true);
+    document.addEventListener('error', function(ev) { record(ev.target, false); }, true);
+    setInterval(flush, FLUSH_INTERVAL_MS);
+    window.addEventListener('pagehide', flush);
+  })();

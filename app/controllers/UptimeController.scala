@@ -2,7 +2,7 @@ package controllers
 
 import org.apache.pekko.stream.{Materializer, OverflowStrategy}
 import org.apache.pekko.stream.scaladsl.Source
-import play.api.libs.json.{Json, Writes}
+import play.api.libs.json.{JsObject, JsValue, Json, Writes}
 import play.api.mvc._
 import services.UptimeMonitor
 import services.UptimeMonitor._
@@ -83,6 +83,26 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
         org.apache.pekko.NotUsed
       }
     ).as("text/event-stream")
+  }
+
+  /** Browser-reported image load outcomes. The page's tracker batches
+   *  ~10s of img onload/onerror events and POSTs them here so the
+   *  uptime page sees per-host image-fetch reliability (the
+   *  `images.weserv.nl` proxy that fronts every cinema poster, the
+   *  origin CDNs we link directly, etc.). */
+  def imgEvent: Action[JsValue] = Action(parse.json) { req =>
+    val events = (req.body \ "events").asOpt[Seq[JsObject]].getOrElse(Seq.empty)
+    events.foreach { e =>
+      val host    = (e \ "host").asOpt[String].getOrElse("unknown")
+      val success = (e \ "success").asOpt[Boolean].getOrElse(false)
+      val service = s"img: $host"
+      if (success) monitor.recordSuccess(service)
+      else {
+        val error = (e \ "error").asOpt[String].getOrElse("image load failed")
+        monitor.recordFailure(service, error.take(200))
+      }
+    }
+    NoContent
   }
 }
 

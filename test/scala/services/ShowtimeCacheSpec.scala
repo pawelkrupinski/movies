@@ -11,7 +11,7 @@ import javax.net.ssl.SSLHandshakeException
 
 class ShowtimeCacheSpec extends AnyFlatSpec with Matchers {
 
-  private val cache = new ShowtimeCache(Nil, null, null, new UptimeMonitor())
+  private val cache = new ShowtimeCache(Nil, null, null)
 
   "isTransientHttpError" should "classify HttpTimeoutException as transient" in {
     cache.isTransientHttpError(new HttpTimeoutException("request timed out")) shouldBe true
