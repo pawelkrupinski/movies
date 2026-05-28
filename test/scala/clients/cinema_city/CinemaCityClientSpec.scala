@@ -330,7 +330,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     val st = byKinepolis("Liga Mistrzów UEFA - Finał").showtimes
     st.size shouldBe 1
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 30, 17, 45), Some("https://tickets.cinema-city.pl/api/order/1326845?lang=pl"), Some("Sala6"), List("2D")),
+      Showtime(LocalDateTime.of(2026, 5, 30, 17, 45), Some("https://tickets.cinema-city.pl/api/order/1326845?lang=pl"), Some("Sala 6"), List("2D")),
     )
   }
 
@@ -338,8 +338,8 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     val st = byKinepolis("La Traviata Verdiego z Arena di Verona").showtimes
     st.size shouldBe 2
     st shouldBe Seq(
-      Showtime(LocalDateTime.of(2026, 5, 13, 18, 0), Some("https://tickets.cinema-city.pl/api/order/1411051?lang=pl"), Some("Sala3"), List("2D", "NAP")),
-      Showtime(LocalDateTime.of(2026, 6,  7, 15, 0), Some("https://tickets.cinema-city.pl/api/order/1411056?lang=pl"), Some("Sala4"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 5, 13, 18, 0), Some("https://tickets.cinema-city.pl/api/order/1411051?lang=pl"), Some("Sala 3"), List("2D", "NAP")),
+      Showtime(LocalDateTime.of(2026, 6,  7, 15, 0), Some("https://tickets.cinema-city.pl/api/order/1411056?lang=pl"), Some("Sala 4"), List("2D", "NAP")),
     )
   }
 
@@ -611,5 +611,26 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     formats(List("2D"))                shouldBe 10  // original-lang-pl: no DUB/NAP tag
     formats(List("IMAX", "3D", "DUB")) shouldBe 6
     formats(List("3D", "DUB"))         shouldBe 3
+  }
+
+  // ─── normalizeAuditorium ──────────────────────────────────────────────────
+
+  "CinemaCityClient.normalizeAuditorium" should "fix Kinepolis-truncated names to 'Sala N'" in {
+    // Kinepolis' `auditorium` field gets truncated to 5 chars without a space:
+    // `Sala1`..`Sala9` for single-digit, `Sal10`..`Sal18` for two-digit rooms.
+    (1 to 9).foreach { n => CinemaCityClient.normalizeAuditorium(s"Sala$n") shouldBe s"Sala $n" }
+    (10 to 18).foreach { n => CinemaCityClient.normalizeAuditorium(s"Sal$n") shouldBe s"Sala $n" }
+  }
+
+  it should "pass through well-formed Plaza names" in {
+    CinemaCityClient.normalizeAuditorium("Sala 1")    shouldBe "Sala 1"
+    CinemaCityClient.normalizeAuditorium("Sala 9")    shouldBe "Sala 9"
+    CinemaCityClient.normalizeAuditorium("Sala IMAX") shouldBe "Sala IMAX"
+  }
+
+  it should "leave unrecognised values alone" in {
+    CinemaCityClient.normalizeAuditorium("IMAX")    shouldBe "IMAX"
+    CinemaCityClient.normalizeAuditorium("VIP")     shouldBe "VIP"
+    CinemaCityClient.normalizeAuditorium("Sala 4D") shouldBe "Sala 4D"
   }
 }

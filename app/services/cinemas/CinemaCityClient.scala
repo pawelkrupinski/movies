@@ -65,8 +65,8 @@ class CinemaCityClient(http: HttpFetch) {
           val filmId      = (event \ "filmId").as[String]
           val dateTimeStr = (event \ "eventDateTime").as[String]
           val bookingUrl  = (event \ "bookingLink").asOpt[String].filter(_.nonEmpty)
-          val room        = (event \ "auditoriumTinyName").asOpt[String].filter(_.nonEmpty)
-                            .map(r => """^S0*(\d+)$""".r.replaceFirstIn(r, "Sala $1"))
+          val room        = (event \ "auditorium").asOpt[String].filter(_.nonEmpty)
+                            .map(CinemaCityClient.normalizeAuditorium)
           val attrs       = (event \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty).toSet
           // attrs comes in as a kitchen-sink list (genre, 2d/3d, dubbed/subbed/original-lang-*, IMAX,
           // seating type, age rating…). Pick out the screen-feature tokens we want to display.
@@ -154,6 +154,17 @@ object CinemaCityClient {
 
   object Details {
     val empty: Details = Details(None, Seq.empty, Seq.empty, Seq.empty, None)
+  }
+
+  // Kinepolis' `auditorium` field returns names truncated to 5 chars without a
+  // space — `Sala1`..`Sala9` for single-digit rooms, `Sal10`..`Sal18` for the
+  // two-digit ones. Plaza's `auditorium` already comes through clean
+  // (`Sala 1`, `Sala IMAX`), so non-matching input passes through unchanged.
+  private val KinepolisShortRe = """^Sala?(\d+)$""".r
+
+  def normalizeAuditorium(s: String): String = s match {
+    case KinepolisShortRe(n) => s"Sala $n"
+    case other               => other
   }
 
   // Embedded JS object: `var filmDetails = { ... };`. Single-line, JSON-valued.
