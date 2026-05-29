@@ -188,14 +188,14 @@
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 <nav class="navbar px-4 py-3 d-flex align-items-center justify-content-between">
-  @* `href="/"` and the "Repertuar" label are the SSR fallback for when
+  @* `href="/"` and the "Filmy" label are the SSR fallback for when
      `document.referrer` is unavailable (direct navigation, opened in a
      new tab, privacy-mode browsers that strip referrer). The inline
      boot script below rewrites both when the user actually came from
      another page on this app — same-origin referrers carry the back
      URL verbatim so query-string filter state (`?date=2026-05-30`,
      `?cinema=Multikino`, etc.) survives the round-trip. *@
-  <a id="back-link" href="/" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg><span id="back-link-label">Repertuar</span></a>
+  <a id="back-link" href="/" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg><span id="back-link-label">Filmy</span></a>
   <div>
     @currentUser match {
       case Some(user) => {
@@ -373,12 +373,16 @@
     var url;
     try { url = new URL(ref); } catch (e) { return; }
     if (url.origin !== window.location.origin) return;
-    if (url.pathname === '/film' || url.pathname.startsWith('/film')) return;
+    // Skip /film → /film bounces but NOT /filmy — `/filmy` is the main
+    // listing (aliases `/`), not the per-film detail page.
+    if (url.pathname === '/film') return;
 
-    // Map known internal paths to their navbar labels. Anything else
-    // same-origin still gets a working back arrow but a generic label —
-    // better than dropping the rewrite altogether.
-    var LABELS = { '/': 'Repertuar', '/kina': 'Kina', '/plan': 'Plan', '/filmy': 'Filmy' };
+    // Map known internal paths to their navbar labels. When adding a new
+    // section that links into /film, add it here so the back arrow reads
+    // correctly — anything not in the map falls through to "Wstecz".
+    // `/` and `/filmy` are aliases for the main listing, so both label
+    // as "Filmy" (matches the navbar tab).
+    var LABELS = { '/': 'Filmy', '/filmy': 'Filmy', '/kina': 'Kina', '/plan': 'Plan' };
     var label = LABELS[url.pathname];
     if (!label) {
       if (url.pathname.indexOf('/kina/')  === 0) label = 'Kina';

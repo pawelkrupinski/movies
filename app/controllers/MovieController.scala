@@ -224,15 +224,15 @@ class MovieController( cc: ControllerComponents,
   private def currentUser(request: RequestHeader): Option[models.User] =
     request.session.get("userId").flatMap(userRepo.findById)
 
-  def index(): Action[AnyContent] = Action { request =>
+  // Render the main "Filmy" listing — repertoire view, full corpus,
+  // OG meta derived from `?…` filter params. Shared between `/` and
+  // `/filmy` (no params) so both URLs are interchangeable; `/filmy`
+  // with one of the browse-axis params still routes through `browse`
+  // below to the per-director / per-cast / per-country page.
+  private def renderIndex(request: RequestHeader): Result = {
     val user      = currentUser(request)
     val schedules = movieControllerService.toSchedules()
-    // Read the same `?…` filter params that the in-page JS writes via
-    // `syncFiltersToURL`, then derive a Polish title + OG description so a
-    // shared link (e.g. `/?room=Multikino|Sala+5,…`) renders the matching
-    // phrasing in the FB / Twitter preview without needing JS to run on the
-    // crawler side.
-    val meta = FilterDescription.forIndex(request.queryString, schedules)
+    val meta      = FilterDescription.forIndex(request.queryString, schedules)
     Ok(views.html.repertoire(
       schedules, Cinema.all.map(_.displayName), Cinema.pillMap,
       devMode, user, oauthProviders,
@@ -242,6 +242,8 @@ class MovieController( cc: ControllerComponents,
       fbAppId         = PageMeta.fbAppId,
     ))
   }
+
+  def index(): Action[AnyContent] = Action(renderIndex)
 
   private def renderBrowse(heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
     val user = currentUser(request)
@@ -254,13 +256,15 @@ class MovieController( cc: ControllerComponents,
 
   def browse(kraj: Option[String], rezyser: Option[String], aktor: Option[String]): Action[AnyContent] = Action { request =>
     val all = movieControllerService.toSchedules()
-    val (heading, films) = (kraj, rezyser, aktor) match {
-      case (Some(name), _, _) => name -> all.filter(_.movie.countries.contains(name))
-      case (_, Some(name), _) => name -> all.filter(_.director.contains(name))
-      case (_, _, Some(name)) => name -> all.filter(_.cast.contains(name))
-      case _                  => "Filmy" -> all
+    (kraj, rezyser, aktor) match {
+      case (Some(name), _, _) => renderBrowse(name, all.filter(_.movie.countries.contains(name)), request)
+      case (_, Some(name), _) => renderBrowse(name, all.filter(_.director.contains(name)),      request)
+      case (_, _, Some(name)) => renderBrowse(name, all.filter(_.cast.contains(name)),          request)
+      // `/filmy` with no filter axis is the main listing — same view as
+      // `/`. The browse view only kicks in for the per-axis pages reached
+      // from the meta-link rows on /film.
+      case _                  => renderIndex(request)
     }
-    renderBrowse(heading, films, request)
   }
 
   // Permissive robots.txt — link-preview scrapers (Facebook's

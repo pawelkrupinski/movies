@@ -98,7 +98,15 @@ object FixtureServerMain {
       // would 404 those requests, which Firefox surfaces as
       // `NS_ERROR_NET_EMPTY_RESPONSE` rather than a clean status code.
       case p if p == "/"      || p.startsWith("/?")       => indexHtml
-      case p if p == "/filmy" || p.startsWith("/filmy?")  => filmyHtml
+      // `/filmy` and `/` are aliases for the main listing — both render
+      // the repertoire view. `/filmy?kraj=X` / `/filmy?rezyser=Y` /
+      // `/filmy?aktor=Z` still hit the per-axis browse view; everything
+      // else under `/filmy?` is the main listing with filter state in
+      // the query string.
+      case p if p == "/filmy"                              => indexHtml
+      case p if p.startsWith("/filmy?") &&
+                 (p.contains("kraj=") || p.contains("rezyser=") || p.contains("aktor=")) => filmyHtml
+      case p if p.startsWith("/filmy?")                    => indexHtml
       case p if p == "/kina"  || p.startsWith("/kina?")   => renderKina(None)
       case p if p == "/plan"  || p.startsWith("/plan?")   => planHtml
       case p if p.startsWith("/kina/") =>
