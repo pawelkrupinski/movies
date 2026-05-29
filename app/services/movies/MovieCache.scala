@@ -537,7 +537,9 @@ class CaffeineMovieCache(
     // copy gets overwritten if it changed), then evict only the keys
     // that disappeared from Mongo since the last sync.
     import scala.jdk.CollectionConverters._
-    val rows = repo.findAll()
+    val tFindAllStart = System.nanoTime()
+    val rows          = repo.findAll()
+    val tFindAllMs    = (System.nanoTime() - tFindAllStart) / 1000000
     // `repo.findAll()` swallows every Mongo failure into `Seq.empty` — a
     // TLS-selector race, a connection-pool churn, an Atlas-side reset all
     // surface as "no rows". Treating that as "Mongo is genuinely empty,
@@ -551,12 +553,15 @@ class CaffeineMovieCache(
                   "treating as a transient Mongo failure; cache left intact.")
       return 0
     }
+    val tPostFetch = System.nanoTime()
     val nextKeys = rows.iterator.map(r => CacheKey(r.title, r.year)).toSet
     rows.foreach(r => positive.put(CacheKey(r.title, r.year), r.record))
     positive.asMap().keySet().asScala.toSeq
       .filterNot(nextKeys.contains)
       .foreach(positive.invalidate)
-    if (rows.nonEmpty) logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo.")
+    val tPopulateMs = (System.nanoTime() - tPostFetch) / 1000000
+    if (rows.nonEmpty)
+      logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${tPopulateMs}ms.")
     touch()
     rows.size
   }

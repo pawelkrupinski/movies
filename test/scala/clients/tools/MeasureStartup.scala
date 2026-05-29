@@ -2,6 +2,7 @@ package clients.tools
 
 import com.github.benmanes.caffeine.cache.Caffeine
 import models.MovieRecord
+import org.bson.Document
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.movies.{MovieCodecs, StoredMovieDto, StoredMovieRecord}
 import tools.Env
@@ -108,6 +109,32 @@ object MeasureStartup {
       converted.foreach(r => cache.put(r.title + " " + r.year.getOrElse(""), r.record))
       val t6 = System.nanoTime()
       fmt(s"6. Caffeine populate × ${converted.size}", t6 - t5)
+
+      // Phase 7: payload-size + raw-doc baseline. The collStats.size value
+      // tells us total bytes on disk; a `find()` returning untyped `Document`
+      // (no BSON-macro decode into the typed DTO) isolates raw transfer +
+      // light decode from the codec-heavy phase 3 number. Together they
+      // explain whether wall time is network-bound or decode-bound.
+      val stats = Await.result(
+        db.runCommand(Document.parse(s"""{"collStats":"movies"}""")).toFuture(),
+        10.seconds
+      )
+      def numField(name: String): Long = stats.get(name) match {
+        case Some(v: org.bson.BsonInt32)  => v.getValue.toLong
+        case Some(v: org.bson.BsonInt64)  => v.getValue
+        case Some(v: org.bson.BsonDouble) => v.getValue.toLong
+        case _                            => 0L
+      }
+      val sizeBytes    = numField("size")
+      val storageBytes = numField("storageSize")
+      println()
+      println(f"  movies collStats: size=${sizeBytes / 1024.0 / 1024.0}%.1f MB  storage=${storageBytes / 1024.0 / 1024.0}%.1f MB  avgDoc=${sizeBytes.toDouble / count / 1024.0}%.1f KB")
+
+      val rawColl   = db.getCollection("movies")
+      val tRawStart = System.nanoTime()
+      val rawRows   = Await.result(rawColl.find().toFuture(), 60.seconds)
+      val tRawEnd   = System.nanoTime()
+      fmt(s"   raw Document find() — no DTO codec, ${rawRows.size} docs", tRawEnd - tRawStart)
 
       println()
       fmt("TOTAL boot hydrate path", t6 - t0)
