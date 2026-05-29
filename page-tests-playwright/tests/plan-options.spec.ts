@@ -365,4 +365,25 @@ test.describe('plan collapse', () => {
     await expect(page.locator('#plan-collapse-all')).toBeHidden();
   });
 
+  test('movie title in the proposed plan is a link to /film and does not toggle collapse', async ({ page }) => {
+    const [first] = await pickTwo(page);
+
+    const link = page.locator(`.plan-movie[data-movie="${first}"] a.plan-movie-title`);
+    await expect(link).toHaveAttribute('href', '/film?title=' + encodeURIComponent(first));
+    await expect(link).toHaveText(first);
+
+    // Clicking the title navigates rather than collapsing — pre-click block
+    // state should be preserved on the way out. (Use `preventDefault` so
+    // the test doesn't navigate away from the /plan page before we check.)
+    await page.evaluate((title) => {
+      const a = document.querySelector(
+        `.plan-movie[data-movie="${CSS.escape(title)}"] a.plan-movie-title`,
+      ) as HTMLAnchorElement | null;
+      a?.addEventListener('click', e => e.preventDefault(), { once: true });
+    }, first);
+
+    await link.click();
+    await expect(page.locator(`.plan-movie[data-movie="${first}"]`)).not.toHaveClass(/collapsed/);
+  });
+
 });

@@ -139,6 +139,10 @@
       font-weight: 600;
       font-size: .98rem;
       margin-bottom: .1rem;
+      text-decoration: none;
+    }
+    @@media (hover: hover) and (pointer: fine) {
+      a.plan-movie-title:hover { color: #aad4ff; }
     }
     /* Header row sitting above the per-movie list: keeps the section
        title on the left and the Zwiń/Rozwiń wszystko toggle on the
@@ -635,11 +639,16 @@
     block.dataset.movie = movie;
     if (_planCollapsedMovies.has(movie)) block.classList.add('collapsed');
 
-    // Clickable header: chevron + title. Click anywhere on the row to
-    // toggle the collapsed state for just this movie.
+    // Clickable header: chevron + title link. Click anywhere on the row
+    // toggles collapse EXCEPT on the title `<a>`, which falls through to
+    // the browser default → /film (matching the picker-card title
+    // behaviour elsewhere in the app).
     const header = document.createElement('div');
     header.className = 'plan-movie-header';
-    header.onclick = () => togglePlanMovieCollapse(movie);
+    header.onclick = (e) => {
+      if (e.target.closest('a')) return;
+      togglePlanMovieCollapse(movie);
+    };
 
     const chevron = document.createElement('span');
     chevron.className = 'plan-movie-chevron';
@@ -647,8 +656,12 @@
     chevron.textContent = '▾';
     header.appendChild(chevron);
 
-    const title = document.createElement('span');
+    // `encodeURIComponent` matches `FilmHref`'s output (it uses %20 for
+    // spaces, not +, so the URL round-trips through FB's crawler the
+    // same way every other film link does).
+    const title = document.createElement('a');
     title.className = 'plan-movie-title';
+    title.href = '/film?title=' + encodeURIComponent(movie);
     title.textContent = movie;
     header.appendChild(title);
 
