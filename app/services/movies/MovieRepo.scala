@@ -106,29 +106,69 @@ class MongoMovieRepo(
   // `sharedDb = None` (legacy path used by ad-hoc scripts under
   // test/scala/scripts/): we build our own MongoClient from `MONGODB_URI`
   // and own its close().
-  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) =
+  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[StoredMovieDto]], Option[MongoCollection[org.mongodb.scala.Document]]) =
     sharedDb match {
       case Some(db) =>
-        val coll = db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredMovieDto]("movies")
-        (None, Some(coll))
+        val withRegistry = db.withCodecRegistry(MovieCodecs.registry)
+        val coll    = withRegistry.getCollection[StoredMovieDto]("movies")
+        val rawColl = withRegistry.getCollection("movies")
+        (None, Some(coll), Some(rawColl))
       case None if fallbackToOwnInit => init()
-      case None                      => (None, None)
+      case None                      => (None, None, None)
     }
-  private def clientOpt: Option[MongoClient]                       = initResult._1
-  private def coll:      Option[MongoCollection[StoredMovieDto]]   = initResult._2
+  private def clientOpt: Option[MongoClient]                                 = initResult._1
+  private def coll:      Option[MongoCollection[StoredMovieDto]]             = initResult._2
+  private def rawColl:   Option[MongoCollection[org.mongodb.scala.Document]] = initResult._3
 
   def enabled: Boolean = coll.isDefined
 
-  def findAll(): Seq[StoredMovieRecord] = coll match {
-    case None => Seq.empty
-    case Some(c) =>
+  /** Boot-time + periodic full reload. Implemented as a discover-then-fan-out
+   *  pair of queries rather than one big `find()` because Atlas serialises
+   *  individual cursor responses at ~50 ms/doc — a single `find()` of 231
+   *  docs takes ~12 s, but four parallel ranged finds of ~58 docs each
+   *  finish in ~4 s. Measured against the production cluster; see
+   *  `MeasureStartup`.
+   *
+   *  Algorithm:
+   *    1. Project just `_id` (small payload, ~200 ms).
+   *    2. Sort, split into `Parallelism` contiguous chunks.
+   *    3. Fire one ranged `find()` per chunk, joined.
+   *    4. Decode + return.
+   *
+   *  Falls back to the single-query path on the discovery query's empty /
+   *  failure result so a transient hiccup degrades to the previous
+   *  behaviour, never worse. */
+  def findAll(): Seq[StoredMovieRecord] = (coll, rawColl) match {
+    case (Some(c), Some(rc)) =>
       Try {
-        Await.result(c.find().toFuture(), 30.seconds).map(StoredMovieDto.toDomain)
+        import scala.concurrent.ExecutionContext.Implicits.global
+        val Parallelism = 4
+
+        val ids = Await.result(
+          rc.find().projection(org.mongodb.scala.model.Projections.include("_id")).toFuture(),
+          15.seconds
+        ).iterator.flatMap(d =>
+          d.get[org.mongodb.scala.bson.BsonString]("_id").map(_.getValue)
+        ).toList.sorted
+
+        if (ids.isEmpty) Seq.empty
+        else {
+          val chunkSize = math.ceil(ids.size.toDouble / Parallelism).toInt.max(1)
+          val chunks    = ids.grouped(chunkSize).toList
+          val futures   = chunks.map { chunk =>
+            c.find(
+              Filters.and(Filters.gte("_id", chunk.head), Filters.lte("_id", chunk.last))
+            ).toFuture()
+          }
+          val all = Await.result(scala.concurrent.Future.sequence(futures), 30.seconds).flatten
+          all.map(StoredMovieDto.toDomain)
+        }
       }.recover {
         case ex: MongoException =>
           logger.warn(s"MovieRepo.findAll failed: ${ex.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
+    case _ => Seq.empty
   }
 
   /** Filters by `title` + `year` fields rather than by `_id`, so legacy docs
@@ -221,29 +261,30 @@ class MongoMovieRepo(
 
   def close(): Unit = clientOpt.foreach(_.close())
 
-  private def init(): (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) =
+  private def init(): (Option[MongoClient], Option[MongoCollection[StoredMovieDto]], Option[MongoCollection[org.mongodb.scala.Document]]) =
     Env.get("MONGODB_URI") match {
       case None =>
         logger.info("MONGODB_URI not set — MongoMovieRepo disabled (in-memory cache only).")
-        (None, None)
+        (None, None, None)
       case Some(uri) =>
         Try {
-          val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
-          val client = MongoClient(uri)
-          val db     = client.getDatabase(dbName).withCodecRegistry(MovieCodecs.registry)
-          val coll   = db.getCollection[StoredMovieDto]("movies")
+          val dbName  = Env.get("MONGODB_DB").getOrElse("kinowo")
+          val client  = MongoClient(uri)
+          val db      = client.getDatabase(dbName).withCodecRegistry(MovieCodecs.registry)
+          val coll    = db.getCollection[StoredMovieDto]("movies")
+          val rawColl = db.getCollection("movies")
           // Touch the collection to surface connectivity errors at startup,
           // not on the first read after the app is "up".
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
           logger.info(s"MongoMovieRepo connected to $dbName.movies")
-          (client, coll)
+          (client, coll, rawColl)
         }.recover {
           case ex: Throwable =>
             logger.error(s"MongoMovieRepo init failed (${ex.getMessage}) — falling back to in-memory cache.")
             null
         }.toOption.filter(_ != null) match {
-          case Some((c, coll)) => (Some(c), Some(coll))
-          case None            => (None, None)
+          case Some((c, coll, rawColl)) => (Some(c), Some(coll), Some(rawColl))
+          case None                     => (None, None, None)
         }
     }
 

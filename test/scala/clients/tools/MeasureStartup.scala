@@ -136,6 +136,53 @@ object MeasureStartup {
       val tRawEnd   = System.nanoTime()
       fmt(s"   raw Document find() — no DTO codec, ${rawRows.size} docs", tRawEnd - tRawStart)
 
+      // Phase 8: parallel _id-range cursors. If the bottleneck is per-cursor
+      // server-side latency (Atlas serializing a single response), splitting
+      // the query into N concurrent ranged finds and joining the results
+      // should cut wall time by ~N. If the bottleneck is cluster-level
+      // throughput, N parallel queries take roughly the same wall time as
+      // one.
+      def parallelProbe(n: Int): Long = {
+        val ids: List[String] = rawRows.iterator
+          .flatMap(_.get[org.mongodb.scala.bson.BsonString]("_id"))
+          .map(_.getValue)
+          .toList.sorted
+        val chunks = ids.grouped(math.ceil(ids.size.toDouble / n).toInt).toList
+        val rangedColl = db.getCollection[StoredMovieDto]("movies")
+        val tStart = System.nanoTime()
+        import scala.concurrent.ExecutionContext.Implicits.global
+        val futures: List[scala.concurrent.Future[Seq[StoredMovieDto]]] = chunks.map { chunk =>
+          val first = chunk.head
+          val last  = chunk.last
+          rangedColl.find(
+            org.mongodb.scala.model.Filters.and(
+              org.mongodb.scala.model.Filters.gte("_id", first),
+              org.mongodb.scala.model.Filters.lte("_id", last)
+            )
+          ).toFuture()
+        }
+        val combined: scala.concurrent.Future[List[Seq[StoredMovieDto]]] = scala.concurrent.Future.sequence(futures)
+        val rs: List[Seq[StoredMovieDto]] = Await.result(combined, 60.seconds)
+        val total = rs.map(_.size).sum
+        val elapsed = System.nanoTime() - tStart
+        println(f"  ${"7. parallel find() × " + n + s" — $total docs"}%-50s ${ms(elapsed)}")
+        elapsed
+      }
+      // Phase 8: discovery cost — how long does it take to fetch JUST the
+      // `_id` list? If this is fast, a real implementation can do
+      // "discover + N parallel ranged finds" in one extra round-trip.
+      val tDiscStart = System.nanoTime()
+      val idsOnly = Await.result(
+        rawColl.find().projection(org.mongodb.scala.model.Projections.include("_id")).toFuture(),
+        60.seconds
+      )
+      val tDiscEnd = System.nanoTime()
+      fmt(s"8. _id-only projection find() — ${idsOnly.size} docs", tDiscEnd - tDiscStart)
+
+      parallelProbe(2)
+      parallelProbe(4)
+      parallelProbe(8)
+
       println()
       fmt("TOTAL boot hydrate path", t6 - t0)
 
