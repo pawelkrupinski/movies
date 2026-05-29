@@ -253,4 +253,116 @@ test.describe('plan option list', () => {
       page.locator('.plan-movie .plan-movie-title', { hasText: pair![1] }),
     ).toBeVisible();
   });
+
+  test('orders movie blocks by earliest surviving showing', async ({ page }) => {
+    // Picks two movies whose earliest future dates differ. The one that
+    // plays sooner must lead in the rendered list regardless of how the
+    // titles sort alphabetically.
+    await page.goto('/plan');
+    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+
+    const showings = await readShowings(page);
+    const today    = await readPageToday(page);
+
+    const earliestByMovie = new Map<string, string>();
+    for (const s of showings) {
+      if (s.date < today) continue;
+      const cur = earliestByMovie.get(s.movie);
+      if (!cur || s.date < cur) earliestByMovie.set(s.movie, s.date);
+    }
+    const sortedByDate = [...earliestByMovie.entries()].sort((a, b) =>
+      a[1].localeCompare(b[1]),
+    );
+    // Pick the first-playing movie and a later one whose title sorts
+    // BEFORE the early one — that's how we know the order came from the
+    // earliest-screening rule, not the old alphabetical fallback.
+    const early = sortedByDate[0];
+    const lateBeforeAlphabetically = sortedByDate
+      .slice(1)
+      .find(([title, date]) =>
+        date > early[1] && title.localeCompare(early[0], 'pl') < 0,
+      );
+    test.skip(
+      !lateBeforeAlphabetically,
+      'fixture has no late-screening movie that sorts alphabetically before the earliest one',
+    );
+
+    const [earlyTitle]     = early;
+    const [laterTitle]     = lateBeforeAlphabetically!;
+    await setLocalStorageJson(page, 'selectedMovies', [earlyTitle, laterTitle]);
+    await page.evaluate(() =>
+      (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.(),
+    );
+
+    const titles = await page.locator('.plan-movie .plan-movie-title').allTextContents();
+    expect(titles[0]).toBe(earlyTitle);
+    expect(titles[1]).toBe(laterTitle);
+  });
+
+});
+
+test.describe('plan collapse', () => {
+
+  async function pickTwo(page: Page): Promise<[string, string]> {
+    await page.goto('/plan');
+    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    const showings = await readShowings(page);
+    const today    = await readPageToday(page);
+    const byMovie  = indexByMovie(showings, today);
+    const titles   = [...byMovie.keys()];
+    test.skip(titles.length < 2, 'fixture has fewer than two movies');
+    await setLocalStorageJson(page, 'selectedMovies', [titles[0], titles[1]]);
+    await page.evaluate(() =>
+      (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.(),
+    );
+    return [titles[0], titles[1]];
+  }
+
+  test('clicking a movie header collapses just that block', async ({ page }) => {
+    const [first, second] = await pickTwo(page);
+
+    // Pre-state: nothing collapsed, both summaries visible.
+    await expect(page.locator(`.plan-movie[data-movie="${first}"]`)).not.toHaveClass(/collapsed/);
+    await expect(page.locator(`.plan-movie[data-movie="${first}"] .plan-movie-summary`)).toBeVisible();
+
+    await page.locator(`.plan-movie[data-movie="${first}"] .plan-movie-header`).click();
+
+    await expect(page.locator(`.plan-movie[data-movie="${first}"]`)).toHaveClass(/collapsed/);
+    // Summary + options drop out of the layout (display: none).
+    await expect(page.locator(`.plan-movie[data-movie="${first}"] .plan-movie-summary`)).toBeHidden();
+    await expect(page.locator(`.plan-movie[data-movie="${first}"] .plan-options`)).toBeHidden();
+    // The other block stays untouched.
+    await expect(page.locator(`.plan-movie[data-movie="${second}"]`)).not.toHaveClass(/collapsed/);
+  });
+
+  test('"Zwiń wszystko" collapses every block; the button flips to "Rozwiń wszystko" and re-expands', async ({ page }) => {
+    const [first, second] = await pickTwo(page);
+
+    const btn = page.locator('#plan-collapse-all');
+    await expect(btn).toBeVisible();
+    await expect(btn).toHaveText('Zwiń wszystko');
+
+    await btn.click();
+
+    await expect(page.locator(`.plan-movie[data-movie="${first}"]`)).toHaveClass(/collapsed/);
+    await expect(page.locator(`.plan-movie[data-movie="${second}"]`)).toHaveClass(/collapsed/);
+    await expect(btn).toHaveText('Rozwiń wszystko');
+
+    await btn.click();
+
+    await expect(page.locator(`.plan-movie[data-movie="${first}"]`)).not.toHaveClass(/collapsed/);
+    await expect(page.locator(`.plan-movie[data-movie="${second}"]`)).not.toHaveClass(/collapsed/);
+    await expect(btn).toHaveText('Zwiń wszystko');
+  });
+
+  test('the collapse-all button is hidden when no movies are picked', async ({ page }) => {
+    await page.goto('/plan');
+    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await setLocalStorageJson(page, 'selectedMovies', []);
+    await page.evaluate(() =>
+      (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.(),
+    );
+    await expect(page.locator('#plan-collapse-all')).toBeHidden();
+  });
+
 });

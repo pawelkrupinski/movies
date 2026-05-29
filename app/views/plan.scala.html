@@ -113,11 +113,55 @@
     }
     .plan-movie.warn  { border-left-color: #cb8; }
     .plan-movie.error { border-left-color: #b88; }
+    /* Click-the-header collapse: chevron rotates and the summary +
+       options vanish, leaving the title as a one-liner the user can
+       skim past. Per-movie state lives in `_planCollapsedMovies`. */
+    .plan-movie-header {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .plan-movie-chevron {
+      color: #aad4ff;
+      font-size: .75rem;
+      display: inline-block;
+      transition: transform .12s;
+      width: .7rem;
+    }
+    .plan-movie.collapsed .plan-movie-chevron { transform: rotate(-90deg); }
+    .plan-movie.collapsed .plan-movie-summary,
+    .plan-movie.collapsed .plan-options { display: none; }
     .plan-movie-title {
       color: #fff;
       font-weight: 600;
       font-size: .98rem;
       margin-bottom: .1rem;
+    }
+    /* Header row sitting above the per-movie list: keeps the section
+       title on the left and the Zwiń/Rozwiń wszystko toggle on the
+       right. Hidden until at least one movie is selected. */
+    .plan-twoje-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: .75rem;
+    }
+    .plan-twoje-header h5 { margin: 0; }
+    .plan-collapse-btn {
+      background: transparent;
+      color: #aad4ff;
+      border: 1px solid #3a3a6e;
+      border-radius: 6px;
+      padding: .15rem .55rem;
+      font-size: .8rem;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    @@media (hover: hover) and (pointer: fine) {
+      .plan-collapse-btn:hover { background: #3a3a6e; color: #fff; }
     }
     .plan-movie-summary {
       color: #aab;
@@ -197,7 +241,10 @@
   </section>
 
   <section class="plan-section">
-    <h5>Twoje filmy</h5>
+    <div class="plan-twoje-header">
+      <h5>Twoje filmy</h5>
+      <button id="plan-collapse-all" type="button" class="plan-collapse-btn" onclick="planToggleCollapseAll()" style="display:none">Zwiń wszystko</button>
+    </div>
     <p class="help" id="plan-summary">Wybierz filmy powyżej, aby zobaczyć dostępne seanse.</p>
     <div id="plan-days"></div>
   </section>
@@ -504,19 +551,77 @@
   // days/cinemas/times and pick the slot that fits. A hidden movie can
   // still sit in `selectedMovies` (the picker filtered it out of view),
   // so drop it here too rather than letting it reappear in the output.
+  //
+  // Ordering: movies surface by the date+time of their EARLIEST surviving
+  // screening so what's playable soonest leads the list. Movies with no
+  // surviving screening sink to the bottom, alphabetical among themselves
+  // (they still render an "error" block, but they shouldn't shove urgent
+  // films down the page).
   function buildPlan(allowedByMovie) {
     const selected = new Set(getSelectedMovies());
     const hidden = new Set(getHidden());
     selected.forEach(m => { if (hidden.has(m)) selected.delete(m); });
 
-    const movies = [...selected].sort((a, b) => a.localeCompare(b, 'pl'));
     const perMovie = new Map();
-    movies.forEach(m => {
+    selected.forEach(m => {
       const arr = (allowedByMovie.get(m) || []).slice();
       arr.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
       perMovie.set(m, arr);
     });
+
+    const movies = [...selected].sort((a, b) => {
+      const ea = (perMovie.get(a) || [])[0];
+      const eb = (perMovie.get(b) || [])[0];
+      if (!ea && !eb) return a.localeCompare(b, 'pl');
+      if (!ea) return 1;
+      if (!eb) return -1;
+      return (ea.date + ea.time).localeCompare(eb.date + eb.time);
+    });
     return { movies, perMovie };
+  }
+
+  // ── Collapse state ───────────────────────────────────────────────────────
+  // Module-level set of movie titles whose `.plan-movie` block is collapsed.
+  // Persists across re-renders within the same page load (a filter toggle
+  // mustn't reset the user's collapse picks) but resets on a fresh navigation
+  // — collapse is a transient view preference, not durable state.
+  const _planCollapsedMovies = new Set();
+
+  function togglePlanMovieCollapse(movie) {
+    const block = document.querySelector(`.plan-movie[data-movie="${CSS.escape(movie)}"]`);
+    if (!block) return;
+    if (_planCollapsedMovies.has(movie)) {
+      _planCollapsedMovies.delete(movie);
+      block.classList.remove('collapsed');
+    } else {
+      _planCollapsedMovies.add(movie);
+      block.classList.add('collapsed');
+    }
+    updateCollapseAllBtn();
+  }
+
+  function planToggleCollapseAll() {
+    const blocks = document.querySelectorAll('.plan-movie');
+    if (blocks.length === 0) return;
+    // Treat "everything visible is collapsed" as the cue to expand all;
+    // otherwise collapse all. The button label tracks the next action.
+    const allCollapsed = [...blocks].every(b => b.classList.contains('collapsed'));
+    blocks.forEach(b => {
+      const movie = b.dataset.movie;
+      if (allCollapsed) { _planCollapsedMovies.delete(movie); b.classList.remove('collapsed'); }
+      else              { _planCollapsedMovies.add(movie);    b.classList.add('collapsed'); }
+    });
+    updateCollapseAllBtn();
+  }
+
+  function updateCollapseAllBtn() {
+    const btn = document.getElementById('plan-collapse-all');
+    if (!btn) return;
+    const blocks = document.querySelectorAll('.plan-movie');
+    if (blocks.length === 0) { btn.style.display = 'none'; return; }
+    btn.style.display = '';
+    const allCollapsed = [...blocks].every(b => b.classList.contains('collapsed'));
+    btn.textContent = allCollapsed ? 'Rozwiń wszystko' : 'Zwiń wszystko';
   }
 
   // Cap on options shown per movie — beyond this we render a "+ N
@@ -527,11 +632,27 @@
   function renderPlanMovieBlock(movie, candidates) {
     const block = document.createElement('div');
     block.className = 'plan-movie';
+    block.dataset.movie = movie;
+    if (_planCollapsedMovies.has(movie)) block.classList.add('collapsed');
 
-    const title = document.createElement('div');
+    // Clickable header: chevron + title. Click anywhere on the row to
+    // toggle the collapsed state for just this movie.
+    const header = document.createElement('div');
+    header.className = 'plan-movie-header';
+    header.onclick = () => togglePlanMovieCollapse(movie);
+
+    const chevron = document.createElement('span');
+    chevron.className = 'plan-movie-chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.textContent = '▾';
+    header.appendChild(chevron);
+
+    const title = document.createElement('span');
     title.className = 'plan-movie-title';
     title.textContent = movie;
-    block.appendChild(title);
+    header.appendChild(title);
+
+    block.appendChild(header);
 
     if (candidates.length === 0) {
       block.classList.add('error');
@@ -597,6 +718,7 @@
     daysEl.innerHTML = '';
     if (plan.movies.length === 0) {
       summaryEl.textContent = 'Wybierz filmy powyżej, aby zobaczyć dostępne seanse.';
+      updateCollapseAllBtn();
       return;
     }
     summaryEl.textContent = plan.movies.length === 1
@@ -606,6 +728,7 @@
     plan.movies.forEach(movie => {
       daysEl.appendChild(renderPlanMovieBlock(movie, plan.perMovie.get(movie) || []));
     });
+    updateCollapseAllBtn();
   }
 
   // ── Boot ──────────────────────────────────────────────────────────────────
