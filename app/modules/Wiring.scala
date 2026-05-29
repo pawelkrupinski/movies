@@ -11,7 +11,7 @@ import services.cinemas._
 import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
 import services.movies._
-import services.users.{MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
+import services.users.{CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
 trait Wiring {
@@ -72,8 +72,13 @@ trait Wiring {
   lazy val mongoConnection: MongoConnection = new MongoConnection
 
   // ── Users ─────────────────────────────────────────────────────────────────
-  lazy val userRepo:      UserRepo      = new MongoUserRepo(mongoConnection.database, fallbackToOwnInit = false)
-  lazy val userStateRepo: UserStateRepo = new MongoUserStateRepo(mongoConnection.database, fallbackToOwnInit = false)
+  // Wrap the Mongo-backed user repos in caching decorators — every
+  // logged-in page render goes through `userRepo.findById`, and
+  // `bootMergeFromServer` hits `userStateRepo.find` right after.
+  // Caching trims the Frankfurt-Atlas RTT off the critical path
+  // once the row's in memory.
+  lazy val userRepo:      UserRepo      = new CachingUserRepo(new MongoUserRepo(mongoConnection.database, fallbackToOwnInit = false))
+  lazy val userStateRepo: UserStateRepo = new CachingUserStateRepo(new MongoUserStateRepo(mongoConnection.database, fallbackToOwnInit = false))
 
   // ── MovieRecord ────────────────────────────────────────────────────────────
   lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
