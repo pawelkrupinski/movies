@@ -301,69 +301,7 @@ test.describe('plan option list', () => {
 
 });
 
-test.describe('plan collapse', () => {
-
-  async function pickTwo(page: Page): Promise<[string, string]> {
-    await page.goto('/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
-    const showings = await readShowings(page);
-    const today    = await readPageToday(page);
-    const byMovie  = indexByMovie(showings, today);
-    const titles   = [...byMovie.keys()];
-    test.skip(titles.length < 2, 'fixture has fewer than two movies');
-    await setLocalStorageJson(page, 'selectedMovies', [titles[0], titles[1]]);
-    await page.evaluate(() =>
-      (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.(),
-    );
-    return [titles[0], titles[1]];
-  }
-
-  test('clicking a movie header collapses just that block', async ({ page }) => {
-    const [first, second] = await pickTwo(page);
-
-    // Pre-state: nothing collapsed, both summaries visible.
-    await expect(page.locator(`.plan-movie[data-movie="${first}"]`)).not.toHaveClass(/collapsed/);
-    await expect(page.locator(`.plan-movie[data-movie="${first}"] .plan-movie-summary`)).toBeVisible();
-
-    await page.locator(`.plan-movie[data-movie="${first}"] .plan-movie-header`).click();
-
-    await expect(page.locator(`.plan-movie[data-movie="${first}"]`)).toHaveClass(/collapsed/);
-    // Summary + options drop out of the layout (display: none).
-    await expect(page.locator(`.plan-movie[data-movie="${first}"] .plan-movie-summary`)).toBeHidden();
-    await expect(page.locator(`.plan-movie[data-movie="${first}"] .plan-options`)).toBeHidden();
-    // The other block stays untouched.
-    await expect(page.locator(`.plan-movie[data-movie="${second}"]`)).not.toHaveClass(/collapsed/);
-  });
-
-  test('"Zwiń wszystko" collapses every block; the button flips to "Rozwiń wszystko" and re-expands', async ({ page }) => {
-    const [first, second] = await pickTwo(page);
-
-    const btn = page.locator('#plan-collapse-all');
-    await expect(btn).toBeVisible();
-    await expect(btn).toHaveText('Zwiń wszystko');
-
-    await btn.click();
-
-    await expect(page.locator(`.plan-movie[data-movie="${first}"]`)).toHaveClass(/collapsed/);
-    await expect(page.locator(`.plan-movie[data-movie="${second}"]`)).toHaveClass(/collapsed/);
-    await expect(btn).toHaveText('Rozwiń wszystko');
-
-    await btn.click();
-
-    await expect(page.locator(`.plan-movie[data-movie="${first}"]`)).not.toHaveClass(/collapsed/);
-    await expect(page.locator(`.plan-movie[data-movie="${second}"]`)).not.toHaveClass(/collapsed/);
-    await expect(btn).toHaveText('Zwiń wszystko');
-  });
-
-  test('the collapse-all button is hidden when no movies are picked', async ({ page }) => {
-    await page.goto('/plan');
-    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
-    await setLocalStorageJson(page, 'selectedMovies', []);
-    await page.evaluate(() =>
-      (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.(),
-    );
-    await expect(page.locator('#plan-collapse-all')).toBeHidden();
-  });
+test.describe('plan posters fold', () => {
 
   test('"Zwiń plakaty" folds the poster grid and persists across reloads', async ({ page }) => {
     await page.goto('/plan');
@@ -395,25 +333,22 @@ test.describe('plan collapse', () => {
     await expect(page.locator('#filmy-section')).not.toHaveClass(/folded/);
   });
 
-  test('movie title in the proposed plan is a link to /film and does not toggle collapse', async ({ page }) => {
-    const [first] = await pickTwo(page);
+  test('movie title in the proposed plan is a link to /film', async ({ page }) => {
+    await page.goto('/plan');
+    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    const showings = await readShowings(page);
+    const today    = await readPageToday(page);
+    const byMovie  = indexByMovie(showings, today);
+    const titles   = [...byMovie.keys()];
+    test.skip(titles.length === 0, 'fixture has no movies');
+    const first = titles[0];
+    await setLocalStorageJson(page, 'selectedMovies', [first]);
+    await page.evaluate(() =>
+      (globalThis as unknown as { applyFilters?: () => void }).applyFilters?.(),
+    );
 
-    const link = page.locator(`.plan-movie[data-movie="${first}"] a.plan-movie-title`);
+    const link = page.locator('a.plan-movie-title', { hasText: first });
     await expect(link).toHaveAttribute('href', '/film?title=' + encodeURIComponent(first));
-    await expect(link).toHaveText(first);
-
-    // Clicking the title navigates rather than collapsing — pre-click block
-    // state should be preserved on the way out. (Use `preventDefault` so
-    // the test doesn't navigate away from the /plan page before we check.)
-    await page.evaluate((title) => {
-      const a = document.querySelector(
-        `.plan-movie[data-movie="${CSS.escape(title)}"] a.plan-movie-title`,
-      ) as HTMLAnchorElement | null;
-      a?.addEventListener('click', e => e.preventDefault(), { once: true });
-    }, first);
-
-    await link.click();
-    await expect(page.locator(`.plan-movie[data-movie="${first}"]`)).not.toHaveClass(/collapsed/);
   });
 
 });

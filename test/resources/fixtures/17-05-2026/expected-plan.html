@@ -37,7 +37,7 @@
 
 
   
-  <style>.plan-section{border:1px solid #2a2a4e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;background:#15153a}.plan-section h5{color:#aad4ff;font-weight:600;margin:0 0 .5rem 0}.plan-section .help{color:#8888aa;font-size:.85rem;margin:0 0 .75rem 0}.cinema-pill{background:transparent;color:#aad4ff;border:1px solid #3a3a6e;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;font-family:inherit;cursor:pointer;-webkit-user-select:none;user-select:none}@media (hover:hover) and (pointer:fine){.cinema-pill:hover{background:#3a3a6e;color:#fff}}.cinema-pill.active{background:#3a3a6e;color:#fff;border-color:#3a3a6e}#plan-movies-row{row-gap:.75rem}.plan-card{background:#1e1e2e;border-radius:12px;overflow:hidden;height:100%;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;outline:2px solid transparent;outline-offset:-2px}.plan-card:hover{transform:translateY(-2px)}.plan-card.selected{outline-color:#6cd06c;box-shadow:0 0 0 1px #6cd06c33,0 6px 18px rgba(108,208,108,.12)}.plan-card .plan-check{position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#6cd06c;color:#0a2a0a;display:none;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;z-index:5;box-shadow:0 2px 6px rgba(0,0,0,.4);pointer-events:none}.plan-card.selected .plan-check{display:flex}.rooms-cinema{margin-top:.6rem}.rooms-cinema h6{color:#aad4ff;font-size:.9rem;font-weight:500;margin:0 0 .25rem 0}.rooms-list{display:flex;flex-wrap:wrap;gap:.25rem .75rem}.room-check label{display:inline-flex;align-items:center;gap:.3rem;color:#ddd;cursor:pointer}.plan-movie{border-left:3px solid #3a3a6e;padding:.35rem 0 .55rem 1rem;margin-bottom:.9rem}.plan-movie.warn{border-left-color:#cb8}.plan-movie.error{border-left-color:#b88}.plan-movie-header{display:flex;align-items:center;gap:.4rem;cursor:pointer;-webkit-user-select:none;user-select:none}.plan-movie-chevron{color:#aad4ff;font-size:.75rem;display:inline-block;transition:transform .12s;width:.7rem}.plan-movie.collapsed .plan-movie-chevron{transform:rotate(-90deg)}.plan-movie.collapsed .plan-movie-summary,.plan-movie.collapsed .plan-options{display:none}.plan-movie-title{color:#fff;font-weight:600;font-size:.98rem;margin-bottom:.1rem;text-decoration:none}@media (hover:hover) and (pointer:fine){a.plan-movie-title:hover{color:#aad4ff}}.plan-twoje-header,.plan-filmy-header{display:flex;justify-content:space-between;align-items:baseline;gap:.75rem}.plan-twoje-header h5,.plan-filmy-header h5{margin:0}#filmy-section.folded .help,#filmy-section.folded #plan-movies-row{display:none}.plan-collapse-btn{background:transparent;color:#aad4ff;border:1px solid #3a3a6e;border-radius:6px;padding:.15rem .55rem;font-size:.8rem;font-family:inherit;cursor:pointer}@media (hover:hover) and (pointer:fine){.plan-collapse-btn:hover{background:#3a3a6e;color:#fff}}.plan-movie-summary{color:#aab;font-size:.82rem;margin-bottom:.35rem}.plan-movie.warn .plan-movie-summary{color:#fec}.plan-movie.error .plan-movie-summary{color:#fcc}.plan-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.25rem .75rem}.plan-option{color:#ddd;font-size:.85rem;padding:.15rem 0}.plan-option .when{color:#aad4ff;font-weight:500}.plan-option .where{color:#99a}.plan-options-more{grid-column:1 / -1;color:#66667a;font-size:.8rem;font-style:italic;margin-top:.1rem}.plan-empty{color:#66667a;font-style:italic}</style>
+  <style>.plan-section{border:1px solid #2a2a4e;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;background:#15153a}.plan-section h5{color:#aad4ff;font-weight:600;margin:0 0 .5rem 0}.plan-section .help{color:#8888aa;font-size:.85rem;margin:0 0 .75rem 0}.cinema-pill{background:transparent;color:#aad4ff;border:1px solid #3a3a6e;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;font-family:inherit;cursor:pointer;-webkit-user-select:none;user-select:none}@media (hover:hover) and (pointer:fine){.cinema-pill:hover{background:#3a3a6e;color:#fff}}.cinema-pill.active{background:#3a3a6e;color:#fff;border-color:#3a3a6e}#plan-movies-row{row-gap:.75rem}.plan-card{background:#1e1e2e;border-radius:12px;overflow:hidden;height:100%;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;outline:2px solid transparent;outline-offset:-2px}.plan-card:hover{transform:translateY(-2px)}.plan-card.selected{outline-color:#6cd06c;box-shadow:0 0 0 1px #6cd06c33,0 6px 18px rgba(108,208,108,.12)}.plan-card .plan-check{position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:#6cd06c;color:#0a2a0a;display:none;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;z-index:5;box-shadow:0 2px 6px rgba(0,0,0,.4);pointer-events:none}.plan-card.selected .plan-check{display:flex}.rooms-cinema{margin-top:.6rem}.rooms-cinema h6{color:#aad4ff;font-size:.9rem;font-weight:500;margin:0 0 .25rem 0}.rooms-list{display:flex;flex-wrap:wrap;gap:.25rem .75rem}.room-check label{display:inline-flex;align-items:center;gap:.3rem;color:#ddd;cursor:pointer}.plan-movie{border-left:3px solid #3a3a6e;padding:.35rem 0 .55rem 1rem;margin-bottom:.9rem}.plan-movie.warn{border-left-color:#cb8}.plan-movie.error{border-left-color:#b88}.plan-movie-title{color:#fff;font-weight:600;font-size:.98rem;margin-bottom:.1rem;text-decoration:none;display:block}@media (hover:hover) and (pointer:fine){a.plan-movie-title:hover{color:#aad4ff}}.plan-filmy-header{display:flex;justify-content:space-between;align-items:baseline;gap:.75rem}.plan-filmy-header h5{margin:0}#filmy-section.folded .help,#filmy-section.folded #plan-movies-row{display:none}.plan-collapse-btn{background:transparent;color:#aad4ff;border:1px solid #3a3a6e;border-radius:6px;padding:.15rem .55rem;font-size:.8rem;font-family:inherit;cursor:pointer}@media (hover:hover) and (pointer:fine){.plan-collapse-btn:hover{background:#3a3a6e;color:#fff}}.plan-movie-summary{color:#aab;font-size:.82rem;margin-bottom:.35rem}.plan-movie.warn .plan-movie-summary{color:#fec}.plan-movie.error .plan-movie-summary{color:#fcc}.plan-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.25rem .75rem}.plan-option{color:#ddd;font-size:.85rem;padding:.15rem 0}.plan-option .when{color:#aad4ff;font-weight:500}.plan-option .where{color:#99a}.plan-options-more{grid-column:1 / -1;color:#66667a;font-size:.8rem;font-style:italic;margin-top:.1rem}.plan-empty{color:#66667a;font-style:italic}</style>
   
 
 </head>
@@ -10228,10 +10228,7 @@
   </section>
 
   <section class="plan-section">
-    <div class="plan-twoje-header">
-      <h5>Twoje filmy</h5>
-      <button id="plan-collapse-all" type="button" class="plan-collapse-btn" onclick="planToggleCollapseAll()" style="display:none">Zwiń wszystko</button>
-    </div>
+    <h5>Twoje filmy</h5>
     <p class="help" id="plan-summary">Wybierz filmy powyżej, aby zobaczyć dostępne seanse.</p>
     <div id="plan-days"></div>
   </section>
@@ -10471,62 +10468,15 @@ if (folded) localStorage.removeItem('planPostersFolded');
 else localStorage.setItem('planPostersFolded', '1');
 planApplyPostersFold();
 }
-const _planCollapsedMovies = new Set();
-function togglePlanMovieCollapse(movie) {
-const block = document.querySelector(`.plan-movie[data-movie="${CSS.escape(movie)}"]`);
-if (!block) return;
-if (_planCollapsedMovies.has(movie)) {
-_planCollapsedMovies.delete(movie);
-block.classList.remove('collapsed');
-} else {
-_planCollapsedMovies.add(movie);
-block.classList.add('collapsed');
-}
-updateCollapseAllBtn();
-}
-function planToggleCollapseAll() {
-const blocks = document.querySelectorAll('.plan-movie');
-if (blocks.length === 0) return;
-const allCollapsed = [...blocks].every(b => b.classList.contains('collapsed'));
-blocks.forEach(b => {
-const movie = b.dataset.movie;
-if (allCollapsed) { _planCollapsedMovies.delete(movie); b.classList.remove('collapsed'); }
-else { _planCollapsedMovies.add(movie); b.classList.add('collapsed'); }
-});
-updateCollapseAllBtn();
-}
-function updateCollapseAllBtn() {
-const btn = document.getElementById('plan-collapse-all');
-if (!btn) return;
-const blocks = document.querySelectorAll('.plan-movie');
-if (blocks.length === 0) { btn.style.display = 'none'; return; }
-btn.style.display = '';
-const allCollapsed = [...blocks].every(b => b.classList.contains('collapsed'));
-btn.textContent = allCollapsed ? 'Rozwiń wszystko' : 'Zwiń wszystko';
-}
 const PLAN_OPTIONS_LIMIT = 8;
 function renderPlanMovieBlock(movie, candidates) {
 const block = document.createElement('div');
 block.className = 'plan-movie';
-block.dataset.movie = movie;
-if (_planCollapsedMovies.has(movie)) block.classList.add('collapsed');
-const header = document.createElement('div');
-header.className = 'plan-movie-header';
-header.onclick = (e) => {
-if (e.target.closest('a')) return;
-togglePlanMovieCollapse(movie);
-};
-const chevron = document.createElement('span');
-chevron.className = 'plan-movie-chevron';
-chevron.setAttribute('aria-hidden', 'true');
-chevron.textContent = '▾';
-header.appendChild(chevron);
 const title = document.createElement('a');
 title.className = 'plan-movie-title';
 title.href = '/film?title=' + encodeURIComponent(movie);
 title.textContent = movie;
-header.appendChild(title);
-block.appendChild(header);
+block.appendChild(title);
 if (candidates.length === 0) {
 block.classList.add('error');
 const empty = document.createElement('div');
@@ -10575,7 +10525,6 @@ if (!daysEl) return;
 daysEl.innerHTML = '';
 if (plan.movies.length === 0) {
 summaryEl.textContent = 'Wybierz filmy powyżej, aby zobaczyć dostępne seanse.';
-updateCollapseAllBtn();
 return;
 }
 summaryEl.textContent = plan.movies.length === 1
@@ -10584,7 +10533,6 @@ summaryEl.textContent = plan.movies.length === 1
 plan.movies.forEach(movie => {
 daysEl.appendChild(renderPlanMovieBlock(movie, plan.perMovie.get(movie) || []));
 });
-updateCollapseAllBtn();
 }
 function buildIndex() {}
 function applyFilters() {
