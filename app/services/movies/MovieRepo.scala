@@ -75,6 +75,10 @@ object MongoMovieRepo {
    *  matching no range — a concurrent insert whose `_id` sorted into that
    *  gap was silently dropped from the reload.
    *
+   *  Precondition: `ids` is sorted in the same order the ranged `gte`/`lt`
+   *  finds compare against — i.e. Mongo's `_id` order. `findAll` guarantees
+   *  this by sorting server-side rather than in Scala.
+   *
    *  Returns one `(lower, upper)` pair per chunk; `None` means unbounded.
    *  Empty input → empty output. */
   private[movies] def idRanges(ids: Seq[String], parallelism: Int): Seq[(Option[String], Option[String])] =
@@ -175,12 +179,22 @@ class MongoMovieRepo(
         import scala.concurrent.ExecutionContext.Implicits.global
         val Parallelism = 4
 
+        // Sort in Mongo, not Scala: the chunk boundaries must be ordered by
+        // the same comparison the ranged `gte`/`lt` finds use (the `_id`
+        // index's binary order), or a boundary could straddle the range
+        // semantics and reopen a gap. A Scala `.sorted` (UTF-16 code-unit
+        // order) agrees for all BMP ids but diverges on supplementary-plane
+        // characters; sorting server-side makes the partition consistent by
+        // construction and rides the existing `_id` index for free.
         val ids = Await.result(
-          rc.find().projection(org.mongodb.scala.model.Projections.include("_id")).toFuture(),
+          rc.find()
+            .projection(org.mongodb.scala.model.Projections.include("_id"))
+            .sort(org.mongodb.scala.model.Sorts.ascending("_id"))
+            .toFuture(),
           15.seconds
         ).iterator.flatMap(d =>
           d.get[org.mongodb.scala.bson.BsonString]("_id").map(_.getValue)
-        ).toList.sorted
+        ).toList
 
         if (ids.isEmpty) Seq.empty
         else {
