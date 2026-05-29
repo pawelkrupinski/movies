@@ -787,13 +787,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       val t1 = scala.concurrent.Future {
         latch.await()
         cache.recordCinemaScrape(Multikino, Seq(cinemaMovie(title, Multikino, None)))
-      }(ec)
+      }(using ec)
       val t2 = scala.concurrent.Future {
         latch.await()
         cache.recordCinemaScrape(Helios, Seq(cinemaMovie(title, Helios, Some(2026))))
-      }(ec)
+      }(using ec)
       latch.countDown()
-      scala.concurrent.Await.ready(scala.concurrent.Future.sequence(Seq(t1, t2))(implicitly, ec), scala.concurrent.duration.Duration.Inf)
+      scala.concurrent.Await.ready(scala.concurrent.Future.sequence(Seq(t1, t2))(using implicitly, ec), scala.concurrent.duration.Duration.Inf)
       ec.shutdown()
 
       withClue(s"snapshot after iteration: ${cache.snapshot().map(r => s"(${r.title}, ${r.year})").mkString(", ")} ") {
@@ -840,7 +840,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       val tmdbStage = scala.concurrent.Future {
         latch.await()
         cache.rekey(keyNone, key2000, _ => resolved)
-      }(ec)
+      }(using ec)
       // Thread B: a concurrent cinema scrape with year=2026. Contends for
       // the same lock — must either see the old (None) row (before the
       // re-key) and redirect onto it, or see the new (Some(2000)) row
@@ -850,11 +850,11 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
         cache.recordCinemaScrape(CinemaCityPoznanPlaza, Seq(
           cinemaMovie(title, CinemaCityPoznanPlaza, year = Some(2026))
         ))
-      }(ec)
+      }(using ec)
 
       latch.countDown()
       scala.concurrent.Await.ready(
-        scala.concurrent.Future.sequence(Seq(tmdbStage, ccScrape))(implicitly, ec),
+        scala.concurrent.Future.sequence(Seq(tmdbStage, ccScrape))(using implicitly, ec),
         scala.concurrent.duration.Duration.Inf
       )
       ec.shutdown()
@@ -905,7 +905,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
         cache.recordCinemaScrape(CinemaCityPoznanPlaza, Seq(
           cinemaMovie(title, CinemaCityPoznanPlaza, year = None)
         ))
-      }(ec)
+      }(using ec)
       // Thread B: rekey (None) → (Some(2026)). The updater reads the
       // row's CURRENT state under the title lock — mirrors
       // `MovieService.runTmdbStageSync`'s carry-forward shape — so CC
@@ -915,11 +915,11 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
         cache.rekey(cache.keyOf(title, None), cache.keyOf(title, Some(2026)),
           current => current.copy(tmdbId = Some(454639))
         )
-      }(ec)
+      }(using ec)
 
       latch.countDown()
       scala.concurrent.Await.ready(
-        scala.concurrent.Future.sequence(Seq(ccScrape, rekey))(implicitly, ec),
+        scala.concurrent.Future.sequence(Seq(ccScrape, rekey))(using implicitly, ec),
         scala.concurrent.duration.Duration.Inf
       )
       ec.shutdown()

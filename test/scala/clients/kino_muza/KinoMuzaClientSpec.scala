@@ -673,7 +673,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still expose parseSynopsis for the refresher to call against a recorded detail page" in {
-    val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(scala.io.Codec.UTF8).mkString
+    val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(using scala.io.Codec.UTF8).mkString
     val s    = client.parseSynopsis(Jsoup.parse(html))
     s                            should not be empty
     s.get                        should startWith ("James Cox Chambers Jr.")
@@ -684,7 +684,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
   // listing-page thumbnail. `parsePoster` pulls it out so the refresher
   // can upgrade the row's posterUrl when it processes the detail page.
   it should "extract the portrait poster URL from a detail page" in {
-    val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(scala.io.Codec.UTF8).mkString
+    val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(using scala.io.Codec.UTF8).mkString
     client.parsePoster(Jsoup.parse(html)) shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-556x800.png")
   }
 

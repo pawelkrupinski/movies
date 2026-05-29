@@ -20,20 +20,23 @@ import scala.concurrent.duration._
  *  sbt 'Test/runMain clients.tools.DropKinepolisSlots'
  *  ```
  */
-object DropKinepolisSlots extends App {
-  private val conn = new MongoConnection()
-  val db = conn.database.getOrElse {
-    println("MONGODB_URI not set — nothing to do.")
-    sys.exit(1)
+object DropKinepolisSlots {
+  def main(args: Array[String]): Unit = {
+    val conn = new MongoConnection()
+    try {
+      val db = conn.database.getOrElse {
+        println("MONGODB_URI not set — nothing to do.")
+        sys.exit(1)
+      }
+      val movies = db.getCollection("movies")
+      val res = Await.result(
+        movies.updateMany(
+          Document(),
+          Document("$unset" -> Document("sourceData.Cinema City Kinepolis" -> ""))
+        ).toFuture(),
+        30.seconds
+      )
+      println(s"matched=${res.getMatchedCount} modified=${res.getModifiedCount}")
+    } finally conn.close()
   }
-  val movies = db.getCollection("movies")
-  val res = Await.result(
-    movies.updateMany(
-      Document(),
-      Document("$unset" -> Document("sourceData.Cinema City Kinepolis" -> ""))
-    ).toFuture(),
-    30.seconds
-  )
-  println(s"matched=${res.getMatchedCount} modified=${res.getModifiedCount}")
-  conn.close()
 }

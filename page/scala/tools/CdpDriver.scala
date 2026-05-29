@@ -215,7 +215,7 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     .connectTimeout(Duration.ofSeconds(5))
     .buildAsync(uri, new Listener {
       override def onOpen(ws: WebSocket): Unit = { ws.request(Long.MaxValue); super.onOpen(ws) }
-      override def onText(ws: WebSocket, data: CharSequence, last: Boolean): java.util.concurrent.CompletionStage[_] = {
+      override def onText(ws: WebSocket, data: CharSequence, last: Boolean): java.util.concurrent.CompletionStage[?] = {
         buffer.append(data)
         if (last) {
           val text = buffer.toString

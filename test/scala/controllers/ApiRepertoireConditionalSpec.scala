@@ -12,7 +12,6 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepo, MovieService}
 import tools.RealHttpFetch
 
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 

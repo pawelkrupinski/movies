@@ -206,7 +206,7 @@ class MongoMovieRepo(
             val filter = bounds match {
               case Seq()    => Filters.empty()
               case Seq(one) => one
-              case many     => Filters.and(many: _*)
+              case many     => Filters.and(many*)
             }
             c.find(filter).toFuture()
           }

@@ -52,10 +52,11 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  *      exit cleanly without this, but if anyone ever flips a thread to
  *      non-daemon, the explicit shutdown keeps the recording correct.
  */
-object RecordAllDataToFixture extends TestWiring with App {
+object RecordAllDataToFixture extends TestWiring {
   override lazy val movieRepo = new InMemoryMovieRepo()
   override lazy val httoFetch = new RecordingHttpFetch("17-05-2026", new RealHttpFetch())
 
+  def main(args: Array[String]): Unit = {
   // 1. Production-shape pass: every cinema scrape fires, every bus event
   //    cascades through the worker pools, the cascade drains in
   //    producer→consumer order.
@@ -132,4 +133,5 @@ object RecordAllDataToFixture extends TestWiring with App {
   showtimeCache.stop()
   unscreenedCleanup.stop()
   movieRepo.close()
+  }
 }

@@ -35,5 +35,5 @@ trait TestWiring extends Wiring {
    *  credits / details). Uses the same `cascadeDrainOrder` production
    *  shutdown does — single source of truth for the producer→consumer
    *  ordering. */
-  def drainServices(): Unit = quiesce(cascadeDrainOrder: _*)
+  def drainServices(): Unit = quiesce(cascadeDrainOrder*)
 }

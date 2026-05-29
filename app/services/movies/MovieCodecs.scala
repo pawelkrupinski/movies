@@ -1,7 +1,7 @@
 package services.movies
 
 import models.{MovieRecord, Showtime, Source, SourceData}
-import org.bson.{BsonReader, BsonType, BsonWriter}
+import org.bson.{BsonReader, BsonWriter}
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.bson.codecs.configuration.{CodecProvider, CodecRegistry}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}

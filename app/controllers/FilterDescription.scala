@@ -168,23 +168,25 @@ object FilterDescription {
     excludedPreposition: String,
     display: String => String,
     countNoun: String,
-  ): Option[String] = {
-    val inc = included.getOrElse(return None)
-    if (inc.isEmpty || universe.isEmpty) return None
-    // Restrict to items we recognise — a URL listing a stale (dropped from
-    // the corpus today) room shouldn't be counted toward "all visible".
-    val incInUniverse = inc.intersect(universe)
-    if (incInUniverse.isEmpty) return None
-    val excluded = universe.diff(incInUniverse)
-    if (excluded.isEmpty) return None // every item included → no filter
-    val pickIncluded = incInUniverse.size <= excluded.size
-    val (set, prep) =
-      if (pickIncluded) (incInUniverse, if (incInUniverse.size == 1) includedSingularPreposition else includedPluralPreposition)
-      else              (excluded,      excludedPreposition)
-    val items = set.map(display).filter(_.nonEmpty).toSeq.sorted
-    if (items.isEmpty) None
-    else if (items.size <= 3) Some(prep + items.mkString(", "))
-    else Some(s"${set.size} $countNoun") // too many to enumerate — summarise
+  ): Option[String] = included.flatMap { inc =>
+    if (inc.isEmpty || universe.isEmpty) None
+    else {
+      // Restrict to items we recognise — a URL listing a stale (dropped from
+      // the corpus today) room shouldn't be counted toward "all visible".
+      val incInUniverse = inc.intersect(universe)
+      val excluded      = universe.diff(incInUniverse)
+      if (incInUniverse.isEmpty || excluded.isEmpty) None
+      else {
+        val pickIncluded = incInUniverse.size <= excluded.size
+        val (set, prep) =
+          if (pickIncluded) (incInUniverse, if (incInUniverse.size == 1) includedSingularPreposition else includedPluralPreposition)
+          else              (excluded,      excludedPreposition)
+        val items = set.map(display).filter(_.nonEmpty).toSeq.sorted
+        if (items.isEmpty) None
+        else if (items.size <= 3) Some(prep + items.mkString(", "))
+        else Some(s"${set.size} $countNoun") // too many to enumerate — summarise
+      }
+    }
   }
 
   private def paramOf(query: Map[String, Seq[String]], key: String): Option[String] =

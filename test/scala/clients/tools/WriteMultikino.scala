@@ -8,8 +8,10 @@ import tools.RealHttpFetch
  *  so simply running `MultikinoClient.fetch()` through it captures the API
  *  response (and the homepage, if the session warm-up fires) without any
  *  bespoke recording code here. */
-object WriteMultikino extends App {
-  private val fetch  = new RecordingHttpFetch("multikino", new RealHttpFetch())
-  private val client = new MultikinoClient(MultikinoClient.fetchFor(fetch))
-  client.fetch().foreach(m => println(s"${m.movie.title} (${m.showtimes.size} showtimes)"))
+object WriteMultikino {
+  def main(args: Array[String]): Unit = {
+    val fetch  = new RecordingHttpFetch("multikino", new RealHttpFetch())
+    val client = new MultikinoClient(MultikinoClient.fetchFor(fetch))
+    client.fetch().foreach(m => println(s"${m.movie.title} (${m.showtimes.size} showtimes)"))
+  }
 }

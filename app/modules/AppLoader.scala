@@ -9,7 +9,6 @@ import play.api._
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import router.Routes
-import tools.Env
 
 import scala.concurrent.Future
 
