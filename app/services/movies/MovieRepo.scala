@@ -62,6 +62,34 @@ trait MovieRepo {
   def close(): Unit
 }
 
+object MongoMovieRepo {
+  /** Split the sorted `_id` list into `parallelism` contiguous, *half-open*
+   *  ranges that together tile the entire id space: the first range has no
+   *  lower bound, the last no upper bound, and adjacent ranges meet exactly
+   *  at a chunk head — range `i` is `[headᵢ, headᵢ₊₁)`. This leaves no gap
+   *  between ranges, so a document committed between the `_id` discovery
+   *  query and the ranged finds still lands in exactly one range.
+   *
+   *  The older approach bounded each chunk by its own observed min/max id
+   *  (`gte(headᵢ) … lte(lastᵢ)`), which left a gap `(lastᵢ, headᵢ₊₁)`
+   *  matching no range — a concurrent insert whose `_id` sorted into that
+   *  gap was silently dropped from the reload.
+   *
+   *  Returns one `(lower, upper)` pair per chunk; `None` means unbounded.
+   *  Empty input → empty output. */
+  private[movies] def idRanges(ids: Seq[String], parallelism: Int): Seq[(Option[String], Option[String])] =
+    if (ids.isEmpty) Seq.empty
+    else {
+      val chunkSize = math.ceil(ids.size.toDouble / parallelism).toInt.max(1)
+      val heads     = ids.grouped(chunkSize).map(_.head).toVector
+      heads.indices.map { i =>
+        val lower = if (i == 0) None else Some(heads(i))
+        val upper = if (i == heads.size - 1) None else Some(heads(i + 1))
+        (lower, upper)
+      }
+    }
+}
+
 /**
  * MongoDB-backed `MovieRepo`. Persists records to the `movies` collection.
  *
@@ -131,8 +159,11 @@ class MongoMovieRepo(
    *
    *  Algorithm:
    *    1. Project just `_id` (small payload, ~200 ms).
-   *    2. Sort, split into `Parallelism` contiguous chunks.
-   *    3. Fire one ranged `find()` per chunk, joined.
+   *    2. Sort, split into `Parallelism` contiguous *half-open* `_id` ranges
+   *       (see `MongoMovieRepo.idRanges`) that tile the whole id space with
+   *       no gaps — so a doc committed between this discovery query and the
+   *       ranged finds can't fall between two chunk boundaries and vanish.
+   *    3. Fire one ranged `find()` per range, joined.
    *    4. Decode + return.
    *
    *  Falls back to the single-query path on the discovery query's empty /
@@ -153,12 +184,17 @@ class MongoMovieRepo(
 
         if (ids.isEmpty) Seq.empty
         else {
-          val chunkSize = math.ceil(ids.size.toDouble / Parallelism).toInt.max(1)
-          val chunks    = ids.grouped(chunkSize).toList
-          val futures   = chunks.map { chunk =>
-            c.find(
-              Filters.and(Filters.gte("_id", chunk.head), Filters.lte("_id", chunk.last))
-            ).toFuture()
+          val futures = MongoMovieRepo.idRanges(ids, Parallelism).map { case (lower, upper) =>
+            val bounds = Seq(
+              lower.map(Filters.gte("_id", _)),
+              upper.map(Filters.lt("_id", _))
+            ).flatten
+            val filter = bounds match {
+              case Seq()    => Filters.empty()
+              case Seq(one) => one
+              case many     => Filters.and(many: _*)
+            }
+            c.find(filter).toFuture()
           }
           val all = Await.result(scala.concurrent.Future.sequence(futures), 30.seconds).flatten
           all.map(StoredMovieDto.toDomain)
