@@ -53,7 +53,12 @@ class ClientIntegrationSpec
   "Kino Muza"                should "fetch films" in requireRuntime(KinoMuza)
   "Kino Bułgarska 19"        should "fetch films" in runtimeOptional(KinoBulgarska)
   "Kino Apollo"              should "fetch films" in requireNoRuntime(KinoApollo)
-  "Kino Rialto"              should "fetch films" in requireRuntime(Rialto)
+  // Rialto is an event cinema: alongside films it lists concert/opera
+  // retransmissions (e.g. "André Rieu … retransmisja") that genuinely have
+  // no runtime on the page. They're real listings with showtimes, so the
+  // scraper rightly keeps them — runtimeOptional tolerates them while still
+  // catching a parser regression that drops runtime from the actual films.
+  "Kino Rialto"              should "fetch films" in runtimeOptional(Rialto)
 
   private def requireRuntime(cinema: Cinema)    = runScraperFor(cinema, assertAllHaveRuntime)
   private def runtimeOptional(cinema: Cinema)   = runScraperFor(cinema, assertMostHaveRuntime)
