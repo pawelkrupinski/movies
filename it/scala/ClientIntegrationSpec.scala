@@ -53,15 +53,16 @@ class ClientIntegrationSpec
   "Kino Muza"                should "fetch films" in requireRuntime(KinoMuza)
   "Kino Bułgarska 19"        should "fetch films" in runtimeOptional(KinoBulgarska)
   "Kino Apollo"              should "fetch films" in requireNoRuntime(KinoApollo)
-  // Rialto is an event cinema: alongside films it lists concert/opera
-  // retransmissions (e.g. "André Rieu … retransmisja") that genuinely have
-  // no runtime on the page. They're real listings with showtimes, so the
-  // scraper rightly keeps them — runtimeOptional tolerates them while still
-  // catching a parser regression that drops runtime from the actual films.
-  "Kino Rialto"              should "fetch films" in runtimeOptional(Rialto)
+  // Rialto is mostly films but occasionally lists a concert/opera
+  // retransmission (e.g. "André Rieu … retransmisja") that genuinely has no
+  // runtime on the page. It's a real listing with showtimes, so the scraper
+  // rightly keeps it — tolerate a single runtime-less entry while still
+  // failing if the parser drops runtime from a second listing.
+  "Kino Rialto"              should "fetch films" in runtimeAllButOne(Rialto)
 
   private def requireRuntime(cinema: Cinema)    = runScraperFor(cinema, assertAllHaveRuntime)
   private def runtimeOptional(cinema: Cinema)   = runScraperFor(cinema, assertMostHaveRuntime)
+  private def runtimeAllButOne(cinema: Cinema)  = runScraperFor(cinema, assertAllButOneHaveRuntime)
   private def requireNoRuntime(cinema: Cinema)  = runScraperFor(cinema, _ => ()) // parser doesn't expose runtime
 
   private def runScraperFor(cinema: Cinema, runtimeAssertion: Seq[CinemaMovie] => Unit): Unit = {
@@ -86,6 +87,13 @@ class ClientIntegrationSpec
     val withRuntime = result.count(_.movie.runtimeMinutes.nonEmpty)
     withClue(s"only $withRuntime of ${result.size} movies have a runtime: ") {
       (withRuntime * 3) should be >= (result.size * 2)
+    }
+  }
+
+  private def assertAllButOneHaveRuntime(result: Seq[CinemaMovie]): Unit = {
+    val withoutRuntime = result.filter(_.movie.runtimeMinutes.isEmpty).map(_.movie.title)
+    withClue(s"${withoutRuntime.size} movies lack a runtime (at most one event listing tolerated): $withoutRuntime ") {
+      withoutRuntime.size should be <= 1
     }
   }
 
