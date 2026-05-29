@@ -147,13 +147,20 @@
     /* Header row sitting above the per-movie list: keeps the section
        title on the left and the Zwiń/Rozwiń wszystko toggle on the
        right. Hidden until at least one movie is selected. */
-    .plan-twoje-header {
+    .plan-twoje-header,
+    .plan-filmy-header {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
       gap: .75rem;
     }
-    .plan-twoje-header h5 { margin: 0; }
+    .plan-twoje-header h5,
+    .plan-filmy-header h5 { margin: 0; }
+    /* Folded poster grid: hides everything below the header so the user
+       can scroll straight to "Twoje filmy". State persists via LS so a
+       reload keeps the picker out of the way. */
+    #filmy-section.folded .help,
+    #filmy-section.folded #plan-movies-row { display: none; }
     .plan-collapse-btn {
       background: transparent;
       color: #aad4ff;
@@ -214,8 +221,11 @@
     <div id="cinema-pills" class="d-flex align-items-center" style="flex-wrap:wrap; gap:.25rem"></div>
   </section>
 
-  <section class="plan-section">
-    <h5>Filmy</h5>
+  <section class="plan-section" id="filmy-section">
+    <div class="plan-filmy-header">
+      <h5>Filmy</h5>
+      <button id="plan-fold-posters" type="button" class="plan-collapse-btn" onclick="planTogglePostersFold()">Zwiń plakaty</button>
+    </div>
     <p class="help">Kliknij plakat, aby dodać film do planu. Tytuł otwiera stronę filmu. Filtry z paska nawigacji (kraj, reżyser, obsada, format, godzina, sale) zawężają listę.</p>
     <div id="plan-movies-row" class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6">
       @for(film <- data.films) {
@@ -584,6 +594,27 @@
     return { movies, perMovie };
   }
 
+  // ── Poster picker fold ───────────────────────────────────────────────────
+  // The picker grid is the tallest section on /plan; once the user has made
+  // their picks, scrolling past it to reach "Twoje filmy" is a chore.
+  // `planTogglePostersFold` adds a `.folded` class to the Filmy section,
+  // which hides the help text + the grid via CSS. State persists in LS so
+  // a reload (or a navigation back to /plan) keeps the picker tucked away.
+  function planApplyPostersFold() {
+    const folded = localStorage.getItem('planPostersFolded') === '1';
+    const section = document.getElementById('filmy-section');
+    const btn     = document.getElementById('plan-fold-posters');
+    if (section) section.classList.toggle('folded', folded);
+    if (btn)     btn.textContent = folded ? 'Rozwiń plakaty' : 'Zwiń plakaty';
+  }
+
+  function planTogglePostersFold() {
+    const folded = localStorage.getItem('planPostersFolded') === '1';
+    if (folded) localStorage.removeItem('planPostersFolded');
+    else        localStorage.setItem('planPostersFolded', '1');
+    planApplyPostersFold();
+  }
+
   // ── Collapse state ───────────────────────────────────────────────────────
   // Module-level set of movie titles whose `.plan-movie` block is collapsed.
   // Persists across re-renders within the same page load (a filter toggle
@@ -762,6 +793,7 @@
     refreshRoomsVisibility();
     syncPlanMovieChecksFromStorage();
     syncPlanRoomChecksFromStorage();
+    planApplyPostersFold();
     renderPlan();
   }
 </script>

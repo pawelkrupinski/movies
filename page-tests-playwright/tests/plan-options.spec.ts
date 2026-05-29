@@ -365,6 +365,36 @@ test.describe('plan collapse', () => {
     await expect(page.locator('#plan-collapse-all')).toBeHidden();
   });
 
+  test('"Zwiń plakaty" folds the poster grid and persists across reloads', async ({ page }) => {
+    await page.goto('/plan');
+    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+
+    const section = page.locator('#filmy-section');
+    const btn     = page.locator('#plan-fold-posters');
+    const grid    = page.locator('#plan-movies-row');
+
+    await expect(section).not.toHaveClass(/folded/);
+    await expect(grid).toBeVisible();
+    await expect(btn).toHaveText('Zwiń plakaty');
+
+    await btn.click();
+
+    await expect(section).toHaveClass(/folded/);
+    await expect(grid).toBeHidden();
+    await expect(btn).toHaveText('Rozwiń plakaty');
+
+    // Reload — folded state must survive (`localStorage.planPostersFolded`).
+    await page.reload();
+    await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
+    await expect(page.locator('#filmy-section')).toHaveClass(/folded/);
+    await expect(page.locator('#plan-movies-row')).toBeHidden();
+    await expect(page.locator('#plan-fold-posters')).toHaveText('Rozwiń plakaty');
+
+    // Unfold to restore state for sibling tests on the shared page.
+    await page.locator('#plan-fold-posters').click();
+    await expect(page.locator('#filmy-section')).not.toHaveClass(/folded/);
+  });
+
   test('movie title in the proposed plan is a link to /film and does not toggle collapse', async ({ page }) => {
     const [first] = await pickTwo(page);
 
