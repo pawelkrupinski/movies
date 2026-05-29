@@ -52,7 +52,7 @@ layers are green locally is the right shape.
 ## Regenerate page snapshots when the rendered HTML changes
 
 `PageSnapshotSpec` (`page/scala/views/PageSnapshotSpec.scala`) diffs
-the rendered HTML for `/`, `/kina`, and `/ulubione` against checked-in
+the rendered HTML for `/`, `/kina`, and `/plan` against checked-in
 expected files under `test/resources/fixtures/17-05-2026/`. Any change
 that alters the HTML a Twirl template emits — new or changed
 attributes on an element, added/removed markup, reordered output,
@@ -64,7 +64,7 @@ When your change intentionally alters the rendered HTML:
    ```
    rm test/resources/fixtures/17-05-2026/expected-index.html
    rm test/resources/fixtures/17-05-2026/expected-kina.html
-   rm test/resources/fixtures/17-05-2026/expected-ulubione.html
+   rm test/resources/fixtures/17-05-2026/expected-plan.html
    ```
    Delete only the pages your change affects. When in doubt, delete
    all three — they regenerate in seconds.
@@ -114,12 +114,91 @@ On HTTP 429 / 503 / `Request limit reached!`, halve concurrency and add
 a small sleep between retries. Don't push harder — the host is telling
 you to stop.
 
-For Mongo, parallelism doesn't matter much (the driver pools
-connections); use the default unless the script does CPU work between
-queries.
+For Mongo, parallelism for write-only work doesn't matter much (the
+driver pools connections); use the default unless the script does CPU
+work between queries. **For full-collection reads it does** — see the
+next section.
 
 Always print throughput at the end (`done in 12.3s, ~8 req/s`) so the
 next run can be tuned.
+
+## Mongo full-collection reads: prefer parallel ranged cursors
+
+Atlas (at least our shared-tier cluster) serialises individual cursor
+responses at ~50 ms/doc — so a single `find()` of the 231-doc `movies`
+collection takes ~12 s wall, despite the payload being only ~1 MB.
+Measured locally (Mac → Frankfurt) AND in prod (Fly Frankfurt →
+Atlas Frankfurt); the same 50 ms/doc rate, so the bottleneck is
+Atlas-side, not the network or the BSON codec.
+
+`MongoMovieRepo.findAll` therefore does:
+
+1. Project just `_id` (~200 ms — fast because payload is tiny).
+2. Sort, split into 4 contiguous chunks.
+3. Fire 4 parallel ranged `find()`s with `_id` bounds.
+4. Decode + return.
+
+That cuts boot-time hydrate from ~12 s to ~4 s. 8-way parallel doesn't
+beat 4 — the cluster saturates around 4 concurrent cursors.
+
+When adding any new "scan the whole collection" path:
+
+- Reach for the same pattern. The naïve `c.find().toFuture()` is what's
+  slow; one extra projection round-trip pays for itself many times over.
+- Falls back to empty on transient failure so a hiccup degrades to
+  "skip this tick", never to a slower-than-baseline retry.
+- Re-measure when the corpus grows much past 231 docs (the
+  4-way-saturation point may shift). `MeasureStartup` is the probe:
+  `sbt 'Test/runMain clients.tools.MeasureStartup'` against
+  `MONGODB_URI` from `.env.local`. It prints per-phase wall times for
+  client construction, first RTT, find, codec decode, Caffeine
+  populate, plus an N-way parallel comparison so the optimum N stays
+  data-driven.
+
+`MovieCache.rehydrate` logs `findAll=Xms populate=Yms` after every
+reload — boot + every 30-s periodic tick — so the production timings
+are visible in `flyctl logs --app kinowo` without an extra probe.
+
+## Hydrate from Mongo synchronously at boot
+
+`Wiring.start()` blocks on `MovieCache`'s constructor calling
+`rehydrate()` (which now ~4 s thanks to the parallel-cursor path
+above). Pages don't serve until the cache is populated. That used to
+be async — a daemon thread doing the initial findAll while
+`recordCinemaScrape` tried to race the empty cache — and the resulting
+duplicate-row races are why we walked it back (commit `fcec4ba`).
+
+Don't reintroduce async hydrate. The ~4 s extra boot wall time is a
+deliberate trade for "every served request reads a fully populated
+cache" — no first-request flicker, no scrape-vs-hydrate ordering to
+reason about.
+
+## Use `def main` (not `extends App`) for tools that hit the network at boot
+
+`extends App` runs the object body inside the class's `<clinit>`, so a
+Mongo connect timeout (or any boot-time exception) surfaces as
+`ExceptionInInitializerError` (real cause buried) AND fires a `[fatal]`
+event into Sentry via the logback appender Play wires up. For tools
+under `test/scala/clients/tools/` that touch Mongo, HTTP, or any other
+network resource at startup, prefer:
+
+```scala
+object FooTool {
+  def main(args: Array[String]): Unit = {
+    try {
+      // ...
+    } catch {
+      case ex: Throwable =>
+        System.err.println(s"FooTool aborted: ${ex.getMessage}")
+        sys.exit(2)
+    }
+  }
+}
+```
+
+`MeasureStartup` and `DropKinepolisSlots` are the canonical examples.
+Pure-CPU tools (`WriteCinemaCity`, recorder scripts that hit fixtures)
+can stay on `extends App` — they're harmless to the Sentry pipeline.
 
 ## Always add tests for new or changed functionality
 

@@ -21,8 +21,8 @@ Live at **<https://kinowo.fly.dev>**.
   MongoDB as the write-through store, so a cold start rehydrates
   from Mongo and a refresh tick fans out to the cinemas.
 - **Authenticates** users via Google or Facebook OAuth2 and stores
-  per-user favourites, hidden films, and disabled-cinema lists
-  server-side. Anonymous visitors fall back to `localStorage`.
+  per-user hidden films, disabled cinemas, plan picks, and favourite
+  rooms server-side. Anonymous visitors fall back to `localStorage`.
 - **iOS app** (`ios/Kinowo/`) renders the same data — talks to the
   website directly and parses its HTML rather than calling a
   separate JSON API.
@@ -40,7 +40,7 @@ Live at **<https://kinowo.fly.dev>**.
 | DI          | Guice                                       |
 | Build       | sbt 1.12, JDK 25 → Java 21 bytecode         |
 | iOS         | SwiftUI                                     |
-| Hosting     | Fly.io (`kinowo` app, region `arn`)         |
+| Hosting     | Fly.io (`kinowo` app, region `fra`)         |
 
 ## Repository layout
 
@@ -76,24 +76,28 @@ Prereqs: **JDK 17+** (25 recommended), **sbt 1.12**, a running
 **MongoDB** instance.
 
 ```bash
-# Point at your Mongo. The app reads MONGO_URI; if unset it defaults to
-# mongodb://localhost:27017 with database `movies`.
-export MONGO_URI=mongodb://localhost:27017
+# Point at your Mongo. The app reads MONGODB_URI; if unset the cache
+# falls back to in-memory-only (no rehydrate, no write-through).
+# MONGODB_DB picks the database name; defaults to `kinowo`.
+export MONGODB_URI=mongodb://localhost:27017
+export MONGODB_DB=kinowo
 
 sbt run
 # → http://localhost:9000
 ```
 
 The first start may take a minute as the scrapers fan out across every
-cinema and enrich each film. Subsequent starts rehydrate from Mongo and
-are near-instant.
+cinema and enrich each film. Subsequent starts rehydrate the in-memory
+cache from Mongo in a few seconds via 4-way parallel cursors (see
+`MongoMovieRepo.findAll` and `MeasureStartup`), then begin serving
+immediately.
 
 ### Useful local endpoints
 
 - `/` — main repertoire view
 - `/film?title=...` — single-film detail page
 - `/kina` — view grouped by cinema, `/kina/:cinema` to pin one
-- `/ulubione` — favourites (requires login)
+- `/plan` — pick movies + cinemas + rooms, get an availability summary
 - `/debug` — dev page exposing the cache contents
 - `POST /debug/reenrich?title=...` — drop one row and re-fetch every source
 - `POST /debug/rehydrate` — reload the in-memory cache from Mongo
@@ -115,8 +119,9 @@ CI runners don't need a Chrome install.
 
 ## Deploying
 
-Fly.io. One machine in `arn` (Stockholm), 1 GB shared-CPU, with a
-write-through Mongo elsewhere.
+Fly.io. One machine in `fra` (Frankfurt — colocated with Atlas to keep
+the rehydrate path short), 1 GB shared-CPU, with a write-through Mongo
+elsewhere.
 
 ```bash
 flyctl deploy
