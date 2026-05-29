@@ -74,13 +74,49 @@ test.describe('/film detail page', () => {
     expect(await page.locator('#trailer-iframe').getAttribute('src')).toBe('');
   });
 
-  test('the ← Repertuar back link navigates to /', async ({ page }) => {
+  test('the ← back link navigates to the page the user came from', async ({ page }) => {
     await gotoFirstFilm(page);
     await page.locator('a.back-link').click();
-    await page.waitForURL(/.*\/$/);
-    // Sanity that we landed on the listing rather than a 404 stub.
+    // gotoFirstFilm started at `/` (with the date pin applied), so the
+    // referrer-driven rewrite sends the user back to `/` — any preserved
+    // query string is fine, we just need the pathname to be the listing.
+    await page.waitForURL((u) => new URL(u).pathname === '/');
     await page.waitForSelector('.col[data-title]', { state: 'attached' });
   });
+
+  // Parameterised across the navbar destinations so the label + href
+  // pair stays in lockstep — adding a new section means adding a row
+  // here.
+  for (const { from, label } of [
+    { from: '/kina', label: 'Kina' },
+    { from: '/plan', label: 'Plan' },
+  ]) {
+    test(`the ← back link reads "${label}" and returns to ${from} when that was the referrer`, async ({ page }) => {
+      // Land on the source page first so document.referrer is set when
+      // /film loads. Pull a title off the embedded grid (homepage cards
+      // OR /plan picker cards both carry `data-title`) and navigate via
+      // `window.location.href = …` so the browser writes a real
+      // Referer header — `page.goto(referer: …)` would also work but
+      // this exercises the same code path a user's card-tap takes.
+      await page.goto(from);
+      const filmHref = await page.evaluate(() => {
+        const col = document.querySelector('[data-title]');
+        if (!col) return null;
+        const title = (col as HTMLElement).dataset.title;
+        return title ? `/film?title=${encodeURIComponent(title)}` : null;
+      });
+      expect(filmHref).not.toBeNull();
+      await Promise.all([
+        page.waitForURL((u) => new URL(u).pathname === '/film'),
+        page.evaluate((href) => { window.location.href = href; }, filmHref!),
+      ]);
+
+      await expect(page.locator('#back-link-label')).toHaveText(label);
+      const href = await page.locator('#back-link').getAttribute('href');
+      expect(href).not.toBeNull();
+      expect(new URL(href!, page.url()).pathname).toBe(from);
+    });
+  }
 
   test('detail page renders without a JS error', async ({ page }) => {
     const errors: string[] = [];

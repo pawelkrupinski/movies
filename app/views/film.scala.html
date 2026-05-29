@@ -188,7 +188,14 @@
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 <nav class="navbar px-4 py-3 d-flex align-items-center justify-content-between">
-  <a href="/" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg>Repertuar</a>
+  @* `href="/"` and the "Repertuar" label are the SSR fallback for when
+     `document.referrer` is unavailable (direct navigation, opened in a
+     new tab, privacy-mode browsers that strip referrer). The inline
+     boot script below rewrites both when the user actually came from
+     another page on this app — same-origin referrers carry the back
+     URL verbatim so query-string filter state (`?date=2026-05-30`,
+     `?cinema=Multikino`, etc.) survives the round-trip. *@
+  <a id="back-link" href="/" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg><span id="back-link-label">Repertuar</span></a>
   <div>
     @currentUser match {
       case Some(user) => {
@@ -347,6 +354,43 @@
 <script>
   function buildIndex() {}
   function applyFilters() {}
+
+  // ── Back link: rewrite to the page the user came from ──────────────────────
+  //
+  // Default href ("/") + label ("Repertuar") in the SSR markup is what
+  // ships to bots, to people opening /film in a fresh tab from an
+  // external link, and to anyone on a browser that strips the referrer.
+  // When the referrer IS a same-origin page we keep the user's path
+  // verbatim — including query string — so going back lands them in the
+  // same `?date=…`/`?cinema=…` filter state they were browsing.
+  //
+  // /film → /film bounces don't qualify (they'd just send the user to
+  // another film page they didn't ask for); we keep the homepage
+  // fallback in that case.
+  (function () {
+    var ref = document.referrer;
+    if (!ref) return;
+    var url;
+    try { url = new URL(ref); } catch (e) { return; }
+    if (url.origin !== window.location.origin) return;
+    if (url.pathname === '/film' || url.pathname.startsWith('/film')) return;
+
+    // Map known internal paths to their navbar labels. Anything else
+    // same-origin still gets a working back arrow but a generic label —
+    // better than dropping the rewrite altogether.
+    var LABELS = { '/': 'Repertuar', '/kina': 'Kina', '/plan': 'Plan', '/filmy': 'Filmy' };
+    var label = LABELS[url.pathname];
+    if (!label) {
+      if (url.pathname.indexOf('/kina/')  === 0) label = 'Kina';
+      else if (url.pathname.indexOf('/filmy/') === 0) label = 'Filmy';
+      else label = 'Wstecz';
+    }
+
+    var link  = document.getElementById('back-link');
+    var labEl = document.getElementById('back-link-label');
+    if (link)  link.setAttribute('href', url.pathname + url.search + url.hash);
+    if (labEl) labEl.textContent = label;
+  })();
 </script>
 }
 
