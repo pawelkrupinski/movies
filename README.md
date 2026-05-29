@@ -40,7 +40,7 @@ Live at **<https://kinowo.fly.dev>**.
 | DI          | Guice                                       |
 | Build       | sbt 1.12, JDK 25 → Java 21 bytecode         |
 | iOS         | SwiftUI                                     |
-| Hosting     | Fly.io (`kinowo` app, region `fra`)         |
+| Hosting     | Fly.io (`kinowo` app, region `arn`)         |
 
 ## Repository layout
 
@@ -119,9 +119,9 @@ CI runners don't need a Chrome install.
 
 ## Deploying
 
-Fly.io. One machine in `fra` (Frankfurt — colocated with Atlas to keep
-the rehydrate path short), 1 GB shared-CPU, with a write-through Mongo
-elsewhere.
+Fly.io. One machine in `arn` (Stockholm — nearest Fly region to Polish
+users, no `waw` exists), 1 GB shared-CPU. Mongo is self-hosted on Fly
+too — `kinowo-mongo` app, same region, `fly/mongo/`.
 
 ```bash
 flyctl deploy

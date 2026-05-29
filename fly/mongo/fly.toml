@@ -1,0 +1,21 @@
+# Self-hosted Mongo for the kinowo app. Reachable only on Fly's private
+# network at `kinowo-mongo.flycast:27017` from kinowo's machine — no public
+# services, no exposed ports. Root credentials come from `flyctl secrets`
+# (MONGO_INITDB_ROOT_USERNAME / MONGO_INITDB_ROOT_PASSWORD); the app-level
+# user is created out-of-band via `flyctl ssh console` + `mongosh` once
+# the cluster is up.
+app = "kinowo-mongo"
+primary_region = "arn"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[mounts]
+  source = "mongo_data"
+  destination = "/data/db"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+# No `[[services]]` block — Mongo stays on the .internal/.flycast network.
