@@ -553,6 +553,18 @@ class CaffeineMovieCache(
                   "treating as a transient Mongo failure; cache left intact.")
       return 0
     }
+    // Cold-boot empty result — `findAll()` returned nothing AND the cache was
+    // already empty. Don't silently start serving an empty repertoire; surface
+    // it explicitly so a Mongo timeout / disabled connection / projection bug
+    // is obvious in the boot log instead of hiding behind a 200 response with
+    // zero films on it. The rest of `rehydrate` is a no-op in this case
+    // (`put` over an empty Seq, `invalidate` over an empty set), so the
+    // surrounding flow stays the same.
+    if (rows.isEmpty && cachedSize == 0) {
+      logger.warn(s"MovieCache rehydrate: findAll() returned empty on a cold cache (findAll=${tFindAllMs}ms) — " +
+                  "Mongo connection disabled, query timed out, or repo genuinely empty. " +
+                  "Pages will render with no films until the next successful tick.")
+    }
     val tPostFetch = System.nanoTime()
     val nextKeys = rows.iterator.map(r => CacheKey(r.title, r.year)).toSet
     rows.foreach(r => positive.put(CacheKey(r.title, r.year), r.record))

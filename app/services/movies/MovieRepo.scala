@@ -186,12 +186,19 @@ class MongoMovieRepo(
         // order) agrees for all BMP ids but diverges on supplementary-plane
         // characters; sorting server-side makes the partition consistent by
         // construction and rides the existing `_id` index for free.
+        // Discovery timeout is 60s, not 15s, because the first call after a
+        // process boot lands on a cold WiredTiger cache that can take 10–20 s
+        // to assemble the response even when steady-state finds are <100 ms.
+        // A short timeout here silently strands the cache empty (the
+        // surrounding `Try.getOrElse(Seq.empty)` swallows TimeoutException
+        // without a log line) — which is what a stale-page-on-startup bug
+        // looks like from the outside.
         val ids = Await.result(
           rc.find()
             .projection(org.mongodb.scala.model.Projections.include("_id"))
             .sort(org.mongodb.scala.model.Sorts.ascending("_id"))
             .toFuture(),
-          15.seconds
+          60.seconds
         ).iterator.flatMap(d =>
           d.get[org.mongodb.scala.bson.BsonString]("_id").map(_.getValue)
         ).toList
@@ -210,12 +217,17 @@ class MongoMovieRepo(
             }
             c.find(filter).toFuture()
           }
-          val all = Await.result(scala.concurrent.Future.sequence(futures), 30.seconds).flatten
+          val all = Await.result(scala.concurrent.Future.sequence(futures), 60.seconds).flatten
           all.map(StoredMovieDto.toDomain)
         }
       }.recover {
-        case ex: MongoException =>
-          logger.warn(s"MovieRepo.findAll failed: ${ex.getMessage}")
+        // Catch every throwable here, not just MongoException — the original
+        // narrow `case MongoException` let TimeoutException (Java
+        // `j.u.c.TimeoutException` from `Await.result`) and BSON decode errors
+        // fall through to `.getOrElse(Seq.empty)`, which returned an empty
+        // result with no log line and stranded the cache on the boot path.
+        case ex: Throwable =>
+          logger.warn(s"MovieRepo.findAll failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
     case _ => Seq.empty
