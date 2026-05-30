@@ -5,6 +5,7 @@ import models.{CharlieMonroe, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.CharlieMonroeClient
+import tools.GetOnlyHttpFetch
 
 import java.time.LocalDateTime
 
@@ -272,6 +273,44 @@ class CharlieMonroeClientSpec extends AnyFlatSpec with Matchers {
       Showtime(LocalDateTime.of(2026, 5, 15, 20, 20), None, Some("Sala Marilyn"), Nil),
       Showtime(LocalDateTime.of(2026, 5, 16, 20, 25), None, Some("Sala Marilyn"), Nil),
       Showtime(LocalDateTime.of(2026, 5, 17, 20, 20), None, Some("Sala Marilyn"), Nil),
+    )
+  }
+
+  // ── Single-digit day room matching ────────────────────────────────────────
+  //
+  // The site renders the showtime date in `span.price` without zero-padding
+  // the day ("2.06.2026"), while the room lookup key is built from the JSON-LD
+  // startDate as zero-padded "02.06.2026". For any day < 10 the two keys
+  // disagree and the room is silently dropped. Reproduces the live
+  // "Wpatrując się w słońce" report (a 02.06 screening with no room).
+  it should "match the room for a single-digit-day showtime" in {
+    val html =
+      """<html><body>
+        |<script type="application/ld+json">
+        |{"@type":"ScreeningEvent",
+        | "startDate":"2026-06-02T19:45:00+02:00",
+        | "workPresented":{"name":"Test Film","duration":"PT2H35M"},
+        | "offers":{"url":"https://bilety.kinomalta.pl/x"}}
+        |</script>
+        |<article class="movie-card">
+        |  <h2 class="title">Test Film</h2>
+        |  <div class="showtimes-row">
+        |    <span class="hall-label">Sala Audrey</span>
+        |    <button class="btn-showtime">
+        |      <span class="time">19:45</span>
+        |      <span class="price"> 2.06.2026</span>
+        |    </button>
+        |  </div>
+        |</article>
+        |</body></html>""".stripMargin
+
+    val fake = new GetOnlyHttpFetch {
+      override def get(url: String): String =
+        if (url == "https://kinomalta.pl/seanse") html else ""
+    }
+    val st = new CharlieMonroeClient(fake).fetch().head.showtimes
+    st.head shouldBe Showtime(
+      LocalDateTime.of(2026, 6, 2, 19, 45), Some("https://bilety.kinomalta.pl/x"), Some("Sala Audrey"), Nil
     )
   }
 

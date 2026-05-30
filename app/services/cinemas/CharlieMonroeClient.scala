@@ -65,7 +65,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
           hall.foreach { hallName =>
             row.select("button.btn-showtime").asScala.foreach { btn =>
               val time = Option(btn.selectFirst("span.time")).map(_.text().trim)
-              val date = Option(btn.selectFirst("span.price")).map(_.text().trim)
+              val date = Option(btn.selectFirst("span.price")).flatMap(el => normalizeDateKey(el.text()))
               for (t <- time; d <- date)
                 roomMap((title.toLowerCase, d, t)) = hallName
             }
@@ -93,14 +93,27 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
           cast      = Seq.empty,
           director  = Seq.empty,
           showtimes = sorted.map { event =>
-            val dateKey = "%02d.%02d.%d".format(event.dateTime.getDayOfMonth, event.dateTime.getMonthValue, event.dateTime.getYear)
+            val dKey    = dateKey(event.dateTime.getYear, event.dateTime.getMonthValue, event.dateTime.getDayOfMonth)
             val timeKey = "%02d:%02d".format(event.dateTime.getHour, event.dateTime.getMinute)
-            val room    = roomMap.get((title.toLowerCase, dateKey, timeKey))
+            val room    = roomMap.get((title.toLowerCase, dKey, timeKey))
             Showtime(event.dateTime, event.bookingUrl, room)
           }
         )
       }
   }
+
+  /** The listing renders the showtime date in `span.price` without
+   *  zero-padding the day ("2.06.2026"), so normalise it to the same
+   *  zero-padded "DD.MM.YYYY" the JSON-LD-derived lookup key uses — else
+   *  any day (or month) < 10 fails to match and the room is dropped. */
+  private def normalizeDateKey(raw: String): Option[String] =
+    raw.trim.split('.') match {
+      case Array(d, m, y) => Try(dateKey(y.toInt, m.toInt, d.toInt)).toOption
+      case _              => None
+    }
+
+  private def dateKey(year: Int, month: Int, day: Int): String =
+    "%02d.%02d.%d".format(day, month, year)
 
   private case class ArticleDetails(filmUrl: Option[String], synopsis: Option[String], posterUrl: Option[String])
 
