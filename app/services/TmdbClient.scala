@@ -214,6 +214,11 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
           .take(TmdbClient.MaxCastNames)
         val countries = (js \ "production_countries").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
           .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty)
+        // Polish-language genre names. TMDB returns the `genres` field
+        // pre-localised in the requested language ("Dramat", "Sci-Fi") —
+        // no separate id→name lookup needed.
+        val genres = (js \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+          .flatMap(g => (g \ "name").asOpt[String]).filter(_.nonEmpty)
         TmdbClient.FullDetails(
           title         = (js \ "title").asOpt[String].filter(_.nonEmpty),
           originalTitle = (js \ "original_title").asOpt[String].filter(_.nonEmpty),
@@ -223,6 +228,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
           runtimeMinutes= (js \ "runtime").asOpt[Int].filter(_ > 0),
           releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
           countries     = countries,
+          genres        = genres,
           posterUrl     = (js \ "poster_path").asOpt[String].filter(_.nonEmpty).map(p => s"${TmdbClient.PosterBase}$p")
         )
       }
@@ -334,6 +340,7 @@ object TmdbClient {
     runtimeMinutes: Option[Int],
     releaseYear:    Option[Int],
     countries:      Seq[String],
+    genres:         Seq[String],
     posterUrl:      Option[String]
   )
 

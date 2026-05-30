@@ -151,7 +151,7 @@ class MovieControllerService(movieService: MovieService) {
         val cinemaFilmUrls: Seq[(Cinema, String)] =
           e.cinemaData.toSeq.flatMap { case (cinema, slot) => slot.filmUrl.map(cinema -> _) }
         Some((earliest, FilmSchedule(
-          movie = Movie(e.displayTitle(cleanTitle), e.runtimeMinutes, e.releaseYear, countries = e.countries),
+          movie = Movie(e.displayTitle(cleanTitle), e.runtimeMinutes, e.releaseYear, countries = e.countries, genres = e.genres),
           posterUrl = e.posterUrl,
           synopsis = e.synopsis,
           cast = e.cast,
@@ -181,7 +181,7 @@ class MovieControllerService(movieService: MovieService) {
               .toSeq.sortBy(_._1)
               .map { case (date, sts) => (date, sts.sortBy(_.dateTime)) }
             Some(CinemaMovieSchedule(
-              movie = Movie(e.displayTitle(cleanTitle), e.runtimeMinutes, e.releaseYear, countries = e.countries),
+              movie = Movie(e.displayTitle(cleanTitle), e.runtimeMinutes, e.releaseYear, countries = e.countries, genres = e.genres),
               // Per-cinema view shows that cinema's own poster (fidelity over
               // merge); fall back to the merged best only if this cinema
               // didn't ship one.

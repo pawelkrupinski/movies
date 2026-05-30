@@ -20,6 +20,8 @@
   <span class="pill runtime">@{mins / 60}h@if(mins % 60 != 0){ @{mins % 60}min}</span>
 }@movie.releaseYear.map { y =>
   <span class="pill year">@y</span>
+}@for(g <- movie.genres.take(3)) {
+  <span class="pill genre">@g</span>
 }
     </div>
     @_ratingBadges(enrichment, movie.title)

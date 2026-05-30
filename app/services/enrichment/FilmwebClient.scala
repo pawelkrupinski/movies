@@ -63,20 +63,33 @@ class FilmwebClient(http: HttpFetch) {
       val hits = search(query).take(MaxCandidates)
       // Step 1 (cheap): /info per candidate → title acceptance bar.
       val infoCandidates = hits.flatMap(h =>
-        info(h.id).map(i => Candidate(h.id, h.kind, i.title, i.originalTitle, i.year, Set.empty))
+        info(h.id).map(i => Candidate(h.id, h.kind, i.title, i.originalTitle, i.year, Set.empty, Seq.empty))
       )
       // Step 2 (only when caller wants director verification): /preview per
       // candidate that already passed the title bar. Skipping unaccepted
       // candidates saves the round-trip on Filmweb's worst search-noise hits.
+      // `/preview` carries both directors AND genres; we fold both onto the
+      // candidate in one shot so director-verification + genre extraction
+      // share the same round-trip.
       val candidates =
         if (directors.isEmpty) infoCandidates
         else {
           val titleAccepted = infoCandidates.filter(c => matchesByTitle(c, query))
-          titleAccepted.map(c => c.copy(directors = preview(c.id).map(_.directors).getOrElse(Set.empty)))
+          titleAccepted.map { c =>
+            preview(c.id) match {
+              case Some(p) => c.copy(directors = p.directors, genres = p.genres)
+              case None    => c
+            }
+          }
         }
       pickBest(candidates, query, year, directors).flatMap { c =>
         val url = canonicalUrl(c.id, c.kind, c.title, c.year)
-        Some(FilmwebInfo(url, rating(c.id)))
+        // Fall back to a winner-only /preview when director verification was
+        // skipped (caller didn't supply directors) so the Filmweb slot still
+        // carries genres — single extra round-trip, only on the winner.
+        val genres = if (c.genres.nonEmpty) c.genres
+                     else preview(c.id).map(_.genres).getOrElse(Seq.empty)
+        Some(FilmwebInfo(url, rating(c.id), genres))
       }
     }.toOption.flatten
 
@@ -133,7 +146,12 @@ class FilmwebClient(http: HttpFetch) {
     val directors = (json \ "directors").asOpt[JsArray].map(_.value).getOrElse(Nil)
       .flatMap(j => (j \ "name").asOpt[String].filter(_.nonEmpty))
       .toSet
-    FilmPreview(directors)
+    // Filmweb's `genres` shape: [{id, name: {text}, nameKey}]. `name.text`
+    // is the Polish display label ("Dramat", "Sci-Fi", "Biograficzny").
+    val genres = (json \ "genres").asOpt[JsArray].map(_.value).getOrElse(Nil)
+      .flatMap(j => (j \ "name" \ "text").asOpt[String].filter(_.nonEmpty))
+      .toSeq
+    FilmPreview(directors, genres)
   }
 
   def parseRating(body: String): Option[Double] =
@@ -195,14 +213,14 @@ object FilmwebClient {
   /** /info response — canonical title + optional originalTitle + year. */
   case class FilmInfo(title: String, originalTitle: Option[String], year: Option[Int])
 
-  /** /preview response — director names. Other fields (cast, plot, duration,
-   *  countries) are present in the JSON but unused by the matcher; trim the
-   *  case class if a future caller needs them. */
-  case class FilmPreview(directors: Set[String])
+  /** /preview response — director names + Polish genre labels. Other fields
+   *  (cast, plot, duration, countries) are present in the JSON but unused;
+   *  extend if a future caller needs them. */
+  case class FilmPreview(directors: Set[String], genres: Seq[String] = Seq.empty)
 
   /** Resolved Filmweb metadata for a film — canonical URL + optional 1–10
-   *  user rating. */
-  case class FilmwebInfo(url: String, rating: Option[Double])
+   *  user rating + Polish genre labels (empty when /preview didn't return any). */
+  case class FilmwebInfo(url: String, rating: Option[Double], genres: Seq[String] = Seq.empty)
 
   /** One search hit — id + Filmweb's content-type tag (`film` or `serial`).
    *  The same `/api/v1/film/{id}/info` and `/rating` endpoints serve both,
@@ -219,7 +237,8 @@ object FilmwebClient {
     title:         String,
     originalTitle: Option[String],
     year:          Option[Int],
-    directors:     Set[String]
+    directors:     Set[String],
+    genres:        Seq[String] = Seq.empty
   )
 
   /**

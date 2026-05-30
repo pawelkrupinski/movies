@@ -259,6 +259,33 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     client.details(2).flatMap(_.usTitle) shouldBe Some("X — The Real US Release")
   }
 
+  // ── fullDetails: Polish genres ────────────────────────────────────────────
+  //
+  // `/movie/{id}?language=pl-PL` returns `genres` as `[{id, name}]` with names
+  // already in Polish ("Dramat", "Sci-Fi", "Akcja"). No id→name lookup.
+
+  "fullDetails" should "extract Polish genre names from the response" in {
+    val body =
+      """{
+        |  "id":872585,"title":"Oppenheimer","original_title":"Oppenheimer",
+        |  "overview":"Historia J. Roberta Oppenheimera...",
+        |  "release_date":"2023-07-19","runtime":181,
+        |  "production_countries":[{"iso_3166_1":"US","name":"USA"}],
+        |  "genres":[{"id":18,"name":"Dramat"},{"id":36,"name":"Historyczny"}],
+        |  "credits":{"crew":[],"cast":[]}
+        |}""".stripMargin
+    val client = fakeClient(Map("/movie/872585?language=pl-PL" -> body))
+    client.fullDetails(872585).get.genres shouldBe Seq("Dramat", "Historyczny")
+  }
+
+  it should "return an empty genre list when /movie omits the field" in {
+    val body =
+      """{"id":1,"title":"X","original_title":"X","release_date":"2020-01-01",
+        |"credits":{"crew":[],"cast":[]}}""".stripMargin
+    val client = fakeClient(Map("/movie/1?language=pl-PL" -> body))
+    client.fullDetails(1).get.genres shouldBe empty
+  }
+
   it should "apply exact-title preference inside a year-restricted result set too" in {
     // Year-restricted (year=2025) returns BOTH the real "Camper" and a
     // partial-title hit. Previously we just took the first by popularity

@@ -328,6 +328,7 @@ class MovieService(
             // same strings cinemas already write.
             countries      = if (d.countries.nonEmpty) d.countries.map(CountryNames.canonical).distinct
                              else existingTmdbSlot.countries,
+            genres         = if (d.genres.nonEmpty) d.genres else existingTmdbSlot.genres,
             posterUrl      = d.posterUrl.orElse(existingTmdbSlot.posterUrl)
           )
           case None => existingTmdbSlot.copy(

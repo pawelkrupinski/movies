@@ -407,6 +407,7 @@ class CaffeineMovieCache(
           // MovieRecord.countries union/dedup operates on consistent
           // strings.
           countries      = cm.movie.countries.map(CountryNames.canonical).distinct,
+          genres         = cm.movie.genres,
           posterUrl      = cm.posterUrl.orElse(priorSlot.flatMap(_.posterUrl)),
           filmUrl        = cm.filmUrl,
           trailerUrl     = cm.trailerUrl.orElse(priorSlot.flatMap(_.trailerUrl)),

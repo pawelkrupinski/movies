@@ -145,6 +145,7 @@ object MovieCodecs {
         runtimeMinutes = optInt("runtimeMinutes"),
         releaseYear    = optInt("releaseYear"),
         countries      = seqStr("countries"),
+        genres         = seqStr("genres"),
         posterUrl      = optStr("posterUrl"),
         filmUrl        = optStr("filmUrl"),
         trailerUrl     = optStr("trailerUrl"),

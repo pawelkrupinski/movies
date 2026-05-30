@@ -18,8 +18,9 @@ package models
  * `Cinema.all` keep `Source.all` fully enumerable. */
 trait Source { def displayName: String }
 
-case object Tmdb extends Source { val displayName: String = "TMDB" }
-case object Imdb extends Source { val displayName: String = "IMDB" }
+case object Tmdb    extends Source { val displayName: String = "TMDB" }
+case object Imdb    extends Source { val displayName: String = "IMDB" }
+case object Filmweb extends Source { val displayName: String = "Filmweb" }
 
 object Source {
   /** All known sources, ordered for derived-accessor priority: Multikino
@@ -27,7 +28,7 @@ object Source {
    *  of `Cinema.all`, then the external enrichment sources. */
   val all: Seq[Source] = {
     val cinemasPrioritized = Multikino +: Cinema.all.filterNot(_ == Multikino)
-    cinemasPrioritized ++ Seq(Tmdb, Imdb)
+    cinemasPrioritized ++ Seq(Tmdb, Imdb, Filmweb)
   }
 
   /** Stable priority index for ordering source slots. Lower = preferred. */

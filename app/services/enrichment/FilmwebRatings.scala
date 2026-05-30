@@ -1,6 +1,7 @@
 package services.enrichment
 
 import clients.TmdbClient
+import models.{Filmweb, Source, SourceData}
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 import services.movies.{CacheKey, MovieCache, MovieService}
 
@@ -89,13 +90,15 @@ class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient
             FilmwebRatings.Kept(before)
           case (_, Some(fw)) =>
             val before = e.filmwebUrl
-            cache.putIfPresent(key, _.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
+            cache.putIfPresent(key, r =>
+              r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebGenres(r.data, fw.genres)))
             before match {
               case Some(b) => FilmwebRatings.Corrected(b, fw.url)
               case None    => FilmwebRatings.Kept(fw.url) // first-time discovery counts as Kept-like.
             }
           case (Some(before), None) =>
-            cache.putIfPresent(key, _.copy(filmwebUrl = None, filmwebRating = None))
+            cache.putIfPresent(key, r =>
+              r.copy(filmwebUrl = None, filmwebRating = None, data = r.data - (Filmweb: Source)))
             FilmwebRatings.Dropped(before)
           case (None, None) =>
             FilmwebRatings.NoUrl
@@ -136,8 +139,16 @@ class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient
   private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Unit =
     resolveUrl(key, e).foreach { fw =>
       logger.debug(s"Filmweb: ${key.cleanTitle} discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
-      cache.putIfPresent(key, _.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating))
+      cache.putIfPresent(key, r =>
+        r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebGenres(r.data, fw.genres)))
     }
+
+  /** Merge freshly-resolved Filmweb genres into the per-source slot map.
+   *  Empty genres → drop the Filmweb slot entirely (don't store a slot that
+   *  contributes nothing); non-empty genres → set/replace the slot. */
+  private def withFilmwebGenres(data: Map[Source, SourceData], genres: Seq[String]): Map[Source, SourceData] =
+    if (genres.isEmpty) data - (Filmweb: Source)
+    else data + ((Filmweb: Source) -> SourceData(genres = genres))
 
   // Pure re-resolve — never writes. Shared by `resolveAndPersistUrl` (production
   // URL-discovery path) and `auditOneSync` (one-off backfill that compares

@@ -268,6 +268,18 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     milczaca.synopsis shouldBe None
   }
 
+  // Apollo's modern-film layout sometimes prefixes a `Uwagi:` block with
+  // `Gatunek: <comma list>`. Wajda-cycle pages omit it.
+
+  it should "extract genres from a `Uwagi: Gatunek: …` line" in {
+    byTitle("Drzewo Magii").movie.genres shouldBe Seq("Familijny", "Przygodowy")
+  }
+
+  it should "leave genres empty when the detail page has no Gatunek marker" in {
+    byTitle("Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)")
+      .movie.genres shouldBe empty
+  }
+
   it should "produce showtimes with no room and no format" in {
     val all = results.flatMap(_.showtimes)
     all.exists(_.room.isDefined)  shouldBe false

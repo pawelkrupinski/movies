@@ -13,6 +13,12 @@ case class Movie(
   // Zjednoczone", "Wielka Brytania" vs "UK") so this stays verbatim per
   // cinema; the merge logic on `MovieRecord` unifies across cinemas.
   countries:      Seq[String]       = Seq.empty,
+  // Polish-language genre names ("Komedia", "Dramat", "Sci-Fi"). One entry
+  // per genre, kept verbatim per source — each source has its own taxonomy
+  // and spelling (TMDB's "Sci-Fi" vs Helios' "science fiction"); the
+  // merge logic on `MovieRecord` picks the highest-priority non-empty
+  // source rather than unioning across them, so this stays verbatim.
+  genres:         Seq[String]       = Seq.empty,
   // English/international release title when the cinema's API exposes it
   // (Multikino does for niche international shows — Cirque du Soleil, opera,
   // English-language docs). Used as a TMDB-search fallback for titles whose

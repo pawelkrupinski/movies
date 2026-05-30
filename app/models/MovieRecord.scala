@@ -167,6 +167,21 @@ case class MovieRecord(
   def releaseYear: Option[Int] =
     prioritized.iterator.flatMap(_._2.releaseYear).nextOption()
 
+  /** Polish-language genre names — first non-empty list in genre-priority
+   *  order: TMDB → Filmweb → cinema slots (in their normal priority order).
+   *  Unlike `countries`, we don't union across sources because each source
+   *  has its own taxonomy and spelling (TMDB's "Sci-Fi" vs Helios'
+   *  "science fiction"); unioning would surface inconsistent labels for the
+   *  same concept. The list is taken verbatim from whichever source wins. */
+  def genres: Seq[String] = {
+    def slotGenres(s: Source): Seq[String] = data.get(s).map(_.genres).getOrElse(Seq.empty)
+    val tmdb    = slotGenres(Tmdb)
+    val filmweb = slotGenres(Filmweb)
+    if (tmdb.nonEmpty)    tmdb
+    else if (filmweb.nonEmpty) filmweb
+    else prioritizedCinema.iterator.map(_._2.genres).find(_.nonEmpty).getOrElse(Seq.empty)
+  }
+
   /** Production countries — union across sources, deduplicated
    *  case-insensitively while preserving the priority-first order. Sources
    *  spell country names in their own way, so the same country might appear

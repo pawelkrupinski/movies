@@ -104,6 +104,24 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     client.parsePreview(json).directors shouldBe Set("X")
   }
 
+  it should "extract Polish genres from /preview" in {
+    // Real-shape /preview payload — genres as [{id, name:{text}, nameKey}],
+    // Polish labels in `name.text`.
+    val json =
+      """{
+        |  "directors":[{"id":2,"name":"Christopher Nolan"}],
+        |  "genres":[
+        |    {"id":6,"name":{"text":"Dramat"},"nameKey":"6"},
+        |    {"id":3,"name":{"text":"Biograficzny"},"nameKey":"3"}
+        |  ]
+        |}""".stripMargin
+    client.parsePreview(json).genres shouldBe Seq("Dramat", "Biograficzny")
+  }
+
+  it should "return an empty genre list when /preview omits the field" in {
+    client.parsePreview("""{"directors":[]}""").genres shouldBe empty
+  }
+
   // ── parseRating ─────────────────────────────────────────────────────────────
 
   "parseRating" should "extract the 1-10 rate value" in {

@@ -51,7 +51,15 @@ object MultikinoParser {
         // distributed under a Polish title). Empty on Polish releases and
         // most blockbusters where the Polish title IS the only known
         // identifier. Useful as a TMDB-search fallback for niche titles.
-        originalTitle  = (film \ "originalTitle").asOpt[String].filter(_.nonEmpty)
+        originalTitle  = (film \ "originalTitle").asOpt[String].filter(_.nonEmpty),
+        // Multikino's `genres` field is schema-present but empty across the
+        // current Poznań catalog (`"genres": []`). Extract anyway so a future
+        // upstream backfill flows through automatically — the merge layer
+        // demotes Multikino under TMDB/Filmweb so an empty list here is
+        // harmless when richer sources have data.
+        genres         = (film \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+                           .flatMap(g => (g \ "name").asOpt[String].orElse(g.asOpt[String]))
+                           .filter(_.nonEmpty)
       ),
       cinema      = Multikino,
       posterUrl   = (film \ "posterImageSrc").asOpt[String].filter(_.nonEmpty),

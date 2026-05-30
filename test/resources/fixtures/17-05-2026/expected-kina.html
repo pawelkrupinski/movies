@@ -28,7 +28,7 @@
   
   <link rel="stylesheet" href="/assets/css/bootstrap-5.3.3.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   
-<style>html{touch-action:manipulation}body{background:#111;color:#eee;overflow-x:hidden}.navbar{background:#1a1a2e;flex-wrap:wrap;position:sticky;top:0;z-index:10;gap:.4rem}.navbar-logo{flex-shrink:0}.card{background:#1e1e2e;border:none;border-radius:12px;overflow:hidden;height:100%;transition:transform .2s;cursor:pointer}.card:hover{transform:translateY(-4px)}.poster-wrap{position:relative;padding-top:148%;background:#2a2a3e;overflow:hidden}.poster-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.no-poster{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:#99a;font-style:italic;letter-spacing:.03em}.card-body{padding:1rem}.card-title{min-height:2.5rem;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.3rem;overflow-wrap:break-word}.card-title a{font-size:.95rem;font-weight:600;color:#fff;text-decoration:none;min-width:0}.card-title a:hover{color:#aad4ff}.pill{background:#252540;border:1px solid #3a3a6e;border-radius:3px;padding:0 5px;font-size:.72rem;color:#99b;white-space:nowrap}.runtime{font-size:.75rem;color:#888}.year{font-size:.75rem;color:#888;background:transparent;border:none}.date-label{font-size:.7rem;color:#888;margin-bottom:.2rem;margin-top:.5rem}#room-tooltip{position:fixed;background:#0e0e1e;color:#ccc;font-size:.68rem;padding:2px 7px;border-radius:4px;white-space:nowrap;border:1px solid #3a3a6e;pointer-events:none;z-index:20;display:none}.refresh-btn{background:#3a3a6e;border:none;color:#aad4ff;white-space:nowrap;flex-shrink:0;height:35px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}.refresh-btn:hover{background:#5a5a9e;color:#fff}.date-nav-btn{padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;touch-action:manipulation;height:35px;box-sizing:border-box;min-width:35px}.filter-select{background:#3a3a6e;color:#aad4ff;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.875rem;cursor:pointer;flex-shrink:0;height:35px;box-sizing:border-box}.filter-select:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.search-input{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:160px;min-height:35px}.search-input::placeholder{color:#778}.search-input:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e;width:220px}@media (max-width:575px){.search-input,.search-input:focus{width:90px}}@media (max-width:379px){.search-input,.search-input:focus{width:55px}}@media (max-width:290px){.navbar-search{display:none}nav.navbar{padding:0 !important;column-gap:0 !important;row-gap:calc(.05 * var(--mobile-scale)) !important}.navbar > div:first-child{max-width:60% !important;overflow:hidden}.navbar-auth{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40% !important}.navbar-date{max-width:60% !important;overflow:hidden}.navbar-filtry{max-width:40% !important}}@media (max-width:575px){#date-filter{max-width:6.5rem}}@media (max-width:379px){#date-filter{max-width:5rem}}.hide-btn{position:absolute;top:6px;right:6px;z-index:10;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:26px;height:26px;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center}.dropdown-panel{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:8px;z-index:1000;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:220px;max-width:calc(100vw - 1rem);max-height:70vh;overflow-y:auto}.panel-item{padding:5px 8px;cursor:pointer;border-radius:4px;font-size:.8rem;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}.panel-item:hover{background:#3a3a6e}.panel-label{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;font-size:.8rem;color:#eee;border-radius:4px}.panel-label:hover{background:#3a3a6e}.panel-divider{border-top:1px solid #3a3a6e;margin:6px 0;padding-top:2px}.dropdown-panel,.hidden-modal-list{scrollbar-width:thin;scrollbar-color:#3a3a6e transparent}.dropdown-panel::-webkit-scrollbar,.hidden-modal-list::-webkit-scrollbar{width:8px;height:8px}.dropdown-panel::-webkit-scrollbar-track,.hidden-modal-list::-webkit-scrollbar-track{background:transparent}.dropdown-panel::-webkit-scrollbar-thumb,.hidden-modal-list::-webkit-scrollbar-thumb{background:#3a3a6e;border-radius:4px}.dropdown-panel::-webkit-scrollbar-thumb:hover,.hidden-modal-list::-webkit-scrollbar-thumb:hover{background:#5a5a9e}.panel-section-label{font-size:.65rem;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:4px 8px 2px}.submenu-row{justify-content:space-between}.submenu-right{display:flex;align-items:center;gap:6px;margin-left:auto}.submenu-row-count{background:#5a5a9e;color:#fff;font-size:.65rem;font-weight:600;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:9px;padding:0 5px}.submenu-film-count{margin-left:auto;font-size:.7rem;color:#888}.submenu-chevron{display:inline-block;font-size:1rem;color:#888;transition:transform .15s ease}.submenu-chevron.open{transform:rotate(90deg)}.submenu-list{max-height:40vh;overflow-y:auto}.nav-tab{color:#aad4ff;text-decoration:none;font-size:.875rem;padding:.25rem .6rem;border-radius:6px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;display:inline-flex;align-items:center;justify-content:center;min-height:35px}.nav-tab:hover{background:#3a3a6e;color:#fff}.nav-tab.active{background:#3a3a6e;color:#fff}.nav-tab-login{cursor:pointer;border:none;font:inherit;font-size:.875rem;background:#3a3a6e;color:#aad4ff;padding:.2rem .7rem}.nav-tab-login:hover{background:#5a5a9e;color:#fff}.auth-menu{position:relative;display:inline-flex;align-items:center;gap:.35rem;background:#3a3a6e;color:#aad4ff;border-radius:6px;padding:.15rem .55rem .15rem .25rem;font-size:.875rem;cursor:pointer;-webkit-user-select:none;user-select:none;min-height:35px}.auth-menu:hover{background:#5a5a9e;color:#fff}.auth-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;display:block}.auth-avatar-fallback{width:22px;height:22px;border-radius:50%;background:#1a1a2e;color:#ffd24a;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:600}.auth-name{font-size:.875rem;max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.auth-name{display:none}}.auth-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:6px;min-width:160px;display:none;z-index:50}.auth-menu.open .auth-dropdown{display:block}.auth-logout-form{margin:0}.auth-logout-btn{width:100%;background:transparent;border:none;color:#eee;text-align:left;padding:.4rem .6rem;cursor:pointer;border-radius:6px;font-size:.875rem;min-height:35px;display:flex;align-items:center}.auth-logout-btn:hover{background:#3a3a6e;color:#fff}.login-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.login-modal-backdrop.open{display:flex}.login-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.5rem 1.6rem 1.4rem;max-width:360px;width:92%;position:relative}.login-modal-title{font-size:1.2rem;font-weight:600;margin-bottom:.5rem}.login-modal-sub{font-size:.85rem;color:#aab;margin-bottom:1.1rem}.login-modal-close{position:absolute;top:.4rem;right:.55rem;background:transparent;border:none;color:#888;font-size:1.5rem;line-height:1;cursor:pointer}.login-modal-close:hover{color:#fff}.login-modal-buttons{display:flex;flex-direction:column;gap:.55rem}.hidden-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.hidden-modal-backdrop.open{display:flex}.hidden-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.4rem 1.4rem 1.1rem;max-width:420px;width:92%;max-height:80vh;display:flex;flex-direction:column;position:relative}.hidden-modal-search{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:100%;margin-top:.6rem;min-height:35px;flex-shrink:0}.hidden-modal-search::placeholder{color:#778}.hidden-modal-search:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.hidden-modal-list{overflow-y:auto;margin:.35rem -.4rem .9rem;padding:0 .4rem}.hidden-modal-list .panel-item{max-width:none}.hidden-modal-actions{display:flex;gap:.55rem}.hidden-row-count{font-size:.7rem;color:#aab;background:#3a3a6e;border-radius:10px;padding:1px 8px;min-width:22px;text-align:center}.login-btn{display:flex;align-items:center;gap:.75rem;padding:.65rem .9rem;border-radius:8px;font-size:.95rem;font-weight:500;text-decoration:none;cursor:pointer;transition:filter .12s}.login-btn:hover{filter:brightness(1.1)}.login-btn-icon{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem}.login-btn-google{background:#fff;color:#222}.login-btn-google .login-btn-icon{background:#4285F4;color:#fff}.login-btn-facebook{background:#1877F2;color:#fff}.login-btn-facebook .login-btn-icon{background:#fff;color:#1877F2}.anon-nag-toast{position:fixed;bottom:16px;right:16px;max-width:380px;background:#1e1e2e;border:1px solid #3a3a6e;border-left:3px solid #ffd24a;border-radius:8px;padding:.65rem .9rem .65rem .8rem;color:#eee;font-size:.85rem;line-height:1.35;display:none;z-index:150;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer}.anon-nag-toast.open{display:block}.anon-nag-toast strong{color:#ffd24a}.anon-nag-toast .anon-nag-close{position:absolute;top:2px;right:6px;background:transparent;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:2px 6px}.anon-nag-toast .anon-nag-close:hover{color:#fff}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3}.navbar-auth{order:4}.navbar-row-break{display:none}@media (min-width:576px){.navbar{padding-top:.25rem;padding-bottom:.25rem}.container-fluid{padding-top:.75rem !important}#film-counter{margin-bottom:.75rem !important}}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.nav-tab-debug{display:none}#film-counter{display:none !important}.container-fluid{padding-top:.375rem !important}}@media (max-width:575px){.navbar{padding:calc(.5 * var(--mobile-scale)) min(calc(.75 * var(--mobile-scale)),2.5vw) !important;gap:calc(.2 * var(--mobile-scale));--navbar-fs:calc(.875 * var(--mobile-scale));--navbar-px:min(calc(.6 * var(--mobile-scale)),2.5vw)}.navbar-logo{gap:min(1rem,3vw) !important}.navbar > div:first-child{height:28px;max-height:28px;overflow:visible}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar .date-nav-btn{font-size:calc(1.1 * var(--mobile-scale));min-width:min(35px,8vw);flex-shrink:1}.navbar .search-input,.navbar .filter-select{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar-title{display:none}.navbar-search{order:2;margin-left:auto}.navbar-auth{order:3}.navbar-row-break{display:block;order:4;width:100%;flex-shrink:0;height:0;margin:0;padding:0}.navbar-date{order:5;margin-left:0}.navbar-filtry{order:6;margin-left:auto;max-width:40%;min-width:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}input,select{font-size:16px}.container-fluid{padding-left:min(calc(.75 * var(--mobile-scale)),2.5vw) !important;padding-right:min(calc(.75 * var(--mobile-scale)),2.5vw) !important}#film-grid,.cinema-section .row{--bs-gutter-x:min(var(--mobile-scale),3.5vw)}.card-body{padding:min(var(--mobile-scale),4vw)}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.login-modal-title{font-size:calc(1.2 * var(--mobile-scale))}.login-modal-sub{font-size:calc(.85 * var(--mobile-scale))}.login-btn{font-size:calc(.95 * var(--mobile-scale));padding:calc(.65 * var(--mobile-scale)) calc(.9 * var(--mobile-scale))}.panel-item{font-size:calc(.8 * var(--mobile-scale))}.panel-label{font-size:calc(.8 * var(--mobile-scale))}.panel-section-label{font-size:calc(.65 * var(--mobile-scale))}.auth-logout-btn{font-size:calc(.875 * var(--mobile-scale))}.anon-nag-toast{font-size:calc(.85 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}@media (max-height:500px) and (orientation:landscape){.navbar-title{display:none}.navbar-row-break{display:none}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3;margin-left:0}.navbar-auth{order:4}.navbar{flex-wrap:nowrap;padding-left:8px !important;padding-right:8px !important;gap:3px}.navbar-logo{gap:4px !important;flex-shrink:0;min-width:0}.navbar-logo > .d-flex{gap:2px}.navbar-search{min-width:0;flex-shrink:10;overflow:hidden}.navbar-search .search-input{min-width:0;width:100%}.navbar-auth{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:0}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name,.navbar .filter-select,.navbar .search-input{font-size:calc(.8 * var(--mobile-scale));padding-left:5px;padding-right:5px}.navbar .btn.date-nav-btn{font-size:calc(.95 * var(--mobile-scale));min-width:0;padding-left:3px;padding-right:3px}.navbar .filter-select,.navbar .search-input{padding-top:0;padding-bottom:0}.navbar-date{align-items:center;flex-shrink:0;min-width:0}.navbar-date .filter-select{min-width:0}.navbar-filtry{min-width:0;flex-shrink:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}.container-fluid{padding-left:8px !important;padding-right:8px !important}.card-body{padding:calc(.6 * var(--mobile-scale))}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.cinema-label{font-size:calc(.65 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}#film-grid,.cinema-section .row{--bs-gutter-x:.5rem}#film-grid > .col,.cinema-section .row > .col{flex:0 0 25%;max-width:25%}}@media (max-height:500px) and (orientation:landscape) and (min-width:800px){#film-grid > .col,.cinema-section .row > .col{flex:0 0 calc(100% / 6);max-width:calc(100% / 6)}}@media (max-height:500px) and (orientation:landscape){.navbar{padding-top:3px !important;padding-bottom:3px !important}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}</style>
+<style>html{touch-action:manipulation}body{background:#111;color:#eee;overflow-x:hidden}.navbar{background:#1a1a2e;flex-wrap:wrap;position:sticky;top:0;z-index:10;gap:.4rem}.navbar-logo{flex-shrink:0}.card{background:#1e1e2e;border:none;border-radius:12px;overflow:hidden;height:100%;transition:transform .2s;cursor:pointer}.card:hover{transform:translateY(-4px)}.poster-wrap{position:relative;padding-top:148%;background:#2a2a3e;overflow:hidden}.poster-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.no-poster{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:#99a;font-style:italic;letter-spacing:.03em}.card-body{padding:1rem}.card-title{min-height:2.5rem;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.3rem;overflow-wrap:break-word}.card-title a{font-size:.95rem;font-weight:600;color:#fff;text-decoration:none;min-width:0}.card-title a:hover{color:#aad4ff}.pill{background:#252540;border:1px solid #3a3a6e;border-radius:3px;padding:0 5px;font-size:.72rem;color:#99b;white-space:nowrap}.runtime{font-size:.75rem;color:#888}.year{font-size:.75rem;color:#888;background:transparent;border:none}.pill.genre{background:#2a2820;border-color:#4a3f1e;color:#c6a45a}.date-label{font-size:.7rem;color:#888;margin-bottom:.2rem;margin-top:.5rem}#room-tooltip{position:fixed;background:#0e0e1e;color:#ccc;font-size:.68rem;padding:2px 7px;border-radius:4px;white-space:nowrap;border:1px solid #3a3a6e;pointer-events:none;z-index:20;display:none}.refresh-btn{background:#3a3a6e;border:none;color:#aad4ff;white-space:nowrap;flex-shrink:0;height:35px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}.refresh-btn:hover{background:#5a5a9e;color:#fff}.date-nav-btn{padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;touch-action:manipulation;height:35px;box-sizing:border-box;min-width:35px}.filter-select{background:#3a3a6e;color:#aad4ff;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.875rem;cursor:pointer;flex-shrink:0;height:35px;box-sizing:border-box}.filter-select:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.search-input{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:160px;min-height:35px}.search-input::placeholder{color:#778}.search-input:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e;width:220px}@media (max-width:575px){.search-input,.search-input:focus{width:90px}}@media (max-width:379px){.search-input,.search-input:focus{width:55px}}@media (max-width:290px){.navbar-search{display:none}nav.navbar{padding:0 !important;column-gap:0 !important;row-gap:calc(.05 * var(--mobile-scale)) !important}.navbar > div:first-child{max-width:60% !important;overflow:hidden}.navbar-auth{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40% !important}.navbar-date{max-width:60% !important;overflow:hidden}.navbar-filtry{max-width:40% !important}}@media (max-width:575px){#date-filter{max-width:6.5rem}}@media (max-width:379px){#date-filter{max-width:5rem}}.hide-btn{position:absolute;top:6px;right:6px;z-index:10;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:26px;height:26px;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center}.dropdown-panel{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:8px;z-index:1000;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:220px;max-width:calc(100vw - 1rem);max-height:70vh;overflow-y:auto}.panel-item{padding:5px 8px;cursor:pointer;border-radius:4px;font-size:.8rem;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}.panel-item:hover{background:#3a3a6e}.panel-label{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;font-size:.8rem;color:#eee;border-radius:4px}.panel-label:hover{background:#3a3a6e}.panel-divider{border-top:1px solid #3a3a6e;margin:6px 0;padding-top:2px}.dropdown-panel,.hidden-modal-list{scrollbar-width:thin;scrollbar-color:#3a3a6e transparent}.dropdown-panel::-webkit-scrollbar,.hidden-modal-list::-webkit-scrollbar{width:8px;height:8px}.dropdown-panel::-webkit-scrollbar-track,.hidden-modal-list::-webkit-scrollbar-track{background:transparent}.dropdown-panel::-webkit-scrollbar-thumb,.hidden-modal-list::-webkit-scrollbar-thumb{background:#3a3a6e;border-radius:4px}.dropdown-panel::-webkit-scrollbar-thumb:hover,.hidden-modal-list::-webkit-scrollbar-thumb:hover{background:#5a5a9e}.panel-section-label{font-size:.65rem;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:4px 8px 2px}.submenu-row{justify-content:space-between}.submenu-right{display:flex;align-items:center;gap:6px;margin-left:auto}.submenu-row-count{background:#5a5a9e;color:#fff;font-size:.65rem;font-weight:600;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:9px;padding:0 5px}.submenu-film-count{margin-left:auto;font-size:.7rem;color:#888}.submenu-chevron{display:inline-block;font-size:1rem;color:#888;transition:transform .15s ease}.submenu-chevron.open{transform:rotate(90deg)}.submenu-list{max-height:40vh;overflow-y:auto}.nav-tab{color:#aad4ff;text-decoration:none;font-size:.875rem;padding:.25rem .6rem;border-radius:6px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;display:inline-flex;align-items:center;justify-content:center;min-height:35px}.nav-tab:hover{background:#3a3a6e;color:#fff}.nav-tab.active{background:#3a3a6e;color:#fff}.nav-tab-login{cursor:pointer;border:none;font:inherit;font-size:.875rem;background:#3a3a6e;color:#aad4ff;padding:.2rem .7rem}.nav-tab-login:hover{background:#5a5a9e;color:#fff}.auth-menu{position:relative;display:inline-flex;align-items:center;gap:.35rem;background:#3a3a6e;color:#aad4ff;border-radius:6px;padding:.15rem .55rem .15rem .25rem;font-size:.875rem;cursor:pointer;-webkit-user-select:none;user-select:none;min-height:35px}.auth-menu:hover{background:#5a5a9e;color:#fff}.auth-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;display:block}.auth-avatar-fallback{width:22px;height:22px;border-radius:50%;background:#1a1a2e;color:#ffd24a;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:600}.auth-name{font-size:.875rem;max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.auth-name{display:none}}.auth-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:6px;min-width:160px;display:none;z-index:50}.auth-menu.open .auth-dropdown{display:block}.auth-logout-form{margin:0}.auth-logout-btn{width:100%;background:transparent;border:none;color:#eee;text-align:left;padding:.4rem .6rem;cursor:pointer;border-radius:6px;font-size:.875rem;min-height:35px;display:flex;align-items:center}.auth-logout-btn:hover{background:#3a3a6e;color:#fff}.login-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.login-modal-backdrop.open{display:flex}.login-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.5rem 1.6rem 1.4rem;max-width:360px;width:92%;position:relative}.login-modal-title{font-size:1.2rem;font-weight:600;margin-bottom:.5rem}.login-modal-sub{font-size:.85rem;color:#aab;margin-bottom:1.1rem}.login-modal-close{position:absolute;top:.4rem;right:.55rem;background:transparent;border:none;color:#888;font-size:1.5rem;line-height:1;cursor:pointer}.login-modal-close:hover{color:#fff}.login-modal-buttons{display:flex;flex-direction:column;gap:.55rem}.hidden-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.hidden-modal-backdrop.open{display:flex}.hidden-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.4rem 1.4rem 1.1rem;max-width:420px;width:92%;max-height:80vh;display:flex;flex-direction:column;position:relative}.hidden-modal-search{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:100%;margin-top:.6rem;min-height:35px;flex-shrink:0}.hidden-modal-search::placeholder{color:#778}.hidden-modal-search:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.hidden-modal-list{overflow-y:auto;margin:.35rem -.4rem .9rem;padding:0 .4rem}.hidden-modal-list .panel-item{max-width:none}.hidden-modal-actions{display:flex;gap:.55rem}.hidden-row-count{font-size:.7rem;color:#aab;background:#3a3a6e;border-radius:10px;padding:1px 8px;min-width:22px;text-align:center}.login-btn{display:flex;align-items:center;gap:.75rem;padding:.65rem .9rem;border-radius:8px;font-size:.95rem;font-weight:500;text-decoration:none;cursor:pointer;transition:filter .12s}.login-btn:hover{filter:brightness(1.1)}.login-btn-icon{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem}.login-btn-google{background:#fff;color:#222}.login-btn-google .login-btn-icon{background:#4285F4;color:#fff}.login-btn-facebook{background:#1877F2;color:#fff}.login-btn-facebook .login-btn-icon{background:#fff;color:#1877F2}.anon-nag-toast{position:fixed;bottom:16px;right:16px;max-width:380px;background:#1e1e2e;border:1px solid #3a3a6e;border-left:3px solid #ffd24a;border-radius:8px;padding:.65rem .9rem .65rem .8rem;color:#eee;font-size:.85rem;line-height:1.35;display:none;z-index:150;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer}.anon-nag-toast.open{display:block}.anon-nag-toast strong{color:#ffd24a}.anon-nag-toast .anon-nag-close{position:absolute;top:2px;right:6px;background:transparent;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:2px 6px}.anon-nag-toast .anon-nag-close:hover{color:#fff}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3}.navbar-auth{order:4}.navbar-row-break{display:none}@media (min-width:576px){.navbar{padding-top:.25rem;padding-bottom:.25rem}.container-fluid{padding-top:.75rem !important}#film-counter{margin-bottom:.75rem !important}}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.nav-tab-debug{display:none}#film-counter{display:none !important}.container-fluid{padding-top:.375rem !important}}@media (max-width:575px){.navbar{padding:calc(.5 * var(--mobile-scale)) min(calc(.75 * var(--mobile-scale)),2.5vw) !important;gap:calc(.2 * var(--mobile-scale));--navbar-fs:calc(.875 * var(--mobile-scale));--navbar-px:min(calc(.6 * var(--mobile-scale)),2.5vw)}.navbar-logo{gap:min(1rem,3vw) !important}.navbar > div:first-child{height:28px;max-height:28px;overflow:visible}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar .date-nav-btn{font-size:calc(1.1 * var(--mobile-scale));min-width:min(35px,8vw);flex-shrink:1}.navbar .search-input,.navbar .filter-select{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar-title{display:none}.navbar-search{order:2;margin-left:auto}.navbar-auth{order:3}.navbar-row-break{display:block;order:4;width:100%;flex-shrink:0;height:0;margin:0;padding:0}.navbar-date{order:5;margin-left:0}.navbar-filtry{order:6;margin-left:auto;max-width:40%;min-width:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}input,select{font-size:16px}.container-fluid{padding-left:min(calc(.75 * var(--mobile-scale)),2.5vw) !important;padding-right:min(calc(.75 * var(--mobile-scale)),2.5vw) !important}#film-grid,.cinema-section .row{--bs-gutter-x:min(var(--mobile-scale),3.5vw)}.card-body{padding:min(var(--mobile-scale),4vw)}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.login-modal-title{font-size:calc(1.2 * var(--mobile-scale))}.login-modal-sub{font-size:calc(.85 * var(--mobile-scale))}.login-btn{font-size:calc(.95 * var(--mobile-scale));padding:calc(.65 * var(--mobile-scale)) calc(.9 * var(--mobile-scale))}.panel-item{font-size:calc(.8 * var(--mobile-scale))}.panel-label{font-size:calc(.8 * var(--mobile-scale))}.panel-section-label{font-size:calc(.65 * var(--mobile-scale))}.auth-logout-btn{font-size:calc(.875 * var(--mobile-scale))}.anon-nag-toast{font-size:calc(.85 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}@media (max-height:500px) and (orientation:landscape){.navbar-title{display:none}.navbar-row-break{display:none}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3;margin-left:0}.navbar-auth{order:4}.navbar{flex-wrap:nowrap;padding-left:8px !important;padding-right:8px !important;gap:3px}.navbar-logo{gap:4px !important;flex-shrink:0;min-width:0}.navbar-logo > .d-flex{gap:2px}.navbar-search{min-width:0;flex-shrink:10;overflow:hidden}.navbar-search .search-input{min-width:0;width:100%}.navbar-auth{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:0}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name,.navbar .filter-select,.navbar .search-input{font-size:calc(.8 * var(--mobile-scale));padding-left:5px;padding-right:5px}.navbar .btn.date-nav-btn{font-size:calc(.95 * var(--mobile-scale));min-width:0;padding-left:3px;padding-right:3px}.navbar .filter-select,.navbar .search-input{padding-top:0;padding-bottom:0}.navbar-date{align-items:center;flex-shrink:0;min-width:0}.navbar-date .filter-select{min-width:0}.navbar-filtry{min-width:0;flex-shrink:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}.container-fluid{padding-left:8px !important;padding-right:8px !important}.card-body{padding:calc(.6 * var(--mobile-scale))}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.cinema-label{font-size:calc(.65 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}#film-grid,.cinema-section .row{--bs-gutter-x:.5rem}#film-grid > .col,.cinema-section .row > .col{flex:0 0 25%;max-width:25%}}@media (max-height:500px) and (orientation:landscape) and (min-width:800px){#film-grid > .col,.cinema-section .row > .col{flex:0 0 calc(100% / 6);max-width:calc(100% / 6)}}@media (max-height:500px) and (orientation:landscape){.navbar{padding-top:3px !important;padding-bottom:3px !important}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}</style>
 
 <style>:root{--mobile-scale:clamp(0.85rem,calc(0.6618rem + 0.9412vw),1rem);--mobile-scale-px:clamp(0.85px,calc(0.6618px + 0.05882vw),1px)}@media (max-height:500px) and (orientation:landscape){:root{--mobile-scale:0.85rem;--mobile-scale-px:0.85px}}.badge-time{background:#3a3a6e;color:#aad4ff;font-size:.72rem;padding:.25em .5em;border-radius:6px;margin:1px 2px 1px 0;display:inline-block;text-decoration:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}a.badge-time:hover{background:#5a5a9e;color:#fff}.badge-fmt{font-size:.62rem;opacity:.7;margin-left:2px}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.badge-time{font-size:calc(.72 * var(--mobile-scale));padding:.2em .5em}.badge-fmt{font-size:calc(.62 * var(--mobile-scale))}}.showings-more{display:inline-block;margin-top:.35rem;font-size:.7rem;color:#6ab;text-decoration:none;background:rgba(255,255,255,.06);padding:.2em .6em;border-radius:10px}.showings-more:hover{color:#9df;background:rgba(255,255,255,.1)}</style>
 
@@ -235,6 +235,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Komedia rom.</span>
+
     </div>
     
 
@@ -314,6 +316,10 @@
 
   <span class="pill year">1960</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Psychologiczny</span>
+
     </div>
     
 
@@ -390,6 +396,10 @@
   <span class="pill runtime">1h 12min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Biograficzny</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -511,6 +521,8 @@
   <span class="pill runtime">2h 27min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -671,6 +683,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -813,6 +831,8 @@
   <span class="pill runtime">1h 34min</span>
 
   <span class="pill year">1979</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -1047,6 +1067,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -1126,6 +1148,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Komedia rom.</span>
+
     </div>
     
 
@@ -1203,6 +1227,10 @@
 
   <span class="pill year">1977</span>
 
+  <span class="pill genre">Polityczny</span>
+
+  <span class="pill genre">Dramat obyczajowy</span>
+
     </div>
     
 
@@ -1277,6 +1305,8 @@
     <div class="card-title">
       <a href="/film?title=Takie%20jest%20%C5%BCycie">Takie jest życie</a>
   <span class="pill year">2001</span>
+
+  <span class="pill genre">Melodramat</span>
 
     </div>
     
@@ -1406,6 +1436,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -1482,6 +1518,10 @@
   <span class="pill runtime">1h 20min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dokumentalny</span>
+
+  <span class="pill genre">Religijny</span>
 
     </div>
     
@@ -1583,6 +1623,10 @@
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Thriller</span>
 
     </div>
     
@@ -1808,6 +1852,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Animacja</span>
+
     </div>
     
 
@@ -1872,6 +1918,8 @@
   <span class="pill runtime">1h 55min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -2016,6 +2064,10 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Thriller</span>
+
     </div>
     
 
@@ -2110,6 +2162,8 @@
   <span class="pill runtime">2h 29min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -2222,6 +2276,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -2333,6 +2389,12 @@
 
   <span class="pill year">2024</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Muzyczny</span>
+
     </div>
     
 
@@ -2409,6 +2471,8 @@
   <span class="pill runtime">1h 55min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -2489,6 +2553,10 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -2567,6 +2635,8 @@
   <span class="pill runtime">2h 11min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Melodramat</span>
 
     </div>
     
@@ -2761,6 +2831,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Romans</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -2888,6 +2964,10 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -2982,6 +3062,8 @@
   <span class="pill runtime">1h 54min</span>
 
   <span class="pill year">1987</span>
+
+  <span class="pill genre">Thriller</span>
 
     </div>
     
@@ -3127,6 +3209,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Familijny</span>
+
     </div>
     
 
@@ -3207,6 +3295,8 @@
   <span class="pill runtime">2h 11min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Melodramat</span>
 
     </div>
     
@@ -3394,6 +3484,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Dokumentalny</span>
+
+  <span class="pill genre">Religijny</span>
+
     </div>
     
 
@@ -3478,6 +3572,10 @@
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">1986</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Psychologiczny</span>
 
     </div>
     
@@ -3587,6 +3685,8 @@
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -3725,6 +3825,12 @@
 
   <span class="pill year">1981</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Psychologiczny</span>
+
+  <span class="pill genre">Horror</span>
+
     </div>
     
 
@@ -3817,6 +3923,10 @@
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Thriller</span>
 
     </div>
     
@@ -3929,6 +4039,8 @@
 
   <span class="pill year">2023</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -4008,6 +4120,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Animacja</span>
+
     </div>
     
 
@@ -4072,6 +4186,8 @@
   <span class="pill runtime">1h 55min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -4200,6 +4316,10 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Biograficzny</span>
+
+  <span class="pill genre">Dokumentalny</span>
+
     </div>
     
 
@@ -4320,6 +4440,10 @@
   <span class="pill runtime">1h 55min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Psychologiczny</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -4485,6 +4609,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Czarna komedia</span>
+
     </div>
     
 
@@ -4580,6 +4706,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Komedia rom.</span>
+
     </div>
     
 
@@ -4658,6 +4786,10 @@
   <span class="pill runtime">2h 13min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -4770,6 +4902,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dokumentalny</span>
+
     </div>
     
 
@@ -4842,6 +4976,8 @@
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2024</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -4920,6 +5056,10 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -4992,6 +5132,8 @@
   <span class="pill runtime">1h 29min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -5135,6 +5277,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dokumentalny</span>
+
     </div>
     
 
@@ -5214,6 +5358,10 @@
 
   <span class="pill year">2014</span>
 
+  <span class="pill genre">Thriller</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -5292,6 +5440,10 @@
   <span class="pill runtime">2h</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -5404,6 +5556,10 @@
 
   <span class="pill year">1960</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Psychologiczny</span>
+
     </div>
     
 
@@ -5481,6 +5637,10 @@
 
   <span class="pill year">1999</span>
 
+  <span class="pill genre">Thriller</span>
+
+  <span class="pill genre">Psychologiczny</span>
+
     </div>
     
 
@@ -5519,7 +5679,7 @@
         
         <div>
           
-            <a href="https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41577" class="badge-time" target="_blank" data-format="" data-time="20:30">20:30</a>
+            <a href="https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41577" class="badge-time" target="_blank" data-room="Sala Audrey" data-format="" data-time="20:30">20:30</a>
           
         </div>
       </div>
@@ -5535,7 +5695,7 @@
         
         <div>
           
-            <a href="https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41578" class="badge-time" target="_blank" data-format="" data-time="20:30">20:30</a>
+            <a href="https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41578" class="badge-time" target="_blank" data-room="Cafe" data-format="" data-time="20:30">20:30</a>
           
         </div>
       </div>
@@ -5551,7 +5711,7 @@
         
         <div>
           
-            <a href="https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41579" class="badge-time" target="_blank" data-format="" data-time="20:30">20:30</a>
+            <a href="https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=41579" class="badge-time" target="_blank" data-room="Sala Audrey" data-format="" data-time="20:30">20:30</a>
           
         </div>
       </div>
@@ -5591,6 +5751,10 @@
   <span class="pill runtime">2h 33min</span>
 
   <span class="pill year">1977</span>
+
+  <span class="pill genre">Polityczny</span>
+
+  <span class="pill genre">Dramat obyczajowy</span>
 
     </div>
     
@@ -5675,6 +5839,10 @@
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Muzyczny</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -5828,6 +5996,10 @@
   <span class="pill runtime">2h</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -6020,6 +6192,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -6150,6 +6328,10 @@
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dokumentalny</span>
+
+  <span class="pill genre">Muzyczny</span>
 
     </div>
     
@@ -6342,6 +6524,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Familijny</span>
+
     </div>
     
 
@@ -6496,6 +6684,12 @@
   <span class="pill runtime">2h 7min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Muzyczny</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Biograficzny</span>
 
     </div>
     
@@ -6655,6 +6849,10 @@
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Akcja</span>
 
     </div>
     
@@ -6839,6 +7037,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Horror</span>
+
     </div>
     
 
@@ -7006,6 +7206,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -7153,6 +7355,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Animacja</span>
+
     </div>
     
 
@@ -7293,6 +7497,8 @@
   <span class="pill runtime">1h 49min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Komedia kryminalna</span>
 
     </div>
     
@@ -7444,6 +7650,12 @@
   <span class="pill runtime">1h 40min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Przygodowy</span>
 
     </div>
     
@@ -7606,6 +7818,10 @@
 
   <span class="pill year">1986</span>
 
+  <span class="pill genre">Sensacyjny</span>
+
+  <span class="pill genre">Romans</span>
+
     </div>
     
 
@@ -7716,6 +7932,8 @@
   <span class="pill runtime">2h 10min</span>
 
   <span class="pill year">2020</span>
+
+  <span class="pill genre">Akcja</span>
 
     </div>
     
@@ -7869,6 +8087,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -8011,6 +8233,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Familijny</span>
+
     </div>
     
 
@@ -8095,6 +8319,12 @@
   <span class="pill runtime">2h 12min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Akcja</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Familijny</span>
 
     </div>
     
@@ -8293,6 +8523,10 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -8371,6 +8605,12 @@
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">1985</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
+  <span class="pill genre">Przygodowy</span>
 
     </div>
     
@@ -8662,6 +8902,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Sportowy</span>
+
     </div>
     
 
@@ -8726,6 +8968,8 @@
   <span class="pill runtime">0h 55min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Animacja</span>
 
     </div>
     
@@ -8831,6 +9075,12 @@
   <span class="pill runtime">1h 40min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Przygodowy</span>
 
     </div>
     
@@ -8940,6 +9190,8 @@
   <span class="pill runtime">1h 34min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -9095,6 +9347,10 @@
   <span class="pill runtime">2h 19min</span>
 
   <span class="pill year">1999</span>
+
+  <span class="pill genre">Thriller</span>
+
+  <span class="pill genre">Psychologiczny</span>
 
     </div>
     
@@ -9417,6 +9673,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Fantasy</span>
+
     </div>
     
 
@@ -9532,6 +9792,10 @@
 
   <span class="pill year">1996</span>
 
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -9627,6 +9891,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -9706,6 +9972,12 @@
 
   <span class="pill year">2006</span>
 
+  <span class="pill genre">Melodramat</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
+  <span class="pill genre">Anime</span>
+
     </div>
     
 
@@ -9780,6 +10052,12 @@
   <span class="pill runtime">1h 48min</span>
 
   <span class="pill year">1989</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Sci-Fi</span>
 
     </div>
     
@@ -9939,6 +10217,12 @@
 
   <span class="pill year">1990</span>
 
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -10041,6 +10325,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Akcja</span>
+
     </div>
     
 
@@ -10109,6 +10395,10 @@
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Muzyczny</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -10298,6 +10588,10 @@
   <span class="pill runtime">2h</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -10600,6 +10894,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Romans</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -10755,6 +11055,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -10831,6 +11137,10 @@
   <span class="pill runtime">1h 11min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -10913,6 +11223,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -10993,6 +11309,10 @@
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dokumentalny</span>
+
+  <span class="pill genre">Muzyczny</span>
 
     </div>
     
@@ -11147,6 +11467,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Akcja</span>
+
     </div>
     
 
@@ -11215,6 +11537,12 @@
   <span class="pill runtime">1h 29min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Familijny</span>
 
     </div>
     
@@ -11376,6 +11704,12 @@
   <span class="pill runtime">2h 7min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Muzyczny</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Biograficzny</span>
 
     </div>
     
@@ -11552,6 +11886,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -11702,6 +12038,10 @@
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Akcja</span>
 
     </div>
     
@@ -11896,6 +12236,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Horror</span>
+
     </div>
     
 
@@ -12063,6 +12405,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Anime</span>
+
+  <span class="pill genre">Akcja</span>
+
+  <span class="pill genre">Fantasy</span>
+
     </div>
     
 
@@ -12203,6 +12551,8 @@
   <span class="pill runtime">2h 37min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Sci-Fi</span>
 
     </div>
     
@@ -12361,6 +12711,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Czarna komedia</span>
+
     </div>
     
 
@@ -12504,6 +12856,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Animacja</span>
+
     </div>
     
 
@@ -12586,6 +12940,8 @@
   <span class="pill runtime">1h 55min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -12729,6 +13085,8 @@
   <span class="pill runtime">1h 49min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Komedia kryminalna</span>
 
     </div>
     
@@ -12895,6 +13253,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -13051,6 +13415,10 @@
   <span class="pill runtime">1h 50min</span>
 
   <span class="pill year">1986</span>
+
+  <span class="pill genre">Sensacyjny</span>
+
+  <span class="pill genre">Romans</span>
 
     </div>
     
@@ -13213,6 +13581,8 @@
 
   <span class="pill year">2020</span>
 
+  <span class="pill genre">Akcja</span>
+
     </div>
     
 
@@ -13291,6 +13661,8 @@
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Familijny</span>
 
     </div>
     
@@ -13378,6 +13750,8 @@
   <span class="pill runtime">1h 44min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Czarna komedia</span>
 
     </div>
     
@@ -13521,6 +13895,12 @@
   <span class="pill runtime">2h 12min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Akcja</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Familijny</span>
 
     </div>
     
@@ -13720,6 +14100,8 @@
   <span class="pill runtime">2h 31min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -13947,6 +14329,8 @@
   <span class="pill runtime">3h</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Sportowy</span>
 
     </div>
     
@@ -14202,6 +14586,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -14421,6 +14807,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -14614,6 +15006,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Fantasy</span>
+
     </div>
     
 
@@ -14753,6 +15149,8 @@
 
   <span class="pill year">2021</span>
 
+  <span class="pill genre">Opera</span>
+
     </div>
     
 
@@ -14817,6 +15215,12 @@
   <span class="pill runtime">1h 38min</span>
 
   <span class="pill year">2006</span>
+
+  <span class="pill genre">Melodramat</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
+  <span class="pill genre">Anime</span>
 
     </div>
     
@@ -14909,6 +15313,10 @@
 
   <span class="pill year">2018</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Muzyczny</span>
+
     </div>
     
 
@@ -14987,6 +15395,8 @@
   <span class="pill runtime">2h 30min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -15069,6 +15479,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -15149,6 +15561,8 @@
   <span class="pill runtime">2h 45min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -15233,6 +15647,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Fabularyzowany dok.</span>
+
     </div>
     
 
@@ -15307,6 +15723,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dokumentalny</span>
+
     </div>
     
 
@@ -15374,6 +15792,8 @@
   <span class="pill runtime">1h 53min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -15448,6 +15868,8 @@
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -15583,6 +16005,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Przyrodniczy</span>
+
+  <span class="pill genre">Dokumentalny</span>
+
     </div>
     
 
@@ -15646,6 +16072,8 @@
   <span class="pill runtime">1h 59min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -15721,6 +16149,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Dokumentalny</span>
+
     </div>
     
 
@@ -15793,6 +16223,10 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dokumentalny</span>
+
+  <span class="pill genre">Przyrodniczy</span>
+
     </div>
     
 
@@ -15860,6 +16294,10 @@
   <span class="pill runtime">1h 39min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dokumentalny</span>
+
+  <span class="pill genre">Przyrodniczy</span>
 
     </div>
     
@@ -15939,6 +16377,8 @@
   <span class="pill runtime">2h 8min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -16067,6 +16507,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Romans</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -16191,6 +16637,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dokumentalny</span>
+
     </div>
     
 
@@ -16290,6 +16738,10 @@
   <span class="pill runtime">2h 5min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Biograficzny</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -16412,6 +16864,12 @@
   <span class="pill runtime">1h 40min</span>
 
   <span class="pill year">2024</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Romans</span>
 
     </div>
     
@@ -16540,6 +16998,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -16634,6 +17094,8 @@
   <span class="pill runtime">1h 55min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -16763,6 +17225,8 @@
   <span class="pill runtime">1h 57min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -16907,6 +17371,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -17017,6 +17483,10 @@
   <span class="pill runtime">1h 12min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Biograficzny</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -17198,6 +17668,8 @@
 
   <span class="pill year">1973</span>
 
+  <span class="pill genre">Komedia kryminalna</span>
+
     </div>
     
 
@@ -17276,6 +17748,8 @@
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -17356,6 +17830,10 @@
 
   <span class="pill year">1986</span>
 
+  <span class="pill genre">Sensacyjny</span>
+
+  <span class="pill genre">Romans</span>
+
     </div>
     
 
@@ -17429,6 +17907,8 @@
   <span class="pill runtime">1h 29min</span>
 
   <span class="pill year">1990</span>
+
+  <span class="pill genre">Horror</span>
 
     </div>
     
@@ -17518,6 +17998,8 @@
 
   <span class="pill year">2020</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -17591,6 +18073,10 @@
   <span class="pill runtime">1h 50min</span>
 
   <span class="pill year">1973</span>
+
+  <span class="pill genre">Horror</span>
+
+  <span class="pill genre">Psychologiczny</span>
 
     </div>
     
@@ -17666,6 +18152,10 @@
   <span class="pill runtime">2h 33min</span>
 
   <span class="pill year">1977</span>
+
+  <span class="pill genre">Polityczny</span>
+
+  <span class="pill genre">Dramat obyczajowy</span>
 
     </div>
     
@@ -17743,6 +18233,8 @@
   <span class="pill runtime">2h 27min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -17878,6 +18370,10 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Kryminał</span>
+
     </div>
     
 
@@ -17952,6 +18448,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Thriller</span>
+
     </div>
     
 
@@ -18021,6 +18519,8 @@
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Biograficzny</span>
 
     </div>
     
@@ -18096,6 +18596,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -18169,6 +18671,8 @@
   <span class="pill runtime">1h 28min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Czarna komedia</span>
 
     </div>
     
@@ -18297,6 +18801,8 @@
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -18555,6 +19061,10 @@
 
   <span class="pill year">1970</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Psychologiczny</span>
+
     </div>
     
 
@@ -18631,6 +19141,8 @@
   <span class="pill runtime">2h 18min</span>
 
   <span class="pill year">1963</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -18711,6 +19223,8 @@
 
   <span class="pill year">1953</span>
 
+  <span class="pill genre">Dramat obyczajowy</span>
+
     </div>
     
 
@@ -18785,6 +19299,12 @@
 
   <span class="pill year">1985</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Psychologiczny</span>
+
+  <span class="pill genre">Poetycki</span>
+
     </div>
     
 
@@ -18857,6 +19377,8 @@
   <span class="pill runtime">1h 50min</span>
 
   <span class="pill year">1957</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -18934,6 +19456,8 @@
   <span class="pill runtime">2h 56min</span>
 
   <span class="pill year">1960</span>
+
+  <span class="pill genre">Dramat obyczajowy</span>
 
     </div>
     
@@ -19014,6 +19538,8 @@
 
   <span class="pill year">1965</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -19093,6 +19619,10 @@
 
   <span class="pill year">1990</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -19164,6 +19694,8 @@
   <span class="pill runtime">1h 41min</span>
 
   <span class="pill year">1970</span>
+
+  <span class="pill genre">Dramat obyczajowy</span>
 
     </div>
     
@@ -19237,6 +19769,10 @@
 
   <span class="pill year">1978</span>
 
+  <span class="pill genre">Dramat obyczajowy</span>
+
+  <span class="pill genre">Psychologiczny</span>
+
     </div>
     
 
@@ -19308,6 +19844,8 @@
   <span class="pill runtime">2h 59min</span>
 
   <span class="pill year">1974</span>
+
+  <span class="pill genre">Obyczajowy</span>
 
     </div>
     
@@ -19382,6 +19920,8 @@
   <span class="pill runtime">1h 34min</span>
 
   <span class="pill year">1968</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -19545,6 +20085,10 @@
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Muzyczny</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -19834,6 +20378,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -20069,6 +20617,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Romans</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -20216,6 +20770,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -20308,6 +20868,12 @@
   <span class="pill runtime">1h 44min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -20454,6 +21020,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Dokumentalny</span>
+
+  <span class="pill genre">Muzyczny</span>
+
     </div>
     
 
@@ -20596,6 +21166,12 @@
   <span class="pill runtime">1h 29min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Familijny</span>
 
     </div>
     
@@ -20761,6 +21337,12 @@
   <span class="pill runtime">2h 7min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Muzyczny</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Biograficzny</span>
 
     </div>
     
@@ -20977,6 +21559,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Akcja</span>
+
     </div>
     
 
@@ -21174,6 +21760,10 @@
       <a href="/film?title=Moulin%20Rouge%21">Moulin Rouge!</a>
   <span class="pill year">2001</span>
 
+  <span class="pill genre">Melodramat</span>
+
+  <span class="pill genre">Musical</span>
+
     </div>
     
 
@@ -21266,6 +21856,8 @@
     <div class="card-title">
       <a href="/film?title=Mumia%3A%20Film%20Lee%20Cronina">Mumia: Film Lee Cronina</a>
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Horror</span>
 
     </div>
     
@@ -21409,6 +22001,8 @@
   <span class="pill runtime">1h 49min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Horror</span>
 
     </div>
     
@@ -21567,6 +22161,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -21717,6 +22313,8 @@
   <span class="pill runtime">0h 45min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Animacja</span>
 
     </div>
     
@@ -21884,6 +22482,8 @@
   <span class="pill runtime">1h 49min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Komedia kryminalna</span>
 
     </div>
     
@@ -22058,6 +22658,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -22225,6 +22831,10 @@
 
   <span class="pill year">1986</span>
 
+  <span class="pill genre">Sensacyjny</span>
+
+  <span class="pill genre">Romans</span>
+
     </div>
     
 
@@ -22335,6 +22945,8 @@
   <span class="pill runtime">2h 10min</span>
 
   <span class="pill year">2020</span>
+
+  <span class="pill genre">Akcja</span>
 
     </div>
     
@@ -22510,6 +23122,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Familijny</span>
+
     </div>
     
 
@@ -22611,6 +23225,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -22689,6 +23307,12 @@
   <span class="pill runtime">2h 12min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Akcja</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Familijny</span>
 
     </div>
     
@@ -22928,6 +23552,8 @@
 
   <span class="pill year">2021</span>
 
+  <span class="pill genre">Opera</span>
+
     </div>
     
 
@@ -23104,6 +23730,8 @@
       <a href="/film?title=Milczenie%20owiec">Milczenie owiec</a>
   <span class="pill year">1991</span>
 
+  <span class="pill genre">Thriller</span>
+
     </div>
     
 
@@ -23263,6 +23891,8 @@
   <span class="pill runtime">2h 27min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -23465,6 +24095,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -23631,6 +24263,10 @@
   <span class="pill runtime">2h 19min</span>
 
   <span class="pill year">1999</span>
+
+  <span class="pill genre">Thriller</span>
+
+  <span class="pill genre">Psychologiczny</span>
 
     </div>
     
@@ -23989,6 +24625,10 @@
 
   <span class="pill year">1996</span>
 
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -24241,6 +24881,10 @@
       <a href="/film?title=Romeo%20i%20Julia">Romeo i Julia</a>
   <span class="pill year">1996</span>
 
+  <span class="pill genre">Melodramat</span>
+
+  <span class="pill genre">Akcja</span>
+
     </div>
     
 
@@ -24331,6 +24975,12 @@
   <span class="pill runtime">1h 38min</span>
 
   <span class="pill year">2006</span>
+
+  <span class="pill genre">Melodramat</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
+  <span class="pill genre">Anime</span>
 
     </div>
     
@@ -24729,6 +25379,12 @@
 
   <span class="pill year">1990</span>
 
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -24919,6 +25575,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -24996,6 +25654,8 @@
       <a href="/film?title=Zaproszenie">Zaproszenie</a>
   <span class="pill year">2022</span>
 
+  <span class="pill genre">Horror</span>
+
     </div>
     
 
@@ -25068,6 +25728,12 @@
     <div class="card-title">
       <a href="/film?title=Fantastyczne%20zwierz%C4%99ta%20i%20jak%20je%20znale%C5%BA%C4%87">Fantastyczne zwierzęta i jak je znaleźć</a>
   <span class="pill year">2016</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Familijny</span>
 
     </div>
     
@@ -25161,6 +25827,12 @@
     <div class="card-title">
       <a href="/film?title=Fantastyczne%20zwierz%C4%99ta%3A%20zbrodnie%20grindelwalda">Fantastyczne zwierzęta: zbrodnie grindelwalda</a>
   <span class="pill year">2018</span>
+
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Przygodowy</span>
 
     </div>
     
@@ -25468,6 +26140,12 @@
 
   <span class="pill year">2022</span>
 
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -25562,6 +26240,12 @@
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">1985</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
+  <span class="pill genre">Przygodowy</span>
 
     </div>
     
@@ -25658,6 +26342,12 @@
 
   <span class="pill year">1989</span>
 
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -25751,6 +26441,12 @@
       <a href="/film?title=Zapl%C4%85tani">Zaplątani</a>
   <span class="pill year">2010</span>
 
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Musical</span>
+
+  <span class="pill genre">Familijny</span>
+
     </div>
     
 
@@ -25843,6 +26539,12 @@
     <div class="card-title">
       <a href="/film?title=Odlot">Odlot</a>
   <span class="pill year">2009</span>
+
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Przygodowy</span>
 
     </div>
     
@@ -26142,6 +26844,12 @@
       <a href="/film?title=Harry%20Potter%20i%20Kamie%C5%84%20filozoficzny">Harry Potter i Kamień filozoficzny</a>
   <span class="pill year">2001</span>
 
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -26315,6 +27023,12 @@
       <a href="/film?title=Harry%20Potter%20i%20Komnata%20Tajemnic">Harry Potter i Komnata Tajemnic</a>
   <span class="pill year">2002</span>
 
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Fantasy</span>
+
     </div>
     
 
@@ -26453,6 +27167,12 @@
       <a href="/film?title=Harry%20Potter%20i%20Czara%20ognia">Harry Potter i Czara ognia</a>
   <span class="pill year">2005</span>
 
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Fantasy</span>
+
     </div>
     
 
@@ -26530,6 +27250,12 @@
       <a href="/film?title=Harry%20Potter%20i%20Zakon%20Feniksa">Harry Potter i Zakon Feniksa</a>
   <span class="pill year">2007</span>
 
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -26606,6 +27332,12 @@
     <div class="card-title">
       <a href="/film?title=Harry%20Potter%20i%20Ksi%C4%85%C5%BC%C4%99%20P%C3%B3%C5%82krwi">Harry Potter i Książę Półkrwi</a>
   <span class="pill year">2009</span>
+
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Przygodowy</span>
 
     </div>
     
@@ -26744,6 +27476,12 @@
     <div class="card-title">
       <a href="/film?title=Harry%20Potter%20i%20Insygnia%20%C5%9Amierci%20cz.%202">Harry Potter i Insygnia Śmierci cz. 2</a>
   <span class="pill year">2011</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Przygodowy</span>
 
     </div>
     
@@ -27020,6 +27758,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Romans</span>
+
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -27146,6 +27890,10 @@
   <span class="pill runtime">1h 48min</span>
 
   <span class="pill year">2014</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
+  <span class="pill genre">Thriller</span>
 
     </div>
     
@@ -27291,6 +28039,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -27420,6 +28170,10 @@
 
   <span class="pill year">1974</span>
 
+  <span class="pill genre">Surrealistyczny</span>
+
+  <span class="pill genre">Satyra</span>
+
     </div>
     
 
@@ -27496,6 +28250,8 @@
   <span class="pill runtime">1h 57min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -27624,6 +28380,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -27718,6 +28476,10 @@
   <span class="pill runtime">1h 12min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Biograficzny</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -27824,6 +28586,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Animowany</span>
+
     </div>
     
 
@@ -27888,6 +28652,10 @@
   <span class="pill runtime">2h 13min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -28065,6 +28833,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Animowany</span>
+
     </div>
     
 
@@ -28129,6 +28899,8 @@
   <span class="pill runtime">2h 27min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -28242,6 +29014,8 @@
   <span class="pill runtime">0h 55min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Animacja</span>
 
     </div>
     
@@ -28574,6 +29348,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -28734,6 +29510,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -28812,6 +29590,8 @@
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -28908,6 +29688,8 @@
 
   <span class="pill year">1976</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -28986,6 +29768,8 @@
   <span class="pill runtime">2h 27min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -29066,6 +29850,10 @@
 
   <span class="pill year">2021</span>
 
+  <span class="pill genre">Anime</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -29145,6 +29933,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -29223,6 +30013,8 @@
   <span class="pill runtime">0h 45min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Animacja</span>
 
     </div>
     
@@ -29304,6 +30096,10 @@
   <span class="pill runtime">1h 53min</span>
 
   <span class="pill year">1974</span>
+
+  <span class="pill genre">Thriller</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -29399,6 +30195,10 @@
   <span class="pill runtime">2h 33min</span>
 
   <span class="pill year">1977</span>
+
+  <span class="pill genre">Polityczny</span>
+
+  <span class="pill genre">Dramat obyczajowy</span>
 
     </div>
     
@@ -29541,6 +30341,10 @@
   <span class="pill runtime">1h 57min</span>
 
   <span class="pill year">2012</span>
+
+  <span class="pill genre">Anime</span>
+
+  <span class="pill genre">Fantasy</span>
 
     </div>
     
@@ -29686,6 +30490,10 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -29750,6 +30558,8 @@
   <span class="pill runtime">1h 10min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -29823,6 +30633,10 @@
   <span class="pill runtime">2h 19min</span>
 
   <span class="pill year">1999</span>
+
+  <span class="pill genre">Thriller</span>
+
+  <span class="pill genre">Psychologiczny</span>
 
     </div>
     
@@ -29903,6 +30717,8 @@
 
   <span class="pill year">1953</span>
 
+  <span class="pill genre">Dramat obyczajowy</span>
+
     </div>
     
 
@@ -29981,6 +30797,8 @@
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -30061,6 +30879,12 @@
 
   <span class="pill year">2009</span>
 
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Anime</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -30139,6 +30963,8 @@
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -30287,6 +31113,8 @@
   <span class="pill runtime">1h 50min</span>
 
   <span class="pill year">1957</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -30537,6 +31365,12 @@
 
   <span class="pill year">2006</span>
 
+  <span class="pill genre">Melodramat</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
+  <span class="pill genre">Anime</span>
+
     </div>
     
 
@@ -30611,6 +31445,10 @@
   <span class="pill runtime">1h 28min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Animacja</span>
 
     </div>
     
@@ -30697,6 +31535,8 @@
 
   <span class="pill year">1960</span>
 
+  <span class="pill genre">Dramat obyczajowy</span>
+
     </div>
     
 
@@ -30776,6 +31616,10 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dokumentalny</span>
+
+  <span class="pill genre">Przyrodniczy</span>
+
     </div>
     
 
@@ -30848,6 +31692,8 @@
   <span class="pill runtime">2h 18min</span>
 
   <span class="pill year">1963</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -30928,6 +31774,8 @@
 
   <span class="pill year">1965</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -31006,6 +31854,10 @@
   <span class="pill runtime">2h 1min</span>
 
   <span class="pill year">1990</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -31090,6 +31942,10 @@
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Muzyczny</span>
+
+  <span class="pill genre">Dokumentalny</span>
 
     </div>
     
@@ -31263,6 +32119,10 @@
   <span class="pill runtime">2h</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -31511,6 +32371,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -31639,6 +32503,12 @@
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Romans</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -31783,6 +32653,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Familijny</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -31875,6 +32751,10 @@
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dokumentalny</span>
+
+  <span class="pill genre">Muzyczny</span>
 
     </div>
     
@@ -32018,6 +32898,12 @@
   <span class="pill runtime">1h 29min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Familijny</span>
 
     </div>
     
@@ -32179,6 +33065,12 @@
   <span class="pill runtime">2h 7min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Muzyczny</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Biograficzny</span>
 
     </div>
     
@@ -32342,6 +33234,10 @@
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Fantasy</span>
+
+  <span class="pill genre">Akcja</span>
 
     </div>
     
@@ -32560,6 +33456,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Akcja</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Fantasy</span>
+
     </div>
     
 
@@ -32689,6 +33591,12 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Akcja</span>
+
+  <span class="pill genre">Kryminał</span>
+
+  <span class="pill genre">Thriller</span>
+
     </div>
     
 
@@ -32817,6 +33725,8 @@
   <span class="pill runtime">1h 49min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Horror</span>
 
     </div>
     
@@ -32965,6 +33875,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -33108,6 +34020,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Animacja</span>
+
     </div>
     
 
@@ -33220,6 +34134,8 @@
   <span class="pill runtime">1h 49min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Komedia kryminalna</span>
 
     </div>
     
@@ -33392,6 +34308,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Przygodowy</span>
+
     </div>
     
 
@@ -33553,6 +34475,10 @@
 
   <span class="pill year">1986</span>
 
+  <span class="pill genre">Sensacyjny</span>
+
+  <span class="pill genre">Romans</span>
+
     </div>
     
 
@@ -33702,6 +34628,8 @@
 
   <span class="pill year">2020</span>
 
+  <span class="pill genre">Akcja</span>
+
     </div>
     
 
@@ -33783,6 +34711,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Familijny</span>
+
     </div>
     
 
@@ -33847,6 +34779,12 @@
   <span class="pill runtime">1h 44min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -33926,6 +34864,12 @@
   <span class="pill runtime">2h 12min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Akcja</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Familijny</span>
 
     </div>
     
@@ -34132,6 +35076,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Akcja</span>
+
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Familijny</span>
+
     </div>
     
 
@@ -34309,6 +35259,8 @@
   <span class="pill runtime">3h</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Sportowy</span>
 
     </div>
     
@@ -34536,6 +35488,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -34709,6 +35663,12 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
     </div>
     
 
@@ -34858,6 +35818,10 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Przygodowy</span>
+
+  <span class="pill genre">Fantasy</span>
+
     </div>
     
 
@@ -34991,6 +35955,8 @@
 
   <span class="pill year">2021</span>
 
+  <span class="pill genre">Opera</span>
+
     </div>
     
 
@@ -35055,6 +36021,12 @@
   <span class="pill runtime">1h 38min</span>
 
   <span class="pill year">2006</span>
+
+  <span class="pill genre">Melodramat</span>
+
+  <span class="pill genre">Sci-Fi</span>
+
+  <span class="pill genre">Anime</span>
 
     </div>
     
@@ -35147,6 +36119,10 @@
 
   <span class="pill year">2018</span>
 
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Muzyczny</span>
+
     </div>
     
 
@@ -35232,6 +36208,10 @@
   <span class="pill runtime">2h</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -35432,6 +36412,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Komedia kryminalna</span>
+
     </div>
     
 
@@ -35575,6 +36557,10 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Biograficzny</span>
+
+  <span class="pill genre">Dokumentalny</span>
+
     </div>
     
 
@@ -35647,6 +36633,8 @@
   <span class="pill runtime">1h 44min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -35745,6 +36733,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Fantastyczny / romantyczny</span>
+
     </div>
     
 
@@ -35814,6 +36804,8 @@
 
   <span class="pill year">2026</span>
 
+  <span class="pill genre">Komedia</span>
+
     </div>
     
 
@@ -35881,6 +36873,8 @@
 
   <span class="pill year">2025</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -35945,6 +36939,8 @@
   <span class="pill runtime">0h 55min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Animacja</span>
 
     </div>
     
@@ -36042,6 +37038,8 @@
   <span class="pill runtime">2h 27min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
 
     </div>
     
@@ -36170,6 +37168,8 @@
 
   <span class="pill year">1991</span>
 
+  <span class="pill genre">Dramat</span>
+
     </div>
     
 
@@ -36234,6 +37234,10 @@
   <span class="pill runtime">1h 53min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Dramat</span>
+
+  <span class="pill genre">Komedia</span>
 
     </div>
     
@@ -36314,6 +37318,8 @@
 
   <span class="pill year">1987</span>
 
+  <span class="pill genre">Przygodowy Horror Sci-Fi</span>
+
     </div>
     
 
@@ -36378,6 +37384,8 @@
   <span class="pill runtime">1h 55min</span>
 
   <span class="pill year">2026</span>
+
+  <span class="pill genre">Sensacyjny</span>
 
     </div>
     
@@ -36449,6 +37457,12 @@
   <span class="pill runtime">1h 40min</span>
 
   <span class="pill year">2025</span>
+
+  <span class="pill genre">Animacja</span>
+
+  <span class="pill genre">Komedia</span>
+
+  <span class="pill genre">Przygodowy</span>
 
     </div>
     
@@ -36539,6 +37553,8 @@
 
   <span class="pill year">2018</span>
 
+  <span class="pill genre">Dokumentalny</span>
+
     </div>
     
 
@@ -36611,6 +37627,10 @@
   <span class="pill runtime">2h 33min</span>
 
   <span class="pill year">1977</span>
+
+  <span class="pill genre">Polityczny</span>
+
+  <span class="pill genre">Dramat obyczajowy</span>
 
     </div>
     
@@ -36688,6 +37708,8 @@
   <span class="pill runtime">2h 56min</span>
 
   <span class="pill year">1960</span>
+
+  <span class="pill genre">Dramat obyczajowy</span>
 
     </div>
     
@@ -36767,6 +37789,8 @@
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2022</span>
+
+  <span class="pill genre">Dokument</span>
 
     </div>
     

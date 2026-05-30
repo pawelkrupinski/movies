@@ -119,7 +119,8 @@ class CinemaCityClient(http: HttpFetch) {
                 .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", ""),
               info.runtimeMinutes,
               info.releaseYear,
-              countries = info.countries
+              countries = info.countries,
+              genres    = details.genres
             ),
             cinema      = cinema,
             posterUrl   = info.posterLink,
@@ -149,11 +150,12 @@ object CinemaCityClient {
     cast:       Seq[String],
     director:   Seq[String],
     countries:  Seq[String],
+    genres:     Seq[String],
     trailerUrl: Option[String]
   )
 
   object Details {
-    val empty: Details = Details(None, Seq.empty, Seq.empty, Seq.empty, None)
+    val empty: Details = Details(None, Seq.empty, Seq.empty, Seq.empty, Seq.empty, None)
   }
 
   // Kinepolis' `auditorium` field returns names truncated to 5 chars without a
@@ -194,6 +196,16 @@ object CinemaCityClient {
       .orElse(js.flatMap(j => (j \ "releaseCountry").asOpt[String]).filter(_.nonEmpty)
         .map(s => s.split(",").map(_.trim).filter(_.nonEmpty).toSeq))
       .getOrElse(Seq.empty)
+    // `filmDetails.categoriesAttributes` is a list of English lowercase
+    // genre tokens (`"comedy"`, `"drama"`, `"sci-fi"`). Map the common
+    // ones onto the Polish labels TMDB/Filmweb use so all three sources
+    // converge on the same spelling; unknown tokens get the empty list
+    // (skip rather than guess at translation).
+    val genres = js.flatMap(j => (j \ "categoriesAttributes").asOpt[JsArray])
+      .map(_.value.toSeq).getOrElse(Seq.empty)
+      .flatMap(_.asOpt[String]).filter(_.nonEmpty)
+      .flatMap(token => CategoryToPolish.get(token.toLowerCase))
+      .distinct
     // Trailer: `filmDetails.videoLink` is a single YouTube watch URL when the
     // film has a trailer. `mediaList[].url` for `type=="Video"` is the same
     // URL surfaced under the media-gallery shape; we read it as a fallback
@@ -208,8 +220,41 @@ object CinemaCityClient {
     val trailerUrl = videoLink.orElse(mediaVideo)
       .flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
         .map(id => s"https://www.youtube.com/watch?v=$id"))
-    Details(synopsis = synopsis, cast = cast, director = director, countries = countries, trailerUrl = trailerUrl)
+    Details(synopsis = synopsis, cast = cast, director = director, countries = countries, genres = genres, trailerUrl = trailerUrl)
   }
+
+  /** Cinema City's `categoriesAttributes` tokens → the Polish labels TMDB
+   *  and Filmweb use. Covers the common cases; unknown tokens drop rather
+   *  than getting passed through verbatim (English in a Polish-language UI
+   *  would look like a bug). Extend as new tokens appear on production
+   *  films — `WriteCinemaCity` re-records the fixture against live data. */
+  private val CategoryToPolish: Map[String, String] = Map(
+    "action"      -> "Akcja",
+    "adventure"   -> "Przygodowy",
+    "animation"   -> "Animacja",
+    "anime"       -> "Anime",
+    "biography"   -> "Biograficzny",
+    "comedy"      -> "Komedia",
+    "concert"     -> "Koncert",
+    "crime"       -> "Kryminał",
+    "documentary" -> "Dokumentalny",
+    "drama"       -> "Dramat",
+    "family"      -> "Familijny",
+    "fantasy"     -> "Fantasy",
+    "history"     -> "Historyczny",
+    "horror"      -> "Horror",
+    "musical"     -> "Musical",
+    "music"       -> "Muzyczny",
+    "mystery"     -> "Tajemnica",
+    "opera"       -> "Opera",
+    "romance"     -> "Romans",
+    "sci-fi"      -> "Sci-Fi",
+    "scifi"       -> "Sci-Fi",
+    "sport"       -> "Sportowy",
+    "thriller"    -> "Thriller",
+    "war"         -> "Wojenny",
+    "western"     -> "Western"
+  )
 
   /** Extract production-country list from the `<p>Produkcja: …</p>` line.
    *  Returns None when the line is absent so the caller can decide whether

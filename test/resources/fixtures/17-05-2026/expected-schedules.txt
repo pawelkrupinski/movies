@@ -4717,13 +4717,13 @@ showings:
   2026-06-04  Helios Posnania               18:00 2D/NAP
   2026-06-04  Multikino Stary Browar        17:10 Sala 1 2D/NAP
   2026-06-05  Helios Posnania               18:00 2D/NAP
-  2026-06-05  Kino Malta Charlie Monroe     20:30
+  2026-06-05  Kino Malta Charlie Monroe     20:30 Sala Audrey
   2026-06-05  Multikino Stary Browar        19:10 Sala 3 2D/NAP
   2026-06-06  Helios Posnania               20:00 2D/NAP
-  2026-06-06  Kino Malta Charlie Monroe     20:30
+  2026-06-06  Kino Malta Charlie Monroe     20:30 Cafe
   2026-06-06  Multikino Stary Browar        17:00 Sala 3 2D/NAP
   2026-06-07  Helios Posnania               15:00 2D/NAP
-  2026-06-07  Kino Malta Charlie Monroe     20:30
+  2026-06-07  Kino Malta Charlie Monroe     20:30 Sala Audrey
   2026-06-07  Multikino Stary Browar        17:30 Sala 1 2D/NAP
   2026-06-08  Multikino Stary Browar        20:00 Sala 1 2D/NAP
   2026-06-12  Kino Pałacowe                 21:00 Sala 1 - Kinowa

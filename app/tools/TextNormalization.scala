@@ -55,6 +55,15 @@ object TextNormalization {
     sb.toString
   }
 
+  /** Title-case each whitespace-separated word — "science fiction" →
+   *  "Science Fiction". Leaves already-mixed-case strings alone (so
+   *  "Sci-Fi" stays "Sci-Fi"). Used to normalise Helios' all-lowercase
+   *  genre labels at the write boundary. */
+  def titleCaseIfAllLower(s: String): String = {
+    if (s.isEmpty || s.exists(c => c.isLetter && c.isUpper)) return s
+    titleCaseIfAllCaps(s.toUpperCase)
+  }
+
   /**
    * Strip the trailing partial name from a likely-truncated cast string.
    *

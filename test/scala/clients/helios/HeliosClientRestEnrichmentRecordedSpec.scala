@@ -51,4 +51,24 @@ class HeliosClientRestEnrichmentRecordedSpec extends AnyFlatSpec with Matchers {
 
     moviesWithRestLikePosters should not be empty
   }
+
+  // Helios ships `genres: [{id, name, description}]` with lowercase Polish
+  // labels — "animowany", "dramat", "science fiction". The client
+  // title-cases them at the write boundary so display matches TMDB/Filmweb
+  // spelling.
+
+  it should "extract Polish genre labels from REST movie details, title-cased" in {
+    val byTitle = fetch().map(m => m.movie.title -> m).toMap
+    val kurozajac = byTitle.get("Kurozając i Świątynia Świstaka")
+    kurozajac.map(_.movie.genres) shouldBe Some(Seq("Animowany"))
+    // Every enriched row that had a `genres` array in its fixture should
+    // surface at least one title-cased label.
+    val withGenres = fetch().filter(_.movie.genres.nonEmpty)
+    withGenres should not be empty
+    withGenres.foreach { m =>
+      m.movie.genres.foreach { g =>
+        g.headOption.exists(_.isUpper) shouldBe true
+      }
+    }
+  }
 }

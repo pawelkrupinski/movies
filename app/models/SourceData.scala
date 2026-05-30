@@ -29,6 +29,12 @@ case class SourceData(
   // the merged-record accessor on `MovieRecord` unions across sources in
   // priority order. Stored already-canonicalised by `recordCinemaScrape`.
   countries:      Seq[String]     = Seq.empty,
+  // Polish-language genre names ("Komedia", "Dramat"). One entry per genre,
+  // verbatim per source — each source has its own taxonomy and spelling.
+  // `MovieRecord.genres` picks the first non-empty list in source-priority
+  // order (TMDB → Filmweb → cinemas) rather than unioning, so the row shows
+  // a single coherent taxonomy.
+  genres:         Seq[String]     = Seq.empty,
   posterUrl:      Option[String]  = None,
   // Cinema-only: empty for `Tmdb` / `Imdb` slots.
   filmUrl:        Option[String]  = None,

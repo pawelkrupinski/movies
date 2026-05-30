@@ -90,6 +90,11 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
   // (`&quot;` for `"`) and the URL's slashes are JSON-escaped (`\/`).
   // Captured form: `youtube_url&quot;:&quot;http:\/\/youtube.com\/...&quot;`.
   private val YouTubeUrlPat = """youtube_url&quot;:&quot;([^"&]+)&quot;""".r
+  // Apollo's modern-film layout sometimes prefixes a "Uwagi:" ("Notes:") line
+  // with `Gatunek: <comma list>`. Wajda-cycle pages omit it. Captured form:
+  // `Uwagi:</span> Gatunek: Familijny, Przygodowy <next-html>`. Stops at the
+  // first subsequent `<` so the line break / inline tag bounds the genre list.
+  private val GenrePat      = """(?i)Gatunek:\s*([^<|]+)""".r
 
   def fetch(): Seq[CinemaMovie] = {
     val movies = parseHtml(http.get(PageUrl))
@@ -100,7 +105,7 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
       movies.map { m =>
         val meta = m.filmUrl.flatMap(metas.get).getOrElse(EmptyDetailMeta)
         m.copy(
-          movie      = m.movie.copy(runtimeMinutes = meta.runtime, countries = meta.countries),
+          movie      = m.movie.copy(runtimeMinutes = meta.runtime, countries = meta.countries, genres = meta.genres),
           synopsis   = meta.synopsis.orElse(m.synopsis),
           director   = if (meta.director.nonEmpty) meta.director else m.director,
           cast       = if (meta.cast.nonEmpty) meta.cast else m.cast,
@@ -116,10 +121,11 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
     director:   Seq[String],
     cast:       Seq[String],
     countries:  Seq[String],
+    genres:     Seq[String],
     trailerUrl: Option[String]
   )
 
-  private val EmptyDetailMeta = DetailMeta(None, None, Seq.empty, Seq.empty, Seq.empty, None)
+  private val EmptyDetailMeta = DetailMeta(None, None, Seq.empty, Seq.empty, Seq.empty, Seq.empty, None)
 
   private def fetchDetails(urls: Seq[String]): Map[String, DetailMeta] =
     ParallelDetailFetch("kino-apollo-details", urls, 1.minute)(fetchDetail)
@@ -145,9 +151,19 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
       director   = DirectorPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       cast       = CastPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim.stripSuffix(",").trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       countries  = parseCountries(html),
+      genres     = parseGenres(html),
       trailerUrl = parseTrailer(html)
     )
   }
+
+  /** Genres from the `Uwagi: Gatunek: <list>` line, when present. Returns
+   *  the empty list for Wajda-cycle pages and other layouts that don't
+   *  carry the marker. */
+  def parseGenres(html: String): Seq[String] =
+    GenrePat.findFirstMatchIn(html).map { m =>
+      m.group(1).trim.stripSuffix(",").trim
+        .split(",").map(_.trim).filter(_.nonEmpty).toSeq
+    }.getOrElse(Seq.empty)
 
   /** YouTube trailer URL from the Elementor button block. Returns the
    *  canonical `youtube.com/watch?v=ID` form when the captured URL parses

@@ -180,6 +180,19 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   // to a `watch?v=…` URL and store that; the view normalises to /embed/ at
   // render time. Detail-page fixture absent ⇒ trailerUrl stays None.
 
+  // CC's `var filmDetails = {…}` JSON carries `categoriesAttributes` —
+  // English lowercase genre tokens. The client maps the common ones onto
+  // the Polish labels TMDB/Filmweb use so the three sources converge on the
+  // same spelling. Diabeł ubiera się u Prady 2's fixture carries
+  // `["comedy","drama"]`.
+
+  it should "translate English genre tokens from categoriesAttributes to Polish" in {
+    val byTitle = kinepolis.map(m => m.movie.title -> m).toMap
+    byTitle("Diabeł ubiera się u Prady 2").movie.genres shouldBe Seq("Komedia", "Dramat")
+    // Detail-page fixture absent ⇒ genres stay empty (no English bleed-through).
+    byTitle("Mortal Kombat II").movie.genres shouldBe empty
+  }
+
   it should "parse trailerUrl from the per-film details page's videoLink" in {
     val byTitle = kinepolis.map(m => m.movie.title -> m).toMap
     byTitle("Diabeł ubiera się u Prady 2").trailerUrl shouldBe
