@@ -85,6 +85,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case None    => "<html><body>Film not found</body></html>"
         }
       }
+      // `/plan` is static for the fixture corpus — the poster picker +
+      // "Twoje filmy" plan. Drives the Filmy-section fold behaviour
+      // (collapse on header click, expand on a click anywhere while
+      // folded) wired by the inline <script> in plan.scala.html.
+      val planHtml: String = views.html.plan(
+        controllers.PlanController.viewData(schedules),
+        cinemas, pills, devMode = false,
+        currentUser = anon, oauthProviders = noOauth
+      ).body
       server = new TestHttpServer({
         // `/` and `/kina` accept arbitrary query strings (e.g. `?date=tomorrow`)
         // — the real Play routes do too, and the day-selector ↔ URL tests need
@@ -99,6 +108,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           renderKina(pinned)
         case p if p.startsWith("/film?title=") =>
           renderFilm(p.stripPrefix("/film?title="))
+        case p if p == "/plan" || p.startsWith("/plan?") => planHtml
       })
     }
   }
@@ -1544,6 +1554,96 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool(
         s"JSON.parse(localStorage.getItem('hiddenFilms') || '[]').includes(${jsString(title)})"
       ) shouldBe false
+    }
+  }
+
+  // ── /plan Filmy-section fold ─────────────────────────────────────────────
+  // The poster picker collapses when its header bar is clicked, and the
+  // collapsed strip re-expands when clicked anywhere. State persists in
+  // the `planPostersFolded` localStorage key. See `wirePostersFold` /
+  // `planApplyPostersFold` in plan.scala.html.
+
+  // localStorage is per-origin and survives `openPage`'s fresh tab, so
+  // a fold set by one test leaks into the next. Reset to the expanded
+  // default (no key) and re-sync the DOM before each fold assertion.
+  private def resetFold(page: CdpPage): Unit =
+    page.eval("localStorage.removeItem('planPostersFolded'); planApplyPostersFold()")
+
+  private def isFolded(page: CdpPage): Boolean =
+    page.evalBool("document.getElementById('filmy-section').classList.contains('folded')")
+
+  private def rowDisplay(page: CdpPage): String =
+    page.evalString("getComputedStyle(document.getElementById('plan-movies-row')).display")
+
+  "the /plan Filmy section" should "start expanded with the poster grid visible" in {
+    onPath("/plan") { page =>
+      resetFold(page)
+      isFolded(page) shouldBe false
+      rowDisplay(page) should not be "none"
+      page.evalString("document.getElementById('plan-filmy-header').getAttribute('aria-expanded')") shouldBe "true"
+    }
+  }
+
+  it should "collapse when the header bar is clicked, hiding the grid and persisting the state" in {
+    onPath("/plan") { page =>
+      resetFold(page)
+      page.eval("document.getElementById('plan-filmy-header').click()")
+      isFolded(page) shouldBe true
+      rowDisplay(page) shouldBe "none"
+      page.evalString("localStorage.getItem('planPostersFolded')") shouldBe "1"
+      page.evalString("document.getElementById('plan-filmy-header').getAttribute('aria-expanded')") shouldBe "false"
+      page.evalString(
+        "document.querySelector('#filmy-section .plan-collapse-label').textContent"
+      ) shouldBe "Rozwiń plakaty"
+    }
+  }
+
+  it should "re-expand when the collapsed strip is clicked anywhere" in {
+    onPath("/plan") { page =>
+      resetFold(page)
+      page.eval("document.getElementById('plan-filmy-header').click()")
+      isFolded(page) shouldBe true
+
+      // A click on the section body (not just the header) while folded
+      // re-expands — the whole collapsed strip is the click target.
+      page.eval("document.getElementById('filmy-section').click()")
+      isFolded(page) shouldBe false
+      rowDisplay(page) should not be "none"
+      page.evalBool("localStorage.getItem('planPostersFolded') === null") shouldBe true
+    }
+  }
+
+  it should "not collapse when a poster inside the expanded grid is clicked" in {
+    onPath("/plan") { page =>
+      resetFold(page)
+      // Clicking a poster toggles its selection; it must NOT also fold
+      // the picker (only header clicks collapse while expanded). Click
+      // the poster wrap, not the title `<a>` — the latter navigates.
+      page.evalBool("!!document.querySelector('#plan-movies-row .plan-card .poster-wrap')") shouldBe true
+      page.eval("document.querySelector('#plan-movies-row .plan-card .poster-wrap').click()")
+      isFolded(page) shouldBe false
+    }
+  }
+
+  it should "keep the folded state across a reload" in {
+    onPath("/plan") { page =>
+      resetFold(page)
+      page.eval("document.getElementById('plan-filmy-header').click()")
+      isFolded(page) shouldBe true
+      page.reload()
+      isFolded(page) shouldBe true
+      rowDisplay(page) shouldBe "none"
+    }
+  }
+
+  it should "toggle via Enter on the focused header (keyboard a11y)" in {
+    onPath("/plan") { page =>
+      resetFold(page)
+      page.eval(
+        "(() => { const h = document.getElementById('plan-filmy-header'); h.focus();" +
+        " h.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true})); })()"
+      )
+      isFolded(page) shouldBe true
     }
   }
 
