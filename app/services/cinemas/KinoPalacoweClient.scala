@@ -32,21 +32,32 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
   // footer); the gallery class is what distinguishes the trailer's anchor.
   private val TrailerPat = """<a[^>]*class="gallery__movie[^"]*"[^>]*href="(https?://(?:www\.)?(?:youtube\.com|youtu\.be|player\.vimeo\.com|vimeo\.com)/[^"]+)"""".r
 
+  // Some film pages — notably the "Kino bez barier" accessible screenings —
+  // tack a genre onto the metadata blob, in two shapes:
+  //   "… Kraje produkcji: USA. Gatunek: krótkometrażowy.<br>"  (colon)
+  //   "… Kraj produkcji: Francja. Gatunek animowany.<br>"       (adjective, no colon)
+  // Captured up to the first `.`/`<` that closes the sentence; comma-split so a
+  // future multi-genre list still parses. Pałacowe's values are lowercase, so
+  // they're title-cased to match the genres TMDB / Filmweb / Apollo contribute.
+  private val GenrePat = """(?i)Gatunek:?\s+([^.<|]+)""".r
+
   private case class FilmMeta(
     director:    Seq[String],
     countries:   Seq[String],
     releaseYear: Option[Int],
     runtime:     Option[Int],
+    genres:      Seq[String],
     trailerUrl:  Option[String]
   )
 
-  private val EmptyMeta = FilmMeta(Seq.empty, Seq.empty, None, None, None)
+  private val EmptyMeta = FilmMeta(Seq.empty, Seq.empty, None, None, Seq.empty, None)
 
   private def fetchFilmMeta(filmUrl: String): FilmMeta =
     Try(http.get(filmUrl)).toOption.flatMap(parseFilmMeta).getOrElse(EmptyMeta)
 
   private def parseFilmMeta(html: String): Option[FilmMeta] = {
     val trailer = parseTrailer(html)
+    val genres  = parseGenres(html)
     val metaFromLine =
     // Strip HTML first \u2014 the meta line is sometimes split across <span> tags
     //   "re\u017c. <span>Carla Sim\u00f3n, </span><span>Hiszpania 2025, 114'</span>"
@@ -66,15 +77,29 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
         countries   = countryParts,
         releaseYear = Try(m.group(2).toInt).toOption,
         runtime     = Try(m.group(3).toInt).toOption.filter(n => n >= 30 && n <= 300),
+        genres      = genres,
         trailerUrl  = trailer
       )
     }
     // The reż./year/runtime line is the primary signal, but a film page can
-    // still carry a trailer without it (some pages truncate the meta block).
-    // Surface a trailer-only meta in that case so the trailer reaches the
-    // cache anyway.
-    metaFromLine.orElse(trailer.map(t => EmptyMeta.copy(trailerUrl = Some(t))))
+    // still carry a trailer and/or a genre without it (some pages truncate the
+    // meta block). Surface a meta carrying whichever of those parsed so they
+    // reach the cache anyway.
+    metaFromLine.orElse(
+      if (trailer.isDefined || genres.nonEmpty)
+        Some(EmptyMeta.copy(genres = genres, trailerUrl = trailer))
+      else None
+    )
   }
+
+  /** Genres from the `Gatunek[:] <list>` marker in the metadata blob, when
+   *  present. Returns the empty list for the many pages that omit it. */
+  def parseGenres(html: String): Seq[String] =
+    GenrePat.findFirstMatchIn(html).map { m =>
+      m.group(1).trim.stripSuffix(",").trim
+        .split(",").map(_.trim).filter(_.nonEmpty)
+        .map(tools.TextNormalization.titleCaseIfAllLower).toSeq
+    }.getOrElse(Seq.empty)
 
   /** Pałacowe trailer URL parsed from the film page's gallery anchor.
    *  Returns the canonical `youtube.com/watch?v=ID` form when the captured
@@ -106,7 +131,8 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
             title          = title,
             runtimeMinutes = meta.runtime,
             releaseYear    = meta.releaseYear,
-            countries      = meta.countries
+            countries      = meta.countries,
+            genres         = meta.genres
           ),
           cinema    = KinoPalacowe,
           posterUrl = first.posterUrl,
