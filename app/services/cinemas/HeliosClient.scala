@@ -38,9 +38,17 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
     val in6   = today.plusDays(6)
     val screeningsUrl =
       s"$ApiBase/cinema/$CinemaSourceId/screening?dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
+    val eventsUrl = s"$ApiBase/cinema/$CinemaSourceId/event"
 
-    val screeningsById = parseApiScreenings(Try(http.getAsync(screeningsUrl).join()).getOrElse("[]"))
-    val movieBodies    = fetchBodies(screeningsById.values.map(_.movieId).toSeq.distinct)(id => s"$ApiBase/movie/$id")
+    // `/screening` lists regular film screenings; event screenings (anime, concerts,
+    // sports broadcasts) are excluded from it but carry the same id→screenId mapping
+    // under `/event`. Merge both so room/format enrichment covers events too. The two
+    // sets are disjoint; on the (unexpected) collision the regular screening wins.
+    val regular         = parseApiScreenings(Try(http.getAsync(screeningsUrl).join()).getOrElse("[]"))
+    val eventScreenings = parseEventScreenings(Try(http.getAsync(eventsUrl).join()).getOrElse("[]"))
+    val screeningsById  = eventScreenings ++ regular
+
+    val movieBodies    = fetchBodies(screeningsById.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct)(id => s"$ApiBase/movie/$id")
     val screenBodies   = fetchBodies(screeningsById.values.map(_.screenId).toSeq.distinct)(id =>
       s"$ApiBase/cinema/$CinemaSourceId/screen/$id")
 
@@ -79,6 +87,26 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
       }.toMap
     }.getOrElse(Map.empty)
 
+  // The `/event` endpoint returns one entry per event screening (a flat array, no
+  // date window), each with its `screeningId`, `screenId` and `release`. We map them
+  // into the same ApiScreening shape used for room/format enrichment. `movieId` is
+  // left empty — events already arrive fully described via NUXT, so they neither need
+  // nor have a REST movie body to fetch (the empty id is filtered out before fetching).
+  private def parseEventScreenings(body: String): Map[String, ApiScreening] =
+    Try(Json.parse(body).as[JsArray]).map { arr =>
+      arr.value.flatMap { e =>
+        for {
+          id       <- (e \ "screeningId").asOpt[String]
+          screenId <- (e \ "screenId").asOpt[String]
+        } yield {
+          val release  = (e \ "release").asOpt[String].getOrElse("")
+          val dateTime = (e \ "timeFrom").asOpt[String]
+            .flatMap(ts => Try(ZonedDateTime.parse(ts, OffsetDtf).withZoneSameInstant(WarsawZone).toLocalDateTime).toOption)
+          id -> ApiScreening(id, movieId = "", screenId, release, dateTime)
+        }
+      }.toMap
+    }.getOrElse(Map.empty)
+
   private case class ApiMovieInfo(
     title:         Option[String],
     duration:      Option[Int],
@@ -91,6 +119,7 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
     posterUrl:     Option[String],
     slug:          Option[String],
     countries:     Seq[String],
+    genres:        Seq[String],
     trailerUrl:    Option[String]
   )
 
@@ -115,6 +144,13 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
           slug          = (js \ "slug").asOpt[String].filter(_.nonEmpty),
           countries     = (js \ "country").asOpt[String].map(_.trim).filter(_.nonEmpty)
                             .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+          // Helios ships `genres: [{id, name, description}]` with lowercase
+          // Polish names ("science fiction", "dramat"). Title-case at the
+          // write boundary so the display layer doesn't have to special-case
+          // this source's casing.
+          genres        = (js \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+                            .flatMap(g => (g \ "name").asOpt[String]).filter(_.nonEmpty)
+                            .map(tools.TextNormalization.titleCaseIfAllLower),
           // Helios ships `trailers: [<youtube embed URL>]`. Take the first
           // entry; for non-embed YouTube URLs (live API has been seen to mix
           // both shapes) we re-canonicalise to the watch URL and let the
@@ -139,9 +175,10 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
   // NUXT is the primary source — it lists every screening on the repertoire page,
   // including events and screenings outside the 6-day REST window. REST adds
   // room name, format (2D/NAP/ATMOS…), and richer movie metadata for the subset
-  // of screenings it covers. We match REST screenings to NUXT showtimes by the
-  // shared screening UUID (NUXT sourceId == REST screening id), then look up the
-  // REST movie body via screeningsById to enrich each NUXT movie.
+  // of screenings it covers (regular screenings via `/screening`, event screenings
+  // via `/event`). We match REST screenings to NUXT showtimes by the shared
+  // screening UUID (NUXT sourceId == REST screening id), then look up the REST
+  // movie body via screeningsById to enrich each NUXT movie.
 
   private def enrichFromRest(movies: Seq[CinemaMovie], rest: RestData): Seq[CinemaMovie] =
     movies.map { cm =>
@@ -161,7 +198,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
           releaseYear    = restInfo.flatMap(_.year),
           premierePl     = restInfo.flatMap(_.premierePl),
           premiereWorld  = restInfo.flatMap(_.premiereWorld),
-          countries      = restInfo.map(_.countries).getOrElse(cm.movie.countries)
+          countries      = restInfo.map(_.countries).getOrElse(cm.movie.countries),
+          genres         = restInfo.map(_.genres).getOrElse(cm.movie.genres)
         ),
         posterUrl  = restInfo.flatMap(_.posterUrl).orElse(cm.posterUrl),
         synopsis   = restInfo.flatMap(_.description),
@@ -190,7 +228,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
               releaseYear    = info.year,
               premierePl     = info.premierePl,
               premiereWorld  = info.premiereWorld,
-              countries      = info.countries
+              countries      = info.countries,
+              genres         = info.genres
             ),
             cinema    = Helios,
             posterUrl = info.posterUrl,
