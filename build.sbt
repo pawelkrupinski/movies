@@ -37,6 +37,11 @@ lazy val root = (project in file("."))
     // Eagerly trigger AppLoader on `sbt run` instead of waiting for the
     // first request. See project/Warmup.scala.
     PlayKeys.playRunHooks += Warmup(),
+    // Start `flyctl proxy 27017:27017 --app kinowo-mongo` for the duration
+    // of `sbt run` when .env.local points MONGODB_URI at 127.0.0.1.
+    // No-op in prod (playRunHooks don't run inside the Docker image) and
+    // no-op when the port's already listening. See project/MongoProxy.scala.
+    PlayKeys.playRunHooks += MongoProxy(baseDirectory.value),
   )
 
 // ── Dependencies ──────────────────────────────────────────────────────────────
