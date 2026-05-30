@@ -116,6 +116,17 @@ class CharlieMonroeClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Ścieżki życia")                              shouldBe Some(115)
   }
 
+  // ── Genres (from each listing card's `div.meta` line) ───────────────────────
+
+  it should "extract a single genre" in {
+    byTitle("Bałtyk").movie.genres shouldBe Seq("Dokumentalny")
+  }
+
+  it should "extract a comma-separated genre list" in {
+    byTitle("Bez wyjścia").movie.genres      shouldBe Seq("Czarna komedia", "Thriller")
+    byTitle("Chronologia wody").movie.genres shouldBe Seq("Biograficzny", "Melodramat")
+  }
+
   // ── Poster URLs ───────────────────────────────────────────────────────────
 
   it should "return correct poster URL for every movie" in {

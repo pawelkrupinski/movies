@@ -49,6 +49,18 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
       AnchorTextPat.findAllMatchIn(m.group(1)).map(_.group(1).trim).filter(_.nonEmpty).toSeq
     }
 
+  /** Genres from a listing card's `div.meta` line, which reads
+   *  "Czarna komedia, Thriller / 139 min" — the comma-separated genre list
+   *  precedes the ` / ` runtime. The runtime segment is filtered out so a
+   *  card carrying only "NN min" yields no spurious genre. */
+  def parseMetaGenres(metaText: String): Seq[String] =
+    metaText.split("/").headOption.toSeq.flatMap(
+      _.split(",").map(_.trim)
+        .filter(_.nonEmpty)
+        .filterNot(_.matches("(?i).*\\d+\\s*min.*"))
+        .map(tools.TextNormalization.titleCaseIfAllLower)
+    )
+
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(html)
 
@@ -74,7 +86,8 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
         val filmUrl   = Option(article.selectFirst("a[href*=/movies/]")).map(_.attr("href"))
         val synopsis  = Option(article.selectFirst("p.desc")).map(_.text().replaceAll("\\.{3,}$", "").trim).filter(_.nonEmpty)
         val posterUrl = Option(article.selectFirst("img[data-src]")).map(_.attr("data-src"))
-        title -> ArticleDetails(filmUrl, synopsis, posterUrl)
+        val genres    = Option(article.selectFirst("div.meta")).map(_.text()).map(parseMetaGenres).getOrElse(Seq.empty)
+        title -> ArticleDetails(filmUrl, synopsis, posterUrl, genres)
       }
     }.toMap
 
@@ -83,9 +96,9 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
       .toSeq
       .map { case (title, events) =>
         val sorted  = events.sortBy(_.dateTime)
-        val details = detailsByTitle.getOrElse(title, ArticleDetails(None, None, None))
+        val details = detailsByTitle.getOrElse(title, ArticleDetails(None, None, None, Seq.empty))
         CinemaMovie(
-          movie     = sorted.head.movie,
+          movie     = sorted.head.movie.copy(genres = details.genres),
           cinema    = CharlieMonroe,
           posterUrl = details.posterUrl.orElse(sorted.flatMap(_.posterUrl).headOption),
           filmUrl   = details.filmUrl,
@@ -115,7 +128,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
   private def dateKey(year: Int, month: Int, day: Int): String =
     "%02d.%02d.%d".format(day, month, year)
 
-  private case class ArticleDetails(filmUrl: Option[String], synopsis: Option[String], posterUrl: Option[String])
+  private case class ArticleDetails(filmUrl: Option[String], synopsis: Option[String], posterUrl: Option[String], genres: Seq[String])
 
   private case class ScreeningEntry(
     movie:      Movie,
