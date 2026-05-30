@@ -113,6 +113,16 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Znaki pana śliwki").movie.countries shouldBe Seq("Polska")
   }
 
+  // ── Genres (parsed from the event page's movie-parameters line) ─────────────
+
+  // Every event URL in this fixture set resolves to the single recorded
+  // `wydarzenie` page, whose movie-parameters line reads "Dramat, Komedia |
+  // 120 min" — so genre flows through to every movie here. (In production each
+  // film's own event page carries its own genre.)
+  it should "carry the genre parsed off the event page" in {
+    byTitle("Diabeł ubiera się u prady 2").movie.genres shouldBe Seq("Dramat", "Komedia")
+  }
+
   // ── Poster URLs ───────────────────────────────────────────────────────────
 
   it should "return correct poster URL for every movie" in {

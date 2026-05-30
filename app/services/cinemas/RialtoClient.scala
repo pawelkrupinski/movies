@@ -62,6 +62,12 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
   private val DateTimePat = """- (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) -""".r
   private val RuntimePat  = """(\d+)\s*min""".r
   private val YearPat     = """\b((?:19|20)\d{2})\b""".r
+  // The event page (not the repertoire listing) heads the description with a
+  // genre+runtime line: `<p class="movie-parameters">Dramat, Komedia | 120 min</p>`
+  // or single-genre `… >Animowany | 55 min</p>`. Capture the comma-separated
+  // genre list that precedes the `|`; the `|` is required so a duration-only
+  // line ("55 min") doesn't masquerade as a genre.
+  private val GenrePat    = """movie-parameters[^>]*>\s*([^<|]+?)\s*\|""".r
 
   private val NonFilmTitlePatterns = Seq("bilet podarunkowy", "karta podarunkowa", "voucher")
 
@@ -85,8 +91,10 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
     val pendingPages = filmEntries.map { entry =>
       entry -> http.getAsync(entry.eventUrl)
     }
-    val showtimesByUrl: Map[String, Seq[Showtime]] = pendingPages.flatMap { case (entry, future) =>
-      Try(parseEventPage(future.join())).toOption.map(entry.eventUrl -> _)
+    val eventDataByUrl: Map[String, EventData] = pendingPages.flatMap { case (entry, future) =>
+      Try(future.join()).toOption.map { html =>
+        entry.eventUrl -> EventData(parseEventPage(html), parseGenres(html))
+      }
     }.toMap
 
     filmEntries
@@ -94,11 +102,12 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
       .values
       .flatMap { group =>
         val primary      = group.head
-        val allShowtimes = group.flatMap(e => showtimesByUrl.getOrElse(e.eventUrl, Seq.empty))
-                                .sortBy(_.dateTime)
+        val eventData    = group.flatMap(e => eventDataByUrl.get(e.eventUrl))
+        val allShowtimes = eventData.flatMap(_.showtimes).sortBy(_.dateTime)
+        val genres       = eventData.flatMap(_.genres).distinct
         if (allShowtimes.isEmpty) None
         else Some(CinemaMovie(
-          movie     = Movie(primary.title, primary.runtimeMinutes, primary.releaseYear, countries = primary.countries),
+          movie     = Movie(primary.title, primary.runtimeMinutes, primary.releaseYear, countries = primary.countries, genres = genres),
           cinema    = Rialto,
           posterUrl = primary.posterUrl,
           filmUrl   = Some(primary.eventUrl),
@@ -156,6 +165,18 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
         FilmEntry(title, eventUrl, posterUrl, synopsis, director, runtime, year, countries)
       }.filterNot(e => isNonFilmEntry(e.title))
     }
+
+  private case class EventData(showtimes: Seq[Showtime], genres: Seq[String])
+
+  /** Genres from the event page's `movie-parameters` line, when present.
+   *  Comma-split and title-cased to match the genres TMDB / Filmweb and the
+   *  other cinemas contribute. Empty for pages without the marker. */
+  def parseGenres(html: String): Seq[String] =
+    GenrePat.findFirstMatchIn(html).map { m =>
+      m.group(1).trim
+        .split(",").map(_.trim).filter(_.nonEmpty)
+        .map(tools.TextNormalization.titleCaseIfAllLower).toSeq
+    }.getOrElse(Seq.empty)
 
   private def parseEventPage(html: String): Seq[Showtime] = {
     val doc = Jsoup.parse(html)
