@@ -240,6 +240,14 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
       "Kino bez barier: Freak Show (AD + CC + PJM)"
   }
 
+  it should "keep the 'Cinema Italia Oggi:' festival banner (display + cache key boundary)" in {
+    // The festival banner is a programme prefix: stripped only for upstream
+    // API queries (see apiQuery), kept verbatim in the display title and the
+    // cache key so the festival screening stays its own row.
+    searchTitle("Cinema Italia Oggi: La Grande Bellezza") shouldBe
+      "Cinema Italia Oggi: La Grande Bellezza"
+  }
+
   it should "still strip a bare bilingual ' + Title' suffix outside of parens" in {
     // Sanity check: the PlusSuffix tightening must not break the original
     // intent — stripping a tacked-on bilingual postfix when it stands alone.
@@ -280,6 +288,10 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
   it should "strip the 'Plenerowe Pałacowe:' prefix (Kino Pałacowe outdoor screenings)" in {
     apiQuery("Plenerowe Pałacowe: La Grazia") shouldBe "La Grazia"
+  }
+
+  it should "strip the 'Cinema Italia Oggi:' prefix (Italian-film festival banner)" in {
+    apiQuery("Cinema Italia Oggi: La Grande Bellezza") shouldBe "La Grande Bellezza"
   }
 
   it should "leave a title with a colon that isn't a programme prefix alone" in {

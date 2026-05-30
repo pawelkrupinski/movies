@@ -38,16 +38,19 @@ object TitleNormalizer {
   private val RestoredSuffix    = """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""".r
   private val WersjaSuffix      = """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""".r
   // Cinema programme prefixes — fixed-string labels cinemas prepend to a
-  // film title to indicate accessibility / sensory-friendly / themed
-  // screenings. The colon-and-space delimiter is the giveaway. Listed
-  // explicitly rather than via a general `^[^:]+:\s+` because real titles
-  // routinely include colons ("Top Gun: Maverick", "Star Wars: A New
-  // Hope"). Add new programmes here as cinemas introduce them.
+  // film title to indicate accessibility / sensory-friendly / themed /
+  // festival screenings. The colon-and-space delimiter is the giveaway.
+  // Listed explicitly rather than via a general `^[^:]+:\s+` because real
+  // titles routinely include colons ("Top Gun: Maverick", "Star Wars: A New
+  // Hope"). Kept in the display title and cache key (a programme screening is
+  // its own row); stripped only by `apiQuery` for upstream lookups. Add new
+  // programmes / festival banners here as cinemas introduce them.
   private val ProgrammePrefix   =
     ("""(?i)^(?:Kino\s+bez\s+barier|""" +
      """Pokaz\s+sensorycznie\s+przyjazny|""" +
      """Filmowe\s+Poranki|""" +
      """Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|""" +
+     """Cinema\s+Italia\s+Oggi|""" +
      """Plenerowe\s+Pa[łl]acowe):\s+""").r
   // Trailing accessibility tag — "(AD)", "(AD + CC)", "(AD + CC + PJM)" or
   // a truncated variant where the closing paren got chopped during display
