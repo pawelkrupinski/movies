@@ -64,7 +64,11 @@ class MongoConnection extends Logging {
           (client, db)
         }.recover {
           case ex: Throwable =>
-            logger.error(s"MongoConnection init failed (${ex.getMessage}) — disabled.")
+            val isLocalUri = uri.contains("127.0.0.1") || uri.contains("localhost")
+            val hint = if (isLocalUri)
+              " (local URI — start the tunnel with `flyctl proxy 27017:27017 --app kinowo-mongo` and restart, or uncomment the Atlas fallback in .env.local)"
+            else ""
+            logger.error(s"MongoConnection init failed (${ex.getMessage}) — disabled.$hint")
             null
         }.toOption.filter(_ != null) match {
           case Some((c, d)) => (Some(c), Some(d))
