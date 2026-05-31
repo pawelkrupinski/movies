@@ -21,6 +21,11 @@ on:
 jobs:
     build:
         runs-on: ubuntu-latest
+        # `checks: write` so action-junit-report can post the failure
+        # check-run + summary from the Gradle JUnit XML.
+        permissions:
+            contents: read
+            checks: write
         defaults:
             run:
                 working-directory: android
@@ -46,6 +51,19 @@ jobs:
 
             - name: Unit tests
               run: ./gradlew --no-daemon testDebugUnitTest
+
+            # Surface the Gradle JUnit XML as a check-run + summary. The
+            # HTML report is still uploaded on failure below for the full
+            # stack traces. `report_paths` is repo-relative (the action
+            # runs outside the `working-directory: android` default).
+            - name: Publish test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  report_paths: 'android/app/build/test-results/testDebugUnitTest/*.xml'
+                  check_name: Android unit tests
+                  detailed_summary: true
+                  include_passed: false
 
             - name: Assemble debug APK
               run: ./gradlew --no-daemon assembleDebug
