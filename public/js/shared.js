@@ -1420,8 +1420,7 @@
   // `buildShareURL`, `applyFiltersFromURL`, `buildCinemaPanel`/`syncAllCheckbox`
   // all key off it and need no view-awareness of their own.
   let _filtryCinemaSection = null;
-  function applyViewChrome(view) {
-    setActiveTab(view);
+  function syncFiltryForView(view) {
     if (view === 'kina') {
       const section = document.getElementById('filtry-cinema-section');
       if (section) { _filtryCinemaSection = section; section.remove(); }
@@ -1439,9 +1438,13 @@
   // view's inline IIFE) and the optional per-view `window.__viewInit` hook
   // (Kina sets it to `buildCinemaPills`; Filmy clears it). Must run AFTER the
   // view's inline script has (re)defined those globals.
+  // Re-inits everything tied to the CURRENT view's grid DOM. Deliberately does
+  // NOT touch the active nav-tab — callers set that at the right moment
+  // (immediately on a click/popstate, but only on COMMIT for a finger-drag, so
+  // a half-dragged-then-cancelled gesture doesn't leave the wrong tab lit).
   function bootView() {
     const view = document.getElementById('view-root')?.dataset.view || 'films';
-    applyViewChrome(view);     // stash/restore Filtry cinema section BEFORE the
+    syncFiltryForView(view);   // stash/restore Filtry cinema section BEFORE the
                                // panel/label builders read `#cinema-list`.
     buildIndex();
     // Cinema picker lives in the Filtry dropdown now — populate the list so the
@@ -1572,6 +1575,7 @@
     // filtered/sorted/pinned before it slides in (no unfiltered flash).
     runScripts(incoming);
     bootView();
+    setActiveTab(destView);   // bootView no longer touches the tab; set it here
 
     let settled = false;
     const settle = () => {
@@ -1636,45 +1640,176 @@
                destView === 'kina' ? 'left' : 'right', false);
   });
 
-  // ── Swipe to switch (phones) ────────────────────────────────────────────────
+  // ── Swipe to switch (phones): real finger-tracking ──────────────────────────
   //
-  // Horizontal-dominant swipe past a threshold switches view. All listeners are
-  // passive (never block scroll); a vertical-dominant gesture is abandoned on
-  // the first move. A swipe that STARTS on the cinema-pill strip is ignored so
-  // the strip's own horizontal scroll wins (the user chose "pills win").
-  let _sw = null;
+  // During a horizontal drag the current view follows the finger and the
+  // sibling tracks in from the edge (a real pager); on release we animate to
+  // commit (past ~35% of the width) or snap back. All listeners are passive so
+  // vertical scrolling is never blocked — a vertical-dominant gesture is
+  // abandoned on the first move (and `touch-action: pan-y` on the grid keeps
+  // the browser from cancelling a horizontal drag as a scroll). A drag that
+  // STARTS on the cinema-pill strip is ignored so the strip's own horizontal
+  // scroll wins ("pills win").
+  //
+  // Tracking needs the sibling in the DOM for the whole drag, so it engages
+  // only when the sibling is already prefetched (warm by boot). Cold cache →
+  // fall back to a threshold→navigateTo switch on release.
+  let _drag = null;
+
+  function detachViewIds(root) {
+    const saved = [{ el: root, id: root.id }];
+    root.removeAttribute('id');
+    ['film-grid', 'film-counter', 'no-films', 'cinema-pills'].forEach(id => {
+      const el = root.querySelector('#' + id);
+      if (el) { saved.push({ el, id }); el.removeAttribute('id'); }
+    });
+    return saved;
+  }
+  function restoreViewIds(saved) { saved.forEach(s => { s.el.id = s.id; }); }
+
+  // Mount the prefetched sibling off-screen, make it the live (filtered)
+  // #view-root, and freeze the outgoing as an id-less static visual. Returns
+  // the drag context, or null when the sibling isn't warm in the cache.
+  function beginDrag(destView, w) {
+    const hit = _prefetch.get(VIEW_PATHS[destView]);
+    if (!hit || Date.now() - hit.ts >= PREFETCH_TTL_MS) return null;
+    let incoming;
+    try {
+      const found = new DOMParser().parseFromString(hit.html, 'text/html').getElementById('view-root');
+      if (!found) return null;
+      incoming = document.importNode(found, true);
+    } catch (e) { return null; }
+
+    const pager   = document.getElementById('view-pager');
+    const current = document.getElementById('view-root');
+    const dir     = destView === 'kina' ? 'left' : 'right';
+    const enter   = dir === 'left' ? w : -w;
+
+    const saved = detachViewIds(current);          // outgoing → frozen visual
+    // Snapshot the outgoing view's globals (functions carry their closures, so
+    // its built INDEX + live state like `_kinaPinned` survive) — restored on a
+    // snap-back instead of re-running its script, which would reset that state.
+    const globals = {
+      buildIndex:   window.buildIndex,
+      applyFilters: window.applyFilters,
+      viewInit:     window.__viewInit,
+      kinaPinned:   window._kinaPinned,
+    };
+    incoming.classList.add('view-entering');
+    incoming.style.transform = 'translateX(' + enter + 'px)';
+    pager.appendChild(incoming);
+    runScripts(incoming);   // re-assign window.* to the incoming view…
+    bootView();             // …then build + filter it (now the sole #view-root).
+                            // No setActiveTab — the tab flips only on commit.
+    return { pager, current, incoming, dir, enter, w, destView, saved, globals };
+  }
+
+  function settleDrag(ctx, commit) {
+    const { pager, current, incoming, dir, enter, w, destView, saved, globals } = ctx;
+    const finish = () => {
+      pager.classList.remove('view-sliding');
+      if (commit) {
+        current.remove();
+        incoming.classList.remove('view-entering');
+        incoming.style.transform = '';
+        setActiveTab(destView);
+        // Preserve the current query+hash so the URL matches the view we
+        // already filtered against it during the drag (e.g. ?date= persists).
+        history.pushState({ view: destView }, '',
+          VIEW_PATHS[destView] + location.search + location.hash);
+        window.scrollTo(0, 0);
+        prefetchView(destView === 'kina' ? 'films' : 'kina');
+      } else {
+        // Snap-back: drop the incoming and restore the outgoing as the live
+        // view. Restore its globals (not re-run its script — that would reset
+        // runtime state like a Kina pin), re-id it, then rebuild its index.
+        incoming.remove();
+        restoreViewIds(saved);
+        current.style.transform = '';
+        window.buildIndex   = globals.buildIndex;
+        window.applyFilters = globals.applyFilters;
+        window.__viewInit   = globals.viewInit;
+        window._kinaPinned  = globals.kinaPinned;
+        bootView();
+        setActiveTab(current.dataset.view);
+      }
+      _swapping = false;
+    };
+
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if (commit) {
+        current.style.transform  = 'translateX(' + (dir === 'left' ? -w : w) + 'px)';
+        incoming.style.transform = 'translateX(0)';
+      }
+      finish();
+      return;
+    }
+    pager.classList.add('view-sliding');   // transition transform on both panels
+    requestAnimationFrame(() => {
+      current.style.transform  = commit ? 'translateX(' + (dir === 'left' ? -w : w) + 'px)' : 'translateX(0)';
+      incoming.style.transform = commit ? 'translateX(0)' : 'translateX(' + enter + 'px)';
+    });
+    let done = false;
+    const onEnd = (e) => {
+      if (e && e.target !== incoming && e.target !== current) return;
+      if (done) return;
+      done = true;
+      incoming.removeEventListener('transitionend', onEnd);
+      finish();
+    };
+    incoming.addEventListener('transitionend', onEnd);
+    setTimeout(onEnd, 450);   // fallback if transitionend is missed
+  }
+
   document.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') return;
+    if (e.pointerType === 'mouse' || _swapping) return;
     if (!matchMedia('(pointer: coarse)').matches) return;
     if (!document.getElementById('view-root')) return;
     if (e.target instanceof Element && e.target.closest('.cinema-nav-row, #cinema-pills')) return;
-    _sw = { x0: e.clientX, y0: e.clientY, axis: null };
+    _drag = { x0: e.clientX, y0: e.clientY, axis: null, ctx: null, fallbackDest: null };
   }, { passive: true });
 
   document.addEventListener('pointermove', (e) => {
-    if (!_sw) return;
-    const dx = e.clientX - _sw.x0, dy = e.clientY - _sw.y0;
-    if (_sw.axis === null) {
-      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;   // inside the deadzone
-      _sw.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    if (!_drag) return;
+    const dx = e.clientX - _drag.x0, dy = e.clientY - _drag.y0;
+    if (_drag.axis === null) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;   // deadzone
+      _drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      if (_drag.axis === 'y') { _drag = null; return; }     // vertical scroll — bail
+      const cur  = document.getElementById('view-root').dataset.view;
+      const dest = dx < 0 ? 'kina' : 'films';   // swipe-left → right tab; swipe-right → left tab
+      if (dest === cur) { _drag = null; return; }           // no view that way
+      const w   = document.getElementById('view-pager').offsetWidth || window.innerWidth;
+      const ctx = beginDrag(dest, w);
+      if (ctx) { _drag.ctx = ctx; _swapping = true; }
+      else     { _drag.fallbackDest = dest; }   // cold cache → threshold switch on release
     }
-    if (_sw.axis === 'y') _sw = null;   // vertical scroll — let the page own it
+    if (_drag && _drag.ctx) {
+      const { current, incoming, dir, enter, w } = _drag.ctx;
+      const d = dir === 'left' ? Math.max(-w, Math.min(0, dx)) : Math.min(w, Math.max(0, dx));
+      current.style.transform  = 'translateX(' + d + 'px)';
+      incoming.style.transform = 'translateX(' + (enter + d) + 'px)';
+    }
   }, { passive: true });
 
-  function endSwipe(e) {
-    if (!_sw) return;
-    const axis = _sw.axis, dx = e.clientX - _sw.x0;
-    _sw = null;
-    if (axis !== 'x' || _swapping) return;
-    const root = document.getElementById('view-root');
-    if (!root) return;
-    if (Math.abs(dx) < Math.max(60, window.innerWidth * 0.20)) return;
-    const cur = root.dataset.view;
-    if (dx < 0 && cur === 'films')      navigateTo('/kina', 'kina',  'left',  true);
-    else if (dx > 0 && cur === 'kina')  navigateTo('/',     'films', 'right', true);
+  function endDrag(e) {
+    const drag = _drag;
+    _drag = null;
+    if (!drag || drag.axis !== 'x') return;
+    const dx = e.clientX - drag.x0;
+    if (drag.ctx) {
+      settleDrag(drag.ctx, Math.abs(dx) > drag.ctx.w * 0.35);
+    } else if (drag.fallbackDest && Math.abs(dx) >= Math.max(60, window.innerWidth * 0.20)) {
+      navigateTo(VIEW_PATHS[drag.fallbackDest], drag.fallbackDest,
+                 drag.fallbackDest === 'kina' ? 'left' : 'right', true);
+    }
   }
-  document.addEventListener('pointerup', endSwipe, { passive: true });
-  document.addEventListener('pointercancel', () => { _sw = null; }, { passive: true });
+  document.addEventListener('pointerup', endDrag, { passive: true });
+  document.addEventListener('pointercancel', () => {
+    const drag = _drag;
+    _drag = null;
+    if (drag && drag.ctx) settleDrag(drag.ctx, false);   // browser took over → snap back
+  }, { passive: true });
 
   document.addEventListener('DOMContentLoaded', () => {
     // One-time shell init — navbar chrome that survives view swaps and must
@@ -1684,6 +1819,7 @@
     updateNavbar();
     // Grid-dependent init — re-runs on every view swap.
     bootView();
+    setActiveTab(document.getElementById('view-root')?.dataset.view || 'films');
     bootMergeFromServer();
     // Warm the sibling so the first switch is instant.
     const here = document.getElementById('view-root')?.dataset.view;

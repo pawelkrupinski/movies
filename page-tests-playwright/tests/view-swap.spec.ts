@@ -155,6 +155,48 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await expect(page.locator('.navbar .nav-tab.active')).toContainText('Filmy');
   });
 
+  test('the view tracks the finger mid-drag (real pager, not just a thresholded swipe)', async ({ page }) => {
+    await waitForCards(page);
+    // Warm both prefetch caches deterministically: a tab click runs navigateTo
+    // which awaits the fetch, so after a Kina→Filmy round-trip both siblings
+    // are cached and a drag will engage live tracking (not the cold fallback).
+    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
+    await page.waitForURL(/\/kina$/);
+    await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);
+
+    const box = await page.locator('#film-grid').boundingBox();
+    const y = box.y + Math.min(40, box.height / 2);
+    const x0 = box.x + box.width * 0.6;
+    const client = await page.context().newCDPSession(page);
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
+    // Small move locks the axis + begins tracking; a second move drags partway
+    // (well under the ~35% commit threshold).
+    for (const x of [x0 - 20, x0 - 90]) {
+      await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] });
+    }
+
+    const mid = await page.evaluate(() => {
+      const panels = document.querySelectorAll('#view-pager > main');
+      const live = document.getElementById('view-root');
+      const outgoing = [...panels].find((p) => p !== live);
+      return {
+        panels: panels.length,
+        liveView: live && live.dataset.view,
+        outgoingMoved: outgoing ? getComputedStyle(outgoing).transform !== 'none' : false,
+      };
+    });
+    expect(mid.panels).toBe(2);            // both views mounted during the drag
+    expect(mid.liveView).toBe('kina');     // the incoming view is live + tracking
+    expect(mid.outgoingMoved).toBe(true);  // the outgoing view follows the finger
+
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await client.detach();
+    // Settles back to a single live view (snap-back or commit — either is fine).
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);
+  });
+
   test('swipe starting on the cinema-pill strip does NOT switch view', async ({ page }) => {
     await page.goto('/kina');
     await waitForCards(page);
