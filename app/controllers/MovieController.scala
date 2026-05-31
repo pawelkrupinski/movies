@@ -24,7 +24,8 @@ case class ApiRatings(
 )
 case class ApiFilm(
   title: String, posterURL: Option[String], fallbackPosterURLs: Seq[String],
-  runtimeMinutes: Option[Int], ratings: ApiRatings,
+  runtimeMinutes: Option[Int], releaseYear: Option[Int], genres: Seq[String],
+  ratings: ApiRatings,
   countries: Seq[String], directors: Seq[String], cast: Seq[String],
   showings: Seq[ApiDayShowings]
 )
@@ -69,6 +70,8 @@ object ApiFilm {
       posterURL        = fs.posterUrl,
       fallbackPosterURLs = e.map(_.fallbackPosterUrls).getOrElse(Seq.empty),
       runtimeMinutes   = fs.movie.runtimeMinutes,
+      releaseYear      = fs.movie.releaseYear,
+      genres           = fs.movie.genres,
       ratings          = ApiRatings(
         imdb              = e.flatMap(_.imdbRating),
         imdbURL           = e.flatMap(_.imdbUrl),

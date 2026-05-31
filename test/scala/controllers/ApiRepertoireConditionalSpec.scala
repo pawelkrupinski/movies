@@ -23,6 +23,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
         Helios -> SourceData(
           title       = Some("Test Film"),
           releaseYear = Some(2024),
+          genres      = Seq("Dramat", "Komedia"),
           synopsis    = Some("A test synopsis."),
           trailerUrl  = Some("https://www.youtube.com/watch?v=abc123DEF45"),
           showtimes   = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
@@ -54,6 +55,16 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     (film \ "title").as[String] shouldBe "Test Film"
     (film \ "synopsis").toOption shouldBe None
     (film \ "trailerURLs").toOption shouldBe None
+  }
+
+  it should "carry releaseYear and genres on the lean listing (mobile card parity)" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.apiRepertoire()(FakeRequest())
+    status(result) shouldBe OK
+    val film = play.api.libs.json.Json.parse(contentAsString(result))
+      .as[Seq[play.api.libs.json.JsValue]].head
+    (film \ "releaseYear").as[Int] shouldBe 2024
+    (film \ "genres").as[Seq[String]] shouldBe Seq("Dramat", "Komedia")
   }
 
   "apiDetails" should "return synopsis + embed-transformed trailerURLs keyed by title" in {
