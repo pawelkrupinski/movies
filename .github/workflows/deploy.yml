@@ -41,6 +41,12 @@ concurrency:
 jobs:
     test:
         runs-on: ubuntu-latest
+        # `checks: write` so action-junit-report can post the failure
+        # check-run + summary. Scoped per-job so `deploy` keeps its
+        # default token for download-artifact / flyctl.
+        permissions:
+            contents: read
+            checks: write
         steps:
             - uses: actions/checkout@v4
 
@@ -71,6 +77,15 @@ jobs:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
+
+            - name: Publish test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  report_paths: 'target/test-reports/unit/**/*.xml'
+                  check_name: unit tests
+                  detailed_summary: true
+                  include_passed: false
 
             # Produce the Play universal-stage distribution here so the
             # deploy job can ship it straight to Fly's builder without
@@ -197,6 +212,9 @@ jobs:
 
     integration-test:
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            checks: write
         steps:
             - uses: actions/checkout@v4
 
@@ -224,6 +242,15 @@ jobs:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:      ${{ secrets.MONGODB_DB }}
+
+            - name: Publish test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  report_paths: 'target/test-reports/it/**/*.xml'
+                  check_name: integration tests
+                  detailed_summary: true
+                  include_passed: false
 
 
     # Cross-browser page tests, split into one matrix job per engine

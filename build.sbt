@@ -33,6 +33,19 @@ lazy val root = (project in file("."))
     PageTest / scalaSource              := baseDirectory.value / "page" / "scala",
     PageTest / resourceDirectory        := baseDirectory.value / "page" / "resources",
     PageTest / parallelExecution        := false,
+    // Emit JUnit-style XML alongside the console reporter so CI can turn
+    // a failure into an inline check-run annotation + job summary
+    // (mikepenz/action-junit-report) instead of a raw log scroll. `-o`
+    // keeps ScalaTest's normal console output; `-u <dir>` adds the XML.
+    // Distinct dirs per config so a local full run doesn't intermix them.
+    // Inside `.settings` so `IntegrationTest`/`PageTest` resolve to the
+    // local config vals, not `sbt.IntegrationTest`.
+    Test / testOptions +=
+      Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports/unit"),
+    IntegrationTest / testOptions +=
+      Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports/it"),
+    PageTest / testOptions +=
+      Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports/page"),
     pipelineStages := Seq(digest),
     // Eagerly trigger AppLoader on `sbt run` instead of waiting for the
     // first request. See project/Warmup.scala.
