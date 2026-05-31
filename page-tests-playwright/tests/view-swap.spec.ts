@@ -165,6 +165,34 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await expect(page.locator('.navbar .nav-tab.active')).toContainText('Filmy');
   });
 
+  // Regression: tapping a tab leaves a sticky `:hover` on touch devices (the
+  // browser parks hover on the last-tapped element until you tap elsewhere).
+  // If `.nav-tab:hover` paints the same highlight as `.nav-tab.active`, a
+  // subsequent swipe back lights up BOTH tabs — the freshly-active one AND the
+  // still-hovered old one. Hover styling must be gated to real hover devices.
+  test('a swipe after tapping a tab leaves exactly one tab highlighted', async ({ page }) => {
+    await waitForCards(page);
+    const HIGHLIGHT = 'rgb(58, 58, 110)';   // #3a3a6e — the .active / :hover fill
+    // Only the two view tabs — the login pill carries #3a3a6e as its base fill.
+    const litTabs = () => page.evaluate((hl) =>
+      [...document.querySelectorAll('.navbar a.nav-tab')]
+        .filter((a) => ['/', '/kina'].includes(a.getAttribute('href')))
+        .filter((a) => getComputedStyle(a).backgroundColor === hl)
+        .map((a) => a.textContent.trim()), HIGHLIGHT);
+
+    // Land on Kina, then park the pointer on its tab — the same sticky-hover
+    // state a phone leaves behind after a tap.
+    await page.goto('/kina');
+    await waitForCards(page);
+    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).hover();
+    // Swipe back to Filmy. The pointer never leaves the Kina tab.
+    await swipe(page, '#film-grid', 200);
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await expect(page.locator('.navbar .nav-tab.active')).toContainText('Filmy');
+
+    expect(await litTabs()).toEqual(['Filmy']);
+  });
+
   test('the view tracks the finger mid-drag (real pager, not just a thresholded swipe)', async ({ page }) => {
     await waitForCards(page);
     // Warm both prefetch caches deterministically: a tab click runs navigateTo
@@ -269,6 +297,36 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
 
     await page.waitForURL(/\/kina$/);
     expect(await page.evaluate(() => document.getElementById('view-root')?.dataset.view)).toBe('kina');
+  });
+
+  test('dragging the neighbour in then back to the origin and releasing there stays put', async ({ page }) => {
+    // iOS pager: the decision is made on lift by the FINAL position, not by
+    // having crossed a threshold at some point mid-drag. Drag Kina well in,
+    // then drag all the way back and release at the origin → stay on Filmy.
+    await waitForCards(page);
+    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
+    await page.waitForURL(/\/kina$/);
+    await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);
+
+    await page.evaluate(() => {
+      const el = document.getElementById('film-grid');
+      const r = el.getBoundingClientRect();
+      const y = r.top + 40;
+      const x0 = r.left + r.width * 0.8;
+      const ev = (type, x) => el.dispatchEvent(new PointerEvent(type, {
+        clientX: x, clientY: y, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true,
+      }));
+      ev('pointerdown', x0);
+      for (let i = 1; i <= 6; i++) ev('pointermove', x0 - (240 * i) / 6);          // drag Kina in (left)
+      for (let i = 1; i <= 6; i++) ev('pointermove', x0 - 240 + (240 * i) / 6);    // drag back to origin
+      ev('pointerup', x0);                                                          // released at the origin
+    });
+
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);   // settled (snapped back)
+    expect(await isKina(page)).toBe('films');                          // stayed on Filmy
+    await expect(page).toHaveURL((u) => new URL(u).pathname === '/');
   });
 
   test('swipe starting on the cinema-pill strip does NOT switch view', async ({ page }) => {

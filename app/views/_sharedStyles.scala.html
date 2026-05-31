@@ -260,7 +260,14 @@
     justify-content: center;
     min-height: 35px;
   }
-  .nav-tab:hover { background: #3a3a6e; color: #fff; }
+  /* Gate `:hover` behind `hover: hover` so iOS/Android don't park the post-tap
+     sticky hover on the tab you just left — otherwise a swipe to the sibling
+     view lights up BOTH tabs (the new `.active` one and the still-hovered old
+     one). Same reasoning as `.cinema-pill:hover` below. */
+  @@media (hover: hover) and (pointer: fine) {
+    .nav-tab:hover { background: #3a3a6e; color: #fff; }
+    .nav-tab-login:hover { background: #5a5a9e; color: #fff; }
+  }
   .nav-tab.active { background: #3a3a6e; color: #fff; }
   /* ── Auth pill / dropdown / login modal ──────────────────────────────── */
   .nav-tab-login {
@@ -281,7 +288,6 @@
     color: #aad4ff;
     padding: .2rem .7rem;
   }
-  .nav-tab-login:hover { background: #5a5a9e; color: #fff; }
 
   /* The "logged in" pill — avatar + first name, click toggles a dropdown
      anchored below it. Position:relative so the absolute-positioned
