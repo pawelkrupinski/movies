@@ -52,6 +52,16 @@ data class Film(
             .distinctBy { it.cinema }
             .sortedBy { it.cinema }
             .toList()
+
+    /** Earliest screening as a sortable `YYYY-MM-DDTHH:MM` string across every
+     *  cinema and day this film carries — the Android twin of the web's
+     *  `group.date + 'T' + badge.time` earliest. Lexicographic order matches
+     *  chronological order thanks to the fixed-width ISO layout. Films with no
+     *  showings (never reached after filtering) sort last. */
+    val earliestShowing: String
+        get() = showings.asSequence()
+            .flatMap { day -> day.cinemas.asSequence().flatMap { it.showtimes.asSequence() }.map { "${day.date}T${it.time}" } }
+            .minOrNull() ?: "￿"
 }
 
 /** A cinema's external film-page link, shown as a pill on the detail screen. */
@@ -70,6 +80,15 @@ data class Ratings(
 ) {
     val isEmpty: Boolean
         get() = imdb == null && metascore == null && rottenTomatoes == null && filmweb == null
+
+    /** Weighted average used by the "Ocena" sort, mirroring the server's
+     *  `MovieRecord.weightedRating`: each present score normalised to a 0–10
+     *  scale, averaged; 0.0 when no scores exist (so unrated films sink). */
+    val weighted: Double
+        get() {
+            val parts = listOfNotNull(imdb, filmweb, metascore?.let { it / 10.0 }, rottenTomatoes?.let { it / 10.0 })
+            return if (parts.isEmpty()) 0.0 else parts.sum() / parts.size
+        }
 
     companion object {
         val EMPTY = Ratings()

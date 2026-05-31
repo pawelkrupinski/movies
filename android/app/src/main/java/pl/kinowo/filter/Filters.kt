@@ -74,6 +74,21 @@ sealed interface DateFilter {
 }
 
 /**
+ * Sort axis of the Filtry menu, mirroring the web's "Sortuj" dropdown
+ * (`public/js/shared.js` `compareCards`): nearest upcoming showing first
+ * (default), or highest weighted rating first. Both tie-break to the earliest
+ * showing and then to input order (the sort is stable), as on the web.
+ */
+enum class SortOption(val label: String) {
+    EARLIEST("Najbliższy seans"),
+    RATING("Ocena");
+
+    companion object {
+        val DEFAULT = EARLIEST
+    }
+}
+
+/**
  * Format axis of the Filtry dropdown: Wymiar / Wersja / IMAX format tokens
  * combined with a from-hour lower bound. Each axis independent — empty
  * radio strings mean "no constraint", `fromHour < 0` means "Dowolna". A

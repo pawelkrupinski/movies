@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.FormatFilter
+import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.NameCount
@@ -76,8 +77,18 @@ fun FiltersSheet(
                 }
             }
 
+            // Sortuj — view-ordering axis above the content filters, mirroring
+            // the web "Sortuj" dropdown.
+            item(key = "sec_sort") {
+                FilterSectionLabel("Sortuj")
+                SegmentedChoice(
+                    options = SortOption.entries.map { it.label to it },
+                    selected = vm.sortBy,
+                ) { vm.sortBy = it }
+            }
+
             // Section order mirrors the web Filtry panel (app/views/_navbar.scala.html):
-            // Ukryte filmy → Kina → Kraj/Gatunek/Reżyseria/Obsada → Wymiar/Wersja/IMAX/Od godziny.
+            // Sortuj → Ukryte filmy → Kina → Kraj/Gatunek/Reżyseria/Obsada → Wymiar/Wersja/IMAX/Od godziny.
             // (Web's "Sale" room picker has no Android equivalent.)
 
             // Ukryte filmy — collapsible, matching Kina and the name filters.
@@ -133,7 +144,7 @@ fun FiltersSheet(
             // Wymiar
             item {
                 FilterSectionLabel("Wymiar")
-                ThreeWaySegment(
+                SegmentedChoice(
                     options = listOf("Wszystkie" to "", "2D" to "2D", "3D" to "3D"),
                     selected = vm.formatFilter.dimension,
                 ) { vm.formatFilter = vm.formatFilter.copy(dimension = it) }
@@ -141,7 +152,7 @@ fun FiltersSheet(
             // Wersja
             item {
                 FilterSectionLabel("Wersja")
-                ThreeWaySegment(
+                SegmentedChoice(
                     options = listOf("Wszystkie" to "", "Napisy" to "NAP", "Dubbing" to "DUB"),
                     selected = vm.formatFilter.language,
                 ) { vm.formatFilter = vm.formatFilter.copy(language = it) }
@@ -275,7 +286,7 @@ private fun FilterSectionLabel(text: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ThreeWaySegment(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
+private fun <T> SegmentedChoice(options: List<Pair<String, T>>, selected: T, onSelect: (T) -> Unit) {
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         options.forEachIndexed { i, (label, value) ->
             SegmentedButton(

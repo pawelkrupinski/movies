@@ -111,6 +111,23 @@ fun List<Film>.filteredFor(
 }
 
 /**
+ * Order a filtered film list for display, mirroring the web's `compareCards`:
+ *
+ *  - [SortOption.EARLIEST] — nearest upcoming showing first.
+ *  - [SortOption.RATING]   — highest weighted rating first, ties broken by the
+ *                            earliest showing.
+ *
+ * `sortedWith` is stable, so films that tie on every key keep their input
+ * order — the same final fallback the web uses (`a.idx - b.idx`).
+ */
+fun List<Film>.sortedFor(sort: SortOption): List<Film> = when (sort) {
+    SortOption.EARLIEST -> sortedBy { it.earliestShowing }
+    SortOption.RATING -> sortedWith(
+        compareByDescending<Film> { it.ratings.weighted }.thenBy { it.earliestShowing },
+    )
+}
+
+/**
  * Pivot the cross-cinema film list into per-cinema sections. Each output
  * Film carries only the showings at its section's cinema (so dropping the
  * per-card cinema label is non-lossy). Sections sort alphabetically by pill
