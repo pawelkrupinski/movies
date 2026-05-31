@@ -52,6 +52,7 @@ import pl.kinowo.ui.theme.TextSecondary
 fun FiltersSheet(
     vm: KinowoViewModel,
     films: List<Film>,
+    showCinemaFilter: Boolean,
     sheetState: SheetState,
     onDismiss: () -> Unit,
 ) {
@@ -101,7 +102,9 @@ fun FiltersSheet(
             }
 
             // Kina — collapsible, matching Ukryte filmy and the name filters.
-            if (allCinemas.isNotEmpty()) {
+            // Hidden on the /kina tab, where the cinema pill row pins a single
+            // cinema and this multi-select would only confuse.
+            if (showCinemaFilter && allCinemas.isNotEmpty()) {
                 item(key = "sec_cinemas") {
                     CollapsibleSection("Kina", if (disabled.isNotEmpty()) "${disabled.size} wyłączonych" else null) {
                         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {

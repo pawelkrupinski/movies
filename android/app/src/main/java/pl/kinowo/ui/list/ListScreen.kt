@@ -37,7 +37,6 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Swipe
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
@@ -184,7 +183,13 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                 if (page == 0) {
                                     FilmsGrid(vm.filmsForFilmsTab(films, hidden, disabled), onOpenFilm) { vm.hide(it) }
                                 } else {
-                                    CinemaGrid(vm.cinemaSections(films, hidden), onOpenFilm) { vm.hide(it) }
+                                    CinemaGrid(
+                                        vm.cinemaSections(films, hidden),
+                                        // A pinned cinema shows only its own section, so the
+                                        // per-cinema header is redundant — the pill already names it.
+                                        showHeaders = vm.pinnedCinema == null,
+                                        onOpen = onOpenFilm,
+                                    ) { vm.hide(it) }
                                 }
                             }
                         }
@@ -213,6 +218,9 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
         FiltersSheet(
             vm = vm,
             films = films,
+            // The /kina tab pins one cinema via its pill row, so the multi-select
+            // cinema filter is redundant there — only the Filmy tab shows it.
+            showCinemaFilter = pager.currentPage == 0,
             sheetState = sheetState,
             onDismiss = { showFilters = false },
         )
@@ -329,20 +337,16 @@ private fun FloatingSearchBar(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DateChips(vm: KinowoViewModel) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 11.dp, vertical = 5.dp),
     ) {
         for (preset in DateFilter.presets) {
-            val selected = vm.dateFilter == preset
-            FilterChip(
-                selected = selected,
-                onClick = { vm.dateFilter = preset },
-                label = { Text(preset.label) },
-            )
+            FilterPill(preset.label, selected = vm.dateFilter == preset) { vm.dateFilter = preset }
         }
     }
 }
@@ -361,9 +365,9 @@ private fun CinemaChips(vm: KinowoViewModel, films: List<Film>) {
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 11.dp, vertical = 5.dp),
     ) {
-        CinemaPill("Wszystkie", selected = vm.pinnedCinema == null) { vm.pinnedCinema = null }
+        FilterPill("Wszystkie", selected = vm.pinnedCinema == null) { vm.pinnedCinema = null }
         for (cinema in cinemas) {
-            CinemaPill(
+            FilterPill(
                 title = CinemaSection.pillName(cinema),
                 selected = vm.pinnedCinema == cinema,
             ) { vm.pinnedCinema = cinema }
@@ -374,17 +378,19 @@ private fun CinemaChips(vm: KinowoViewModel, films: List<Film>) {
 // Half the gap between neighbouring pills. It lives as padding *inside* each
 // pill's tap target (with zero Row spacing), so the rectangular hit areas of
 // adjacent pills meet exactly while the visible capsules keep a 2*tapMargin gap.
-private val CinemaPillTapMargin = 3.dp
+private val FilterPillTapMargin = 3.dp
 
+// Shared pill for the date and cinema selector rows: an edge-to-edge capsule
+// with a rectangular tap area, mirroring iOS `CinemaPillsRow`.
 @Composable
-private fun CinemaPill(title: String, selected: Boolean, onClick: () -> Unit) {
+private fun FilterPill(title: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
             ) { onClick() }
-            .padding(CinemaPillTapMargin),
+            .padding(FilterPillTapMargin),
     ) {
         Text(
             title,
@@ -438,7 +444,7 @@ private fun FilmsGrid(films: List<Film>, onOpen: (String) -> Unit, onHide: (Stri
 }
 
 @Composable
-private fun CinemaGrid(sections: List<CinemaSection>, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
+private fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
     if (sections.isEmpty()) {
         EmptyState("Brak repertuaru.")
         return
@@ -464,14 +470,16 @@ private fun CinemaGrid(sections: List<CinemaSection>, onOpen: (String) -> Unit, 
         modifier = Modifier.fillMaxSize(),
     ) {
         for (section in sections) {
-            item(span = { GridItemSpan(maxLineSpan) }, key = "h_${section.cinema}") {
-                Text(
-                    text = CinemaSection.pillName(section.cinema),
-                    color = CinemaBlue,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
-                )
+            if (showHeaders) {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "h_${section.cinema}") {
+                    Text(
+                        text = CinemaSection.pillName(section.cinema),
+                        color = CinemaBlue,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                    )
+                }
             }
             items(section.films, key = { "${section.cinema}_${it.title}" }) { film ->
                 FilmCard(film, showCinemaHeaders = false, onOpen = { onOpen(film.title) }, onHide = { onHide(film.title) })
