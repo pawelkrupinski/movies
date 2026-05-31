@@ -329,6 +329,36 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await expect(page).toHaveURL((u) => new URL(u).pathname === '/');
   });
 
+  test('a locked-in horizontal drag claims the touch so the browser cannot scroll-steal it mid-drag', async ({ page }) => {
+    // A slow drag let the browser decide the gesture was a vertical scroll,
+    // steal it (pointercancel) and snap the page back to the origin without the
+    // finger lifting — worst near the start, while the browser is still
+    // scroll-detecting. Once a horizontal swipe is locked in, touchmove must be
+    // preventDefault-ed so the browser keeps its hands off the gesture.
+    await waitForCards(page);
+    const prevented = await page.evaluate(() => {
+      const el = document.getElementById('film-grid');
+      const r = el.getBoundingClientRect();
+      const y = r.top + 40;
+      const x0 = r.left + r.width * 0.7;
+      const pe = (type, x) => el.dispatchEvent(new PointerEvent(type, {
+        clientX: x, clientY: y, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true,
+      }));
+      pe('pointerdown', x0);
+      pe('pointermove', x0 - 30);
+      pe('pointermove', x0 - 60);   // axis locks horizontal
+      const touch = new Touch({ identifier: 1, target: el, clientX: x0 - 90, clientY: y });
+      const tm = new TouchEvent('touchmove', {
+        cancelable: true, bubbles: true, touches: [touch], targetTouches: [touch], changedTouches: [touch],
+      });
+      el.dispatchEvent(tm);
+      const result = tm.defaultPrevented;
+      pe('pointerup', x0 - 90);     // cleanup
+      return result;
+    });
+    expect(prevented).toBe(true);
+  });
+
   test('swipe starting on the cinema-pill strip does NOT switch view', async ({ page }) => {
     await page.goto('/kina');
     await waitForCards(page);

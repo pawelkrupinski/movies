@@ -1771,6 +1771,24 @@
               lastDx: 0, vx: 0, lastT: e.timeStamp };
   }, { passive: true });
 
+  // Claim a single-finger HORIZONTAL drag so the browser can't decide mid-drag
+  // that it's a vertical scroll, steal the gesture (pointercancel) and snap the
+  // page back to the origin without the finger lifting — which is what a slow
+  // drag triggered, worst near the start while the browser is still
+  // scroll-detecting. NON-passive so `preventDefault` is allowed; it fires only
+  // for a horizontal-leaning single touch, so vertical scroll and two-finger
+  // pinch-zoom still pass through untouched. Keyed off the same `x0/y0` the
+  // pointer handler set, and uses the same `|dx|>|dy|` lean test so the very
+  // first move is already claimed (before `pointermove` has locked the axis).
+  document.addEventListener('touchmove', (e) => {
+    if (!_drag || _drag.axis === 'y' || !e.cancelable || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    if (_drag.axis === 'x' ||
+        Math.abs(t.clientX - _drag.x0) > Math.abs(t.clientY - _drag.y0)) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
   document.addEventListener('pointermove', (e) => {
     if (!_drag) return;
     const dx = e.clientX - _drag.x0, dy = e.clientY - _drag.y0;
