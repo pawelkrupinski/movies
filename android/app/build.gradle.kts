@@ -88,8 +88,9 @@ dependencies {
 }
 
 // ── Emulator helpers ────────────────────────────────────────────────────────
-// `./gradlew runOnEmulator`   — boot an AVD if needed, install, launch.
-// `./gradlew debugOnEmulator` — same, but launch waiting for a debugger and
+// `./gradlew runOnEmulator`   — boot an AVD if needed, install, launch, then
+//                               stream the app's logcat until you Ctrl+C.
+// `./gradlew debugOnEmulator` — boot/install/launch waiting for a debugger and
 //                               wire up JDWP so an IDE or jdb can attach.
 // `./gradlew bootEmulator`    — just the boot half.
 // Pick a different AVD with `-Pavd=<name>` (default `kinowo`); change the JDWP
@@ -178,9 +179,10 @@ tasks.matching { it.name == "installDebug" }.configureEach { mustRunAfter("bootE
 
 tasks.register("runOnEmulator") {
     group = "emulator"
-    description = "Boot an emulator if needed, install the debug build, and launch the app."
+    description = "Boot an emulator if needed, install the debug build, launch the app, and stream its logcat."
     dependsOn("bootEmulator", "installDebug")
     val adb = adbExe
+    val appPkg = appId
     val component = mainComponent
     val noSdk = noSdkMessage
     doLast {
@@ -196,8 +198,29 @@ tasks.register("runOnEmulator") {
             .map { it.substringBefore("\t") }
             .firstOrNull { it.startsWith("emulator-") }
             ?: throw GradleException("No booted emulator to launch on.")
+
+        // Clear the buffer first so we only stream this run's logs; the app's
+        // own startup lines stay (they're written after the clear, before we
+        // start reading, and logcat replays the buffer before tailing).
+        sh(adb, "-s", serial, "logcat", "-c")
         logger.lifecycle("Launching $component on $serial…")
-        logger.lifecycle(sh(adb, "-s", serial, "shell", "am", "start", "-n", component))
+        sh(adb, "-s", serial, "shell", "am", "start", "-n", component)
+
+        // Scope logcat to just this app — resolve its pid (am start returns
+        // before the process is necessarily up, so poll).
+        var pid = ""
+        val deadline = System.currentTimeMillis() + 20_000
+        while (pid.isEmpty() && System.currentTimeMillis() < deadline) {
+            pid = sh(adb, "-s", serial, "shell", "pidof", appPkg).split(Regex("\\s+")).firstOrNull().orEmpty()
+            if (pid.isEmpty()) Thread.sleep(500)
+        }
+        if (pid.isEmpty()) throw GradleException("Couldn't find a running $appPkg process to tail (did the launch crash?).")
+
+        logger.lifecycle("Streaming logcat for $appPkg (pid $pid) — Ctrl+C to stop.\n")
+        val logcat = ProcessBuilder(adb, "-s", serial, "logcat", "--pid=$pid").redirectErrorStream(true).start()
+        // Blocks until logcat ends (i.e. you Ctrl+C the build, or the app dies).
+        logcat.inputStream.bufferedReader().forEachLine { logger.lifecycle(it) }
+        logcat.waitFor()
     }
 }
 
