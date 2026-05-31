@@ -848,6 +848,94 @@
   @@media (prefers-reduced-motion: reduce) {
     #view-pager.view-sliding > main { transition: none; }
   }
+  /* Claim horizontal gestures over the grid for the swipe-to-switch handler:
+     `pan-y` lets the browser keep vertical scrolling but stops it treating a
+     horizontal drag as a (non-existent) horizontal scroll and cancelling the
+     pointer stream mid-swipe. Scoped to the grid wrapper, NOT `#view-root`,
+     so it doesn't sit above the cinema-pill strip (a sibling outside
+     `.container-fluid`) whose own horizontal scroll must keep working. */
+  #view-pager .container-fluid { touch-action: pan-y; }
+
+  /* ── /kina view chrome ─────────────────────────────────────────────────────
+     These rules style the Kina view's cinema sections + the cinema-pill picker
+     strip. They live HERE (shared, on every page) rather than in kina's <head>
+     because the Filmy↔Kina slide-swap only injects `#view-root` (the body
+     fragment) — the swapped-in Kina view would otherwise arrive unstyled. They
+     are inert on Filmy/Plan (no `.cinema-section`/`.cinema-pill` elements). */
+
+  /* Off-screen cinema sections skip layout + paint until they scroll into view
+     (≈1200 px intrinsic-size placeholder keeps the scrollbar from jumping). */
+  .cinema-section { content-visibility: auto; contain-intrinsic-size: 0 1200px; }
+  .cinema-section-title { color: #aad4ff; font-size: 1rem; font-weight: 600; border-bottom: 1px solid #3a3a6e; padding-bottom: .4rem; }
+  /* Cinema-picker row — a second navbar row directly under the main navbar on
+     /kina. A pill is "active" only when it's the single pinned cinema. */
+  .cinema-nav-row {
+    gap: .25rem;
+    padding-top: .35rem !important;
+    padding-bottom: .35rem !important;
+    border-top: 1px solid #2a2a4e;
+    /* Override the shared `.navbar > div:first-child { height: 28px;
+       max-height: 28px }` cap — the pill strip sizes its own height off the
+       pills (one row tall) and shouldn't be clamped to the tab-row height. */
+    & > div:first-child { height: auto; max-height: none; }
+    /* The main `.navbar` is sticky; this second row scrolls away with the grid
+       (the pinned cinema lives in the URL path), so override to static — two
+       sticky rows would stack at the viewport top. */
+    position: static;
+  }
+  /* Pills inherit the nav-tab look (transparent, same blue + hover/active as
+     Filmy / Kina). Reset <button> chrome since each pill is a real <button>. */
+  .cinema-pill {
+    background: transparent;
+    color: #aad4ff;
+    border: none;
+    border-radius: 6px;
+    padding: .25rem .6rem;
+    font-size: .875rem;
+    font-family: inherit;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* Gate `:hover` behind `hover: hover` so iOS/Android Safari don't paint the
+     post-tap sticky hover onto a pill the user just *un*-pinned. */
+  @@media (hover: hover) and (pointer: fine) {
+    .cinema-pill:hover { background: #3a3a6e; color: #fff; }
+  }
+  .cinema-pill.active { background: #3a3a6e; color: #fff; }
+  /* The pill row is always a single, non-wrapping strip that scrolls
+     horizontally whenever the pills don't fit. The selector is
+     `.navbar.cinema-nav-row > .cinema-pills` (0,3,0) on purpose: the
+     `.navbar > div:first-child { overflow: visible }` rule above (active below
+     575px) matches this element at (0,2,1) and would otherwise clobber
+     `overflow-x`. `flex: 1 1 0; min-width: 0` constrain it to the nav width so
+     the overflow scrolls inside the row, not past the viewport edge. */
+  .navbar.cinema-nav-row > .cinema-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: .25rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .cinema-pills::-webkit-scrollbar { display: none; }
+  .cinema-pill { flex-shrink: 0; white-space: nowrap; }
+  /* Below 576 px the kina chrome rides the shared `--mobile-scale` knob, in
+     lockstep with the navbar/card text. */
+  @@media (max-width: 575px) {
+    .cinema-section-title { font-size: var(--mobile-scale); }
+    .cinema-nav-row {
+      padding-left:  calc(.75 * var(--mobile-scale)) !important;
+      padding-right: calc(.75 * var(--mobile-scale)) !important;
+      gap: calc(.25 * var(--mobile-scale));
+    }
+    .navbar.cinema-nav-row > .cinema-pills { gap: calc(.25 * var(--mobile-scale)); }
+    .cinema-pill {
+      font-size: calc(.875 * var(--mobile-scale));
+      padding: calc(.25 * var(--mobile-scale)) calc(.6 * var(--mobile-scale));
+    }
+  }
 </style>
 @_pillStyles()
 @_ratingStyles()

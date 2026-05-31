@@ -35,6 +35,15 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     await expect(page.locator('#film-grid .cinema-section')).not.toHaveCount(0); // cinema-grouped grid
     // Filtry's cinema section is stashed out of the DOM on Kina.
     await expect(page.locator('#filtry-cinema-section')).toHaveCount(0);
+    // The cinema-pill CSS lives in _sharedStyles (not Kina's <head>), so the
+    // swapped-in pills are actually styled — guards the "pills unstyled after
+    // swap" regression. `.cinema-pill { border-radius: 6px }` is shared-only.
+    const pillStyle = await page.evaluate(() => {
+      const cs = getComputedStyle(document.querySelector('#cinema-pills .cinema-pill'));
+      return { radius: cs.borderRadius, cursor: cs.cursor };
+    });
+    expect(pillStyle.radius).toBe('6px');
+    expect(pillStyle.cursor).toBe('pointer');
   });
 
   test('clicking Filmy swaps back to the film grid', async ({ page }) => {
@@ -93,29 +102,33 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
 });
 
 test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
-  // Swipe-to-switch is gated to coarse pointers (phones). Auto-skip on any
-  // project whose emulated pointer isn't coarse (desktop engines).
-  test.beforeEach(async ({ page }) => {
+  // Swipe-to-switch is gated to coarse pointers (phones). The swipe is driven
+  // with REAL touch events via CDP (not synthetic PointerEvents), so it goes
+  // through the browser's `touch-action` / scroll-vs-gesture arbitration — the
+  // exact path that made the gesture fail before `touch-action: pan-y`. CDP
+  // touch injection is chromium-only, so gate to a coarse-pointer chromium
+  // project.
+  test.beforeEach(async ({ page, browserName }) => {
     await page.goto('/');
     const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
-    test.skip(!coarse, 'swipe-to-switch only binds on coarse-pointer devices');
+    test.skip(!coarse || browserName !== 'chromium',
+      'real-touch swipe needs a coarse-pointer chromium project (CDP touch)');
   });
 
-  // Dispatch a horizontal touch-pointer swipe of `dx` px starting on `selector`.
+  // Drag a real horizontal touch of `dx` px starting on `selector`, via CDP so
+  // it exercises touch-action exactly like a finger would.
   async function swipe(page, selector, dx) {
-    await page.evaluate(({ selector, dx }) => {
-      const el = document.querySelector(selector);
-      const r = el.getBoundingClientRect();
-      const y = r.top + Math.min(40, r.height / 2);
-      const x0 = r.left + r.width / 2;
-      const ev = (type, x) => el.dispatchEvent(new PointerEvent(type, {
-        clientX: x, clientY: y, pointerType: 'touch', pointerId: 1,
-        bubbles: true, cancelable: true,
-      }));
-      ev('pointerdown', x0);
-      for (let i = 1; i <= 6; i++) ev('pointermove', x0 + (dx * i) / 6);
-      ev('pointerup', x0 + dx);
-    }, { selector, dx });
+    const box = await page.locator(selector).first().boundingBox();
+    const y = box.y + Math.min(40, box.height / 2);
+    const x0 = box.x + box.width / 2;
+    const client = await page.context().newCDPSession(page);
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
+    for (let i = 1; i <= 6; i++) {
+      await client.send('Input.dispatchTouchEvent',
+        { type: 'touchMove', touchPoints: [{ x: x0 + (dx * i) / 6, y }] });
+    }
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await client.detach();
   }
 
   test('swipe left switches Filmy → Kina and highlights Kina', async ({ page }) => {
