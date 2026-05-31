@@ -12,11 +12,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
@@ -34,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,6 +75,48 @@ fun FiltersSheet(
                 }
             }
 
+            // Section order mirrors the web Filtry panel (app/views/_navbar.scala.html):
+            // Ukryte filmy → Kina → Kraj/Gatunek/Reżyseria/Obsada → Wymiar/Wersja/IMAX/Od godziny.
+            // (Web's "Sale" room picker has no Android equivalent.)
+
+            // Ukryte filmy
+            if (hidden.isNotEmpty()) {
+                item {
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Ukryte filmy", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { vm.unhideAll() }) { Text("Pokaż wszystkie") }
+                    }
+                }
+                items(hidden.toList(), key = { "hid_$it" }) { title ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { vm.unhide(title) }) { Text("Pokaż") }
+                    }
+                }
+            }
+
+            // Kina
+            if (allCinemas.isNotEmpty()) {
+                item { FilterSectionLabel("Kina") }
+                item {
+                    ToggleRow("Wszystkie kina", disabled.isEmpty()) { on ->
+                        vm.setDisabledCinemas(if (on) emptySet() else allCinemas.toSet())
+                    }
+                }
+                items(allCinemas, key = { "cin_$it" }) { cinema ->
+                    CheckRow(
+                        label = CinemaSection.pillName(cinema),
+                        checked = cinema !in disabled,
+                    ) { on -> vm.toggleCinema(cinema, disabled = !on) }
+                }
+            }
+
+            // Kraj / Gatunek / Reżyseria / Obsada (excluded sets)
+            collapsibleNameFilter(this, "Kraj produkcji", allCountries, vm.excludedCountries) { vm.excludedCountries = it }
+            collapsibleNameFilter(this, "Gatunek", allGenres, vm.excludedGenres) { vm.excludedGenres = it }
+            collapsibleNameFilter(this, "Reżyseria", allDirectors, vm.excludedDirectors) { vm.excludedDirectors = it }
+            collapsibleNameFilter(this, "Obsada", allCast, vm.excludedCast) { vm.excludedCast = it }
+
             // Wymiar
             item {
                 FilterSectionLabel("Wymiar")
@@ -100,45 +145,55 @@ fun FiltersSheet(
                 FromHourRow(vm.formatFilter) { vm.formatFilter = it }
             }
 
-            // Kina
-            if (allCinemas.isNotEmpty()) {
-                item { FilterSectionLabel("Kina") }
-                item {
-                    ToggleRow("Wszystkie kina", disabled.isEmpty()) { on ->
-                        vm.setDisabledCinemas(if (on) emptySet() else allCinemas.toSet())
-                    }
-                }
-                items(allCinemas, key = { "cin_$it" }) { cinema ->
-                    CheckRow(
-                        label = CinemaSection.pillName(cinema),
-                        checked = cinema !in disabled,
-                    ) { on -> vm.toggleCinema(cinema, disabled = !on) }
-                }
-            }
-
-            // Ukryte filmy
-            if (hidden.isNotEmpty()) {
-                item {
-                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Ukryte filmy", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.unhideAll() }) { Text("Pokaż wszystkie") }
-                    }
-                }
-                items(hidden.toList(), key = { "hid_$it" }) { title ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.unhide(title) }) { Text("Pokaż") }
-                    }
-                }
-            }
-
-            // Kraj / Gatunek / Reżyseria / Obsada (excluded sets)
-            collapsibleNameFilter(this, "Kraj produkcji", allCountries, vm.excludedCountries) { vm.excludedCountries = it }
-            collapsibleNameFilter(this, "Gatunek", allGenres, vm.excludedGenres) { vm.excludedGenres = it }
-            collapsibleNameFilter(this, "Reżyseria", allDirectors, vm.excludedDirectors) { vm.excludedDirectors = it }
-            collapsibleNameFilter(this, "Obsada", allCast, vm.excludedCast) { vm.excludedCast = it }
+            item { AccountSection(vm) }
 
             item { Column(Modifier.padding(bottom = 24.dp)) {} }
+        }
+    }
+}
+
+/**
+ * Konto / Zaloguj się — the Android twin of iOS FiltersBar's Account section.
+ * Signed in: show who, plus Wyloguj / Usuń konto. Signed out: the two web
+ * OAuth buttons. Hiding/disabling sync to the server while signed in (see
+ * [pl.kinowo.auth.StateSyncService]).
+ */
+@Composable
+private fun AccountSection(vm: KinowoViewModel) {
+    val user by vm.user.collectAsState()
+    val context = LocalContext.current
+    val signedIn = user
+
+    Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        if (signedIn != null) {
+            Text("Konto", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
+            Text(
+                signedIn.displayName ?: signedIn.email ?: signedIn.provider,
+                fontSize = 14.sp,
+                color = TextSecondary,
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedButton(onClick = { vm.signOut() }, modifier = Modifier.weight(1f)) {
+                    Text("Wyloguj")
+                }
+                TextButton(onClick = { vm.deleteAccount() }) {
+                    Text("Usuń konto", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        } else {
+            Text("Zaloguj się", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
+            Button(
+                onClick = { vm.signInWithGoogle(context) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Zaloguj przez Google") }
+            Button(
+                onClick = { vm.signInWithFacebook(context) },
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+            ) { Text("Zaloguj przez Facebook") }
         }
     }
 }
