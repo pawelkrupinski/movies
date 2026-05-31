@@ -158,45 +158,50 @@ struct SearchBar: View {
     }
 }
 
-struct CinemaPillsRow: View {
+/// Single-cinema picker for the /kina screen: "Wszystkie" (no pin → all
+/// cinemas) plus one entry per cinema. A dropdown keeps the long cinema
+/// list compact at the top of the screen instead of a wrap-around pill
+/// row. `pinnedCinema == nil` is "Wszystkie"; selecting a cinema pins it
+/// (equivalent to the web's `_kinaPinned`).
+struct CinemaDropdown: View {
     let allCinemas: [String]
     @Binding var pinnedCinema: String?
 
-    /// Half the gap between neighbouring pills. It lives as padding
-    /// *inside* each pill's tap target (with FlowLayout spacing 0), so the
-    /// rectangular hit areas of adjacent pills meet exactly — no dead gap
-    /// to miss-tap into — while the visible capsules keep a `2 * tapMargin`
-    /// gap between them.
-    private static let tapMargin: CGFloat = 3
+    private var selectionLabel: String {
+        pinnedCinema.map(CinemaSection.pillName(for:)) ?? "Wszystkie"
+    }
 
     var body: some View {
-        FlowLayout(spacing: 0, lineSpacing: 0, centered: true) {
-            ForEach(allCinemas, id: \.self) { cinema in
-                Button {
-                    pinnedCinema = (pinnedCinema == cinema) ? nil : cinema
-                } label: {
-                    Text(CinemaSection.pillName(for: cinema))
-                        .font(.system(size: 13, weight: .medium))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(
-                            pinnedCinema == cinema
-                                ? Color.accentColor.opacity(0.85)
-                                : Color.clear,
-                            in: Capsule()
-                        )
-                        .foregroundColor(pinnedCinema == cinema ? .white : .primary)
-                        // Gap-filling margin + a rectangular hit shape, so
-                        // the whole rectangle around the capsule is tappable
-                        // and the rectangles of adjacent pills touch exactly.
-                        .padding(Self.tapMargin)
-                        .contentShape(Rectangle())
+        Menu {
+            Picker("Kino", selection: $pinnedCinema) {
+                Text("Wszystkie").tag(String?.none)
+                ForEach(allCinemas, id: \.self) { cinema in
+                    Text(CinemaSection.pillName(for: cinema)).tag(String?.some(cinema))
                 }
-                .buttonStyle(BounceButtonStyle())
             }
+        } label: {
+            HStack(spacing: 6) {
+                Text(selectionLabel)
+                    .font(.system(size: 14, weight: .medium))
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            // Accent-tinted when a specific cinema is pinned, neutral on
+            // "Wszystkie" — same active-filter cue as the Filtry icon.
+            .foregroundColor(pinnedCinema == nil ? .primary : .white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                pinnedCinema == nil
+                    ? Color.white.opacity(0.08)
+                    : Color.accentColor.opacity(0.85),
+                in: Capsule()
+            )
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 5)
+        .accessibilityIdentifier(A11y.CinemaPage.dropdown)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
         .frame(maxWidth: .infinity)
     }
 }
