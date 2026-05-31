@@ -1702,7 +1702,8 @@
     runScripts(incoming);   // re-assign window.* to the incoming view…
     bootView();             // …then build + filter it (now the sole #view-root).
                             // No setActiveTab — the tab flips only on commit.
-    return { pager, current, incoming, dir, enter, w, destView, saved, globals };
+    return { pager, current, incoming, dir, enter, w, destView,
+             originView: current.dataset.view, saved, globals };
   }
 
   function settleDrag(ctx, commit) {
@@ -1824,10 +1825,17 @@
     if (_drag.ctx) {
       // The view follows the finger 1:1, clamped to [neighbour, origin] (you
       // can drag the neighbour in and back out, but not past either edge).
-      const { current, incoming, dir, enter, w } = _drag.ctx;
+      const { current, incoming, dir, enter, w, destView, originView } = _drag.ctx;
       const d = dir === 'left' ? Math.max(-w, Math.min(0, dx)) : Math.min(w, Math.max(0, dx));
       current.style.transform  = 'translateX(' + d + 'px)';
       incoming.style.transform = 'translateX(' + (enter + d) + 'px)';
+      // Live preview: light up the tab a release would land on right now — past
+      // ~40% toward the neighbour commits, otherwise it snaps back. Mirrors the
+      // position half of the release decision (a flick can still commit a
+      // shorter drag, but the highlight tracks position). Settle sets the final
+      // tab, so this is purely the in-flight hint.
+      const preview = Math.abs(d) > w * 0.4 ? destView : originView;
+      if (_drag.preview !== preview) { _drag.preview = preview; setActiveTab(preview); }
     }
   }, { passive: true });
 

@@ -329,6 +329,46 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await expect(page).toHaveURL((u) => new URL(u).pathname === '/');
   });
 
+  test('the active tab previews the landing page while dragging (past the commit point)', async ({ page }) => {
+    // While dragging, the Filmy/Kina highlight should show where a release
+    // would land: past ~40% toward Kina lights Kina; dragging back under it
+    // lights Filmy again. The pointer is held across evaluate() calls (drag
+    // state is module-level), so we can assert mid-gesture.
+    await waitForCards(page);
+    // Warm caches so the drag engages live tracking.
+    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
+    await page.waitForURL(/\/kina$/);
+    await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);
+
+    const move = (phase) => page.evaluate((phase) => {
+      const el = document.getElementById('film-grid');
+      const r = el.getBoundingClientRect();
+      const y = r.top + 40;
+      const x0 = r.left + r.width * 0.85;
+      const pe = (type, x) => el.dispatchEvent(new PointerEvent(type, {
+        clientX: x, clientY: y, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true,
+      }));
+      if (phase === 'past') {
+        pe('pointerdown', x0);
+        for (let i = 1; i <= 6; i++) pe('pointermove', x0 - (260 * i) / 6);   // well past 40% toward Kina
+      } else if (phase === 'back') {
+        for (let i = 1; i <= 6; i++) pe('pointermove', x0 - 260 + (240 * i) / 6); // back near the origin
+      } else {
+        pe('pointerup', x0 - 20);                                            // release near origin
+      }
+    }, phase);
+
+    await move('past');
+    await expect(page.locator('.navbar .nav-tab.active')).toContainText('Kina');   // previews Kina
+    await move('back');
+    await expect(page.locator('.navbar .nav-tab.active')).toContainText('Filmy');  // back under → Filmy
+    await move('release');
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);               // snapped back
+    expect(await isKina(page)).toBe('films');
+  });
+
   test('a locked-in horizontal drag claims the touch so the browser cannot scroll-steal it mid-drag', async ({ page }) => {
     // A slow drag let the browser decide the gesture was a vertical scroll,
     // steal it (pointercancel) and snap the page back to the origin without the
