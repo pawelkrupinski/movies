@@ -95,7 +95,7 @@ struct FilmGridView: View {
                 // ContentView's `.safeAreaInset(edge: .top)`; this small
                 // top pad is just a breathing gap so the first poster row
                 // doesn't sit flush against the bar.
-                .padding(.top, 16)
+                .padding(.top, 10)
                 .padding(.bottom, 70)
                 .pinScrollContentInset()
             }
@@ -148,7 +148,7 @@ struct CinemaSectionedGridView<Header: View>: View {
             // See FilmGridView: the bar's height is reserved by the
             // ContentView `.safeAreaInset(edge: .top)`; this is just the
             // breathing gap below it.
-            .padding(.top, 16)
+            .padding(.top, 10)
             .padding(.bottom, 70)
             .pinScrollContentInset()
         }
