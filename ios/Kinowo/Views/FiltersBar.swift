@@ -157,9 +157,9 @@ struct SearchBar: View {
         .padding(.top, 14)
         // The pill is placed at the bottom safe-area edge by ContentView's
         // `.overlay(alignment: .bottom)`, so its gap to the physical screen
-        // bottom is the home-indicator inset. Push down by half that inset
-        // to halve the gap — sits lower, closer to the bottom.
-        .padding(.bottom, -Self.bottomSafeInset / 2)
+        // bottom is the home-indicator inset. Push down by a third of that
+        // inset to shave a third off the gap — sits a little lower.
+        .padding(.bottom, -Self.bottomSafeInset / 3)
     }
 
     /// Bottom safe-area inset of the key window (the home-indicator strip),
