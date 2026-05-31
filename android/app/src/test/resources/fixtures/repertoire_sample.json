@@ -1,0 +1,1936 @@
+[
+  {
+    "title": "Drzewo Magii",
+    "posterURL": "https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drzewo-magii/drzewo-magii_plakat-glowny_plakat.jpg?rev=78ae4df57ddb40d98d5535803ff32357",
+    "fallbackPosterURLs": [
+      "https://kinoapollo.pl/wp-content/uploads/2026/04/DRZEWO-MAGII_PLAKAT-GLOWNY-scaled.jpg",
+      "http://kinobulgarska19.pl/wp-content/uploads/2026/05/DRZEWO-MAGII_PLAKAT-GLOWNY.jpg",
+      "https://www.kinomalta.pl/wp-content/uploads/2026/05/DRZEWO-MAGII_PLAKAT-GLOWNY-po-zmniejszeniu-200x288.jpg",
+      "https://img.helios.pl/pliki/film/drzewo-magii/drzewo-magii-plakat-968.jpg",
+      "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8180D2R.jpg",
+      "https://www.kinomuza.pl/content/uploads/2026/05/DRZEWO-MAGII_TEASER_PLAKAT-714x1024-1-558x800.jpg",
+      "https://image.tmdb.org/t/p/w500/35RvL6gRJJRKjKJmgJu6C83gZDW.jpg",
+      "https://m.media-amazon.com/images/M/MV5BZThiYWI3ZTYtMjZmYy00Njc5LWE4OGYtNTlmNTQyYWZmYjQ0XkEyXkFqcGc@._V1_.jpg"
+    ],
+    "runtimeMinutes": 110,
+    "ratings": {
+      "imdb": 6.4,
+      "imdbURL": "https://www.imdb.com/title/tt7734244/",
+      "metacriticURL": "https://www.metacritic.com/movie/the-magic-faraway-tree",
+      "rottenTomatoes": 91,
+      "rottenTomatoesURL": "https://www.rottentomatoes.com/m/the_magic_faraway_tree",
+      "filmweb": 5.84146,
+      "filmwebURL": "https://www.filmweb.pl/film/Drzewo+magii-2026-10104409"
+    },
+    "countries": [
+      "Francja",
+      "USA",
+      "Wielka Brytania"
+    ],
+    "directors": [
+      "Ben Gregor"
+    ],
+    "cast": [
+      "Andrew Garfield",
+      "Claire Foy",
+      "Nicola Coughlan",
+      "Jessica Gunning",
+      "Rebecca Ferguson"
+    ],
+    "synopsis": "Polly i Tim wraz z trójką dzieci to współczesna rodzina, która staje przed koniecznością przeprowadzenia się na odległą angielską prowincję. Wkrótce po przyjeździe okazuje się, że najmłodsi muszą obejść się bez Wi-Fi i ukochanych elektronicznych gadżetów oraz odkryć uroki świata na świeżym powietrzu. Podczas eksploracji okolicznych lasów trafiają na niezwykłe drzewo, zamieszkane przez barwne, ekscentryczne istoty. Jeśli odważą się wspiąć na jego szczyt, czekają na nie fantastyczne krainy, pełne zapierających dech przygód. Dzięki magicznym doświadczeniom rodzina na nowo uczy się bycia razem i odkrywa, jak ważne jest wzajemne wsparcie i bliskość.\n\n„Drzewo magii” to spektakularna i pełna ciepła ekranizacja na podstawie uwielbianej serii książek dla dzieci autorstwa Enit Blydon. W barwnej opowieści w role rodziców wcielają się laureat Złotego Globu, nominowany do Oscara Andrew Garfield („Sztuka pięknego życia”, „Spider Man: Bez drogi do domu”) oraz lauretka Złotego Globu Claire Foy („The Crown”). Towarzyszą im m.in. Nicola Coughlan – gwiazda serialu „Bridgertonowie”, hipnotyzująca w „Diunie” Rebecca Ferguson oraz niezapomniana z serialu „Reniferek” Jessica Gunning. Scenariusz jest dziełem Simon Farnaby’ego, współscenarzysty hitów „Paddington 2″ i „Wonka”.",
+    "trailerURLs": [
+      "https://www.youtube.com/embed/gzRz4XpyKCY",
+      "https://www.youtube.com/embed/PY_LoiN8B5I"
+    ],
+    "showings": [
+      {
+        "date": "2026-05-31",
+        "label": "Niedziela 31 maja",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "09:05",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100831"
+              },
+              {
+                "time": "10:45",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100930"
+              },
+              {
+                "time": "13:35",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100929"
+              },
+              {
+                "time": "16:10",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100931"
+              },
+              {
+                "time": "18:45",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100932"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453485?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453486?lang=pl"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453487?lang=pl"
+              },
+              {
+                "time": "18:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453488?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "11:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453795?lang=pl"
+              },
+              {
+                "time": "11:30",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453815?lang=pl"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453796?lang=pl"
+              },
+              {
+                "time": "16:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453797?lang=pl"
+              },
+              {
+                "time": "16:30",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453816?lang=pl"
+              },
+              {
+                "time": "18:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453798?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "showtimes": [
+              {
+                "time": "11:15",
+                "format": "2D DUB",
+                "room": "Sala 4",
+                "bookingURL": "https://bilety.helios.pl/screen/de4a6185-831a-415b-820a-1af34ecc0af9?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:00",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://bilety.helios.pl/screen/a26fbc24-8e04-4b30-b0bc-de383aa6baf5?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:15",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://bilety.helios.pl/screen/550f171b-1ea5-4f6e-8701-7fadc9f4f8bc?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Malta Charlie Monroe",
+            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "",
+                "room": "Sala Marilyn",
+                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42194"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Muza",
+            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "",
+                "room": "Sala 1",
+                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=932973#total"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Apollo",
+            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "15:30",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662083"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:00",
+                "format": "",
+                "room": "Sala Dzienniki Motocyklowe"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-01",
+        "label": "Poniedziałek 1 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "09:00",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466843?lang=pl"
+              },
+              {
+                "time": "09:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466844?lang=pl"
+              },
+              {
+                "time": "10:15",
+                "format": "2D DUB",
+                "room": "Sala 4",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466809?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478399?lang=pl"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478403?lang=pl"
+              },
+              {
+                "time": "18:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478407?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "09:45",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1467357?lang=pl"
+              },
+              {
+                "time": "12:00",
+                "format": "2D DUB",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478543?lang=pl"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478262?lang=pl"
+              },
+              {
+                "time": "16:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478265?lang=pl"
+              },
+              {
+                "time": "16:30",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478664?lang=pl"
+              },
+              {
+                "time": "18:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478268?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "showtimes": [
+              {
+                "time": "10:00",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://bilety.helios.pl/screen/0086e7f1-c302-42a0-b07e-22a6d844cc44?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "12:45",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://bilety.helios.pl/screen/397e1a7f-9445-465e-ba33-7a90dcf4c9c1?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:30",
+                "format": "2D DUB",
+                "room": "Sala 5 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/61dbec84-8fba-4f17-a01c-7cc805774fca?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "17:15",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://bilety.helios.pl/screen/16231fe8-2ab2-4123-9a3b-f3ed6eafbd98?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "10:00",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100946"
+              },
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 7",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100662"
+              },
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100778"
+              },
+              {
+                "time": "13:35",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100948"
+              },
+              {
+                "time": "16:10",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100947"
+              },
+              {
+                "time": "18:45",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100950"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:10",
+                "format": "",
+                "room": "Sala Dzienniki Motocyklowe"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Apollo",
+            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "16:30",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662084"
+              },
+              {
+                "time": "19:00",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662085"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Malta Charlie Monroe",
+            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:35",
+                "format": "",
+                "room": "Sala Marilyn",
+                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42213"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-02",
+        "label": "Wtorek 2 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "09:00",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100714"
+              },
+              {
+                "time": "11:00",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100925"
+              },
+              {
+                "time": "13:35",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100926"
+              },
+              {
+                "time": "16:10",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100927"
+              },
+              {
+                "time": "18:40",
+                "format": "2D DUB",
+                "room": "Sala 11",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100560"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "09:00",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1479191?lang=pl"
+              },
+              {
+                "time": "09:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478396?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478400?lang=pl"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478404?lang=pl"
+              },
+              {
+                "time": "18:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478408?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "showtimes": [
+              {
+                "time": "11:30",
+                "format": "2D DUB",
+                "room": "Sala 4",
+                "bookingURL": "https://bilety.helios.pl/screen/e8d737be-ea5d-47b5-9092-2756dc92ae64?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:30",
+                "format": "2D DUB",
+                "room": "Sala 5 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/0bf1f7ba-3eaa-4bb3-a246-d8fb6af1be3f?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:15",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://bilety.helios.pl/screen/f5e6009a-50cb-466f-92da-e3295a54a385?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "2D DUB",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478570?lang=pl"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478263?lang=pl"
+              },
+              {
+                "time": "16:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478266?lang=pl"
+              },
+              {
+                "time": "16:30",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478665?lang=pl"
+              },
+              {
+                "time": "18:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478269?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Malta Charlie Monroe",
+            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:10",
+                "format": "",
+                "room": "Sala Marilyn",
+                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42224"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:10",
+                "format": "",
+                "room": "Sala Dzienniki Motocyklowe"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-03",
+        "label": "Środa 3 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "09:00",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100850"
+              },
+              {
+                "time": "09:30",
+                "format": "2D DUB",
+                "room": "Sala 11",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100585"
+              },
+              {
+                "time": "11:50",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100945"
+              },
+              {
+                "time": "14:20",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100943"
+              },
+              {
+                "time": "18:45",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100942"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478397?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478401?lang=pl"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478405?lang=pl"
+              },
+              {
+                "time": "18:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478409?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478701?lang=pl"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478264?lang=pl"
+              },
+              {
+                "time": "14:30",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478702?lang=pl"
+              },
+              {
+                "time": "16:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478267?lang=pl"
+              },
+              {
+                "time": "17:00",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478703?lang=pl"
+              },
+              {
+                "time": "18:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478270?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "showtimes": [
+              {
+                "time": "12:10",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://bilety.helios.pl/screen/dd1321ac-b228-4b80-960a-b75be9cdec55?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:40",
+                "format": "2D DUB",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/b994ac75-cf71-4ee1-a7fd-5e82c24eb123?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:15",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://bilety.helios.pl/screen/1de3c410-16ba-4655-a6e6-a3d1bd2fb0c4?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:10",
+                "format": "",
+                "room": "Sala Dzienniki Motocyklowe"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-04",
+        "label": "Czwartek 4 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "10:00",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100934"
+              },
+              {
+                "time": "12:50",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100933"
+              },
+              {
+                "time": "15:25",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100935"
+              },
+              {
+                "time": "18:15",
+                "format": "2D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100797"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "10:20",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478708?lang=pl"
+              },
+              {
+                "time": "12:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478312?lang=pl"
+              },
+              {
+                "time": "12:50",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478709?lang=pl"
+              },
+              {
+                "time": "14:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478313?lang=pl"
+              },
+              {
+                "time": "15:20",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478710?lang=pl"
+              },
+              {
+                "time": "17:50",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478712?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478398?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478402?lang=pl"
+              },
+              {
+                "time": "14:40",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1472142?lang=pl"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478406?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "showtimes": [
+              {
+                "time": "12:10",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/da0daf03-72dc-48f6-b3ea-c49f694f2cc2?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:00",
+                "format": "2D DUB",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/d3339ce6-f099-497b-9529-0eb932024767?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:15",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://bilety.helios.pl/screen/523dd396-cfb5-46c2-a1bf-d49fe31e4b82?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-05",
+        "label": "Piątek 5 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Kino Apollo",
+            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "16:00",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666637"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-06",
+        "label": "Sobota 6 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Kino Muza",
+            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "",
+                "room": "Sala 1",
+                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=933949#total"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Apollo",
+            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "15:30",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666638"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-07",
+        "label": "Niedziela 7 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Kino Muza",
+            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "",
+                "room": "Sala 1",
+                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=933985#total"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Apollo",
+            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "15:00",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666639"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Drzewo Magii",
+    "posterURL": "https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drzewo-magii/drzewo-magii_plakat-glowny_plakat.jpg?rev=78ae4df57ddb40d98d5535803ff32357",
+    "fallbackPosterURLs": [
+      "https://kinoapollo.pl/wp-content/uploads/2026/04/DRZEWO-MAGII_PLAKAT-GLOWNY-scaled.jpg",
+      "http://kinobulgarska19.pl/wp-content/uploads/2026/05/DRZEWO-MAGII_PLAKAT-GLOWNY.jpg",
+      "https://www.kinomalta.pl/wp-content/uploads/2026/05/DRZEWO-MAGII_PLAKAT-GLOWNY-po-zmniejszeniu-200x288.jpg",
+      "https://img.helios.pl/pliki/film/drzewo-magii/drzewo-magii-plakat-968.jpg",
+      "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8180D2R.jpg",
+      "https://www.kinomuza.pl/content/uploads/2026/05/DRZEWO-MAGII_TEASER_PLAKAT-714x1024-1-558x800.jpg",
+      "https://image.tmdb.org/t/p/w500/35RvL6gRJJRKjKJmgJu6C83gZDW.jpg",
+      "https://m.media-amazon.com/images/M/MV5BZThiYWI3ZTYtMjZmYy00Njc5LWE4OGYtNTlmNTQyYWZmYjQ0XkEyXkFqcGc@._V1_.jpg"
+    ],
+    "runtimeMinutes": 110,
+    "ratings": {
+      "imdb": 6.4,
+      "imdbURL": "https://www.imdb.com/title/tt7734244/",
+      "metacriticURL": "https://www.metacritic.com/movie/the-magic-faraway-tree",
+      "rottenTomatoes": 91,
+      "rottenTomatoesURL": "https://www.rottentomatoes.com/m/the_magic_faraway_tree",
+      "filmweb": 5.84146,
+      "filmwebURL": "https://www.filmweb.pl/film/Drzewo+magii-2026-10104409"
+    },
+    "countries": [
+      "Francja",
+      "USA",
+      "Wielka Brytania"
+    ],
+    "directors": [
+      "Ben Gregor"
+    ],
+    "cast": [
+      "Andrew Garfield",
+      "Claire Foy",
+      "Nicola Coughlan",
+      "Jessica Gunning",
+      "Rebecca Ferguson"
+    ],
+    "synopsis": "Polly i Tim wraz z trójką dzieci to współczesna rodzina, która staje przed koniecznością przeprowadzenia się na odległą angielską prowincję. Wkrótce po przyjeździe okazuje się, że najmłodsi muszą obejść się bez Wi-Fi i ukochanych elektronicznych gadżetów oraz odkryć uroki świata na świeżym powietrzu. Podczas eksploracji okolicznych lasów trafiają na niezwykłe drzewo, zamieszkane przez barwne, ekscentryczne istoty. Jeśli odważą się wspiąć na jego szczyt, czekają na nie fantastyczne krainy, pełne zapierających dech przygód. Dzięki magicznym doświadczeniom rodzina na nowo uczy się bycia razem i odkrywa, jak ważne jest wzajemne wsparcie i bliskość.\n\n„Drzewo magii” to spektakularna i pełna ciepła ekranizacja na podstawie uwielbianej serii książek dla dzieci autorstwa Enit Blydon. W barwnej opowieści w role rodziców wcielają się laureat Złotego Globu, nominowany do Oscara Andrew Garfield („Sztuka pięknego życia”, „Spider Man: Bez drogi do domu”) oraz lauretka Złotego Globu Claire Foy („The Crown”). Towarzyszą im m.in. Nicola Coughlan – gwiazda serialu „Bridgertonowie”, hipnotyzująca w „Diunie” Rebecca Ferguson oraz niezapomniana z serialu „Reniferek” Jessica Gunning. Scenariusz jest dziełem Simon Farnaby’ego, współscenarzysty hitów „Paddington 2″ i „Wonka”.",
+    "trailerURLs": [
+      "https://www.youtube.com/embed/gzRz4XpyKCY",
+      "https://www.youtube.com/embed/PY_LoiN8B5I"
+    ],
+    "showings": [
+      {
+        "date": "2026-05-31",
+        "label": "Niedziela 31 maja",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "09:05",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100831"
+              },
+              {
+                "time": "10:45",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100930"
+              },
+              {
+                "time": "13:35",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100929"
+              },
+              {
+                "time": "16:10",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100931"
+              },
+              {
+                "time": "18:45",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100932"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453485?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453486?lang=pl"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453487?lang=pl"
+              },
+              {
+                "time": "18:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453488?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "11:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453795?lang=pl"
+              },
+              {
+                "time": "11:30",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453815?lang=pl"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453796?lang=pl"
+              },
+              {
+                "time": "16:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453797?lang=pl"
+              },
+              {
+                "time": "16:30",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453816?lang=pl"
+              },
+              {
+                "time": "18:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453798?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "showtimes": [
+              {
+                "time": "11:15",
+                "format": "2D DUB",
+                "room": "Sala 4",
+                "bookingURL": "https://bilety.helios.pl/screen/de4a6185-831a-415b-820a-1af34ecc0af9?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:00",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://bilety.helios.pl/screen/a26fbc24-8e04-4b30-b0bc-de383aa6baf5?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:15",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://bilety.helios.pl/screen/550f171b-1ea5-4f6e-8701-7fadc9f4f8bc?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Malta Charlie Monroe",
+            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "",
+                "room": "Sala Marilyn",
+                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42194"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Muza",
+            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "",
+                "room": "Sala 1",
+                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=932973#total"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Apollo",
+            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "15:30",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662083"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:00",
+                "format": "",
+                "room": "Sala Dzienniki Motocyklowe"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-01",
+        "label": "Poniedziałek 1 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "09:00",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466843?lang=pl"
+              },
+              {
+                "time": "09:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466844?lang=pl"
+              },
+              {
+                "time": "10:15",
+                "format": "2D DUB",
+                "room": "Sala 4",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466809?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478399?lang=pl"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478403?lang=pl"
+              },
+              {
+                "time": "18:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478407?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "09:45",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1467357?lang=pl"
+              },
+              {
+                "time": "12:00",
+                "format": "2D DUB",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478543?lang=pl"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478262?lang=pl"
+              },
+              {
+                "time": "16:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478265?lang=pl"
+              },
+              {
+                "time": "16:30",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478664?lang=pl"
+              },
+              {
+                "time": "18:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478268?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "showtimes": [
+              {
+                "time": "10:00",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://bilety.helios.pl/screen/0086e7f1-c302-42a0-b07e-22a6d844cc44?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "12:45",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://bilety.helios.pl/screen/397e1a7f-9445-465e-ba33-7a90dcf4c9c1?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:30",
+                "format": "2D DUB",
+                "room": "Sala 5 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/61dbec84-8fba-4f17-a01c-7cc805774fca?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "17:15",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://bilety.helios.pl/screen/16231fe8-2ab2-4123-9a3b-f3ed6eafbd98?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "10:00",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100946"
+              },
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 7",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100662"
+              },
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100778"
+              },
+              {
+                "time": "13:35",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100948"
+              },
+              {
+                "time": "16:10",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100947"
+              },
+              {
+                "time": "18:45",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100950"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:10",
+                "format": "",
+                "room": "Sala Dzienniki Motocyklowe"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Apollo",
+            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "16:30",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662084"
+              },
+              {
+                "time": "19:00",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662085"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Malta Charlie Monroe",
+            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:35",
+                "format": "",
+                "room": "Sala Marilyn",
+                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42213"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-02",
+        "label": "Wtorek 2 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "09:00",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100714"
+              },
+              {
+                "time": "11:00",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100925"
+              },
+              {
+                "time": "13:35",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100926"
+              },
+              {
+                "time": "16:10",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100927"
+              },
+              {
+                "time": "18:40",
+                "format": "2D DUB",
+                "room": "Sala 11",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100560"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "09:00",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1479191?lang=pl"
+              },
+              {
+                "time": "09:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478396?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478400?lang=pl"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478404?lang=pl"
+              },
+              {
+                "time": "18:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478408?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "showtimes": [
+              {
+                "time": "11:30",
+                "format": "2D DUB",
+                "room": "Sala 4",
+                "bookingURL": "https://bilety.helios.pl/screen/e8d737be-ea5d-47b5-9092-2756dc92ae64?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:30",
+                "format": "2D DUB",
+                "room": "Sala 5 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/0bf1f7ba-3eaa-4bb3-a246-d8fb6af1be3f?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:15",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://bilety.helios.pl/screen/f5e6009a-50cb-466f-92da-e3295a54a385?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "2D DUB",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478570?lang=pl"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478263?lang=pl"
+              },
+              {
+                "time": "16:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478266?lang=pl"
+              },
+              {
+                "time": "16:30",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478665?lang=pl"
+              },
+              {
+                "time": "18:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478269?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Malta Charlie Monroe",
+            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:10",
+                "format": "",
+                "room": "Sala Marilyn",
+                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42224"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:10",
+                "format": "",
+                "room": "Sala Dzienniki Motocyklowe"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-03",
+        "label": "Środa 3 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "09:00",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100850"
+              },
+              {
+                "time": "09:30",
+                "format": "2D DUB",
+                "room": "Sala 11",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100585"
+              },
+              {
+                "time": "11:50",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100945"
+              },
+              {
+                "time": "14:20",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100943"
+              },
+              {
+                "time": "18:45",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100942"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478397?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478401?lang=pl"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478405?lang=pl"
+              },
+              {
+                "time": "18:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478409?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478701?lang=pl"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478264?lang=pl"
+              },
+              {
+                "time": "14:30",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478702?lang=pl"
+              },
+              {
+                "time": "16:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478267?lang=pl"
+              },
+              {
+                "time": "17:00",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478703?lang=pl"
+              },
+              {
+                "time": "18:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478270?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "showtimes": [
+              {
+                "time": "12:10",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://bilety.helios.pl/screen/dd1321ac-b228-4b80-960a-b75be9cdec55?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:40",
+                "format": "2D DUB",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/b994ac75-cf71-4ee1-a7fd-5e82c24eb123?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:15",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://bilety.helios.pl/screen/1de3c410-16ba-4655-a6e6-a3d1bd2fb0c4?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "16:10",
+                "format": "",
+                "room": "Sala Dzienniki Motocyklowe"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-04",
+        "label": "Czwartek 4 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "showtimes": [
+              {
+                "time": "10:00",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100934"
+              },
+              {
+                "time": "12:50",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100933"
+              },
+              {
+                "time": "15:25",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100935"
+              },
+              {
+                "time": "18:15",
+                "format": "2D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100797"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "10:20",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478708?lang=pl"
+              },
+              {
+                "time": "12:00",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478312?lang=pl"
+              },
+              {
+                "time": "12:50",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478709?lang=pl"
+              },
+              {
+                "time": "14:30",
+                "format": "2D DUB",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478313?lang=pl"
+              },
+              {
+                "time": "15:20",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478710?lang=pl"
+              },
+              {
+                "time": "17:50",
+                "format": "2D DUB",
+                "room": "Sala 15",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478712?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "showtimes": [
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478398?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478402?lang=pl"
+              },
+              {
+                "time": "14:40",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1472142?lang=pl"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478406?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "showtimes": [
+              {
+                "time": "12:10",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/da0daf03-72dc-48f6-b3ea-c49f694f2cc2?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:00",
+                "format": "2D DUB",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/d3339ce6-f099-497b-9529-0eb932024767?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:15",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://bilety.helios.pl/screen/523dd396-cfb5-46c2-a1bf-d49fe31e4b82?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-05",
+        "label": "Piątek 5 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Kino Apollo",
+            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "16:00",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666637"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-06",
+        "label": "Sobota 6 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Kino Muza",
+            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "",
+                "room": "Sala 1",
+                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=933949#total"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Apollo",
+            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "15:30",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666638"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-07",
+        "label": "Niedziela 7 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Kino Muza",
+            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "",
+                "room": "Sala 1",
+                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=933985#total"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Apollo",
+            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
+            "showtimes": [
+              {
+                "time": "15:00",
+                "format": "",
+                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666639"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Bluey w kinie: Kolekcja Zabawy z przyjaciółmi",
+    "posterURL": "https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/bluey/bluey_zabawazprzyjaciolmi_plakat2.jpg?rev=4a0380d5d9b54c4ba1959fbd958a05e6",
+    "fallbackPosterURLs": [],
+    "runtimeMinutes": 55,
+    "ratings": {
+      "metacriticURL": "https://www.metacritic.com/search/Bluey+w+kinie%3A+Kolekcja+Zabawy+z+przyjaci%C3%B3%C5%82mi/?category=2",
+      "rottenTomatoesURL": "https://www.rottentomatoes.com/search?search=Bluey+w+kinie%3A+Kolekcja+Zabawy+z+przyjaci%C3%B3%C5%82mi",
+      "filmwebURL": "https://www.filmweb.pl/search?query=Bluey+w+kinie%3A+Kolekcja+Zabawy+z+przyjaci%C3%B3%C5%82mi"
+    },
+    "countries": [],
+    "directors": [
+      "Joe Brumm"
+    ],
+    "cast": [],
+    "synopsis": "Bluey w kinie: Kolekcja Zabawy z przyjaciółmi to godzina świetnej zabawy, zawierająca osiem odcinków z trzech sezonów serialu, celebrujących zabawę i wyobraźnię z przyjaciółmi i rodziną! Kompilacja przedstawia ulubione gry Bluey, takie jak Cienistym Szlakiem i Ośmiornica, oraz podkreśla wyjątkowe chwile przyjaźni w odcinkach Cyrk i Ślizgawka - wszystko pełne radości i śmiechu.",
+    "trailerURLs": [],
+    "showings": [
+      {
+        "date": "2026-05-31",
+        "label": "Niedziela 31 maja",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/bluey-w-kinie-kolekcja-zabawy-z-przyjaciomi",
+            "showtimes": [
+              {
+                "time": "09:10",
+                "format": "2D DUB",
+                "room": "Sala 7",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002626/100639"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

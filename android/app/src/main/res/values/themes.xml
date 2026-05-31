@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fully Compose-driven UI; this XML theme only owns the launch window
+         chrome (dark background so there's no white flash before Compose
+         paints) and hides the platform action bar. -->
+    <style name="Theme.Kinowo" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorAccent">@color/brand</item>
+    </style>
+</resources>

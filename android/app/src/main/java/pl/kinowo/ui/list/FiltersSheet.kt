@@ -1,0 +1,275 @@
+package pl.kinowo.ui.list
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import pl.kinowo.filter.CinemaSection
+import pl.kinowo.filter.FormatFilter
+import pl.kinowo.model.Film
+import pl.kinowo.ui.KinowoViewModel
+import pl.kinowo.ui.NameCount
+import pl.kinowo.ui.theme.TextSecondary
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FiltersSheet(
+    vm: KinowoViewModel,
+    films: List<Film>,
+    sheetState: SheetState,
+    onDismiss: () -> Unit,
+) {
+    val hidden by vm.hiddenFilms.collectAsState()
+    val disabled by vm.disabledCinemas.collectAsState()
+    val allCinemas = remember(films) { vm.allCinemas(films) }
+    val allCountries = remember(films) { vm.allCountries(films) }
+    val allDirectors = remember(films) { vm.allDirectors(films) }
+    val allCast = remember(films) { vm.allCast(films) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        LazyColumn(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            item {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Filtry", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { vm.clearFilters() }) { Text("Wyczyść") }
+                }
+            }
+
+            // Wymiar
+            item {
+                FilterSectionLabel("Wymiar")
+                ThreeWaySegment(
+                    options = listOf("Wszystkie" to "", "2D" to "2D", "3D" to "3D"),
+                    selected = vm.formatFilter.dimension,
+                ) { vm.formatFilter = vm.formatFilter.copy(dimension = it) }
+            }
+            // Wersja
+            item {
+                FilterSectionLabel("Wersja")
+                ThreeWaySegment(
+                    options = listOf("Wszystkie" to "", "Napisy" to "NAP", "Dubbing" to "DUB"),
+                    selected = vm.formatFilter.language,
+                ) { vm.formatFilter = vm.formatFilter.copy(language = it) }
+            }
+            // IMAX
+            item {
+                ToggleRow("Tylko IMAX", vm.formatFilter.imax) {
+                    vm.formatFilter = vm.formatFilter.copy(imax = it)
+                }
+            }
+            // Od godziny
+            item {
+                FilterSectionLabel("Od godziny")
+                FromHourRow(vm.formatFilter) { vm.formatFilter = it }
+            }
+
+            // Kina
+            if (allCinemas.isNotEmpty()) {
+                item { FilterSectionLabel("Kina") }
+                item {
+                    ToggleRow("Wszystkie kina", disabled.isEmpty()) { on ->
+                        vm.setDisabledCinemas(if (on) emptySet() else allCinemas.toSet())
+                    }
+                }
+                items(allCinemas, key = { "cin_$it" }) { cinema ->
+                    CheckRow(
+                        label = CinemaSection.pillName(cinema),
+                        checked = cinema !in disabled,
+                    ) { on -> vm.toggleCinema(cinema, disabled = !on) }
+                }
+            }
+
+            // Ukryte filmy
+            if (hidden.isNotEmpty()) {
+                item {
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Ukryte filmy", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { vm.unhideAll() }) { Text("Pokaż wszystkie") }
+                    }
+                }
+                items(hidden.toList(), key = { "hid_$it" }) { title ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { vm.unhide(title) }) { Text("Pokaż") }
+                    }
+                }
+            }
+
+            // Kraj / Reżyseria / Obsada (excluded sets)
+            collapsibleNameFilter(this, "Kraj produkcji", allCountries, vm.excludedCountries) { vm.excludedCountries = it }
+            collapsibleNameFilter(this, "Reżyseria", allDirectors, vm.excludedDirectors) { vm.excludedDirectors = it }
+            collapsibleNameFilter(this, "Obsada", allCast, vm.excludedCast) { vm.excludedCast = it }
+
+            item { Column(Modifier.padding(bottom = 24.dp)) {} }
+        }
+    }
+}
+
+
+
+/**
+ * A collapsible exclude-list: each entry is checked when *included*; un-checking
+ * adds it to the excluded set. Mirrors iOS NameFilterList (toggle = visible).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+private fun collapsibleNameFilter(
+    scope: androidx.compose.foundation.lazy.LazyListScope,
+    title: String,
+    entries: List<NameCount>,
+    excluded: Set<String>,
+    onChange: (Set<String>) -> Unit,
+) {
+    if (entries.isEmpty()) return
+    scope.item(key = "sec_$title") {
+        var expanded by remember { mutableStateOf(false) }
+        Column {
+            Row(
+                Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                if (excluded.isNotEmpty()) {
+                    Text("${excluded.size} ukrytych", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
+                }
+                Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
+            }
+            if (expanded) {
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
+                    items(entries, key = { "${title}_${it.name}" }) { nc ->
+                        CheckRow(
+                            label = "${nc.name}  (${nc.count})",
+                            checked = nc.name !in excluded,
+                        ) { on -> onChange(if (on) excluded - nc.name else excluded + nc.name) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterSectionLabel(text: String) {
+    Text(text, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp, bottom = 2.dp))
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ThreeWaySegment(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        options.forEachIndexed { i, (label, value) ->
+            SegmentedButton(
+                selected = selected == value,
+                onClick = { onSelect(value) },
+                shape = SegmentedButtonDefaults.itemShape(i, options.size),
+            ) { Text(label) }
+        }
+    }
+}
+
+@Composable
+private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable { onChange(!checked) }.padding(vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = onChange)
+        Text(label, fontSize = 14.sp)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FromHourRow(filter: FormatFilter, onChange: (FormatFilter) -> Unit) {
+    val hours = listOf(-1) + (0..23).toList()
+    var hourExpanded by remember { mutableStateOf(false) }
+    var minExpanded by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Dropdown(
+            label = if (filter.fromHour < 0) "Dowolna" else "%02d".format(filter.fromHour),
+            expanded = hourExpanded,
+            onExpandedChange = { hourExpanded = it },
+            items = hours.map { (if (it < 0) "Dowolna" else "%02d".format(it)) to it },
+            modifier = Modifier.weight(1f),
+        ) { onChange(filter.copy(fromHour = it, fromMinute = if (it < 0) 0 else filter.fromMinute)); hourExpanded = false }
+        if (filter.fromHour >= 0) {
+            Dropdown(
+                label = "%02d".format(filter.fromMinute),
+                expanded = minExpanded,
+                onExpandedChange = { minExpanded = it },
+                items = listOf(0, 15, 30, 45).map { "%02d".format(it) to it },
+                modifier = Modifier.weight(1f),
+            ) { onChange(filter.copy(fromMinute = it)); minExpanded = false }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> Dropdown(
+    label: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    items: List<Pair<String, T>>,
+    modifier: Modifier = Modifier,
+    onPick: (T) -> Unit,
+) {
+    androidx.compose.material3.ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        modifier = modifier,
+    ) {
+        androidx.compose.material3.OutlinedTextField(
+            value = label,
+            onValueChange = {},
+            readOnly = true,
+            trailingIcon = { androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
+        )
+        androidx.compose.material3.ExposedDropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
+            items.forEach { (text, value) ->
+                androidx.compose.material3.DropdownMenuItem(text = { Text(text) }, onClick = { onPick(value) })
+            }
+        }
+    }
+}
