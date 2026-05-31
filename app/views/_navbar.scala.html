@@ -40,32 +40,36 @@
 
       @* Sort axis — orders the visible film grid. "Najbliższy seans" is the
          default (earliest upcoming screening first); "Ocena" sorts by the
-         equal-weight average of every rating a film has (highest first);
-         "Rok produkcji" sorts newest first. Inert on pages without a grid
-         (/plan) — `onSortChange` no-ops when the page has no `applyFilters`. *@
+         equal-weight average of every rating a film has (highest first).
+         Inert on pages without a grid (/plan) — `onSortChange` no-ops when
+         the page has no `applyFilters`. *@
       <div class="panel-section-label">Sortuj</div>
       <select id="sort-by" class="filter-select w-100" onchange="onSortChange()" style="margin-bottom:.4rem">
         <option value="earliest">Najbliższy seans</option>
         <option value="rating">Ocena</option>
-        <option value="year">Rok produkcji</option>
       </select>
       <div class="panel-divider"></div>
 
       @* Kina cinema picker — moved here from its own dropdown. Same DOM
          ids (`cinema-all`, `cinema-list`) so the existing
          `buildCinemaPanel`/`toggleAllCinemas` JS keeps working unchanged.
-         Hidden on /kina — that page surfaces the same `disabledCinemas`
-         state as a pill row above the film grid, so duplicating the
-         control inside Filtry would just create two UIs for the same
-         state to drift between. *@
-      @if(activePage != "kina") {
+         Owned by the Filmy view (it drives `disabledCinemas`); the Kina
+         view surfaces the same axis as its pill-pin row instead. Always
+         rendered now (no `activePage` gate) so the Filmy↔Kina slide-swap
+         has it available regardless of which view loaded first — shared.js
+         `applyViewChrome` STASHES this whole `#filtry-cinema-section` node
+         out of the DOM while the Kina view is active, which keeps every
+         `#cinema-list`-presence check in shared.js correctly view-aware.
+         Rendered hidden when the page first loads on /kina so it can't
+         flash before boot detaches it. *@
+      <div id="filtry-cinema-section"@if(activePage == "kina"){ style="display:none"}>
         <div class="panel-section-label">Kina</div>
         <label class="panel-label" style="border-bottom:1px solid #3a3a6e; margin-bottom:4px; padding-bottom:8px;">
           <input type="checkbox" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> Wszystkie kina
         </label>
         <div id="cinema-list"></div>
         <div class="panel-divider"></div>
-      }
+      </div>
 
       <div id="country-row" class="panel-label submenu-row" onclick="toggleSubmenu('country')">
         <span>Kraj produkcji</span>

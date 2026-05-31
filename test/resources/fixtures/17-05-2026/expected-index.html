@@ -28,7 +28,7 @@
   
   <link rel="stylesheet" href="/assets/css/bootstrap-5.3.3.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   
-<style>html{touch-action:manipulation}body{background:#111;color:#eee;overflow-x:hidden}.navbar{background:#1a1a2e;flex-wrap:wrap;position:sticky;top:0;z-index:10;gap:.4rem}.navbar-logo{flex-shrink:0}.card{background:#1e1e2e;border:none;border-radius:12px;overflow:hidden;height:100%;transition:transform .2s;cursor:pointer}.card:hover{transform:translateY(-4px)}.poster-wrap{position:relative;padding-top:148%;background:#2a2a3e;overflow:hidden}.poster-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.no-poster{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:#99a;font-style:italic;letter-spacing:.03em}.card-body{padding:1rem}.card-title{min-height:2.5rem;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.3rem;overflow-wrap:break-word}.card-title a{font-size:.95rem;font-weight:600;color:#fff;text-decoration:none;min-width:0}.card-title a:hover{color:#aad4ff}.pill{background:#252540;border:1px solid #3a3a6e;border-radius:3px;padding:0 5px;font-size:.72rem;color:#99b;white-space:nowrap}.runtime{font-size:.75rem;color:#888}.year{font-size:.75rem;color:#888;background:transparent;border:none}.pill.genre{font-size:.75rem;color:#888;text-decoration:none}a.pill.genre:hover{color:#aad4ff;border-color:#4a4a8e}.date-label{font-size:.7rem;color:#888;margin-bottom:.2rem;margin-top:.5rem}#room-tooltip{position:fixed;background:#0e0e1e;color:#ccc;font-size:.68rem;padding:2px 7px;border-radius:4px;white-space:nowrap;border:1px solid #3a3a6e;pointer-events:none;z-index:20;display:none}.refresh-btn{background:#3a3a6e;border:none;color:#aad4ff;white-space:nowrap;flex-shrink:0;height:35px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}.refresh-btn:hover{background:#5a5a9e;color:#fff}.date-nav-btn{padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;touch-action:manipulation;height:35px;box-sizing:border-box;min-width:35px}.filter-select{background:#3a3a6e;color:#aad4ff;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.875rem;cursor:pointer;flex-shrink:0;height:35px;box-sizing:border-box}.filter-select:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.search-input{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:160px;min-height:35px}.search-input::placeholder{color:#778}.search-input:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e;width:220px}@media (max-width:575px){.search-input,.search-input:focus{width:90px}}@media (max-width:379px){.search-input,.search-input:focus{width:55px}}@media (max-width:290px){.navbar-search{display:none}nav.navbar{padding:0 !important;column-gap:0 !important;row-gap:calc(.05 * var(--mobile-scale)) !important}.navbar > div:first-child{max-width:60% !important;overflow:hidden}.navbar-auth{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40% !important}.navbar-date{max-width:60% !important;overflow:hidden}.navbar-filtry{max-width:40% !important}}@media (max-width:575px){#date-filter{max-width:6.5rem}}@media (max-width:379px){#date-filter{max-width:5rem}}.hide-btn{position:absolute;top:6px;right:6px;z-index:10;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:26px;height:26px;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center}.dropdown-panel{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:8px;z-index:1000;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:220px;max-width:calc(100vw - 1rem);max-height:70vh;overflow-y:auto}.panel-item{padding:5px 8px;cursor:pointer;border-radius:4px;font-size:.8rem;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}.panel-item:hover{background:#3a3a6e}.panel-label{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;font-size:.8rem;color:#eee;border-radius:4px}.panel-label:hover{background:#3a3a6e}.panel-divider{border-top:1px solid #3a3a6e;margin:6px 0;padding-top:2px}.dropdown-panel,.hidden-modal-list{scrollbar-width:thin;scrollbar-color:#3a3a6e transparent}.dropdown-panel::-webkit-scrollbar,.hidden-modal-list::-webkit-scrollbar{width:8px;height:8px}.dropdown-panel::-webkit-scrollbar-track,.hidden-modal-list::-webkit-scrollbar-track{background:transparent}.dropdown-panel::-webkit-scrollbar-thumb,.hidden-modal-list::-webkit-scrollbar-thumb{background:#3a3a6e;border-radius:4px}.dropdown-panel::-webkit-scrollbar-thumb:hover,.hidden-modal-list::-webkit-scrollbar-thumb:hover{background:#5a5a9e}.panel-section-label{font-size:.65rem;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:4px 8px 2px}.submenu-row{justify-content:space-between}.submenu-right{display:flex;align-items:center;gap:6px;margin-left:auto}.submenu-row-count{background:#5a5a9e;color:#fff;font-size:.65rem;font-weight:600;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:9px;padding:0 5px}.submenu-film-count{margin-left:auto;font-size:.7rem;color:#888}.submenu-chevron{display:inline-block;font-size:1rem;color:#888;transition:transform .15s ease}.submenu-chevron.open{transform:rotate(90deg)}.submenu-list{max-height:40vh;overflow-y:auto}.nav-tab{color:#aad4ff;text-decoration:none;font-size:.875rem;padding:.25rem .6rem;border-radius:6px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;display:inline-flex;align-items:center;justify-content:center;min-height:35px}.nav-tab:hover{background:#3a3a6e;color:#fff}.nav-tab.active{background:#3a3a6e;color:#fff}.nav-tab-login{cursor:pointer;border:none;font:inherit;font-size:.875rem;background:#3a3a6e;color:#aad4ff;padding:.2rem .7rem}.nav-tab-login:hover{background:#5a5a9e;color:#fff}.auth-menu{position:relative;display:inline-flex;align-items:center;gap:.35rem;background:#3a3a6e;color:#aad4ff;border-radius:6px;padding:.15rem .55rem .15rem .25rem;font-size:.875rem;cursor:pointer;-webkit-user-select:none;user-select:none;min-height:35px}.auth-menu:hover{background:#5a5a9e;color:#fff}.auth-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;display:block}.auth-avatar-fallback{width:22px;height:22px;border-radius:50%;background:#1a1a2e;color:#ffd24a;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:600}.auth-name{font-size:.875rem;max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.auth-name{display:none}}.auth-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:6px;min-width:160px;display:none;z-index:50}.auth-menu.open .auth-dropdown{display:block}.auth-logout-form{margin:0}.auth-logout-btn{width:100%;background:transparent;border:none;color:#eee;text-align:left;padding:.4rem .6rem;cursor:pointer;border-radius:6px;font-size:.875rem;min-height:35px;display:flex;align-items:center}.auth-logout-btn:hover{background:#3a3a6e;color:#fff}.login-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.login-modal-backdrop.open{display:flex}.login-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.5rem 1.6rem 1.4rem;max-width:360px;width:92%;position:relative}.login-modal-title{font-size:1.2rem;font-weight:600;margin-bottom:.5rem}.login-modal-sub{font-size:.85rem;color:#aab;margin-bottom:1.1rem}.login-modal-close{position:absolute;top:.4rem;right:.55rem;background:transparent;border:none;color:#888;font-size:1.5rem;line-height:1;cursor:pointer}.login-modal-close:hover{color:#fff}.login-modal-buttons{display:flex;flex-direction:column;gap:.55rem}.hidden-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.hidden-modal-backdrop.open{display:flex}.hidden-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.4rem 1.4rem 1.1rem;max-width:420px;width:92%;max-height:80vh;display:flex;flex-direction:column;position:relative}.hidden-modal-search{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:100%;margin-top:.6rem;min-height:35px;flex-shrink:0}.hidden-modal-search::placeholder{color:#778}.hidden-modal-search:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.hidden-modal-list{overflow-y:auto;margin:.35rem -.4rem .9rem;padding:0 .4rem}.hidden-modal-list .panel-item{max-width:none}.hidden-modal-actions{display:flex;gap:.55rem}.hidden-row-count{font-size:.7rem;color:#aab;background:#3a3a6e;border-radius:10px;padding:1px 8px;min-width:22px;text-align:center}.login-btn{display:flex;align-items:center;gap:.75rem;padding:.65rem .9rem;border-radius:8px;font-size:.95rem;font-weight:500;text-decoration:none;cursor:pointer;transition:filter .12s}.login-btn:hover{filter:brightness(1.1)}.login-btn-icon{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem}.login-btn-google{background:#fff;color:#222}.login-btn-google .login-btn-icon{background:#4285F4;color:#fff}.login-btn-facebook{background:#1877F2;color:#fff}.login-btn-facebook .login-btn-icon{background:#fff;color:#1877F2}.anon-nag-toast{position:fixed;bottom:16px;right:16px;max-width:380px;background:#1e1e2e;border:1px solid #3a3a6e;border-left:3px solid #ffd24a;border-radius:8px;padding:.65rem .9rem .65rem .8rem;color:#eee;font-size:.85rem;line-height:1.35;display:none;z-index:150;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer}.anon-nag-toast.open{display:block}.anon-nag-toast strong{color:#ffd24a}.anon-nag-toast .anon-nag-close{position:absolute;top:2px;right:6px;background:transparent;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:2px 6px}.anon-nag-toast .anon-nag-close:hover{color:#fff}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3}.navbar-auth{order:4}.navbar-row-break{display:none}@media (min-width:576px){.navbar{padding-top:.25rem;padding-bottom:.25rem}.container-fluid{padding-top:.75rem !important}#film-counter{margin-bottom:.75rem !important}}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.nav-tab-debug{display:none}#film-counter{display:none !important}.container-fluid{padding-top:.375rem !important}}@media (max-width:575px){.navbar{padding:calc(.5 * var(--mobile-scale)) min(calc(.75 * var(--mobile-scale)),2.5vw) !important;gap:calc(.2 * var(--mobile-scale));--navbar-fs:calc(.875 * var(--mobile-scale));--navbar-px:min(calc(.6 * var(--mobile-scale)),2.5vw)}.navbar-logo{gap:min(1rem,3vw) !important}.navbar > div:first-child{height:28px;max-height:28px;overflow:visible}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar .date-nav-btn{font-size:calc(1.1 * var(--mobile-scale));min-width:min(35px,8vw);flex-shrink:1}.navbar .search-input,.navbar .filter-select{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar-title{display:none}.navbar-search{order:2;margin-left:auto}.navbar-auth{order:3}.navbar-row-break{display:block;order:4;width:100%;flex-shrink:0;height:0;margin:0;padding:0}.navbar-date{order:5;margin-left:0}.navbar-filtry{order:6;margin-left:auto;max-width:40%;min-width:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}input,select{font-size:16px}.container-fluid{padding-left:min(calc(.75 * var(--mobile-scale)),2.5vw) !important;padding-right:min(calc(.75 * var(--mobile-scale)),2.5vw) !important}#film-grid,.cinema-section .row{--bs-gutter-x:min(var(--mobile-scale),3.5vw)}.card-body{padding:min(var(--mobile-scale),4vw)}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.login-modal-title{font-size:calc(1.2 * var(--mobile-scale))}.login-modal-sub{font-size:calc(.85 * var(--mobile-scale))}.login-btn{font-size:calc(.95 * var(--mobile-scale));padding:calc(.65 * var(--mobile-scale)) calc(.9 * var(--mobile-scale))}.panel-item{font-size:calc(.8 * var(--mobile-scale))}.panel-label{font-size:calc(.8 * var(--mobile-scale))}.panel-section-label{font-size:calc(.65 * var(--mobile-scale))}.auth-logout-btn{font-size:calc(.875 * var(--mobile-scale))}.anon-nag-toast{font-size:calc(.85 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}@media (max-height:500px) and (orientation:landscape){.navbar-title{display:none}.navbar-row-break{display:none}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3;margin-left:0}.navbar-auth{order:4}.navbar{flex-wrap:nowrap;padding-left:8px !important;padding-right:8px !important;gap:3px}.navbar-logo{gap:4px !important;flex-shrink:0;min-width:0}.navbar-logo > .d-flex{gap:2px}.navbar-search{min-width:0;flex-shrink:10;overflow:hidden}.navbar-search .search-input{min-width:0;width:100%}.navbar-auth{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:0}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name,.navbar .filter-select,.navbar .search-input{font-size:calc(.8 * var(--mobile-scale));padding-left:5px;padding-right:5px}.navbar .btn.date-nav-btn{font-size:calc(.95 * var(--mobile-scale));min-width:0;padding-left:3px;padding-right:3px}.navbar .filter-select,.navbar .search-input{padding-top:0;padding-bottom:0}.navbar-date{align-items:center;flex-shrink:0;min-width:0}.navbar-date .filter-select{min-width:0}.navbar-filtry{min-width:0;flex-shrink:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}.container-fluid{padding-left:8px !important;padding-right:8px !important}.card-body{padding:calc(.6 * var(--mobile-scale))}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.cinema-label{font-size:calc(.65 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}#film-grid,.cinema-section .row{--bs-gutter-x:.5rem}#film-grid > .col,.cinema-section .row > .col{flex:0 0 25%;max-width:25%}}@media (max-height:500px) and (orientation:landscape) and (min-width:800px){#film-grid > .col,.cinema-section .row > .col{flex:0 0 calc(100% / 6);max-width:calc(100% / 6)}}@media (max-height:500px) and (orientation:landscape){.navbar{padding-top:3px !important;padding-bottom:3px !important}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}</style>
+<style>html{touch-action:manipulation}body{background:#111;color:#eee;overflow-x:hidden}.navbar{background:#1a1a2e;flex-wrap:wrap;position:sticky;top:0;z-index:10;gap:.4rem}.navbar-logo{flex-shrink:0}.card{background:#1e1e2e;border:none;border-radius:12px;overflow:hidden;height:100%;transition:transform .2s;cursor:pointer}.card:hover{transform:translateY(-4px)}.poster-wrap{position:relative;padding-top:148%;background:#2a2a3e;overflow:hidden}.poster-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.no-poster{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:#99a;font-style:italic;letter-spacing:.03em}.card-body{padding:1rem}.card-title{min-height:2.5rem;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.3rem;overflow-wrap:break-word}.card-title a{font-size:.95rem;font-weight:600;color:#fff;text-decoration:none;min-width:0}.card-title a:hover{color:#aad4ff}.pill{background:#252540;border:1px solid #3a3a6e;border-radius:3px;padding:0 5px;font-size:.72rem;color:#99b;white-space:nowrap}.runtime{font-size:.75rem;color:#888}.year{font-size:.75rem;color:#888;background:transparent;border:none}.pill.genre{font-size:.75rem;color:#888;text-decoration:none}a.pill.genre:hover{color:#aad4ff;border-color:#4a4a8e}.date-label{font-size:.7rem;color:#888;margin-bottom:.2rem;margin-top:.5rem}#room-tooltip{position:fixed;background:#0e0e1e;color:#ccc;font-size:.68rem;padding:2px 7px;border-radius:4px;white-space:nowrap;border:1px solid #3a3a6e;pointer-events:none;z-index:20;display:none}.refresh-btn{background:#3a3a6e;border:none;color:#aad4ff;white-space:nowrap;flex-shrink:0;height:35px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}.refresh-btn:hover{background:#5a5a9e;color:#fff}.date-nav-btn{padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;touch-action:manipulation;height:35px;box-sizing:border-box;min-width:35px}.filter-select{background:#3a3a6e;color:#aad4ff;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.875rem;cursor:pointer;flex-shrink:0;height:35px;box-sizing:border-box}.filter-select:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.search-input{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:160px;min-height:35px}.search-input::placeholder{color:#778}.search-input:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e;width:220px}@media (max-width:575px){.search-input,.search-input:focus{width:90px}}@media (max-width:379px){.search-input,.search-input:focus{width:55px}}@media (max-width:290px){.navbar-search{display:none}nav.navbar{padding:0 !important;column-gap:0 !important;row-gap:calc(.05 * var(--mobile-scale)) !important}.navbar > div:first-child{max-width:60% !important;overflow:hidden}.navbar-auth{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40% !important}.navbar-date{max-width:60% !important;overflow:hidden}.navbar-filtry{max-width:40% !important}}@media (max-width:575px){#date-filter{max-width:6.5rem}}@media (max-width:379px){#date-filter{max-width:5rem}}.hide-btn{position:absolute;top:6px;right:6px;z-index:10;background:rgba(0,0,0,.55);border:none;color:#fff;border-radius:50%;width:26px;height:26px;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center}.dropdown-panel{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:8px;z-index:1000;box-shadow:0 4px 16px rgba(0,0,0,.5);min-width:220px;max-width:calc(100vw - 1rem);max-height:70vh;overflow-y:auto}.panel-item{padding:5px 8px;cursor:pointer;border-radius:4px;font-size:.8rem;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}.panel-item:hover{background:#3a3a6e}.panel-label{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;font-size:.8rem;color:#eee;border-radius:4px}.panel-label:hover{background:#3a3a6e}.panel-divider{border-top:1px solid #3a3a6e;margin:6px 0;padding-top:2px}.dropdown-panel,.hidden-modal-list{scrollbar-width:thin;scrollbar-color:#3a3a6e transparent}.dropdown-panel::-webkit-scrollbar,.hidden-modal-list::-webkit-scrollbar{width:8px;height:8px}.dropdown-panel::-webkit-scrollbar-track,.hidden-modal-list::-webkit-scrollbar-track{background:transparent}.dropdown-panel::-webkit-scrollbar-thumb,.hidden-modal-list::-webkit-scrollbar-thumb{background:#3a3a6e;border-radius:4px}.dropdown-panel::-webkit-scrollbar-thumb:hover,.hidden-modal-list::-webkit-scrollbar-thumb:hover{background:#5a5a9e}.panel-section-label{font-size:.65rem;color:#888;text-transform:uppercase;letter-spacing:.06em;padding:4px 8px 2px}.submenu-row{justify-content:space-between}.submenu-right{display:flex;align-items:center;gap:6px;margin-left:auto}.submenu-row-count{background:#5a5a9e;color:#fff;font-size:.65rem;font-weight:600;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:9px;padding:0 5px}.submenu-film-count{margin-left:auto;font-size:.7rem;color:#888}.submenu-chevron{display:inline-block;font-size:1rem;color:#888;transition:transform .15s ease}.submenu-chevron.open{transform:rotate(90deg)}.submenu-list{max-height:40vh;overflow-y:auto}.nav-tab{color:#aad4ff;text-decoration:none;font-size:.875rem;padding:.25rem .6rem;border-radius:6px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;display:inline-flex;align-items:center;justify-content:center;min-height:35px}.nav-tab:hover{background:#3a3a6e;color:#fff}.nav-tab.active{background:#3a3a6e;color:#fff}.nav-tab-login{cursor:pointer;border:none;font:inherit;font-size:.875rem;background:#3a3a6e;color:#aad4ff;padding:.2rem .7rem}.nav-tab-login:hover{background:#5a5a9e;color:#fff}.auth-menu{position:relative;display:inline-flex;align-items:center;gap:.35rem;background:#3a3a6e;color:#aad4ff;border-radius:6px;padding:.15rem .55rem .15rem .25rem;font-size:.875rem;cursor:pointer;-webkit-user-select:none;user-select:none;min-height:35px}.auth-menu:hover{background:#5a5a9e;color:#fff}.auth-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;display:block}.auth-avatar-fallback{width:22px;height:22px;border-radius:50%;background:#1a1a2e;color:#ffd24a;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:600}.auth-name{font-size:.875rem;max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.auth-name{display:none}}.auth-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:#1e1e2e;border:1px solid #3a3a6e;border-radius:8px;padding:6px;min-width:160px;display:none;z-index:50}.auth-menu.open .auth-dropdown{display:block}.auth-logout-form{margin:0}.auth-logout-btn{width:100%;background:transparent;border:none;color:#eee;text-align:left;padding:.4rem .6rem;cursor:pointer;border-radius:6px;font-size:.875rem;min-height:35px;display:flex;align-items:center}.auth-logout-btn:hover{background:#3a3a6e;color:#fff}.login-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.login-modal-backdrop.open{display:flex}.login-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.5rem 1.6rem 1.4rem;max-width:360px;width:92%;position:relative}.login-modal-title{font-size:1.2rem;font-weight:600;margin-bottom:.5rem}.login-modal-sub{font-size:.85rem;color:#aab;margin-bottom:1.1rem}.login-modal-close{position:absolute;top:.4rem;right:.55rem;background:transparent;border:none;color:#888;font-size:1.5rem;line-height:1;cursor:pointer}.login-modal-close:hover{color:#fff}.login-modal-buttons{display:flex;flex-direction:column;gap:.55rem}.hidden-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}.hidden-modal-backdrop.open{display:flex}.hidden-modal{background:#1a1a2e;border:1px solid #3a3a6e;border-radius:12px;padding:1.4rem 1.4rem 1.1rem;max-width:420px;width:92%;max-height:80vh;display:flex;flex-direction:column;position:relative}.hidden-modal-search{background:#3a3a6e;color:#eee;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;width:100%;margin-top:.6rem;min-height:35px;flex-shrink:0}.hidden-modal-search::placeholder{color:#778}.hidden-modal-search:focus{outline:none;box-shadow:0 0 0 2px #5a5a9e}.hidden-modal-list{overflow-y:auto;margin:.35rem -.4rem .9rem;padding:0 .4rem}.hidden-modal-list .panel-item{max-width:none}.hidden-modal-actions{display:flex;gap:.55rem}.hidden-row-count{font-size:.7rem;color:#aab;background:#3a3a6e;border-radius:10px;padding:1px 8px;min-width:22px;text-align:center}.login-btn{display:flex;align-items:center;gap:.75rem;padding:.65rem .9rem;border-radius:8px;font-size:.95rem;font-weight:500;text-decoration:none;cursor:pointer;transition:filter .12s}.login-btn:hover{filter:brightness(1.1)}.login-btn-icon{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem}.login-btn-google{background:#fff;color:#222}.login-btn-google .login-btn-icon{background:#4285F4;color:#fff}.login-btn-facebook{background:#1877F2;color:#fff}.login-btn-facebook .login-btn-icon{background:#fff;color:#1877F2}.anon-nag-toast{position:fixed;bottom:16px;right:16px;max-width:380px;background:#1e1e2e;border:1px solid #3a3a6e;border-left:3px solid #ffd24a;border-radius:8px;padding:.65rem .9rem .65rem .8rem;color:#eee;font-size:.85rem;line-height:1.35;display:none;z-index:150;box-shadow:0 6px 18px rgba(0,0,0,.4);cursor:pointer}.anon-nag-toast.open{display:block}.anon-nag-toast strong{color:#ffd24a}.anon-nag-toast .anon-nag-close{position:absolute;top:2px;right:6px;background:transparent;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:2px 6px}.anon-nag-toast .anon-nag-close:hover{color:#fff}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3}.navbar-auth{order:4}.navbar-row-break{display:none}@media (min-width:576px){.navbar{padding-top:.25rem;padding-bottom:.25rem}.container-fluid{padding-top:.75rem !important}#film-counter{margin-bottom:.75rem !important}}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.nav-tab-debug{display:none}#film-counter{display:none !important}.container-fluid{padding-top:.375rem !important}}@media (max-width:575px){.navbar{padding:calc(.5 * var(--mobile-scale)) min(calc(.75 * var(--mobile-scale)),2.5vw) !important;gap:calc(.2 * var(--mobile-scale));--navbar-fs:calc(.875 * var(--mobile-scale));--navbar-px:min(calc(.6 * var(--mobile-scale)),2.5vw)}.navbar-logo{gap:min(1rem,3vw) !important}.navbar > div:first-child{height:28px;max-height:28px;overflow:visible}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar .date-nav-btn{font-size:calc(1.1 * var(--mobile-scale));min-width:min(35px,8vw);flex-shrink:1}.navbar .search-input,.navbar .filter-select{font-size:var(--navbar-fs);padding-left:var(--navbar-px);padding-right:var(--navbar-px)}.navbar-title{display:none}.navbar-search{order:2;margin-left:auto}.navbar-auth{order:3}.navbar-row-break{display:block;order:4;width:100%;flex-shrink:0;height:0;margin:0;padding:0}.navbar-date{order:5;margin-left:0}.navbar-filtry{order:6;margin-left:auto;max-width:40%;min-width:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}input,select{font-size:16px}.container-fluid{padding-left:min(calc(.75 * var(--mobile-scale)),2.5vw) !important;padding-right:min(calc(.75 * var(--mobile-scale)),2.5vw) !important}#film-grid,.cinema-section .row{--bs-gutter-x:min(var(--mobile-scale),3.5vw)}.card-body{padding:min(var(--mobile-scale),4vw)}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.login-modal-title{font-size:calc(1.2 * var(--mobile-scale))}.login-modal-sub{font-size:calc(.85 * var(--mobile-scale))}.login-btn{font-size:calc(.95 * var(--mobile-scale));padding:calc(.65 * var(--mobile-scale)) calc(.9 * var(--mobile-scale))}.panel-item{font-size:calc(.8 * var(--mobile-scale))}.panel-label{font-size:calc(.8 * var(--mobile-scale))}.panel-section-label{font-size:calc(.65 * var(--mobile-scale))}.auth-logout-btn{font-size:calc(.875 * var(--mobile-scale))}.anon-nag-toast{font-size:calc(.85 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}@media (max-height:500px) and (orientation:landscape){.navbar-title{display:none}.navbar-row-break{display:none}.navbar-search{order:1;margin-left:auto}.navbar-date{order:2}.navbar-filtry{order:3;margin-left:0}.navbar-auth{order:4}.navbar{flex-wrap:nowrap;padding-left:8px !important;padding-right:8px !important;gap:3px}.navbar-logo{gap:4px !important;flex-shrink:0;min-width:0}.navbar-logo > .d-flex{gap:2px}.navbar-search{min-width:0;flex-shrink:10;overflow:hidden}.navbar-search .search-input{min-width:0;width:100%}.navbar-auth{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:0}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .auth-name,.navbar .filter-select,.navbar .search-input{font-size:calc(.8 * var(--mobile-scale));padding-left:5px;padding-right:5px}.navbar .btn.date-nav-btn{font-size:calc(.95 * var(--mobile-scale));min-width:0;padding-left:3px;padding-right:3px}.navbar .filter-select,.navbar .search-input{padding-top:0;padding-bottom:0}.navbar-date{align-items:center;flex-shrink:0;min-width:0}.navbar-date .filter-select{min-width:0}.navbar-filtry{min-width:0;flex-shrink:0}#format-filter-btn{max-width:100%;overflow:hidden;text-overflow:ellipsis;display:block}.container-fluid{padding-left:8px !important;padding-right:8px !important}.card-body{padding:calc(.6 * var(--mobile-scale))}.card-title a{font-size:calc(.95 * var(--mobile-scale))}.pill{font-size:calc(.72 * var(--mobile-scale));padding:0 calc(5 * var(--mobile-scale-px))}.date-label{font-size:calc(.7 * var(--mobile-scale))}.cinema-label{font-size:calc(.65 * var(--mobile-scale))}.no-poster{font-size:calc(.85 * var(--mobile-scale))}#room-tooltip{font-size:calc(.68 * var(--mobile-scale))}#film-grid,.cinema-section .row{--bs-gutter-x:.5rem}#film-grid > .col,.cinema-section .row > .col{flex:0 0 25%;max-width:25%}}@media (max-height:500px) and (orientation:landscape) and (min-width:800px){#film-grid > .col,.cinema-section .row > .col{flex:0 0 calc(100% / 6);max-width:calc(100% / 6)}}@media (max-height:500px) and (orientation:landscape){.navbar{padding-top:3px !important;padding-bottom:3px !important}.navbar .nav-tab,.navbar .nav-tab-login,.navbar .refresh-btn,.navbar .date-nav-btn,.navbar .btn.date-nav-btn,.navbar .filter-select,.navbar .search-input,.navbar .auth-name{height:28px;min-height:28px;max-height:28px;box-sizing:border-box}}#view-pager{position:relative;overflow-x:clip}#view-pager > main{will-change:transform}#view-pager.view-sliding > main{transition:transform .3s cubic-bezier(.22,.61,.36,1)}#view-pager > main.view-entering{position:absolute;top:0;left:0;width:100%}@media (prefers-reduced-motion:reduce){#view-pager.view-sliding > main{transition:none}}</style>
 
 <style>:root{--mobile-scale:clamp(0.85rem,calc(0.6618rem + 0.9412vw),1rem);--mobile-scale-px:clamp(0.85px,calc(0.6618px + 0.05882vw),1px)}@media (max-height:500px) and (orientation:landscape){:root{--mobile-scale:0.85rem;--mobile-scale-px:0.85px}}.badge-time{background:#3a3a6e;color:#aad4ff;font-size:.72rem;padding:.25em .5em;border-radius:6px;margin:1px 2px 1px 0;display:inline-block;text-decoration:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}a.badge-time:hover{background:#5a5a9e;color:#fff}.badge-fmt{font-size:.62rem;opacity:.7;margin-left:2px}@media (max-width:575px),(max-height:500px) and (orientation:landscape){.badge-time{font-size:calc(.72 * var(--mobile-scale));padding:.2em .5em}.badge-fmt{font-size:calc(.62 * var(--mobile-scale))}}.showings-more{display:inline-block;margin-top:.35rem;font-size:.7rem;color:#6ab;text-decoration:none;background:rgba(255,255,255,.06);padding:.2em .6em;border-radius:10px}.showings-more:hover{color:#9df;background:rgba(255,255,255,.1)}</style>
 
@@ -71,19 +71,18 @@
       <select id="sort-by" class="filter-select w-100" onchange="onSortChange()" style="margin-bottom:.4rem">
         <option value="earliest">Najbliższy seans</option>
         <option value="rating">Ocena</option>
-        <option value="year">Rok produkcji</option>
       </select>
       <div class="panel-divider"></div>
 
       
-      
+      <div id="filtry-cinema-section">
         <div class="panel-section-label">Kina</div>
         <label class="panel-label" style="border-bottom:1px solid #3a3a6e; margin-bottom:4px; padding-bottom:8px;">
           <input type="checkbox" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> Wszystkie kina
         </label>
         <div id="cinema-list"></div>
         <div class="panel-divider"></div>
-      
+      </div>
 
       <div id="country-row" class="panel-label submenu-row" onclick="toggleSubmenu('country')">
         <span>Kraj produkcji</span>
@@ -223,12 +222,15 @@
 
 <script src="/assets/js/shared.js"></script>
 
+
+<div id="view-pager">
+<main id="view-root" data-view="films">
 <div class="container-fluid py-4 px-4">
   <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
     
-<div class="col" data-title="Michael" data-countries="USA|Wielka Brytania" data-rating="5.594" data-year="2026" data-genres="Muzyczny|Dramat|Biograficzny" data-director="Antoine Fuqua" data-cast="Jaafar Jackson, Juliano Valdi, Colman Domingo">
+<div class="col" data-title="Michael" data-countries="USA|Wielka Brytania" data-rating="5.594" data-genres="Muzyczny|Dramat|Biograficzny" data-director="Antoine Fuqua" data-cast="Jaafar Jackson, Juliano Valdi, Colman Domingo">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -913,7 +915,7 @@
 
 </div>
 
-<div class="col" data-title="Diabeł ubiera się u Prady 2" data-countries="USA" data-rating="6.773" data-year="2026" data-genres="Dramat|Komedia" data-director="David Frankel" data-cast="Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci">
+<div class="col" data-title="Diabeł ubiera się u Prady 2" data-countries="USA" data-rating="6.773" data-genres="Dramat|Komedia" data-director="David Frankel" data-cast="Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -1899,7 +1901,7 @@
 
 </div>
 
-<div class="col" data-title="Kurozając i Świątynia Świstaka" data-countries="Belgia|Francja|USA" data-rating="0.000" data-year="2026" data-genres="Animacja|Komedia|Przygodowy" data-director="Benjamin Mousquet">
+<div class="col" data-title="Kurozając i Świątynia Świstaka" data-countries="Belgia|Francja|USA" data-rating="0.000" data-genres="Animacja|Komedia|Przygodowy" data-director="Benjamin Mousquet">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -2433,7 +2435,7 @@
 
 </div>
 
-<div class="col" data-title="Pucio" data-countries="Polska" data-rating="0.000" data-year="2026" data-genres="Animacja" data-director="Marta Stróżycka">
+<div class="col" data-title="Pucio" data-countries="Polska" data-rating="0.000" data-genres="Animacja" data-director="Marta Stróżycka">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -2869,7 +2871,7 @@
 
 </div>
 
-<div class="col" data-title="Super Mario Galaxy Film" data-countries="Japonia|USA" data-rating="5.057" data-year="2026" data-genres="Animacja|Komedia|Przygodowy" data-director="Aaron Horvath, Michael Jelenic">
+<div class="col" data-title="Super Mario Galaxy Film" data-countries="Japonia|USA" data-rating="5.057" data-genres="Animacja|Komedia|Przygodowy" data-director="Aaron Horvath, Michael Jelenic">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -3335,7 +3337,7 @@
 
 </div>
 
-<div class="col" data-title="Hopnięci" data-countries="USA" data-rating="7.810" data-year="2026" data-genres="Animacja|Przygodowy|Komedia" data-director="Daniel Chong">
+<div class="col" data-title="Hopnięci" data-countries="USA" data-rating="7.810" data-genres="Animacja|Przygodowy|Komedia" data-director="Daniel Chong">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -3536,7 +3538,7 @@
 
 </div>
 
-<div class="col" data-title="Sprawiedliwość owiec" data-countries="Irlandia|Wielka Brytania|Niemcy|USA" data-rating="7.855" data-year="2026" data-genres="Komedia kryminalna" data-director="Kyle Balda" data-cast="Nicholas Galitzine, Molly Gordon, Julia Louis-Dreyfus, Bryan Cranston, Chris O’Dowd, Regina Hall, Patrick Stewart, Hong Chau, Emma Thompson, Tosin Cole, Kobna Holdbrook-Smith, Conleth Hill i Mandeep Dhillon">
+<div class="col" data-title="Sprawiedliwość owiec" data-countries="Irlandia|Wielka Brytania|Niemcy|USA" data-rating="7.855" data-genres="Komedia kryminalna" data-director="Kyle Balda" data-cast="Nicholas Galitzine, Molly Gordon, Julia Louis-Dreyfus, Bryan Cranston, Chris O’Dowd, Regina Hall, Patrick Stewart, Hong Chau, Emma Thompson, Tosin Cole, Kobna Holdbrook-Smith, Conleth Hill i Mandeep Dhillon">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -4087,7 +4089,7 @@
 
 </div>
 
-<div class="col" data-title="Billie Eilish - Hit Me Hard and Soft: The Tour" data-countries="USA" data-rating="8.040" data-year="2026" data-genres="Muzyczny|Dokumentalny" data-director="James Cameron" data-cast="Billie Eilish">
+<div class="col" data-title="Billie Eilish - Hit Me Hard and Soft: The Tour" data-countries="USA" data-rating="8.040" data-genres="Muzyczny|Dokumentalny" data-director="James Cameron" data-cast="Billie Eilish">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -4573,7 +4575,7 @@
 
 </div>
 
-<div class="col" data-title="Normal" data-countries="Kanada|USA" data-rating="0.000" data-year="2025" data-genres="Akcja|Kryminał|Thriller" data-director="Ben Wheatley" data-cast="Bob Odenkirk, Lena Headey, Henry Winkler">
+<div class="col" data-title="Normal" data-countries="Kanada|USA" data-rating="0.000" data-genres="Akcja|Kryminał|Thriller" data-director="Ben Wheatley" data-cast="Bob Odenkirk, Lena Headey, Henry Winkler">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -4726,7 +4728,7 @@
 
 </div>
 
-<div class="col" data-title="Projekt Hail Mary" data-countries="USA" data-rating="8.328" data-year="2026" data-genres="Sci-Fi" data-director="Phil Lord, Christopher Miller" data-cast="Ryan Gosling, Ken Leung, Milana Vayntrub">
+<div class="col" data-title="Projekt Hail Mary" data-countries="USA" data-rating="8.328" data-genres="Sci-Fi" data-director="Phil Lord, Christopher Miller" data-cast="Ryan Gosling, Ken Leung, Milana Vayntrub">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -5140,7 +5142,7 @@
 
 </div>
 
-<div class="col" data-title="Mortal Kombat II" data-countries="USA" data-rating="6.197" data-year="2026" data-genres="Fantasy|Akcja" data-director="Simon McQuoid" data-cast="Karl Urban, Adeline Rudolph, Lewis Tan, Jessica Mcnamee, Josh Lawson, Tadanobu Asano, Mehcad Brooks, Ludi Lin, Damon Herriman, Tati Gabrielle, Martyn Ford, Chin Han, Joe Taslim, Hiroyuki Sanada, Desmond Chiam, Ana Thu Nguyen, Max Huang">
+<div class="col" data-title="Mortal Kombat II" data-countries="USA" data-rating="6.197" data-genres="Fantasy|Akcja" data-director="Simon McQuoid" data-cast="Karl Urban, Adeline Rudolph, Lewis Tan, Jessica Mcnamee, Josh Lawson, Tadanobu Asano, Mehcad Brooks, Ludi Lin, Damon Herriman, Tati Gabrielle, Martyn Ford, Chin Han, Joe Taslim, Hiroyuki Sanada, Desmond Chiam, Ana Thu Nguyen, Max Huang">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -5750,7 +5752,7 @@
 
 </div>
 
-<div class="col" data-title="Za duży na bajki 3" data-countries="Polska" data-rating="5.370" data-year="2026" data-genres="Familijny" data-director="Kristoffer Rus" data-cast="Maciej Karaś, Patryk Siemek, Amelia Fijałkowska, Karolina Gruszka, Dorota Kolak, Paweł Domagała">
+<div class="col" data-title="Za duży na bajki 3" data-countries="Polska" data-rating="5.370" data-genres="Familijny" data-director="Kristoffer Rus" data-cast="Maciej Karaś, Patryk Siemek, Amelia Fijałkowska, Karolina Gruszka, Dorota Kolak, Paweł Domagała">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -5930,7 +5932,7 @@
 
 </div>
 
-<div class="col" data-title="Był sobie śnieg" data-countries="Austria" data-rating="6.095" data-year="2025" data-genres="Dokumentalny" data-director="Nikolaus Geyrhalter">
+<div class="col" data-title="Był sobie śnieg" data-countries="Austria" data-rating="6.095" data-genres="Dokumentalny" data-director="Nikolaus Geyrhalter">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -6002,7 +6004,7 @@
 
 </div>
 
-<div class="col" data-title="Drzewo Magii" data-countries="Francja|USA|Wielka Brytania" data-rating="7.285" data-year="2026" data-genres="Familijny|Fantasy|Przygodowy" data-director="Ben Gregor" data-cast="Andrew Garfield („Sztuka pięknego życia”), Claire Foy (serial „The Crown”) Rebecca Ferguson („Diuna”), Nicola Coughlan (serial „Brigertonowie”), Jessica Gunning (serial „Reniferek”)">
+<div class="col" data-title="Drzewo Magii" data-countries="Francja|USA|Wielka Brytania" data-rating="7.285" data-genres="Familijny|Fantasy|Przygodowy" data-director="Ben Gregor" data-cast="Andrew Garfield („Sztuka pięknego życia”), Claire Foy (serial „The Crown”) Rebecca Ferguson („Diuna”), Nicola Coughlan (serial „Brigertonowie”), Jessica Gunning (serial „Reniferek”)">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -6335,7 +6337,7 @@
 
 </div>
 
-<div class="col" data-title="Niesamowite przygody skarpetek 2. Skarpetki górą!" data-countries="Polska" data-rating="0.000" data-year="2025" data-director="Piotr Giersz, Barbara Koniecka, Janusz Martyn, Agata Mikina, Marta Stróżycka, Anna Wróblewska-Dzwoniarek">
+<div class="col" data-title="Niesamowite przygody skarpetek 2. Skarpetki górą!" data-countries="Polska" data-rating="0.000" data-director="Piotr Giersz, Barbara Koniecka, Janusz Martyn, Agata Mikina, Marta Stróżycka, Anna Wróblewska-Dzwoniarek">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -6402,7 +6404,7 @@
 
 </div>
 
-<div class="col" data-title="Kłopotliwy niedźwiedź" data-countries="USA|Kanada|Wielka Brytania" data-rating="7.654" data-year="2026" data-genres="Dokumentalny" data-director="Gabriela Osio Vanden, Jack Weisman">
+<div class="col" data-title="Kłopotliwy niedźwiedź" data-countries="USA|Kanada|Wielka Brytania" data-rating="7.654" data-genres="Dokumentalny" data-director="Gabriela Osio Vanden, Jack Weisman">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -6480,7 +6482,7 @@
 
 </div>
 
-<div class="col" data-title="Mumia: Film Lee Cronina" data-countries="" data-rating="5.363" data-year="2026" data-genres="Horror" data-director="Lee Cronin" data-cast="Jack Reynor, Laia Costa, May Calamawy, Natalie Grace">
+<div class="col" data-title="Mumia: Film Lee Cronina" data-countries="" data-rating="5.363" data-genres="Horror" data-director="Lee Cronin" data-cast="Jack Reynor, Laia Costa, May Calamawy, Natalie Grace">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -6641,7 +6643,7 @@
 
 </div>
 
-<div class="col" data-title="Drama" data-countries="USA" data-rating="6.982" data-year="2026" data-genres="Dramat|Romans|Komedia" data-director="Kristoffer Borgli" data-cast="Robert Pattinson, Zendaya Coleman, Alana Haim, Hailey Gates">
+<div class="col" data-title="Drama" data-countries="USA" data-rating="6.982" data-genres="Dramat|Romans|Komedia" data-director="Kristoffer Borgli" data-cast="Robert Pattinson, Zendaya Coleman, Alana Haim, Hailey Gates">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -7156,7 +7158,7 @@
 
 </div>
 
-<div class="col" data-title="Caravaggio. Arcydzieła niepokornego geniusza" data-countries="Wielka Brytania" data-rating="0.000" data-year="2025" data-director="David Bickerstaff, Phil Grabsky">
+<div class="col" data-title="Caravaggio. Arcydzieła niepokornego geniusza" data-countries="Wielka Brytania" data-rating="0.000" data-director="David Bickerstaff, Phil Grabsky">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -7303,7 +7305,7 @@
 
 </div>
 
-<div class="col" data-title="ДИЯВОЛ НОСИТЬ ПРАДА 2" data-countries="" data-rating="6.773" data-year="2026" data-genres="Dramat|Komedia">
+<div class="col" data-title="ДИЯВОЛ НОСИТЬ ПРАДА 2" data-countries="" data-rating="6.773" data-genres="Dramat|Komedia">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -7388,7 +7390,7 @@
 
 </div>
 
-<div class="col" data-title="Wpatrując się w słońce" data-countries="Niemcy" data-rating="8.153" data-year="2025" data-genres="Dramat" data-director="Mascha Schilinski">
+<div class="col" data-title="Wpatrując się w słońce" data-countries="Niemcy" data-rating="8.153" data-genres="Dramat" data-director="Mascha Schilinski">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -7596,7 +7598,7 @@
 
 </div>
 
-<div class="col" data-title="Kicia Kocia ma braciszka" data-countries="" data-rating="0.000" data-year="2025" data-genres="Animacja">
+<div class="col" data-title="Kicia Kocia ma braciszka" data-countries="" data-rating="0.000" data-genres="Animacja">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -7665,7 +7667,7 @@
 
 </div>
 
-<div class="col" data-title="Niedźwiedzica" data-countries="Norwegia|Niemcy" data-rating="7.127" data-year="2026" data-genres="Przyrodniczy|Dokumentalny" data-director="Asgeir Helgestad">
+<div class="col" data-title="Niedźwiedzica" data-countries="Norwegia|Niemcy" data-rating="7.127" data-genres="Przyrodniczy|Dokumentalny" data-director="Asgeir Helgestad">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -7735,7 +7737,7 @@
 
 </div>
 
-<div class="col" data-title="Orwell: 2 + 2 = 5" data-countries="Francja|USA" data-rating="6.929" data-year="2025" data-genres="Dokumentalny" data-director="Raoul Peck">
+<div class="col" data-title="Orwell: 2 + 2 = 5" data-countries="Francja|USA" data-rating="6.929" data-genres="Dokumentalny" data-director="Raoul Peck">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -7813,7 +7815,7 @@
 
 </div>
 
-<div class="col" data-title="Znaki Pana Śliwki" data-countries="Polska" data-rating="7.886" data-year="2025" data-genres="Biograficzny|Dokumentalny" data-director="Urszula Morga, Bartosz Mikołajczyk">
+<div class="col" data-title="Znaki Pana Śliwki" data-countries="Polska" data-rating="7.886" data-genres="Biograficzny|Dokumentalny" data-director="Urszula Morga, Bartosz Mikołajczyk">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -8156,7 +8158,7 @@
 
 </div>
 
-<div class="col" data-title="Obsesja" data-countries="USA" data-rating="7.904" data-year="2025" data-genres="Horror" data-director="Curry Barker" data-cast="Michael Johnston, Inde Navarrette, Cooper Tomlinson">
+<div class="col" data-title="Obsesja" data-countries="USA" data-rating="7.904" data-genres="Horror" data-director="Curry Barker" data-cast="Michael Johnston, Inde Navarrette, Cooper Tomlinson">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -8628,7 +8630,7 @@
 
 </div>
 
-<div class="col" data-title="Ścieżki życia" data-countries="" data-rating="6.711" data-year="2025" data-genres="Psychologiczny|Dramat">
+<div class="col" data-title="Ścieżki życia" data-countries="" data-rating="6.711" data-genres="Psychologiczny|Dramat">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -8733,7 +8735,7 @@
 
 </div>
 
-<div class="col" data-title="Maryja. Matka Papieża" data-countries="Polska" data-rating="6.630" data-year="2026" data-genres="Dokumentalny|Religijny" data-director="Jan Sobierajski">
+<div class="col" data-title="Maryja. Matka Papieża" data-countries="Polska" data-rating="6.630" data-genres="Dokumentalny|Religijny" data-director="Jan Sobierajski">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -8963,7 +8965,7 @@
 
 </div>
 
-<div class="col" data-title="Moulin Rouge!" data-countries="" data-rating="7.229" data-year="2001" data-genres="Melodramat|Musical" data-director="Baz Luhrmann" data-cast="Nicole Kidman, Ewan McGregor, John Leguizamo, Jim Broadbent">
+<div class="col" data-title="Moulin Rouge!" data-countries="" data-rating="7.229" data-genres="Melodramat|Musical" data-director="Baz Luhrmann" data-cast="Nicole Kidman, Ewan McGregor, John Leguizamo, Jim Broadbent">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -9066,7 +9068,7 @@
 
 </div>
 
-<div class="col" data-title="Niewinni czarodzieje" data-countries="" data-rating="7.976" data-year="1960" data-genres="Dramat|Psychologiczny" data-cast="Tadeusz Łomnicki, Krystyna Stypułkowska, Roman Polański">
+<div class="col" data-title="Niewinni czarodzieje" data-countries="" data-rating="7.976" data-genres="Dramat|Psychologiczny" data-cast="Tadeusz Łomnicki, Krystyna Stypułkowska, Roman Polański">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -9169,7 +9171,7 @@
 
 </div>
 
-<div class="col" data-title="Odrodzony jako galareta. Film: Łzy Morza Lazurowego" data-countries="Japonia" data-rating="6.657" data-year="2026" data-genres="Anime|Akcja|Fantasy" data-director="Yasuhito Kikuchi">
+<div class="col" data-title="Odrodzony jako galareta. Film: Łzy Morza Lazurowego" data-countries="Japonia" data-rating="6.657" data-genres="Anime|Akcja|Fantasy" data-director="Yasuhito Kikuchi">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -9334,7 +9336,7 @@
 
 </div>
 
-<div class="col" data-title="Widmo wolności" data-countries="Francja" data-rating="7.996" data-year="1974" data-genres="Surrealistyczny|Satyra" data-director="Luis Buñuel">
+<div class="col" data-title="Widmo wolności" data-countries="Francja" data-rating="7.996" data-genres="Surrealistyczny|Satyra" data-director="Luis Buñuel">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -9417,7 +9419,7 @@
 
 </div>
 
-<div class="col" data-title="Romería" data-countries="Hiszpania" data-rating="7.396" data-year="2025" data-genres="Dramat" data-director="Carla Simón" data-cast="Tristán Ulloa, Sara Casasnovas, Miryam Gallego">
+<div class="col" data-title="Romería" data-countries="Hiszpania" data-rating="7.396" data-genres="Dramat" data-director="Carla Simón" data-cast="Tristán Ulloa, Sara Casasnovas, Miryam Gallego">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -9839,7 +9841,7 @@
 
 </div>
 
-<div class="col" data-title="Top Gun" data-countries="USA" data-rating="6.222" data-year="1986" data-genres="Sensacyjny|Romans" data-director="Tony Scott" data-cast="Tom Cruise, Tom Skerritt, Kelly McGillis, Val Kilmer, Anthony Edwards, Tim Robbins">
+<div class="col" data-title="Top Gun" data-countries="USA" data-rating="6.222" data-genres="Sensacyjny|Romans" data-director="Tony Scott" data-cast="Tom Cruise, Tom Skerritt, Kelly McGillis, Val Kilmer, Anthony Edwards, Tim Robbins">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -10208,7 +10210,7 @@
 
 </div>
 
-<div class="col" data-title="Najstarsza osoba na świecie" data-countries="USA" data-rating="0.000" data-year="2025" data-director="Sam Green">
+<div class="col" data-title="Najstarsza osoba na świecie" data-countries="USA" data-rating="0.000" data-director="Sam Green">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -10270,7 +10272,7 @@
 
 </div>
 
-<div class="col" data-title="Yu-Gi-Oh! The Dark Side of Dimensions" data-countries="" data-rating="6.950" data-year="2016">
+<div class="col" data-title="Yu-Gi-Oh! The Dark Side of Dimensions" data-countries="" data-rating="6.950">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -10345,7 +10347,7 @@
 
 </div>
 
-<div class="col" data-title="Wolność po włosku" data-countries="Francja|Włochy" data-rating="5.416" data-year="2025" data-genres="Dramat" data-director="Mario Martone">
+<div class="col" data-title="Wolność po włosku" data-countries="Francja|Włochy" data-rating="5.416" data-genres="Dramat" data-director="Mario Martone">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -10573,7 +10575,7 @@
 
 </div>
 
-<div class="col" data-title="Harry Angel" data-countries="" data-rating="7.275" data-year="1987" data-genres="Thriller">
+<div class="col" data-title="Harry Angel" data-countries="" data-rating="7.275" data-genres="Thriller">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -10656,7 +10658,7 @@
 
 </div>
 
-<div class="col" data-title="Iron Maiden: Burning Ambition" data-countries="USA|Wielka Brytania" data-rating="7.540" data-year="2026" data-genres="Dokumentalny|Muzyczny" data-director="Malcolm Venville" data-cast="Steve Harris, Bruce Dickinson, Nicko McBrain, Adrian Smith, Dave Murray">
+<div class="col" data-title="Iron Maiden: Burning Ambition" data-countries="USA|Wielka Brytania" data-rating="7.540" data-genres="Dokumentalny|Muzyczny" data-director="Malcolm Venville" data-cast="Steve Harris, Bruce Dickinson, Nicko McBrain, Adrian Smith, Dave Murray">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -11116,7 +11118,7 @@
 
 </div>
 
-<div class="col" data-title="Left-Handed Girl. To była ręka... diabła!" data-countries="" data-rating="8.267" data-year="2025" data-genres="Dramat">
+<div class="col" data-title="Left-Handed Girl. To była ręka... diabła!" data-countries="" data-rating="8.267" data-genres="Dramat">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -11195,7 +11197,7 @@
 
 </div>
 
-<div class="col" data-title="Idź z duszą na dłoni" data-countries="Francja|Palestyna|Iran" data-rating="8.017" data-year="2025" data-genres="Dokumentalny" data-director="Sepideh Farsi">
+<div class="col" data-title="Idź z duszą na dłoni" data-countries="Francja|Palestyna|Iran" data-rating="8.017" data-genres="Dokumentalny" data-director="Sepideh Farsi">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -11273,7 +11275,7 @@
 
 </div>
 
-<div class="col" data-title="Milcząca przyjaciółka" data-countries="Niemcy|Francja|Węgry" data-rating="8.279" data-year="2025" data-genres="Dramat" data-director="Ildikó Enyedi" data-cast="Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth, Martin W">
+<div class="col" data-title="Milcząca przyjaciółka" data-countries="Niemcy|Francja|Węgry" data-rating="8.279" data-genres="Dramat" data-director="Ildikó Enyedi" data-cast="Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth, Martin W">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -11726,7 +11728,7 @@
 
 </div>
 
-<div class="col" data-title="Ex Machina" data-countries="Wielka Brytania|USA" data-rating="7.997" data-year="2014" data-genres="Sci-Fi|Thriller" data-director="Alex Garland">
+<div class="col" data-title="Ex Machina" data-countries="Wielka Brytania|USA" data-rating="7.997" data-genres="Sci-Fi|Thriller" data-director="Alex Garland">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -11811,7 +11813,7 @@
 
 </div>
 
-<div class="col" data-title="Nie ma duchów w mieszkaniu na Dobrej" data-countries="" data-rating="6.783" data-year="2026" data-genres="Dramat">
+<div class="col" data-title="Nie ma duchów w mieszkaniu na Dobrej" data-countries="" data-rating="6.783" data-genres="Dramat">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -11968,7 +11970,7 @@
 
 </div>
 
-<div class="col" data-title="Posłani" data-countries="Polska" data-rating="0.000" data-year="2026" data-director="Dariusz Walusiak">
+<div class="col" data-title="Posłani" data-countries="Polska" data-rating="0.000" data-director="Dariusz Walusiak">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -12055,7 +12057,7 @@
 
 </div>
 
-<div class="col" data-title="Mortal Kombat II ukraiński dubbing" data-countries="USA" data-rating="0.000" data-year="2026" data-genres="Akcja|Przygodowy|Fantasy|Sci-Fi" data-director="Simon Mcquoid" data-cast="Karl Urban, Adeline Rudolph, Lewis Tan, Jessica Mcnamee, Josh Lawson, Tadanobu Asano, Mehcad Brooks, Ludi Lin, Damon Herriman, Tati Gabrielle, Martyn Ford, Chin Han, Joe Taslim, Hiroyuki Sanada, Desmond Chiam, Ana Thu Nguyen, Max Huang">
+<div class="col" data-title="Mortal Kombat II ukraiński dubbing" data-countries="USA" data-rating="0.000" data-genres="Akcja|Przygodowy|Fantasy|Sci-Fi" data-director="Simon Mcquoid" data-cast="Karl Urban, Adeline Rudolph, Lewis Tan, Jessica Mcnamee, Josh Lawson, Tadanobu Asano, Mehcad Brooks, Ludi Lin, Damon Herriman, Tati Gabrielle, Martyn Ford, Chin Han, Joe Taslim, Hiroyuki Sanada, Desmond Chiam, Ana Thu Nguyen, Max Huang">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -12208,7 +12210,7 @@
 
 </div>
 
-<div class="col" data-title="Perfect Days" data-countries="" data-rating="8.249" data-year="2023" data-genres="Dramat">
+<div class="col" data-title="Perfect Days" data-countries="" data-rating="8.249" data-genres="Dramat">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -12291,7 +12293,7 @@
 
 </div>
 
-<div class="col" data-title="Bez wyjścia" data-countries="" data-rating="8.600" data-year="2025" data-genres="Czarna komedia|Thriller">
+<div class="col" data-title="Bez wyjścia" data-countries="" data-rating="8.600" data-genres="Czarna komedia|Thriller">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -12412,7 +12414,7 @@
 
 </div>
 
-<div class="col" data-title="Top Gun: Maverick" data-countries="USA" data-rating="8.364" data-year="2020" data-genres="Akcja" data-director="Joseph Kosinski" data-cast="Tom Cruise, Val Kilmer, Miles Teller, Jennifer Connelly, Monica Barbaro, Jay Ellis">
+<div class="col" data-title="Top Gun: Maverick" data-countries="USA" data-rating="8.364" data-genres="Akcja" data-director="Joseph Kosinski" data-cast="Tom Cruise, Val Kilmer, Miles Teller, Jennifer Connelly, Monica Barbaro, Jay Ellis">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -12582,7 +12584,7 @@
 
 </div>
 
-<div class="col" data-title="Pieniądze to wszystko" data-countries="Irlandia|Dania" data-rating="7.481" data-year="2026" data-genres="Dokumentalny" data-director="Sinéad O&#x27;Shea">
+<div class="col" data-title="Pieniądze to wszystko" data-countries="Irlandia|Dania" data-rating="7.481" data-genres="Dokumentalny" data-director="Sinéad O&#x27;Shea">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -12658,7 +12660,7 @@
 
 </div>
 
-<div class="col" data-title="Matador" data-countries="" data-rating="7.757" data-year="1986" data-genres="Dramat|Psychologiczny">
+<div class="col" data-title="Matador" data-countries="" data-rating="7.757" data-genres="Dramat|Psychologiczny">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -12781,7 +12783,7 @@
 
 </div>
 
-<div class="col" data-title="Ostatnia sesja w Paryżu" data-countries="Francja" data-rating="6.620" data-year="2025" data-genres="Dramat|Thriller" data-director="Rebecca Zlotowski">
+<div class="col" data-title="Ostatnia sesja w Paryżu" data-countries="Francja" data-rating="6.620" data-genres="Dramat|Thriller" data-director="Rebecca Zlotowski">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -12991,7 +12993,7 @@
 
 </div>
 
-<div class="col" data-title="Sny o słoniach" data-countries="USA" data-rating="7.960" data-year="2025" data-genres="Dokumentalny|Przyrodniczy" data-director="Werner Herzog">
+<div class="col" data-title="Sny o słoniach" data-countries="USA" data-rating="7.960" data-genres="Dokumentalny|Przyrodniczy" data-director="Werner Herzog">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -13071,7 +13073,7 @@
 
 </div>
 
-<div class="col" data-title="Miłość w czasach apokalipsy" data-countries="" data-rating="6.325" data-year="2025" data-genres="Komedia rom.">
+<div class="col" data-title="Miłość w czasach apokalipsy" data-countries="" data-rating="6.325" data-genres="Komedia rom.">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -13174,7 +13176,7 @@
 
 </div>
 
-<div class="col" data-title="Karuppu" data-countries="Indie" data-rating="7.500" data-year="2026" data-genres="Akcja" data-director="RJ Balaji" data-cast="Prakash Raj, Kaali Venkat, Trisha Krishnan, Yogi Babu, Suriya, RJ Balaji, Indrans, Mansoor Ali Khan, Swasika Vijay">
+<div class="col" data-title="Karuppu" data-countries="Indie" data-rating="7.500" data-genres="Akcja" data-director="RJ Balaji" data-cast="Prakash Raj, Kaali Venkat, Trisha Krishnan, Yogi Babu, Suriya, RJ Balaji, Indrans, Mansoor Ali Khan, Swasika Vijay">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -13247,7 +13249,7 @@
 
 </div>
 
-<div class="col" data-title="Diabeł ubiera się u Prady 2 ukraiński dubbing" data-countries="USA" data-rating="0.000" data-year="2026" data-genres="Komedia|Dramat" data-director="David Frankel" data-cast="Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci">
+<div class="col" data-title="Diabeł ubiera się u Prady 2 ukraiński dubbing" data-countries="USA" data-rating="0.000" data-genres="Komedia|Dramat" data-director="David Frankel" data-cast="Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -13398,7 +13400,7 @@
 
 </div>
 
-<div class="col" data-title="Father Mother Sister Brother" data-countries="USA" data-rating="7.165" data-year="2025" data-genres="Dramat|Komedia" data-director="Jim Jarmusch">
+<div class="col" data-title="Father Mother Sister Brother" data-countries="USA" data-rating="7.165" data-genres="Dramat|Komedia" data-director="Jim Jarmusch">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -13523,7 +13525,7 @@
 
 </div>
 
-<div class="col" data-title="La Grazia" data-countries="Włochy" data-rating="7.549" data-year="2025" data-genres="Melodramat" data-director="Paolo Sorrentino">
+<div class="col" data-title="La Grazia" data-countries="Włochy" data-rating="7.549" data-genres="Melodramat" data-director="Paolo Sorrentino">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -13661,7 +13663,7 @@
 
 </div>
 
-<div class="col" data-title="Athiradi" data-countries="Indie" data-rating="7.900" data-year="2026" data-genres="Akcja" data-director="Arun Anirudhan" data-cast="Vineeth Sreenivasan, Basil Joseph, Tovino Thomas, Darshana Rajendran, Zarin Shihab, Riya Shibu, Arya Salim">
+<div class="col" data-title="Athiradi" data-countries="Indie" data-rating="7.900" data-genres="Akcja" data-director="Arun Anirudhan" data-cast="Vineeth Sreenivasan, Basil Joseph, Tovino Thomas, Darshana Rajendran, Zarin Shihab, Riya Shibu, Arya Salim">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -13734,7 +13736,7 @@
 
 </div>
 
-<div class="col" data-title="Erupcja" data-countries="" data-rating="6.717" data-year="2026" data-genres="Komedia|Dramat" data-director="Pete Ohs" data-cast="Lena Góra, Charli XCX, Will Madden, Jeremy O. Harris, Agata Trzebuchowska">
+<div class="col" data-title="Erupcja" data-countries="" data-rating="6.717" data-genres="Komedia|Dramat" data-director="Pete Ohs" data-cast="Lena Góra, Charli XCX, Will Madden, Jeremy O. Harris, Agata Trzebuchowska">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -13841,7 +13843,7 @@
 
 </div>
 
-<div class="col" data-title="Opętanie" data-countries="" data-rating="7.009" data-year="1981" data-genres="Dramat|Psychologiczny|Horror">
+<div class="col" data-title="Opętanie" data-countries="" data-rating="7.009" data-genres="Dramat|Psychologiczny|Horror">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -13946,7 +13948,7 @@
 
 </div>
 
-<div class="col" data-title="Pieśni lasu" data-countries="Francja" data-rating="8.048" data-year="2025" data-genres="Dokumentalny|Przyrodniczy" data-director="Vincent Munier">
+<div class="col" data-title="Pieśni lasu" data-countries="Francja" data-rating="8.048" data-genres="Dokumentalny|Przyrodniczy" data-director="Vincent Munier">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -14020,7 +14022,7 @@
 
 </div>
 
-<div class="col" data-title="Sirât" data-countries="Hiszpania|Francja" data-rating="7.809" data-year="2025" data-genres="Dramat|Thriller" data-director="Oliver Laxe">
+<div class="col" data-title="Sirât" data-countries="Hiszpania|Francja" data-rating="7.809" data-genres="Dramat|Thriller" data-director="Oliver Laxe">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -14125,7 +14127,7 @@
 
 </div>
 
-<div class="col" data-title="Broken English" data-countries="Wielka Brytania" data-rating="6.566" data-year="2025" data-genres="Fabularyzowany dok." data-director="Jane Pollard, Iain Forsyth">
+<div class="col" data-title="Broken English" data-countries="Wielka Brytania" data-rating="6.566" data-genres="Fabularyzowany dok." data-director="Jane Pollard, Iain Forsyth">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -14203,7 +14205,7 @@
 
 </div>
 
-<div class="col" data-title="Przepis na morderstwo" data-countries="Wielka Brytania" data-rating="5.448" data-year="2026" data-genres="Czarna komedia" data-director="John Patton Ford" data-cast="Glen Powell, Margaret Qualley, Jessica Henwick">
+<div class="col" data-title="Przepis na morderstwo" data-countries="Wielka Brytania" data-rating="5.448" data-genres="Czarna komedia" data-director="John Patton Ford" data-cast="Glen Powell, Margaret Qualley, Jessica Henwick">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -14366,7 +14368,7 @@
 
 </div>
 
-<div class="col" data-title="Zabawa w pochowanego 2" data-countries="USA" data-rating="6.471" data-year="2026" data-genres="Czarna komedia" data-director="Matt Bettinelli-Olpin, Tyler Gillett" data-cast="Samara Weaving, Kathryn Newton, Elijah Wood">
+<div class="col" data-title="Zabawa w pochowanego 2" data-countries="USA" data-rating="6.471" data-genres="Czarna komedia" data-director="Matt Bettinelli-Olpin, Tyler Gillett" data-cast="Samara Weaving, Kathryn Newton, Elijah Wood">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -14529,7 +14531,7 @@
 
 </div>
 
-<div class="col" data-title="Niesamowite przygody skarpetek 3. Ale ko" data-countries="Polska" data-rating="0.000" data-year="2026" data-genres="Animacja|Familijny" data-director="Paweł Wendorff, Elżbieta Wąsik; Jarosław Szyszko, Barbara Koniecka, Mateusz Kmieć, Natalia Bartska-Kmieć">
+<div class="col" data-title="Niesamowite przygody skarpetek 3. Ale ko" data-countries="Polska" data-rating="0.000" data-genres="Animacja|Familijny" data-director="Paweł Wendorff, Elżbieta Wąsik; Jarosław Szyszko, Barbara Koniecka, Mateusz Kmieć, Natalia Bartska-Kmieć">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -14600,7 +14602,7 @@
 
 </div>
 
-<div class="col" data-title="Dziecko z pyłu" data-countries="Polska|Wietnam|Szwecja|Czechy|Katar" data-rating="7.731" data-year="2025" data-genres="Dokumentalny" data-director="Weronika Mliczewska">
+<div class="col" data-title="Dziecko z pyłu" data-countries="Polska|Wietnam|Szwecja|Czechy|Katar" data-rating="7.731" data-genres="Dokumentalny" data-director="Weronika Mliczewska">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -14712,7 +14714,7 @@
 
 </div>
 
-<div class="col" data-title="Kopnęłabym cię, gdybym mogła" data-countries="" data-rating="7.653" data-year="2025" data-genres="Czarna komedia">
+<div class="col" data-title="Kopnęłabym cię, gdybym mogła" data-countries="" data-rating="7.653" data-genres="Czarna komedia">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -14815,7 +14817,7 @@
 
 </div>
 
-<div class="col" data-title="Layla" data-countries="Wielka Brytania" data-rating="6.726" data-year="2024" data-genres="Komedia|Dramat|Romans" data-director="Amrou Al-Kadhi">
+<div class="col" data-title="Layla" data-countries="Wielka Brytania" data-rating="6.726" data-genres="Komedia|Dramat|Romans" data-director="Amrou Al-Kadhi">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -14957,7 +14959,7 @@
 
 </div>
 
-<div class="col" data-title="Chronologia wody" data-countries="USA|Francja|Łotwa" data-rating="7.408" data-year="2025" data-genres="Dramat" data-director="Kristen Stewart">
+<div class="col" data-title="Chronologia wody" data-countries="USA|Francja|Łotwa" data-rating="7.408" data-genres="Dramat" data-director="Kristen Stewart">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -15292,7 +15294,7 @@
 
 </div>
 
-<div class="col" data-title="Arcybiskup Lefebvre – dlaczego?" data-countries="" data-rating="7.667" data-year="2025" data-genres="Fabularyzowany dokument">
+<div class="col" data-title="Arcybiskup Lefebvre – dlaczego?" data-countries="" data-rating="7.667" data-genres="Fabularyzowany dokument">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -15430,7 +15432,7 @@
 
 </div>
 
-<div class="col" data-title="Hamnet" data-countries="Wielka Brytania" data-rating="8.144" data-year="2025" data-genres="Biograficzny|Dramat" data-director="Chloé Zhao">
+<div class="col" data-title="Hamnet" data-countries="Wielka Brytania" data-rating="8.144" data-genres="Biograficzny|Dramat" data-director="Chloé Zhao">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -15570,7 +15572,7 @@
 
 </div>
 
-<div class="col" data-title="Wartość sentymentalna" data-countries="Norwegia|Niemcy|Dania" data-rating="8.326" data-year="2025" data-genres="Dramat|Komedia" data-director="Joachim Trier">
+<div class="col" data-title="Wartość sentymentalna" data-countries="Norwegia|Niemcy|Dania" data-rating="8.326" data-genres="Dramat|Komedia" data-director="Joachim Trier">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -15760,7 +15762,7 @@
 
 </div>
 
-<div class="col" data-title="Wysokie i niskie tony" data-countries="Francja" data-rating="8.113" data-year="2024" data-genres="Dramat|Komedia|Muzyczny" data-director="Emmanuel Courcol">
+<div class="col" data-title="Wysokie i niskie tony" data-countries="Francja" data-rating="8.113" data-genres="Dramat|Komedia|Muzyczny" data-director="Emmanuel Courcol">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -15845,7 +15847,7 @@
 
 </div>
 
-<div class="col" data-title="Miłość, która zostaje" data-countries="Islandia|Dania|Szwecja|Francja" data-rating="7.651" data-year="2025" data-genres="Dramat" data-director="Hlynur Pálmason">
+<div class="col" data-title="Miłość, która zostaje" data-countries="Islandia|Dania|Szwecja|Francja" data-rating="7.651" data-genres="Dramat" data-director="Hlynur Pálmason">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -15968,7 +15970,7 @@
 
 </div>
 
-<div class="col" data-title="Kino bez barier: Arco (AD + CC)" data-countries="Francja" data-rating="0.000" data-year="2025" data-genres="Animowany" data-director="Ugo Bienvenu">
+<div class="col" data-title="Kino bez barier: Arco (AD + CC)" data-countries="Francja" data-rating="0.000" data-genres="Animowany" data-director="Ugo Bienvenu">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -16037,7 +16039,7 @@
 
 </div>
 
-<div class="col" data-title="Filmowy klub seniora: Diabeł ubiera się u prady 2" data-countries="USA" data-rating="0.000" data-year="2026" data-genres="Dramat|Komedia" data-director="David Frankel">
+<div class="col" data-title="Filmowy klub seniora: Diabeł ubiera się u prady 2" data-countries="USA" data-rating="0.000" data-genres="Dramat|Komedia" data-director="David Frankel">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -16110,7 +16112,7 @@
 
 </div>
 
-<div class="col" data-title="Bałtyk" data-countries="" data-rating="6.927" data-year="2025" data-genres="Dokumentalny">
+<div class="col" data-title="Bałtyk" data-countries="" data-rating="6.927" data-genres="Dokumentalny">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -16187,7 +16189,7 @@
 
 </div>
 
-<div class="col" data-title="FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar" data-countries="Niemcy" data-rating="0.000" data-year="2025" data-director="Joscha Bongard">
+<div class="col" data-title="FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar" data-countries="Niemcy" data-rating="0.000" data-director="Joscha Bongard">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -16249,7 +16251,7 @@
 
 </div>
 
-<div class="col" data-title="Żądło" data-countries="USA" data-rating="7.889" data-year="1973" data-genres="Komedia kryminalna" data-director="George Roy Hill">
+<div class="col" data-title="Żądło" data-countries="USA" data-rating="7.889" data-genres="Komedia kryminalna" data-director="George Roy Hill">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -16327,7 +16329,7 @@
 
 </div>
 
-<div class="col" data-title="Pan Nikt kontra Putin" data-countries="Dania|Czechy" data-rating="8.258" data-year="2025" data-genres="Dokumentalny" data-director="David Borenstein, Pasha Talankin">
+<div class="col" data-title="Pan Nikt kontra Putin" data-countries="Dania|Czechy" data-rating="8.258" data-genres="Dokumentalny" data-director="David Borenstein, Pasha Talankin">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -16430,7 +16432,7 @@
 
 </div>
 
-<div class="col" data-title="Camper" data-countries="" data-rating="5.656" data-year="2025" data-genres="Komedia|Dramat">
+<div class="col" data-title="Camper" data-countries="" data-rating="5.656" data-genres="Komedia|Dramat">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -16509,7 +16511,7 @@
 
 </div>
 
-<div class="col" data-title="Głos Hind Rajab" data-countries="" data-rating="8.314" data-year="2025" data-genres="Dramat">
+<div class="col" data-title="Głos Hind Rajab" data-countries="" data-rating="8.314" data-genres="Dramat">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -16592,7 +16594,7 @@
 
 </div>
 
-<div class="col" data-title="Arco" data-countries="Francja" data-rating="0.000" data-year="2025" data-director="Ugo Bienvenu">
+<div class="col" data-title="Arco" data-countries="Francja" data-rating="0.000" data-director="Ugo Bienvenu">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -16659,7 +16661,7 @@
 
 </div>
 
-<div class="col" data-title="Być kochaną" data-countries="" data-rating="8.332" data-year="2024" data-genres="Dramat">
+<div class="col" data-title="Być kochaną" data-countries="" data-rating="8.332" data-genres="Dramat">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -16809,7 +16811,7 @@
 
 </div>
 
-<div class="col" data-title="Kino bez barier: Arco (AD + CC + PJM)" data-countries="Francja" data-rating="0.000" data-year="2025" data-genres="Animowany" data-director="Ugo Bienvenu">
+<div class="col" data-title="Kino bez barier: Arco (AD + CC + PJM)" data-countries="Francja" data-rating="0.000" data-genres="Animowany" data-director="Ugo Bienvenu">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -16878,7 +16880,7 @@
 
 </div>
 
-<div class="col" data-title="Mandalorian i Grogu" data-countries="USA" data-rating="0.000" data-year="2026" data-genres="Akcja|Przygodowy|Familijny|Sci-Fi" data-director="Jon Favreau" data-cast="Pedro Pascal, Sigourney Weaver, Jeremy Allen White">
+<div class="col" data-title="Mandalorian i Grogu" data-countries="USA" data-rating="0.000" data-genres="Akcja|Przygodowy|Familijny|Sci-Fi" data-director="Jon Favreau" data-cast="Pedro Pascal, Sigourney Weaver, Jeremy Allen White">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -17511,7 +17513,7 @@
 
 </div>
 
-<div class="col" data-title="Zemsta Embriona" data-countries="USA" data-rating="3.904" data-year="1990" data-genres="Horror" data-director="Francis Teri">
+<div class="col" data-title="Zemsta Embriona" data-countries="USA" data-rating="3.904" data-genres="Horror" data-director="Francis Teri">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -17607,7 +17609,7 @@
 
 </div>
 
-<div class="col" data-title="Pod skórą" data-countries="" data-rating="7.322" data-year="2014" data-genres="Thriller|Sci-Fi">
+<div class="col" data-title="Pod skórą" data-countries="" data-rating="7.322" data-genres="Thriller|Sci-Fi">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -17692,7 +17694,7 @@
 
 </div>
 
-<div class="col" data-title="Gwiezdne Wojny: Mandalorian i Grogu - ukraiński dubbing" data-countries="USA" data-rating="0.000" data-year="2026" data-genres="Akcja|Przygodowy|Familijny|Sci-Fi" data-director="Jon Favreau" data-cast="Pedro Pascal, Sigourney Weaver, Jeremy Allen White">
+<div class="col" data-title="Gwiezdne Wojny: Mandalorian i Grogu - ukraiński dubbing" data-countries="USA" data-rating="0.000" data-genres="Akcja|Przygodowy|Familijny|Sci-Fi" data-director="Jon Favreau" data-cast="Pedro Pascal, Sigourney Weaver, Jeremy Allen White">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -17805,7 +17807,7 @@
 
 </div>
 
-<div class="col" data-title="Młode matki" data-countries="Belgia|Francja" data-rating="7.745" data-year="2025" data-genres="Dramat" data-director="Jean-Pierre Dardenne, Luc Dardenne">
+<div class="col" data-title="Młode matki" data-countries="Belgia|Francja" data-rating="7.745" data-genres="Dramat" data-director="Jean-Pierre Dardenne, Luc Dardenne">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -17908,7 +17910,7 @@
 
 </div>
 
-<div class="col" data-title="Niesamowite przygody skarpetek 3. Ale kosmos!" data-countries="Polska|Portugalia" data-rating="0.000" data-year="2026" data-genres="Animacja" data-director="Elżbieta Wąsik, Paweł Wendorff; Jarosław Szyszko, Barbara Koniecka, Mateusz Kmieć, Natalia Bartska-Kmieć">
+<div class="col" data-title="Niesamowite przygody skarpetek 3. Ale kosmos!" data-countries="Polska|Portugalia" data-rating="0.000" data-genres="Animacja" data-director="Elżbieta Wąsik, Paweł Wendorff; Jarosław Szyszko, Barbara Koniecka, Mateusz Kmieć, Natalia Bartska-Kmieć">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -18200,7 +18202,7 @@
 
 </div>
 
-<div class="col" data-title="Mawka. Prawdziwy mit" data-countries="Ukraina" data-rating="6.100" data-year="2026" data-genres="Fantastyczny / romantyczny" data-director="Katya Tsarik">
+<div class="col" data-title="Mawka. Prawdziwy mit" data-countries="Ukraina" data-rating="6.100" data-genres="Fantastyczny / romantyczny" data-director="Katya Tsarik">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -18273,7 +18275,7 @@
 
 </div>
 
-<div class="col" data-title="Powrót do przyszłości" data-countries="" data-rating="8.521" data-year="1985" data-genres="Komedia|Sci-Fi|Przygodowy" data-director="Robert Zemeckis" data-cast="Michael J. Fox, Christopher Lloyd, Lea Thompson, Crispin Glover">
+<div class="col" data-title="Powrót do przyszłości" data-countries="" data-rating="8.521" data-genres="Komedia|Sci-Fi|Przygodowy" data-director="Robert Zemeckis" data-cast="Michael J. Fox, Christopher Lloyd, Lea Thompson, Crispin Glover">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -18420,7 +18422,7 @@
 
 </div>
 
-<div class="col" data-title="Wszyscy moi synowie - National Theatre Live 2026" data-countries="Wielka Brytania" data-rating="0.000" data-year="2026" data-genres="Dramat" data-director="Ivo Van Hove" data-cast="Bryan Cranston, Marianne Jean-Baptiste, Paapa Essiedu, Tom Glynn-Carney, Hayley Squires">
+<div class="col" data-title="Wszyscy moi synowie - National Theatre Live 2026" data-countries="Wielka Brytania" data-rating="0.000" data-genres="Dramat" data-director="Ivo Van Hove" data-cast="Bryan Cranston, Marianne Jean-Baptiste, Paapa Essiedu, Tom Glynn-Carney, Hayley Squires">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -18594,7 +18596,7 @@
 
 </div>
 
-<div class="col" data-title="Żywot Briana" data-countries="" data-rating="8.298" data-year="1979" data-genres="Komedia">
+<div class="col" data-title="Żywot Briana" data-countries="" data-rating="8.298" data-genres="Komedia">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -18742,7 +18744,7 @@
 
 </div>
 
-<div class="col" data-title="Ale mam | ну мам | wersja ukraińska z ang. napisami" data-countries="Ukraina" data-rating="0.000" data-year="2026" data-genres="Komedia">
+<div class="col" data-title="Ale mam | ну мам | wersja ukraińska z ang. napisami" data-countries="Ukraina" data-rating="0.000" data-genres="Komedia">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -18813,7 +18815,7 @@
 
 </div>
 
-<div class="col" data-title="2026 TXT MOA CON IN JAPAN: LIVE VIEWING" data-countries="Korea Południowa" data-rating="0.000" data-year="2026" data-cast="Txt">
+<div class="col" data-title="2026 TXT MOA CON IN JAPAN: LIVE VIEWING" data-countries="Korea Południowa" data-rating="0.000" data-cast="Txt">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -18880,7 +18882,7 @@
 
 </div>
 
-<div class="col" data-title="La Traviata Verdiego z Arena di Verona" data-countries="Włochy" data-rating="0.000" data-year="2021" data-genres="Opera" data-director="Michele Olcese, Francesco Ivan Ciampa" data-cast="Sonya Yoncheva, Vittorio Grigolo, George Petean">
+<div class="col" data-title="La Traviata Verdiego z Arena di Verona" data-countries="Włochy" data-rating="0.000" data-genres="Opera" data-director="Michele Olcese, Francesco Ivan Ciampa" data-cast="Sonya Yoncheva, Vittorio Grigolo, George Petean">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -19069,7 +19071,7 @@
 
 </div>
 
-<div class="col" data-title="Zawieście czerwone latarnie" data-countries="Chiny|Hongkong" data-rating="8.900" data-year="1991" data-director="Yimou Zhang">
+<div class="col" data-title="Zawieście czerwone latarnie" data-countries="Chiny|Hongkong" data-rating="8.900" data-director="Yimou Zhang">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -19219,7 +19221,7 @@
 
 </div>
 
-<div class="col" data-title="Miejskie Święto Rowerowe: Pokaz filmu Cycling Cities" data-countries="Niemcy" data-rating="0.000" data-year="2025" data-director="Ingwar Perowanowitsch">
+<div class="col" data-title="Miejskie Święto Rowerowe: Pokaz filmu Cycling Cities" data-countries="Niemcy" data-rating="0.000" data-director="Ingwar Perowanowitsch">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -19286,7 +19288,7 @@
 
 </div>
 
-<div class="col" data-title="Filmowe spotkania z psychoanalizą: Dobry chłopiec" data-countries="Polska|Wielka Brytania" data-rating="0.000" data-year="2025" data-genres="Dramat" data-director="Jan Komasa">
+<div class="col" data-title="Filmowe spotkania z psychoanalizą: Dobry chłopiec" data-countries="Polska|Wielka Brytania" data-rating="0.000" data-genres="Dramat" data-director="Jan Komasa">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -19355,7 +19357,7 @@
 
 </div>
 
-<div class="col" data-title="Milczenie owiec" data-countries="" data-rating="8.738" data-year="1991" data-genres="Thriller" data-director="Jonathan Demme" data-cast="Anthony Hopkins, Jodie Foster, Ted Levine, Kasi Lemmons">
+<div class="col" data-title="Milczenie owiec" data-countries="" data-rating="8.738" data-genres="Thriller" data-director="Jonathan Demme" data-cast="Anthony Hopkins, Jodie Foster, Ted Levine, Kasi Lemmons">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -19458,7 +19460,7 @@
 
 </div>
 
-<div class="col" data-title="Zawieście czerwone latarnie | przed filmem wstęp prof. Marek hendrykowski" data-countries="Chiny|Hongkong|Tajwan" data-rating="0.000" data-year="1991" data-genres="Dramat">
+<div class="col" data-title="Zawieście czerwone latarnie | przed filmem wstęp prof. Marek hendrykowski" data-countries="Chiny|Hongkong|Tajwan" data-rating="0.000" data-genres="Dramat">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -19527,7 +19529,7 @@
 
 </div>
 
-<div class="col" data-title="Kino bez barier: Młode matki (AD + CC + PJM)" data-countries="Belgia|Francja" data-rating="7.745" data-year="2025" data-genres="Dramat" data-director="Jean-Pierre Dardenne i Luc Dardenne">
+<div class="col" data-title="Kino bez barier: Młode matki (AD + CC + PJM)" data-countries="Belgia|Francja" data-rating="7.745" data-genres="Dramat" data-director="Jean-Pierre Dardenne i Luc Dardenne">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -19630,7 +19632,7 @@
 
 </div>
 
-<div class="col" data-title="Filmowy klub seniora: Mów mi jimpa" data-countries="Australia|Finlandia|Holandia" data-rating="5.350" data-year="2025" data-genres="Dramat|Komedia" data-director="Sophie Hyde">
+<div class="col" data-title="Filmowy klub seniora: Mów mi jimpa" data-countries="Australia|Finlandia|Holandia" data-rating="5.350" data-genres="Dramat|Komedia" data-director="Sophie Hyde">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -19715,7 +19717,7 @@
 
 </div>
 
-<div class="col" data-title="Filmowy klub seniora: Młode matki" data-countries="Belgia|Francja" data-rating="7.745" data-year="2025" data-genres="Dramat" data-director="Jean-Pierre Dardenne, Luc Dardenne">
+<div class="col" data-title="Filmowy klub seniora: Młode matki" data-countries="Belgia|Francja" data-rating="7.745" data-genres="Dramat" data-director="Jean-Pierre Dardenne, Luc Dardenne">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -19798,7 +19800,7 @@
 
 </div>
 
-<div class="col" data-title="90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona" data-countries="Włochy" data-rating="0.000" data-year="2025" data-director="Luigi Antonini (reżyser), Matteo Parmeggiani (dyrygent)" data-cast="Andrea Bocelli, José Carreras, Plácido Domingo, Il Volo, Jonathan Tetelman, Hauser">
+<div class="col" data-title="90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona" data-countries="Włochy" data-rating="0.000" data-director="Luigi Antonini (reżyser), Matteo Parmeggiani (dyrygent)" data-cast="Andrea Bocelli, José Carreras, Plácido Domingo, Il Volo, Jonathan Tetelman, Hauser">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -19915,7 +19917,7 @@
 
 </div>
 
-<div class="col" data-title="Windą na szafot" data-countries="Francja" data-rating="0.000" data-year="1958" data-director="Louis Malle">
+<div class="col" data-title="Windą na szafot" data-countries="Francja" data-rating="0.000" data-director="Louis Malle">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -20002,7 +20004,7 @@
 
 </div>
 
-<div class="col" data-title="Nomadland" data-countries="USA" data-rating="8.111" data-year="2020" data-genres="Dramat" data-director="Chloé Zhao">
+<div class="col" data-title="Nomadland" data-countries="USA" data-rating="8.111" data-genres="Dramat" data-director="Chloé Zhao">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -20080,7 +20082,7 @@
 
 </div>
 
-<div class="col" data-title="Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego" data-countries="Polska|ZSRR" data-rating="0.000" data-year="1987" data-genres="Przygodowy Horror Sci-Fi" data-director="Marek Piestrak">
+<div class="col" data-title="Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego" data-countries="Polska|ZSRR" data-rating="0.000" data-genres="Przygodowy Horror Sci-Fi" data-director="Marek Piestrak">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -20149,7 +20151,7 @@
 
 </div>
 
-<div class="col" data-title="Cirque du Soleil: Kooza" data-countries="" data-rating="7.800" data-year="2008" data-director="Mario Janelle, David Shiner" data-cast="Cirque du Soleil">
+<div class="col" data-title="Cirque du Soleil: Kooza" data-countries="" data-rating="7.800" data-director="Mario Janelle, David Shiner" data-cast="Cirque du Soleil">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -20240,7 +20242,7 @@
 
 </div>
 
-<div class="col" data-title="Nie oglądaj się teraz" data-countries="Wielka Brytania|Włochy" data-rating="7.764" data-year="1973" data-genres="Horror|Psychologiczny" data-director="Nicolas Roeg">
+<div class="col" data-title="Nie oglądaj się teraz" data-countries="Wielka Brytania|Włochy" data-rating="7.764" data-genres="Horror|Psychologiczny" data-director="Nicolas Roeg">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -20316,7 +20318,7 @@
 
 </div>
 
-<div class="col" data-title="On drive" data-countries="Ukraina" data-rating="7.400" data-year="2026" data-genres="Sensacyjny" data-director="Artem Lytvynenko">
+<div class="col" data-title="On drive" data-countries="Ukraina" data-rating="7.400" data-genres="Sensacyjny" data-director="Artem Lytvynenko">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -20391,7 +20393,7 @@
 
 </div>
 
-<div class="col" data-title="Tom i Jerry: Przygoda w muzeum" data-countries="Chiny|USA" data-rating="3.893" data-year="2025" data-genres="Animacja|Komedia|Przygodowy">
+<div class="col" data-title="Tom i Jerry: Przygoda w muzeum" data-countries="Chiny|USA" data-rating="3.893" data-genres="Animacja|Komedia|Przygodowy">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -20546,7 +20548,7 @@
 
 </div>
 
-<div class="col" data-title="Van gogh. Pola zbóż i zachmurzone niebiosa" data-countries="Włochy" data-rating="7.188" data-year="2018" data-genres="Dokumentalny" data-director="Giovanni Piscaglia">
+<div class="col" data-title="Van gogh. Pola zbóż i zachmurzone niebiosa" data-countries="Włochy" data-rating="7.188" data-genres="Dokumentalny" data-director="Giovanni Piscaglia">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -20623,7 +20625,7 @@
 
 </div>
 
-<div class="col" data-title="Liga Mistrzów UEFA - Finał" data-countries="" data-rating="0.000" data-year="2026" data-genres="Sportowy">
+<div class="col" data-title="Liga Mistrzów UEFA - Finał" data-countries="" data-rating="0.000" data-genres="Sportowy">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -20785,7 +20787,7 @@
 
 </div>
 
-<div class="col" data-title="Drugie życie" data-countries="Niemcy|Francja|Hiszpania|Belgia|Maroko" data-rating="7.871" data-year="2025" data-genres="Dramat" data-director="Maryam Touzani">
+<div class="col" data-title="Drugie życie" data-countries="Niemcy|Francja|Hiszpania|Belgia|Maroko" data-rating="7.871" data-genres="Dramat" data-director="Maryam Touzani">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -20943,7 +20945,7 @@
 
 </div>
 
-<div class="col" data-title="Sabotażysta 5" data-countries="Polska" data-rating="0.000" data-year="2026">
+<div class="col" data-title="Sabotażysta 5" data-countries="Polska" data-rating="0.000">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -21265,7 +21267,7 @@
 
 </div>
 
-<div class="col" data-title="SpoilerMaster Tour: Mikey i Nicky" data-countries="USA" data-rating="7.819" data-year="1976" data-genres="Dramat" data-director="Elaine May">
+<div class="col" data-title="SpoilerMaster Tour: Mikey i Nicky" data-countries="USA" data-rating="7.819" data-genres="Dramat" data-director="Elaine May">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -21411,7 +21413,7 @@
 
 </div>
 
-<div class="col" data-title="Kino bez barier: Milcząca przyjaciółka (AD + CC)" data-countries="Niemcy|Francja|Węgry" data-rating="8.279" data-year="2025" data-genres="Dramat" data-director="Ildikó Enyedi">
+<div class="col" data-title="Kino bez barier: Milcząca przyjaciółka (AD + CC)" data-countries="Niemcy|Francja|Węgry" data-rating="8.279" data-genres="Dramat" data-director="Ildikó Enyedi">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -21494,7 +21496,7 @@
 
 </div>
 
-<div class="col" data-title="Człowiek z marmuru" data-countries="Polska" data-rating="7.597" data-year="1977" data-genres="Polityczny|Dramat obyczajowy" data-director="Andrzej Wajda" data-cast="Krystyna Janda, Jerzy Radziwiłowicz, Tadeusz Łomnicki">
+<div class="col" data-title="Człowiek z marmuru" data-countries="Polska" data-rating="7.597" data-genres="Polityczny|Dramat obyczajowy" data-director="Andrzej Wajda" data-cast="Krystyna Janda, Jerzy Radziwiłowicz, Tadeusz Łomnicki">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -21657,7 +21659,7 @@
 
 </div>
 
-<div class="col" data-title="Straszny film" data-countries="USA" data-rating="5.651" data-year="2026" data-genres="Komedia" data-director="Michael Tiddes" data-cast="Anna Faris, Sydney Park, Lochlyn Munro">
+<div class="col" data-title="Straszny film" data-countries="USA" data-rating="5.651" data-genres="Komedia" data-director="Michael Tiddes" data-cast="Anna Faris, Sydney Park, Lochlyn Munro">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -22187,7 +22189,7 @@
 
 </div>
 
-<div class="col" data-title="Belle" data-countries="Japonia" data-rating="7.104" data-year="2021" data-genres="Anime|Sci-Fi" data-director="Mamoru Hosoda">
+<div class="col" data-title="Belle" data-countries="Japonia" data-rating="7.104" data-genres="Anime|Sci-Fi" data-director="Mamoru Hosoda">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -22272,7 +22274,7 @@
 
 </div>
 
-<div class="col" data-title="The Amazing Digital Circus: Ostatni Akt" data-countries="" data-rating="0.000" data-year="2026" data-director="Gooseworx" data-cast="Lizzie Freeman, Michael Kovach, Marissa Lenti, Ashley Nichols">
+<div class="col" data-title="The Amazing Digital Circus: Ostatni Akt" data-countries="" data-rating="0.000" data-director="Gooseworx" data-cast="Lizzie Freeman, Michael Kovach, Marissa Lenti, Ashley Nichols">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -22437,7 +22439,7 @@
 
 </div>
 
-<div class="col" data-title="The Amazing Digital Circus: The Last Act" data-countries="USA|Australia" data-rating="0.000" data-year="2026" data-genres="Przygodowy|Animacja|Sci-Fi" data-director="Gooseworx" data-cast="Lizzie Freeman, Michael Kovach, Amanda Hufford, Marissa Lenti, Sean Chiplock, Ashley Nichols">
+<div class="col" data-title="The Amazing Digital Circus: The Last Act" data-countries="USA|Australia" data-rating="0.000" data-genres="Przygodowy|Animacja|Sci-Fi" data-director="Gooseworx" data-cast="Lizzie Freeman, Michael Kovach, Amanda Hufford, Marissa Lenti, Sean Chiplock, Ashley Nichols">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -22835,7 +22837,7 @@
 
 </div>
 
-<div class="col" data-title="Podziemny krąg" data-countries="Niemcy|USA" data-rating="7.997" data-year="1999" data-genres="Thriller|Psychologiczny" data-director="David Fincher" data-cast="Edward Norton, Brad Pitt, Helena Bonham Carter, Meat Loaf">
+<div class="col" data-title="Podziemny krąg" data-countries="Niemcy|USA" data-rating="7.997" data-genres="Thriller|Psychologiczny" data-director="David Fincher" data-cast="Edward Norton, Brad Pitt, Helena Bonham Carter, Meat Loaf">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -23125,7 +23127,7 @@
 
 </div>
 
-<div class="col" data-title="Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM)" data-countries="Niemcy|Francja|Węgry" data-rating="8.279" data-year="2025" data-genres="Dramat" data-director="Ildikó Enyedi">
+<div class="col" data-title="Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM)" data-countries="Niemcy|Francja|Węgry" data-rating="8.279" data-genres="Dramat" data-director="Ildikó Enyedi">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -23333,7 +23335,7 @@
 
 </div>
 
-<div class="col" data-title="Władcy wszechświata" data-countries="USA" data-rating="5.500" data-year="2026" data-genres="Przygodowy|Fantasy" data-director="Travis Knight" data-cast="Nicholas Galitzine, Camila, MendesIdris Elba">
+<div class="col" data-title="Władcy wszechświata" data-countries="USA" data-rating="5.500" data-genres="Przygodowy|Fantasy" data-director="Travis Knight" data-cast="Nicholas Galitzine, Camila, MendesIdris Elba">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -23618,7 +23620,7 @@
 
 </div>
 
-<div class="col" data-title="Kosmiczny mecz" data-countries="" data-rating="5.937" data-year="1996" data-genres="Komedia|Sci-Fi" data-director="Joe Pytka" data-cast="Michael Jordan, Wayne Knight, Theresa Randle, Manner Washington">
+<div class="col" data-title="Kosmiczny mecz" data-countries="" data-rating="5.937" data-genres="Komedia|Sci-Fi" data-director="Joe Pytka" data-cast="Michael Jordan, Wayne Knight, Theresa Randle, Manner Washington">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -23943,7 +23945,7 @@
 
 </div>
 
-<div class="col" data-title="Rozmowa" data-countries="USA" data-rating="8.328" data-year="1974" data-genres="Thriller|Dramat" data-director="Francis Ford Coppola">
+<div class="col" data-title="Rozmowa" data-countries="USA" data-rating="8.328" data-genres="Thriller|Dramat" data-director="Francis Ford Coppola">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24048,7 +24050,7 @@
 
 </div>
 
-<div class="col" data-title="Romeo i Julia" data-countries="" data-rating="5.877" data-year="1996" data-genres="Melodramat|Akcja" data-director="Baz Luhrmann" data-cast="Leonardo DiCaprio, Claire Danes, John Leguizamo, Harold Perrineau">
+<div class="col" data-title="Romeo i Julia" data-countries="" data-rating="5.877" data-genres="Melodramat|Akcja" data-director="Baz Luhrmann" data-cast="Leonardo DiCaprio, Claire Danes, John Leguizamo, Harold Perrineau">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24147,7 +24149,7 @@
 
 </div>
 
-<div class="col" data-title="Follemente. W tym szaleństwie jest metoda" data-countries="" data-rating="5.099" data-year="2025" data-genres="Komedia rom.">
+<div class="col" data-title="Follemente. W tym szaleństwie jest metoda" data-countries="" data-rating="5.099" data-genres="Komedia rom.">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24228,7 +24230,7 @@
 
 </div>
 
-<div class="col" data-title="Kino bez barier: Freak Show (AD + CC)" data-countries="Polska" data-rating="0.000" data-year="2026" data-director="Łukasz Ronduda, Filip Pawlak">
+<div class="col" data-title="Kino bez barier: Freak Show (AD + CC)" data-countries="Polska" data-rating="0.000" data-director="Łukasz Ronduda, Filip Pawlak">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24295,7 +24297,7 @@
 
 </div>
 
-<div class="col" data-title="Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego" data-countries="Francja|Włochy" data-rating="8.729" data-year="1960" data-genres="Dramat obyczajowy" data-director="Federico Fellini">
+<div class="col" data-title="Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego" data-countries="Francja|Włochy" data-rating="8.729" data-genres="Dramat obyczajowy" data-director="Federico Fellini">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24378,7 +24380,7 @@
 
 </div>
 
-<div class="col" data-title="Wilcze dzieci" data-countries="Japonia" data-rating="8.261" data-year="2012" data-genres="Anime|Fantasy" data-director="Mamoru Hosoda">
+<div class="col" data-title="Wilcze dzieci" data-countries="Japonia" data-rating="8.261" data-genres="Anime|Fantasy" data-director="Mamoru Hosoda">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24463,7 +24465,7 @@
 
 </div>
 
-<div class="col" data-title="Przeżyj to sam" data-countries="Francja" data-rating="0.000" data-year="2025" data-director="Olivier Nakache, Eric Toledano">
+<div class="col" data-title="Przeżyj to sam" data-countries="Francja" data-rating="0.000" data-director="Olivier Nakache, Eric Toledano">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24525,7 +24527,7 @@
 
 </div>
 
-<div class="col" data-title="Pokaz sensorycznie przyjazny: Delfinek i ja 2" data-countries="Turcja" data-rating="0.000" data-year="2025" data-genres="Animacja|Przygodowy" data-director="Mohammad Kheirandish">
+<div class="col" data-title="Pokaz sensorycznie przyjazny: Delfinek i ja 2" data-countries="Turcja" data-rating="0.000" data-genres="Animacja|Przygodowy" data-director="Mohammad Kheirandish">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24596,7 +24598,7 @@
 
 </div>
 
-<div class="col" data-title="Kino bez barier: Freak Show (AD + CC + PJM)" data-countries="Polska" data-rating="0.000" data-year="2026" data-director="Łukasz Ronduda, Filip Pawlak">
+<div class="col" data-title="Kino bez barier: Freak Show (AD + CC + PJM)" data-countries="Polska" data-rating="0.000" data-director="Łukasz Ronduda, Filip Pawlak">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24663,7 +24665,7 @@
 
 </div>
 
-<div class="col" data-title="Obcy" data-countries="Francja" data-rating="6.593" data-year="2025" data-genres="Dramat|Kryminał" data-director="François Ozon">
+<div class="col" data-title="Obcy" data-countries="Francja" data-rating="6.593" data-genres="Dramat|Kryminał" data-director="François Ozon">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24743,7 +24745,7 @@
 
 </div>
 
-<div class="col" data-title="Kumotry" data-countries="Polska|Niemcy" data-rating="7.675" data-year="2025" data-genres="Dokumentalny" data-director="Emilia Śniegoska">
+<div class="col" data-title="Kumotry" data-countries="Polska|Niemcy" data-rating="7.675" data-genres="Dokumentalny" data-director="Emilia Śniegoska">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24820,7 +24822,7 @@
 
 </div>
 
-<div class="col" data-title="Nowa fala" data-countries="Francja|USA" data-rating="7.665" data-year="2025" data-genres="Biograficzny" data-director="Richard Linklater">
+<div class="col" data-title="Nowa fala" data-countries="Francja|USA" data-rating="7.665" data-genres="Biograficzny" data-director="Richard Linklater">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24898,7 +24900,7 @@
 
 </div>
 
-<div class="col" data-title="Guru" data-countries="Francja" data-rating="6.350" data-year="2025" data-genres="Thriller" data-director="Yann Gozlan">
+<div class="col" data-title="Guru" data-countries="Francja" data-rating="6.350" data-genres="Thriller" data-director="Yann Gozlan">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -24972,7 +24974,7 @@
 
 </div>
 
-<div class="col" data-title="O dziewczynie skaczącej przez czas" data-countries="Japonia" data-rating="7.279" data-year="2006" data-genres="Melodramat|Sci-Fi|Anime" data-director="Mamoru Hosoda" data-cast="Riisa Naka, Mitsutaka Itakura, Takuya Ishida, Ayami Kakiuchi">
+<div class="col" data-title="O dziewczynie skaczącej przez czas" data-countries="Japonia" data-rating="7.279" data-genres="Melodramat|Sci-Fi|Anime" data-director="Mamoru Hosoda" data-cast="Riisa Naka, Mitsutaka Itakura, Takuya Ishida, Ayami Kakiuchi">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -25170,7 +25172,7 @@
 
 </div>
 
-<div class="col" data-title="Munch: miłość, duchy i wampirzyce" data-countries="Wielka Brytania|Włochy" data-rating="7.100" data-year="2022" data-genres="Dokument" data-director="Michele Mally">
+<div class="col" data-title="Munch: miłość, duchy i wampirzyce" data-countries="Wielka Brytania|Włochy" data-rating="7.100" data-genres="Dokument" data-director="Michele Mally">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -25243,7 +25245,7 @@
 
 </div>
 
-<div class="col" data-title="Młodsza siostra" data-countries="Francja|Niemcy" data-rating="7.121" data-year="2025" data-genres="Dramat" data-director="Hafsia Herzi">
+<div class="col" data-title="Młodsza siostra" data-countries="Francja|Niemcy" data-rating="7.121" data-genres="Dramat" data-director="Hafsia Herzi">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -25321,7 +25323,7 @@
 
 </div>
 
-<div class="col" data-title="Wypadek fortepianowy" data-countries="Francja" data-rating="6.354" data-year="2025" data-genres="Czarna komedia" data-director="Quentin Dupieux">
+<div class="col" data-title="Wypadek fortepianowy" data-countries="Francja" data-rating="6.354" data-genres="Czarna komedia" data-director="Quentin Dupieux">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -25393,7 +25395,7 @@
 
 </div>
 
-<div class="col" data-title="Wielki Łuk" data-countries="Francja" data-rating="7.443" data-year="2025" data-genres="Dramat" data-director="Stéphane Demoustier">
+<div class="col" data-title="Wielki Łuk" data-countries="Francja" data-rating="7.443" data-genres="Dramat" data-director="Stéphane Demoustier">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -25469,7 +25471,7 @@
 
 </div>
 
-<div class="col" data-title="Mi Amor" data-countries="Francja" data-rating="0.000" data-year="2025" data-director="Guillaume Nicloux">
+<div class="col" data-title="Mi Amor" data-countries="Francja" data-rating="0.000" data-director="Guillaume Nicloux">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -25531,7 +25533,7 @@
 
 </div>
 
-<div class="col" data-title="Poczta głosowa" data-countries="Francja" data-rating="0.000" data-year="2024" data-director="Fabienne Godet">
+<div class="col" data-title="Poczta głosowa" data-countries="Francja" data-rating="0.000" data-director="Fabienne Godet">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -25678,7 +25680,7 @@
 
 </div>
 
-<div class="col" data-title="Wałkonie" data-countries="Włochy|Francja" data-rating="8.473" data-year="1953" data-genres="Dramat obyczajowy" data-director="Federico Fellini">
+<div class="col" data-title="Wałkonie" data-countries="Włochy|Francja" data-rating="8.473" data-genres="Dramat obyczajowy" data-director="Federico Fellini">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -25781,7 +25783,7 @@
 
 </div>
 
-<div class="col" data-title="Kino bez barier: Drugie życie (AD + CC)" data-countries="Niemcy|Francja|Hiszpania|Belgia|Maroko" data-rating="7.871" data-year="2025" data-genres="Dramat" data-director="Maryam Touzani">
+<div class="col" data-title="Kino bez barier: Drugie życie (AD + CC)" data-countries="Niemcy|Francja|Hiszpania|Belgia|Maroko" data-rating="7.871" data-genres="Dramat" data-director="Maryam Touzani">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -25864,7 +25866,7 @@
 
 </div>
 
-<div class="col" data-title="Narodziny gwiazdy" data-countries="USA" data-rating="8.199" data-year="2018" data-genres="Dramat|Muzyczny" data-director="Bradley Cooper" data-cast="Lady Gaga, Bradley Cooper, Sam Elliott">
+<div class="col" data-title="Narodziny gwiazdy" data-countries="USA" data-rating="8.199" data-genres="Dramat|Muzyczny" data-director="Bradley Cooper" data-cast="Lady Gaga, Bradley Cooper, Sam Elliott">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -25964,7 +25966,7 @@
 
 </div>
 
-<div class="col" data-title="Fałszerz stulecia" data-countries="Francja" data-rating="0.000" data-year="2025" data-director="Jean-Paul Salomé">
+<div class="col" data-title="Fałszerz stulecia" data-countries="Francja" data-rating="0.000" data-director="Jean-Paul Salomé">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -26026,7 +26028,7 @@
 
 </div>
 
-<div class="col" data-title="Summer Wars" data-countries="Japonia" data-rating="7.262" data-year="2009" data-genres="Komedia|Anime|Sci-Fi" data-director="Mamoru Hosoda">
+<div class="col" data-title="Summer Wars" data-countries="Japonia" data-rating="7.262" data-genres="Komedia|Anime|Sci-Fi" data-director="Mamoru Hosoda">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -26113,7 +26115,7 @@
 
 </div>
 
-<div class="col" data-title="Kino bez barier: Drugie życie (AD + CC + PJM)" data-countries="Niemcy|Francja|Hiszpania|Belgia|Maroko" data-rating="7.871" data-year="2025" data-genres="Dramat" data-director="Maryam Touzani">
+<div class="col" data-title="Kino bez barier: Drugie życie (AD + CC + PJM)" data-countries="Niemcy|Francja|Hiszpania|Belgia|Maroko" data-rating="7.871" data-genres="Dramat" data-director="Maryam Touzani">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -26196,7 +26198,7 @@
 
 </div>
 
-<div class="col" data-title="All You Need Is Kill" data-countries="Japonia" data-rating="7.367" data-year="2025" data-director="Kenichiro Akimoto">
+<div class="col" data-title="All You Need Is Kill" data-countries="Japonia" data-rating="7.367" data-director="Kenichiro Akimoto">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -26398,7 +26400,7 @@
 
 </div>
 
-<div class="col" data-title="Kicia Kocia w podróży" data-countries="Polska" data-rating="6.724" data-year="2026" data-director="Marta Stróżycka">
+<div class="col" data-title="Kicia Kocia w podróży" data-countries="Polska" data-rating="6.724" data-director="Marta Stróżycka">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -26469,7 +26471,7 @@
 
 </div>
 
-<div class="col" data-title="Playboy zachodniego świata - National Theatre Live 2026" data-countries="Wielka Brytania" data-rating="0.000" data-year="2026" data-genres="Dramat" data-director="Caitríona McLaughlin" data-cast="Nicola Coughlan, Siobhán McSweeney, Éanna Hardwicke">
+<div class="col" data-title="Playboy zachodniego świata - National Theatre Live 2026" data-countries="Wielka Brytania" data-rating="0.000" data-genres="Dramat" data-director="Caitríona McLaughlin" data-cast="Nicola Coughlan, Siobhán McSweeney, Éanna Hardwicke">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -26558,7 +26560,7 @@
 
 </div>
 
-<div class="col" data-title="Powrót do przyszłości II" data-countries="" data-rating="6.825" data-year="1989" data-genres="Komedia|Przygodowy|Sci-Fi" data-director="Robert Zemeckis" data-cast="Michael J. Fox, Christopher Lloyd, Lea Thompson, Tom Wilson">
+<div class="col" data-title="Powrót do przyszłości II" data-countries="" data-rating="6.825" data-genres="Komedia|Przygodowy|Sci-Fi" data-director="Robert Zemeckis" data-cast="Michael J. Fox, Christopher Lloyd, Lea Thompson, Tom Wilson">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -26705,7 +26707,7 @@
 
 </div>
 
-<div class="col" data-title="Powrót do przyszłości III" data-countries="" data-rating="7.087" data-year="1990" data-genres="Komedia|Przygodowy|Sci-Fi" data-director="Robert Zemeckis" data-cast="Michael J. Fox, Christopher Lloyd, Elisabeth Shue, Mary Steenburgen">
+<div class="col" data-title="Powrót do przyszłości III" data-countries="" data-rating="7.087" data-genres="Komedia|Przygodowy|Sci-Fi" data-director="Robert Zemeckis" data-cast="Michael J. Fox, Christopher Lloyd, Elisabeth Shue, Mary Steenburgen">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -26892,7 +26894,7 @@
 
 </div>
 
-<div class="col" data-title="Noce Cabirii" data-countries="Włochy|Francja" data-rating="8.663" data-year="1957" data-genres="Dramat" data-director="Federico Fellini">
+<div class="col" data-title="Noce Cabirii" data-countries="Włochy|Francja" data-rating="8.663" data-genres="Dramat" data-director="Federico Fellini">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -27078,7 +27080,7 @@
 
 </div>
 
-<div class="col" data-title="Kino bez barier: Błękitny szlak (AD + CC + PJM)" data-countries="Brazylia|Meksyk|Holandia" data-rating="0.000" data-year="2025" data-director="Gabriel Mascara">
+<div class="col" data-title="Kino bez barier: Błękitny szlak (AD + CC + PJM)" data-countries="Brazylia|Meksyk|Holandia" data-rating="0.000" data-director="Gabriel Mascara">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -27165,7 +27167,7 @@
 
 </div>
 
-<div class="col" data-title="Takie jest życie" data-countries="" data-rating="6.695" data-year="2001" data-genres="Melodramat">
+<div class="col" data-title="Takie jest życie" data-countries="" data-rating="6.695" data-genres="Melodramat">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -27300,7 +27302,7 @@
 
 </div>
 
-<div class="col" data-title="Chłopiec na krańcach świata" data-countries="Polska" data-rating="6.977" data-year="2025" data-genres="Familijny|Animacja" data-director="Grzegorz Wacławek, Marta Szymańska">
+<div class="col" data-title="Chłopiec na krańcach świata" data-countries="Polska" data-rating="6.977" data-genres="Familijny|Animacja" data-director="Grzegorz Wacławek, Marta Szymańska">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -27395,7 +27397,7 @@
 
 </div>
 
-<div class="col" data-title="Słodkie życie" data-countries="Włochy|Francja" data-rating="8.729" data-year="1960" data-genres="Dramat obyczajowy" data-director="Federico Fellini">
+<div class="col" data-title="Słodkie życie" data-countries="Włochy|Francja" data-rating="8.729" data-genres="Dramat obyczajowy" data-director="Federico Fellini">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -27498,7 +27500,7 @@
 
 </div>
 
-<div class="col" data-title="Kino bez barier: Pieśni lasu (AD + CC + PJM)" data-countries="Francja" data-rating="8.048" data-year="2025" data-genres="Dokumentalny|Przyrodniczy" data-director="Vincent Munier">
+<div class="col" data-title="Kino bez barier: Pieśni lasu (AD + CC + PJM)" data-countries="Francja" data-rating="8.048" data-genres="Dokumentalny|Przyrodniczy" data-director="Vincent Munier">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -27577,7 +27579,7 @@
 
 </div>
 
-<div class="col" data-title="Zaproszenie" data-countries="" data-rating="5.772" data-year="2022" data-genres="Horror">
+<div class="col" data-title="Zaproszenie" data-countries="" data-rating="5.772" data-genres="Horror">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -27654,7 +27656,7 @@
 
 </div>
 
-<div class="col" data-title="Fantastyczne zwierzęta i jak je znaleźć" data-countries="" data-rating="7.051" data-year="2016" data-genres="Fantasy|Przygodowy|Familijny" data-director="David Yates" data-cast="Eddie Redmayne, Katherine Waterston, Dan Fogler, Colin Farrell">
+<div class="col" data-title="Fantastyczne zwierzęta i jak je znaleźć" data-countries="" data-rating="7.051" data-genres="Fantasy|Przygodowy|Familijny" data-director="David Yates" data-cast="Eddie Redmayne, Katherine Waterston, Dan Fogler, Colin Farrell">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -27759,7 +27761,7 @@
 
 </div>
 
-<div class="col" data-title="Osiem i pół" data-countries="Włochy|Francja" data-rating="6.781" data-year="1963" data-genres="Dramat" data-director="Federico Fellini">
+<div class="col" data-title="Osiem i pół" data-countries="Włochy|Francja" data-rating="6.781" data-genres="Dramat" data-director="Federico Fellini">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -27862,7 +27864,7 @@
 
 </div>
 
-<div class="col" data-title="Fantastyczne zwierzęta: zbrodnie grindelwalda" data-countries="" data-rating="5.458" data-year="2018" data-genres="Familijny|Fantasy|Przygodowy">
+<div class="col" data-title="Fantastyczne zwierzęta: zbrodnie grindelwalda" data-countries="" data-rating="5.458" data-genres="Familijny|Fantasy|Przygodowy">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -27967,7 +27969,7 @@
 
 </div>
 
-<div class="col" data-title="Niebezpieczne związki - National Theatre Live 2026" data-countries="Wielka Brytania" data-rating="0.000" data-year="2026" data-genres="Dramat" data-director="Marianne Elliott" data-cast="Lesley Manville, Aidan Turner, Monica Barbaro">
+<div class="col" data-title="Niebezpieczne związki - National Theatre Live 2026" data-countries="Wielka Brytania" data-rating="0.000" data-genres="Dramat" data-director="Marianne Elliott" data-cast="Lesley Manville, Aidan Turner, Monica Barbaro">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -28141,7 +28143,7 @@
 
 </div>
 
-<div class="col" data-title="Giulietta i duchy" data-countries="Włochy|Francja" data-rating="7.768" data-year="1965" data-genres="Dramat" data-director="Federico Fellini">
+<div class="col" data-title="Giulietta i duchy" data-countries="Włochy|Francja" data-rating="7.768" data-genres="Dramat" data-director="Federico Fellini">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -28244,7 +28246,7 @@
 
 </div>
 
-<div class="col" data-title="Brzezina" data-countries="Polska" data-rating="7.380" data-year="1970" data-genres="Dramat|Psychologiczny" data-director="Andrzej Wajda">
+<div class="col" data-title="Brzezina" data-countries="Polska" data-rating="7.380" data-genres="Dramat|Psychologiczny" data-director="Andrzej Wajda">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -28387,7 +28389,7 @@
 
 </div>
 
-<div class="col" data-title="Głos z księżyca" data-countries="Włochy" data-rating="6.309" data-year="1990" data-genres="Dramat|Komedia" data-director="Federico Fellini">
+<div class="col" data-title="Głos z księżyca" data-countries="Włochy" data-rating="6.309" data-genres="Dramat|Komedia" data-director="Federico Fellini">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -28490,7 +28492,7 @@
 
 </div>
 
-<div class="col" data-title="Fantastyczne zwierzęta: Tajemnice Dumbledorea" data-countries="" data-rating="5.403" data-year="2022" data-genres="Fantasy|Familijny|Przygodowy" data-director="David Yates" data-cast="Eddie Redmayne, Jude Law, Mads Mikkelsen, Ezra Miller">
+<div class="col" data-title="Fantastyczne zwierzęta: Tajemnice Dumbledorea" data-countries="" data-rating="5.403" data-genres="Fantasy|Familijny|Przygodowy" data-director="David Yates" data-cast="Eddie Redmayne, Jude Law, Mads Mikkelsen, Ezra Miller">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -28597,7 +28599,7 @@
 
 </div>
 
-<div class="col" data-title="Kronika wypadków miłosnych" data-countries="Polska" data-rating="6.710" data-year="1985" data-genres="Dramat|Psychologiczny|Poetycki" data-director="Andrzej Wajda">
+<div class="col" data-title="Kronika wypadków miłosnych" data-countries="Polska" data-rating="6.710" data-genres="Dramat|Psychologiczny|Poetycki" data-director="Andrzej Wajda">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -28673,7 +28675,7 @@
 
 </div>
 
-<div class="col" data-title="Zaplątani" data-countries="" data-rating="7.830" data-year="2010" data-genres="Animacja|Musical|Familijny|Komedia" data-director="Nathan Greno, Byron Howard" data-cast="Mandy Moore, Zachary Levi, Donna Murphy, Ron Perlman">
+<div class="col" data-title="Zaplątani" data-countries="" data-rating="7.830" data-genres="Animacja|Musical|Familijny|Komedia" data-director="Nathan Greno, Byron Howard" data-cast="Mandy Moore, Zachary Levi, Donna Murphy, Ron Perlman">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -28778,7 +28780,7 @@
 
 </div>
 
-<div class="col" data-title="Audiencja - National Theatre Live 2026" data-countries="Wielka Brytania" data-rating="0.000" data-year="2026" data-genres="Dramat" data-director="Stephen Daldry" data-cast="Helen Mirren">
+<div class="col" data-title="Audiencja - National Theatre Live 2026" data-countries="Wielka Brytania" data-rating="0.000" data-genres="Dramat" data-director="Stephen Daldry" data-cast="Helen Mirren">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -28867,7 +28869,7 @@
 
 </div>
 
-<div class="col" data-title="Odlot" data-countries="" data-rating="8.606" data-year="2009" data-genres="Familijny|Animacja|Przygodowy|Komedia" data-director="Pete Docter, Bob Peterson" data-cast="Edward Asner, Christopher Plummer, Jordan Nagai, Bob Peterson">
+<div class="col" data-title="Odlot" data-countries="" data-rating="8.606" data-genres="Familijny|Animacja|Przygodowy|Komedia" data-director="Pete Docter, Bob Peterson" data-cast="Edward Asner, Christopher Plummer, Jordan Nagai, Bob Peterson">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -29187,7 +29189,7 @@
 
 </div>
 
-<div class="col" data-title="Harry Potter i Kamień filozoficzny" data-countries="" data-rating="7.427" data-year="2001" data-genres="Familijny|Fantasy|Przygodowy" data-director="Chris Columbus" data-cast="Daniel Radcliffe, Rupert Grint, Emma Watson, Maggie Smith">
+<div class="col" data-title="Harry Potter i Kamień filozoficzny" data-countries="" data-rating="7.427" data-genres="Familijny|Fantasy|Przygodowy" data-director="Chris Columbus" data-cast="Daniel Radcliffe, Rupert Grint, Emma Watson, Maggie Smith">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -29392,7 +29394,7 @@
 
 </div>
 
-<div class="col" data-title="Harry Potter i Komnata Tajemnic" data-countries="" data-rating="7.354" data-year="2002" data-genres="Familijny|Przygodowy|Fantasy" data-director="Chris Columbus" data-cast="Daniel Radcliffe, Rupert Grint, Emma Watson">
+<div class="col" data-title="Harry Potter i Komnata Tajemnic" data-countries="" data-rating="7.354" data-genres="Familijny|Przygodowy|Fantasy" data-director="Chris Columbus" data-cast="Daniel Radcliffe, Rupert Grint, Emma Watson">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -29540,7 +29542,7 @@
 
 </div>
 
-<div class="col" data-title="Harry Potter i Czara ognia" data-countries="" data-rating="8.043" data-year="2005" data-genres="Familijny|Przygodowy|Fantasy" data-director="Mike Newell" data-cast="Daniel Radcliffe, Rupert Grint, Emma Watson">
+<div class="col" data-title="Harry Potter i Czara ognia" data-countries="" data-rating="8.043" data-genres="Familijny|Przygodowy|Fantasy" data-director="Mike Newell" data-cast="Daniel Radcliffe, Rupert Grint, Emma Watson">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -29625,7 +29627,7 @@
 
 </div>
 
-<div class="col" data-title="Harry Potter i Zakon Feniksa" data-countries="" data-rating="7.464" data-year="2007" data-genres="Familijny|Fantasy|Przygodowy" data-director="David Yates" data-cast="Emma Watson, Rupert Grint, Daniel Radcliffe, Ralph Fiennes">
+<div class="col" data-title="Harry Potter i Zakon Feniksa" data-countries="" data-rating="7.464" data-genres="Familijny|Fantasy|Przygodowy" data-director="David Yates" data-cast="Emma Watson, Rupert Grint, Daniel Radcliffe, Ralph Fiennes">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -29710,7 +29712,7 @@
 
 </div>
 
-<div class="col" data-title="Harry Potter i Książę Półkrwi" data-countries="" data-rating="7.804" data-year="2009" data-genres="Familijny|Fantasy|Przygodowy" data-director="David Yates" data-cast="Daniel Radcliffe, Emma Watson, Rupert Grint, Matthew Lewis">
+<div class="col" data-title="Harry Potter i Książę Półkrwi" data-countries="" data-rating="7.804" data-genres="Familijny|Fantasy|Przygodowy" data-director="David Yates" data-cast="Daniel Radcliffe, Emma Watson, Rupert Grint, Matthew Lewis">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -29795,7 +29797,7 @@
 
 </div>
 
-<div class="col" data-title="Krajobraz po bitwie" data-countries="Polska" data-rating="7.348" data-year="1970" data-genres="Dramat obyczajowy" data-director="Andrzej Wajda">
+<div class="col" data-title="Krajobraz po bitwie" data-countries="Polska" data-rating="7.348" data-genres="Dramat obyczajowy" data-director="Andrzej Wajda">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -29934,7 +29936,7 @@
 
 </div>
 
-<div class="col" data-title="Harry Potter i Insygnia Śmierci cz. 2" data-countries="" data-rating="8.485" data-year="2011" data-genres="Fantasy|Familijny|Przygodowy" data-director="David Yates" data-cast="Daniel Radcliffe, Rupert Grint, Emma Watson, Ralph Fiennes">
+<div class="col" data-title="Harry Potter i Insygnia Śmierci cz. 2" data-countries="" data-rating="8.485" data-genres="Fantasy|Familijny|Przygodowy" data-director="David Yates" data-cast="Daniel Radcliffe, Rupert Grint, Emma Watson, Ralph Fiennes">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -30082,7 +30084,7 @@
 
 </div>
 
-<div class="col" data-title="Bez znieczulenia" data-countries="Polska" data-rating="7.399" data-year="1978" data-genres="Dramat obyczajowy|Psychologiczny" data-director="Andrzej Wajda">
+<div class="col" data-title="Bez znieczulenia" data-countries="Polska" data-rating="7.399" data-genres="Dramat obyczajowy|Psychologiczny" data-director="Andrzej Wajda">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -30225,7 +30227,7 @@
 
 </div>
 
-<div class="col" data-title="Ziemia obiecana" data-countries="Polska" data-rating="8.153" data-year="1974" data-genres="Obyczajowy" data-director="Andrzej Wajda">
+<div class="col" data-title="Ziemia obiecana" data-countries="Polska" data-rating="8.153" data-genres="Obyczajowy" data-director="Andrzej Wajda">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -30303,7 +30305,7 @@
 
 </div>
 
-<div class="col" data-title="Wszystko na sprzedaż" data-countries="Polska" data-rating="6.973" data-year="1968" data-genres="Dramat" data-director="Andrzej Wajda">
+<div class="col" data-title="Wszystko na sprzedaż" data-countries="Polska" data-rating="6.973" data-genres="Dramat" data-director="Andrzej Wajda">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -30384,7 +30386,8 @@
 </div>
 
 
-<script>let INDEX = null;
+<script>(function () {
+let INDEX = null;
 function buildIndex() {
 const grid = document.getElementById('film-grid');
 INDEX = [...grid.querySelectorAll('.col[data-title]')].map(col => ({
@@ -30392,7 +30395,6 @@ el: col,
 title: col.dataset.title.toLowerCase(),
 rawTitle: col.dataset.title,
 rating: parseFloat(col.dataset.rating) || 0,
-year: col.dataset.year ? parseInt(col.dataset.year, 10) : -Infinity,
 countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
 genres: new Set((col.dataset.genres || '').split('|').filter(Boolean)),
 directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
@@ -30532,16 +30534,22 @@ const visible = [];
 for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);
 const sortBy = getSortBy();
 visible.sort((a, b) => compareCards(sortBy,
-{ earliest: earlyMap[a], rating: INDEX[a].rating, year: INDEX[a].year, idx: a },
-{ earliest: earlyMap[b], rating: INDEX[b].rating, year: INDEX[b].year, idx: b }));
+{ earliest: earlyMap[a], rating: INDEX[a].rating, idx: a },
+{ earliest: earlyMap[b], rating: INDEX[b].rating, idx: b }));
 if (isSubsequence(visible, _prevVisibleOrder)) return;
 _prevVisibleOrder = visible;
 const grid = document.getElementById('film-grid');
 const frag = document.createDocumentFragment();
 for (const i of visible) frag.appendChild(INDEX[i].el);
 grid.appendChild(frag);
-}</script>
+}
+window.buildIndex = buildIndex;
+window.applyFilters = applyFilters;
+window.__viewInit = null;
+})();</script>
 
 
+</main>
+</div>
 </body>
 </html>

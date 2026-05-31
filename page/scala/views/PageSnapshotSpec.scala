@@ -63,7 +63,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
         oauthProviders = noOauthProviders,
         pinnedCinema = Some("Kino Apollo")
       ).body
-      html should include ("""let _kinaPinned = "Kino Apollo";""")
+      html should include ("""window._kinaPinned = "Kino Apollo";""")
     }
 
   "the /plan page" should "render the same HTML as the checked-in snapshot" in

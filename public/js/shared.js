@@ -40,30 +40,25 @@
 
   // ── Sort axis ─────────────────────────────────────────────────────────────
   //
-  // The grid orders by one of three axes, picked in the Filtry panel's
-  // "Sortuj" select: earliest screening (the default), weighted rating, or
-  // release year. `rating` / `year` sort biggest-first; both fall back to
-  // earliest-screening for ties, and earliest is the final default. The
+  // The grid orders by one of two axes, picked in the Filtry panel's "Sortuj"
+  // select: earliest screening (the default) or weighted rating. `rating`
+  // sorts biggest-first and falls back to earliest-screening for ties; the
   // select is absent on pages with no grid — treat that as the default axis.
-  // The sort keys themselves (`data-rating`, `data-year`) are pre-parsed onto
-  // each card's INDEX entry by the per-page buildIndex, so the comparator
-  // never re-reads the DOM.
+  // The sort key (`data-rating`) is pre-parsed onto each card's INDEX entry by
+  // the per-page buildIndex, so the comparator never re-reads the DOM.
   function getSortBy() {
     var el = document.getElementById('sort-by');
     var v = el ? el.value : 'earliest';
-    return (v === 'rating' || v === 'year') ? v : 'earliest';
+    return (v === 'rating') ? v : 'earliest';
   }
 
   // Order two visible cards for the active sort axis. `a`/`b` are
-  // { earliest, rating, year, idx }: `earliest` an ISO "<date>T<HH:MM>" string
+  // { earliest, rating, idx }: `earliest` an ISO "<date>T<HH:MM>" string
   // (never null here — only already-visible cards reach the sort), `rating` a
-  // number (0 when the film has no ratings), `year` a number (-Infinity when
-  // the film has no release year, so it sinks to the bottom of a year sort).
-  // `idx` (the card's original DOM position) is the stable final tiebreak so
-  // equal keys preserve server order.
+  // number (0 when the film has no ratings). `idx` (the card's original DOM
+  // position) is the stable final tiebreak so equal keys preserve server order.
   function compareCards(sortBy, a, b) {
     if (sortBy === 'rating' && a.rating !== b.rating) return b.rating - a.rating;
-    if (sortBy === 'year'   && a.year   !== b.year)   return b.year   - a.year;
     if (a.earliest !== b.earliest) return a.earliest < b.earliest ? -1 : 1;
     return a.idx - b.idx;
   }
@@ -232,9 +227,20 @@
     return result;
   }
 
+  // Root for grid-wide DOM scans. Normally the whole document, but on the
+  // Filmy/Kina pages it's the active `#view-root` so that during the ~300ms
+  // Filmy↔Kina slide-swap (when the outgoing and incoming grids briefly
+  // coexist) these scans count only the incoming view — the outgoing root has
+  // had its id stripped by `navigateTo`, so `getElementById('view-root')`
+  // resolves to the incoming one. Falls back to `document` on pages with no
+  // `#view-root` (e.g. /plan), preserving their behaviour unchanged.
+  function gridScope() {
+    return document.getElementById('view-root') || document;
+  }
+
   function buildSubmenuPanel(key, dataAttr, splitter) {
     var valueCounts = {};
-    document.querySelectorAll('.col[' + dataAttr + ']').forEach(function(col) {
+    gridScope().querySelectorAll('.col[' + dataAttr + ']').forEach(function(col) {
       splitter(col.dataset[dataAttr.replace('data-', '')] || '').forEach(function(v) {
         valueCounts[v] = (valueCounts[v] || 0) + 1;
       });
@@ -316,7 +322,7 @@
     if (!list) return;
 
     var byCinema = {};
-    document.querySelectorAll('.cinema-group[data-cinema]').forEach(function(cg) {
+    gridScope().querySelectorAll('.cinema-group[data-cinema]').forEach(function(cg) {
       var cinema = cg.dataset.cinema;
       cg.querySelectorAll('.badge-time[data-room]').forEach(function(b) {
         var room = b.dataset.room;
@@ -626,7 +632,7 @@
   }
 
   function truncateAllShowings(hasCinemaHeaders) {
-    document.querySelectorAll('.col[data-title]').forEach(col =>
+    gridScope().querySelectorAll('.col[data-title]').forEach(col =>
       truncateShowings(col, hasCinemaHeaders)
     );
   }
@@ -1027,7 +1033,7 @@
   //   lang    — format-lang radio (NAP / DUB)
   //   imax    — format-imax checkbox ("1" when on)
   //   from    — from-hour:minute composite (HH:MM)
-  //   sort    — sort-by select ('rating' / 'year'; 'earliest' default omitted)
+  //   sort    — sort-by select ('rating'; 'earliest' default omitted)
   //   country, director, cast, room — repeated `?key=value` entries listing the
   //             CHECKED items (the inclusion set). Omitted when every box is
   //             ticked — the no-filter default → empty URL. Previously stored
@@ -1087,7 +1093,7 @@
     }
 
     // Sort axis: the default ('earliest') stays out of the URL so a plain
-    // share link is clean; 'rating' / 'year' are materialised as ?sort=.
+    // share link is clean; 'rating' is materialised as ?sort=.
     const sortSel = document.getElementById('sort-by');
     setOrDel('sort', sortSel && sortSel.value !== 'earliest' ? sortSel.value : '');
 
@@ -1199,7 +1205,7 @@
     const sortSel = document.getElementById('sort-by');
     if (sortSel) {
       const s = p.get('sort');
-      if (s === 'rating' || s === 'year' || s === 'earliest') sortSel.value = s;
+      if (s === 'rating' || s === 'earliest') sortSel.value = s;
     }
 
     // URL values are the INCLUSION set (checked items). Empty/absent → all
@@ -1395,26 +1401,293 @@
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
-  document.addEventListener('DOMContentLoaded', () => {
+  // Reflect the active view (`films`/`kina`) in the navbar tabs.
+  function setActiveTab(view) {
+    document.querySelectorAll('.navbar .nav-tab').forEach(a => {
+      const href = a.getAttribute('href');
+      if (href === '/' || href === '/kina') {
+        a.classList.toggle('active', (view === 'films' && href === '/') ||
+                                     (view === 'kina'  && href === '/kina'));
+      }
+    });
+  }
+
+  // The Filtry "Kina" cinema picker (`#filtry-cinema-section`) is owned by the
+  // Filmy view — it drives `disabledCinemas`. The Kina view uses its own
+  // pill-pin row instead, so while Kina is active we STASH the whole section
+  // out of the DOM. That keeps `#cinema-list`-presence the single source of
+  // truth for "Filtry owns the cinema picker" — `updateFormatBtn`,
+  // `buildShareURL`, `applyFiltersFromURL`, `buildCinemaPanel`/`syncAllCheckbox`
+  // all key off it and need no view-awareness of their own.
+  let _filtryCinemaSection = null;
+  function applyViewChrome(view) {
+    setActiveTab(view);
+    if (view === 'kina') {
+      const section = document.getElementById('filtry-cinema-section');
+      if (section) { _filtryCinemaSection = section; section.remove(); }
+    } else if (_filtryCinemaSection && !document.getElementById('filtry-cinema-section')) {
+      // Restore into its original slot (immediately before the country row).
+      const countryRow = document.getElementById('country-row');
+      if (countryRow) countryRow.parentNode.insertBefore(_filtryCinemaSection, countryRow);
+      _filtryCinemaSection = null;
+    }
+  }
+
+  // Everything that depends on the CURRENT view's grid DOM, factored out so it
+  // can re-run after a Filmy↔Kina slide-swap (see `navigateTo`). Reads the
+  // view-provided `window.buildIndex`/`applyFilters` (re-assigned by each
+  // view's inline IIFE) and the optional per-view `window.__viewInit` hook
+  // (Kina sets it to `buildCinemaPills`; Filmy clears it). Must run AFTER the
+  // view's inline script has (re)defined those globals.
+  function bootView() {
+    const view = document.getElementById('view-root')?.dataset.view || 'films';
+    applyViewChrome(view);     // stash/restore Filtry cinema section BEFORE the
+                               // panel/label builders read `#cinema-list`.
     buildIndex();
-    populateDayOptions();
-    squareDateNavBtns();
-    updateNavbar();
-    // Cinema picker lives in the Filtry dropdown now — populate the list
-    // at boot so the first open of Filtry has the checkboxes ready.
+    // Cinema picker lives in the Filtry dropdown now — populate the list so the
+    // first open of Filtry has the checkboxes ready (no-ops on Kina: section
+    // stashed, so `#cinema-list` is absent).
     buildCinemaPanel();
     buildCountryPanel();
     buildGenrePanel();
     buildDirectorPanel();
     buildCastPanel();
     buildRoomPanel();
-    // URL → controls AFTER every panel/picker is built so the checkbox
-    // updates land on real DOM nodes; then a single `applyFilters()` pass
-    // renders the page already filtered.
+    if (typeof window.__viewInit === 'function') window.__viewInit();
+    // URL → controls AFTER every panel/picker is built so the checkbox updates
+    // land on real DOM nodes; then a single `applyFilters()` pass renders the
+    // view already filtered.
     applyFiltersFromURL();
     updateFormatBtn();
     applyFilters();
+  }
+  window.bootView = bootView;
+
+  // ── Filmy ↔ Kina slide-swap ────────────────────────────────────────────────
+  //
+  // The Filmy (/) and Kina (/kina) tabs switch views IN PLACE instead of doing
+  // a full navigation: fetch the sibling page, slide the current `#view-root`
+  // out and the new one in, swap the DOM, re-run the new view's inline script +
+  // `bootView()`, and `pushState` the URL. The navbar/modals/this file are the
+  // stable shell and never reload. A horizontal swipe on a phone triggers the
+  // same path. Direct loads and `/kina/:cinema` still server-render normally.
+
+  const VIEW_PATHS     = { films: '/', kina: '/kina' };
+  const PREFETCH_TTL_MS = 5 * 60 * 1000;
+  const _prefetch      = new Map();   // path -> { html, ts }
+  let   _swapping      = false;
+  let   _finishSwap    = null;   // snaps the in-flight swap to its end on demand
+
+  function viewOfPath(path) {
+    const p = (path || location.pathname).split('?')[0].split('#')[0];
+    if (p === '/') return 'films';
+    if (p === '/kina' || p.startsWith('/kina/')) return 'kina';
+    return null;   // a route the swap doesn't manage (e.g. /plan)
+  }
+
+  function prefetchView(view) {
+    const path = VIEW_PATHS[view];
+    if (!path) return;
+    const hit = _prefetch.get(path);
+    if (hit && Date.now() - hit.ts < PREFETCH_TTL_MS) return;
+    fetch(path, { headers: { 'X-Requested-With': 'view-swap' } })
+      .then(r => (r.ok ? r.text() : null))
+      .then(html => { if (html) _prefetch.set(path, { html, ts: Date.now() }); })
+      .catch(() => {});
+  }
+
+  async function fetchViewHtml(path) {
+    const hit = _prefetch.get(path);
+    if (hit && Date.now() - hit.ts < PREFETCH_TTL_MS) return hit.html;
+    const resp = await fetch(path, { headers: { 'X-Requested-With': 'view-swap' } });
+    if (!resp.ok) throw new Error('view fetch failed: ' + resp.status);
+    const html = await resp.text();
+    _prefetch.set(path, { html, ts: Date.now() });
+    return html;
+  }
+
+  // <script>s inserted via importNode/innerHTML never execute — swap each for a
+  // fresh node so the injected view's inline IIFE actually runs (re-assigning
+  // window.buildIndex/applyFilters/__viewInit for the incoming view).
+  function runScripts(root) {
+    root.querySelectorAll('script').forEach(old => {
+      const s = document.createElement('script');
+      for (const a of old.attributes) s.setAttribute(a.name, a.value);
+      s.textContent = old.textContent;
+      old.replaceWith(s);
+    });
+  }
+
+  // Switch to `destView` (path '/' or '/kina[/cinema]'). `direction` is 'left'
+  // when the new view enters from the right (Filmy→Kina) or 'right'
+  // (Kina→Filmy). `push` adds a history entry (false when called from popstate,
+  // where the browser already moved the URL).
+  async function navigateTo(path, destView, direction, push) {
+    // If a previous swap is still animating, snap it to its end first (removes
+    // the outgoing node, clears the flag) so a fast follow-up — e.g. a back
+    // button pressed mid-slide — isn't dropped, which would leave the URL and
+    // the view out of sync.
+    if (_swapping && _finishSwap) _finishSwap();
+    const pager   = document.getElementById('view-pager');
+    const current = document.getElementById('view-root');
+    if (!pager || !current) { window.location = path; return; }
+    if (_swapping || current.dataset.view === destView) return;
+    _swapping = true;
+
+    let incoming;
+    try {
+      const doc = new DOMParser().parseFromString(await fetchViewHtml(path), 'text/html');
+      const found = doc.getElementById('view-root');
+      if (!found) throw new Error('no #view-root in response');
+      incoming = document.importNode(found, true);
+    } catch (e) {
+      window.location = path;   // graceful fallback to a real navigation
+      return;
+    }
+
+    // URL first, so `bootView`→`applyFiltersFromURL` reads the DESTINATION's
+    // query (a plain tab switch lands on a bare path — new-screen semantics,
+    // no carry-over of the old view's ?date= etc.).
+    if (push !== false) history.pushState({ view: destView }, '', path);
+
+    // Strip colliding ids from the OUTGOING root so the incoming view's
+    // `document.getElementById(...)` and `gridScope()` resolve uniquely during
+    // the overlap. The outgoing view's JS is inert from here — never re-queried.
+    current.removeAttribute('id');
+    ['film-grid', 'film-counter', 'no-films', 'cinema-pills'].forEach(id => {
+      const el = current.querySelector('#' + id);
+      if (el) el.removeAttribute('id');
+    });
+
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const exit   = direction === 'left' ? '-100%' : '100%';
+    const enter  = direction === 'left' ? '100%'  : '-100%';
+
+    pager.classList.add('view-sliding');
+    incoming.classList.add('view-entering');     // position:absolute over the pager
+    incoming.style.transform = 'translateX(' + enter + ')';
+    pager.appendChild(incoming);
+
+    // Run the incoming inline script + boot it WHILE off-screen, so it's already
+    // filtered/sorted/pinned before it slides in (no unfiltered flash).
+    runScripts(incoming);
+    bootView();
+
+    let settled = false;
+    const settle = () => {
+      if (settled) return;            // guard the transitionend + timeout + snap paths
+      settled = true;
+      current.remove();
+      incoming.classList.remove('view-entering');
+      incoming.style.transform = '';
+      pager.classList.remove('view-sliding');
+      _swapping = false;
+      _finishSwap = null;
+    };
+    _finishSwap = settle;
+
+    if (reduce) {
+      settle();
+    } else {
+      // Double-rAF so the browser paints the start transforms before the
+      // transition to the resting positions begins.
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        current.style.transform  = 'translateX(' + exit + ')';
+        incoming.style.transform = 'translateX(0)';
+      }));
+      let done = false;
+      const onEnd = (e) => {
+        if (e && e.target !== incoming) return;
+        if (done) return;
+        done = true;
+        incoming.removeEventListener('transitionend', onEnd);
+        settle();
+      };
+      incoming.addEventListener('transitionend', onEnd);
+      setTimeout(onEnd, 450);   // fallback if transitionend is missed
+    }
+
+    window.scrollTo(0, 0);
+    prefetchView(destView === 'kina' ? 'films' : 'kina');
+  }
+
+  // Intercept Filmy/Kina tab clicks — capture phase so we preempt the
+  // bubble-phase close-panels / card-tap handlers.
+  document.addEventListener('click', (e) => {
+    if (!(e.target instanceof Element)) return;
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const tab = e.target.closest('.navbar .nav-tab');
+    if (!tab) return;
+    const href = tab.getAttribute('href');
+    if (href !== '/' && href !== '/kina') return;   // e.g. the Debug tab → normal nav
+    const root = document.getElementById('view-root');
+    if (!root) return;                               // not a swap-managed page
+    e.preventDefault();
+    const destView = href === '/' ? 'films' : 'kina';
+    if (root.dataset.view === destView) return;
+    navigateTo(href, destView, destView === 'kina' ? 'left' : 'right', true);
+  }, true);
+
+  window.addEventListener('popstate', () => {
+    const root     = document.getElementById('view-root');
+    const destView = viewOfPath(location.pathname);
+    if (!root || !destView || root.dataset.view === destView) return;
+    navigateTo(location.pathname + location.search, destView,
+               destView === 'kina' ? 'left' : 'right', false);
+  });
+
+  // ── Swipe to switch (phones) ────────────────────────────────────────────────
+  //
+  // Horizontal-dominant swipe past a threshold switches view. All listeners are
+  // passive (never block scroll); a vertical-dominant gesture is abandoned on
+  // the first move. A swipe that STARTS on the cinema-pill strip is ignored so
+  // the strip's own horizontal scroll wins (the user chose "pills win").
+  let _sw = null;
+  document.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return;
+    if (!matchMedia('(pointer: coarse)').matches) return;
+    if (!document.getElementById('view-root')) return;
+    if (e.target instanceof Element && e.target.closest('.cinema-nav-row, #cinema-pills')) return;
+    _sw = { x0: e.clientX, y0: e.clientY, axis: null };
+  }, { passive: true });
+
+  document.addEventListener('pointermove', (e) => {
+    if (!_sw) return;
+    const dx = e.clientX - _sw.x0, dy = e.clientY - _sw.y0;
+    if (_sw.axis === null) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;   // inside the deadzone
+      _sw.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    }
+    if (_sw.axis === 'y') _sw = null;   // vertical scroll — let the page own it
+  }, { passive: true });
+
+  function endSwipe(e) {
+    if (!_sw) return;
+    const axis = _sw.axis, dx = e.clientX - _sw.x0;
+    _sw = null;
+    if (axis !== 'x' || _swapping) return;
+    const root = document.getElementById('view-root');
+    if (!root) return;
+    if (Math.abs(dx) < Math.max(60, window.innerWidth * 0.20)) return;
+    const cur = root.dataset.view;
+    if (dx < 0 && cur === 'films')      navigateTo('/kina', 'kina',  'left',  true);
+    else if (dx > 0 && cur === 'kina')  navigateTo('/',     'films', 'right', true);
+  }
+  document.addEventListener('pointerup', endSwipe, { passive: true });
+  document.addEventListener('pointercancel', () => { _sw = null; }, { passive: true });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // One-time shell init — navbar chrome that survives view swaps and must
+    // NOT re-run (date options, square nav buttons, hidden-films badge).
+    populateDayOptions();
+    squareDateNavBtns();
+    updateNavbar();
+    // Grid-dependent init — re-runs on every view swap.
+    bootView();
     bootMergeFromServer();
+    // Warm the sibling so the first switch is instant.
+    const here = document.getElementById('view-root')?.dataset.view;
+    if (here) prefetchView(here === 'films' ? 'kina' : 'films');
   });
 
   // ── Image-fetch uptime tracker ────────────────────────────────────────────

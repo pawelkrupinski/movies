@@ -823,6 +823,31 @@
       box-sizing: border-box;
     }
   }
+
+  /* ── Filmy ↔ Kina slide-swap (shared.js `navigateTo`) ──────────────────────
+     `#view-pager` is the stable slot; its single `<main id="view-root">` child
+     is the swappable view. During a swap the entering view is stacked
+     absolutely over the pager and both slide via `translateX`; on settle the
+     outgoing node is removed and the entering one returns to normal flow.
+     `overflow-x: clip` hides the off-screen panel without creating a scroll
+     container (so it can't add a phantom vertical scrollbar the way
+     `overflow-x: hidden` would). */
+  #view-pager { position: relative; overflow-x: clip; }
+  #view-pager > main { will-change: transform; }
+  #view-pager.view-sliding > main {
+    transition: transform .3s cubic-bezier(.22, .61, .36, 1);
+  }
+  #view-pager > main.view-entering {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+  /* Honour reduced-motion: shared.js skips the animation and settles the swap
+     instantly, but kill the transition too in case a class lingers a frame. */
+  @@media (prefers-reduced-motion: reduce) {
+    #view-pager.view-sliding > main { transition: none; }
+  }
 </style>
 @_pillStyles()
 @_ratingStyles()

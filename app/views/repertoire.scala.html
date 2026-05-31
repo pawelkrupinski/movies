@@ -43,6 +43,13 @@
 @_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
+@* `#view-pager` is the stable shell slot; `#view-root` is the swappable
+   region that the Filmy↔Kina slide-swap replaces (see shared.js
+   `navigateTo`). Everything above (navbar, modals, config, shared.js)
+   persists across a swap; everything inside `#view-root` is fetched +
+   re-rendered when switching views. *@
+<div id="view-pager">
+<main id="view-root" data-view="films">
 <div class="container-fluid py-4 px-4">
   <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
@@ -53,6 +60,12 @@
 
 @_minified(devMode) {
 <script>
+  // Wrapped in an IIFE so the slide-swap (shared.js `navigateTo`) can
+  // re-execute an injected copy of this exact block when the user switches
+  // back to Filmy: a fresh IIFE scope re-creates the per-view locals
+  // (`INDEX`, `_prevVisibleOrder`) and re-assigns the `window.*` entry points
+  // below, instead of throwing "Identifier 'INDEX' has already been declared".
+  (function () {
   // ── DOM index ─────────────────────────────────────────────────────────────
 
   let INDEX = null;
@@ -63,11 +76,9 @@
       el:       col,
       title:    col.dataset.title.toLowerCase(),
       rawTitle: col.dataset.title,
-      // Sort keys, parsed once. `rating` is the server-computed weighted
-      // average (0 when the film has no ratings); `year` is -Infinity when
-      // the film has no release year so it sinks in a year sort.
+      // Sort key, parsed once: the server-computed weighted rating average
+      // (0 when the film has no ratings).
       rating:    parseFloat(col.dataset.rating) || 0,
-      year:      col.dataset.year ? parseInt(col.dataset.year, 10) : -Infinity,
       countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
       genres:    new Set((col.dataset.genres    || '').split('|').filter(Boolean)),
       directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
@@ -247,8 +258,8 @@
     for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);
     const sortBy = getSortBy();
     visible.sort((a, b) => compareCards(sortBy,
-      { earliest: earlyMap[a], rating: INDEX[a].rating, year: INDEX[a].year, idx: a },
-      { earliest: earlyMap[b], rating: INDEX[b].rating, year: INDEX[b].year, idx: b }));
+      { earliest: earlyMap[a], rating: INDEX[a].rating, idx: a },
+      { earliest: earlyMap[b], rating: INDEX[b].rating, idx: b }));
 
     // Skip the rebuild when the new order is a subsequence of the last applied
     // one — i.e. cards only became hidden, the remaining ones are in the same
@@ -263,7 +274,17 @@
     for (const i of visible) frag.appendChild(INDEX[i].el);
     grid.appendChild(frag);
   }
+
+  // Entry points shared.js drives at boot and after a swap (`bootView`).
+  window.buildIndex   = buildIndex;
+  window.applyFilters = applyFilters;
+  // Filmy has no per-view boot hook; clear any stale one a previous Kina
+  // view may have left so a Kina→Filmy swap doesn't re-run `buildCinemaPills`.
+  window.__viewInit   = null;
+  })();
 </script>
 }
+</main>
+</div>
 </body>
 </html>

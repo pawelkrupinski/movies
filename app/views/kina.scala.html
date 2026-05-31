@@ -151,6 +151,12 @@
 @_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
+@* `#view-pager`/`#view-root` — the swappable region for the Filmy↔Kina
+   slide-swap (see shared.js `navigateTo`). The cinema-pill strip lives
+   INSIDE `#view-root` so it comes and goes with the Kina view; the navbar
+   and modals above stay put across a swap. *@
+<div id="view-pager">
+<main id="view-root" data-view="kina">
 @* Cinema-picker as a second navbar row — populated from JS at boot off
    ALL_CINEMAS and `disabledCinemas` localStorage. Renders empty
    server-side; the JS pill builder is the source of truth so the
@@ -170,6 +176,12 @@
 
 @_minified(devMode) {
 <script>
+  // Wrapped in an IIFE so the slide-swap (shared.js `navigateTo`) can
+  // re-execute an injected copy of this block when the user switches to
+  // Kina: a fresh IIFE scope re-creates the per-view state (`INDEX`,
+  // `_kinaPinned`) and re-assigns the `window.*` entry points below, rather
+  // than throwing "Identifier 'INDEX' has already been declared".
+  (function () {
   // ── DOM index ─────────────────────────────────────────────────────────────
 
   let INDEX = null;
@@ -188,11 +200,9 @@
       cols:    [...section.querySelectorAll('.col[data-title]')].map(col => ({
         el:       col,
         title:    col.dataset.title.toLowerCase(),
-        // Sort keys, parsed once — same shape as repertoire's INDEX. `rating`
-        // is the server-computed weighted average (0 when unrated); `year` is
-        // -Infinity when absent so it sinks in a year sort.
+        // Sort key, parsed once — same shape as repertoire's INDEX: the
+        // server-computed weighted rating average (0 when unrated).
         rating:    parseFloat(col.dataset.rating) || 0,
-        year:      col.dataset.year ? parseInt(col.dataset.year, 10) : -Infinity,
         countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
         directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
         cast:      new Set((col.dataset.cast     || '').split(',').map(s => s.trim()).filter(Boolean)),
@@ -251,8 +261,8 @@
     // ignores the persistent `disabledCinemas` localStorage — visiting
     // `/kina` starts unpinned regardless of what Filtry on / had selected.
     // Filter the grid against the pin only.
-    const disabled  = _kinaPinned
-      ? new Set(ALL_CINEMAS.filter(c => c !== _kinaPinned))
+    const disabled  = window._kinaPinned
+      ? new Set(ALL_CINEMAS.filter(c => c !== window._kinaPinned))
       : new Set();
     const fmtTokens     = getFormatFilter();
     const hasFmt        = fmtTokens.length > 0;
@@ -360,7 +370,12 @@
   // the URL via `history.replaceState` so the address bar and the pin never
   // drift apart. It doesn't share state with the Filtry checkboxes on other
   // pages (their `disabledCinemas` localStorage stays untouched).
-  let _kinaPinned = @Html(play.api.libs.json.Json.toJson(pinnedCinema).toString);
+  //
+  // Held on `window` (not an IIFE-local) so a bare `_kinaPinned` still resolves
+  // globally — and so re-running this script on a slide-swap RE-ASSIGNS the pin
+  // from the freshly-fetched fragment's server seed instead of throwing on a
+  // re-declared `let`.
+  window._kinaPinned = @Html(play.api.libs.json.Json.toJson(pinnedCinema).toString);
 
   function buildCinemaPills() {
     const row = document.getElementById('cinema-pills');
@@ -369,7 +384,7 @@
     ALL_CINEMAS.forEach(cinema => {
       const pill = document.createElement('button');
       pill.type = 'button';
-      pill.className = 'cinema-pill' + (cinema === _kinaPinned ? ' active' : '');
+      pill.className = 'cinema-pill' + (cinema === window._kinaPinned ? ' active' : '');
       pill.dataset.cinema = cinema;
       pill.textContent = CINEMA_PILLS[cinema] || cinema;
       pill.onclick = () => toggleCinemaPill(cinema);
@@ -382,17 +397,15 @@
   // URL path is rewritten in lock-step (`/kina/:cinema` ↔ `/kina`) so a
   // refresh keeps whatever the user picked.
   function toggleCinemaPill(cinema) {
-    _kinaPinned = (_kinaPinned === cinema) ? null : cinema;
+    window._kinaPinned = (window._kinaPinned === cinema) ? null : cinema;
     // Preserve query string (e.g. `?date=tomorrow`) when rewriting the path —
     // the date selector also lives in the URL and shouldn't get dropped when
     // the user pins/unpins a cinema.
-    const path = _kinaPinned ? '/kina/' + encodeURIComponent(_kinaPinned) : '/kina';
+    const path = window._kinaPinned ? '/kina/' + encodeURIComponent(window._kinaPinned) : '/kina';
     history.replaceState(null, '', path + window.location.search + window.location.hash);
     buildCinemaPills();
     applyFilters();
   }
-
-  document.addEventListener('DOMContentLoaded', buildCinemaPills);
 
   function sortSection(section, earlyMap) {
     // Same logic as repertoire's sortByEarliestVisible (see comment there).
@@ -404,15 +417,26 @@
     for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);
     const sortBy = getSortBy();
     visible.sort((a, b) => compareCards(sortBy,
-      { earliest: earlyMap[a], rating: section.cols[a].rating, year: section.cols[a].year, idx: a },
-      { earliest: earlyMap[b], rating: section.cols[b].rating, year: section.cols[b].year, idx: b }));
+      { earliest: earlyMap[a], rating: section.cols[a].rating, idx: a },
+      { earliest: earlyMap[b], rating: section.cols[b].rating, idx: b }));
     if (isSubsequence(visible, section.prevVisibleOrder || [])) return;
     section.prevVisibleOrder = visible;
     const frag = document.createDocumentFragment();
     for (const i of visible) frag.appendChild(section.cols[i].el);
     section.row.appendChild(frag);
   }
+
+  // Entry points shared.js drives at boot and after a swap (`bootView`).
+  window.buildIndex   = buildIndex;
+  window.applyFilters = applyFilters;
+  // Per-view boot hook: `bootView` calls this after (re)building the index.
+  // It replaces the old `DOMContentLoaded → buildCinemaPills` registration,
+  // which would never fire on a swap (the document is already loaded).
+  window.__viewInit   = buildCinemaPills;
+  })();
 </script>
 }
+</main>
+</div>
 </body>
 </html>

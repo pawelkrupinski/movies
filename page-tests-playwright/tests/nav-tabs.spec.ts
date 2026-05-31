@@ -15,10 +15,13 @@ test.describe('navbar tab .active class', () => {
     await expect(page.locator('.navbar .nav-tab.active')).toContainText('Kina');
   });
 
-  test('Filmy → Kina via tab link navigates', async ({ page }) => {
+  test('Filmy → Kina via tab link switches the active tab', async ({ page }) => {
     await page.goto('/');
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
     await page.waitForURL(/\/kina$/);
     await expect(page.locator('.navbar .nav-tab.active')).toContainText('Kina');
   });
 });
+
+// The full in-place slide-swap behaviour (no reload, DOM swap, swipe, popstate)
+// lives in view-swap.spec.ts; this file only guards the .active highlighting.

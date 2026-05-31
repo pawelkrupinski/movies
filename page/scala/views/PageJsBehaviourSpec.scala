@@ -1105,10 +1105,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // ── Sortuj (sort axis) ─────────────────────────────────────────────────────
   //
   // The Filtry panel's "Sortuj" select reorders the visible grid: earliest
-  // screening (default), weighted rating, or release year. Rating + year sort
-  // biggest-first. On / the whole grid is one sorted list; on /kina each
-  // cinema section is sorted independently. The sort keys ride on each card's
-  // `data-rating` / `data-year` (server-computed), parsed once into INDEX.
+  // screening (default) or weighted rating (biggest-first). On / the whole
+  // grid is one sorted list; on /kina each cinema section is sorted
+  // independently. The sort key rides on each card's `data-rating`
+  // (server-computed), parsed once into INDEX.
 
   "the Sortuj control" should "default to 'earliest'" in {
     onPath("/") { page =>
@@ -1129,21 +1129,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "  .map(c => parseFloat(c.dataset.rating) || 0);" +
         "  for (let i = 1; i < r.length; i++) if (r[i] > r[i-1] + 1e-9) return false;" +
         "  return r.length > 1; })()"
-      )
-      nonIncreasing shouldBe true
-    }
-  }
-
-  it should "order the visible grid by descending year, films without a year last, on /" in {
-    onPath("/") { page =>
-      pinDateFilterAnytime(page)
-      page.eval("document.getElementById('sort-by').value = 'year'; onSortChange()")
-      val nonIncreasing = page.evalBool(
-        "(() => { const ys = [...document.querySelectorAll('#film-grid > .col[data-title]')]" +
-        "  .filter(c => c.style.display !== 'none')" +
-        "  .map(c => c.dataset.year ? parseInt(c.dataset.year, 10) : -Infinity);" +
-        "  for (let i = 1; i < ys.length; i++) if (ys[i] > ys[i-1]) return false;" +
-        "  return ys.length > 1; })()"
       )
       nonIncreasing shouldBe true
     }
@@ -1183,8 +1168,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("document.getElementById('sort-by').value = 'rating'; copyFilterLinkToClipboard()")
       page.evalString("new URL(location.href).searchParams.get('sort')") shouldBe "rating"
     }
-    onPath("/?sort=year") { page =>
-      page.evalString("document.getElementById('sort-by').value") shouldBe "year"
+    onPath("/?sort=rating") { page =>
+      page.evalString("document.getElementById('sort-by').value") shouldBe "rating"
     }
   }
 
