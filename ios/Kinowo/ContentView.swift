@@ -213,7 +213,7 @@ struct ContentView: View {
         CinemaSectionedGridView(
             sections: filmsForCinemasTab.groupedByCinema(),
             header: {
-                CinemaDropdown(
+                CinemaPillsRow(
                     allCinemas: allCinemas,
                     pinnedCinema: $pinnedCinema
                 )

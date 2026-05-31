@@ -41,7 +41,7 @@ final class TabSwipeUITests: XCTestCase {
                       "Expected film grid back after swiping right")
     }
 
-    func testSelectingCinemaFromDropdownPinsThatCinema() throws {
+    func testSelectingCinemaFromPillsPinsThatCinema() throws {
         app.swipeLeft()
 
         let headers = app.descendants(matching: .any)
@@ -52,18 +52,22 @@ final class TabSwipeUITests: XCTestCase {
         try XCTSkipIf(originalCount < 2, "Need ≥2 cinema sections to test pinning")
 
         // The first section header names a cinema that has films right now;
-        // the dropdown carries an option with the same label. Picking it pins
-        // that cinema and hides every other section.
+        // its pill carries the same label. Tapping the pill (its hit area is
+        // the rectangle around the capsule) pins that cinema and hides every
+        // other section.
         let cinemaName = headers.firstMatch.label
+        let pill = app.buttons[cinemaName]
+        XCTAssertTrue(pill.waitForExistence(timeout: 5), "No cinema pill for \(cinemaName)")
 
-        let dropdown = app.buttons[A11y.CinemaPage.dropdown]
-        XCTAssertTrue(dropdown.waitForExistence(timeout: 5), "No cinema dropdown")
-        dropdown.tap()
-
-        let option = app.buttons[cinemaName]
-        XCTAssertTrue(option.waitForExistence(timeout: 5),
-                      "No dropdown option for \(cinemaName)")
-        option.tap()
+        // The pill row scrolls horizontally; nudge it until the pill is
+        // on-screen (swiping the row, not the page, so the tab doesn't flip).
+        let pillRow = app.scrollViews[A11y.CinemaPage.pillRow]
+        var tries = 0
+        while !pill.isHittable && pillRow.exists && tries < 8 {
+            pillRow.swipeLeft()
+            tries += 1
+        }
+        pill.tap()
 
         let pinnedToOne = XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in headers.count == 1 }, object: nil)
