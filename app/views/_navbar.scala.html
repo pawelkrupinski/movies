@@ -57,7 +57,7 @@
          view surfaces the same axis as its pill-pin row instead. Always
          rendered now (no `activePage` gate) so the Filmy↔Kina slide-swap
          has it available regardless of which view loaded first — shared.js
-         `applyViewChrome` STASHES this whole `#filtry-cinema-section` node
+         `syncFiltryForView` STASHES this whole `#filtry-cinema-section` node
          out of the DOM while the Kina view is active, which keeps every
          `#cinema-list`-presence check in shared.js correctly view-aware.
          Rendered hidden when the page first loads on /kina so it can't

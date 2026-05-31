@@ -88,6 +88,25 @@
     _filterDebounce = setTimeout(applyFilters, 80);
   }
 
+  // iOS Safari zooms the viewport IN when focus lands on the navbar search
+  // (font-size < 16px — a deliberate trade-off, see `_sharedStyles`) and does
+  // NOT zoom back out when the field is blurred, leaving the page stuck wider
+  // than the screen. Momentarily pinning `maximum-scale=1` forces Safari to
+  // snap the zoom back to fit-width; restoring the original content on the next
+  // frame re-enables pinch-zoom (leaving it pinned would disable zoom for good
+  // — a WCAG no-no). Guarded on `visualViewport.scale` so it's a pure no-op
+  // when the page isn't actually zoomed in (desktop, or a phone never zoomed).
+  function resetSearchZoom() {
+    const vv = window.visualViewport;
+    if (!vv || vv.scale <= 1) return;
+    const vp = document.querySelector('meta[name="viewport"]');
+    if (!vp) return;
+    const base = vp.getAttribute('content');
+    vp.setAttribute('content', base + ', maximum-scale=1');
+    requestAnimationFrame(() => vp.setAttribute('content', base));
+  }
+  window.resetSearchZoom = resetSearchZoom;
+
   function updateFormatBtn() {
     const parts = [...getFormatFilter()];
     const fromMin = getFromMinutes();
@@ -1480,6 +1499,12 @@
   const _prefetch      = new Map();   // path -> { html, ts }
   let   _swapping      = false;
   let   _finishSwap    = null;   // snaps the in-flight swap to its end on demand
+  // Swipe-gesture tuning (shared by the live drag-preview and the release
+  // decision so the highlighted tab and where it actually lands stay in sync).
+  const COMMIT_FRACTION   = 0.4;   // drag past this fraction of the width → commit
+  const FLICK_VX          = 0.4;   // px/ms — a quick flick commits a shorter drag
+  const FLICK_MIN_PX      = 24;    // ignore micro-flicks
+  const SWIPE_DEADZONE_PX = 10;    // axis-lock deadzone
 
   function viewOfPath(path) {
     const p = (path || location.pathname).split('?')[0].split('#')[0];
@@ -1549,18 +1574,21 @@
     }
 
     // URL first, so `bootView`→`applyFiltersFromURL` reads the DESTINATION's
-    // query (a plain tab switch lands on a bare path — new-screen semantics,
-    // no carry-over of the old view's ?date= etc.).
-    if (push !== false) history.pushState({ view: destView }, '', path);
+    // query. Preserve the current query+hash across the switch (e.g. ?date=
+    // persists Filmy↔Kina) — same as the drag-commit path, so a tab click and
+    // a swipe behave identically. `path` is always a bare route for push=true
+    // callers (the tab href / a sibling path); popstate passes push=false and
+    // the browser has already set the URL, so this line doesn't run for it.
+    if (push !== false) {
+      history.pushState({ view: destView }, '', path + location.search + location.hash);
+    }
 
     // Strip colliding ids from the OUTGOING root so the incoming view's
     // `document.getElementById(...)` and `gridScope()` resolve uniquely during
-    // the overlap. The outgoing view's JS is inert from here — never re-queried.
-    current.removeAttribute('id');
-    ['film-grid', 'film-counter', 'no-films', 'cinema-pills'].forEach(id => {
-      const el = current.querySelector('#' + id);
-      if (el) el.removeAttribute('id');
-    });
+    // the overlap. The outgoing view's JS is inert from here — never re-queried,
+    // so we discard the saved id list (only the drag path needs it, to restore
+    // on a snap-back). Same helper as the drag path → one id list, one place.
+    detachViewIds(current);
 
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const exit   = direction === 'left' ? '-100%' : '100%';
@@ -1794,7 +1822,7 @@
     if (!_drag) return;
     const dx = e.clientX - _drag.x0, dy = e.clientY - _drag.y0;
     if (_drag.axis === null) {
-      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;   // deadzone
+      if (Math.abs(dx) < SWIPE_DEADZONE_PX && Math.abs(dy) < SWIPE_DEADZONE_PX) return;
       _drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
       if (_drag.axis === 'y') { _drag = null; return; }     // vertical scroll — bail
     }
@@ -1834,7 +1862,7 @@
       // position half of the release decision (a flick can still commit a
       // shorter drag, but the highlight tracks position). Settle sets the final
       // tab, so this is purely the in-flight hint.
-      const preview = Math.abs(d) > w * 0.4 ? destView : originView;
+      const preview = Math.abs(d) > w * COMMIT_FRACTION ? destView : originView;
       if (_drag.preview !== preview) { _drag.preview = preview; setActiveTab(preview); }
     }
   }, { passive: true });
@@ -1852,12 +1880,12 @@
     if (drag.ctx) {
       const { dir, w } = drag.ctx;
       const toward = dir === 'left' ? dx < 0 : dx > 0;   // ended toward the mounted neighbour?
-      const flick  = Math.abs(drag.vx) > 0.4 && Math.abs(dx) > 24;
-      settleDrag(drag.ctx, toward && (Math.abs(dx) > w * 0.4 || flick));
+      const flick  = Math.abs(drag.vx) > FLICK_VX && Math.abs(dx) > FLICK_MIN_PX;
+      settleDrag(drag.ctx, toward && (Math.abs(dx) > w * COMMIT_FRACTION || flick));
     } else if (drag.fallbackDest) {
       const toward = drag.fallbackDest === 'kina' ? dx < 0 : dx > 0;
-      const flick  = Math.abs(drag.vx) > 0.4 && Math.abs(dx) > 24;
-      if (toward && (Math.abs(dx) >= window.innerWidth * 0.4 || flick)) {
+      const flick  = Math.abs(drag.vx) > FLICK_VX && Math.abs(dx) > FLICK_MIN_PX;
+      if (toward && (Math.abs(dx) >= window.innerWidth * COMMIT_FRACTION || flick)) {
         navigateTo(VIEW_PATHS[drag.fallbackDest], drag.fallbackDest,
                    drag.fallbackDest === 'kina' ? 'left' : 'right', true);
       }
@@ -1876,9 +1904,15 @@
     bootView();
     setActiveTab(document.getElementById('view-root')?.dataset.view || 'films');
     bootMergeFromServer();
-    // Warm the sibling so the first switch is instant.
+    // Warm the sibling so the first switch is instant — but on the IDLE
+    // callback so the full-page sibling fetch doesn't compete with first paint
+    // / the critical-path resources of the page that just loaded.
     const here = document.getElementById('view-root')?.dataset.view;
-    if (here) prefetchView(here === 'films' ? 'kina' : 'films');
+    if (here) {
+      const warm = () => prefetchView(here === 'films' ? 'kina' : 'films');
+      if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 2000 });
+      else setTimeout(warm, 200);
+    }
   });
 
   // ── Image-fetch uptime tracker ────────────────────────────────────────────

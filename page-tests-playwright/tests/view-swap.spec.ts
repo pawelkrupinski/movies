@@ -107,6 +107,17 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     expect(ta).not.toContain('pan-x');   // horizontal stays reserved for swipe-to-switch
   });
 
+  test('switching views preserves the ?date= query', async ({ page }) => {
+    await page.goto('/?date=tomorrow');
+    await waitForCards(page);
+    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
+    await page.waitForURL(/\/kina/);
+    // The date filter rides along Filmy↔Kina (same as the swipe-commit path),
+    // so the URL keeps ?date= and the picker reflects it.
+    expect(new URL(page.url()).searchParams.get('date')).toBe('tomorrow');
+    await expect(page.locator('#date-filter')).toHaveValue('tomorrow');
+  });
+
   test('reduced-motion still completes the swap (no transition to wait on)', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');

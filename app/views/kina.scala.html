@@ -33,7 +33,7 @@
 @_hiddenModal()
 
 @_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
-<script src="@routes.Assets.versioned("js/shared.js")"></script>
+<script defer src="@routes.Assets.versioned("js/shared.js")"></script>
 
 @* `#view-pager`/`#view-root` — the swappable region for the Filmy↔Kina
    slide-swap (see shared.js `navigateTo`). The cinema-pill strip lives

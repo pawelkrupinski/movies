@@ -24,7 +24,7 @@
 @_hiddenModal()
 
 @_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
-<script src="@routes.Assets.versioned("js/shared.js")"></script>
+<script defer src="@routes.Assets.versioned("js/shared.js")"></script>
 
 @* `#view-pager` is the stable shell slot; `#view-root` is the swappable
    region that the Filmy↔Kina slide-swap replaces (see shared.js
