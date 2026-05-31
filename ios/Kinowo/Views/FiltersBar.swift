@@ -155,7 +155,22 @@ struct SearchBar: View {
         .modifier(GlassyPillBackground())
         .padding(.horizontal, 24)
         .padding(.top, 14)
+        // The pill is placed at the bottom safe-area edge by ContentView's
+        // `.overlay(alignment: .bottom)`, so its gap to the physical screen
+        // bottom is the home-indicator inset. Push down by half that inset
+        // to halve the gap — sits lower, closer to the bottom.
+        .padding(.bottom, -Self.bottomSafeInset / 2)
     }
+
+    /// Bottom safe-area inset of the key window (the home-indicator strip),
+    /// read once per launch — constant per device on iPhone.
+    private static let bottomSafeInset: CGFloat = {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .safeAreaInsets.bottom ?? 0
+    }()
 }
 
 /// Single-cinema selector for the /kina screen: a horizontally scrollable
