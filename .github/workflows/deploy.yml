@@ -321,6 +321,9 @@ jobs:
                     - { variant: pw pixel-9-pro, kind: playwright, project: 'chromium-pixel-9-pro*', browser: chromium, shard: '2/2' }
                     - { variant: pw desktop,     kind: playwright, project: chrome-desktop,          browser: chrome }
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            checks: write
         steps:
             - uses: actions/checkout@v4
             - uses: ./.github/actions/run-page-test
@@ -351,6 +354,9 @@ jobs:
                     - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '2/2' }
                     - { variant: pw desktop,           kind: playwright, project: webkit-desktop,              browser: webkit }
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            checks: write
         steps:
             - uses: actions/checkout@v4
             - uses: ./.github/actions/run-page-test
@@ -374,6 +380,9 @@ jobs:
                     # runs against it.
                     - { variant: pw desktop,     kind: playwright, project: firefox-desktop,        browser: firefox }
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            checks: write
         steps:
             - uses: actions/checkout@v4
             - uses: ./.github/actions/run-page-test

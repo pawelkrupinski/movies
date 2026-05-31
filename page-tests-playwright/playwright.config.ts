@@ -109,9 +109,18 @@ export default defineConfig({
   retries: IS_LOCAL_FIXTURE ? 0 : 1,
   timeout: 30_000,
   expect: { timeout: 5_000 },
+  // On CI emit a JUnit report (for the inline check-run) and an HTML
+  // report (uploaded as a failure artifact) alongside the console list;
+  // local runs stay as plain `list`.
+  reporter: process.env.CI
+    ? [['list'], ['junit', { outputFile: 'test-results/junit.xml' }], ['html', { open: 'never' }]]
+    : 'list',
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
+    // Capture a screenshot on failure so a CI-only break is visible in
+    // the uploaded report without re-running locally.
+    screenshot: 'only-on-failure',
   },
   metadata: { isLocalFixture: IS_LOCAL_FIXTURE, baseURL: BASE_URL },
   projects,

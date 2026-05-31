@@ -117,6 +117,15 @@ runs:
         CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
       run: sbt PageTest/test
 
+    - name: Publish PageTest report
+      if: always() && inputs.kind == 'chrome'
+      uses: mikepenz/action-junit-report@v5
+      with:
+        report_paths: 'target/test-reports/page/**/*.xml'
+        check_name: page tests (chrome)
+        detailed_summary: true
+        include_passed: false
+
     - name: Run Playwright behaviour specs (blocking)
       if: inputs.kind == 'playwright'
       shell: bash
@@ -138,6 +147,35 @@ runs:
       continue-on-error: true
       shell: bash
       run: cd page-tests-playwright && npx playwright test --project "${{ inputs.project }}" --grep "axe-core"
+
+    # Sanitise project+shard into an artifact-safe suffix (slashes and
+    # spaces are invalid in v4 artifact names: `1/2` → `1-2`). Used to
+    # keep each matrix row's report/trace upload uniquely named.
+    - name: Compute artifact suffix
+      if: always() && inputs.kind == 'playwright'
+      id: suffix
+      shell: bash
+      run: echo "name=$(echo '${{ inputs.project }}-${{ inputs.shard }}' | tr '/ ,' '---')" >> "$GITHUB_OUTPUT"
+
+    - name: Publish Playwright report
+      if: always() && inputs.kind == 'playwright'
+      uses: mikepenz/action-junit-report@v5
+      with:
+        report_paths: 'page-tests-playwright/test-results/junit.xml'
+        check_name: page tests (${{ inputs.project }})
+        detailed_summary: true
+        include_passed: false
+
+    - name: Upload Playwright report + traces on failure
+      if: failure() && inputs.kind == 'playwright'
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-${{ steps.suffix.outputs.name }}
+        path: |
+          page-tests-playwright/playwright-report
+          page-tests-playwright/test-results
+        if-no-files-found: ignore
+        retention-days: 7
 
     - name: Stop FixtureServerMain
       if: always() && inputs.kind == 'playwright'
