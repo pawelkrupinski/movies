@@ -61,7 +61,11 @@ private fun Pill(label: String) {
     )
 }
 
-/** Year as plain text, mirroring the web's `.year` (no pill background, dimmer `#888` ink). */
+/**
+ * Year as plain text, mirroring the web's `.year` (no pill background,
+ * dimmer `#888` ink). Carries the pill's vertical padding so its text
+ * lines up with the pilled text rather than riding higher in the row.
+ */
 @Composable
 private fun YearText(label: String) {
     Text(
@@ -69,6 +73,7 @@ private fun YearText(label: String) {
         color = Color(0xFF888888),
         fontSize = 11.sp,
         fontWeight = FontWeight.Medium,
+        modifier = Modifier.padding(vertical = 3.dp),
     )
 }
 

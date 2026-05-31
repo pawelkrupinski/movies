@@ -81,11 +81,14 @@ struct MetaPillsView: View {
     }
 
     /// Year as plain text, mirroring the web's `.year` (no pill
-    /// background or border, dimmer `#888` ink).
+    /// background or border, dimmer `#888` ink). Carries the pill's
+    /// vertical padding so its text sits on the same line as the
+    /// pilled text rather than riding higher in the flow row.
     private func yearText(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 11, weight: .medium))
             .foregroundColor(Color(white: 0.53))
+            .padding(.vertical, 3)
     }
 
     static func formatRuntime(_ mins: Int) -> String {
