@@ -9,4 +9,5 @@ object BrowseHref {
   def country(name: String): String  = s"/filmy?kraj=${enc(name)}"
   def director(name: String): String = s"/filmy?rezyser=${enc(name)}"
   def actor(name: String): String    = s"/filmy?aktor=${enc(name)}"
+  def genre(name: String): String    = s"/filmy?gatunek=${enc(name)}"
 }

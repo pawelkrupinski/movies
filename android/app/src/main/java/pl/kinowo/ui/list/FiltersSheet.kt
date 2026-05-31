@@ -56,6 +56,7 @@ fun FiltersSheet(
     val disabled by vm.disabledCinemas.collectAsState()
     val allCinemas = remember(films) { vm.allCinemas(films) }
     val allCountries = remember(films) { vm.allCountries(films) }
+    val allGenres = remember(films) { vm.allGenres(films) }
     val allDirectors = remember(films) { vm.allDirectors(films) }
     val allCast = remember(films) { vm.allCast(films) }
 
@@ -131,8 +132,9 @@ fun FiltersSheet(
                 }
             }
 
-            // Kraj / Reżyseria / Obsada (excluded sets)
+            // Kraj / Gatunek / Reżyseria / Obsada (excluded sets)
             collapsibleNameFilter(this, "Kraj produkcji", allCountries, vm.excludedCountries) { vm.excludedCountries = it }
+            collapsibleNameFilter(this, "Gatunek", allGenres, vm.excludedGenres) { vm.excludedGenres = it }
             collapsibleNameFilter(this, "Reżyseria", allDirectors, vm.excludedDirectors) { vm.excludedDirectors = it }
             collapsibleNameFilter(this, "Obsada", allCast, vm.excludedCast) { vm.excludedCast = it }
 

@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var dateFilter: DateFilter = .today
     @State private var formatFilter: FormatFilter = .empty
     @State private var excludedCountries: Set<String> = []
+    @State private var excludedGenres: Set<String> = []
     @State private var excludedDirectors: Set<String> = []
     @State private var excludedCast: Set<String> = []
     @State private var search: String = ""
@@ -81,11 +82,13 @@ struct ContentView: View {
                     FiltersSheet(
                         formatFilter: $formatFilter,
                         excludedCountries: $excludedCountries,
+                        excludedGenres: $excludedGenres,
                         excludedDirectors: $excludedDirectors,
                         excludedCast: $excludedCast,
                         prefs: prefs,
                         allCinemas: allCinemas,
                         allCountries: allCountries,
+                        allGenres: allGenres,
                         allDirectors: allDirectors,
                         allCast: allCast,
                         showCinemaSection: tab == .films
@@ -250,11 +253,15 @@ struct ContentView: View {
         return out.sorted { CinemaSection.pillName(for: $0) < CinemaSection.pillName(for: $1) }
     }
 
-    private var allCountries: [(name: String, count: Int)] {
+    /// Count how often each value (country / genre / director / actor)
+    /// appears across the loaded films, sorted by descending frequency then
+    /// name — the shape every Filtry name-list expects. Shared by the four
+    /// `all*` accessors so a tweak to the ordering rule lands in one place.
+    private func nameCounts(_ values: (Film) -> [String]) -> [(name: String, count: Int)] {
         var counts: [String: Int] = [:]
         for film in store.films {
-            for c in film.countries {
-                counts[c, default: 0] += 1
+            for v in values(film) {
+                counts[v, default: 0] += 1
             }
         }
         return counts.map { (name: $0.key, count: $0.value) }
@@ -264,39 +271,17 @@ struct ContentView: View {
             }
     }
 
-    private var allDirectors: [(name: String, count: Int)] {
-        var counts: [String: Int] = [:]
-        for film in store.films {
-            for d in film.directors {
-                counts[d, default: 0] += 1
-            }
-        }
-        return counts.map { (name: $0.key, count: $0.value) }
-            .sorted {
-                if $0.count != $1.count { return $0.count > $1.count }
-                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-            }
-    }
-
-    private var allCast: [(name: String, count: Int)] {
-        var counts: [String: Int] = [:]
-        for film in store.films {
-            for a in film.cast {
-                counts[a, default: 0] += 1
-            }
-        }
-        return counts.map { (name: $0.key, count: $0.value) }
-            .sorted {
-                if $0.count != $1.count { return $0.count > $1.count }
-                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-            }
-    }
+    private var allCountries: [(name: String, count: Int)] { nameCounts { $0.countries } }
+    private var allGenres:    [(name: String, count: Int)] { nameCounts { $0.genres } }
+    private var allDirectors: [(name: String, count: Int)] { nameCounts { $0.directors } }
+    private var allCast:      [(name: String, count: Int)] { nameCounts { $0.cast } }
 
     private var filtersActive: Bool {
         !formatFilter.isEmpty
             || !prefs.disabledCinemas.isEmpty
             || !prefs.hiddenFilms.isEmpty
             || !excludedCountries.isEmpty
+            || !excludedGenres.isEmpty
             || !excludedDirectors.isEmpty
             || !excludedCast.isEmpty
     }
@@ -309,6 +294,7 @@ struct ContentView: View {
             hidden: prefs.hiddenFilms,
             disabledCinemas: prefs.disabledCinemas,
             excludedCountries: excludedCountries,
+            excludedGenres: excludedGenres,
             excludedDirectors: excludedDirectors,
             excludedCast: excludedCast
         )
@@ -330,6 +316,7 @@ struct ContentView: View {
             hidden: prefs.hiddenFilms,
             disabledCinemas: disabled,
             excludedCountries: excludedCountries,
+            excludedGenres: excludedGenres,
             excludedDirectors: excludedDirectors,
             excludedCast: excludedCast
         )

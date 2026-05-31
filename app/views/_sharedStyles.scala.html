@@ -62,8 +62,11 @@
   .runtime { font-size: .75rem; color: #888; }
   .year { font-size: .75rem; color: #888; background: transparent; border: none; }
   /* Genre pill — identical to the runtime pill so the metadata row
-     reads as a single cluster. */
-  .pill.genre { font-size: .75rem; color: #888; }
+     reads as a single cluster. Rendered as an <a> linking to the genre's
+     /filmy browse page; strip the default link chrome so it still reads as
+     a pill, and brighten on hover to signal it's tappable. */
+  .pill.genre { font-size: .75rem; color: #888; text-decoration: none; }
+  a.pill.genre:hover { color: #aad4ff; border-color: #4a4a8e; }
   .date-label { font-size: .7rem; color: #888; margin-bottom: .2rem; margin-top: .5rem; }
   #room-tooltip {
     position: fixed;

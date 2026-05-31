@@ -280,16 +280,17 @@ class MovieController( cc: ControllerComponents,
     ))
   }
 
-  def browse(kraj: Option[String], rezyser: Option[String], aktor: Option[String]): Action[AnyContent] = Action { request =>
+  def browse(kraj: Option[String], rezyser: Option[String], aktor: Option[String], gatunek: Option[String]): Action[AnyContent] = Action { request =>
     val all = movieControllerService.toSchedules()
-    (kraj, rezyser, aktor) match {
-      case (Some(name), _, _) => renderBrowse(name, all.filter(_.movie.countries.contains(name)), request)
-      case (_, Some(name), _) => renderBrowse(name, all.filter(_.director.contains(name)),      request)
-      case (_, _, Some(name)) => renderBrowse(name, all.filter(_.cast.contains(name)),          request)
+    (kraj, rezyser, aktor, gatunek) match {
+      case (Some(name), _, _, _) => renderBrowse(name, all.filter(_.movie.countries.contains(name)), request)
+      case (_, Some(name), _, _) => renderBrowse(name, all.filter(_.director.contains(name)),        request)
+      case (_, _, Some(name), _) => renderBrowse(name, all.filter(_.cast.contains(name)),            request)
+      case (_, _, _, Some(name)) => renderBrowse(name, all.filter(_.movie.genres.contains(name)),    request)
       // `/filmy` with no filter axis is the main listing — same view as
       // `/`. The browse view only kicks in for the per-axis pages reached
       // from the meta-link rows on /film.
-      case _                  => renderIndex(request)
+      case _                     => renderIndex(request)
     }
   }
 

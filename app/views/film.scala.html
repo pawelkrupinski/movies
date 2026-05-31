@@ -248,7 +248,7 @@
 }@film.movie.releaseYear.map { y =>
   <span class="pill year">@y</span>
 }@for(g <- film.movie.genres) {
-  <span class="pill genre">@g</span>
+  <a href="@BrowseHref.genre(g)" class="pill genre" title="Filmy gatunku @g">@g</a>
 }</div>
 
       @_ratingBadges(film.enrichment, film.movie.title)

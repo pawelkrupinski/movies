@@ -1303,6 +1303,50 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  "the Gatunek submenu" should "list genre entries pulled from the cards' data-genres on /" in {
+    onPath("/") { page =>
+      val rowCount = page.evalInt(
+        "document.querySelectorAll('#genre-list input[type=\"checkbox\"]:not(.submenu-all)').length"
+      )
+      rowCount should be > 0
+      page.evalString(
+        "document.querySelector('#genre-list input[type=\"checkbox\"]:not(.submenu-all)').value"
+      ) should not be ""
+    }
+  }
+
+  "?genre= on boot" should "check exactly the named genre (inclusion set)" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      val firstGenre = page.evalString(
+        "document.querySelector('#genre-list input[type=\"checkbox\"]:not(.submenu-all)').value"
+      )
+      firstGenre should not be ""
+      onPath("/?genre=" + java.net.URLEncoder.encode(firstGenre, "UTF-8")) { page2 =>
+        val firstChecked = page2.evalBool(
+          "[...document.querySelectorAll('#genre-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
+            ".find(cb => cb.value === " + jsString(firstGenre) + ").checked"
+        )
+        firstChecked shouldBe true
+        val anyOtherChecked = page2.evalBool(
+          "[...document.querySelectorAll('#genre-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
+            ".some(cb => cb.value !== " + jsString(firstGenre) + " && cb.checked)"
+        )
+        anyOtherChecked shouldBe false
+      }
+    }
+  }
+
+  "a genre pill on a film card" should "link to the /filmy?gatunek= browse page for that genre" in {
+    onPath("/") { page =>
+      val href = page.evalString(
+        "(() => { const a = document.querySelector('.col[data-genres] a.pill.genre');" +
+          "  return a ? a.getAttribute('href') : ''; })()"
+      )
+      href should startWith("/filmy?gatunek=")
+    }
+  }
+
   "disabling a cinema in Filtry" should "leave ?cinema= listing the still-enabled cinemas (inclusion set, captured on Copy)" in {
     onPath("/") { page =>
       clearLocalStorage(page)

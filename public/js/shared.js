@@ -114,7 +114,7 @@
     document.getElementById('format-imax').checked   = false;
     document.getElementById('from-hour').value       = '';
     document.getElementById('from-minute').value     = '0';
-    ['country', 'director', 'cast'].forEach(function(key) {
+    ['country', 'genre', 'director', 'cast'].forEach(function(key) {
       var list = document.getElementById(key + '-list');
       if (list) {
         list.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.checked = true; });
@@ -175,7 +175,7 @@
 
   function getSubmenuSummaries() {
     var result = {};
-    [['country', 'krajów'], ['director', 'reż.'], ['cast', 'aktorów'], ['room', 'sal']].forEach(function(pair) {
+    [['country', 'krajów'], ['genre', 'gat.'], ['director', 'reż.'], ['cast', 'aktorów'], ['room', 'sal']].forEach(function(pair) {
       var key = pair[0], suffix = pair[1];
       var filter = getSubmenuFilter(key);
       if (filter !== null) {
@@ -253,6 +253,9 @@
 
   function buildCountryPanel() {
     buildSubmenuPanel('country', 'data-countries', function(s) { return s.split('|').filter(Boolean); });
+  }
+  function buildGenrePanel() {
+    buildSubmenuPanel('genre', 'data-genres', function(s) { return s.split('|').filter(Boolean); });
   }
   function buildDirectorPanel() {
     buildSubmenuPanel('director', 'data-director', function(s) { return s.split(',').map(function(v) { return v.trim(); }).filter(Boolean); });
@@ -1043,7 +1046,7 @@
       p.delete('from');
     }
 
-    ['country', 'director', 'cast', 'room'].forEach(key => {
+    ['country', 'genre', 'director', 'cast', 'room'].forEach(key => {
       p.delete(key);
       const list = document.getElementById(key + '-list');
       if (!list) return;
@@ -1152,7 +1155,7 @@
     // checked (the no-filter default, no-op). Tolerate legacy single-value
     // comma-lists by flattening on `,` so an old shared link still narrows
     // down rather than dropping into a single nonexistent value.
-    ['country', 'director', 'cast', 'room'].forEach(key => {
+    ['country', 'genre', 'director', 'cast', 'room'].forEach(key => {
       const checked = p.getAll(key).flatMap(v => v.split(','));
       if (checked.length === 0) return;
       const list = document.getElementById(key + '-list');
@@ -1350,6 +1353,7 @@
     // at boot so the first open of Filtry has the checkboxes ready.
     buildCinemaPanel();
     buildCountryPanel();
+    buildGenrePanel();
     buildDirectorPanel();
     buildCastPanel();
     buildRoomPanel();

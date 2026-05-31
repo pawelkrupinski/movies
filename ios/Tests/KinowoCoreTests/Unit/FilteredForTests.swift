@@ -17,10 +17,10 @@ final class FilteredForTests: XCTestCase {
 
     private func film(
         _ title: String, _ days: [DayShowings],
-        countries: [String] = [], directors: [String] = [], cast: [String] = []
+        countries: [String] = [], genres: [String] = [], directors: [String] = [], cast: [String] = []
     ) -> Film {
         Film(title: title, posterURL: nil, fallbackPosterURLs: [],
-             runtimeMinutes: 100, releaseYear: nil, genres: [], ratings: .empty, countries: countries,
+             runtimeMinutes: 100, releaseYear: nil, genres: genres, ratings: .empty, countries: countries,
              directors: directors, cast: cast, showings: days)
     }
 
@@ -192,6 +192,46 @@ final class FilteredForTests: XCTestCase {
             hidden: [], disabledCinemas: [], excludedCountries: []
         )
         XCTAssertEqual(filtered.count, 2)
+    }
+
+    // MARK: - Genre filter (excluded semantics)
+
+    func testExcludedGenreHidesFilmsOnlyFromThatGenre() {
+        let films = [
+            film("Comedy", [day(today, [cinema("A", [slot("18:00")])])], genres: ["Komedia"]),
+            film("Drama",  [day(today, [cinema("A", [slot("19:00")])])], genres: ["Dramat"]),
+            film("Mix",    [day(today, [cinema("A", [slot("20:00")])])], genres: ["Komedia", "Dramat"]),
+        ]
+        let filtered = films.filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: [], excludedGenres: ["Komedia"]
+        )
+        XCTAssertEqual(filtered.map(\.title).sorted(), ["Drama", "Mix"])
+    }
+
+    func testExcludedGenreDropsMultiGenreFilmOnlyWhenAllExcluded() {
+        let films = [
+            film("Mix", [day(today, [cinema("A", [slot("18:00")])])], genres: ["Komedia", "Dramat"]),
+        ]
+        XCTAssertEqual(
+            films.filteredFor(date: .anytime, format: .empty, query: "",
+                              hidden: [], disabledCinemas: [], excludedGenres: ["Komedia"]).count,
+            1, "stays when only one of its genres is excluded")
+        XCTAssertEqual(
+            films.filteredFor(date: .anytime, format: .empty, query: "",
+                              hidden: [], disabledCinemas: [], excludedGenres: ["Komedia", "Dramat"]).count,
+            0, "drops when all its genres are excluded")
+    }
+
+    func testFilmWithNoGenresSurvivesGenreExclusion() {
+        // A film with an empty genre list must not be swept out just because
+        // a genre exclusion is active (empty set is a subset of everything).
+        let films = [film("No genres", [day(today, [cinema("A", [slot("18:00")])])], genres: [])]
+        let filtered = films.filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: [], excludedGenres: ["Komedia"]
+        )
+        XCTAssertEqual(filtered.count, 1)
     }
 
     // MARK: - Director filter

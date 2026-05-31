@@ -204,6 +204,7 @@ extension Sequence where Element == Film {
         hidden: Set<String>,
         disabledCinemas: Set<String>,
         excludedCountries: Set<String> = [],
+        excludedGenres: Set<String> = [],
         excludedDirectors: Set<String> = [],
         excludedCast: Set<String> = [],
         now: Date = Date()
@@ -213,6 +214,7 @@ extension Sequence where Element == Film {
             if hidden.contains(film.title) { return nil }
             if !q.isEmpty && !film.title.lowercased().contains(q) { return nil }
             if !excludedCountries.isEmpty && Set(film.countries).isSubset(of: excludedCountries) { return nil }
+            if !excludedGenres.isEmpty && !film.genres.isEmpty && Set(film.genres).isSubset(of: excludedGenres) { return nil }
             if !excludedDirectors.isEmpty && !film.directors.isEmpty && Set(film.directors).isSubset(of: excludedDirectors) { return nil }
             if !excludedCast.isEmpty && !film.cast.isEmpty && Set(film.cast).isSubset(of: excludedCast) { return nil }
             let days: [DayShowings] = film.showings.compactMap { day in

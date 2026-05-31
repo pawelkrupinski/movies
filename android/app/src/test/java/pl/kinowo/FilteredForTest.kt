@@ -208,6 +208,50 @@ class FilteredForTest {
         assertEquals(2, filtered.size)
     }
 
+    // Genre filter — HAS empty-guard (mirrors director/cast, not country).
+
+    @Test
+    fun excludedGenreHidesFilmsOnlyFromThatGenre() {
+        val films = listOf(
+            film("Comedy", listOf(day(today, listOf(cinema("A", listOf(slot("18:00")))))), genres = listOf("Komedia")),
+            film("Drama", listOf(day(today, listOf(cinema("A", listOf(slot("19:00")))))), genres = listOf("Dramat")),
+            film("Mix", listOf(day(today, listOf(cinema("A", listOf(slot("20:00")))))), genres = listOf("Komedia", "Dramat")),
+        )
+        val filtered = films.filteredFor(
+            date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
+            hidden = emptySet(), disabledCinemas = emptySet(), excludedGenres = setOf("Komedia"), now = now,
+        )
+        assertEquals(listOf("Drama", "Mix"), filtered.map { it.title }.sorted())
+    }
+
+    @Test
+    fun excludedGenreDropsMultiGenreFilmOnlyWhenAllExcluded() {
+        val films = listOf(
+            film("Mix", listOf(day(today, listOf(cinema("A", listOf(slot("18:00")))))), genres = listOf("Komedia", "Dramat")),
+        )
+        assertEquals(1, films.filteredFor(
+            date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
+            hidden = emptySet(), disabledCinemas = emptySet(), excludedGenres = setOf("Komedia"), now = now,
+        ).size)
+        assertEquals(0, films.filteredFor(
+            date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
+            hidden = emptySet(), disabledCinemas = emptySet(), excludedGenres = setOf("Komedia", "Dramat"), now = now,
+        ).size)
+    }
+
+    @Test
+    fun filmWithNoGenresSurvivesGenreExclusion() {
+        // Empty-guard: a film with no genres must not drop when a genre is excluded.
+        val films = listOf(
+            film("NoGenre", listOf(day(today, listOf(cinema("A", listOf(slot("18:00")))))), genres = emptyList()),
+        )
+        val filtered = films.filteredFor(
+            date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
+            hidden = emptySet(), disabledCinemas = emptySet(), excludedGenres = setOf("Komedia"), now = now,
+        )
+        assertEquals(1, filtered.size)
+    }
+
     // Director filter — HAS empty-guard.
 
     @Test

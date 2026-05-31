@@ -278,11 +278,13 @@ private struct GlassyPillBackground: ViewModifier {
 struct FiltersSheet: View {
     @Binding var formatFilter: FormatFilter
     @Binding var excludedCountries: Set<String>
+    @Binding var excludedGenres: Set<String>
     @Binding var excludedDirectors: Set<String>
     @Binding var excludedCast: Set<String>
     @ObservedObject var prefs: UserPreferences
     let allCinemas: [String]
     let allCountries: [(name: String, count: Int)]
+    let allGenres: [(name: String, count: Int)]
     let allDirectors: [(name: String, count: Int)]
     let allCast: [(name: String, count: Int)]
     var showCinemaSection: Bool = true
@@ -329,68 +331,10 @@ struct FiltersSheet: View {
                     }
                 }
 
-                if !allCountries.isEmpty {
-                    Section {
-                        NavigationLink {
-                            NameFilterList(
-                                title: "Kraj produkcji",
-                                allEntries: allCountries,
-                                excluded: $excludedCountries
-                            )
-                        } label: {
-                            HStack {
-                                Text("Kraj produkcji")
-                                Spacer()
-                                if !excludedCountries.isEmpty {
-                                    Text("\(allCountries.count - excludedCountries.count)/\(allCountries.count)")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if !allDirectors.isEmpty {
-                    Section {
-                        NavigationLink {
-                            NameFilterList(
-                                title: "Reżyseria",
-                                allEntries: allDirectors,
-                                excluded: $excludedDirectors
-                            )
-                        } label: {
-                            HStack {
-                                Text("Reżyseria")
-                                Spacer()
-                                if !excludedDirectors.isEmpty {
-                                    Text("\(allDirectors.count - excludedDirectors.count)/\(allDirectors.count)")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if !allCast.isEmpty {
-                    Section {
-                        NavigationLink {
-                            NameFilterList(
-                                title: "Obsada",
-                                allEntries: allCast,
-                                excluded: $excludedCast
-                            )
-                        } label: {
-                            HStack {
-                                Text("Obsada")
-                                Spacer()
-                                if !excludedCast.isEmpty {
-                                    Text("\(allCast.count - excludedCast.count)/\(allCast.count)")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
+                NameFilterSection(title: "Kraj produkcji", allEntries: allCountries, excluded: $excludedCountries)
+                NameFilterSection(title: "Gatunek",        allEntries: allGenres,    excluded: $excludedGenres)
+                NameFilterSection(title: "Reżyseria",      allEntries: allDirectors, excluded: $excludedDirectors)
+                NameFilterSection(title: "Obsada",         allEntries: allCast,      excluded: $excludedCast)
 
                 Section("Wymiar") {
                     Picker("Wymiar", selection: $formatFilter.dimension) {
@@ -434,6 +378,7 @@ struct FiltersSheet: View {
                     Button(role: .destructive) {
                         formatFilter = .empty
                         excludedCountries = []
+                        excludedGenres = []
                         excludedDirectors = []
                         excludedCast = []
                         prefs.setDisabledCinemas([])
@@ -530,6 +475,35 @@ struct HiddenFilmsList: View {
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: prefs.hiddenFilms) { new in
             if new.isEmpty { dismiss() }
+        }
+    }
+}
+
+/// One Filtry row (country / genre / director / cast) that pushes a
+/// `NameFilterList` and shows an "included/total" count badge once the
+/// user has excluded anything. Renders nothing when there are no entries
+/// to filter, so the four call sites stay declarative one-liners.
+struct NameFilterSection: View {
+    let title: String
+    let allEntries: [(name: String, count: Int)]
+    @Binding var excluded: Set<String>
+
+    var body: some View {
+        if !allEntries.isEmpty {
+            Section {
+                NavigationLink {
+                    NameFilterList(title: title, allEntries: allEntries, excluded: $excluded)
+                } label: {
+                    HStack {
+                        Text(title)
+                        Spacer()
+                        if !excluded.isEmpty {
+                            Text("\(allEntries.count - excluded.count)/\(allEntries.count)")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
         }
     }
 }

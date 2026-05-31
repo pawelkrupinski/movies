@@ -56,6 +56,7 @@ class KinowoViewModel(
     var search by mutableStateOf("")
     var pinnedCinema by mutableStateOf<String?>(null)
     var excludedCountries by mutableStateOf<Set<String>>(emptySet())
+    var excludedGenres by mutableStateOf<Set<String>>(emptySet())
     var excludedDirectors by mutableStateOf<Set<String>>(emptySet())
     var excludedCast by mutableStateOf<Set<String>>(emptySet())
 
@@ -64,6 +65,7 @@ class KinowoViewModel(
             disabledCinemas.value.isNotEmpty() ||
             hiddenFilms.value.isNotEmpty() ||
             excludedCountries.isNotEmpty() ||
+            excludedGenres.isNotEmpty() ||
             excludedDirectors.isNotEmpty() ||
             excludedCast.isNotEmpty()
 
@@ -74,6 +76,7 @@ class KinowoViewModel(
         hidden = hiddenFilms.value,
         disabledCinemas = disabledCinemas.value,
         excludedCountries = excludedCountries,
+        excludedGenres = excludedGenres,
         excludedDirectors = excludedDirectors,
         excludedCast = excludedCast,
     )
@@ -102,6 +105,7 @@ class KinowoViewModel(
     }
 
     fun allCountries(all: List<Film>): List<NameCount> = countBy(all) { it.countries }
+    fun allGenres(all: List<Film>): List<NameCount> = countBy(all) { it.genres }
     fun allDirectors(all: List<Film>): List<NameCount> = countBy(all) { it.directors }
     fun allCast(all: List<Film>): List<NameCount> = countBy(all) { it.cast }
 
@@ -116,6 +120,7 @@ class KinowoViewModel(
     fun clearFilters() {
         formatFilter = FormatFilter.EMPTY
         excludedCountries = emptySet()
+        excludedGenres = emptySet()
         excludedDirectors = emptySet()
         excludedCast = emptySet()
         viewModelScope.launch { prefs.setDisabledCinemas(emptySet()) }

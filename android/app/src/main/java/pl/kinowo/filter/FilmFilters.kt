@@ -75,6 +75,7 @@ fun List<Film>.filteredFor(
     hidden: Set<String>,
     disabledCinemas: Set<String>,
     excludedCountries: Set<String> = emptySet(),
+    excludedGenres: Set<String> = emptySet(),
     excludedDirectors: Set<String> = emptySet(),
     excludedCast: Set<String> = emptySet(),
     now: Instant = Instant.now(),
@@ -87,6 +88,8 @@ fun List<Film>.filteredFor(
         // with no countries is a subset of any non-empty exclusion set, so it
         // drops as soon as any country is excluded.
         if (excludedCountries.isNotEmpty() && excludedCountries.containsAll(film.countries))
+            return@mapNotNull null
+        if (excludedGenres.isNotEmpty() && film.genres.isNotEmpty() && excludedGenres.containsAll(film.genres))
             return@mapNotNull null
         if (excludedDirectors.isNotEmpty() && film.directors.isNotEmpty() && excludedDirectors.containsAll(film.directors))
             return@mapNotNull null

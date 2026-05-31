@@ -64,6 +64,7 @@
       title:    col.dataset.title.toLowerCase(),
       rawTitle: col.dataset.title,
       countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
+      genres:    new Set((col.dataset.genres    || '').split('|').filter(Boolean)),
       directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
       cast:      new Set((col.dataset.cast     || '').split(',').map(s => s.trim()).filter(Boolean)),
       visible:  true,  // remembered so we only write style.display on changes
@@ -140,6 +141,8 @@
     const hasFrom       = fromMin !== null;
     const countryFilter  = getCountryFilter();
     const hasCountry     = countryFilter !== null;
+    const genreFilter    = getSubmenuFilter('genre');
+    const hasGenre       = genreFilter !== null;
     const directorFilter = getDirectorFilter();
     const hasDirector    = directorFilter !== null;
     const castFilter     = getCastFilter();
@@ -163,6 +166,7 @@
       const col = INDEX[i];
       if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))
           || (hasCountry  && !countryFilter.some(c  => col.countries.has(c)))
+          || (hasGenre    && !genreFilter.some(g    => col.genres.has(g)))
           || (hasDirector && !directorFilter.some(d => col.directors.has(d)))
           || (hasCast     && !castFilter.some(a     => col.cast.has(a)))) {
         setVisible(col, false);

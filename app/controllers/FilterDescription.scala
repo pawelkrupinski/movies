@@ -15,8 +15,8 @@ import models.Cinema
  *  comma-separated list of per-filter phrases. The title is truncated to
  *  `MaxTitle` (FB/Google sweet spot), the description to `MaxDescription`.
  *
- *  URL semantics for multi-checkbox filters (room, cinema, country, director,
- *  cast): the values listed are the INCLUDED items (the boxes the user has
+ *  URL semantics for multi-checkbox filters (room, cinema, country, genre,
+ *  director, cast): the values listed are the INCLUDED items (the boxes the user has
  *  ticked). `?room=Sala+5` means "show only Sala 5", matching the user's
  *  mental model when pasting/sharing a URL. The helper picks the smaller of
  *  the included / excluded sets and uses the natural Polish preposition
@@ -127,6 +127,17 @@ object FilterDescription {
       excludedPreposition         = "bez ",
       display   = identity,
       countNoun = "krajów",
+    )
+
+    val allGenres = schedules.flatMap(_.movie.genres).toSet
+    out ++= inclusionPhrase(
+      included = maybeListOf(query, "genre"),
+      universe = allGenres,
+      includedSingularPreposition = "gatunku ",
+      includedPluralPreposition   = "z gatunków ",
+      excludedPreposition         = "bez gatunków ",
+      display   = identity,
+      countNoun = "gatunków",
     )
 
     val allDirectors = schedules.flatMap(_.director).toSet

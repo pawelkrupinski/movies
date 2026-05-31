@@ -1,5 +1,5 @@
 @import models.{MovieRecord, Movie}
-@import controllers.FilmHref
+@import controllers.{FilmHref, BrowseHref}
 @(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord] = None)(showingsContent: Html)
 <div class="card">
   <div class="poster-wrap">
@@ -21,7 +21,7 @@
 }@movie.releaseYear.map { y =>
   <span class="pill year">@y</span>
 }@for(g <- movie.genres.take(3)) {
-  <span class="pill genre">@g</span>
+  <a href="@BrowseHref.genre(g)" class="pill genre" title="Filmy gatunku @g">@g</a>
 }
     </div>
     @_ratingBadges(enrichment, movie.title)

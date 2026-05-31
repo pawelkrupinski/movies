@@ -10,8 +10,8 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
 
   // ── Test fixtures ───────────────────────────────────────────────────────────
 
-  private def movie(title: String, countries: List[String] = Nil): Movie =
-    Movie(title = title, countries = countries)
+  private def movie(title: String, countries: List[String] = Nil, genres: Seq[String] = Nil): Movie =
+    Movie(title = title, countries = countries, genres = genres)
 
   private def slot(cinema: Cinema, room: String, time: String): Showtime = {
     val (h, m) = time.split(':').map(_.toInt) match { case Array(a, b) => (a, b) }
@@ -23,10 +23,11 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     cinema:    Cinema,
     rooms:     Seq[String],
     countries: List[String] = Nil,
+    genres:    Seq[String] = Nil,
     director:  Seq[String] = Nil,
     cast:      Seq[String] = Nil,
   ): FilmSchedule = FilmSchedule(
-    movie         = movie(title, countries),
+    movie         = movie(title, countries, genres),
     posterUrl     = None,
     synopsis      = None,
     cast          = cast,
@@ -38,9 +39,9 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   )
 
   private val schedules: Seq[FilmSchedule] = Seq(
-    film("Belle",                 Multikino, Seq("Sala 5", "Sala 7"), List("Japonia"),  Seq("Mamoru Hosoda")),
-    film("Diabeł nosi Pradę 2",  Multikino, Seq("Sala 9", "Sala 10"), List("USA"),     Seq("David Frankel")),
-    film("Bizancjum",             Helios,    Seq("Sala 3"),            List("Polska"),  Seq("Anna Smith")),
+    film("Belle",                 Multikino, Seq("Sala 5", "Sala 7"), List("Japonia"),  genres = Seq("Animacja"), director = Seq("Mamoru Hosoda")),
+    film("Diabeł nosi Pradę 2",  Multikino, Seq("Sala 9", "Sala 10"), List("USA"),     genres = Seq("Komedia"),  director = Seq("David Frankel")),
+    film("Bizancjum",             Helios,    Seq("Sala 3"),            List("Polska"),  genres = Seq("Dramat"),   director = Seq("Anna Smith")),
   )
 
   // ── Default (no filter) ─────────────────────────────────────────────────────
@@ -156,6 +157,23 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
       Map("cinema" -> included),
       schedules,
     ).title shouldBe "Kinowo — filmy bez Multikino"
+  }
+
+  // ── Genre inclusion (URL items = INCLUDED genres) ──────────────────────────
+
+  "genre=<single genre>" should "describe the included genre with the 'gatunku' preposition" in {
+    // 1 of 3 genres included → included side is smaller → singular 'gatunku'.
+    FilterDescription.forIndex(
+      Map("genre" -> Seq("Komedia")),
+      schedules,
+    ).title shouldBe "Kinowo — filmy gatunku Komedia"
+  }
+
+  "genre=<all but one>" should "describe via 'bez gatunków' (smaller excluded side wins)" in {
+    FilterDescription.forIndex(
+      Map("genre" -> Seq("Animacja", "Komedia")),
+      schedules,
+    ).title shouldBe "Kinowo — filmy bez gatunków Dramat"
   }
 
   // ── Multi-filter combinations and truncation ───────────────────────────────

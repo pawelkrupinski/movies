@@ -25,6 +25,7 @@ object TestData {
         title: String,
         days: List<DayShowings>,
         countries: List<String> = emptyList(),
+        genres: List<String> = emptyList(),
         directors: List<String> = emptyList(),
         cast: List<String> = emptyList(),
     ): Film =
@@ -33,6 +34,7 @@ object TestData {
             posterURL = null,
             fallbackPosterURLs = emptyList(),
             runtimeMinutes = 100,
+            genres = genres,
             ratings = Ratings.EMPTY,
             countries = countries,
             directors = directors,
