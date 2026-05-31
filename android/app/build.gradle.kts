@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -83,4 +85,111 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+// ── Emulator helpers ────────────────────────────────────────────────────────
+// `./gradlew runOnEmulator` boots an AVD if none is running, installs the debug
+// build, and launches the app. Pick a different AVD with `-Pavd=<name>`
+// (default `kinowo`); `./gradlew bootEmulator` just does the boot half.
+//
+// The adb path / AVD name are resolved here at configuration time and captured
+// as plain values; the adb-shelling helpers are inlined into each task action.
+// Both keep the actions free of Project/script references, so these tasks stay
+// configuration-cache compatible. That forces a small `sh` duplication between
+// the two actions — the alternative (a shared script-level fun) is exactly what
+// the config cache can't serialise.
+
+// Source build of the adb command line, then `sh(...)` it. `am`/`devices`/etc.
+val adbExe: String? = run {
+    val props = Properties()
+    val lp = rootProject.file("local.properties")
+    if (lp.exists()) lp.inputStream().use { props.load(it) }
+    val sdk = props.getProperty("sdk.dir")
+        ?: System.getenv("ANDROID_HOME")
+        ?: System.getenv("ANDROID_SDK_ROOT")
+    sdk?.let { "$it/platform-tools/adb" }
+}
+val emulatorExe: String? = adbExe?.removeSuffix("/platform-tools/adb")?.let { "$it/emulator/emulator" }
+val emulatorAvd: String = (findProperty("avd") as String?) ?: "kinowo"
+val emulatorLogFile = layout.buildDirectory.file("emulator.log")
+val noSdkMessage = "Android SDK not found — set sdk.dir in local.properties or ANDROID_HOME / ANDROID_SDK_ROOT."
+
+tasks.register("bootEmulator") {
+    group = "emulator"
+    description = "Boot the '$emulatorAvd' AVD (override with -Pavd=<name>) unless an emulator is already running."
+    val adb = adbExe
+    val emu = emulatorExe
+    val avd = emulatorAvd
+    val logProvider = emulatorLogFile
+    val noSdk = noSdkMessage
+    doLast {
+        fun sh(vararg args: String): String {
+            val p = ProcessBuilder(*args).redirectErrorStream(true).start()
+            val out = p.inputStream.bufferedReader().use { it.readText() }
+            p.waitFor()
+            return out.trim()
+        }
+        fun bootedSerial(): String? =
+            sh(adb!!, "devices").lines().drop(1)
+                .filter { it.endsWith("\tdevice") }
+                .map { it.substringBefore("\t") }
+                .filter { it.startsWith("emulator-") }
+                .firstOrNull { sh(adb, "-s", it, "shell", "getprop", "sys.boot_completed") == "1" }
+
+        if (adb == null || emu == null) throw GradleException(noSdk)
+        sh(adb, "start-server")
+
+        bootedSerial()?.let {
+            logger.lifecycle("✓ Emulator already booted: $it")
+            return@doLast
+        }
+
+        val avds = sh(emu, "-list-avds").lines().map { it.trim() }.filter { it.isNotEmpty() }
+        if (avd !in avds) {
+            throw GradleException("AVD '$avd' not found. Available: ${avds.joinToString(", ")}. Override with -Pavd=<name>.")
+        }
+
+        val log = logProvider.get().asFile.apply { parentFile.mkdirs() }
+        logger.lifecycle("Booting AVD '$avd' (log → $log)…")
+        ProcessBuilder(emu, "-avd", avd)
+            .redirectOutput(ProcessBuilder.Redirect.appendTo(log))
+            .redirectErrorStream(true)
+            .start()
+
+        val deadline = System.currentTimeMillis() + 180_000
+        var serial: String? = null
+        while (serial == null && System.currentTimeMillis() < deadline) {
+            Thread.sleep(3_000)
+            serial = bootedSerial()
+        }
+        serial ?: throw GradleException("AVD '$avd' didn't finish booting within 180s (see $log).")
+        logger.lifecycle("✓ Emulator booted: $serial")
+    }
+}
+
+// The device must exist before `installDebug` runs.
+tasks.matching { it.name == "installDebug" }.configureEach { mustRunAfter("bootEmulator") }
+
+tasks.register("runOnEmulator") {
+    group = "emulator"
+    description = "Boot an emulator if needed, install the debug build, and launch the app."
+    dependsOn("bootEmulator", "installDebug")
+    val adb = adbExe
+    val noSdk = noSdkMessage
+    doLast {
+        fun sh(vararg args: String): String {
+            val p = ProcessBuilder(*args).redirectErrorStream(true).start()
+            val out = p.inputStream.bufferedReader().use { it.readText() }
+            p.waitFor()
+            return out.trim()
+        }
+        if (adb == null) throw GradleException(noSdk)
+        val serial = sh(adb, "devices").lines().drop(1)
+            .filter { it.endsWith("\tdevice") }
+            .map { it.substringBefore("\t") }
+            .firstOrNull { it.startsWith("emulator-") }
+            ?: throw GradleException("No booted emulator to launch on.")
+        logger.lifecycle("Launching pl.kinowo on $serial…")
+        logger.lifecycle(sh(adb, "-s", serial, "shell", "am", "start", "-n", "pl.kinowo/.MainActivity"))
+    }
 }
