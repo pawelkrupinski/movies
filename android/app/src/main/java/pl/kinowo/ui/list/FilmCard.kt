@@ -84,13 +84,11 @@ fun FilmCard(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                // Runtime / year / genre pills — the web `_movieCard` caps
-                // genres at three.
+                // Runtime + year only — the listing card drops genres
+                // (they stay on the detail screen).
                 MetaPills(
                     runtimeMinutes = film.runtimeMinutes,
                     releaseYear = film.releaseYear,
-                    genres = film.genres,
-                    maxGenres = 3,
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 if (!film.ratings.isEmpty) {

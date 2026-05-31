@@ -19,13 +19,11 @@ struct FilmCardView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                // Runtime / year / genre pills — the web `_movieCard`
-                // caps genres at three.
+                // Runtime + year only — the listing card drops genres
+                // (they stay on the detail screen).
                 MetaPillsView(
                     runtimeMinutes: film.runtimeMinutes,
-                    releaseYear: film.releaseYear,
-                    genres: film.genres,
-                    maxGenres: 3
+                    releaseYear: film.releaseYear
                 )
                 if !film.ratings.isEmpty {
                     RatingBadgesView(ratings: film.ratings)
@@ -51,24 +49,24 @@ struct FilmCardView: View {
 
 /// Runtime / year / genre chips for a film's title block — the iOS
 /// counterpart of `_movieCard` / `/film`'s `.pill.runtime`,
-/// `.pill.year`, `.pill.genre` row. The web card shows the first three
-/// genres (`maxGenres: 3`); the detail page passes `nil` to show them
-/// all. Renders nothing when there's no runtime, year, or genre.
+/// `.pill.year`, `.pill.genre` row. The year renders as plain text
+/// (matching the web's `.year { background: transparent; border: none }`),
+/// runtime and genres as capsule pills. Genres default to none — the
+/// listing card omits them; the detail page passes them all. Renders
+/// nothing when there's no runtime, year, or genre.
 struct MetaPillsView: View {
     let runtimeMinutes: Int?
     let releaseYear: Int?
-    let genres: [String]
-    var maxGenres: Int? = nil
+    var genres: [String] = []
 
     var body: some View {
         let runtime = (runtimeMinutes ?? 0) > 0 ? Self.formatRuntime(runtimeMinutes!) : nil
         let year = releaseYear.map(String.init)
-        let shownGenres = maxGenres.map { Array(genres.prefix($0)) } ?? genres
-        if runtime != nil || year != nil || !shownGenres.isEmpty {
+        if runtime != nil || year != nil || !genres.isEmpty {
             FlowLayout(spacing: 6, lineSpacing: 6) {
                 if let runtime { pill(runtime) }
-                if let year { pill(year) }
-                ForEach(shownGenres, id: \.self) { pill($0) }
+                if let year { yearText(year) }
+                ForEach(genres, id: \.self) { pill($0) }
             }
         }
     }
@@ -80,6 +78,14 @@ struct MetaPillsView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(Color(red: 0.2, green: 0.2, blue: 0.28), in: Capsule())
+    }
+
+    /// Year as plain text, mirroring the web's `.year` (no pill
+    /// background or border, dimmer `#888` ink).
+    private func yearText(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(Color(white: 0.53))
     }
 
     static func formatRuntime(_ mins: Int) -> String {
