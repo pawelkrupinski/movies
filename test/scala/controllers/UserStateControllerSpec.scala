@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.users.{InMemoryUserRepo, InMemoryUserStateRepo}
+import services.users.{AccountDeletion, InMemoryUserRepo, InMemoryUserStateRepo}
 
 import java.time.Instant
 
@@ -17,7 +17,8 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val stateRepo = new InMemoryUserStateRepo
     val userRepo  = new InMemoryUserRepo
     prefilled.foreach(stateRepo.upsert)
-    (new UserStateController(Helpers.stubControllerComponents(), stateRepo, userRepo), stateRepo, userRepo)
+    val accountDeletion = new AccountDeletion(userRepo, stateRepo)
+    (new UserStateController(Helpers.stubControllerComponents(), stateRepo, accountDeletion), stateRepo, userRepo)
   }
 
   // ── GET /api/me/state ─────────────────────────────────────────────────────

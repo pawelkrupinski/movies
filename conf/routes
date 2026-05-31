@@ -65,6 +65,16 @@ POST    /uptime/img-event           controllers.UptimeController.imgEvent()
 # Policy field.
 GET     /polityka-prywatnosci       controllers.LegalController.privacy
 
+# ── Facebook data deletion (Meta callback) ──────────────────────────────────
+# Meta POSTs a signed_request here when a user removes the app from their
+# Facebook account; we verify it, delete the matching local account, and
+# return the required JSON receipt. The status URL in that receipt points at
+# the GET page below. `nocsrf` because Facebook posts a form body without our
+# CSRF token — the signed_request's HMAC is the authenticity check instead.
++ nocsrf
+POST    /facebook/data-deletion          controllers.FacebookDataDeletionController.callback()
+GET     /facebook/data-deletion/status   controllers.FacebookDataDeletionController.status(code: String)
+
 # ── robots.txt ────────────────────────────────────────────────────────────────
 # Returning a 404 on /robots.txt confused Facebook's link-preview scraper
 # (`facebookexternalhit`) — its debugger reported "403 due to robots.txt

@@ -1,0 +1,64 @@
+@(confirmationCode: String)
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Usunięcie danych — Kinowo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1c2230; background: #f4f5f8; padding: 32px 20px 80px;
+    }
+    main { max-width: 720px; margin: 0 auto; background: #fff; border-radius: 14px;
+           padding: 40px 36px; box-shadow: 0 1px 3px rgba(11,15,58,.08); }
+    header { border-bottom: 1px solid #e7e9f0; padding-bottom: 22px; margin-bottom: 28px; }
+    .brand { font-size: 15px; font-weight: 700; color: #0B0F3A; letter-spacing: .2px; }
+    h1 { font-size: 26px; font-weight: 700; color: #0B0F3A; margin-top: 6px; }
+    p { margin-bottom: 12px; }
+    a { color: #c1121f; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { color: #0B0F3A; }
+    .code { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 14px; background: #f4f5f8; border: 1px solid #e7e9f0; border-radius: 8px;
+            padding: 4px 10px; color: #0B0F3A; margin-top: 4px; }
+    .muted { color: #6b7280; font-size: 14px; }
+    footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e7e9f0;
+             color: #6b7280; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="brand">🎬 Kinowo</div>
+      <h1>Usunięcie danych</h1>
+    </header>
+
+    <p>
+      Twoje żądanie usunięcia danych zostało zrealizowane.
+      <strong>Wszystkie dane powiązane z Twoim kontem Kinowo</strong> —
+      profil oraz zapisane ustawienia (lista ukrytych filmów i wyłączonych
+      kin) — zostały trwale usunięte z naszej bazy.
+    </p>
+
+    <p>
+      Kod potwierdzenia tego żądania:
+      <br><span class="code">@confirmationCode</span>
+    </p>
+
+    <p class="muted">
+      Jeśli masz pytania dotyczące przetwarzania danych, napisz na adres
+      <a href="mailto:pawel.krupinski@@gmail.com">pawel.krupinski@@gmail.com</a>.
+      Szczegóły znajdziesz w naszej
+      <a href="/polityka-prywatnosci">polityce prywatności</a>.
+    </p>
+
+    <footer>
+      Kinowo · Kontakt:
+      <a href="mailto:pawel.krupinski@@gmail.com">pawel.krupinski@@gmail.com</a>
+    </footer>
+  </main>
+</body>
+</html>

@@ -218,17 +218,6 @@ class AuthController(
     user
   }
 
-  // Build the absolute callback URL from the request. Behind Fly's
-  // edge proxy, TLS terminates at the edge and the container receives
-  // plain HTTP with `X-Forwarded-Proto: https` + `X-Forwarded-Host`.
-  // Read those headers directly rather than relying on Play's
-  // `play.http.forwarded.trustedProxies` machinery — the
-  // configuration didn't make `request.secure` reflect the proxied
-  // scheme on this Play 3.0 setup, so we just trust the headers
-  // (safe: Fly's edge is the only ingress to our container, the
-  // internet can't reach us to forge these). Falls back to
-  // `request.secure` / `request.host` when the headers are absent
-  // (local dev hitting localhost:9000 directly).
   def exchange(): Action[JsValue] = Action(parse.json) { request =>
     (request.body \ "code").asOpt[String].flatMap { code =>
       Option(AuthController.pendingExchangeCodes.getIfPresent(code)).map { userId =>
@@ -253,12 +242,10 @@ class AuthController(
     }
   }
 
-  private def callbackUrl(provider: String, request: RequestHeader): String = {
-    val scheme = request.headers.get("X-Forwarded-Proto")
-      .getOrElse(if (request.secure) "https" else "http")
-    val host   = request.headers.get("X-Forwarded-Host").getOrElse(request.host)
-    s"$scheme://$host/auth/$provider/callback"
-  }
+  // Absolute callback URL the provider redirects back to. See
+  // `ForwardedUrl` for why we read the forwarded headers directly.
+  private def callbackUrl(provider: String, request: RequestHeader): String =
+    ForwardedUrl.base(request) + s"/auth/$provider/callback"
 }
 
 object AuthController {

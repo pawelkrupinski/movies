@@ -1,7 +1,7 @@
 package modules
 
 import clients.TmdbClient
-import controllers.{AuthController, HealthController, LegalController, MovieController, MovieControllerService, PlanController, UptimeController, UserStateController}
+import controllers.{AuthController, FacebookDataDeletionController, HealthController, LegalController, MovieController, MovieControllerService, PlanController, UptimeController, UserStateController}
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
@@ -11,7 +11,7 @@ import services.cinemas._
 import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
 import services.movies._
-import services.users.{CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
+import services.users.{AccountDeletion, CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
 trait Wiring {
@@ -163,8 +163,11 @@ trait Wiring {
   lazy val healthController = new HealthController(controllerComponents)
   lazy val uptimeController = new UptimeController(controllerComponents, uptimeMonitor)(using materializer)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
-  lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, userRepo)
+  lazy val accountDeletion   = new AccountDeletion(userRepo, userStateRepo)
+  lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, accountDeletion)
   lazy val legalController   = new LegalController(controllerComponents)
+  lazy val facebookDataDeletionController =
+    new FacebookDataDeletionController(controllerComponents, Env.get("FACEBOOK_APP_SECRET"), userRepo, accountDeletion)
 
   // Subscribe BEFORE ShowtimeCache.start() so the bus's first MovieRecordCreated
   // events reach the enrichment handlers. Bus uses PartialFunction.applyOrElse,

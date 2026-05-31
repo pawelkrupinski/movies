@@ -1,10 +1,9 @@
 package controllers
 
 import models.UserState
-import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
-import services.users.UserStateRepo
+import services.users.{AccountDeletion, UserStateRepo}
 
 import java.time.Instant
 
@@ -18,10 +17,10 @@ import java.time.Instant
  *     "disabledCinemas": [cinema display names…] }
  */
 class UserStateController(
-  cc:            ControllerComponents,
-  userStateRepo: UserStateRepo,
-  userRepo:      services.users.UserRepo
-) extends AbstractController(cc) with Logging {
+  cc:              ControllerComponents,
+  userStateRepo:   UserStateRepo,
+  accountDeletion: AccountDeletion
+) extends AbstractController(cc) {
   import UserStateController._
 
   def get(): Action[AnyContent] = Action { request =>
@@ -56,16 +55,15 @@ class UserStateController(
    *  user can clear it themselves; we don't have a server-side handle to
    *  do it.
    *
-   *  Anonymous → 401. Authenticated → delete both rows + return 204
+   *  Anonymous → 401. Authenticated → delete both rows (via the shared
+   *  `AccountDeletion`, same path Facebook's callback uses) + return 204
    *  with the session cleared. The response carries no body so a fetch
    *  call doesn't need a parser. */
   def deleteAccount(): Action[AnyContent] = Action { request =>
     request.session.get("userId") match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
-        logger.info(s"Account deletion requested for $userId")
-        userStateRepo.delete(userId)
-        userRepo.delete(userId)
+        accountDeletion.delete(userId)
         NoContent.withNewSession
     }
   }
