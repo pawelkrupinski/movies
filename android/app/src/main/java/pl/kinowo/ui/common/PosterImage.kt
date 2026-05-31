@@ -47,7 +47,9 @@ fun PosterImage(
         SubcomposeAsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(chain[idx])
-                .crossfade(true)
+                // No crossfade: PosterPrefetch warms the disk cache ahead of
+                // scroll, so posters should snap in rather than fade.
+                .crossfade(false)
                 .build(),
             contentDescription = contentDescription,
             contentScale = ContentScale.Crop,
