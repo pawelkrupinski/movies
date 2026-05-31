@@ -194,10 +194,10 @@ struct CinemaPillsRow: View {
     private func pill(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
                 .lineLimit(1)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
                 .background(
                     isSelected
                         ? Color.accentColor.opacity(0.85)

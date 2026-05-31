@@ -9,10 +9,18 @@ final class TabSwipeUITests: XCTestCase {
         app.launchArguments += ["-UITests", "1"]
         app.launch()
 
+        // Switch to the "Wszystkie" date filter so films are present
+        // regardless of time of day — late in the evening today's showings
+        // have all passed, leaving the default "Dziś" grid empty. On the
+        // Films tab this label is unambiguous; the cinema "Wszystkie" pill
+        // only exists on the Kina tab.
+        let allDates = app.buttons["Wszystkie"]
+        XCTAssertTrue(allDates.waitForExistence(timeout: 15), "Top bar never appeared")
+        allDates.tap()
+
         // Wait for the grid before any swipe — swiping a still-loading
         // TabView produces nothing.
-        let card = firstFilmCard(app)
-        XCTAssertTrue(card.waitForExistence(timeout: 30), "Grid never appeared")
+        XCTAssertTrue(firstFilmCard(app).waitForExistence(timeout: 30), "Grid never appeared")
     }
 
     override func tearDownWithError() throws {
@@ -48,7 +56,6 @@ final class TabSwipeUITests: XCTestCase {
             .matching(identifier: A11y.CinemaPage.sectionHeader)
         XCTAssertTrue(headers.firstMatch.waitForExistence(timeout: 10),
                       "No cinema sections on /kina")
-        try XCTSkipIf(headers.count < 2, "Need ≥2 cinema sections to test pinning")
 
         // Pills in row order: [0] = "Wszystkie", [1] = first cinema. Both are
         // on-screen at the start, and tapping a pill doesn't scroll the row,

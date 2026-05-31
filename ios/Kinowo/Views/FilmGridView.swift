@@ -153,10 +153,10 @@ struct CinemaSectionedGridView<Header: View>: View {
                 }
             }
             .padding(.horizontal, 12)
-            // See FilmGridView: the bar's height is reserved by the
-            // ContentView `.safeAreaInset(edge: .top)`; this is just the
-            // breathing gap below it.
-            .padding(.top, 10)
+            // No explicit top gap here: the pill row's own vertical padding
+            // already equals the gap below it (pill → first poster), so the
+            // row sits symmetrically between the bar and the content. The
+            // bar height is reserved by ContentView's `.safeAreaInset(.top)`.
             .padding(.bottom, 70)
             .pinScrollContentInset()
         }
