@@ -251,8 +251,13 @@ private fun FloatingSearchBar(
 ) {
     Surface(
         shape = RoundedCornerShape(28.dp),
-        color = CardElevated.copy(alpha = 0.94f),
-        border = BorderStroke(1.dp, Divider.copy(alpha = 0.7f)),
+        // Translucent fill so the grid scrolls visibly behind the pill —
+        // the closest Android gets to the iOS frosted-glass look without a
+        // backdrop-blur RenderEffect. Low alpha on the dark card tint, with
+        // a slightly stronger border so the capsule edge still reads against
+        // busy posters.
+        color = CardElevated.copy(alpha = 0.55f),
+        border = BorderStroke(1.dp, Divider.copy(alpha = 0.85f)),
         shadowElevation = 8.dp,
         modifier = modifier
             .padding(horizontal = 24.dp, vertical = 14.dp)
