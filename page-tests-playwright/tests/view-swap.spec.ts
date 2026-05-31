@@ -241,6 +241,36 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await expect(page.locator('#view-pager .grid-status:visible')).toHaveCount(0);
   });
 
+  test('commit reads the tracked delta, not the (unreliable) pointerup coordinate', async ({ page }) => {
+    // On iOS the pointerup from a touch often reports the touchstart point (or
+    // 0), so deciding commit from the release coordinate made every drag snap
+    // back. The decision must use the delta tracked during pointermove. Driven
+    // with synthetic PointerEvents so the release coordinate can be forced
+    // stale (CDP touch always carries correct coords and can't reproduce it).
+    await waitForCards(page);
+    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
+    await page.waitForURL(/\/kina$/);
+    await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);
+
+    await page.evaluate(() => {
+      const el = document.getElementById('film-grid');
+      const r = el.getBoundingClientRect();
+      const y = r.top + 40;
+      const x0 = r.left + r.width * 0.7;
+      const ev = (type, x) => el.dispatchEvent(new PointerEvent(type, {
+        clientX: x, clientY: y, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true,
+      }));
+      ev('pointerdown', x0);
+      for (let i = 1; i <= 6; i++) ev('pointermove', x0 - (200 * i) / 6);  // drag left 200px
+      ev('pointerup', x0);   // iOS-style stale release coordinate (back at the start)
+    });
+
+    await page.waitForURL(/\/kina$/);
+    expect(await page.evaluate(() => document.getElementById('view-root')?.dataset.view)).toBe('kina');
+  });
+
   test('swipe starting on the cinema-pill strip does NOT switch view', async ({ page }) => {
     await page.goto('/kina');
     await waitForCards(page);

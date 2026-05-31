@@ -1767,7 +1767,8 @@
     if (!matchMedia('(pointer: coarse)').matches) return;
     if (!document.getElementById('view-root')) return;
     if (e.target instanceof Element && e.target.closest('.cinema-nav-row, #cinema-pills')) return;
-    _drag = { x0: e.clientX, y0: e.clientY, axis: null, ctx: null, fallbackDest: null };
+    _drag = { x0: e.clientX, y0: e.clientY, axis: null, ctx: null, fallbackDest: null,
+              lastDx: 0, vx: 0, lastT: e.timeStamp };
   }, { passive: true });
 
   document.addEventListener('pointermove', (e) => {
@@ -1785,6 +1786,16 @@
       if (ctx) { _drag.ctx = ctx; _swapping = true; }
       else     { _drag.fallbackDest = dest; }   // cold cache → threshold switch on release
     }
+    if (_drag && _drag.axis === 'x') {
+      // Track the latest delta + a smoothed velocity HERE — `pointerup`'s
+      // clientX is unreliable on touch (iOS often reports the touchstart point
+      // or 0), so the release decision below reads `lastDx`/`vx`, never the
+      // pointerup coordinate.
+      const dt = Math.max(1, e.timeStamp - _drag.lastT);
+      _drag.vx = (dx - _drag.lastDx) / dt;   // px per ms
+      _drag.lastDx = dx;
+      _drag.lastT = e.timeStamp;
+    }
     if (_drag && _drag.ctx) {
       const { current, incoming, dir, enter, w } = _drag.ctx;
       const d = dir === 'left' ? Math.max(-w, Math.min(0, dx)) : Math.min(w, Math.max(0, dx));
@@ -1793,24 +1804,29 @@
     }
   }, { passive: true });
 
-  function endDrag(e) {
+  // Commit if the drag crossed ~25% of the width OR was a quick flick in the
+  // swipe direction. Reads the tracked `lastDx`/`vx`, NOT the (unreliable)
+  // pointerup/pointercancel coordinate. pointercancel ends the gesture the same
+  // way — a far/fast drag the browser cuts short still commits rather than
+  // always snapping back.
+  function endDrag() {
     const drag = _drag;
     _drag = null;
     if (!drag || drag.axis !== 'x') return;
-    const dx = e.clientX - drag.x0;
+    const dx = drag.lastDx;
+    const dest = dx < 0 ? 'kina' : 'films';
+    const flick = Math.abs(drag.vx) > 0.4 && Math.abs(dx) > 24 &&
+                  ((dest === 'kina' && dx < 0) || (dest === 'films' && dx > 0));
     if (drag.ctx) {
-      settleDrag(drag.ctx, Math.abs(dx) > drag.ctx.w * 0.35);
-    } else if (drag.fallbackDest && Math.abs(dx) >= Math.max(60, window.innerWidth * 0.20)) {
+      settleDrag(drag.ctx, Math.abs(dx) > drag.ctx.w * 0.25 || flick);
+    } else if (drag.fallbackDest &&
+               (Math.abs(dx) >= Math.max(50, window.innerWidth * 0.20) || flick)) {
       navigateTo(VIEW_PATHS[drag.fallbackDest], drag.fallbackDest,
                  drag.fallbackDest === 'kina' ? 'left' : 'right', true);
     }
   }
   document.addEventListener('pointerup', endDrag, { passive: true });
-  document.addEventListener('pointercancel', () => {
-    const drag = _drag;
-    _drag = null;
-    if (drag && drag.ctx) settleDrag(drag.ctx, false);   // browser took over → snap back
-  }, { passive: true });
+  document.addEventListener('pointercancel', endDrag, { passive: true });
 
   document.addEventListener('DOMContentLoaded', () => {
     // One-time shell init — navbar chrome that survives view swaps and must
