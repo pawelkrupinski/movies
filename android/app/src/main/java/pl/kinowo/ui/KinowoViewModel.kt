@@ -13,6 +13,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import android.content.Context
+import pl.kinowo.auth.AuthRepository
+import pl.kinowo.auth.StateSyncService
+import pl.kinowo.auth.UserProfile
+import pl.kinowo.auth.UserStateClient
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
@@ -38,12 +43,28 @@ class KinowoViewModel(
     private val repo: RepertoireRepository,
     private val detailsRepo: DetailsRepository,
     private val prefs: UserPreferences,
+    private val authRepo: AuthRepository,
+    userStateClient: UserStateClient,
 ) : ViewModel() {
 
     val films: StateFlow<List<Film>> = repo.films
     val isLoading: StateFlow<Boolean> = repo.isLoading
     val error: StateFlow<String?> = repo.error
     val details: StateFlow<Map<String, FilmDetails>> = detailsRepo.byTitle
+
+    /** The signed-in user, or null when anonymous. Drives the Filtry → Konto UI. */
+    val user: StateFlow<UserProfile?> = authRepo.user
+
+    // Mirror prefs to the server while signed in. Constructed here so it shares
+    // the ViewModel's scope; `start()` makes it observe the auth state.
+    private val sync = StateSyncService(prefs, authRepo.user, userStateClient, viewModelScope)
+
+    init {
+        sync.start()
+        // Re-hydrate a session persisted across launches (iOS does this in
+        // `KinowoApp.task { await authService.checkSession() }`).
+        viewModelScope.launch { authRepo.checkSession() }
+    }
 
     val hiddenFilms: StateFlow<Set<String>> =
         prefs.hiddenFilms.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
@@ -186,13 +207,32 @@ class KinowoViewModel(
     fun filmByTitle(title: String): Film? = films.value.firstOrNull { it.title == title }
     fun detailsByTitle(title: String): FilmDetails? = details.value[title]
 
+    // ── auth ──────────────────────────────────────────────────────────────
+    fun signInWithGoogle(context: Context) = authRepo.startWebSignIn(context, "google")
+    fun signInWithFacebook(context: Context) = authRepo.startWebSignIn(context, "facebook")
+
+    /** Redeem the one-shot code delivered by the `kinowo://auth-done` deep link. */
+    fun handleAuthRedirect(code: String) = viewModelScope.launch { authRepo.exchangeCode(code) }
+
+    fun signOut() = viewModelScope.launch { authRepo.signOut() }
+
+    /** Delete the account, then wipe local prefs — matches iOS, which clears
+     *  hidden films + disabled cinemas after `deleteAccount()`. */
+    fun deleteAccount() = viewModelScope.launch {
+        authRepo.deleteAccount()
+        prefs.unhideAll()
+        prefs.setDisabledCinemas(emptySet())
+    }
+
     class Factory(
         private val repo: RepertoireRepository,
         private val detailsRepo: DetailsRepository,
         private val prefs: UserPreferences,
+        private val authRepo: AuthRepository,
+        private val userStateClient: UserStateClient,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            KinowoViewModel(repo, detailsRepo, prefs) as T
+            KinowoViewModel(repo, detailsRepo, prefs, authRepo, userStateClient) as T
     }
 }

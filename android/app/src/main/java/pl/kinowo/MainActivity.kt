@@ -1,5 +1,6 @@
 package pl.kinowo
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -10,6 +11,9 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import okhttp3.OkHttpClient
+import pl.kinowo.auth.AuthRepository
+import pl.kinowo.auth.HttpUserStateClient
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
@@ -17,25 +21,39 @@ import pl.kinowo.data.UserPreferences
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.net.KinowoApi
+import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.ui.KinowoApp
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.theme.Background
 import pl.kinowo.ui.theme.KinowoTheme
+import java.util.concurrent.TimeUnit
 
 /**
  * Single-activity entry point. Manual dependency wiring (this app's
- * composition root — no DI framework needed at this size): one OkHttp-backed
- * [KinowoApi], a file cache, the repository, and DataStore prefs, all handed
- * to the [KinowoViewModel].
+ * composition root — no DI framework needed at this size): one shared
+ * OkHttp client (with a disk-backed cookie jar so the signed-in session
+ * survives restarts), the [KinowoApi], a file cache, the repository,
+ * DataStore prefs, and the auth + state-sync collaborators — all handed to
+ * the [KinowoViewModel].
  */
 class MainActivity : ComponentActivity() {
 
     private val viewModel: KinowoViewModel by viewModels {
-        val api = KinowoApi()
+        // One client shared by every caller so the auth session cookie set at
+        // /auth/exchange is carried on /api/me, /api/me/state, etc.
+        val cookieJar = PersistentCookieJar(applicationContext)
+        val httpClient = OkHttpClient.Builder()
+            .cookieJar(cookieJar)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .build()
+        val api = KinowoApi(client = httpClient)
         val repo = RepertoireRepository(api, JsonListCache(cacheDir, "repertoire", Film.serializer()))
         val detailsRepo = DetailsRepository(api, JsonListCache(cacheDir, "details", FilmDetails.serializer()))
         val prefs = UserPreferences(applicationContext)
-        KinowoViewModel.Factory(repo, detailsRepo, prefs)
+        val authRepo = AuthRepository(httpClient, cookieJar)
+        val userStateClient = HttpUserStateClient(client = httpClient)
+        KinowoViewModel.Factory(repo, detailsRepo, prefs, authRepo, userStateClient)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,12 +68,30 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        handleAuthDeepLink(intent)
         setContent {
             KinowoTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = Background) {
                     KinowoApp(viewModel)
                 }
             }
+        }
+    }
+
+    // The OAuth callback bounces back as `kinowo://auth-done?code=…`. With
+    // `singleTask` launch mode a redirect into the already-running app lands
+    // here; a cold start (app was killed) lands in onCreate's intent instead,
+    // so both paths funnel through this.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAuthDeepLink(intent)
+    }
+
+    private fun handleAuthDeepLink(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (data.scheme == "kinowo" && data.host == "auth-done") {
+            data.getQueryParameter("code")?.let { viewModel.handleAuthRedirect(it) }
         }
     }
 }

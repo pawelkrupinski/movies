@@ -102,6 +102,12 @@ dependencies {
 
     implementation("androidx.navigation:navigation-compose:2.8.0")
 
+    // Custom Tabs for the web OAuth sign-in flow (the Android analog of iOS's
+    // ASWebAuthenticationSession): an in-app browser tab that shares no cookies
+    // with the app, so sign-in completes via the kinowo:// deep-link + one-shot
+    // exchange code.
+    implementation("androidx.browser:browser:1.8.0")
+
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     // Backdrop blur for the floating search pill — real frosted-glass that

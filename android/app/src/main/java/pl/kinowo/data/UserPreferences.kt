@@ -12,17 +12,30 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore by preferencesDataStore(name = "kinowo_prefs")
 
 /**
+ * The slice of preferences that [pl.kinowo.auth.StateSyncService] reads and
+ * writes when reconciling with the server — the two sets that round-trip to
+ * `/api/me/state`. Narrowing the sync service to this interface keeps it
+ * unit-testable against an in-memory fake instead of a real DataStore.
+ */
+interface SyncPrefs {
+    val hiddenFilms: Flow<Set<String>>
+    val disabledCinemas: Flow<Set<String>>
+    suspend fun setHiddenFilms(films: Set<String>)
+    suspend fun setDisabledCinemas(cinemas: Set<String>)
+}
+
+/**
  * Per-device hidden-films + disabled-cinemas state, persisted with
  * Preferences DataStore. Mirrors what the iOS app keeps in UserDefaults and
- * the web keeps in `localStorage` for anonymous users. (v1 is local-only —
- * no server sync.)
+ * the web keeps in `localStorage` for anonymous users. When the user signs
+ * in, [pl.kinowo.auth.StateSyncService] mirrors these sets to the server.
  */
-class UserPreferences(private val context: Context) {
+class UserPreferences(private val context: Context) : SyncPrefs {
 
-    val hiddenFilms: Flow<Set<String>> =
+    override val hiddenFilms: Flow<Set<String>> =
         context.dataStore.data.map { it[KEY_HIDDEN] ?: emptySet() }
 
-    val disabledCinemas: Flow<Set<String>> =
+    override val disabledCinemas: Flow<Set<String>> =
         context.dataStore.data.map { it[KEY_DISABLED] ?: emptySet() }
 
     /** True once the user has swiped between Filmy / Kina at least once. */
@@ -45,8 +58,12 @@ class UserPreferences(private val context: Context) {
         prefs[KEY_HIDDEN] = emptySet()
     }
 
-    suspend fun setDisabledCinemas(cinemas: Set<String>) = context.dataStore.edit { prefs ->
-        prefs[KEY_DISABLED] = cinemas
+    override suspend fun setHiddenFilms(films: Set<String>) {
+        context.dataStore.edit { prefs -> prefs[KEY_HIDDEN] = films }
+    }
+
+    override suspend fun setDisabledCinemas(cinemas: Set<String>) {
+        context.dataStore.edit { prefs -> prefs[KEY_DISABLED] = cinemas }
     }
 
     suspend fun toggleCinema(cinema: String, disabled: Boolean) = context.dataStore.edit { prefs ->
