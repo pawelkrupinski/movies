@@ -43,4 +43,17 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     conn.database shouldBe None
     conn.close()
   }
+
+  // The mode/opt-out → required policy used by Wiring.
+  "MongoConnection.isRequired" should "require Mongo outside test mode by default" in {
+    MongoConnection.isRequired(testMode = false, optedOut = false) shouldBe true
+  }
+
+  it should "never require Mongo in test mode" in {
+    MongoConnection.isRequired(testMode = true, optedOut = false) shouldBe false
+  }
+
+  it should "let a local opt-out disable the requirement outside tests" in {
+    MongoConnection.isRequired(testMode = false, optedOut = true) shouldBe false
+  }
 }

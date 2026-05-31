@@ -32,10 +32,13 @@ import scala.util.{Failure, Success, Try}
  * without poking at process env vars.
  *
  * `required` decides what an absent/unreachable Mongo means:
- *   - `false` (dev / tests) — disable silently and degrade: `database` is
- *     `None`, pages render with no films, repos no-op.
- *   - `true`  (production) — throw at construction so the app refuses to
- *     start rather than serve a broken, film-less site.
+ *   - `false` (tests, or a local dev who opted out) — disable silently and
+ *     degrade: `database` is `None`, pages render with no films, repos no-op.
+ *   - `true`  (production + local dev by default) — throw at construction so
+ *     the app refuses to start rather than serve a broken, film-less site.
+ *
+ * The mode → `required` mapping (plus the `MONGODB_OPTIONAL` local opt-out)
+ * lives in `Wiring`; `MongoConnection.isRequired` is its pure core.
  *
  * `close()` is idempotent. Wiring constructs one of these and calls
  * `close()` in its shutdown hook; each repo's own `close()` becomes a
@@ -96,10 +99,17 @@ class MongoConnection(uri: Option[String], dbName: String, required: Boolean) ex
 }
 
 object MongoConnection {
+  /** Pure policy core for the boot-failure decision: Mongo is required
+   *  everywhere except tests, unless a local dev opted out (e.g. via
+   *  `MONGODB_OPTIONAL`). Kept boolean-only — no Play `Mode`, no env reads —
+   *  so the services layer doesn't depend on the framework and the rule
+   *  stays trivially unit-testable. */
+  def isRequired(testMode: Boolean, optedOut: Boolean): Boolean = !testMode && !optedOut
+
   /** Build from the ambient environment (`MONGODB_URI` / `MONGODB_DB`,
-   *  defaulting the db name to `kinowo`) — the production wiring's entry
-   *  point. `required = true` turns a missing or unreachable Mongo into a
-   *  hard boot failure instead of silent degradation. */
+   *  defaulting the db name to `kinowo`) — the wiring's entry point.
+   *  `required = true` turns a missing or unreachable Mongo into a hard boot
+   *  failure instead of silent degradation. */
   def fromEnv(required: Boolean): MongoConnection =
     new MongoConnection(Env.get("MONGODB_URI"), Env.get("MONGODB_DB").getOrElse("kinowo"), required)
 }

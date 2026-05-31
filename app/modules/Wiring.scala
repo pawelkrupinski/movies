@@ -69,10 +69,15 @@ trait Wiring {
   // monitor thread — together they tipped the JVM RSS past Fly's 512 MB
   // cgroup ceiling, causing the kernel OOM cycle. Sharing one connection
   // is the standard Mongo driver usage pattern.
-  // In production a missing/unreachable Mongo is a hard boot failure (throws
-  // out of construction, aborts startup) rather than silently serving a
-  // film-less site. Dev / Test keep degrading — see `MongoConnection`.
-  lazy val mongoConnection: MongoConnection = MongoConnection.fromEnv(required = environmentMode == Mode.Prod)
+  // A missing/unreachable Mongo is a hard boot failure (throws out of
+  // construction, aborts startup) everywhere except tests, rather than
+  // silently serving a film-less site. A local dev who intentionally runs
+  // without Mongo can opt back into silent-degrade with MONGODB_OPTIONAL=true
+  // (or =1) — see `MongoConnection`.
+  lazy val mongoConnection: MongoConnection = {
+    val optedOut = Env.get("MONGODB_OPTIONAL").exists(v => v == "true" || v == "1")
+    MongoConnection.fromEnv(required = MongoConnection.isRequired(environmentMode == Mode.Test, optedOut))
+  }
 
   // ── Users ─────────────────────────────────────────────────────────────────
   // Wrap the Mongo-backed user repos in caching decorators — every
