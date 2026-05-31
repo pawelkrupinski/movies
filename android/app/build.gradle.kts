@@ -88,16 +88,19 @@ dependencies {
 }
 
 // ── Emulator helpers ────────────────────────────────────────────────────────
-// `./gradlew runOnEmulator` boots an AVD if none is running, installs the debug
-// build, and launches the app. Pick a different AVD with `-Pavd=<name>`
-// (default `kinowo`); `./gradlew bootEmulator` just does the boot half.
+// `./gradlew runOnEmulator`   — boot an AVD if needed, install, launch.
+// `./gradlew debugOnEmulator` — same, but launch waiting for a debugger and
+//                               wire up JDWP so an IDE or jdb can attach.
+// `./gradlew bootEmulator`    — just the boot half.
+// Pick a different AVD with `-Pavd=<name>` (default `kinowo`); change the JDWP
+// port with `-PdebugPort=<n>` (default 5005).
 //
 // The adb path / AVD name are resolved here at configuration time and captured
 // as plain values; the adb-shelling helpers are inlined into each task action.
 // Both keep the actions free of Project/script references, so these tasks stay
-// configuration-cache compatible. That forces a small `sh` duplication between
-// the two actions — the alternative (a shared script-level fun) is exactly what
-// the config cache can't serialise.
+// configuration-cache compatible. That forces a small `sh` duplication across
+// the actions — the alternative (a shared script-level fun) is exactly what the
+// config cache can't serialise.
 
 // Source build of the adb command line, then `sh(...)` it. `am`/`devices`/etc.
 val adbExe: String? = run {
@@ -112,6 +115,9 @@ val adbExe: String? = run {
 val emulatorExe: String? = adbExe?.removeSuffix("/platform-tools/adb")?.let { "$it/emulator/emulator" }
 val emulatorAvd: String = (findProperty("avd") as String?) ?: "kinowo"
 val emulatorLogFile = layout.buildDirectory.file("emulator.log")
+val debugJdwpPort: String = (findProperty("debugPort") as String?) ?: "5005"
+val appId = "pl.kinowo"
+val mainComponent = "$appId/.MainActivity"
 val noSdkMessage = "Android SDK not found — set sdk.dir in local.properties or ANDROID_HOME / ANDROID_SDK_ROOT."
 
 tasks.register("bootEmulator") {
@@ -175,6 +181,7 @@ tasks.register("runOnEmulator") {
     description = "Boot an emulator if needed, install the debug build, and launch the app."
     dependsOn("bootEmulator", "installDebug")
     val adb = adbExe
+    val component = mainComponent
     val noSdk = noSdkMessage
     doLast {
         fun sh(vararg args: String): String {
@@ -189,7 +196,68 @@ tasks.register("runOnEmulator") {
             .map { it.substringBefore("\t") }
             .firstOrNull { it.startsWith("emulator-") }
             ?: throw GradleException("No booted emulator to launch on.")
-        logger.lifecycle("Launching pl.kinowo on $serial…")
-        logger.lifecycle(sh(adb, "-s", serial, "shell", "am", "start", "-n", "pl.kinowo/.MainActivity"))
+        logger.lifecycle("Launching $component on $serial…")
+        logger.lifecycle(sh(adb, "-s", serial, "shell", "am", "start", "-n", component))
+    }
+}
+
+tasks.register("debugOnEmulator") {
+    group = "emulator"
+    description = "Boot/install as runOnEmulator, but launch waiting for a debugger and forward JDWP (port -PdebugPort=, default 5005)."
+    dependsOn("bootEmulator", "installDebug")
+    val adb = adbExe
+    val appPkg = appId
+    val component = mainComponent
+    val port = debugJdwpPort
+    val sourcePath = layout.projectDirectory.dir("src/main/java").asFile.absolutePath
+    val noSdk = noSdkMessage
+    doLast {
+        fun sh(vararg args: String): String {
+            val p = ProcessBuilder(*args).redirectErrorStream(true).start()
+            val out = p.inputStream.bufferedReader().use { it.readText() }
+            p.waitFor()
+            return out.trim()
+        }
+        if (adb == null) throw GradleException(noSdk)
+        val serial = sh(adb, "devices").lines().drop(1)
+            .filter { it.endsWith("\tdevice") }
+            .map { it.substringBefore("\t") }
+            .firstOrNull { it.startsWith("emulator-") }
+            ?: throw GradleException("No booted emulator to launch on.")
+
+        // `-D` makes the app process spawn and block until a debugger attaches.
+        logger.lifecycle("Launching $component on $serial (waiting for debugger)…")
+        sh(adb, "-s", serial, "shell", "am", "start", "-D", "-n", component)
+
+        // `am start -D` returns before the process is necessarily up; poll pidof.
+        var pid = ""
+        val deadline = System.currentTimeMillis() + 20_000
+        while (pid.isEmpty() && System.currentTimeMillis() < deadline) {
+            pid = sh(adb, "-s", serial, "shell", "pidof", appPkg).split(Regex("\\s+")).firstOrNull().orEmpty()
+            if (pid.isEmpty()) Thread.sleep(500)
+        }
+        if (pid.isEmpty()) throw GradleException("Couldn't find a running $appPkg process to debug (is the launch crashing?).")
+
+        // Map a fixed local TCP port onto the app's JDWP channel so any JDWP
+        // client (IDE or jdb) can reach it at localhost:$port.
+        sh(adb, "-s", serial, "forward", "tcp:$port", "jdwp:$pid")
+
+        val jdbCmd = "jdb -connect com.sun.jdi.SocketAttach:hostname=localhost,port=$port -sourcepath $sourcePath"
+        logger.lifecycle(
+            """
+            |
+            |Debug session ready — $appPkg (pid $pid) is paused waiting for a debugger.
+            |JDWP is forwarded to localhost:$port.
+            |
+            |Attach one of these:
+            |  • IntelliJ / Android Studio: Run ▸ Attach Debugger to Android Process ▸ $appPkg
+            |        (or a 'Remote JVM Debug' run config → host localhost, port $port, then Debug)
+            |  • Terminal (jdb): run this in your own shell (Gradle can't host its prompt):
+            |        $jdbCmd
+            |
+            |The app resumes as soon as a debugger attaches. To free the port later:
+            |        ${adb} -s $serial forward --remove tcp:$port
+            """.trimMargin()
+        )
     }
 }
