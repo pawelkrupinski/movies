@@ -90,19 +90,24 @@ class KinowoViewModel(
             excludedDirectors.isNotEmpty() ||
             excludedCast.isNotEmpty()
 
-    fun filmsForFilmsTab(all: List<Film>): List<Film> = all.filteredFor(
-        date = dateFilter,
-        format = formatFilter,
-        query = search,
-        hidden = hiddenFilms.value,
-        disabledCinemas = disabledCinemas.value,
-        excludedCountries = excludedCountries,
-        excludedGenres = excludedGenres,
-        excludedDirectors = excludedDirectors,
-        excludedCast = excludedCast,
-    )
+    // `hidden`/`disabled` are passed in (not read off the StateFlow here) so the
+    // caller composable observes them via collectAsState — reading them at the
+    // call site is what makes Compose recompute the grid when a film is hidden
+    // or a cinema toggled. Reading `.value` here would be invisible to Compose.
+    fun filmsForFilmsTab(all: List<Film>, hidden: Set<String>, disabled: Set<String>): List<Film> =
+        all.filteredFor(
+            date = dateFilter,
+            format = formatFilter,
+            query = search,
+            hidden = hidden,
+            disabledCinemas = disabled,
+            excludedCountries = excludedCountries,
+            excludedGenres = excludedGenres,
+            excludedDirectors = excludedDirectors,
+            excludedCast = excludedCast,
+        )
 
-    fun cinemaSections(all: List<Film>): List<CinemaSection> {
+    fun cinemaSections(all: List<Film>, hidden: Set<String>): List<CinemaSection> {
         // Web's /kina ignores the persistent disabledCinemas set — pinning one
         // cinema is equivalent to disabling every other; no pin shows all.
         val disabled = pinnedCinema?.let { pin -> allCinemas(all).toSet() - pin } ?: emptySet()
@@ -110,7 +115,7 @@ class KinowoViewModel(
             date = dateFilter,
             format = formatFilter,
             query = search,
-            hidden = hiddenFilms.value,
+            hidden = hidden,
             disabledCinemas = disabled,
             excludedCountries = excludedCountries,
             excludedDirectors = excludedDirectors,

@@ -87,6 +87,10 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     val films by vm.films.collectAsState()
     val isLoading by vm.isLoading.collectAsState()
     val error by vm.error.collectAsState()
+    // Observed here (not read off the StateFlow inside the VM) so hiding a film
+    // or toggling a cinema recomposes the grid — see filmsForFilmsTab's comment.
+    val hidden by vm.hiddenFilms.collectAsState()
+    val disabled by vm.disabledCinemas.collectAsState()
 
     val pager = rememberPagerState(pageCount = { 2 })
     // Backdrop captured by `Modifier.haze` (the grid) and sampled by the
@@ -174,9 +178,9 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                         else -> HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
                             PullToRefreshBox(isRefreshing = isLoading, onRefresh = { vm.reload() }) {
                                 if (page == 0) {
-                                    FilmsGrid(vm.filmsForFilmsTab(films), onOpenFilm) { vm.hide(it) }
+                                    FilmsGrid(vm.filmsForFilmsTab(films, hidden, disabled), onOpenFilm) { vm.hide(it) }
                                 } else {
-                                    CinemaGrid(vm.cinemaSections(films), onOpenFilm) { vm.hide(it) }
+                                    CinemaGrid(vm.cinemaSections(films, hidden), onOpenFilm) { vm.hide(it) }
                                 }
                             }
                         }
