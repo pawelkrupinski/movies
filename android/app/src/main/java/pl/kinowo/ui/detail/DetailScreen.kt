@@ -186,10 +186,22 @@ private fun TrailerPlayer(embedUrl: String) {
                 settings.javaScriptEnabled = true
                 settings.mediaPlaybackRequiresUserGesture = false
                 settings.domStorageEnabled = true
+                // An HTML5 iframe player (YouTube/Vimeo) needs a chrome client to
+                // actually play video in a WebView — without it the embed renders
+                // but tapping play does nothing.
+                webChromeClient = WebChromeClient()
                 setBackgroundColor(android.graphics.Color.BLACK)
             }
         },
-        update = { it.loadDataWithBaseURL("https://www.youtube.com", html, "text/html", "utf-8", null) },
+        // `update` re-fires on every recomposition; only (re)load when the embed
+        // actually changes, otherwise an in-progress trailer is reloaded from
+        // scratch each time the flow-driven detail screen recomposes.
+        update = { web ->
+            if (web.tag != html) {
+                web.tag = html
+                web.loadDataWithBaseURL("https://www.youtube.com", html, "text/html", "utf-8", null)
+            }
+        },
     )
 }
 
