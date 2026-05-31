@@ -26,9 +26,31 @@ case class ApiFilm(
   title: String, posterURL: Option[String], fallbackPosterURLs: Seq[String],
   runtimeMinutes: Option[Int], ratings: ApiRatings,
   countries: Seq[String], directors: Seq[String], cast: Seq[String],
-  synopsis: Option[String], trailerURLs: Seq[String],
   showings: Seq[ApiDayShowings]
 )
+
+/** Detail-only payload for `GET /api/details`: the heavy text (synopsis) and
+ *  trailers that the grid / filters never need. Split off the listing so the
+ *  latency-sensitive `/api/repertoire` stays lean; clients fetch both in
+ *  parallel and merge by `title`. Only films carrying a synopsis or at least
+ *  one trailer are emitted. */
+case class ApiFilmDetails(
+  title: String, synopsis: Option[String], trailerURLs: Seq[String]
+)
+
+object ApiFilmDetails {
+  implicit val writes: Writes[ApiFilmDetails] = Json.writes[ApiFilmDetails]
+
+  def from(fs: FilmSchedule): ApiFilmDetails = ApiFilmDetails(
+    title       = fs.movie.title,
+    synopsis    = fs.synopsis,
+    // Same source + transform the /film detail page uses (raw trailer URLs →
+    // embed URLs, deduped) so clients get a ready-to-embed Zwiastun set.
+    trailerURLs = fs.enrichment.toSeq.flatMap(_.trailerUrls).flatMap(TrailerEmbed.embedUrlFor).distinct,
+  )
+
+  def hasContent(d: ApiFilmDetails): Boolean = d.synopsis.nonEmpty || d.trailerURLs.nonEmpty
+}
 
 object ApiFilm {
   implicit val apiShowtimeWrites: Writes[ApiShowtime] = Json.writes[ApiShowtime]
@@ -60,11 +82,6 @@ object ApiFilm {
       countries        = fs.movie.countries,
       directors        = fs.director,
       cast             = fs.cast,
-      synopsis         = fs.synopsis,
-      // Same source + transform the /film detail page uses (raw trailer
-      // URLs → YouTube embed URLs, deduped) so JSON clients render the
-      // identical Zwiastun set without re-deriving it.
-      trailerURLs      = e.toSeq.flatMap(_.trailerUrls).flatMap(TrailerEmbed.embedUrlFor).distinct,
       showings         = fs.showings.map { case (date, cinemas) =>
         ApiDayShowings(
           date    = date.toString,
@@ -303,7 +320,12 @@ class MovieController( cc: ControllerComponents,
     ))
   }
 
-  def apiRepertoire(): Action[AnyContent] = Action { request =>
+  /** Conditional-GET wrapper shared by the JSON API endpoints: returns 304 if
+   *  the client's `If-Modified-Since` is at/after the cache's last-modified,
+   *  else runs `body` and stamps the `Last-Modified` header. Both the listing
+   *  and the details payload track the same cache mtime, so a 304 on one is a
+   *  304 on the other. */
+  private def conditionalJson(request: Request[AnyContent])(body: => play.api.libs.json.JsValue): Result = {
     val lastMod = movieCache.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
       .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
@@ -316,9 +338,24 @@ class MovieController( cc: ControllerComponents,
     }
 
     if (notModified) NotModified
-    else {
-      val films = movieControllerService.toSchedules().map(ApiFilm.from)
-      Ok(Json.toJson(films)).withHeaders("Last-Modified" -> httpDate)
+    else Ok(body).withHeaders("Last-Modified" -> httpDate)
+  }
+
+  /** Lean listing — everything the grid + filters need, no heavy detail text.
+   *  Latency-sensitive; clients hit this on the critical path. */
+  def apiRepertoire(): Action[AnyContent] = Action { request =>
+    conditionalJson(request)(Json.toJson(movieControllerService.toSchedules().map(ApiFilm.from)))
+  }
+
+  /** Detail-only payload (synopsis + trailers), keyed by title. Clients fetch
+   *  this in parallel with the listing and merge; keeping it off
+   *  `/api/repertoire` halves the listing's gzip size. */
+  def apiDetails(): Action[AnyContent] = Action { request =>
+    conditionalJson(request) {
+      val details = movieControllerService.toSchedules()
+        .map(ApiFilmDetails.from)
+        .filter(ApiFilmDetails.hasContent)
+      Json.toJson(details)
     }
   }
 

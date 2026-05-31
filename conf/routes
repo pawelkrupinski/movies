@@ -8,6 +8,10 @@ GET     /plan                       controllers.PlanController.plan()
 
 # ── API (JSON) ────────────────────────────────────────────────────────────────
 GET     /api/repertoire              controllers.MovieController.apiRepertoire()
+# Detail-only payload (synopsis + trailers), fetched in parallel with the
+# listing and merged client-side by title. Kept off the listing so the latency-
+# sensitive /api/repertoire stays lean.
+GET     /api/details                 controllers.MovieController.apiDetails()
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
 GET     /debug                      controllers.MovieController.debug()

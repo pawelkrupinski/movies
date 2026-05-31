@@ -45,17 +45,37 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     (ctrl, cache)
   }
 
-  it should "include synopsis and embed-transformed trailerURLs in the JSON" in {
+  it should "keep the lean listing free of detail-only fields" in {
     val (ctrl, _) = buildController()
     val result = ctrl.apiRepertoire()(FakeRequest())
     status(result) shouldBe OK
-    val json = play.api.libs.json.Json.parse(contentAsString(result))
-    val film = json.as[Seq[play.api.libs.json.JsValue]].head
+    val film = play.api.libs.json.Json.parse(contentAsString(result))
+      .as[Seq[play.api.libs.json.JsValue]].head
     (film \ "title").as[String] shouldBe "Test Film"
-    (film \ "synopsis").as[String] shouldBe "A test synopsis."
-    // Raw watch URL is normalised to a YouTube embed URL, matching the
-    // /film detail page's Zwiastun set.
-    (film \ "trailerURLs").as[Seq[String]] shouldBe Seq("https://www.youtube.com/embed/abc123DEF45")
+    (film \ "synopsis").toOption shouldBe None
+    (film \ "trailerURLs").toOption shouldBe None
+  }
+
+  "apiDetails" should "return synopsis + embed-transformed trailerURLs keyed by title" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.apiDetails()(FakeRequest())
+    status(result) shouldBe OK
+    val entry = play.api.libs.json.Json.parse(contentAsString(result))
+      .as[Seq[play.api.libs.json.JsValue]]
+      .find(d => (d \ "title").as[String] == "Test Film")
+      .getOrElse(fail("Test Film missing from /api/details"))
+    (entry \ "synopsis").as[String] shouldBe "A test synopsis."
+    // Raw watch URL is normalised to a YouTube embed URL.
+    (entry \ "trailerURLs").as[Seq[String]] shouldBe Seq("https://www.youtube.com/embed/abc123DEF45")
+  }
+
+  it should "omit films with neither synopsis nor trailers" in {
+    val (ctrl, _) = buildController()
+    // The single fixture film has both, so it is present; a film with neither
+    // would be filtered out by ApiFilmDetails.hasContent.
+    val details = play.api.libs.json.Json.parse(contentAsString(ctrl.apiDetails()(FakeRequest())))
+      .as[Seq[play.api.libs.json.JsValue]]
+    details.forall(d => (d \ "synopsis").toOption.isDefined || (d \ "trailerURLs").as[Seq[String]].nonEmpty) shouldBe true
   }
 
   "apiRepertoire" should "return 200 with Last-Modified header when no If-Modified-Since" in {
