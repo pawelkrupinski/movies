@@ -40,6 +40,10 @@ enum A11y {
         static let kina      = "tab.label.kina"
     }
 
+    enum SwipeHint {
+        static let overlay = "swipe.hint"
+    }
+
     enum EmptyState {
         static let repertoire = "empty.repertoire"
         static let error      = "error.repertoire"

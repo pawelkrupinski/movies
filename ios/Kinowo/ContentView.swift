@@ -27,6 +27,12 @@ struct ContentView: View {
     @State private var tabLabel: String? = nil
     @State private var tabLabelTask: Task<Void, Never>?
 
+    /// Once-a-day swipe onboarding hint (see `SwipeHint`). Evaluated once per
+    /// appearance, the moment the first repertoire load lands.
+    @State private var showSwipeHint = false
+    @State private var swipeHintEvaluated = false
+    @State private var swipeHintTask: Task<Void, Never>?
+
     enum Tab: Hashable { case films, cinemas }
 
     private func tabLabel(for tab: Tab) -> String {
@@ -88,8 +94,14 @@ struct ContentView: View {
         }
         // Overlay on the NavigationStack so the label aligns to the
         // device's screen centre, not the safe-area-inset content area.
+        // The hint takes precedence over the momentary tab label so the two
+        // pills never stack on top of each other.
         .overlay {
-            if let label = tabLabel {
+            if showSwipeHint {
+                SwipeHintOverlay()
+                    .allowsHitTesting(false)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            } else if let label = tabLabel {
                 TabLabelOverlay(text: label)
                     .allowsHitTesting(false)
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
@@ -99,6 +111,9 @@ struct ContentView: View {
             store.loadCachedData()
             store.pruneStaleShowings()
             details.loadCachedData()
+            // A warm cache fills `store.films` synchronously above, before any
+            // `films.isEmpty` change can fire — so evaluate the hint here too.
+            maybeShowSwipeHint()
             // Fetch listing + details concurrently. The grid renders the
             // moment `store.reload()` lands (synopsis/trailers are
             // non-essential), so details never block the first paint —
@@ -106,6 +121,12 @@ struct ContentView: View {
             async let repertoire: Void = store.reload()
             async let detailsLoad: Void = details.reload()
             _ = await (repertoire, detailsLoad)
+            maybeShowSwipeHint()
+        }
+        // Cold start: the first non-empty `store.films` is the first
+        // repertoire load completing.
+        .onChange(of: store.films.isEmpty) { isEmpty in
+            if !isEmpty { maybeShowSwipeHint() }
         }
         .onAppear {
             // Briefly name the starting tab so the user sees the same
@@ -165,6 +186,12 @@ struct ContentView: View {
             }
             .onChange(of: tab) { new in
                 showTabLabel(tabLabel(for: new))
+                // First-ever swipe retires the onboarding hint for good.
+                // `markSwiped()` is idempotent, so running it on every swipe
+                // is harmless.
+                swipeHintTask?.cancel()
+                withAnimation(.easeInOut(duration: 0.2)) { showSwipeHint = false }
+                prefs.markSwiped()
             }
         }
     }
@@ -319,6 +346,28 @@ struct ContentView: View {
             try? await Task.sleep(nanoseconds: 700_000_000)
             if Task.isCancelled { return }
             withAnimation(.easeInOut(duration: 0.2)) { tabLabel = nil }
+        }
+    }
+
+    /// Evaluate (at most once per appearance) whether to flash the swipe hint,
+    /// and if so show it for ~2.5 s. No-op until the first repertoire load has
+    /// landed; the date gate + first-swipe rule live in `SwipeHint`.
+    private func maybeShowSwipeHint() {
+        guard !swipeHintEvaluated, !store.films.isEmpty else { return }
+        swipeHintEvaluated = true
+        let today = SwipeHint.dayKey(Date())
+        guard SwipeHint.shouldShow(
+            hasSwiped: prefs.hasSwipedScreens,
+            lastShownDate: prefs.swipeHintShownDate,
+            today: today
+        ) else { return }
+        prefs.markSwipeHintShown(today)
+        withAnimation(.easeInOut(duration: 0.2)) { showSwipeHint = true }
+        swipeHintTask?.cancel()
+        swipeHintTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if Task.isCancelled { return }
+            withAnimation(.easeInOut(duration: 0.3)) { showSwipeHint = false }
         }
     }
 }

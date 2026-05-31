@@ -216,6 +216,30 @@ struct TabLabelOverlay: View {
     }
 }
 
+// Once-a-day onboarding hint — a swipe-hand glyph over one line of copy,
+// telling first-time users they can swipe to the Kina screen. Shown
+// centre-screen right after the first repertoire load and retired for good
+// on the user's first-ever swipe. The Android counterpart is the
+// `SwipeHintOverlay` composable in ListScreen.kt.
+struct SwipeHintOverlay: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "hand.draw")
+                .font(.system(size: 32, weight: .regular))
+            Text("Przesuń, aby zobaczyć kina")
+                .font(.system(size: 15, weight: .medium))
+        }
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20).strokeBorder(Color.white.opacity(0.12))
+        )
+        .accessibilityIdentifier(A11y.SwipeHint.overlay)
+    }
+}
+
 // Tap feedback: spring-scale the label down on press and back on
 // release. Used by the Filtry icon (and any future TopBar button) so
 // taps feel like they registered without needing to wait for the
