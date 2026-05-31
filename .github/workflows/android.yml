@@ -13,11 +13,18 @@ on:
     workflow_dispatch:
 
 # Single lane: Linux runner, JDK 17 (AGP 8.6 needs 17+), the preinstalled
-# Android SDK + Gradle wrapper (8.9). Runs the JVM unit suite and assembles the
-# debug APK — the same two layers a local `./gradlew testDebugUnitTest
-# assembleDebug` covers — and ships the APK as an artifact. No emulator job:
-# the app has no instrumented (androidTest) suite yet, and an emulator lane is
-# slow; add one here if/when Compose UI tests land.
+# Android SDK + Gradle wrapper (8.9). Runs the JVM unit suite, assembles the
+# debug APK, then builds the R8-minified release APK + AAB and ships all three
+# as artifacts. The release build signs with the keystore decoded from repo
+# secrets (see below); with no secrets it still builds, just unsigned. No
+# emulator job: the app has no instrumented (androidTest) suite yet, and an
+# emulator lane is slow; add one here if/when Compose UI tests land.
+#
+# Release signing secrets (Settings ▸ Secrets and variables ▸ Actions):
+#   KINOWO_RELEASE_KEYSTORE_BASE64 — `base64 -i kinowo-release.jks`
+#   KINOWO_RELEASE_STORE_PASSWORD  — keystore password
+#   KINOWO_RELEASE_KEY_ALIAS       — key alias (kinowo)
+#   KINOWO_RELEASE_KEY_PASSWORD    — key password
 jobs:
     build:
         runs-on: ubuntu-latest
@@ -74,6 +81,48 @@ jobs:
               with:
                   name: kinowo-debug-apk
                   path: android/app/build/outputs/apk/debug/app-debug.apk
+                  if-no-files-found: error
+
+            # Decode the base64 keystore secret to a file the Gradle signing
+            # config can read. Absent secret → no file, and the release build
+            # falls back to unsigned (build.gradle.kts logs a warning).
+            - name: Decode release keystore
+              id: keystore
+              env:
+                  KEYSTORE_BASE64: ${{ secrets.KINOWO_RELEASE_KEYSTORE_BASE64 }}
+              run: |
+                  if [ -n "$KEYSTORE_BASE64" ]; then
+                      echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/kinowo-release.jks"
+                      echo "store_file=$RUNNER_TEMP/kinowo-release.jks" >> "$GITHUB_OUTPUT"
+                      echo "Release keystore decoded — release build will be signed."
+                  else
+                      echo "::warning::No KINOWO_RELEASE_KEYSTORE_BASE64 secret — release build will be UNSIGNED."
+                  fi
+
+            - name: Assemble release APK + AAB
+              env:
+                  KINOWO_RELEASE_STORE_FILE: ${{ steps.keystore.outputs.store_file }}
+                  KINOWO_RELEASE_STORE_PASSWORD: ${{ secrets.KINOWO_RELEASE_STORE_PASSWORD }}
+                  KINOWO_RELEASE_KEY_ALIAS: ${{ secrets.KINOWO_RELEASE_KEY_ALIAS }}
+                  KINOWO_RELEASE_KEY_PASSWORD: ${{ secrets.KINOWO_RELEASE_KEY_PASSWORD }}
+              run: ./gradlew --no-daemon assembleRelease bundleRelease
+
+            - name: Upload release APK
+              uses: actions/upload-artifact@v4
+              if: success()
+              with:
+                  name: kinowo-release-apk
+                  # Glob catches both the signed `app-release.apk` and the
+                  # unsigned-fallback `app-release-unsigned.apk` (no secrets).
+                  path: android/app/build/outputs/apk/release/app-release*.apk
+                  if-no-files-found: error
+
+            - name: Upload release AAB
+              uses: actions/upload-artifact@v4
+              if: success()
+              with:
+                  name: kinowo-release-aab
+                  path: android/app/build/outputs/bundle/release/app-release.aab
                   if-no-files-found: error
 
             - name: Upload test report

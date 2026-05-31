@@ -10,3 +10,9 @@
 .cxx
 local.properties
 .kotlin
+
+# Release signing — never commit the keystore, its base64, or its passwords.
+*.jks
+*.keystore
+*.jks.base64
+keystore.properties

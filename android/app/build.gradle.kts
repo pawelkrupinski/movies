@@ -21,13 +21,45 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Release signing is wired only when credentials are present — from CI env
+    // vars (the workflow decodes the base64 keystore secret to a file and exports
+    // the three passwords) or a local, gitignored `keystore.properties`. With
+    // neither, `release` stays unsigned so `assembleRelease` still builds locally
+    // for a smoke test; only signed builds are uploadable to Play.
+    val keystoreProps = Properties().apply {
+        val f = rootProject.file("keystore.properties")
+        if (f.exists()) f.inputStream().use { load(it) }
+    }
+    fun signingValue(envName: String, propName: String): String? =
+        (System.getenv(envName) ?: keystoreProps.getProperty(propName))?.takeIf { it.isNotBlank() }
+    val releaseStorePath = signingValue("KINOWO_RELEASE_STORE_FILE", "storeFile")
+        ?.let { rootProject.file(it) }
+    val hasReleaseSigning = releaseStorePath?.exists() == true
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseStorePath
+                storePassword = signingValue("KINOWO_RELEASE_STORE_PASSWORD", "storePassword")
+                keyAlias = signingValue("KINOWO_RELEASE_KEY_ALIAS", "keyAlias")
+                keyPassword = signingValue("KINOWO_RELEASE_KEY_PASSWORD", "keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                logger.warn("kinowo: no release signing credentials — `release` build will be UNSIGNED (not uploadable to Play).")
+            }
         }
     }
 
