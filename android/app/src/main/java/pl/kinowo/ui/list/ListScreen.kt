@@ -1,7 +1,11 @@
 package pl.kinowo.ui.list
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -343,21 +347,56 @@ private fun DateChips(vm: KinowoViewModel) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+// Single-cinema selector for the /kina tab: a horizontally scrollable row of
+// pills — "Wszystkie" (no pin → all cinemas) first, then one per cinema.
+// Mirrors iOS `CinemaPillsRow`: pills tile edge-to-edge, their rectangular hit
+// areas touching exactly (zero Row spacing + a tapMargin inside each pill), so
+// there's no dead gap to miss-tap into while the visible capsules keep a gap.
 @Composable
 private fun CinemaChips(vm: KinowoViewModel, films: List<Film>) {
     val cinemas = remember(films) { vm.allCinemas(films) }
-    androidx.compose.foundation.layout.FlowRow(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 11.dp, vertical = 5.dp),
     ) {
+        CinemaPill("Wszystkie", selected = vm.pinnedCinema == null) { vm.pinnedCinema = null }
         for (cinema in cinemas) {
-            FilterChip(
+            CinemaPill(
+                title = CinemaSection.pillName(cinema),
                 selected = vm.pinnedCinema == cinema,
-                onClick = { vm.pinnedCinema = if (vm.pinnedCinema == cinema) null else cinema },
-                label = { Text(CinemaSection.pillName(cinema)) },
-            )
+            ) { vm.pinnedCinema = cinema }
         }
+    }
+}
+
+// Half the gap between neighbouring pills. It lives as padding *inside* each
+// pill's tap target (with zero Row spacing), so the rectangular hit areas of
+// adjacent pills meet exactly while the visible capsules keep a 2*tapMargin gap.
+private val CinemaPillTapMargin = 3.dp
+
+@Composable
+private fun CinemaPill(title: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { onClick() }
+            .padding(CinemaPillTapMargin),
+    ) {
+        Text(
+            title,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            color = Color.White,
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(if (selected) Brand.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.08f))
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+        )
     }
 }
 
