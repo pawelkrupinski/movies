@@ -1778,25 +1778,34 @@
       if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;   // deadzone
       _drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
       if (_drag.axis === 'y') { _drag = null; return; }     // vertical scroll — bail
+    }
+    if (_drag.axis !== 'x') return;
+    // Track the latest delta + a smoothed velocity HERE — `pointerup`'s clientX
+    // is unreliable on touch (iOS often reports the touchstart point or 0), so
+    // the release decision reads `lastDx`/`vx`, never the pointerup coordinate.
+    const dt = Math.max(1, e.timeStamp - _drag.lastT);
+    _drag.vx = (dx - _drag.lastDx) / dt;   // px per ms
+    _drag.lastDx = dx;
+    _drag.lastT = e.timeStamp;
+    // Lazily mount the neighbour the first time the drag points at a real one.
+    // Films is the leftmost view and Kina the rightmost, so a drag in the dead
+    // direction has no neighbour — DON'T kill the gesture for it (that stopped
+    // the finger tracking back and forth, iOS-style); just wait until the
+    // finger heads the valid way. Retried each move so a cache that warms
+    // mid-drag still starts tracking.
+    if (!_drag.ctx) {
       const cur  = document.getElementById('view-root').dataset.view;
       const dest = dx < 0 ? 'kina' : 'films';   // swipe-left → right tab; swipe-right → left tab
-      if (dest === cur) { _drag = null; return; }           // no view that way
-      const w   = document.getElementById('view-pager').offsetWidth || window.innerWidth;
-      const ctx = beginDrag(dest, w);
-      if (ctx) { _drag.ctx = ctx; _swapping = true; }
-      else     { _drag.fallbackDest = dest; }   // cold cache → threshold switch on release
+      if (dx !== 0 && dest !== cur) {
+        const w   = document.getElementById('view-pager').offsetWidth || window.innerWidth;
+        const ctx = beginDrag(dest, w);
+        if (ctx) { _drag.ctx = ctx; _swapping = true; _drag.fallbackDest = null; }
+        else     { _drag.fallbackDest = dest; }   // cold cache → threshold switch on release
+      }
     }
-    if (_drag && _drag.axis === 'x') {
-      // Track the latest delta + a smoothed velocity HERE — `pointerup`'s
-      // clientX is unreliable on touch (iOS often reports the touchstart point
-      // or 0), so the release decision below reads `lastDx`/`vx`, never the
-      // pointerup coordinate.
-      const dt = Math.max(1, e.timeStamp - _drag.lastT);
-      _drag.vx = (dx - _drag.lastDx) / dt;   // px per ms
-      _drag.lastDx = dx;
-      _drag.lastT = e.timeStamp;
-    }
-    if (_drag && _drag.ctx) {
+    if (_drag.ctx) {
+      // The view follows the finger 1:1, clamped to [neighbour, origin] (you
+      // can drag the neighbour in and back out, but not past either edge).
       const { current, incoming, dir, enter, w } = _drag.ctx;
       const d = dir === 'left' ? Math.max(-w, Math.min(0, dx)) : Math.min(w, Math.max(0, dx));
       current.style.transform  = 'translateX(' + d + 'px)';
@@ -1804,25 +1813,28 @@
     }
   }, { passive: true });
 
-  // Commit if the drag crossed ~25% of the width OR was a quick flick in the
-  // swipe direction. Reads the tracked `lastDx`/`vx`, NOT the (unreliable)
-  // pointerup/pointercancel coordinate. pointercancel ends the gesture the same
-  // way — a far/fast drag the browser cuts short still commits rather than
-  // always snapping back.
+  // Decision happens ONLY here, when the finger lifts (or the gesture is
+  // cancelled): animate to the neighbour if the finger ended past ~40% of the
+  // width toward it OR left with a quick flick that way; otherwise settle back
+  // to the original page. Until then the view just tracks the finger. Reads the
+  // tracked `lastDx`/`vx`, never the unreliable pointerup coordinate.
   function endDrag() {
     const drag = _drag;
     _drag = null;
     if (!drag || drag.axis !== 'x') return;
     const dx = drag.lastDx;
-    const dest = dx < 0 ? 'kina' : 'films';
-    const flick = Math.abs(drag.vx) > 0.4 && Math.abs(dx) > 24 &&
-                  ((dest === 'kina' && dx < 0) || (dest === 'films' && dx > 0));
     if (drag.ctx) {
-      settleDrag(drag.ctx, Math.abs(dx) > drag.ctx.w * 0.25 || flick);
-    } else if (drag.fallbackDest &&
-               (Math.abs(dx) >= Math.max(50, window.innerWidth * 0.20) || flick)) {
-      navigateTo(VIEW_PATHS[drag.fallbackDest], drag.fallbackDest,
-                 drag.fallbackDest === 'kina' ? 'left' : 'right', true);
+      const { dir, w } = drag.ctx;
+      const toward = dir === 'left' ? dx < 0 : dx > 0;   // ended toward the mounted neighbour?
+      const flick  = Math.abs(drag.vx) > 0.4 && Math.abs(dx) > 24;
+      settleDrag(drag.ctx, toward && (Math.abs(dx) > w * 0.4 || flick));
+    } else if (drag.fallbackDest) {
+      const toward = drag.fallbackDest === 'kina' ? dx < 0 : dx > 0;
+      const flick  = Math.abs(drag.vx) > 0.4 && Math.abs(dx) > 24;
+      if (toward && (Math.abs(dx) >= window.innerWidth * 0.4 || flick)) {
+        navigateTo(VIEW_PATHS[drag.fallbackDest], drag.fallbackDest,
+                   drag.fallbackDest === 'kina' ? 'left' : 'right', true);
+      }
     }
   }
   document.addEventListener('pointerup', endDrag, { passive: true });
