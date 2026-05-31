@@ -5,7 +5,7 @@ import play.api.Logging
 import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 import play.api.Mode
-import services.movies.{MovieCache, MovieService, StoredMovieRecord, TitleNormalizer}
+import services.movies.{MovieCache, MovieService, StoredMovieRecord, TitleNormalizer, TrailerEmbed}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
@@ -26,6 +26,7 @@ case class ApiFilm(
   title: String, posterURL: Option[String], fallbackPosterURLs: Seq[String],
   runtimeMinutes: Option[Int], ratings: ApiRatings,
   countries: Seq[String], directors: Seq[String], cast: Seq[String],
+  synopsis: Option[String], trailerURLs: Seq[String],
   showings: Seq[ApiDayShowings]
 )
 
@@ -59,6 +60,11 @@ object ApiFilm {
       countries        = fs.movie.countries,
       directors        = fs.director,
       cast             = fs.cast,
+      synopsis         = fs.synopsis,
+      // Same source + transform the /film detail page uses (raw trailer
+      // URLs → YouTube embed URLs, deduped) so JSON clients render the
+      // identical Zwiastun set without re-deriving it.
+      trailerURLs      = e.toSeq.flatMap(_.trailerUrls).flatMap(TrailerEmbed.embedUrlFor).distinct,
       showings         = fs.showings.map { case (date, cinemas) =>
         ApiDayShowings(
           date    = date.toString,

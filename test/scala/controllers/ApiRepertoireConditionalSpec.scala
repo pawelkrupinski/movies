@@ -23,6 +23,8 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
         Helios -> SourceData(
           title       = Some("Test Film"),
           releaseYear = Some(2024),
+          synopsis    = Some("A test synopsis."),
+          trailerUrl  = Some("https://www.youtube.com/watch?v=abc123DEF45"),
           showtimes   = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
         ),
         Tmdb -> SourceData(originalTitle = Some("Test Film"))
@@ -41,6 +43,19 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
       environment            = Mode.Test
     )
     (ctrl, cache)
+  }
+
+  it should "include synopsis and embed-transformed trailerURLs in the JSON" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.apiRepertoire()(FakeRequest())
+    status(result) shouldBe OK
+    val json = play.api.libs.json.Json.parse(contentAsString(result))
+    val film = json.as[Seq[play.api.libs.json.JsValue]].head
+    (film \ "title").as[String] shouldBe "Test Film"
+    (film \ "synopsis").as[String] shouldBe "A test synopsis."
+    // Raw watch URL is normalised to a YouTube embed URL, matching the
+    // /film detail page's Zwiastun set.
+    (film \ "trailerURLs").as[Seq[String]] shouldBe Seq("https://www.youtube.com/embed/abc123DEF45")
   }
 
   "apiRepertoire" should "return 200 with Last-Modified header when no If-Modified-Since" in {
