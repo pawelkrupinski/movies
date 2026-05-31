@@ -63,6 +63,16 @@ class DateFilterTest {
     }
 
     @Test
+    fun presetsAreFourNonNullEntriesInNarrowToBroadOrder() {
+        // Guards the sealed-class init-order hazard that crashed DateChips:
+        // a circular companion ⇄ object init can leave preset entries null.
+        val presets = DateFilter.presets
+        assertEquals(4, presets.size)
+        assertTrue("no preset may be null", presets.none { @Suppress("SENSELESS_COMPARISON") (it == null) })
+        assertEquals(listOf("Dziś", "Jutro", "7 dni", "Wszystkie"), presets.map { it.label })
+    }
+
+    @Test
     fun todayAcrossDSTSpringForward() {
         // Poland flips to summer time on the last Sunday of March (2026-03-29);
         // any "today" right before/after that boundary still resolves to a

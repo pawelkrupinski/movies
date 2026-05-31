@@ -5,9 +5,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -65,7 +68,9 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     var showFilters by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    Column(Modifier.fillMaxSize()) {
+    // Edge-to-edge: keep the custom top chrome below the status bar and the
+    // grid above the nav bar. (DetailScreen's Scaffold handles its own insets.)
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
         // ── top chrome ────────────────────────────────────────────────────
         Row(
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),

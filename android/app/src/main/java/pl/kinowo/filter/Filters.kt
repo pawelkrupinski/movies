@@ -53,7 +53,13 @@ sealed class DateFilter {
     }
 
     companion object {
-        val presets: List<DateFilter> = listOf(Today, Tomorrow, Week, Anytime)
+        // Computed via a getter, NOT an eagerly-initialised `val`: referencing
+        // the nested `object` subclasses from the companion's initializer is a
+        // circular class-init hazard (outer class ⇄ companion ⇄ objects) that
+        // leaves entries null on the Android runtime — crashing DateChips with
+        // an NPE on `preset.label`. A getter builds the list after the objects
+        // are fully initialised, every call.
+        val presets: List<DateFilter> get() = listOf(Today, Tomorrow, Week, Anytime)
         fun iso(now: Instant): String = LocalDate.ofInstant(now, WARSAW).format(ISO_DATE)
     }
 }
