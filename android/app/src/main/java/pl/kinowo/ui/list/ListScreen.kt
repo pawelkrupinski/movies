@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -148,10 +149,12 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
             // ── top chrome ────────────────────────────────────────────────────
             Row(
-                Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
+                Modifier.fillMaxWidth().padding(start = 10.dp, end = 4.dp, top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("🎬 Kinowo", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text("🎬", fontSize = 22.sp)
+                DatePills(vm)
                 IconButton(onClick = { showFilters = true }) {
                     Icon(
                         Icons.Outlined.FilterList,
@@ -160,8 +163,6 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                     )
                 }
             }
-
-            DateChips(vm)
 
             if (pager.currentPage == 1) {
                 CinemaChips(vm, films)
@@ -337,17 +338,42 @@ private fun FloatingSearchBar(
     }
 }
 
+// The four date presets, laid out inline in the top bar (mirroring iOS
+// DatePillsRow): the three short pills (Dziś / Jutro / 7 dni) share the
+// leftover row width equally via `weight`, while "Wszystkie" keeps its
+// intrinsic width — so they fit one row beside the 🎬 mark and Filtry icon
+// without a separate strip or horizontal scrolling.
 @Composable
-private fun DateChips(vm: KinowoViewModel) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 11.dp, vertical = 5.dp),
+private fun RowScope.DatePills(vm: KinowoViewModel) {
+    for (preset in DateFilter.presets) {
+        DatePill(
+            label = preset.label,
+            selected = vm.dateFilter == preset,
+            modifier = if (preset == DateFilter.Anytime) Modifier else Modifier.weight(1f),
+        ) { vm.dateFilter = preset }
+    }
+}
+
+@Composable
+private fun DatePill(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .clip(CircleShape)
+            .background(if (selected) Brand.copy(alpha = 0.85f) else Color.Transparent)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { onClick() }
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        for (preset in DateFilter.presets) {
-            FilterPill(preset.label, selected = vm.dateFilter == preset) { vm.dateFilter = preset }
-        }
+        Text(
+            label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            color = Color.White,
+        )
     }
 }
 
