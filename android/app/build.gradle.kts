@@ -1,3 +1,4 @@
+import java.io.File
 import java.util.Properties
 
 plugins {
@@ -94,13 +95,18 @@ dependencies {
 }
 
 // ── Emulator helpers ────────────────────────────────────────────────────────
-// `./gradlew runOnEmulator`   — boot an AVD if needed, install, launch, then
-//                               stream the app's logcat until you Ctrl+C.
+// `./gradlew runOnEmulator`   — boot an AVD if needed, install, launch, stream
+//                               the app's logcat, AND keep watching src/main:
+//                               whenever this terminal is focused and sources
+//                               changed, rebuild + redeploy (only if it
+//                               compiles). Ctrl+C to stop.
 // `./gradlew debugOnEmulator` — boot/install/launch waiting for a debugger and
 //                               wire up JDWP so an IDE or jdb can attach.
 // `./gradlew bootEmulator`    — just the boot half.
 // Pick a different AVD with `-Pavd=<name>` (default `kinowo`); change the JDWP
-// port with `-PdebugPort=<n>` (default 5005).
+// port with `-PdebugPort=<n>` (default 5005). The auto-redeploy only fires
+// while the launching terminal is frontmost — override the match that decides
+// "is the terminal focused" with `-PfocusApp=<AppName>` (comma-separated).
 //
 // The adb path / AVD name are resolved here at configuration time and captured
 // as plain values; the adb-shelling helpers are inlined into each task action.
@@ -185,12 +191,18 @@ tasks.matching { it.name == "installDebug" }.configureEach { mustRunAfter("bootE
 
 tasks.register("runOnEmulator") {
     group = "emulator"
-    description = "Boot an emulator if needed, install the debug build, launch the app, and stream its logcat."
+    description = "Boot/install/launch, stream logcat, and auto-rebuild + redeploy on source changes while this terminal is focused."
     dependsOn("bootEmulator", "installDebug")
     val adb = adbExe
     val appPkg = appId
     val component = mainComponent
     val noSdk = noSdkMessage
+    // Captured at configuration time so the action stays config-cache clean.
+    val gradlew = rootProject.file("gradlew").absolutePath
+    val rootDirPath = rootProject.projectDir.absolutePath
+    val watchDir = layout.projectDirectory.dir("src/main").asFile.absolutePath
+    val focusOverride = (findProperty("focusApp") as String?)
+    val termProgram: String? = System.getenv("TERM_PROGRAM")
     doLast {
         fun sh(vararg args: String): String {
             val p = ProcessBuilder(*args).redirectErrorStream(true).start()
@@ -205,28 +217,120 @@ tasks.register("runOnEmulator") {
             .firstOrNull { it.startsWith("emulator-") }
             ?: throw GradleException("No booted emulator to launch on.")
 
-        // Clear the buffer first so we only stream this run's logs; the app's
-        // own startup lines stay (they're written after the clear, before we
-        // start reading, and logcat replays the buffer before tailing).
-        sh(adb, "-s", serial, "logcat", "-c")
-        logger.lifecycle("Launching $component on $serial…")
-        sh(adb, "-s", serial, "shell", "am", "start", "-n", component)
-
-        // Scope logcat to just this app — resolve its pid (am start returns
-        // before the process is necessarily up, so poll).
-        var pid = ""
-        val deadline = System.currentTimeMillis() + 20_000
-        while (pid.isEmpty() && System.currentTimeMillis() < deadline) {
-            pid = sh(adb, "-s", serial, "shell", "pidof", appPkg).split(Regex("\\s+")).firstOrNull().orEmpty()
-            if (pid.isEmpty()) Thread.sleep(500)
+        // ── logcat tail, restartable across redeploys ────────────────────────
+        // Each (re)launch kills the previous tail and starts a fresh
+        // `logcat --pid=<pid>` in a daemon thread. pid is re-resolved every
+        // launch because a reinstall hands the app a new pid. Clearing the
+        // buffer first scopes the stream to the current run.
+        var logcatProc: Process? = null
+        fun pidOf(): String {
+            var pid = ""
+            val deadline = System.currentTimeMillis() + 20_000
+            while (pid.isEmpty() && System.currentTimeMillis() < deadline) {
+                pid = sh(adb, "-s", serial, "shell", "pidof", appPkg).split(Regex("\\s+")).firstOrNull().orEmpty()
+                if (pid.isEmpty()) Thread.sleep(500)
+            }
+            return pid
         }
-        if (pid.isEmpty()) throw GradleException("Couldn't find a running $appPkg process to tail (did the launch crash?).")
+        fun launchApp(forceStop: Boolean) {
+            if (forceStop) sh(adb, "-s", serial, "shell", "am", "force-stop", appPkg)
+            logcatProc?.destroy()
+            sh(adb, "-s", serial, "logcat", "-c")
+            sh(adb, "-s", serial, "shell", "am", "start", "-n", component)
+            val pid = pidOf()
+            if (pid.isEmpty()) {
+                logger.lifecycle("⚠  $appPkg isn't running (crash on launch?) — fix it and save, I'll rebuild.")
+                logcatProc = null
+                return
+            }
+            val proc = ProcessBuilder(adb, "-s", serial, "logcat", "--pid=$pid").redirectErrorStream(true).start()
+            logcatProc = proc
+            Thread { proc.inputStream.bufferedReader().forEachLine { logger.lifecycle(it) } }
+                .also { it.isDaemon = true; it.start() }
+        }
 
-        logger.lifecycle("Streaming logcat for $appPkg (pid $pid) — Ctrl+C to stop.\n")
-        val logcat = ProcessBuilder(adb, "-s", serial, "logcat", "--pid=$pid").redirectErrorStream(true).start()
-        // Blocks until logcat ends (i.e. you Ctrl+C the build, or the app dies).
-        logcat.inputStream.bufferedReader().forEachLine { logger.lifecycle(it) }
-        logcat.waitFor()
+        // ── focus detection (macOS) ──────────────────────────────────────────
+        // Only rebuild while THIS terminal is frontmost, so saving in the
+        // editor never triggers a build until you switch back here to look.
+        // The frontmost app's display name comes from `lsappinfo` (no
+        // Automation/TCC prompt, unlike AppleScript). Match it against terminal
+        // names seeded from $TERM_PROGRAM, plus whatever app is frontmost right
+        // now (this terminal, since you just launched) so it works for any
+        // terminal without config. Override with `-PfocusApp=Name1,Name2`.
+        val focusTokens = mutableListOf<String>()
+        if (!focusOverride.isNullOrBlank()) {
+            focusOverride.split(",").mapTo(focusTokens) { it.trim().lowercase() }
+        } else {
+            focusTokens.addAll(listOf("terminal", "iterm", "ghostty", "warp", "hyper", "alacritty", "kitty", "wezterm", "tabby"))
+            if (termProgram == "vscode") focusTokens.add("code") // VS Code's integrated terminal reports "Code"
+        }
+        focusTokens.removeAll { it.isBlank() }
+        fun frontmostApp(): String {
+            val asn = sh("lsappinfo", "front").trim().trim('"')
+            if (asn.isEmpty()) return ""
+            val info = sh("lsappinfo", "info", "-only", "name", asn)
+            return Regex("\"LSDisplayName\"=\"(.*)\"").find(info)?.groupValues?.get(1) ?: ""
+        }
+        fun terminalFocused(): Boolean {
+            val front = frontmostApp().lowercase()
+            return front.isNotEmpty() && focusTokens.any { front.contains(it) }
+        }
+
+        // ── source snapshot + rebuild ────────────────────────────────────────
+        fun newestSrcMtime(): Long {
+            var m = 0L
+            File(watchDir).walkTopDown().forEach { if (it.isFile) m = maxOf(m, it.lastModified()) }
+            return m
+        }
+        // Child Gradle invocation (separate daemon — this build is still alive
+        // in the watch loop). `-q` keeps a green build silent; compile errors
+        // and BUILD FAILED still print.
+        fun rebuild(): Boolean {
+            val p = ProcessBuilder(gradlew, ":app:installDebug", "-q")
+                .directory(File(rootDirPath))
+                .redirectErrorStream(true)
+                .start()
+            p.inputStream.bufferedReader().forEachLine { logger.lifecycle(it) }
+            return p.waitFor() == 0
+        }
+
+        // ── initial launch ───────────────────────────────────────────────────
+        logger.lifecycle("Launching $component on $serial…")
+        launchApp(forceStop = false)
+
+        // Seed the focus match with the current frontmost app (this terminal),
+        // unless it's the emulator window or already covered.
+        val startupFront = frontmostApp()
+        if (focusOverride.isNullOrBlank() && startupFront.isNotBlank()) {
+            val f = startupFront.lowercase()
+            if (!f.contains("qemu") && !f.contains("emulator") && focusTokens.none { f.contains(it) }) {
+                focusTokens.add(f)
+            }
+        }
+
+        logger.lifecycle(
+            "\n👀 Watching src/main — I'll rebuild + redeploy when this terminal is focused and sources changed."
+        )
+        logger.lifecycle("   Focus match: ${focusTokens.joinToString("/")}  (frontmost now: \"$startupFront\")")
+        logger.lifecycle("   Not detecting your terminal? Re-run with -PfocusApp=<AppName>. Ctrl+C to stop.\n")
+
+        var lastBuilt = newestSrcMtime()
+        val quietMs = 600L // let a burst of saves settle before building
+        while (true) {
+            Thread.sleep(700)
+            if (!terminalFocused()) continue
+            val newest = newestSrcMtime()
+            if (newest <= lastBuilt || System.currentTimeMillis() - newest < quietMs) continue
+            logger.lifecycle("↻  Change detected — rebuilding & reinstalling…")
+            val ok = rebuild()
+            lastBuilt = newestSrcMtime()
+            if (ok) {
+                launchApp(forceStop = true)
+                logger.lifecycle("✓  Redeployed.\n")
+            } else {
+                logger.lifecycle("✗  Build failed — left the running build in place. Fix & save to retry.\n")
+            }
+        }
     }
 }
 
