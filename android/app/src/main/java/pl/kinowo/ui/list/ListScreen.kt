@@ -52,6 +52,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +64,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.take
+import android.content.res.Configuration
 import java.time.LocalDate
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
@@ -361,6 +363,14 @@ private fun CinemaChips(vm: KinowoViewModel, films: List<Film>) {
 // clear of the pill instead of sitting permanently behind it.
 private val SearchBarBottomInset = 84.dp
 
+// Poster grid columns. Portrait always shows exactly two columns regardless of
+// device width; landscape stays adaptive so wider screens fill with more.
+@Composable
+private fun posterGridCells(): GridCells {
+    val portrait = LocalConfiguration.current.orientation != Configuration.ORIENTATION_LANDSCAPE
+    return if (portrait) GridCells.Fixed(2) else GridCells.Adaptive(minSize = 170.dp)
+}
+
 @Composable
 private fun FilmsGrid(films: List<Film>, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
     if (films.isEmpty()) {
@@ -371,7 +381,7 @@ private fun FilmsGrid(films: List<Film>, onOpen: (String) -> Unit, onHide: (Stri
     // Grid items map 1:1 to films, so the URL list lines up with item indices.
     PosterPrefetch(remember(films) { films.map { it.posterChain.firstOrNull().orEmpty() } }, gridState)
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 170.dp),
+        columns = posterGridCells(),
         state = gridState,
         contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = SearchBarBottomInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -403,7 +413,7 @@ private fun CinemaGrid(sections: List<CinemaSection>, onOpen: (String) -> Unit, 
     }
     PosterPrefetch(posterUrls, gridState)
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 170.dp),
+        columns = posterGridCells(),
         state = gridState,
         contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = SearchBarBottomInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
