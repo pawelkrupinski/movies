@@ -68,6 +68,7 @@ import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
+import pl.kinowo.ui.common.PosterPrefetch
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -281,8 +282,8 @@ private fun FloatingSearchBar(
                     // Keep enough blur to visibly distort the cards underneath,
                     // but barely any tint and no noise grain — so it reads as
                     // clear, see-through glass rather than a frosty pane.
-                    blurRadius = 18.dp,
-                    tint = HazeTint(Color.White.copy(alpha = 0.03f)),
+                    blurRadius = 1.dp,
+                    tint = HazeTint(Color.White.copy(alpha = 0.0f)),
                     noiseFactor = 0f,
                 ),
             )
@@ -366,9 +367,12 @@ private fun FilmsGrid(films: List<Film>, onOpen: (String) -> Unit, onHide: (Stri
         EmptyState("Brak repertuaru.")
         return
     }
+    val gridState = rememberLazyGridState()
+    // Grid items map 1:1 to films, so the URL list lines up with item indices.
+    PosterPrefetch(remember(films) { films.map { it.posterChain.firstOrNull().orEmpty() } }, gridState)
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 170.dp),
-        state = rememberLazyGridState(),
+        state = gridState,
         contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = SearchBarBottomInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -386,8 +390,21 @@ private fun CinemaGrid(sections: List<CinemaSection>, onOpen: (String) -> Unit, 
         EmptyState("Brak repertuaru.")
         return
     }
+    val gridState = rememberLazyGridState()
+    // Mirror the grid's item order: a blank slot for each section header,
+    // then one poster URL per film, so indices line up with the grid.
+    val posterUrls = remember(sections) {
+        buildList {
+            for (section in sections) {
+                add("")
+                for (film in section.films) add(film.posterChain.firstOrNull().orEmpty())
+            }
+        }
+    }
+    PosterPrefetch(posterUrls, gridState)
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 170.dp),
+        state = gridState,
         contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = SearchBarBottomInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
