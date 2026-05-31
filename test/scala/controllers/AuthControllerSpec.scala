@@ -72,6 +72,20 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     status(ctl.start("google")(FakeRequest("GET", "/auth/google/start"))) shouldBe NOT_FOUND
   }
 
+  it should "flag the session as a mobile client for platform=ios and platform=android" in {
+    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    for (platform <- Seq("ios", "android")) {
+      val result = ctl.start("google")(FakeRequest("GET", s"/auth/google/start?platform=$platform"))
+      session(result).get("mobileClient").value shouldBe "1"
+    }
+  }
+
+  it should "not flag a mobile client for a plain web start (no platform param)" in {
+    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val result   = ctl.start("google")(FakeRequest("GET", "/auth/google/start"))
+    session(result).get("mobileClient") shouldBe empty
+  }
+
   // ── /auth/:provider/callback — happy path ────────────────────────────────
 
   "AuthController.callback" should "exchange code, create a new user, set userId in session, redirect to /" in {
@@ -123,6 +137,31 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     ))
     secondSession.get("userId").value shouldBe firstUserId   // same id, not a fresh signup
     repo2.findById(firstUserId).value.displayName shouldBe Some("Alice (married)")
+  }
+
+  it should "bounce a mobile client back to the kinowo:// deep link with a one-shot code" in {
+    val provider = new FakeProvider("google", Profile)
+    val (ctl, repo) = fixture(provider)
+
+    val request = FakeRequest("GET", "/auth/google/callback?code=AUTH_CODE&state=THE_STATE")
+      .withSession(
+        "oauthState" -> "THE_STATE", "oauthProvider" -> "google",
+        "oauthStateTs" -> NowMs.toString, "mobileClient" -> "1"
+      )
+    val result = ctl.callback("google")(request)
+
+    status(result) shouldBe SEE_OTHER
+    val location = redirectLocation(result).value
+    location should startWith ("kinowo://auth-done?code=")
+
+    // The code is single-use and redeems to the just-created user.
+    val code = location.stripPrefix("kinowo://auth-done?code=")
+    val userId = session(result).get("userId").value
+    AuthController.pendingExchangeCodes.getIfPresent(code) shouldBe userId
+    repo.findById(userId).value.email shouldBe Some("alice@example.com")
+
+    // The mobile flag is consumed so it can't leak into a later web session.
+    session(result).get("mobileClient") shouldBe empty
   }
 
   // ── /auth/:provider/callback — sad paths ─────────────────────────────────

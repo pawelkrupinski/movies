@@ -62,13 +62,16 @@ class AuthController(
       case Some(p) =>
         val state       = UUID.randomUUID().toString
         val redirectUri = callbackUrl(provider, request)
-        val isIos = request.getQueryString("platform").contains("ios")
+        // Native iOS *and* Android clients pass `?platform=…`; both want the
+        // callback to bounce back into the app via the `kinowo://` deep link
+        // (carrying a one-shot exchange code) instead of redirecting to `/`.
+        val isMobile = request.getQueryString("platform").exists(Set("ios", "android"))
         Redirect(p.authUrl(state, redirectUri))
           .withSession(request.session
             + ("oauthState"     -> state)
             + ("oauthProvider"  -> provider)
             + ("oauthStateTs"   -> clock.instant().toEpochMilli.toString)
-            ++ (if (isIos) Seq("iosClient" -> "1") else Seq.empty))
+            ++ (if (isMobile) Seq("mobileClient" -> "1") else Seq.empty))
     }
   }
 
@@ -104,9 +107,9 @@ class AuthController(
             InternalServerError("Couldn't complete sign-in. Please try again.")
           case Success(user) =>
             val nextSession = request.session
-              - "oauthState" - "oauthProvider" - "oauthStateTs" - "iosClient"
+              - "oauthState" - "oauthProvider" - "oauthStateTs" - "mobileClient"
               + ("userId" -> user.id)
-            if (request.session.get("iosClient").contains("1")) {
+            if (request.session.get("mobileClient").contains("1")) {
               val code = UUID.randomUUID().toString
               AuthController.pendingExchangeCodes.put(code, user.id)
               Redirect(s"kinowo://auth-done?code=$code").withSession(nextSession)
