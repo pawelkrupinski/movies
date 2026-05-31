@@ -13,19 +13,20 @@ struct FilmCardView: View {
         VStack(alignment: .leading, spacing: 0) {
             PosterView(film: film)
             VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(film.title)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
-                    Spacer(minLength: 0)
-                    if let mins = film.runtimeMinutes, mins > 0 {
-                        Text(formatRuntime(mins))
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                    }
-                }
+                Text(film.title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                // Runtime / year / genre pills — the web `_movieCard`
+                // caps genres at three.
+                MetaPillsView(
+                    runtimeMinutes: film.runtimeMinutes,
+                    releaseYear: film.releaseYear,
+                    genres: film.genres,
+                    maxGenres: 3
+                )
                 if !film.ratings.isEmpty {
                     RatingBadgesView(ratings: film.ratings)
                         // Padding lives BELOW the FlowLayout (rather
@@ -46,8 +47,42 @@ struct FilmCardView: View {
         .background(Color(red: 0.12, green: 0.12, blue: 0.18))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
+}
 
-    private func formatRuntime(_ mins: Int) -> String {
+/// Runtime / year / genre chips for a film's title block — the iOS
+/// counterpart of `_movieCard` / `/film`'s `.pill.runtime`,
+/// `.pill.year`, `.pill.genre` row. The web card shows the first three
+/// genres (`maxGenres: 3`); the detail page passes `nil` to show them
+/// all. Renders nothing when there's no runtime, year, or genre.
+struct MetaPillsView: View {
+    let runtimeMinutes: Int?
+    let releaseYear: Int?
+    let genres: [String]
+    var maxGenres: Int? = nil
+
+    var body: some View {
+        let runtime = (runtimeMinutes ?? 0) > 0 ? Self.formatRuntime(runtimeMinutes!) : nil
+        let year = releaseYear.map(String.init)
+        let shownGenres = maxGenres.map { Array(genres.prefix($0)) } ?? genres
+        if runtime != nil || year != nil || !shownGenres.isEmpty {
+            FlowLayout(spacing: 6, lineSpacing: 6) {
+                if let runtime { pill(runtime) }
+                if let year { pill(year) }
+                ForEach(shownGenres, id: \.self) { pill($0) }
+            }
+        }
+    }
+
+    private func pill(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(Color(white: 0.8))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color(red: 0.2, green: 0.2, blue: 0.28), in: Capsule())
+    }
+
+    static func formatRuntime(_ mins: Int) -> String {
         let h = mins / 60, m = mins % 60
         if h == 0 { return "\(m)min" }
         if m == 0 { return "\(h)h" }

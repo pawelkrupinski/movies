@@ -27,6 +27,10 @@ class JsonDecodingTest {
         assertTrue("expected a non-empty repertoire", films.isNotEmpty())
         val f = films.first()
         assertFalse("title should be non-blank", f.title.isBlank())
+        // Year + genres ride on the lean listing so the card/detail can show
+        // the same pills the web does.
+        assertEquals(2026, f.releaseYear)
+        assertEquals(listOf("Animacja", "Komedia", "Familijny"), f.genres)
         // The listing carries the full showings tree (date → cinema → showtime).
         val day = f.showings.firstOrNull()
         assertNotNull("expected at least one day of showings", day)

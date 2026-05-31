@@ -23,6 +23,13 @@ struct Film: Identifiable, Hashable, Codable {
     /// either, so end-users see the poster fine.
     let fallbackPosterURLs: [URL]
     let runtimeMinutes: Int?
+    /// Release year — shown as a `.pill.year` next to runtime, mirroring
+    /// the web `_movieCard` / `/film` title block. Optional because not
+    /// every cinema/enrichment source resolves a year.
+    let releaseYear: Int?
+    /// Genre labels (already in source-priority order from the server).
+    /// The web card shows the first three; the `/film` page shows all.
+    let genres: [String]
     let ratings: Ratings
     let countries: [String]
     let directors: [String]

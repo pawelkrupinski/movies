@@ -31,7 +31,7 @@ final class PrunedPastShowingsTests: XCTestCase {
 
     private func film(_ title: String, _ days: [DayShowings]) -> Film {
         Film(title: title, posterURL: nil, fallbackPosterURLs: [],
-             runtimeMinutes: 90, ratings: .empty, countries: [], directors: [], cast: [], showings: days)
+             runtimeMinutes: 90, releaseYear: nil, genres: [], ratings: .empty, countries: [], directors: [], cast: [], showings: days)
     }
 
     private func pinnedNow() -> Date { warsawDate(year: 2026, month: 5, day: 22, hour: 18, minute: 0) }

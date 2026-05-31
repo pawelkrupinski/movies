@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
+import pl.kinowo.ui.common.MetaPills
 import pl.kinowo.ui.common.PosterImage
 import pl.kinowo.ui.common.RatingBadges
 import pl.kinowo.ui.common.Showings
@@ -90,9 +91,13 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(film.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    film.runtimeMinutes?.let {
-                        Text(pl.kinowo.ui.list.formatRuntime(it), color = TextSecondary, fontSize = 13.sp)
-                    }
+                    // Runtime / year / genre pills — the `/film` title block
+                    // shows every genre (no cap, unlike the listing card).
+                    MetaPills(
+                        runtimeMinutes = film.runtimeMinutes,
+                        releaseYear = film.releaseYear,
+                        genres = film.genres,
+                    )
                     RatingBadges(film.ratings)
                 }
             }
@@ -123,6 +128,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
             MetaBlock("Opis", details?.synopsis)
             MetaBlock("Reżyseria", film.directors.joinToString(", ").ifEmpty { null })
             MetaBlock("Obsada", film.cast.joinToString(", ").ifEmpty { null })
+            MetaBlock("Kraj(e) produkcji", film.countries.joinToString(", ").ifEmpty { null })
 
             // Trailers (from /api/details).
             val trailers = details?.trailerURLs.orEmpty()

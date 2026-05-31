@@ -87,6 +87,11 @@ enum HTMLParser {
             posterURL: poster,
             fallbackPosterURLs: fallbacks,
             runtimeMinutes: runtime,
+            // The legacy home-page HTML this parser handles carries no
+            // year/genre attributes; the JSON `/api/repertoire` path
+            // (RepertoireStore) is the one that populates them.
+            releaseYear: nil,
+            genres: [],
             ratings: ratings,
             countries: countries,
             directors: directors,

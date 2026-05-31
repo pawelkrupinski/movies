@@ -21,6 +21,11 @@ data class Film(
      *  `posterURL` fails to load (cinema CDNs intermittently 403/404). */
     val fallbackPosterURLs: List<String> = emptyList(),
     val runtimeMinutes: Int? = null,
+    /** Release year — shown as a pill next to runtime (web `.pill.year`). */
+    val releaseYear: Int? = null,
+    /** Genre labels in source-priority order. The card shows the first
+     *  three; the detail screen shows them all (web `.pill.genre`). */
+    val genres: List<String> = emptyList(),
     val ratings: Ratings = Ratings.EMPTY,
     val countries: List<String> = emptyList(),
     val directors: List<String> = emptyList(),

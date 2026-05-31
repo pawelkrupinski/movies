@@ -17,7 +17,7 @@ final class GroupedByCinemaTests: XCTestCase {
 
     private func film(_ title: String, _ days: [DayShowings]) -> Film {
         Film(title: title, posterURL: nil, fallbackPosterURLs: [],
-             runtimeMinutes: 100, ratings: .empty, countries: [], directors: [], cast: [], showings: days)
+             runtimeMinutes: 100, releaseYear: nil, genres: [], ratings: .empty, countries: [], directors: [], cast: [], showings: days)
     }
 
     func testEmptyInputReturnsEmptyArray() {

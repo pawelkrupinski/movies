@@ -20,7 +20,7 @@ final class FilteredForTests: XCTestCase {
         countries: [String] = [], directors: [String] = [], cast: [String] = []
     ) -> Film {
         Film(title: title, posterURL: nil, fallbackPosterURLs: [],
-             runtimeMinutes: 100, ratings: .empty, countries: countries,
+             runtimeMinutes: 100, releaseYear: nil, genres: [], ratings: .empty, countries: countries,
              directors: directors, cast: cast, showings: days)
     }
 

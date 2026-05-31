@@ -58,6 +58,13 @@ struct FilmDetailView: View {
                     .font(.system(size: 22, weight: .bold))
                     .foregroundColor(.white)
                     .fixedSize(horizontal: false, vertical: true)
+                // Runtime / year / genre pills — the `/film` title block
+                // shows every genre (no cap, unlike the listing card).
+                MetaPillsView(
+                    runtimeMinutes: film.runtimeMinutes,
+                    releaseYear: film.releaseYear,
+                    genres: film.genres
+                )
                 if !film.ratings.isEmpty {
                     RatingBadgesView(ratings: film.ratings)
                 }
@@ -141,6 +148,7 @@ struct FilmDetailView: View {
             metaBlock(label: "Opis",      value: filmDetails?.synopsis)
             metaBlock(label: "Reżyseria", value: joined(film.directors))
             metaBlock(label: "Obsada",    value: joined(film.cast))
+            metaBlock(label: "Kraj(e) produkcji", value: joined(film.countries))
         }
     }
 

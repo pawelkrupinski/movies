@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -24,11 +23,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.model.Film
+import pl.kinowo.ui.common.MetaPills
 import pl.kinowo.ui.common.PosterImage
 import pl.kinowo.ui.common.RatingBadges
 import pl.kinowo.ui.common.Showings
 import pl.kinowo.ui.theme.CardSurface
-import pl.kinowo.ui.theme.TextSecondary
 
 /**
  * One film card in the grid: 2:3 poster (with a hide button), then title +
@@ -78,22 +77,22 @@ fun FilmCard(
                 }
             }
             Column(Modifier.padding(12.dp)) {
-                Row(Modifier.fillMaxWidth()) {
-                    Text(
-                        text = film.title,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    film.runtimeMinutes?.let { mins ->
-                        Text(
-                            text = "  ${formatRuntime(mins)}",
-                            color = TextSecondary,
-                            fontSize = 11.sp,
-                        )
-                    }
-                }
+                Text(
+                    text = film.title,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // Runtime / year / genre pills — the web `_movieCard` caps
+                // genres at three.
+                MetaPills(
+                    runtimeMinutes = film.runtimeMinutes,
+                    releaseYear = film.releaseYear,
+                    genres = film.genres,
+                    maxGenres = 3,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
                 if (!film.ratings.isEmpty) {
                     RatingBadges(film.ratings, Modifier.padding(top = 8.dp))
                 }
@@ -105,16 +104,5 @@ fun FilmCard(
                 )
             }
         }
-    }
-}
-
-/** "157" → "2h 37min", "45" → "45min". Matches the web/iOS runtime label. */
-fun formatRuntime(mins: Int): String {
-    val h = mins / 60
-    val m = mins % 60
-    return when {
-        h > 0 && m > 0 -> "${h}h ${m}min"
-        h > 0 -> "${h}h"
-        else -> "${m}min"
     }
 }
