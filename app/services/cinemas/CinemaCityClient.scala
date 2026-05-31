@@ -113,10 +113,7 @@ class CinemaCityClient(http: HttpFetch) {
           val details = detailsByFilmId.getOrElse(filmId, CinemaCityClient.Details.empty)
           CinemaMovie(
             movie       = Movie(
-              info.name
-                .stripPrefix("Ladies Night - ")
-                .stripSuffix(" - powrót do kin")
-                .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", ""),
+              CinemaCityClient.cleanTitle(info.name),
               info.runtimeMinutes,
               info.releaseYear,
               countries = info.countries,
@@ -140,6 +137,18 @@ class CinemaCityClient(http: HttpFetch) {
 }
 
 object CinemaCityClient {
+
+  /** Strip event/cycle decoration so a decorated screening collapses onto the
+   *  same Movie — and enriches off the same clean title — as the regular run:
+   *  "Ladies Night - X" (ladies' night), "X - powrót do kin" (re-release),
+   *  "Kolekcja Mamoru Hosody: X" (anime retrospective). Without it the
+   *  decorated string is its own row that TMDB/Filmweb can't resolve. Public
+   *  so the strip is unit-testable directly. */
+  def cleanTitle(name: String): String =
+    name
+      .stripPrefix("Ladies Night - ")
+      .stripSuffix(" - powrót do kin")
+      .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", "")
 
   /** Per-film metadata parsed from the public film page. Countries used to
    *  live in a `<p>Produkcja: …</p>` line; cast/director/synopsis come from

@@ -646,4 +646,27 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     CinemaCityClient.normalizeAuditorium("VIP")     shouldBe "VIP"
     CinemaCityClient.normalizeAuditorium("Sala 4D") shouldBe "Sala 4D"
   }
+
+  // ─── cleanTitle: strip event/cycle decoration ─────────────────────────────
+  //
+  // Each strip lets a decorated screening merge onto — and enrich off — the
+  // same clean title as the regular run. Drop any one strip and the matching
+  // assertion fails, exactly as it would have before the strip was added.
+
+  "CinemaCityClient.cleanTitle" should "strip the 'Ladies Night - ' prefix" in {
+    CinemaCityClient.cleanTitle("Ladies Night - Narodziny gwiazdy") shouldBe "Narodziny gwiazdy"
+  }
+
+  it should "strip the ' - powrót do kin' re-release suffix" in {
+    CinemaCityClient.cleanTitle("Top Gun - powrót do kin") shouldBe "Top Gun"
+  }
+
+  it should "strip the 'Kolekcja Mamoru Hosody:' anime-retrospective prefix" in {
+    CinemaCityClient.cleanTitle("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas") shouldBe
+      "O dziewczynie skaczącej przez czas"
+  }
+
+  it should "leave an undecorated title untouched" in {
+    CinemaCityClient.cleanTitle("Diabeł ubiera się u Prady 2") shouldBe "Diabeł ubiera się u Prady 2"
+  }
 }

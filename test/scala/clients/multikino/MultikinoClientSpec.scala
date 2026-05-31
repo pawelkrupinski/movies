@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.MultikinoClient
+import services.cinemas.{MultikinoClient, MultikinoParser}
 
 import java.time.LocalDateTime
 
@@ -645,6 +645,26 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     // This title has lowercase letters inside the team-names half, so it
     // is NOT all-uppercase by the rule — preserve verbatim.
     titles should contain ("LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC")
+  }
+
+  // ── cleanTitle: strip cycle decoration ────────────────────────────────────
+  //
+  // Each strip lets a decorated screening merge onto — and enrich off — the
+  // same row as the regular run. Drop either strip and the matching assertion
+  // fails, exactly as it would have before the strip was added.
+
+  "MultikinoParser.cleanTitle" should "strip the 'Kino na obcasach:' ladies-programme prefix" in {
+    MultikinoParser.cleanTitle("Kino na obcasach: Diabeł ubiera się u Prady 2") shouldBe
+      "Diabeł ubiera się u Prady 2"
+  }
+
+  it should "strip the 'Kolekcja Mamoru Hosody:' anime-retrospective prefix" in {
+    MultikinoParser.cleanTitle("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas") shouldBe
+      "O dziewczynie skaczącej przez czas"
+  }
+
+  it should "leave an undecorated title untouched" in {
+    MultikinoParser.cleanTitle("Diabeł ubiera się u Prady 2") shouldBe "Diabeł ubiera się u Prady 2"
   }
 
 }

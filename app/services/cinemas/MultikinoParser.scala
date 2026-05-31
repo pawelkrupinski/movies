@@ -18,16 +18,19 @@ object MultikinoParser {
   def parse(json: String): Seq[CinemaMovie] =
     (Json.parse(json) \ "result").as[JsArray].value.map(parseFilm).toSeq
 
-  private def parseFilm(film: JsValue): CinemaMovie = {
-    val title       = normaliseCase((film \ "filmTitle").as[String]
+  /** Strip cycle decoration so a decorated screening merges onto the same row
+   *  — and enriches off the same clean title — as the regular run: "Kino na
+   *  obcasach: X" (ladies' programme), "Kolekcja Mamoru Hosody: X" (anime
+   *  retrospective). The underlying films are widely-released titles other
+   *  cinemas list bare; leaving the prefix on produces a Multikino-only
+   *  variant TMDB / Filmweb queries can't find. Public for direct unit tests. */
+  def cleanTitle(filmTitle: String): String =
+    filmTitle
       .replaceFirst("^Kino na obcasach:\\s*", "")
-      // Animation retrospective programme. Multikino prepends the cycle
-      // name; the underlying films are widely-released anime that other
-      // cinemas list under their bare titles. Strip so the row merges
-      // with those cinemas instead of producing a Multikino-only variant
-      // that TMDB / Filmweb queries can't find ("Kolekcja Mamoru
-      // Hosody:" isn't part of any film's canonical title).
-      .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", ""))
+      .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", "")
+
+  private def parseFilm(film: JsValue): CinemaMovie = {
+    val title       = normaliseCase(cleanTitle((film \ "filmTitle").as[String]))
     val multikinoId = (film \ "filmId").asOpt[String].filter(_.nonEmpty)
     val mxcId       = (film \ "movieXchangeCode").asOpt[String].filter(_.nonEmpty)
     val sessions    = (film \ "showingGroups").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)

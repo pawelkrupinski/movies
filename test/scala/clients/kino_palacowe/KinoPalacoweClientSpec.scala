@@ -167,4 +167,26 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Giulietta i duchy").trailerUrl shouldBe None
     byTitle("Głos z księżyca").trailerUrl shouldBe None
   }
+
+  // ── cleanTitle: strip cycle decoration ────────────────────────────────────
+  //
+  // Each strip lets a decorated screening merge onto — and enrich off — the
+  // same canonical row as the regular run. Drop any one strip and the matching
+  // assertion fails, exactly as it would have before the strip was added.
+
+  "KinoPalacoweClient.cleanTitle" should "strip the 'Poranek dla dzieci: ' kids-matinee prefix" in {
+    KinoPalacoweClient.cleanTitle("Poranek dla dzieci: Pucio") shouldBe "Pucio"
+  }
+
+  it should "strip the 'DKF Zamek: ' film-club prefix" in {
+    KinoPalacoweClient.cleanTitle("DKF Zamek: Belle") shouldBe "Belle"
+  }
+
+  it should "strip the 'WAJDA: re-wizje. ' retrospective prefix" in {
+    KinoPalacoweClient.cleanTitle("WAJDA: re-wizje. Człowiek z marmuru") shouldBe "Człowiek z marmuru"
+  }
+
+  it should "leave an undecorated title untouched" in {
+    KinoPalacoweClient.cleanTitle("Chłopiec na krańcach świata") shouldBe "Chłopiec na krańcach świata"
+  }
 }

@@ -194,15 +194,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
     if (filmUrl.isEmpty || ticketType != 2) None
     else {
       val rawTitle  = (entry \ "title").asOpt[String].getOrElse("")
-      val title     = rawTitle.split(" \\| ").head.trim
-        .stripPrefix("Poranek dla dzieci: ")
-        .stripPrefix("DKF Zamek: ")
-        // Andrzej Wajda retrospective programme — same films Kino Apollo
-        // lists with its own `Cykl „Wajda: re-wizje"` prefix (already
-        // handled by `TitleNormalizer.searchTitle`'s `CyklPrefix`). Strip
-        // the Pałacowe-shaped prefix here so both cinemas' screenings
-        // collapse onto the same canonical row instead of two.
-        .stripPrefix("WAJDA: re-wizje. ")
+      val title     = KinoPalacoweClient.cleanTitle(rawTitle.split(" \\| ").head.trim)
       val startDate = (entry \ "start_date").asOpt[String]
       val startTime = (entry \ "start_time").asOpt[String]
 
@@ -232,5 +224,21 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
       }
     }
   }
+}
+
+object KinoPalacoweClient {
+
+  /** Strip cycle decoration so a decorated screening collapses onto the same
+   *  canonical row — and enriches off the same clean title — as the regular
+   *  run: "Poranek dla dzieci: X" (kids' matinee), "DKF Zamek: X" (film-club),
+   *  "WAJDA: re-wizje. X" (the Andrzej Wajda retrospective, which Kino Apollo
+   *  lists under its own `Cykl „Wajda: re-wizje"` prefix — strip the Pałacowe
+   *  shape here so both cinemas' screenings land on one row, not two). Public
+   *  so the strip is unit-testable directly. */
+  def cleanTitle(title: String): String =
+    title
+      .stripPrefix("Poranek dla dzieci: ")
+      .stripPrefix("DKF Zamek: ")
+      .stripPrefix("WAJDA: re-wizje. ")
 }
 
