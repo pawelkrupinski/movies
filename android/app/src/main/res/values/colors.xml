@@ -3,5 +3,4 @@
     <!-- Brand tint — RGB(0.42, 0.67, 0.87), the iOS app's accent. -->
     <color name="brand">#FF6BABDE</color>
     <color name="background">#FF09090F</color>
-    <color name="ic_launcher_background">#FF09090F</color>
 </resources>

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Full-bleed adaptive icon: the iOS app artwork (cinema seat + popcorn on a
+     dark-blue field) fills the background layer, so the launcher mask just
+     rounds the corners — matching the iOS icon. Foreground is empty. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
-    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+    <background android:drawable="@mipmap/ic_launcher_art" />
+    <foreground android:drawable="@android:color/transparent" />
 </adaptive-icon>
