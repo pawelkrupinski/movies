@@ -37,7 +37,11 @@ class UserStateController(
     request.session.get("userId") match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
-        fromJson(userId, request.body) match {
+        // PUT is a partial update over the stored row (see fromJson): fields
+        // the body omits keep their stored value, so a client that only
+        // models some of the sets can't wipe the others.
+        val base = userStateRepo.find(userId).getOrElse(UserState.empty(userId))
+        fromJson(base, request.body) match {
           case Left(reason) => BadRequest(Json.obj("error" -> reason))
           case Right(state) =>
             userStateRepo.upsert(state)
@@ -80,15 +84,19 @@ object UserStateController {
     "favouriteRooms"  -> state.favouriteRooms.toSeq.sorted
   )
 
-  /** Parse a wire JSON into `UserState` bound to `userId`. Missing
-   *  arrays default to empty (lets the client send just the field
-   *  that changed without re-shipping everything). Wrong shape
-   *  (non-array value, non-string element) returns Left with a hint.
+  /** Parse a wire JSON into `UserState` as a PARTIAL update over `base`: a
+   *  field present in the body overwrites that set, a field the body omits
+   *  keeps `base`'s value (and a present-but-empty array clears it). This
+   *  lets a client send only the fields it owns without re-shipping — and,
+   *  crucially, without wiping the ones it doesn't model: the mobile apps
+   *  send only hiddenFilms + disabledCinemas, so the web-only /plan picks
+   *  (selectedMovies / favouriteRooms) must survive their writes. Wrong
+   *  shape (non-array value, non-string element) returns Left with a hint.
    */
-  def fromJson(userId: String, body: JsValue): Either[String, UserState] = {
-    def stringSet(field: String): Either[String, Set[String]] =
+  def fromJson(base: UserState, body: JsValue): Either[String, UserState] = {
+    def stringSet(field: String, fallback: Set[String]): Either[String, Set[String]] =
       (body \ field).toOption match {
-        case None                      => Right(Set.empty)
+        case None                      => Right(fallback)
         case Some(jsArr) =>
           jsArr.asOpt[Seq[String]] match {
             case Some(seq) => Right(seq.toSet)
@@ -96,10 +104,10 @@ object UserStateController {
           }
       }
     for {
-      hf <- stringSet("hiddenFilms")
-      dc <- stringSet("disabledCinemas")
-      sm <- stringSet("selectedMovies")
-      fr <- stringSet("favouriteRooms")
-    } yield UserState(userId, hf, dc, Instant.now(), sm, fr)
+      hf <- stringSet("hiddenFilms",     base.hiddenFilms)
+      dc <- stringSet("disabledCinemas", base.disabledCinemas)
+      sm <- stringSet("selectedMovies",  base.selectedMovies)
+      fr <- stringSet("favouriteRooms",  base.favouriteRooms)
+    } yield UserState(base.userId, hf, dc, Instant.now(), sm, fr)
   }
 }

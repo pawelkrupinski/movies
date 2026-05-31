@@ -90,6 +90,44 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     stored.favouriteRooms  shouldBe Set("Multikino Stary Browar|Sala 5")
   }
 
+  it should "preserve fields the body omits (partial update — mobile sends only hidden+disabled)" in {
+    val initial = UserState(
+      userId          = "u1",
+      hiddenFilms     = Set("OLD HIDE"),
+      disabledCinemas = Set("OLD CINEMA"),
+      updatedAt       = Instant.now(),
+      selectedMovies  = Set("Plan Pick"),
+      favouriteRooms  = Set("Helios|Sala 1")
+    )
+    val (ctl, repo, _) = fixture(Some(initial))
+    // A mobile client PUTs only the two sets it models — the web-only /plan
+    // picks must survive untouched.
+    val request = FakeRequest("PUT", "/api/me/state")
+      .withSession("userId" -> "u1")
+      .withBody(Json.obj(
+        "hiddenFilms"     -> Json.arr("New Hide"),
+        "disabledCinemas" -> Json.arr("New Cinema")
+      ))
+
+    status(ctl.put()(request)) shouldBe OK
+    val stored = repo.find("u1").value
+    stored.hiddenFilms     shouldBe Set("New Hide")       // present → replaced
+    stored.disabledCinemas shouldBe Set("New Cinema")     // present → replaced
+    stored.selectedMovies  shouldBe Set("Plan Pick")      // absent  → preserved
+    stored.favouriteRooms  shouldBe Set("Helios|Sala 1")  // absent  → preserved
+  }
+
+  it should "still clear a field when the body sends it as an explicit empty array" in {
+    val initial = UserState("u1", Set("H"), Set.empty, Instant.now(), selectedMovies = Set("Pick"))
+    val (ctl, repo, _) = fixture(Some(initial))
+    val request = FakeRequest("PUT", "/api/me/state")
+      .withSession("userId" -> "u1")
+      .withBody(Json.obj("selectedMovies" -> Json.arr()))
+    status(ctl.put()(request)) shouldBe OK
+    repo.find("u1").value.selectedMovies shouldBe empty   // present-but-empty → cleared
+    repo.find("u1").value.hiddenFilms    shouldBe Set("H") // absent → preserved
+  }
+
   it should "echo the saved state in the response so the client confirms what landed" in {
     val (ctl, _, _) = fixture()
     val request = FakeRequest("PUT", "/api/me/state")
@@ -140,13 +178,14 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   // ── Pure helpers (also covered indirectly by the action specs above) ────
 
-  "UserStateController.fromJson" should "treat missing fields as empty sets" in {
-    UserStateController.fromJson("u1", Json.obj()) match {
+  "UserStateController.fromJson" should "keep base fields the body omits and overwrite the ones it sends" in {
+    val base = UserState("u1", Set("H"), Set("D"), Instant.now(), Set("S"), Set("F"))
+    UserStateController.fromJson(base, Json.obj("hiddenFilms" -> Json.arr("H2"))) match {
       case Right(s) =>
-        s.hiddenFilms     shouldBe empty
-        s.disabledCinemas shouldBe empty
-        s.selectedMovies  shouldBe empty
-        s.favouriteRooms  shouldBe empty
+        s.hiddenFilms     shouldBe Set("H2")  // present → overwritten
+        s.disabledCinemas shouldBe Set("D")   // absent  → preserved
+        s.selectedMovies  shouldBe Set("S")   // absent  → preserved
+        s.favouriteRooms  shouldBe Set("F")   // absent  → preserved
       case Left(reason) => fail(s"expected Right, got Left($reason)")
     }
   }

@@ -60,11 +60,11 @@ class HttpUserStateClient(
         }
     }
 
-    // We send/read only the two sets the mobile UI has. The server's wire
-    // shape also carries selectedMovies/favouriteRooms (the web /plan picks);
-    // we mirror iOS's client exactly and omit them. (Note: the server's PUT
-    // defaults any missing array to empty, so this matches iOS in also not
-    // preserving those /plan-only fields — mobile never sets them anyway.)
+    // We send/read only the two sets the mobile UI models. The server's wire
+    // shape also carries selectedMovies/favouriteRooms (the web /plan picks),
+    // but PUT /api/me/state is a partial update — omitted fields keep their
+    // stored value — so leaving them out preserves the user's /plan picks
+    // rather than wiping them. Mirrors iOS's client.
     @Serializable
     private data class WireState(
         val hiddenFilms: Set<String> = emptySet(),
