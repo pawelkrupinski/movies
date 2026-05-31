@@ -67,7 +67,11 @@ jobs:
                       target
                       project/target
                       project/project/target
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+                  # Scope the exact key to the sources this job compiles
+                  # (unit = app + test); a change to it/page specs no
+                  # longer busts it. restore-keys still falls back to any
+                  # recent sbt-target cache so zinc stays warm on a miss.
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'conf/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
@@ -153,7 +157,9 @@ jobs:
                       target
                       project/target
                       project/project/target
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+                  # Boots PageTest FixtureServerMain → page scope
+                  # (app + test + page). restore-keys keeps zinc warm.
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'page/**/*.scala', 'conf/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
@@ -246,7 +252,8 @@ jobs:
                       target
                       project/target
                       project/project/target
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+                  # it scope (app + test + it). restore-keys keeps zinc warm.
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'conf/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 

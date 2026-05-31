@@ -54,7 +54,9 @@ runs:
           target
           project/target
           project/project/target
-        key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+        # PageTest/test + FixtureServerMain → page scope (app + test +
+        # page). restore-keys falls back to any recent sbt-target cache.
+        key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'page/**/*.scala', 'conf/**') }}
         restore-keys: |
           sbt-target-${{ runner.os }}-
 
