@@ -14,6 +14,12 @@ on:
         - cron: '0 4 * * *'
     workflow_dispatch:
 
+# `checks: write` so action-junit-report can post failure check-runs +
+# summaries; `contents: read` for checkout. All jobs are same-repo.
+permissions:
+    contents: read
+    checks: write
+
 # Three jobs, two lanes:
 #
 #   unit-integration ─► Linux swift:5.10 container, fast.
@@ -39,7 +45,16 @@ jobs:
 
             # RUN_SMOKE_TESTS unset → SmokeTestCase XCTSkips itself, so a
             # plain `swift test` covers Unit + Integration cleanly.
-            - run: swift test --package-path ios
+            - run: swift test --package-path ios --xunit-output ios-unit.xml
+
+            - name: Publish test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  report_paths: 'ios-unit*.xml'
+                  check_name: iOS unit/integration
+                  detailed_summary: true
+                  include_passed: false
 
 
     ui-tests:
@@ -64,11 +79,44 @@ jobs:
                       -resultBundlePath build/Kinowo.xcresult \
                       CODE_SIGNING_ALLOWED=NO
 
+            # Turn the binary XCUITest result bundle into JUnit XML so a
+            # failure is readable on the run page without Xcode. The
+            # upload below keeps the full bundle for deep inspection.
+            - name: Convert xcresult to JUnit
+              if: always()
+              run: |
+                  brew install a7ex/homebrew-formulae/xcresultparser
+                  xcresultparser --output-format junit build/Kinowo.xcresult > xcuitest.xml || true
+
+            - name: Publish XCUITest report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  report_paths: 'xcuitest.xml'
+                  check_name: iOS XCUITest
+                  detailed_summary: true
+                  include_passed: false
+
+            # XCUITest step is continue-on-error (target still being
+            # wired), so leave a glance-able signal when it has failures.
+            - name: Flag XCUITest failures
+              if: always()
+              run: '[ -s xcuitest.xml ] && grep -q "<failure" xcuitest.xml && echo "::warning::XCUITest reported failures — see the iOS XCUITest check" || true'
+
             # Parity check — catches Foundation/Darwin vs Linux drift in
             # the parser layer that Linux swift-corelibs-foundation
             # wouldn't surface.
             - name: Run SPM tests on macOS
-              run: swift test --package-path ios
+              run: swift test --package-path ios --xunit-output ios-macos.xml
+
+            - name: Publish SPM macOS report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  report_paths: 'ios-macos*.xml'
+                  check_name: iOS SPM (macOS)
+                  detailed_summary: true
+                  include_passed: false
 
             - uses: actions/upload-artifact@v4
               if: failure()

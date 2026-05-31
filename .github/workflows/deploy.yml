@@ -133,6 +133,9 @@ jobs:
     # `continue-on-error: false` (default) — deploy depends on this.
     ios-local-server:
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            checks: write
         steps:
             - uses: actions/checkout@v4
 
@@ -192,7 +195,18 @@ jobs:
                   echo "fixture server listening on http://127.0.0.1:$PORT"
 
             - name: Run LocalServer iOS tests
-              run: swift test --package-path ios --filter LocalServer
+              run: swift test --package-path ios --filter LocalServer --xunit-output ios-localserver.xml
+
+            - name: Publish test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  # SwiftPM writes `<base>.xml` (XCTest) and
+                  # `<base>-swift-testing.xml` (swift-testing); glob both.
+                  report_paths: 'ios-localserver*.xml'
+                  check_name: iOS LocalServer
+                  detailed_summary: true
+                  include_passed: false
 
             - name: Stop FixtureServerMain
               if: always()
