@@ -10,6 +10,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import pl.kinowo.data.DetailsRepository
@@ -155,6 +156,20 @@ class KinowoViewModel(
     }
 
     // ── prefs mutations ───────────────────────────────────────────────────
+    /**
+     * One-shot read of the persisted swipe-hint state, evaluated against
+     * `today` (`yyyy-MM-dd`). Reads straight from DataStore rather than a
+     * cached StateFlow so the decision can't race the flow's initial value.
+     */
+    suspend fun shouldShowSwipeHint(today: String): Boolean = SwipeHint.shouldShow(
+        hasSwiped = prefs.hasSwipedScreens.first(),
+        lastShownDate = prefs.swipeHintShownDate.first(),
+        today = today,
+    )
+
+    fun markSwiped() = viewModelScope.launch { prefs.markSwiped() }
+    fun markSwipeHintShown(date: String) = viewModelScope.launch { prefs.markSwipeHintShown(date) }
+
     fun hide(title: String) = viewModelScope.launch { prefs.hide(title) }
     fun unhide(title: String) = viewModelScope.launch { prefs.unhide(title) }
     fun unhideAll() = viewModelScope.launch { prefs.unhideAll() }

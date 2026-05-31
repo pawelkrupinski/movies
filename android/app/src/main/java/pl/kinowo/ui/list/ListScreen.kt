@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -22,32 +25,37 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.Swipe
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.take
+import java.time.LocalDate
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.model.Film
@@ -64,79 +72,115 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     val error by vm.error.collectAsState()
 
     val pager = rememberPagerState(pageCount = { 2 })
-    val scope = rememberCoroutineScope()
     var showFilters by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Edge-to-edge: keep the custom top chrome below the status bar and the
-    // grid above the nav bar. (DetailScreen's Scaffold handles its own insets.)
-    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
-        // ── top chrome ────────────────────────────────────────────────────
-        Row(
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("🎬 Kinowo", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            IconButton(onClick = { showFilters = true }) {
-                Icon(
-                    Icons.Outlined.FilterList,
-                    contentDescription = "Filtry",
-                    tint = if (vm.filtersActive) Brand else TextSecondary,
-                )
-            }
+    // There is no tab bar — Filmy / Kina are reached only by swiping the
+    // pager. Two affordances stand in for it (mirroring the iOS app):
+    //  • a momentary centre label naming the screen on arrival, and
+    //  • a once-a-day swipe hint until the user's first-ever swipe.
+    var tabLabel by remember { mutableStateOf<String?>(null) }
+    var showSwipeHint by remember { mutableStateOf(false) }
+
+    // Flash the destination screen's name on first appear and on each swipe,
+    // then fade it after 0.7 s. Re-keying on currentPage cancels the previous
+    // delay, so back-to-back swipes don't leave a stale label stuck.
+    LaunchedEffect(pager.currentPage) {
+        tabLabel = if (pager.currentPage == 0) "Filmy" else "Kina"
+        delay(700)
+        tabLabel = null
+    }
+
+    // The first-ever settled page change is, by definition, a real swipe (no
+    // tabs left to drive it programmatically): retire the hint for good.
+    LaunchedEffect(Unit) {
+        snapshotFlow { pager.currentPage }.drop(1).take(1).collect {
+            showSwipeHint = false
+            vm.markSwiped()
         }
+    }
 
-        PrimaryTabRow(selectedTabIndex = pager.currentPage) {
-            Tab(
-                selected = pager.currentPage == 0,
-                onClick = { scope.launch { pager.animateScrollToPage(0) } },
-                text = { Text("Filmy") },
-            )
-            Tab(
-                selected = pager.currentPage == 1,
-                onClick = { scope.launch { pager.animateScrollToPage(1) } },
-                text = { Text("Kina") },
-            )
+    // Surface the swipe hint the moment the first repertoire load lands, gated
+    // to once per calendar day until the first swipe. The decision reads
+    // DataStore directly (see KinowoViewModel.shouldShowSwipeHint).
+    val moviesLoaded = films.isNotEmpty()
+    LaunchedEffect(moviesLoaded) {
+        if (!moviesLoaded) return@LaunchedEffect
+        val today = LocalDate.now().toString()
+        if (vm.shouldShowSwipeHint(today)) {
+            showSwipeHint = true
+            vm.markSwipeHintShown(today)
+            delay(2500)
+            showSwipeHint = false
         }
+    }
 
-        DateChips(vm)
-
-        OutlinedTextField(
-            value = vm.search,
-            onValueChange = { vm.search = it },
-            placeholder = { Text("Szukaj filmu") },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            trailingIcon = {
-                if (vm.search.isNotEmpty()) {
-                    IconButton(onClick = { vm.search = "" }) {
-                        Icon(Icons.Filled.Close, contentDescription = "Wyczyść")
-                    }
+    Box(Modifier.fillMaxSize()) {
+        // Edge-to-edge: keep the custom top chrome below the status bar and the
+        // grid above the nav bar. (DetailScreen's Scaffold handles its own insets.)
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
+            // ── top chrome ────────────────────────────────────────────────────
+            Row(
+                Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("🎬 Kinowo", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                IconButton(onClick = { showFilters = true }) {
+                    Icon(
+                        Icons.Outlined.FilterList,
+                        contentDescription = "Filtry",
+                        tint = if (vm.filtersActive) Brand else TextSecondary,
+                    )
                 }
-            },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        )
+            }
 
-        if (pager.currentPage == 1) {
-            CinemaChips(vm, films)
-        }
+            DateChips(vm)
 
-        // ── content ───────────────────────────────────────────────────────
-        Box(Modifier.fillMaxSize()) {
-            when {
-                isLoading && films.isEmpty() -> CenteredMessage("Ładowanie repertuaru…")
-                error != null && films.isEmpty() -> ErrorState(error!!) { vm.reload() }
-                else -> HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
-                    PullToRefreshBox(isRefreshing = isLoading, onRefresh = { vm.reload() }) {
-                        if (page == 0) {
-                            FilmsGrid(vm.filmsForFilmsTab(films), onOpenFilm) { vm.hide(it) }
-                        } else {
-                            CinemaGrid(vm.cinemaSections(films), onOpenFilm) { vm.hide(it) }
+            OutlinedTextField(
+                value = vm.search,
+                onValueChange = { vm.search = it },
+                placeholder = { Text("Szukaj filmu") },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (vm.search.isNotEmpty()) {
+                        IconButton(onClick = { vm.search = "" }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Wyczyść")
+                        }
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            )
+
+            if (pager.currentPage == 1) {
+                CinemaChips(vm, films)
+            }
+
+            // ── content ───────────────────────────────────────────────────────
+            Box(Modifier.fillMaxSize()) {
+                when {
+                    isLoading && films.isEmpty() -> CenteredMessage("Ładowanie repertuaru…")
+                    error != null && films.isEmpty() -> ErrorState(error!!) { vm.reload() }
+                    else -> HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
+                        PullToRefreshBox(isRefreshing = isLoading, onRefresh = { vm.reload() }) {
+                            if (page == 0) {
+                                FilmsGrid(vm.filmsForFilmsTab(films), onOpenFilm) { vm.hide(it) }
+                            } else {
+                                CinemaGrid(vm.cinemaSections(films), onOpenFilm) { vm.hide(it) }
+                            }
                         }
                     }
                 }
             }
+        }
+
+        // Centre overlays. The hint takes precedence over the momentary label
+        // so the two pills never stack on top of each other.
+        if (showSwipeHint) {
+            SwipeHintOverlay(Modifier.align(Alignment.Center))
+        } else {
+            tabLabel?.let { TabLabelOverlay(it, Modifier.align(Alignment.Center)) }
         }
     }
 
@@ -147,6 +191,47 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
             sheetState = sheetState,
             onDismiss = { showFilters = false },
         )
+    }
+}
+
+// Momentary screen-name pill (Filmy / Kina), flashed centre-screen on arrival.
+// The iOS counterpart is `TabLabelOverlay` in FiltersBar.swift.
+@Composable
+private fun TabLabelOverlay(text: String, modifier: Modifier = Modifier) {
+    Surface(modifier = modifier, shape = CircleShape, color = Color.Black.copy(alpha = 0.55f)) {
+        Text(
+            text,
+            color = Color.White,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
+        )
+    }
+}
+
+// Once-a-day onboarding hint: a swipe icon over one line of copy, telling
+// first-time users they can swipe to the Kina screen.
+@Composable
+private fun SwipeHintOverlay(modifier: Modifier = Modifier) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(20.dp), color = Color.Black.copy(alpha = 0.6f)) {
+        Column(
+            Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                Icons.Outlined.Swipe,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(34.dp),
+            )
+            Text(
+                "Przesuń, aby zobaczyć kina",
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
     }
 }
 
