@@ -197,6 +197,40 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await expect(page.locator('#view-pager > main')).toHaveCount(1);
   });
 
+  test('the screenings/movies counter does not leak into view while dragging', async ({ page }) => {
+    // The "N tytułów · M seansów" counter is hidden on phones (a media-query
+    // rule keyed on #film-counter). The swap strips the outgoing view-root's id,
+    // which used to drop it out of that rule and flash the count in mid-drag.
+    await waitForCards(page);
+    // Warm both prefetch caches so the drag engages live tracking.
+    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
+    await page.waitForURL(/\/kina$/);
+    await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);
+
+    // Hidden on mobile at rest (no status line visible on either count).
+    await expect(page.locator('#view-pager .grid-status:visible')).toHaveCount(0);
+
+    const box = await page.locator('#film-grid').boundingBox();
+    const y = box.y + Math.min(40, box.height / 2);
+    const x0 = box.x + box.width * 0.6;
+    const client = await page.context().newCDPSession(page);
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
+    for (const x of [x0 - 20, x0 - 90]) {
+      await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] });
+    }
+
+    // Mid-drag: still no status line of EITHER panel shows (the regression was
+    // the outgoing counter leaking visible once its id was stripped).
+    await expect(page.locator('#view-pager .grid-status:visible')).toHaveCount(0);
+
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await client.detach();
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);
+    await expect(page.locator('#view-pager .grid-status:visible')).toHaveCount(0);
+  });
+
   test('swipe starting on the cinema-pill strip does NOT switch view', async ({ page }) => {
     await page.goto('/kina');
     await waitForCards(page);

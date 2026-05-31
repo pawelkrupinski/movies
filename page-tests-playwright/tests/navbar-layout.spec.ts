@@ -322,6 +322,50 @@ test.describe('portrait filtry button (360×760)', () => {
   });
 });
 
+// ── Day selector width: full selected label when the row has room ─
+//
+// Regression for the day-picker `<select>` being pinned to a fixed
+// `max-width` (6.5rem) on every phone ≤575px, which clipped the
+// selected label ("Następne 7 dni" / "Kiedykolwiek") with an ellipsis
+// even on roomy phones where row 2 had ample space. The cap is now a
+// flex shrink: the select shows its full natural width when there's
+// room and only narrows when the row genuinely overflows.
+
+test.describe('day selector width (390×844)', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name.includes('desktop'), 'mobile-class projects only');
+    await page.goto('/');
+    await waitForCards(page);
+  });
+
+  test('selected day label is not clipped when the row has room', async ({ page }) => {
+    const widths = await page.evaluate(() => {
+      const sel = document.getElementById('date-filter') as HTMLSelectElement | null;
+      if (!sel) return null;
+      sel.value = 'week'; // "Następne 7 dni" — the widest static option
+      const rendered = sel.getBoundingClientRect().width;
+      // Reveal the natural (uncapped) width: lift any width constraint
+      // inline and re-measure. If the rendered width is short of this,
+      // the selected label is being clipped.
+      const prevMax = sel.style.maxWidth;
+      const prevW = sel.style.width;
+      sel.style.maxWidth = 'none';
+      sel.style.width = 'max-content';
+      const natural = sel.getBoundingClientRect().width;
+      sel.style.maxWidth = prevMax;
+      sel.style.width = prevW;
+      return { rendered, natural };
+    });
+    expect(widths, '#date-filter not found').not.toBeNull();
+    expect(
+      widths!.rendered,
+      `day selector clipped: rendered ${widths!.rendered.toFixed(1)}px < natural ${widths!.natural.toFixed(1)}px`,
+    ).toBeGreaterThanOrEqual(widths!.natural - 1);
+  });
+});
+
 // ── Orientation flip: grid column transitions ─────────────────────
 
 const PORTRAIT  = { width: 440, height: 956 };

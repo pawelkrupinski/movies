@@ -1566,7 +1566,7 @@
     const exit   = direction === 'left' ? '-100%' : '100%';
     const enter  = direction === 'left' ? '100%'  : '-100%';
 
-    pager.classList.add('view-sliding');
+    pager.classList.add('view-swapping', 'view-sliding');
     incoming.classList.add('view-entering');     // position:absolute over the pager
     incoming.style.transform = 'translateX(' + enter + ')';
     pager.appendChild(incoming);
@@ -1584,7 +1584,7 @@
       current.remove();
       incoming.classList.remove('view-entering');
       incoming.style.transform = '';
-      pager.classList.remove('view-sliding');
+      pager.classList.remove('view-swapping', 'view-sliding');
       _swapping = false;
       _finishSwap = null;
     };
@@ -1695,6 +1695,7 @@
       viewInit:     window.__viewInit,
       kinaPinned:   window._kinaPinned,
     };
+    pager.classList.add('view-swapping');   // hides the grid status line while dragging
     incoming.classList.add('view-entering');
     incoming.style.transform = 'translateX(' + enter + 'px)';
     pager.appendChild(incoming);
@@ -1707,7 +1708,7 @@
   function settleDrag(ctx, commit) {
     const { pager, current, incoming, dir, enter, w, destView, saved, globals } = ctx;
     const finish = () => {
-      pager.classList.remove('view-sliding');
+      pager.classList.remove('view-swapping', 'view-sliding');
       if (commit) {
         current.remove();
         incoming.classList.remove('view-entering');

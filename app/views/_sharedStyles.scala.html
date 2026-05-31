@@ -144,15 +144,12 @@
 
   /* `#date-filter` is the day-picker `<select>`. Its natural width is
      driven by the widest option ("Następne 7 dni" / "Pią 29 maja" /
-     etc.) — ~150 px of select chrome on its own, which on the
-     narrowest portrait phones leaves Filtry no room to share row 2
-     when its label is maxed out. Capping the select shifts the
-     widest-option overflow to an ellipsis on the selected option
-     text; the dropdown panel still shows full option labels. The
-     two breakpoints mirror the search-input shrink ladder above so
-     the row budget rebalances at the same widths. */
-  @@media (max-width: 575px) { #date-filter { max-width: 6.5rem; } }
-  @@media (max-width: 379px) { #date-filter { max-width: 5rem; } }
+     etc.). On mobile it shares row 2 with Filtry; rather than a fixed
+     `max-width` cap (which clipped the selected label on every phone
+     ≤575px, even roomy ones), the select flex-shrinks — see the
+     `.navbar-date` rule in the portrait block below. It shows its
+     full label when the row has slack and only ellipsizes when the
+     row genuinely overflows. */
   .hide-btn {
     position: absolute;
     top: 6px; right: 6px;
@@ -617,7 +614,16 @@
     .navbar-search    { order: 2; margin-left: auto; }
     .navbar-auth      { order: 3; }
     .navbar-row-break { display: block; order: 4; width: 100%; flex-shrink: 0; height: 0; margin: 0; padding: 0; }
-    .navbar-date      { order: 5; margin-left: 0; }
+    .navbar-date      { order: 5; margin-left: 0; min-width: 0; }
+    /* Let the day `<select>` size to its widest option when row 2 has
+       slack (Filtry's `margin-left:auto` absorbs the slack, so the
+       select keeps its full label). Only when the row overflows — the
+       narrowest phones with a long active-filter Filtry label — does
+       the select give up width first: `min-width:0` + shrink let it
+       ellipsize the selected label so Filtry never wraps to a third
+       row. Replaces the old fixed `max-width` cap that clipped the
+       label unconditionally. */
+    .navbar-date .filter-select { min-width: 0; flex-shrink: 1; text-overflow: ellipsis; }
     /* Capped at 40% of the row so the date cluster (two arrows + a
        `<select>` whose widest option "Następne 7 dni" is ~14 chars)
        still fits alongside on the 500 px CI viewport, where Linux
@@ -848,6 +854,17 @@
   @@media (prefers-reduced-motion: reduce) {
     #view-pager.view-sliding > main { transition: none; }
   }
+  /* While a swap is in flight (`.view-swapping` is on for the whole gesture —
+     finger-drag + release animation, and the click slide) hide the grid status
+     line (the "N tytułów · M seansów" counter + the empty-state). The count is
+     already hidden on phones by the `#film-counter { display: none }` rule
+     above, but the swap strips the OUTGOING view-root's `#film-counter` id
+     (so the incoming view can own it), which drops the outgoing counter out of
+     that id-keyed rule and leaks the number back into view as the panel slides.
+     Targeting the `.grid-status` class (not the id) re-hides BOTH panels for the
+     duration of the swap regardless of the id-strip; it reappears (where it
+     normally would) once the swap settles and the class comes off. */
+  #view-pager.view-swapping .grid-status { display: none !important; }
   /* Claim horizontal gestures over the grid for the swipe-to-switch handler:
      `pan-y` lets the browser keep vertical scrolling but stops it treating a
      horizontal drag as a (non-existent) horizontal scroll and cancelling the
