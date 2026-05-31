@@ -63,7 +63,9 @@ struct MetaPillsView: View {
         let runtime = (runtimeMinutes ?? 0) > 0 ? Self.formatRuntime(runtimeMinutes!) : nil
         let year = releaseYear.map(String.init)
         if runtime != nil || year != nil || !genres.isEmpty {
-            FlowLayout(spacing: 6, lineSpacing: 6) {
+            // Bottom-align so the larger plain-text year shares a bottom
+            // edge with the smaller pills.
+            FlowLayout(spacing: 6, lineSpacing: 6, bottomAligned: true) {
                 if let runtime { pill(runtime) }
                 if let year { yearText(year) }
                 ForEach(genres, id: \.self) { pill($0) }
@@ -81,12 +83,13 @@ struct MetaPillsView: View {
     }
 
     /// Year as plain text, mirroring the web's `.year` (no pill
-    /// background or border, dimmer `#888` ink). Carries the pill's
-    /// vertical padding so its text sits on the same line as the
-    /// pilled text rather than riding higher in the flow row.
+    /// background or border, dimmer `#888` ink). Rendered a touch larger
+    /// than the pills; the flow row bottom-aligns items and the matching
+    /// vertical padding keeps the year's text bottom flush with the
+    /// pilled text bottom.
     private func yearText(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11, weight: .medium))
+            .font(.system(size: 13, weight: .medium))
             .foregroundColor(Color(white: 0.53))
             .padding(.vertical, 3)
     }
