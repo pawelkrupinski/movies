@@ -82,6 +82,10 @@
       .cinema-pill:hover { background: #3a3a6e; color: #fff; }
     }
     .cinema-pill.active { background: #3a3a6e; color: #fff; }
+    /* On desktop the pills wrap to as many rows as they need; the row is
+       allowed to grow tall (the `height: auto` override above lifts the
+       shared navbar height cap). */
+    .cinema-pills { flex-wrap: wrap; gap: .25rem; }
     /* Below 576 px the kina-specific chrome rides the shared
        `--mobile-scale` knob defined in `_sharedStyles` — same factor
        as the navbar and card text, so the section header, pill row
@@ -98,9 +102,38 @@
         padding-right: calc(.75 * var(--mobile-scale)) !important;
         gap: calc(.25 * var(--mobile-scale));
       }
+      /* On phones the pills don't wrap — too many cinemas would eat the
+         whole screen. Instead the row becomes a single horizontally
+         scrollable strip: `nowrap` keeps it one line, `overflow-x: auto`
+         lets the user swipe through it, and the scrollbar is hidden so it
+         reads as a clean nav strip. The pills stay their natural width
+         (`flex-shrink: 0` + `white-space: nowrap`) instead of squashing.
+
+         The selector is `.navbar.cinema-nav-row > .cinema-pills` (0,3,0)
+         on purpose: the shared `_sharedStyles` rule `.navbar >
+         div:first-child { overflow: visible }` (same `max-width: 575px`
+         breakpoint) matches this very element at (0,2,1) and would
+         otherwise clobber `overflow-x`, killing the scroll. Three classes
+         outrank it cleanly, no source-order dependence. */
+      .navbar.cinema-nav-row > .cinema-pills {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: calc(.25 * var(--mobile-scale));
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        /* Constrain to the nav's width so the strip scrolls *inside* the
+           row rather than overflowing the viewport. `flex: 1` claims the
+           available width; `min-width: 0` lets the flex item shrink below
+           its (very wide) content so `overflow-x` actually engages. */
+        flex: 1 1 0;
+        min-width: 0;
+      }
+      .cinema-pills::-webkit-scrollbar { display: none; }
       .cinema-pill {
         font-size: calc(.875 * var(--mobile-scale));
         padding: calc(.25 * var(--mobile-scale)) calc(.6 * var(--mobile-scale));
+        flex-shrink: 0;
+        white-space: nowrap;
       }
     }
   </style>
@@ -120,8 +153,8 @@
    server-side; the JS pill builder is the source of truth so the
    active/inactive state stays in sync with the same localStorage
    everywhere else in the app reads from. *@
-<nav class="navbar cinema-nav-row px-4 d-flex align-items-center" style="flex-wrap:wrap">
-  <div id="cinema-pills" class="d-flex align-items-center" style="flex-wrap:wrap; gap:.25rem"></div>
+<nav class="navbar cinema-nav-row px-4 d-flex align-items-center">
+  <div id="cinema-pills" class="cinema-pills d-flex align-items-center"></div>
 </nav>
 
 <div class="container-fluid py-4 px-4">
