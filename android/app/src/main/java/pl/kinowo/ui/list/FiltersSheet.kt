@@ -79,31 +79,20 @@ fun FiltersSheet(
             // Ukryte filmy → Kina → Kraj/Gatunek/Reżyseria/Obsada → Wymiar/Wersja/IMAX/Od godziny.
             // (Web's "Sale" room picker has no Android equivalent.)
 
-            // Ukryte filmy — collapsible, matching the Kraj/Gatunek/… name filters.
+            // Ukryte filmy — collapsible, matching Kina and the name filters.
             if (hidden.isNotEmpty()) {
                 item(key = "sec_hidden") {
-                    var expanded by remember { mutableStateOf(false) }
-                    Column {
-                        Row(
-                            Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("Ukryte filmy", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                            Text("${hidden.size}", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
-                            Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
-                        }
-                        if (expanded) {
-                            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
-                                item(key = "hid_unhide_all") {
-                                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.End) {
-                                        TextButton(onClick = { vm.unhideAll() }) { Text("Pokaż wszystkie") }
-                                    }
+                    CollapsibleSection("Ukryte filmy", "${hidden.size}") {
+                        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
+                            item(key = "hid_unhide_all") {
+                                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.End) {
+                                    TextButton(onClick = { vm.unhideAll() }) { Text("Pokaż wszystkie") }
                                 }
-                                items(hidden.toList(), key = { "hid_$it" }) { title ->
-                                    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                                        TextButton(onClick = { vm.unhide(title) }) { Text("Pokaż") }
-                                    }
+                            }
+                            items(hidden.toList(), key = { "hid_$it" }) { title ->
+                                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                                    TextButton(onClick = { vm.unhide(title) }) { Text("Pokaż") }
                                 }
                             }
                         }
@@ -111,19 +100,24 @@ fun FiltersSheet(
                 }
             }
 
-            // Kina
+            // Kina — collapsible, matching Ukryte filmy and the name filters.
             if (allCinemas.isNotEmpty()) {
-                item { FilterSectionLabel("Kina") }
-                item {
-                    ToggleRow("Wszystkie kina", disabled.isEmpty()) { on ->
-                        vm.setDisabledCinemas(if (on) emptySet() else allCinemas.toSet())
+                item(key = "sec_cinemas") {
+                    CollapsibleSection("Kina", if (disabled.isNotEmpty()) "${disabled.size} wyłączonych" else null) {
+                        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
+                            item(key = "cin_all") {
+                                ToggleRow("Wszystkie kina", disabled.isEmpty()) { on ->
+                                    vm.setDisabledCinemas(if (on) emptySet() else allCinemas.toSet())
+                                }
+                            }
+                            items(allCinemas, key = { "cin_$it" }) { cinema ->
+                                CheckRow(
+                                    label = CinemaSection.pillName(cinema),
+                                    checked = cinema !in disabled,
+                                ) { on -> vm.toggleCinema(cinema, disabled = !on) }
+                            }
+                        }
                     }
-                }
-                items(allCinemas, key = { "cin_$it" }) { cinema ->
-                    CheckRow(
-                        label = CinemaSection.pillName(cinema),
-                        checked = cinema !in disabled,
-                    ) { on -> vm.toggleCinema(cinema, disabled = !on) }
                 }
             }
 
@@ -230,29 +224,44 @@ private fun collapsibleNameFilter(
 ) {
     if (entries.isEmpty()) return
     scope.item(key = "sec_$title") {
-        var expanded by remember { mutableStateOf(false) }
-        Column {
-            Row(
-                Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                if (excluded.isNotEmpty()) {
-                    Text("${excluded.size} ukrytych", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
-                }
-                Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
-            }
-            if (expanded) {
-                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
-                    items(entries, key = { "${title}_${it.name}" }) { nc ->
-                        CheckRow(
-                            label = "${nc.name}  (${nc.count})",
-                            checked = nc.name !in excluded,
-                        ) { on -> onChange(if (on) excluded - nc.name else excluded + nc.name) }
-                    }
+        CollapsibleSection(title, if (excluded.isNotEmpty()) "${excluded.size} ukrytych" else null) {
+            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
+                items(entries, key = { "${title}_${it.name}" }) { nc ->
+                    CheckRow(
+                        label = "${nc.name}  (${nc.count})",
+                        checked = nc.name !in excluded,
+                    ) { on -> onChange(if (on) excluded - nc.name else excluded + nc.name) }
                 }
             }
         }
+    }
+}
+
+/**
+ * Expand/collapse section: a tappable header (bold title, optional count
+ * badge, chevron) over a body that only composes when expanded. Shared by
+ * Ukryte filmy, Kina, and the Kraj/Gatunek/… name filters so they fold
+ * identically. Each call site keeps its own expanded state.
+ */
+@Composable
+private fun CollapsibleSection(
+    title: String,
+    countLabel: String?,
+    content: @Composable () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Column {
+        Row(
+            Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            if (countLabel != null) {
+                Text(countLabel, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
+            }
+            Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
+        }
+        if (expanded) content()
     }
 }
 
