@@ -1,8 +1,60 @@
 import SwiftUI
+import UIKit
 
 private let gridColumns = [
     GridItem(.adaptive(minimum: 160, maximum: 220), spacing: 12, alignment: .top)
 ]
+
+/// Pins the enclosing `UIScrollView`'s content inset so it never
+/// auto-adjusts. SwiftUI leaves `contentInsetAdjustmentBehavior` at
+/// `.automatic`, and UIKit recomputes the adjusted inset the moment the
+/// scroll view receives its first touch — which yanked the grid up by
+/// ~17pt on the first drag and parked the top row under the floating top
+/// bar (the "skip" + misalignment). Because the top bar already reserves
+/// its height via `ContentView`'s `.safeAreaInset(edge: .top)`, the grid
+/// wants a fixed, stable inset, not UIKit's automatic one.
+///
+/// Scoped to the grids on purpose: the Filtry `Form` and the detail
+/// `ScrollView` still want the automatic adjustment to clear their nav
+/// bars, so this must not be a global `UIScrollView.appearance()` change.
+private struct PinScrollContentInset: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView { UIView() }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        // The backing UIScrollView may not be in the responder chain yet
+        // on the first pass, so retry on a few short delays until found.
+        pin(from: uiView, attemptsLeft: 6)
+    }
+
+    private func pin(from view: UIView, attemptsLeft: Int) {
+        // Pin EVERY enclosing UIScrollView in this view's ancestry — the
+        // grid's own vertical scroll and the paged TabView's horizontal
+        // pager both auto-adjust their inset, and either one moving on the
+        // first touch shifts the grid up under the bar. Scoped to this
+        // hierarchy, so the Filtry sheet / detail scroll are untouched.
+        var found = false
+        var ancestor: UIView? = view.superview
+        while let v = ancestor {
+            if let scroll = v as? UIScrollView {
+                scroll.contentInsetAdjustmentBehavior = .never
+                found = true
+            }
+            ancestor = v.superview
+        }
+        guard !found, attemptsLeft > 0 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            pin(from: view, attemptsLeft: attemptsLeft - 1)
+        }
+    }
+}
+
+private extension View {
+    /// Place inside a ScrollView's content so it can reach the backing
+    /// `UIScrollView` and pin its content inset. See `PinScrollContentInset`.
+    func pinScrollContentInset() -> some View {
+        background(PinScrollContentInset())
+    }
+}
 
 private struct EmptyRepertoireView: View {
     var body: some View {
@@ -39,8 +91,11 @@ struct FilmGridView: View {
                     }
                 }
                 .padding(.horizontal, 12)
-                .padding(.top, 56)
+                // No top padding: the shared TopBar is a `.safeAreaInset`
+                // at the ContentView level, so its height is already
+                // reserved in this ScrollView's top content inset.
                 .padding(.bottom, 70)
+                .pinScrollContentInset()
             }
             .scrollDismissesKeyboard(.immediately)
             .modifier(ScrollClipDisabledIfAvailable())
@@ -88,8 +143,10 @@ struct CinemaSectionedGridView<Header: View>: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.top, 64)
+            // See FilmGridView: TopBar height is reserved via the
+            // ContentView `.safeAreaInset(edge: .top)`, no manual pad.
             .padding(.bottom, 70)
+            .pinScrollContentInset()
         }
         .scrollDismissesKeyboard(.immediately)
         .modifier(ScrollClipDisabledIfAvailable())
