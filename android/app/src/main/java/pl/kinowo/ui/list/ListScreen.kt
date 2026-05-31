@@ -163,7 +163,7 @@ private fun DateChips(vm: KinowoViewModel) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun CinemaChips(vm: KinowoViewModel, films: List<Film>) {
     val cinemas = remember(films) { vm.allCinemas(films) }

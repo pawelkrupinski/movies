@@ -7,6 +7,7 @@ import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import pl.kinowo.model.Film
+import pl.kinowo.model.FilmDetails
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -23,26 +24,35 @@ class KinowoApi(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    data class RepertoireResult(
-        val films: List<Film>?,
+    /** Result of a conditional GET: [items] is null on a 304 (use the cache). */
+    data class Fetched<T>(
+        val items: List<T>?,
         val lastModified: String?,
         val notModified: Boolean,
     )
 
-    suspend fun fetchRepertoire(ifModifiedSince: String?): RepertoireResult = withContext(Dispatchers.IO) {
+    suspend fun fetchRepertoire(ifModifiedSince: String?): Fetched<Film> =
+        fetchList("$baseUrl/api/repertoire", ifModifiedSince)
+
+    suspend fun fetchDetails(ifModifiedSince: String?): Fetched<FilmDetails> =
+        fetchList("$baseUrl/api/details", ifModifiedSince)
+
+    private suspend inline fun <reified T> fetchList(
+        url: String,
+        ifModifiedSince: String?,
+    ): Fetched<T> = withContext(Dispatchers.IO) {
         val builder = Request.Builder()
-            .url("$baseUrl/api/repertoire")
+            .url(url)
             .header("User-Agent", UA)
             .cacheControl(CacheControl.FORCE_NETWORK)
         if (ifModifiedSince != null) builder.header("If-Modified-Since", ifModifiedSince)
         client.newCall(builder.build()).execute().use { resp ->
             if (resp.code == 304) {
-                return@withContext RepertoireResult(null, ifModifiedSince, notModified = true)
+                return@withContext Fetched<T>(null, ifModifiedSince, notModified = true)
             }
             if (!resp.isSuccessful) throw IOException("HTTP ${resp.code}")
             val body = resp.body?.string() ?: throw IOException("empty body")
-            val films = json.decodeFromString<List<Film>>(body)
-            RepertoireResult(films, resp.header("Last-Modified"), notModified = false)
+            Fetched(json.decodeFromString<List<T>>(body), resp.header("Last-Modified"), notModified = false)
         }
     }
 

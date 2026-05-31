@@ -3,6 +3,8 @@ package pl.kinowo.ui
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavType
@@ -32,7 +34,15 @@ fun KinowoApp(vm: KinowoViewModel) {
             arguments = listOf(navArgument("title") { type = NavType.StringType }),
         ) { entry ->
             val title = entry.arguments?.getString("title").orEmpty()
-            DetailScreen(film = vm.filmByTitle(title), onBack = { nav.popBackStack() })
+            // Observe both maps so the screen fills in synopsis/trailers when
+            // the parallel /api/details fetch lands after navigation.
+            val films by vm.films.collectAsState()
+            val details by vm.details.collectAsState()
+            DetailScreen(
+                film = films.firstOrNull { it.title == title },
+                details = details[title],
+                onBack = { nav.popBackStack() },
+            )
         }
     }
 }

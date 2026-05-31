@@ -25,11 +25,6 @@ data class Film(
     val countries: List<String> = emptyList(),
     val directors: List<String> = emptyList(),
     val cast: List<String> = emptyList(),
-    /** Plot blurb ("Opis"). Added to `/api/repertoire` so the detail screen
-     *  needs no separate fetch. */
-    val synopsis: String? = null,
-    /** Ready-to-embed YouTube/Vimeo trailer URLs, deduped server-side. */
-    val trailerURLs: List<String> = emptyList(),
     val showings: List<DayShowings> = emptyList(),
 ) {
     /** Title is the stable identity (matches iOS `Film.id`). */

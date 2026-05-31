@@ -145,7 +145,7 @@ object FormatTokenFilter {
         return tokenSets.drop(1).fold(first) { acc, s -> acc.intersect(s) }
     }
 
-    fun filter(format: String, removing common: Set<String>): String {
+    fun filter(format: String, common: Set<String>): String {
         if (common.isEmpty()) return format
         return format.split(" ").filter { it.isNotEmpty() && it !in common }.joinToString(" ")
     }

@@ -6,12 +6,16 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
+import pl.kinowo.model.FilmDetails
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.FormatFilter
@@ -31,12 +35,14 @@ data class NameCount(val name: String, val count: Int)
  */
 class KinowoViewModel(
     private val repo: RepertoireRepository,
+    private val detailsRepo: DetailsRepository,
     private val prefs: UserPreferences,
 ) : ViewModel() {
 
     val films: StateFlow<List<Film>> = repo.films
     val isLoading: StateFlow<Boolean> = repo.isLoading
     val error: StateFlow<String?> = repo.error
+    val details: StateFlow<Map<String, FilmDetails>> = detailsRepo.byTitle
 
     val hiddenFilms: StateFlow<Set<String>> =
         prefs.hiddenFilms.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
@@ -117,15 +123,35 @@ class KinowoViewModel(
     // ── lifecycle / data ──────────────────────────────────────────────────
     fun start() {
         repo.loadCachedData()
+        detailsRepo.loadCachedData()
         repo.pruneStaleShowings()
-        viewModelScope.launch { repo.reload() }
+        // Listing + details fetched concurrently — the grid paints as soon as
+        // the listing lands; details merge in for the detail screen when ready.
+        viewModelScope.launch {
+            coroutineScope {
+                val listing = async { repo.reload() }
+                val det = async { detailsRepo.reload() }
+                listing.await(); det.await()
+            }
+        }
     }
 
-    fun reload() = viewModelScope.launch { repo.reload() }
+    fun reload() = viewModelScope.launch {
+        coroutineScope {
+            val listing = async { repo.reload() }
+            val det = async { detailsRepo.reload() }
+            listing.await(); det.await()
+        }
+    }
 
     fun onResume() {
         repo.pruneStaleShowings()
-        viewModelScope.launch { repo.reloadIfStale() }
+        viewModelScope.launch {
+            coroutineScope {
+                async { repo.reloadIfStale() }
+                async { detailsRepo.reloadIfStale() }
+            }
+        }
     }
 
     // ── prefs mutations ───────────────────────────────────────────────────
@@ -138,13 +164,15 @@ class KinowoViewModel(
         viewModelScope.launch { prefs.setDisabledCinemas(set) }
 
     fun filmByTitle(title: String): Film? = films.value.firstOrNull { it.title == title }
+    fun detailsByTitle(title: String): FilmDetails? = details.value[title]
 
     class Factory(
         private val repo: RepertoireRepository,
+        private val detailsRepo: DetailsRepository,
         private val prefs: UserPreferences,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            KinowoViewModel(repo, prefs) as T
+            KinowoViewModel(repo, detailsRepo, prefs) as T
     }
 }

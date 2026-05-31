@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import pl.kinowo.model.Film
+import pl.kinowo.model.FilmDetails
 import pl.kinowo.ui.common.PosterImage
 import pl.kinowo.ui.common.RatingBadges
 import pl.kinowo.ui.common.Showings
@@ -55,7 +56,7 @@ import pl.kinowo.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun DetailScreen(film: Film?, onBack: () -> Unit) {
+fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -116,14 +117,16 @@ fun DetailScreen(film: Film?, onBack: () -> Unit) {
                 }
             }
 
-            // Meta blocks.
-            MetaBlock("Opis", film.synopsis)
+            // Meta blocks. Synopsis comes from the parallel /api/details fetch;
+            // director/cast are already on the listing Film.
+            MetaBlock("Opis", details?.synopsis)
             MetaBlock("Reżyseria", film.directors.joinToString(", ").ifEmpty { null })
             MetaBlock("Obsada", film.cast.joinToString(", ").ifEmpty { null })
 
-            // Trailers.
-            if (film.trailerURLs.isNotEmpty()) {
-                TrailerSection(film.trailerURLs)
+            // Trailers (from /api/details).
+            val trailers = details?.trailerURLs.orEmpty()
+            if (trailers.isNotEmpty()) {
+                TrailerSection(trailers)
             }
 
             // Seanse (full).

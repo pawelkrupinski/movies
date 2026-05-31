@@ -8,9 +8,12 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import pl.kinowo.data.RepertoireCache
+import pl.kinowo.data.DetailsRepository
+import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
+import pl.kinowo.model.Film
+import pl.kinowo.model.FilmDetails
 import pl.kinowo.net.KinowoApi
 import pl.kinowo.ui.KinowoApp
 import pl.kinowo.ui.KinowoViewModel
@@ -27,10 +30,10 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: KinowoViewModel by viewModels {
         val api = KinowoApi()
-        val cache = RepertoireCache(cacheDir)
-        val repo = RepertoireRepository(api, cache)
+        val repo = RepertoireRepository(api, JsonListCache(cacheDir, "repertoire", Film.serializer()))
+        val detailsRepo = DetailsRepository(api, JsonListCache(cacheDir, "details", FilmDetails.serializer()))
         val prefs = UserPreferences(applicationContext)
-        KinowoViewModel.Factory(repo, prefs)
+        KinowoViewModel.Factory(repo, detailsRepo, prefs)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -16,7 +16,7 @@ import java.time.Instant
  */
 class RepertoireRepository(
     private val api: KinowoApi,
-    private val cache: RepertoireCache,
+    private val cache: JsonListCache<Film>,
 ) {
     private val _films = MutableStateFlow<List<Film>>(emptyList())
     val films: StateFlow<List<Film>> = _films.asStateFlow()
@@ -46,7 +46,7 @@ class RepertoireRepository(
                 lastReloadedAt = now
                 return
             }
-            val films = result.films ?: return
+            val films = result.items ?: return
             _films.value = films
             lastReloadedAt = now
             result.lastModified?.let { cache.saveLastModified(it) }

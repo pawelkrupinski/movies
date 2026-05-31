@@ -1,46 +1,45 @@
 [
   {
-    "title": "Drzewo Magii",
-    "posterURL": "https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drzewo-magii/drzewo-magii_plakat-glowny_plakat.jpg?rev=78ae4df57ddb40d98d5535803ff32357",
+    "title": "Sprawiedliwość owiec",
+    "posterURL": "https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/sprawiedliwosc-owiec/sprawiedliwoscowiec_plakat.jpg?rev=be0f91ffd2f248caaed986a915b760f8",
     "fallbackPosterURLs": [
-      "https://kinoapollo.pl/wp-content/uploads/2026/04/DRZEWO-MAGII_PLAKAT-GLOWNY-scaled.jpg",
-      "http://kinobulgarska19.pl/wp-content/uploads/2026/05/DRZEWO-MAGII_PLAKAT-GLOWNY.jpg",
-      "https://www.kinomalta.pl/wp-content/uploads/2026/05/DRZEWO-MAGII_PLAKAT-GLOWNY-po-zmniejszeniu-200x288.jpg",
-      "https://img.helios.pl/pliki/film/drzewo-magii/drzewo-magii-plakat-968.jpg",
-      "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8180D2R.jpg",
-      "https://www.kinomuza.pl/content/uploads/2026/05/DRZEWO-MAGII_TEASER_PLAKAT-714x1024-1-558x800.jpg",
-      "https://image.tmdb.org/t/p/w500/35RvL6gRJJRKjKJmgJu6C83gZDW.jpg",
-      "https://m.media-amazon.com/images/M/MV5BZThiYWI3ZTYtMjZmYy00Njc5LWE4OGYtNTlmNTQyYWZmYjQ0XkEyXkFqcGc@._V1_.jpg"
+      "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7956D2R.jpg",
+      "https://image.tmdb.org/t/p/w500/6QtL9rl3Zb4d8qW6EJ4qO5hSSfU.jpg",
+      "https://m.media-amazon.com/images/M/MV5BNTFmZWI4YmMtNmQ0ZC00ZGQwLTk1OWEtZjAyZmIzOGY0MGFiXkEyXkFqcGc@._V1_.jpg"
     ],
-    "runtimeMinutes": 110,
+    "runtimeMinutes": 109,
     "ratings": {
-      "imdb": 6.4,
-      "imdbURL": "https://www.imdb.com/title/tt7734244/",
-      "metacriticURL": "https://www.metacritic.com/movie/the-magic-faraway-tree",
-      "rottenTomatoes": 91,
-      "rottenTomatoesURL": "https://www.rottentomatoes.com/m/the_magic_faraway_tree",
-      "filmweb": 5.84146,
-      "filmwebURL": "https://www.filmweb.pl/film/Drzewo+magii-2026-10104409"
+      "imdb": 7.7,
+      "imdbURL": "https://www.imdb.com/title/tt32565993/",
+      "metascore": 72,
+      "metacriticURL": "https://www.metacritic.com/movie/the-sheep-detectives",
+      "rottenTomatoes": 95,
+      "rottenTomatoesURL": "https://www.rottentomatoes.com/m/the_sheep_detectives",
+      "filmweb": 7.24946,
+      "filmwebURL": "https://www.filmweb.pl/film/Sprawiedliwo%C5%9B%C4%87+owiec-2026-10110027"
     },
     "countries": [
-      "Francja",
-      "USA",
-      "Wielka Brytania"
+      "Irlandia",
+      "Wielka Brytania",
+      "Niemcy",
+      "USA"
     ],
     "directors": [
-      "Ben Gregor"
+      "Kyle Balda"
     ],
     "cast": [
-      "Andrew Garfield",
-      "Claire Foy",
-      "Nicola Coughlan",
-      "Jessica Gunning",
-      "Rebecca Ferguson"
-    ],
-    "synopsis": "Polly i Tim wraz z trójką dzieci to współczesna rodzina, która staje przed koniecznością przeprowadzenia się na odległą angielską prowincję. Wkrótce po przyjeździe okazuje się, że najmłodsi muszą obejść się bez Wi-Fi i ukochanych elektronicznych gadżetów oraz odkryć uroki świata na świeżym powietrzu. Podczas eksploracji okolicznych lasów trafiają na niezwykłe drzewo, zamieszkane przez barwne, ekscentryczne istoty. Jeśli odważą się wspiąć na jego szczyt, czekają na nie fantastyczne krainy, pełne zapierających dech przygód. Dzięki magicznym doświadczeniom rodzina na nowo uczy się bycia razem i odkrywa, jak ważne jest wzajemne wsparcie i bliskość.\n\n„Drzewo magii” to spektakularna i pełna ciepła ekranizacja na podstawie uwielbianej serii książek dla dzieci autorstwa Enit Blydon. W barwnej opowieści w role rodziców wcielają się laureat Złotego Globu, nominowany do Oscara Andrew Garfield („Sztuka pięknego życia”, „Spider Man: Bez drogi do domu”) oraz lauretka Złotego Globu Claire Foy („The Crown”). Towarzyszą im m.in. Nicola Coughlan – gwiazda serialu „Bridgertonowie”, hipnotyzująca w „Diunie” Rebecca Ferguson oraz niezapomniana z serialu „Reniferek” Jessica Gunning. Scenariusz jest dziełem Simon Farnaby’ego, współscenarzysty hitów „Paddington 2″ i „Wonka”.",
-    "trailerURLs": [
-      "https://www.youtube.com/embed/gzRz4XpyKCY",
-      "https://www.youtube.com/embed/PY_LoiN8B5I"
+      "Nicholas Galitzine",
+      "Molly Gordon",
+      "Julia Louis-Dreyfus",
+      "Bryan Cranston",
+      "Chris O’Dowd",
+      "Regina Hall",
+      "Patrick Stewart",
+      "Hong Chau",
+      "Emma Thompson",
+      "Tosin Cole",
+      "Kobna Holdbrook-Smith",
+      "Conleth Hill i Mandeep Dhillon"
     ],
     "showings": [
       {
@@ -49,179 +48,55 @@
         "cinemas": [
           {
             "cinema": "Multikino Stary Browar",
-            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "cinemaURL": "https://www.multikino.pl/filmy/sprawiedliwosc-owiec",
             "showtimes": [
               {
-                "time": "09:05",
+                "time": "09:45",
                 "format": "2D DUB",
-                "room": "Sala 1",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100831"
-              },
-              {
-                "time": "10:45",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100930"
-              },
-              {
-                "time": "13:35",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100929"
-              },
-              {
-                "time": "16:10",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100931"
-              },
-              {
-                "time": "18:45",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100932"
-              }
-            ]
-          },
-          {
-            "cinema": "Cinema City Poznań Plaza",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
-            "showtimes": [
-              {
-                "time": "10:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453485?lang=pl"
-              },
-              {
-                "time": "13:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453486?lang=pl"
-              },
-              {
-                "time": "15:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453487?lang=pl"
-              },
-              {
-                "time": "18:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453488?lang=pl"
+                "room": "Sala 8",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002602/100723"
               }
             ]
           },
           {
             "cinema": "Cinema City Kinepolis",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/sprawiedliwosc-owiec/7956d2r",
             "showtimes": [
               {
                 "time": "11:00",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453795?lang=pl"
+                "room": "Sala 16",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478795?lang=pl"
               },
               {
-                "time": "11:30",
+                "time": "11:40",
                 "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453815?lang=pl"
+                "room": "Sala 8",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474065?lang=pl"
               },
               {
-                "time": "13:30",
+                "time": "13:40",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453796?lang=pl"
+                "room": "Sala 16",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478739?lang=pl"
               },
               {
-                "time": "16:00",
+                "time": "16:20",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453797?lang=pl"
-              },
-              {
-                "time": "16:30",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453816?lang=pl"
-              },
-              {
-                "time": "18:30",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453798?lang=pl"
+                "room": "Sala 8",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474073?lang=pl"
               }
             ]
           },
           {
-            "cinema": "Helios Posnania",
-            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/sprawiedliwosc-owiec/7956d2r",
             "showtimes": [
               {
-                "time": "11:15",
-                "format": "2D DUB",
-                "room": "Sala 4",
-                "bookingURL": "https://bilety.helios.pl/screen/de4a6185-831a-415b-820a-1af34ecc0af9?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "14:00",
+                "time": "13:10",
                 "format": "2D DUB",
                 "room": "Sala 2",
-                "bookingURL": "https://bilety.helios.pl/screen/a26fbc24-8e04-4b30-b0bc-de383aa6baf5?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "18:15",
-                "format": "2D DUB",
-                "room": "Sala 6",
-                "bookingURL": "https://bilety.helios.pl/screen/550f171b-1ea5-4f6e-8701-7fadc9f4f8bc?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Malta Charlie Monroe",
-            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "12:00",
-                "format": "",
-                "room": "Sala Marilyn",
-                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42194"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Muza",
-            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "12:00",
-                "format": "",
-                "room": "Sala 1",
-                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=932973#total"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Apollo",
-            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "15:30",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662083"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Bułgarska 19",
-            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "16:00",
-                "format": "",
-                "room": "Sala Dzienniki Motocyklowe"
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1473186?lang=pl"
               }
             ]
           }
@@ -232,197 +107,44 @@
         "label": "Poniedziałek 1 czerwca",
         "cinemas": [
           {
-            "cinema": "Cinema City Poznań Plaza",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/sprawiedliwosc-owiec",
             "showtimes": [
               {
-                "time": "09:00",
+                "time": "08:30",
                 "format": "2D DUB",
                 "room": "Sala 8",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466843?lang=pl"
-              },
-              {
-                "time": "09:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466844?lang=pl"
-              },
-              {
-                "time": "10:15",
-                "format": "2D DUB",
-                "room": "Sala 4",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466809?lang=pl"
-              },
-              {
-                "time": "13:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478399?lang=pl"
-              },
-              {
-                "time": "15:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478403?lang=pl"
-              },
-              {
-                "time": "18:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478407?lang=pl"
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002602/100743"
               }
             ]
           },
           {
             "cinema": "Cinema City Kinepolis",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/sprawiedliwosc-owiec/7956d2r",
             "showtimes": [
               {
-                "time": "09:45",
+                "time": "13:40",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1467357?lang=pl"
+                "room": "Sala 16",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478740?lang=pl"
               },
               {
-                "time": "12:00",
+                "time": "16:20",
                 "format": "2D DUB",
-                "room": "Sala 14",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478543?lang=pl"
-              },
-              {
-                "time": "13:30",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478262?lang=pl"
-              },
-              {
-                "time": "16:00",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478265?lang=pl"
-              },
-              {
-                "time": "16:30",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478664?lang=pl"
-              },
-              {
-                "time": "18:30",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478268?lang=pl"
+                "room": "Sala 8",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474091?lang=pl"
               }
             ]
           },
           {
-            "cinema": "Helios Posnania",
-            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/sprawiedliwosc-owiec/7956d2r",
             "showtimes": [
               {
-                "time": "10:00",
-                "format": "2D DUB",
-                "room": "Sala 3",
-                "bookingURL": "https://bilety.helios.pl/screen/0086e7f1-c302-42a0-b07e-22a6d844cc44?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "12:45",
+                "time": "13:50",
                 "format": "2D DUB",
                 "room": "Sala 2",
-                "bookingURL": "https://bilety.helios.pl/screen/397e1a7f-9445-465e-ba33-7a90dcf4c9c1?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "14:30",
-                "format": "2D DUB",
-                "room": "Sala 5 - Dream",
-                "bookingURL": "https://bilety.helios.pl/screen/61dbec84-8fba-4f17-a01c-7cc805774fca?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "17:15",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://bilety.helios.pl/screen/16231fe8-2ab2-4123-9a3b-f3ed6eafbd98?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              }
-            ]
-          },
-          {
-            "cinema": "Multikino Stary Browar",
-            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "10:00",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100946"
-              },
-              {
-                "time": "10:30",
-                "format": "2D DUB",
-                "room": "Sala 7",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100662"
-              },
-              {
-                "time": "10:30",
-                "format": "2D DUB",
-                "room": "Sala 3",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100778"
-              },
-              {
-                "time": "13:35",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100948"
-              },
-              {
-                "time": "16:10",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100947"
-              },
-              {
-                "time": "18:45",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100950"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Bułgarska 19",
-            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "16:10",
-                "format": "",
-                "room": "Sala Dzienniki Motocyklowe"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Apollo",
-            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "16:30",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662084"
-              },
-              {
-                "time": "19:00",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662085"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Malta Charlie Monroe",
-            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "16:35",
-                "format": "",
-                "room": "Sala Marilyn",
-                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42213"
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1473197?lang=pl"
               }
             ]
           }
@@ -434,156 +156,31 @@
         "cinemas": [
           {
             "cinema": "Multikino Stary Browar",
-            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "cinemaURL": "https://www.multikino.pl/filmy/sprawiedliwosc-owiec",
             "showtimes": [
               {
                 "time": "09:00",
                 "format": "2D DUB",
-                "room": "Sala 8",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100714"
-              },
-              {
-                "time": "11:00",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100925"
-              },
-              {
-                "time": "13:35",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100926"
-              },
-              {
-                "time": "16:10",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100927"
-              },
-              {
-                "time": "18:40",
-                "format": "2D DUB",
-                "room": "Sala 11",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100560"
-              }
-            ]
-          },
-          {
-            "cinema": "Cinema City Poznań Plaza",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
-            "showtimes": [
-              {
-                "time": "09:00",
-                "format": "2D DUB",
-                "room": "Sala 3",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1479191?lang=pl"
-              },
-              {
-                "time": "09:30",
-                "format": "2D DUB",
                 "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478396?lang=pl"
-              },
-              {
-                "time": "13:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478400?lang=pl"
-              },
-              {
-                "time": "15:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478404?lang=pl"
-              },
-              {
-                "time": "18:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478408?lang=pl"
-              }
-            ]
-          },
-          {
-            "cinema": "Helios Posnania",
-            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
-            "showtimes": [
-              {
-                "time": "11:30",
-                "format": "2D DUB",
-                "room": "Sala 4",
-                "bookingURL": "https://bilety.helios.pl/screen/e8d737be-ea5d-47b5-9092-2756dc92ae64?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "14:30",
-                "format": "2D DUB",
-                "room": "Sala 5 - Dream",
-                "bookingURL": "https://bilety.helios.pl/screen/0bf1f7ba-3eaa-4bb3-a246-d8fb6af1be3f?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "18:15",
-                "format": "2D DUB",
-                "room": "Sala 8",
-                "bookingURL": "https://bilety.helios.pl/screen/f5e6009a-50cb-466f-92da-e3295a54a385?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002602/100675"
               }
             ]
           },
           {
             "cinema": "Cinema City Kinepolis",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/sprawiedliwosc-owiec/7956d2r",
             "showtimes": [
               {
-                "time": "12:00",
+                "time": "13:40",
                 "format": "2D DUB",
-                "room": "Sala 14",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478570?lang=pl"
+                "room": "Sala 16",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478741?lang=pl"
               },
               {
-                "time": "13:30",
+                "time": "16:20",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478263?lang=pl"
-              },
-              {
-                "time": "16:00",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478266?lang=pl"
-              },
-              {
-                "time": "16:30",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478665?lang=pl"
-              },
-              {
-                "time": "18:30",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478269?lang=pl"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Malta Charlie Monroe",
-            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "16:10",
-                "format": "",
-                "room": "Sala Marilyn",
-                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42224"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Bułgarska 19",
-            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "16:10",
-                "format": "",
-                "room": "Sala Dzienniki Motocyklowe"
+                "room": "Sala 8",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474103?lang=pl"
               }
             ]
           }
@@ -595,144 +192,25 @@
         "cinemas": [
           {
             "cinema": "Multikino Stary Browar",
-            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "cinemaURL": "https://www.multikino.pl/filmy/sprawiedliwosc-owiec",
             "showtimes": [
               {
-                "time": "09:00",
+                "time": "11:00",
                 "format": "2D DUB",
-                "room": "Sala 1",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100850"
-              },
-              {
-                "time": "09:30",
-                "format": "2D DUB",
-                "room": "Sala 11",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100585"
-              },
-              {
-                "time": "11:50",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100945"
-              },
-              {
-                "time": "14:20",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100943"
-              },
-              {
-                "time": "18:45",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100942"
-              }
-            ]
-          },
-          {
-            "cinema": "Cinema City Poznań Plaza",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
-            "showtimes": [
-              {
-                "time": "10:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478397?lang=pl"
-              },
-              {
-                "time": "13:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478401?lang=pl"
-              },
-              {
-                "time": "15:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478405?lang=pl"
-              },
-              {
-                "time": "18:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478409?lang=pl"
+                "room": "Sala 3",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002602/100775"
               }
             ]
           },
           {
             "cinema": "Cinema City Kinepolis",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/sprawiedliwosc-owiec/7956d2r",
             "showtimes": [
               {
-                "time": "12:00",
+                "time": "13:40",
                 "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478701?lang=pl"
-              },
-              {
-                "time": "13:30",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478264?lang=pl"
-              },
-              {
-                "time": "14:30",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478702?lang=pl"
-              },
-              {
-                "time": "16:00",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478267?lang=pl"
-              },
-              {
-                "time": "17:00",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478703?lang=pl"
-              },
-              {
-                "time": "18:30",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478270?lang=pl"
-              }
-            ]
-          },
-          {
-            "cinema": "Helios Posnania",
-            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
-            "showtimes": [
-              {
-                "time": "12:10",
-                "format": "2D DUB",
-                "room": "Sala 6",
-                "bookingURL": "https://bilety.helios.pl/screen/dd1321ac-b228-4b80-960a-b75be9cdec55?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "14:40",
-                "format": "2D DUB",
-                "room": "Sala 7 - Dream",
-                "bookingURL": "https://bilety.helios.pl/screen/b994ac75-cf71-4ee1-a7fd-5e82c24eb123?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "18:15",
-                "format": "2D DUB",
-                "room": "Sala 8",
-                "bookingURL": "https://bilety.helios.pl/screen/1de3c410-16ba-4655-a6e6-a3d1bd2fb0c4?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Bułgarska 19",
-            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "16:10",
-                "format": "",
-                "room": "Sala Dzienniki Motocyklowe"
+                "room": "Sala 16",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478742?lang=pl"
               }
             ]
           }
@@ -744,202 +222,43 @@
         "cinemas": [
           {
             "cinema": "Multikino Stary Browar",
-            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "cinemaURL": "https://www.multikino.pl/filmy/sprawiedliwosc-owiec",
             "showtimes": [
               {
-                "time": "10:00",
+                "time": "09:45",
                 "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100934"
-              },
-              {
-                "time": "12:50",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100933"
-              },
-              {
-                "time": "15:25",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100935"
-              },
-              {
-                "time": "18:15",
-                "format": "2D DUB",
-                "room": "Sala 5",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100797"
+                "room": "Sala 8",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002602/100726"
               }
             ]
           },
           {
             "cinema": "Cinema City Kinepolis",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/sprawiedliwosc-owiec/7956d2r",
             "showtimes": [
               {
-                "time": "10:20",
+                "time": "11:10",
                 "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478708?lang=pl"
+                "room": "Sala 16",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478799?lang=pl"
               },
               {
-                "time": "12:00",
+                "time": "13:40",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478312?lang=pl"
-              },
-              {
-                "time": "12:50",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478709?lang=pl"
-              },
-              {
-                "time": "14:30",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478313?lang=pl"
-              },
-              {
-                "time": "15:20",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478710?lang=pl"
-              },
-              {
-                "time": "17:50",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478712?lang=pl"
+                "room": "Sala 16",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478743?lang=pl"
               }
             ]
           },
           {
             "cinema": "Cinema City Poznań Plaza",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/sprawiedliwosc-owiec/7956d2r",
             "showtimes": [
               {
-                "time": "10:30",
+                "time": "13:10",
                 "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478398?lang=pl"
-              },
-              {
-                "time": "13:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478402?lang=pl"
-              },
-              {
-                "time": "14:40",
-                "format": "2D DUB",
-                "room": "Sala 1",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1472142?lang=pl"
-              },
-              {
-                "time": "15:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478406?lang=pl"
-              }
-            ]
-          },
-          {
-            "cinema": "Helios Posnania",
-            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
-            "showtimes": [
-              {
-                "time": "12:10",
-                "format": "2D DUB",
-                "room": "Sala 1",
-                "bookingURL": "https://bilety.helios.pl/screen/da0daf03-72dc-48f6-b3ea-c49f694f2cc2?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "14:00",
-                "format": "2D DUB",
-                "room": "Sala 7 - Dream",
-                "bookingURL": "https://bilety.helios.pl/screen/d3339ce6-f099-497b-9529-0eb932024767?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "18:15",
-                "format": "2D DUB",
-                "room": "Sala 8",
-                "bookingURL": "https://bilety.helios.pl/screen/523dd396-cfb5-46c2-a1bf-d49fe31e4b82?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "date": "2026-06-05",
-        "label": "Piątek 5 czerwca",
-        "cinemas": [
-          {
-            "cinema": "Kino Apollo",
-            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "16:00",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666637"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "date": "2026-06-06",
-        "label": "Sobota 6 czerwca",
-        "cinemas": [
-          {
-            "cinema": "Kino Muza",
-            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "12:00",
-                "format": "",
-                "room": "Sala 1",
-                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=933949#total"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Apollo",
-            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "15:30",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666638"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "date": "2026-06-07",
-        "label": "Niedziela 7 czerwca",
-        "cinemas": [
-          {
-            "cinema": "Kino Muza",
-            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "12:00",
-                "format": "",
-                "room": "Sala 1",
-                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=933985#total"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Apollo",
-            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "15:00",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666639"
+                "room": "Sala 2",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1473220?lang=pl"
               }
             ]
           }
@@ -948,47 +267,36 @@
     ]
   },
   {
-    "title": "Drzewo Magii",
-    "posterURL": "https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drzewo-magii/drzewo-magii_plakat-glowny_plakat.jpg?rev=78ae4df57ddb40d98d5535803ff32357",
+    "title": "Mandalorian i Grogu",
+    "posterURL": "https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/mandalorian-grogu/mandogrogu_plakat_final.jpg?rev=44cdd789925f4750b32fd938fd2ad46e",
     "fallbackPosterURLs": [
-      "https://kinoapollo.pl/wp-content/uploads/2026/04/DRZEWO-MAGII_PLAKAT-GLOWNY-scaled.jpg",
-      "http://kinobulgarska19.pl/wp-content/uploads/2026/05/DRZEWO-MAGII_PLAKAT-GLOWNY.jpg",
-      "https://www.kinomalta.pl/wp-content/uploads/2026/05/DRZEWO-MAGII_PLAKAT-GLOWNY-po-zmniejszeniu-200x288.jpg",
-      "https://img.helios.pl/pliki/film/drzewo-magii/drzewo-magii-plakat-968.jpg",
-      "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8180D2R.jpg",
-      "https://www.kinomuza.pl/content/uploads/2026/05/DRZEWO-MAGII_TEASER_PLAKAT-714x1024-1-558x800.jpg",
-      "https://image.tmdb.org/t/p/w500/35RvL6gRJJRKjKJmgJu6C83gZDW.jpg",
-      "https://m.media-amazon.com/images/M/MV5BZThiYWI3ZTYtMjZmYy00Njc5LWE4OGYtNTlmNTQyYWZmYjQ0XkEyXkFqcGc@._V1_.jpg"
+      "https://movies.helios.pl/images/MANDALORIANIGROGUnowyplakat.jpg",
+      "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7667S2R.jpg",
+      "https://image.tmdb.org/t/p/w500/cFNZ7lAjikPUHkXZzJOLMzGFeDT.jpg",
+      "https://m.media-amazon.com/images/M/MV5BYzVkMmJhNTgtNjYwOS00YjM0LThlNWEtNGExNmIxZjVkMmJhXkEyXkFqcGc@._V1_.jpg"
     ],
-    "runtimeMinutes": 110,
+    "runtimeMinutes": 132,
     "ratings": {
-      "imdb": 6.4,
-      "imdbURL": "https://www.imdb.com/title/tt7734244/",
-      "metacriticURL": "https://www.metacritic.com/movie/the-magic-faraway-tree",
-      "rottenTomatoes": 91,
-      "rottenTomatoesURL": "https://www.rottentomatoes.com/m/the_magic_faraway_tree",
-      "filmweb": 5.84146,
-      "filmwebURL": "https://www.filmweb.pl/film/Drzewo+magii-2026-10104409"
+      "imdb": 7,
+      "imdbURL": "https://www.imdb.com/title/tt30825738/",
+      "metacriticURL": "https://www.metacritic.com/search/The+Mandalorian+and+Grogu/?category=2",
+      "rottenTomatoes": 62,
+      "rottenTomatoesURL": "https://www.rottentomatoes.com/m/the_mandalorian_and_grogu",
+      "filmweb": 6.50045,
+      "filmwebURL": "https://www.filmweb.pl/film/The+Mandalorian+and+Grogu-2026-10046150"
     },
     "countries": [
-      "Francja",
-      "USA",
-      "Wielka Brytania"
+      "USA"
     ],
     "directors": [
-      "Ben Gregor"
+      "Jon Favreau"
     ],
     "cast": [
-      "Andrew Garfield",
-      "Claire Foy",
-      "Nicola Coughlan",
-      "Jessica Gunning",
-      "Rebecca Ferguson"
-    ],
-    "synopsis": "Polly i Tim wraz z trójką dzieci to współczesna rodzina, która staje przed koniecznością przeprowadzenia się na odległą angielską prowincję. Wkrótce po przyjeździe okazuje się, że najmłodsi muszą obejść się bez Wi-Fi i ukochanych elektronicznych gadżetów oraz odkryć uroki świata na świeżym powietrzu. Podczas eksploracji okolicznych lasów trafiają na niezwykłe drzewo, zamieszkane przez barwne, ekscentryczne istoty. Jeśli odważą się wspiąć na jego szczyt, czekają na nie fantastyczne krainy, pełne zapierających dech przygód. Dzięki magicznym doświadczeniom rodzina na nowo uczy się bycia razem i odkrywa, jak ważne jest wzajemne wsparcie i bliskość.\n\n„Drzewo magii” to spektakularna i pełna ciepła ekranizacja na podstawie uwielbianej serii książek dla dzieci autorstwa Enit Blydon. W barwnej opowieści w role rodziców wcielają się laureat Złotego Globu, nominowany do Oscara Andrew Garfield („Sztuka pięknego życia”, „Spider Man: Bez drogi do domu”) oraz lauretka Złotego Globu Claire Foy („The Crown”). Towarzyszą im m.in. Nicola Coughlan – gwiazda serialu „Bridgertonowie”, hipnotyzująca w „Diunie” Rebecca Ferguson oraz niezapomniana z serialu „Reniferek” Jessica Gunning. Scenariusz jest dziełem Simon Farnaby’ego, współscenarzysty hitów „Paddington 2″ i „Wonka”.",
-    "trailerURLs": [
-      "https://www.youtube.com/embed/gzRz4XpyKCY",
-      "https://www.youtube.com/embed/PY_LoiN8B5I"
+      "Pedro Pascal",
+      "Jeremy Allen White",
+      "Sigourney Weaver",
+      "Brendan Wayne",
+      "Lateef Crowder"
     ],
     "showings": [
       {
@@ -997,179 +305,331 @@
         "cinemas": [
           {
             "cinema": "Multikino Stary Browar",
-            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "cinemaURL": "https://www.multikino.pl/filmy/mandalorian-grogu",
             "showtimes": [
               {
-                "time": "09:05",
-                "format": "2D DUB",
-                "room": "Sala 1",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100831"
+                "time": "10:00",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100790"
               },
               {
-                "time": "10:45",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100930"
+                "time": "11:00",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100906"
               },
               {
-                "time": "13:35",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100929"
+                "time": "12:00",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100609"
               },
               {
-                "time": "16:10",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100931"
+                "time": "13:00",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100791"
               },
               {
-                "time": "18:45",
+                "time": "14:00",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100903"
+              },
+              {
+                "time": "15:00",
                 "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100932"
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100607"
+              },
+              {
+                "time": "16:00",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100789"
+              },
+              {
+                "time": "17:00",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100905"
+              },
+              {
+                "time": "18:00",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100606"
+              },
+              {
+                "time": "19:00",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100792"
+              },
+              {
+                "time": "20:00",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100904"
+              },
+              {
+                "time": "21:00",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100608"
               }
             ]
           },
           {
             "cinema": "Cinema City Poznań Plaza",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r",
             "showtimes": [
+              {
+                "time": "10:00",
+                "format": "IMAX 3D DUB",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478576?lang=pl"
+              },
               {
                 "time": "10:30",
                 "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453485?lang=pl"
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477692?lang=pl"
+              },
+              {
+                "time": "10:40",
+                "format": "3D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1471355?lang=pl"
+              },
+              {
+                "time": "11:20",
+                "format": "2D NAP",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474508?lang=pl"
               },
               {
                 "time": "13:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453486?lang=pl"
-              },
-              {
-                "time": "15:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453487?lang=pl"
-              },
-              {
-                "time": "18:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453488?lang=pl"
-              }
-            ]
-          },
-          {
-            "cinema": "Cinema City Kinepolis",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
-            "showtimes": [
-              {
-                "time": "11:00",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453795?lang=pl"
-              },
-              {
-                "time": "11:30",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453815?lang=pl"
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478586?lang=pl"
               },
               {
                 "time": "13:30",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453796?lang=pl"
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477700?lang=pl"
+              },
+              {
+                "time": "14:20",
+                "format": "2D NAP",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474512?lang=pl"
               },
               {
                 "time": "16:00",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453797?lang=pl"
+                "format": "IMAX 3D DUB",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478581?lang=pl"
               },
               {
                 "time": "16:30",
                 "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453816?lang=pl"
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477703?lang=pl"
               },
               {
-                "time": "18:30",
+                "time": "16:50",
+                "format": "3D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1471861?lang=pl"
+              },
+              {
+                "time": "17:20",
+                "format": "2D NAP",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474516?lang=pl"
+              },
+              {
+                "time": "19:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478591?lang=pl"
+              },
+              {
+                "time": "19:30",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1453798?lang=pl"
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477704?lang=pl"
+              },
+              {
+                "time": "20:20",
+                "format": "2D NAP",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474518?lang=pl"
+              },
+              {
+                "time": "22:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478596?lang=pl"
               }
             ]
           },
           {
             "cinema": "Helios Posnania",
-            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347",
             "showtimes": [
               {
-                "time": "11:15",
+                "time": "11:00",
+                "format": "2D DUB ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/9f3ab0be-e52d-4fb0-8922-456ee62438bc?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:00",
+                "format": "2D NAP ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/f13a5986-a141-4d26-9e45-3841e1503118?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "15:00",
                 "format": "2D DUB",
-                "room": "Sala 4",
-                "bookingURL": "https://bilety.helios.pl/screen/de4a6185-831a-415b-820a-1af34ecc0af9?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/b1a3b4e7-b3b0-4a41-9255-b4f8a43b0564?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "17:10",
+                "format": "2D DUB ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/fd6429a8-b3fc-4d56-963b-a4ba321e6330?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:00",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/1ece3ab4-60b4-43fa-b4c7-6d1c3d1b006e?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "20:10",
+                "format": "2D NAP ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/d63abd7e-3a91-44d8-8cfa-3658055ba843?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "21:00",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/f97ee4bb-367d-4500-bb3e-c2e3993e1152?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r",
+            "showtimes": [
+              {
+                "time": "11:00",
+                "format": "2D DUB",
+                "room": "Sala 12",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478114?lang=pl"
+              },
+              {
+                "time": "11:30",
+                "format": "2D DUB",
+                "room": "Sala 17",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478843?lang=pl"
+              },
+              {
+                "time": "12:30",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469227?lang=pl"
+              },
+              {
+                "time": "12:30",
+                "format": "3D DUB",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478536?lang=pl"
               },
               {
                 "time": "14:00",
                 "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://bilety.helios.pl/screen/a26fbc24-8e04-4b30-b0bc-de383aa6baf5?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "room": "Sala 12",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477982?lang=pl"
               },
               {
-                "time": "18:15",
+                "time": "14:30",
                 "format": "2D DUB",
-                "room": "Sala 6",
-                "bookingURL": "https://bilety.helios.pl/screen/550f171b-1ea5-4f6e-8701-7fadc9f4f8bc?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Malta Charlie Monroe",
-            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "12:00",
-                "format": "",
-                "room": "Sala Marilyn",
-                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42194"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Muza",
-            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "12:00",
-                "format": "",
-                "room": "Sala 1",
-                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=932973#total"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Apollo",
-            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
-            "showtimes": [
+                "room": "Sala 17",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478834?lang=pl"
+              },
               {
                 "time": "15:30",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662083"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Bułgarska 19",
-            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
-            "showtimes": [
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469108?lang=pl"
+              },
               {
-                "time": "16:00",
-                "format": "",
-                "room": "Sala Dzienniki Motocyklowe"
+                "time": "15:30",
+                "format": "3D DUB",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478537?lang=pl"
+              },
+              {
+                "time": "17:00",
+                "format": "2D NAP",
+                "room": "Sala 12",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477984?lang=pl"
+              },
+              {
+                "time": "17:30",
+                "format": "2D NAP",
+                "room": "Sala 17",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478836?lang=pl"
+              },
+              {
+                "time": "18:30",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469114?lang=pl"
+              },
+              {
+                "time": "18:30",
+                "format": "3D NAP",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478538?lang=pl"
+              },
+              {
+                "time": "20:00",
+                "format": "2D NAP",
+                "room": "Sala 12",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477986?lang=pl"
+              },
+              {
+                "time": "20:30",
+                "format": "2D NAP",
+                "room": "Sala 17",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478838?lang=pl"
+              },
+              {
+                "time": "21:00",
+                "format": "2D NAP",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478271?lang=pl"
+              },
+              {
+                "time": "21:30",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469119?lang=pl"
+              },
+              {
+                "time": "21:30",
+                "format": "3D NAP",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478540?lang=pl"
               }
             ]
           }
@@ -1180,197 +640,290 @@
         "label": "Poniedziałek 1 czerwca",
         "cinemas": [
           {
-            "cinema": "Cinema City Poznań Plaza",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/mandalorian-grogu",
             "showtimes": [
               {
-                "time": "09:00",
+                "time": "08:30",
                 "format": "2D DUB",
-                "room": "Sala 8",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466843?lang=pl"
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100812"
               },
               {
-                "time": "09:30",
+                "time": "10:00",
                 "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466844?lang=pl"
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100921"
               },
               {
-                "time": "10:15",
-                "format": "2D DUB",
+                "time": "12:00",
+                "format": "2D NAP",
                 "room": "Sala 4",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466809?lang=pl"
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100624"
               },
               {
                 "time": "13:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478399?lang=pl"
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100813"
               },
               {
-                "time": "15:30",
+                "time": "14:00",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100920"
+              },
+              {
+                "time": "15:00",
                 "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478403?lang=pl"
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100626"
+              },
+              {
+                "time": "16:00",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100809"
+              },
+              {
+                "time": "17:00",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100919"
               },
               {
                 "time": "18:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478407?lang=pl"
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100625"
+              },
+              {
+                "time": "19:00",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100810"
+              },
+              {
+                "time": "20:00",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100918"
+              },
+              {
+                "time": "21:00",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100623"
               }
             ]
           },
           {
-            "cinema": "Cinema City Kinepolis",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r",
             "showtimes": [
               {
-                "time": "09:45",
+                "time": "10:00",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1467357?lang=pl"
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466808?lang=pl"
               },
               {
-                "time": "12:00",
-                "format": "2D DUB",
-                "room": "Sala 14",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478543?lang=pl"
+                "time": "10:00",
+                "format": "IMAX 3D DUB",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478577?lang=pl"
               },
               {
-                "time": "13:30",
+                "time": "10:45",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478262?lang=pl"
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1466841?lang=pl"
+              },
+              {
+                "time": "11:20",
+                "format": "3D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1471457?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478587?lang=pl"
+              },
+              {
+                "time": "13:10",
+                "format": "2D NAP",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474189?lang=pl"
+              },
+              {
+                "time": "13:40",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477713?lang=pl"
               },
               {
                 "time": "16:00",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478265?lang=pl"
+                "format": "IMAX 3D DUB",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478582?lang=pl"
               },
               {
-                "time": "16:30",
+                "time": "16:40",
                 "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478664?lang=pl"
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477717?lang=pl"
+              },
+              {
+                "time": "17:30",
+                "format": "3D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1471856?lang=pl"
               },
               {
                 "time": "18:30",
+                "format": "2D NAP",
+                "room": "Sala 2",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1472528?lang=pl"
+              },
+              {
+                "time": "19:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478592?lang=pl"
+              },
+              {
+                "time": "19:40",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478268?lang=pl"
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477718?lang=pl"
+              },
+              {
+                "time": "21:30",
+                "format": "2D NAP",
+                "room": "Sala 2",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1472553?lang=pl"
+              },
+              {
+                "time": "22:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478597?lang=pl"
               }
             ]
           },
           {
             "cinema": "Helios Posnania",
-            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347",
             "showtimes": [
               {
-                "time": "10:00",
-                "format": "2D DUB",
-                "room": "Sala 3",
-                "bookingURL": "https://bilety.helios.pl/screen/0086e7f1-c302-42a0-b07e-22a6d844cc44?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "time": "12:00",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/a3ec5760-8082-4e4b-9085-2c510eb7b786?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
               },
               {
-                "time": "12:45",
+                "time": "12:20",
+                "format": "2D DUB ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/04dd803e-7104-457d-83ee-a9449afb5e97?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "13:20",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://bilety.helios.pl/screen/039f3715-39fa-4047-a7bb-bec559a803b0?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "15:15",
+                "format": "2D NAP ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/1f0bdc61-454b-4d65-905d-26dcd90d787b?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:15",
+                "format": "2D DUB ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/a9d01838-2557-4a10-9cbf-5f0e667364a1?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:30",
                 "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/ff1b1cf9-1fd7-4e19-ad37-aeb4997527c5?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "20:00",
+                "format": "2D NAP",
                 "room": "Sala 2",
-                "bookingURL": "https://bilety.helios.pl/screen/397e1a7f-9445-465e-ba33-7a90dcf4c9c1?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "bookingURL": "https://bilety.helios.pl/screen/c98e205a-30b2-4d13-b44a-45822d8a24b4?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "21:10",
+                "format": "2D NAP ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/b7742a1c-7ddb-48eb-9c66-90bbe2a312ea?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r",
+            "showtimes": [
+              {
+                "time": "12:30",
+                "format": "2D DUB",
+                "room": "Sala 12",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478122?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D NAP",
+                "room": "Sala 17",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478848?lang=pl"
               },
               {
                 "time": "14:30",
                 "format": "2D DUB",
-                "room": "Sala 5 - Dream",
-                "bookingURL": "https://bilety.helios.pl/screen/61dbec84-8fba-4f17-a01c-7cc805774fca?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478565?lang=pl"
               },
               {
-                "time": "17:15",
+                "time": "15:50",
                 "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://bilety.helios.pl/screen/16231fe8-2ab2-4123-9a3b-f3ed6eafbd98?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              }
-            ]
-          },
-          {
-            "cinema": "Multikino Stary Browar",
-            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "10:00",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100946"
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469109?lang=pl"
               },
               {
-                "time": "10:30",
-                "format": "2D DUB",
-                "room": "Sala 7",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100662"
+                "time": "17:30",
+                "format": "2D NAP",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478567?lang=pl"
               },
               {
-                "time": "10:30",
-                "format": "2D DUB",
-                "room": "Sala 3",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100778"
+                "time": "18:50",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469115?lang=pl"
               },
               {
-                "time": "13:35",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100948"
+                "time": "20:30",
+                "format": "2D NAP",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478569?lang=pl"
               },
               {
-                "time": "16:10",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100947"
+                "time": "21:00",
+                "format": "2D NAP",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478272?lang=pl"
               },
               {
-                "time": "18:45",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100950"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Bułgarska 19",
-            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "16:10",
-                "format": "",
-                "room": "Sala Dzienniki Motocyklowe"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Apollo",
-            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "16:30",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662084"
-              },
-              {
-                "time": "19:00",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/662085"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Malta Charlie Monroe",
-            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
-            "showtimes": [
-              {
-                "time": "16:35",
-                "format": "",
-                "room": "Sala Marilyn",
-                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42213"
+                "time": "21:50",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469120?lang=pl"
               }
             ]
           }
@@ -1382,156 +935,295 @@
         "cinemas": [
           {
             "cinema": "Multikino Stary Browar",
-            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "cinemaURL": "https://www.multikino.pl/filmy/mandalorian-grogu",
             "showtimes": [
               {
                 "time": "09:00",
                 "format": "2D DUB",
-                "room": "Sala 8",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100714"
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100902"
               },
               {
-                "time": "11:00",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100925"
+                "time": "10:20",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100788"
               },
               {
-                "time": "13:35",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100926"
+                "time": "11:20",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100602"
               },
               {
-                "time": "16:10",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100927"
+                "time": "12:20",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100901"
               },
               {
-                "time": "18:40",
-                "format": "2D DUB",
-                "room": "Sala 11",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100560"
-              }
-            ]
-          },
-          {
-            "cinema": "Cinema City Poznań Plaza",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
-            "showtimes": [
-              {
-                "time": "09:00",
-                "format": "2D DUB",
-                "room": "Sala 3",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1479191?lang=pl"
+                "time": "13:20",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100786"
               },
               {
-                "time": "09:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478396?lang=pl"
-              },
-              {
-                "time": "13:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478400?lang=pl"
-              },
-              {
-                "time": "15:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478404?lang=pl"
-              },
-              {
-                "time": "18:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478408?lang=pl"
-              }
-            ]
-          },
-          {
-            "cinema": "Helios Posnania",
-            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
-            "showtimes": [
-              {
-                "time": "11:30",
+                "time": "14:20",
                 "format": "2D DUB",
                 "room": "Sala 4",
-                "bookingURL": "https://bilety.helios.pl/screen/e8d737be-ea5d-47b5-9092-2756dc92ae64?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100603"
               },
               {
-                "time": "14:30",
-                "format": "2D DUB",
-                "room": "Sala 5 - Dream",
-                "bookingURL": "https://bilety.helios.pl/screen/0bf1f7ba-3eaa-4bb3-a246-d8fb6af1be3f?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "time": "15:20",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100900"
               },
               {
-                "time": "18:15",
-                "format": "2D DUB",
-                "room": "Sala 8",
-                "bookingURL": "https://bilety.helios.pl/screen/f5e6009a-50cb-466f-92da-e3295a54a385?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "time": "16:20",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100787"
+              },
+              {
+                "time": "17:20",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100601"
+              },
+              {
+                "time": "19:20",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100785"
+              },
+              {
+                "time": "20:20",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100604"
+              },
+              {
+                "time": "21:10",
+                "format": "2D NAP",
+                "room": "Sala 10",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100866"
               }
             ]
           },
           {
             "cinema": "Cinema City Kinepolis",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r",
             "showtimes": [
               {
-                "time": "12:00",
+                "time": "09:30",
+                "format": "2D NAP",
+                "room": "Sala 12",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1479312?lang=pl"
+              },
+              {
+                "time": "12:30",
+                "format": "2D DUB",
+                "room": "Sala 12",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478144?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D NAP",
+                "room": "Sala 17",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478858?lang=pl"
+              },
+              {
+                "time": "14:30",
                 "format": "2D DUB",
                 "room": "Sala 14",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478570?lang=pl"
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478571?lang=pl"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469110?lang=pl"
+              },
+              {
+                "time": "17:30",
+                "format": "2D NAP",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478572?lang=pl"
+              },
+              {
+                "time": "18:50",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469116?lang=pl"
+              },
+              {
+                "time": "20:30",
+                "format": "2D NAP",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478573?lang=pl"
+              },
+              {
+                "time": "21:00",
+                "format": "2D NAP",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478273?lang=pl"
+              },
+              {
+                "time": "21:50",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469121?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r",
+            "showtimes": [
+              {
+                "time": "10:00",
+                "format": "IMAX 3D DUB",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478578?lang=pl"
+              },
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477736?lang=pl"
+              },
+              {
+                "time": "10:40",
+                "format": "3D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1471362?lang=pl"
+              },
+              {
+                "time": "11:30",
+                "format": "2D NAP",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474552?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478588?lang=pl"
               },
               {
                 "time": "13:30",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478263?lang=pl"
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477738?lang=pl"
+              },
+              {
+                "time": "14:30",
+                "format": "2D NAP",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474559?lang=pl"
               },
               {
                 "time": "16:00",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478266?lang=pl"
+                "format": "IMAX 3D DUB",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478583?lang=pl"
               },
               {
                 "time": "16:30",
                 "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478665?lang=pl"
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477742?lang=pl"
+              },
+              {
+                "time": "16:50",
+                "format": "3D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1471818?lang=pl"
+              },
+              {
+                "time": "17:50",
+                "format": "2D NAP",
+                "room": "Sala 2",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1472574?lang=pl"
+              },
+              {
+                "time": "19:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478593?lang=pl"
+              },
+              {
+                "time": "19:30",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477745?lang=pl"
+              },
+              {
+                "time": "20:50",
+                "format": "2D NAP",
+                "room": "Sala 2",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1472642?lang=pl"
+              },
+              {
+                "time": "22:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478598?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347",
+            "showtimes": [
+              {
+                "time": "11:40",
+                "format": "2D DUB ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/b5cc2f3e-6d69-482c-b7d4-edf55f3aa291?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "12:30",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/82ed4a73-f163-485a-ad20-465f5dacbab6?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:40",
+                "format": "2D NAP ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/67c33098-163c-4ffa-be07-2b61ff044901?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "15:30",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/a50c3661-0ae0-45dd-ad09-f8e612668d11?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "17:30",
+                "format": "2D DUB ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/f9f0fdde-67e8-4082-87c4-edfd40dcc211?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
               },
               {
                 "time": "18:30",
                 "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478269?lang=pl"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Malta Charlie Monroe",
-            "cinemaURL": "https://kinomalta.pl/movies/drzewo-magii",
-            "showtimes": [
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/a62480a0-69ae-43b9-9a11-065e3aa3638f?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
               {
-                "time": "16:10",
-                "format": "",
-                "room": "Sala Marilyn",
-                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42224"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Bułgarska 19",
-            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
-            "showtimes": [
+                "time": "20:30",
+                "format": "2D NAP ATMOS",
+                "room": "Sala 7 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/f0328a8e-a9a8-4647-af45-b7af7c8d2ac1?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
               {
-                "time": "16:10",
-                "format": "",
-                "room": "Sala Dzienniki Motocyklowe"
+                "time": "21:30",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/5853dc19-7ac7-4ef7-a550-ba5dff7723b4?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
               }
             ]
           }
@@ -1543,144 +1235,277 @@
         "cinemas": [
           {
             "cinema": "Multikino Stary Browar",
-            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "cinemaURL": "https://www.multikino.pl/filmy/mandalorian-grogu",
             "showtimes": [
               {
                 "time": "09:00",
                 "format": "2D DUB",
-                "room": "Sala 1",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100850"
-              },
-              {
-                "time": "09:30",
-                "format": "2D DUB",
-                "room": "Sala 11",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100585"
-              },
-              {
-                "time": "11:50",
-                "format": "2D DUB",
                 "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100945"
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100944"
               },
               {
-                "time": "14:20",
+                "time": "10:00",
                 "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100943"
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100914"
               },
               {
-                "time": "18:45",
+                "time": "10:00",
                 "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100942"
-              }
-            ]
-          },
-          {
-            "cinema": "Cinema City Poznań Plaza",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
-            "showtimes": [
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100804"
+              },
               {
-                "time": "10:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478397?lang=pl"
+                "time": "12:00",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100619"
               },
               {
                 "time": "13:00",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478401?lang=pl"
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100807"
               },
               {
-                "time": "15:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478405?lang=pl"
+                "time": "14:00",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100915"
               },
               {
-                "time": "18:00",
+                "time": "15:00",
                 "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478409?lang=pl"
-              }
-            ]
-          },
-          {
-            "cinema": "Cinema City Kinepolis",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
-            "showtimes": [
-              {
-                "time": "12:00",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478701?lang=pl"
-              },
-              {
-                "time": "13:30",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478264?lang=pl"
-              },
-              {
-                "time": "14:30",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478702?lang=pl"
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100618"
               },
               {
                 "time": "16:00",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478267?lang=pl"
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100805"
               },
               {
                 "time": "17:00",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478703?lang=pl"
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100917"
               },
               {
-                "time": "18:30",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478270?lang=pl"
+                "time": "18:00",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100622"
+              },
+              {
+                "time": "19:00",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100808"
+              },
+              {
+                "time": "20:00",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100916"
+              },
+              {
+                "time": "21:00",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100621"
               }
             ]
           },
           {
             "cinema": "Helios Posnania",
-            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347",
             "showtimes": [
               {
-                "time": "12:10",
-                "format": "2D DUB",
-                "room": "Sala 6",
-                "bookingURL": "https://bilety.helios.pl/screen/dd1321ac-b228-4b80-960a-b75be9cdec55?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              },
-              {
-                "time": "14:40",
-                "format": "2D DUB",
+                "time": "10:00",
+                "format": "2D NAP ATMOS",
                 "room": "Sala 7 - Dream",
-                "bookingURL": "https://bilety.helios.pl/screen/b994ac75-cf71-4ee1-a7fd-5e82c24eb123?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "bookingURL": "https://bilety.helios.pl/screen/8cc980f6-42ee-47bd-bb87-496877e885fe?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
               },
               {
-                "time": "18:15",
+                "time": "11:30",
+                "format": "2D DUB ATMOS",
+                "room": "Sala 5 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/e6802719-6e08-4ce0-993c-17972160be35?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "12:30",
                 "format": "2D DUB",
-                "room": "Sala 8",
-                "bookingURL": "https://bilety.helios.pl/screen/1de3c410-16ba-4655-a6e6-a3d1bd2fb0c4?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/d11df11f-d0a2-4087-a2b8-b576b97ff8c4?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:30",
+                "format": "2D NAP ATMOS",
+                "room": "Sala 5 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/de36c070-9864-4455-ba9e-87545ff6a4b5?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "15:30",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/5d3a5042-21ba-4327-8acb-aeacd408e829?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "18:30",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/18adf21d-2ed1-482c-a3ac-ec3868836c6c?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "21:30",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/045b18d6-f879-4ce7-bfd5-8655a98a9997?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
               }
             ]
           },
           {
-            "cinema": "Kino Bułgarska 19",
-            "cinemaURL": "http://kinobulgarska19.pl/filmy/drzewo-magii",
+            "cinema": "Cinema City Poznań Plaza",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r",
             "showtimes": [
               {
-                "time": "16:10",
-                "format": "",
-                "room": "Sala Dzienniki Motocyklowe"
+                "time": "10:00",
+                "format": "IMAX 3D DUB",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478579?lang=pl"
+              },
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477753?lang=pl"
+              },
+              {
+                "time": "11:20",
+                "format": "3D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1471752?lang=pl"
+              },
+              {
+                "time": "11:30",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1479203?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478589?lang=pl"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477791?lang=pl"
+              },
+              {
+                "time": "14:30",
+                "format": "2D NAP",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474604?lang=pl"
+              },
+              {
+                "time": "16:00",
+                "format": "IMAX 3D DUB",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478584?lang=pl"
+              },
+              {
+                "time": "16:30",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477792?lang=pl"
+              },
+              {
+                "time": "16:50",
+                "format": "3D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1471813?lang=pl"
+              },
+              {
+                "time": "17:50",
+                "format": "2D NAP",
+                "room": "Sala 2",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1472683?lang=pl"
+              },
+              {
+                "time": "19:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478594?lang=pl"
+              },
+              {
+                "time": "19:30",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477793?lang=pl"
+              },
+              {
+                "time": "20:50",
+                "format": "2D NAP",
+                "room": "Sala 2",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1472688?lang=pl"
+              },
+              {
+                "time": "22:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478599?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r",
+            "showtimes": [
+              {
+                "time": "12:30",
+                "format": "2D DUB",
+                "room": "Sala 12",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478149?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "2D NAP",
+                "room": "Sala 17",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478860?lang=pl"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478627?lang=pl"
+              },
+              {
+                "time": "15:50",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469111?lang=pl"
+              },
+              {
+                "time": "18:50",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469117?lang=pl"
+              },
+              {
+                "time": "21:00",
+                "format": "2D NAP",
+                "room": "Sala 13",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478274?lang=pl"
+              },
+              {
+                "time": "21:50",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469122?lang=pl"
               }
             ]
           }
@@ -1692,202 +1517,253 @@
         "cinemas": [
           {
             "cinema": "Multikino Stary Browar",
-            "cinemaURL": "https://www.multikino.pl/filmy/drzewo-magii",
+            "cinemaURL": "https://www.multikino.pl/filmy/mandalorian-grogu",
             "showtimes": [
               {
-                "time": "10:00",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100934"
-              },
-              {
-                "time": "12:50",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100933"
-              },
-              {
-                "time": "15:25",
-                "format": "2D DUB",
-                "room": "Sala 2",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100935"
-              },
-              {
-                "time": "18:15",
-                "format": "2D DUB",
+                "time": "09:25",
+                "format": "3D DUB",
                 "room": "Sala 5",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002612/100797"
-              }
-            ]
-          },
-          {
-            "cinema": "Cinema City Kinepolis",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
-            "showtimes": [
-              {
-                "time": "10:20",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478708?lang=pl"
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100794"
               },
               {
-                "time": "12:00",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478312?lang=pl"
+                "time": "10:35",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100907"
               },
               {
-                "time": "12:50",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478709?lang=pl"
+                "time": "11:25",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100611"
               },
               {
-                "time": "14:30",
-                "format": "2D DUB",
-                "room": "Sala 13",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478313?lang=pl"
+                "time": "12:25",
+                "format": "3D DUB",
+                "room": "Sala 5",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100798"
               },
               {
-                "time": "15:20",
-                "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478710?lang=pl"
+                "time": "13:35",
+                "format": "2D NAP",
+                "room": "Sala 6",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100908"
               },
               {
-                "time": "17:50",
+                "time": "14:25",
                 "format": "2D DUB",
-                "room": "Sala 15",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478712?lang=pl"
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100612"
+              },
+              {
+                "time": "16:50",
+                "format": "2D DUB",
+                "room": "Sala 11",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100571"
+              },
+              {
+                "time": "17:35",
+                "format": "2D NAP",
+                "room": "Sala 10",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100880"
+              },
+              {
+                "time": "20:35",
+                "format": "2D NAP",
+                "room": "Sala 10",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100878"
+              },
+              {
+                "time": "21:20",
+                "format": "2D NAP",
+                "room": "Sala 9",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002420/100689"
               }
             ]
           },
           {
             "cinema": "Cinema City Poznań Plaza",
-            "cinemaURL": "https://www.cinema-city.pl/filmy/drzewo-magii/8180d2r",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r",
+            "showtimes": [
+              {
+                "time": "10:00",
+                "format": "IMAX 3D DUB",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478580?lang=pl"
+              },
+              {
+                "time": "11:00",
+                "format": "2D NAP",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474617?lang=pl"
+              },
+              {
+                "time": "11:30",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477795?lang=pl"
+              },
+              {
+                "time": "11:45",
+                "format": "3D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1471763?lang=pl"
+              },
+              {
+                "time": "13:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478590?lang=pl"
+              },
+              {
+                "time": "14:00",
+                "format": "2D NAP",
+                "room": "Sala 3",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1474624?lang=pl"
+              },
+              {
+                "time": "14:30",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1477803?lang=pl"
+              },
+              {
+                "time": "16:00",
+                "format": "IMAX 3D DUB",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478585?lang=pl"
+              },
+              {
+                "time": "18:00",
+                "format": "2D DUB",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478353?lang=pl"
+              },
+              {
+                "time": "19:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478595?lang=pl"
+              },
+              {
+                "time": "20:50",
+                "format": "2D NAP",
+                "room": "Sala 9",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478215?lang=pl"
+              },
+              {
+                "time": "21:00",
+                "format": "2D NAP",
+                "room": "Sala 2",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1472721?lang=pl"
+              },
+              {
+                "time": "22:00",
+                "format": "IMAX 3D NAP",
+                "room": "Sala IMAX",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478600?lang=pl"
+              }
+            ]
+          },
+          {
+            "cinema": "Cinema City Kinepolis",
+            "cinemaURL": "https://www.cinema-city.pl/filmy/gwiezdne-wojny-mandalorian-i-grogu/7667s2r",
             "showtimes": [
               {
                 "time": "10:30",
                 "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478398?lang=pl"
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478634?lang=pl"
               },
               {
-                "time": "13:00",
+                "time": "11:20",
                 "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478402?lang=pl"
+                "room": "Sala 12",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478183?lang=pl"
               },
               {
-                "time": "14:40",
+                "time": "11:50",
+                "format": "2D NAP",
+                "room": "Sala 17",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478867?lang=pl"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 14",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478631?lang=pl"
+              },
+              {
+                "time": "14:20",
+                "format": "2D DUB",
+                "room": "Sala 12",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478217?lang=pl"
+              },
+              {
+                "time": "14:50",
+                "format": "2D NAP",
+                "room": "Sala 17",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478870?lang=pl"
+              },
+              {
+                "time": "15:45",
                 "format": "2D DUB",
                 "room": "Sala 1",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1472142?lang=pl"
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469112?lang=pl"
               },
               {
-                "time": "15:30",
-                "format": "2D DUB",
-                "room": "Sala 9",
-                "bookingURL": "https://tickets.cinema-city.pl/api/order/1478406?lang=pl"
+                "time": "19:30",
+                "format": "2D NAP",
+                "room": "Sala 4",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1470571?lang=pl"
+              },
+              {
+                "time": "21:30",
+                "format": "2D NAP",
+                "room": "Sala 1",
+                "bookingURL": "https://tickets.cinema-city.pl/api/order/1469123?lang=pl"
               }
             ]
           },
           {
             "cinema": "Helios Posnania",
-            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/drzewo-magii-4413",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/mandalorian-grogu-4347",
             "showtimes": [
               {
-                "time": "12:10",
-                "format": "2D DUB",
-                "room": "Sala 1",
-                "bookingURL": "https://bilety.helios.pl/screen/da0daf03-72dc-48f6-b3ea-c49f694f2cc2?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "time": "11:30",
+                "format": "2D DUB ATMOS",
+                "room": "Sala 5 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/85e9c8ee-437b-4207-b5ab-144e8bcf5dc5?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
               },
               {
-                "time": "14:00",
-                "format": "2D DUB",
-                "room": "Sala 7 - Dream",
-                "bookingURL": "https://bilety.helios.pl/screen/d3339ce6-f099-497b-9529-0eb932024767?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+                "time": "12:20",
+                "format": "2D NAP",
+                "room": "Sala 3",
+                "bookingURL": "https://bilety.helios.pl/screen/a487769d-75a3-4757-af27-3a1130e89efd?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
               },
               {
-                "time": "18:15",
+                "time": "14:20",
+                "format": "2D NAP ATMOS",
+                "room": "Sala 5 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/38c638c4-98bb-424d-8366-2881da415146?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "15:10",
                 "format": "2D DUB",
-                "room": "Sala 8",
-                "bookingURL": "https://bilety.helios.pl/screen/523dd396-cfb5-46c2-a1bf-d49fe31e4b82?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "date": "2026-06-05",
-        "label": "Piątek 5 czerwca",
-        "cinemas": [
-          {
-            "cinema": "Kino Apollo",
-            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
-            "showtimes": [
+                "room": "Sala 3",
+                "bookingURL": "https://bilety.helios.pl/screen/44d3cbae-2ac9-4f75-ab0a-7a02ecad9132?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
               {
-                "time": "16:00",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666637"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "date": "2026-06-06",
-        "label": "Sobota 6 czerwca",
-        "cinemas": [
-          {
-            "cinema": "Kino Muza",
-            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
-            "showtimes": [
+                "time": "17:15",
+                "format": "2D DUB ATMOS",
+                "room": "Sala 5 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/8f1b5a2e-508c-4a08-acd4-b0ab31e570fd?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
               {
-                "time": "12:00",
-                "format": "",
+                "time": "21:30",
+                "format": "2D NAP",
                 "room": "Sala 1",
-                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=933949#total"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Apollo",
-            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "15:30",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666638"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "date": "2026-06-07",
-        "label": "Niedziela 7 czerwca",
-        "cinemas": [
-          {
-            "cinema": "Kino Muza",
-            "cinemaURL": "https://www.kinomuza.pl/movie/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "12:00",
-                "format": "",
-                "room": "Sala 1",
-                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=933985#total"
-              }
-            ]
-          },
-          {
-            "cinema": "Kino Apollo",
-            "cinemaURL": "https://kinoapollo.pl/kino/drzewo-magii/",
-            "showtimes": [
-              {
-                "time": "15:00",
-                "format": "",
-                "bookingURL": "https://bilety.kinoapollo.pl/event/view/id/666639"
+                "bookingURL": "https://bilety.helios.pl/screen/e1793cf1-af24-421f-82d2-109a415f8407?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
               }
             ]
           }
@@ -1896,36 +1772,574 @@
     ]
   },
   {
-    "title": "Bluey w kinie: Kolekcja Zabawy z przyjaciółmi",
-    "posterURL": "https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/bluey/bluey_zabawazprzyjaciolmi_plakat2.jpg?rev=4a0380d5d9b54c4ba1959fbd958a05e6",
-    "fallbackPosterURLs": [],
+    "title": "Niesamowite przygody skarpetek 3. Ale kosmos!",
+    "posterURL": "https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/niesamowite-przygody-skarpetek-3/niesamowite-przygody-skarpetek-3-plakat-cut.png?rev=f5940b2f416e4b19a59c25edac82e020",
+    "fallbackPosterURLs": [
+      "http://kinobulgarska19.pl/wp-content/uploads/2026/05/Ale-kosmos-PLAKAT.jpg",
+      "https://www.kinomalta.pl/wp-content/uploads/2026/05/Niesamowite-przygody-skarpetek-3.-Ale-kosmos-PLAKAT-po-zmniejszeniu-200x288.jpg",
+      "https://img.helios.pl/pliki/film/niesamowite-przygody-skarpetek-3/niesamowite-przygody-skarpetek-3-plakat-34127.png",
+      "https://www.kinomuza.pl/content/uploads/2026/05/Niesamowite-przygody-skarpetek-3.-Ale-kosmos-PLAKAT-833x1200-1-555x800.jpg",
+      "https://kinopalacowe.pl/media/gallery/lg/Skarpetki-3_1080x1080.jpg",
+      "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/niesamowite-przygody-skarpetek-3-ale-kosmos-plakat-scaled.jpg",
+      "https://image.tmdb.org/t/p/w500/oKZJq84K1BbEv1ESncuuWhhd4Ma.jpg"
+    ],
     "runtimeMinutes": 55,
     "ratings": {
-      "metacriticURL": "https://www.metacritic.com/search/Bluey+w+kinie%3A+Kolekcja+Zabawy+z+przyjaci%C3%B3%C5%82mi/?category=2",
-      "rottenTomatoesURL": "https://www.rottentomatoes.com/search?search=Bluey+w+kinie%3A+Kolekcja+Zabawy+z+przyjaci%C3%B3%C5%82mi",
-      "filmwebURL": "https://www.filmweb.pl/search?query=Bluey+w+kinie%3A+Kolekcja+Zabawy+z+przyjaci%C3%B3%C5%82mi"
+      "metacriticURL": "https://www.metacritic.com/search/Niesamowite+przygody+skarpetek+3.+Ale+kosmos%21/?category=2",
+      "rottenTomatoesURL": "https://www.rottentomatoes.com/search?search=Niesamowite+przygody+skarpetek+3.+Ale+kosmos%21",
+      "filmweb": 6,
+      "filmwebURL": "https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+3.+Ale+kosmos%21-2026-10116428"
     },
-    "countries": [],
+    "countries": [
+      "Polska",
+      "Portugalia"
+    ],
     "directors": [
-      "Joe Brumm"
+      "Elżbieta Wąsik",
+      "Paweł Wendorff"
     ],
     "cast": [],
-    "synopsis": "Bluey w kinie: Kolekcja Zabawy z przyjaciółmi to godzina świetnej zabawy, zawierająca osiem odcinków z trzech sezonów serialu, celebrujących zabawę i wyobraźnię z przyjaciółmi i rodziną! Kompilacja przedstawia ulubione gry Bluey, takie jak Cienistym Szlakiem i Ośmiornica, oraz podkreśla wyjątkowe chwile przyjaźni w odcinkach Cyrk i Ślizgawka - wszystko pełne radości i śmiechu.",
-    "trailerURLs": [],
     "showings": [
       {
         "date": "2026-05-31",
         "label": "Niedziela 31 maja",
         "cinemas": [
           {
-            "cinema": "Multikino Stary Browar",
-            "cinemaURL": "https://www.multikino.pl/filmy/bluey-w-kinie-kolekcja-zabawy-z-przyjaciomi",
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos-4158",
             "showtimes": [
               {
-                "time": "09:10",
+                "time": "10:00",
                 "format": "2D DUB",
-                "room": "Sala 7",
-                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002626/100639"
+                "room": "Sala 8",
+                "bookingURL": "https://bilety.helios.pl/screen/626a3383-f515-414b-b26d-9d6d68266681?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "11:45",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://bilety.helios.pl/screen/5a40949a-bddf-4cfe-b54b-0dcaa793c362?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "13:30",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://bilety.helios.pl/screen/89a041fd-c995-4961-aff9-81b88c21a5c2?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "15:10",
+                "format": "2D DUB",
+                "room": "Sala 8",
+                "bookingURL": "https://bilety.helios.pl/screen/2b8ab09d-448c-404a-af03-6f03f38556be?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Pałacowe",
+            "cinemaURL": "http://kinopalacowe.pl/filmy/14253-poranek-dla-dzieci-niesamowite-przygody-skarpetek-/",
+            "showtimes": [
+              {
+                "time": "11:00",
+                "format": "",
+                "room": "Sala 1 - Kinowa",
+                "bookingURL": "https://ckzamek.bilety24.pl/kup-bilety/?id=908453"
+              }
+            ]
+          },
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/niesamowite-przygody-skarpetek-3",
+            "showtimes": [
+              {
+                "time": "11:40",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100828"
+              },
+              {
+                "time": "13:05",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100826"
+              },
+              {
+                "time": "14:30",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100824"
+              },
+              {
+                "time": "15:55",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100827"
+              },
+              {
+                "time": "17:20",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100830"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Rialto",
+            "cinemaURL": "https://www.kinorialto.poznan.pl/wydarzenie/?id=157351",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "",
+                "bookingURL": "https://www.kinorialto.poznan.pl/b24-do-miejsc-numerowanych-i-nienumerowanych/?id=925266"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Muza",
+            "cinemaURL": "https://www.kinomuza.pl/movie/niesamowite-przygody-skarpetek-3-ale-kosmos/",
+            "showtimes": [
+              {
+                "time": "12:15",
+                "format": "",
+                "room": "Sala 2",
+                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=932978#total"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Malta Charlie Monroe",
+            "cinemaURL": "https://kinomalta.pl/movies/niesamowite-przygody-skarpetek-3-ale-kosmos",
+            "showtimes": [
+              {
+                "time": "13:00",
+                "format": "",
+                "room": "Sala Audrey",
+                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42200"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos",
+            "showtimes": [
+              {
+                "time": "15:30",
+                "format": "",
+                "room": "Sala Thelma & Louise"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-01",
+        "label": "Poniedziałek 1 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/niesamowite-przygody-skarpetek-3",
+            "showtimes": [
+              {
+                "time": "10:30",
+                "format": "2D DUB",
+                "room": "Sala 4",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100627"
+              },
+              {
+                "time": "12:00",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100854"
+              },
+              {
+                "time": "13:25",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100853"
+              },
+              {
+                "time": "14:50",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100851"
+              },
+              {
+                "time": "16:20",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100856"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos-4158",
+            "showtimes": [
+              {
+                "time": "11:25",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://bilety.helios.pl/screen/b2f51d08-53ad-4dbb-8839-d420be5e45dc?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:20",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://bilety.helios.pl/screen/18e0a57e-40f8-4d63-ae53-5a83da664c8e?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "15:30",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://bilety.helios.pl/screen/387db66d-7aa4-405f-bddc-1b7e05afc161?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "16:20",
+                "format": "2D DUB",
+                "room": "Sala 4",
+                "bookingURL": "https://bilety.helios.pl/screen/0ee41a85-14f9-4495-9666-fdbe340e0a06?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Malta Charlie Monroe",
+            "cinemaURL": "https://kinomalta.pl/movies/niesamowite-przygody-skarpetek-3-ale-kosmos",
+            "showtimes": [
+              {
+                "time": "15:35",
+                "format": "",
+                "room": "Sala Marilyn",
+                "bookingURL": "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42212"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos",
+            "showtimes": [
+              {
+                "time": "16:20",
+                "format": "",
+                "room": "Sala Thelma & Louise"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-02",
+        "label": "Wtorek 2 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/niesamowite-przygody-skarpetek-3",
+            "showtimes": [
+              {
+                "time": "09:20",
+                "format": "2D DUB",
+                "room": "Sala 2",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100821"
+              },
+              {
+                "time": "10:00",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100752"
+              },
+              {
+                "time": "12:45",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100749"
+              },
+              {
+                "time": "14:10",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100753"
+              },
+              {
+                "time": "15:35",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100750"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos-4158",
+            "showtimes": [
+              {
+                "time": "10:45",
+                "format": "2D DUB",
+                "room": "Sala 5 - Dream",
+                "bookingURL": "https://bilety.helios.pl/screen/29610961-b5a8-4b0f-8e47-c3a2a5362a37?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "16:20",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://bilety.helios.pl/screen/2b9f6738-fb07-45c9-a01d-78b66f21ce04?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos",
+            "showtimes": [
+              {
+                "time": "16:20",
+                "format": "",
+                "room": "Sala Thelma & Louise"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-03",
+        "label": "Środa 3 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/niesamowite-przygody-skarpetek-3",
+            "showtimes": [
+              {
+                "time": "09:25",
+                "format": "2D DUB",
+                "room": "Sala 3",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100770"
+              },
+              {
+                "time": "11:40",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100847"
+              },
+              {
+                "time": "13:05",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100845"
+              },
+              {
+                "time": "14:30",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100848"
+              },
+              {
+                "time": "15:55",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100849"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos-4158",
+            "showtimes": [
+              {
+                "time": "12:50",
+                "format": "2D DUB",
+                "room": "Sala 4",
+                "bookingURL": "https://bilety.helios.pl/screen/31e96d0f-71f9-4c0f-93dd-c0810d256971?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:40",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://bilety.helios.pl/screen/1984d0fd-4bee-41fb-9240-ad0cc8368438?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "16:15",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://bilety.helios.pl/screen/177b429a-7ad5-4aea-90c3-1a3d172725db?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Bułgarska 19",
+            "cinemaURL": "http://kinobulgarska19.pl/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos",
+            "showtimes": [
+              {
+                "time": "17:00",
+                "format": "",
+                "room": "Sala Thelma & Louise"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-04",
+        "label": "Czwartek 4 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Multikino Stary Browar",
+            "cinemaURL": "https://www.multikino.pl/filmy/niesamowite-przygody-skarpetek-3",
+            "showtimes": [
+              {
+                "time": "09:55",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100836"
+              },
+              {
+                "time": "11:20",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100832"
+              },
+              {
+                "time": "12:45",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100835"
+              },
+              {
+                "time": "14:10",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100834"
+              },
+              {
+                "time": "15:35",
+                "format": "2D DUB",
+                "room": "Sala 1",
+                "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002711/100833"
+              }
+            ]
+          },
+          {
+            "cinema": "Helios Posnania",
+            "cinemaURL": "https://helios.pl/poznan/kino-helios/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos-4158",
+            "showtimes": [
+              {
+                "time": "13:00",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://bilety.helios.pl/screen/ab5e30e0-06c8-44b1-a7ed-008933bf1fd4?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "14:40",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://bilety.helios.pl/screen/702f3e80-5825-4ee0-847e-ca90068b3631?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              },
+              {
+                "time": "16:10",
+                "format": "2D DUB",
+                "room": "Sala 6",
+                "bookingURL": "https://bilety.helios.pl/screen/18bc8e3d-dd37-474a-a786-a19fd8b85ed6?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-06",
+        "label": "Sobota 6 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Kino Muza",
+            "cinemaURL": "https://www.kinomuza.pl/movie/niesamowite-przygody-skarpetek-3-ale-kosmos/",
+            "showtimes": [
+              {
+                "time": "11:30",
+                "format": "",
+                "room": "Sala 2",
+                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=933962#total"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Rialto",
+            "cinemaURL": "https://www.kinorialto.poznan.pl/wydarzenie/?id=157351",
+            "showtimes": [
+              {
+                "time": "12:15",
+                "format": "",
+                "bookingURL": "https://www.kinorialto.poznan.pl/b24-do-miejsc-numerowanych-i-nienumerowanych/?id=936104"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-07",
+        "label": "Niedziela 7 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Kino Pałacowe",
+            "cinemaURL": "http://kinopalacowe.pl/filmy/14253-poranek-dla-dzieci-niesamowite-przygody-skarpetek-/",
+            "showtimes": [
+              {
+                "time": "11:00",
+                "format": "",
+                "room": "Sala 1 - Kinowa",
+                "bookingURL": "https://ckzamek.bilety24.pl/kup-bilety/?id=925231"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Rialto",
+            "cinemaURL": "https://www.kinorialto.poznan.pl/wydarzenie/?id=157351",
+            "showtimes": [
+              {
+                "time": "12:00",
+                "format": "",
+                "bookingURL": "https://www.kinorialto.poznan.pl/b24-do-miejsc-numerowanych-i-nienumerowanych/?id=936840"
+              }
+            ]
+          },
+          {
+            "cinema": "Kino Muza",
+            "cinemaURL": "https://www.kinomuza.pl/movie/niesamowite-przygody-skarpetek-3-ale-kosmos/",
+            "showtimes": [
+              {
+                "time": "12:30",
+                "format": "",
+                "room": "Sala 2",
+                "bookingURL": "https://estradapoznan.bilety24.pl/kup-bilety/?id=933994#total"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-13",
+        "label": "Sobota 13 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Kino Pałacowe",
+            "cinemaURL": "http://kinopalacowe.pl/filmy/14253-poranek-dla-dzieci-niesamowite-przygody-skarpetek-/",
+            "showtimes": [
+              {
+                "time": "11:00",
+                "format": "",
+                "room": "Sala 1 - Kinowa",
+                "bookingURL": "https://ckzamek.bilety24.pl/kup-bilety/?id=925232"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-21",
+        "label": "Niedziela 21 czerwca",
+        "cinemas": [
+          {
+            "cinema": "Kino Pałacowe",
+            "cinemaURL": "http://kinopalacowe.pl/filmy/14253-poranek-dla-dzieci-niesamowite-przygody-skarpetek-/",
+            "showtimes": [
+              {
+                "time": "11:00",
+                "format": "",
+                "room": "Sala 1 - Kinowa",
+                "bookingURL": "https://ckzamek.bilety24.pl/kup-bilety/?id=925235"
               }
             ]
           }

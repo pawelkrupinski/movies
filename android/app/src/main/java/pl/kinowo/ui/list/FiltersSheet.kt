@@ -13,9 +13,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SheetState
@@ -244,7 +247,6 @@ private fun FromHourRow(filter: FormatFilter, onChange: (FormatFilter) -> Unit) 
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun <T> Dropdown(
     label: String,
@@ -254,21 +256,17 @@ private fun <T> Dropdown(
     modifier: Modifier = Modifier,
     onPick: (T) -> Unit,
 ) {
-    androidx.compose.material3.ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = onExpandedChange,
-        modifier = modifier,
-    ) {
-        androidx.compose.material3.OutlinedTextField(
-            value = label,
-            onValueChange = {},
-            readOnly = true,
-            trailingIcon = { androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth(),
-        )
-        androidx.compose.material3.ExposedDropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
+    androidx.compose.foundation.layout.Box(modifier) {
+        OutlinedButton(onClick = { onExpandedChange(true) }, modifier = Modifier.fillMaxWidth()) {
+            Text(label, modifier = Modifier.weight(1f))
+            Icon(
+                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = null,
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
             items.forEach { (text, value) ->
-                androidx.compose.material3.DropdownMenuItem(text = { Text(text) }, onClick = { onPick(value) })
+                DropdownMenuItem(text = { Text(text) }, onClick = { onPick(value) })
             }
         }
     }
