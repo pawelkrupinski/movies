@@ -91,9 +91,11 @@ struct FilmGridView: View {
                     }
                 }
                 .padding(.horizontal, 12)
-                // No top padding: the shared TopBar is a `.safeAreaInset`
-                // at the ContentView level, so its height is already
-                // reserved in this ScrollView's top content inset.
+                // The shared TopBar's height is already reserved by
+                // ContentView's `.safeAreaInset(edge: .top)`; this small
+                // top pad is just a breathing gap so the first poster row
+                // doesn't sit flush against the bar.
+                .padding(.top, 16)
                 .padding(.bottom, 70)
                 .pinScrollContentInset()
             }
@@ -143,8 +145,10 @@ struct CinemaSectionedGridView<Header: View>: View {
                 }
             }
             .padding(.horizontal, 12)
-            // See FilmGridView: TopBar height is reserved via the
-            // ContentView `.safeAreaInset(edge: .top)`, no manual pad.
+            // See FilmGridView: the bar's height is reserved by the
+            // ContentView `.safeAreaInset(edge: .top)`; this is just the
+            // breathing gap below it.
+            .padding(.top, 16)
             .padding(.bottom, 70)
             .pinScrollContentInset()
         }
