@@ -31,9 +31,10 @@
 		DD00000000000000000012 /* HTMLPrimitives.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000012 /* HTMLPrimitives.swift */; };
 		DD00000000000000000013 /* ShowingsParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000013 /* ShowingsParser.swift */; };
 		DD00000000000000000014 /* RatingsParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000014 /* RatingsParser.swift */; };
-		DD00000000000000000015 /* FilmDetailParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000015 /* FilmDetailParser.swift */; };
-		DD00000000000000000016 /* FilmDetailStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000016 /* FilmDetailStore.swift */; };
-		DD00000000000000000017 /* FilmDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000017 /* FilmDetail.swift */; };
+		DD00000000000000000040 /* FilmDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000040 /* FilmDetails.swift */; };
+		DD00000000000000000041 /* CinemaLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000041 /* CinemaLink.swift */; };
+		DD00000000000000000042 /* DetailsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000042 /* DetailsStore.swift */; };
+		DD00000000000000000043 /* DetailsCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000043 /* DetailsCache.swift */; };
 		DD00000000000000000018 /* FilmDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000018 /* FilmDetailView.swift */; };
 		DD00000000000000000019 /* FlowLayoutMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000019 /* FlowLayoutMath.swift */; };
 		DD0000000000000000001B /* AccessibilityIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001B /* AccessibilityIdentifiers.swift */; };
@@ -82,9 +83,10 @@
 		CC00000000000000000012 /* HTMLPrimitives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLPrimitives.swift; sourceTree = "<group>"; };
 		CC00000000000000000013 /* ShowingsParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowingsParser.swift; sourceTree = "<group>"; };
 		CC00000000000000000014 /* RatingsParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingsParser.swift; sourceTree = "<group>"; };
-		CC00000000000000000015 /* FilmDetailParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailParser.swift; sourceTree = "<group>"; };
-		CC00000000000000000016 /* FilmDetailStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailStore.swift; sourceTree = "<group>"; };
-		CC00000000000000000017 /* FilmDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetail.swift; sourceTree = "<group>"; };
+		CC00000000000000000040 /* FilmDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetails.swift; sourceTree = "<group>"; };
+		CC00000000000000000041 /* CinemaLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaLink.swift; sourceTree = "<group>"; };
+		CC00000000000000000042 /* DetailsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsStore.swift; sourceTree = "<group>"; };
+		CC00000000000000000043 /* DetailsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsCache.swift; sourceTree = "<group>"; };
 		CC00000000000000000018 /* FilmDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailView.swift; sourceTree = "<group>"; };
 		CC00000000000000000019 /* FlowLayoutMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayoutMath.swift; sourceTree = "<group>"; };
 		CC0000000000000000001A /* KinowoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KinowoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -164,7 +166,8 @@
 			isa = PBXGroup;
 			children = (
 				CC00000000000000000005 /* Film.swift */,
-				CC00000000000000000017 /* FilmDetail.swift */,
+				CC00000000000000000040 /* FilmDetails.swift */,
+				CC00000000000000000041 /* CinemaLink.swift */,
 				CC00000000000000000006 /* Filters.swift */,
 				CC00000000000000000022 /* RetryBackoff.swift */,
 			);
@@ -176,12 +179,12 @@
 			children = (
 				CC00000000000000000007 /* RepertoireClient.swift */,
 				CC00000000000000000030 /* RepertoireCache.swift */,
+				CC00000000000000000042 /* DetailsStore.swift */,
+				CC00000000000000000043 /* DetailsCache.swift */,
 				CC00000000000000000008 /* HTMLParser.swift */,
 				CC00000000000000000012 /* HTMLPrimitives.swift */,
 				CC00000000000000000013 /* ShowingsParser.swift */,
 				CC00000000000000000014 /* RatingsParser.swift */,
-				CC00000000000000000015 /* FilmDetailParser.swift */,
-				CC00000000000000000016 /* FilmDetailStore.swift */,
 				CC00000000000000000009 /* HTMLDecoding.swift */,
 				CC00000000000000000035 /* TrailerEmbedHTML.swift */,
 			);
@@ -336,9 +339,10 @@
 				DD00000000000000000012 /* HTMLPrimitives.swift in Sources */,
 				DD00000000000000000013 /* ShowingsParser.swift in Sources */,
 				DD00000000000000000014 /* RatingsParser.swift in Sources */,
-				DD00000000000000000015 /* FilmDetailParser.swift in Sources */,
-				DD00000000000000000016 /* FilmDetailStore.swift in Sources */,
-				DD00000000000000000017 /* FilmDetail.swift in Sources */,
+				DD00000000000000000040 /* FilmDetails.swift in Sources */,
+				DD00000000000000000041 /* CinemaLink.swift in Sources */,
+				DD00000000000000000042 /* DetailsStore.swift in Sources */,
+				DD00000000000000000043 /* DetailsCache.swift in Sources */,
 				DD00000000000000000018 /* FilmDetailView.swift in Sources */,
 				DD00000000000000000019 /* FlowLayoutMath.swift in Sources */,
 				DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */,

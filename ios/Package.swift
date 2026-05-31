@@ -9,7 +9,7 @@ import PackageDescription
 // Three targets:
 // - `KinowoCore` — Foundation-only sources (Models + parser layer of
 //   Networking). The Views/, Storage/, ContentView, KinowoApp,
-//   RepertoireClient, FilmDetailStore files are excluded because they
+//   RepertoireClient, DetailsStore files are excluded because they
 //   import SwiftUI/UIKit/Combine, none of which exist on
 //   swift-corelibs-foundation. The Xcode app still compiles those
 //   files for the real device build — they live in `Kinowo/` and
@@ -79,7 +79,7 @@ let package = Package(
                 // parser-delegation shim; the parser layer below is
                 // what carries the test-worthy behaviour.
                 "Networking/RepertoireClient.swift",
-                "Networking/FilmDetailStore.swift",
+                "Networking/DetailsStore.swift",
                 "Storage",
                 // Asset catalog — not a Swift source.
                 "Assets.xcassets",

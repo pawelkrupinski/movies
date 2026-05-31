@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var store: RepertoireStore
+    @EnvironmentObject var details: DetailsStore
     @EnvironmentObject var prefs: UserPreferences
     @Environment(\.scenePhase) private var scenePhase
 
@@ -97,7 +98,14 @@ struct ContentView: View {
         .task {
             store.loadCachedData()
             store.pruneStaleShowings()
-            await store.reload()
+            details.loadCachedData()
+            // Fetch listing + details concurrently. The grid renders the
+            // moment `store.reload()` lands (synopsis/trailers are
+            // non-essential), so details never block the first paint —
+            // they populate the detail screen whenever they arrive.
+            async let repertoire: Void = store.reload()
+            async let detailsLoad: Void = details.reload()
+            _ = await (repertoire, detailsLoad)
         }
         .onAppear {
             // Briefly name the starting tab so the user sees the same
@@ -124,6 +132,7 @@ struct ContentView: View {
             if phase == .active {
                 store.pruneStaleShowings()
                 Task { await store.reloadIfStale() }
+                Task { await details.reloadIfStale() }
             }
         }
     }

@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct KinowoApp: App {
     @StateObject private var store = RepertoireStore()
+    @StateObject private var details = DetailsStore()
     @StateObject private var prefs: UserPreferences
     @StateObject private var authService: AuthService
     @StateObject private var sync: StateSyncService
@@ -23,6 +24,7 @@ struct KinowoApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
+                .environmentObject(details)
                 .environmentObject(prefs)
                 .environmentObject(authService)
                 .environmentObject(sync)

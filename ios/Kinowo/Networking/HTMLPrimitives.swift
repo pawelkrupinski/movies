@@ -1,13 +1,13 @@
 import Foundation
 
-/// Tiny regex-based HTML helpers shared by `HTMLParser` (listing page)
-/// and `FilmDetailParser` (`/film` page). Both pages are slices of the
-/// same Twirl-templated site, so they share the same primitive needs:
-/// find anchor offsets to slice on, pull a first-group capture out of a
-/// chunk, read a named attribute out of an opening tag.
+/// Tiny regex-based HTML helpers backing `HTMLParser` (the `/` listing
+/// page parser). Common primitive needs: find anchor offsets to slice
+/// on, pull a first-group capture out of a chunk, read a named
+/// attribute out of an opening tag.
 ///
-/// Extracted here so the two parsers don't carry parallel copies of
-/// these (per CLAUDE.md "extract repeated patterns at two uses").
+/// Shared with `ShowingsParser` / `RatingsParser` (the per-block
+/// sub-parsers `HTMLParser` delegates to), so they don't carry parallel
+/// copies of these (per CLAUDE.md "extract repeated patterns").
 enum HTMLPrimitives {
 
     /// Every starting index where `needle` occurs in `haystack`, in
@@ -39,12 +39,6 @@ enum HTMLPrimitives {
         let r = m.range(at: 1)
         if r.location == NSNotFound { return nil }
         return ns.substring(with: r)
-    }
-
-    static func stripTags(_ html: String) -> String {
-        html.replacingOccurrences(of: "<!--.*?-->", with: "", options: .regularExpression)
-            .replacingOccurrences(of: "<[^>]+>",    with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Named attribute value from a tag's attribute-blob (e.g. the

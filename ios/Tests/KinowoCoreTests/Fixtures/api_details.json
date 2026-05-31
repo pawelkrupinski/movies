@@ -1,0 +1,30 @@
+[
+  {
+    "title": "Mandalorian i Grogu",
+    "synopsis": "Po upadku Imperium słynny łowca nagród Din Djarin i jego podopieczny Grogu wyruszają w nową, niebezpieczną podróż przez galaktykę.",
+    "trailerURLs": [
+      "https://www.youtube.com/embed/abc123XYZ",
+      "https://www.youtube.com/embed/def456UVW"
+    ]
+  },
+  {
+    "title": "Diuna: Część druga",
+    "synopsis": "Paul Atryda łączy siły z Fremenami, by pomścić rodzinę i powstrzymać przerażającą przyszłość, którą jako jedyny potrafi przewidzieć.",
+    "trailerURLs": [
+      "https://www.youtube.com/embed/ghi789RST"
+    ]
+  },
+  {
+    "title": "Film bez zwiastuna",
+    "synopsis": "Opis bez żadnego zwiastuna — backend i tak go ujmuje, bo ma synopsis.",
+    "trailerURLs": []
+  },
+  {
+    "title": "Film z uszkodzonym linkiem",
+    "synopsis": null,
+    "trailerURLs": [
+      "https://www.youtube.com/embed/valid123",
+      ""
+    ]
+  }
+]

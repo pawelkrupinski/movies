@@ -6,16 +6,17 @@ import SwiftUI
 /// Obsada / Zwiastuny meta blocks, then a `Seanse` section with the
 /// full day-by-day showings tree.
 ///
-/// `film` is the listing row that fed the navigation — used to render
-/// the poster + title + ratings + showings immediately while the
-/// detail HTML is still loading (so the screen never blinks empty).
-/// Once `FilmDetailStore` finishes the fetch, detail-only fields
-/// (synopsis, director, cast, cinema-links, trailers, full-week
-/// showings) replace the placeholder.
+/// Everything is built from data already in hand: the listing `Film`
+/// (poster, ratings, runtime, showings, directors, cast — and cinema
+/// links derived from the showings' `cinemaURL`s) plus the synopsis +
+/// trailer URLs the launch-time `/api/details` fetch deposited in
+/// `DetailsStore`. There's no per-screen fetch any more; if details
+/// haven't landed for this title yet, the Film-derived parts render
+/// immediately and synopsis/trailers simply stay hidden until the
+/// details map populates.
 struct FilmDetailView: View {
     let film: Film
-    @StateObject private var store = FilmDetailStore()
-    @EnvironmentObject var prefs: UserPreferences
+    @EnvironmentObject var details: DetailsStore
     @State private var playingTrailerIndex: Int? = nil
 
     var body: some View {
@@ -34,14 +35,10 @@ struct FilmDetailView: View {
         .background(Color(red: 0.067, green: 0.067, blue: 0.067).ignoresSafeArea())
         .navigationTitle(film.title)
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            // One fetch per appearance. Re-runs on navigate-back-and-in
-            // because the @StateObject is recreated alongside the view.
-            if store.detail == nil { await store.load(title: film.title) }
-        }
     }
 
-    private var detail: FilmDetail? { store.detail }
+    private var filmDetails: FilmDetails? { details.details(for: film.title) }
+    private var cinemaLinkList: [CinemaLink] { film.showings.cinemaLinks() }
 
     // MARK: – header (poster + title + ratings + cinema-links)
 
@@ -61,8 +58,8 @@ struct FilmDetailView: View {
                     .font(.system(size: 22, weight: .bold))
                     .foregroundColor(.white)
                     .fixedSize(horizontal: false, vertical: true)
-                if !ratingsForDisplay.isEmpty {
-                    RatingBadgesView(ratings: ratingsForDisplay)
+                if !film.ratings.isEmpty {
+                    RatingBadgesView(ratings: film.ratings)
                 }
                 cinemaLinks
             }
@@ -84,23 +81,12 @@ struct FilmDetailView: View {
         return min(220, max(160, columnWidth))
     }
 
-    private var ratingsForDisplay: Film.Ratings {
-        // Prefer the detail-page ratings once the fetch lands — it can
-        // include URLs the listing didn't emit (the listing only
-        // attaches an href when the score is non-null on its side).
-        // Fall back to the listing's so the badges paint immediately.
-        if let d = detail, !d.ratings.isEmpty { return d.ratings }
-        return film.ratings
-    }
-
     @ViewBuilder
     private var poster: some View {
-        if let primary = detail?.posterURL ?? film.posterURL {
+        if let primary = film.posterURL {
             DetailPosterImage(
                 primary: primary,
-                fallbacks: (detail?.fallbackPosterURLs.isEmpty == false
-                                ? detail!.fallbackPosterURLs
-                                : film.fallbackPosterURLs),
+                fallbacks: film.fallbackPosterURLs,
                 noPoster: { noPosterPlaceholder }
             )
         } else {
@@ -121,7 +107,8 @@ struct FilmDetailView: View {
 
     @ViewBuilder
     private var cinemaLinks: some View {
-        if let links = detail?.cinemaLinks, !links.isEmpty {
+        let links = cinemaLinkList
+        if !links.isEmpty {
             FlowLayout(spacing: 6, lineSpacing: 6) {
                 ForEach(links, id: \.url) { link in
                     Link(destination: link.url) {
@@ -146,28 +133,21 @@ struct FilmDetailView: View {
 
     @ViewBuilder
     private var metaBlocks: some View {
-        if let d = detail {
-            VStack(alignment: .leading, spacing: 12) {
-                metaBlock(label: "Opis",      value: d.synopsis)
-                metaBlock(label: "Reżyseria", value: d.director)
-                metaBlock(label: "Obsada",    value: d.cast)
-            }
-        } else if store.isLoading {
-            HStack(spacing: 8) {
-                ProgressView()
-                Text("Ładowanie szczegółów…").foregroundStyle(.secondary).font(.callout)
-            }
-            .padding(.vertical, 8)
-        } else if let err = store.error {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Nie udało się pobrać szczegółów.")
-                    .foregroundStyle(.orange)
-                    .font(.callout)
-                Text(err.localizedDescription)
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-            }
+        // Director / cast come straight off the listing `Film`, so they
+        // render immediately. Opis (synopsis) comes from the details
+        // map — it's simply absent until `/api/details` lands, or for
+        // films the backend has no synopsis for.
+        VStack(alignment: .leading, spacing: 12) {
+            metaBlock(label: "Opis",      value: filmDetails?.synopsis)
+            metaBlock(label: "Reżyseria", value: joined(film.directors))
+            metaBlock(label: "Obsada",    value: joined(film.cast))
         }
+    }
+
+    /// `nil` for an empty list so `metaBlock` omits the whole section
+    /// (matches the web, which doesn't render an empty Reżyseria/Obsada).
+    private func joined(_ values: [String]) -> String? {
+        values.isEmpty ? nil : values.joined(separator: ", ")
     }
 
     @ViewBuilder
@@ -190,7 +170,7 @@ struct FilmDetailView: View {
 
     @ViewBuilder
     private var trailersSection: some View {
-        if let trailers = detail?.trailerURLs, !trailers.isEmpty {
+        if let trailers = filmDetails?.trailerURLs, !trailers.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Text("ZWIASTUNY")
                     .font(.system(size: 11, weight: .semibold))
@@ -236,34 +216,17 @@ struct FilmDetailView: View {
 
     @ViewBuilder
     private var showingsSection: some View {
-        let days = detail?.showings.isEmpty == false ? detail!.showings : film.showings
-        if !days.isEmpty {
+        if !film.showings.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Seanse")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white)
-                ShowingsView(film: filmForShowings(days: days))
+                // The listing already carries the full showings tree, so
+                // `ShowingsView` renders the same `Film` we were handed.
+                ShowingsView(film: film)
             }
             .padding(.top, 4)
         }
-    }
-
-    /// `ShowingsView` consumes a `Film`. Build a thin synthetic Film
-    /// from whichever set of `days` we ended up rendering — the listing
-    /// row's showings before the fetch resolves, the full /film tree
-    /// after.
-    private func filmForShowings(days: [DayShowings]) -> Film {
-        Film(
-            title: film.title,
-            posterURL: film.posterURL,
-            fallbackPosterURLs: film.fallbackPosterURLs,
-            runtimeMinutes: film.runtimeMinutes,
-            ratings: film.ratings,
-            countries: film.countries,
-            directors: film.directors,
-            cast: film.cast,
-            showings: days
-        )
     }
 }
 
