@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var excludedDirectors: Set<String> = []
     @State private var excludedCast: Set<String> = []
     @State private var search: String = ""
+    @State private var sortOption: SortOption = .earliest
     /// Active tab — swipe-left/right on the TabView flips between
     /// `.films` (`/`) and `.cinemas` (`/kina`). Each writes a brief
     /// label overlay so the user knows which screen they landed on
@@ -89,6 +90,7 @@ struct ContentView: View {
                 }
                 .sheet(isPresented: $showFilters) {
                     FiltersSheet(
+                        sortOption: $sortOption,
                         formatFilter: $formatFilter,
                         excludedCountries: $excludedCountries,
                         excludedGenres: $excludedGenres,
@@ -310,6 +312,7 @@ struct ContentView: View {
             excludedDirectors: excludedDirectors,
             excludedCast: excludedCast
         )
+        .sorted(by: sortOption)
     }
 
     private var filmsForCinemasTab: [Film] {
@@ -332,6 +335,7 @@ struct ContentView: View {
             excludedDirectors: excludedDirectors,
             excludedCast: excludedCast
         )
+        .sorted(by: sortOption)
     }
 
     /// Flash the given label in the middle of the screen for ~0.7 s,

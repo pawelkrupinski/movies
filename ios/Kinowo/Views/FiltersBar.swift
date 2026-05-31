@@ -303,6 +303,7 @@ private struct GlassyPillBackground: ViewModifier {
 // as the web's localStorage); format/from-hour are ephemeral session
 // state owned by ContentView.
 struct FiltersSheet: View {
+    @Binding var sortOption: SortOption
     @Binding var formatFilter: FormatFilter
     @Binding var excludedCountries: Set<String>
     @Binding var excludedGenres: Set<String>
@@ -337,6 +338,16 @@ struct FiltersSheet: View {
                                 Text("\(prefs.hiddenFilms.count)")
                                     .foregroundStyle(.secondary)
                             }
+                        }
+                    }
+                }
+
+                // Mirrors the web's `#sort-by` dropdown: earliest showtime
+                // (default) or weighted rating.
+                Section("Sortowanie") {
+                    Picker("Sortuj", selection: $sortOption) {
+                        ForEach(SortOption.allCases, id: \.self) { option in
+                            Text(option.label).tag(option)
                         }
                     }
                 }
@@ -403,6 +414,7 @@ struct FiltersSheet: View {
 
                 Section {
                     Button(role: .destructive) {
+                        sortOption = .earliest
                         formatFilter = .empty
                         excludedCountries = []
                         excludedGenres = []

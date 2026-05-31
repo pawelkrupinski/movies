@@ -139,7 +139,43 @@ struct CinemaSection: Identifiable, Hashable {
     }
 }
 
+/// Mirrors the web's `#sort-by` dropdown (shared.js `compareCards`).
+/// `earliest` keeps the server's earliest-showtime order (the default);
+/// `rating` orders by weighted rating, descending. Both are offered in the
+/// iOS Filtry sheet.
+enum SortOption: String, CaseIterable, Hashable {
+    case earliest
+    case rating
+
+    var label: String {
+        switch self {
+        case .earliest: return "Najbliższy seans"
+        case .rating:   return "Ocena"
+        }
+    }
+}
+
 extension Sequence where Element == Film {
+    /// Apply the chosen sort. `.earliest` preserves the server's
+    /// earliest-showtime order (the list already arrives sorted that way);
+    /// `.rating` orders by weighted rating descending, falling back to the
+    /// earliest order for ties — matching the web's `compareCards`.
+    func sorted(by option: SortOption) -> [Film] {
+        switch option {
+        case .earliest:
+            return Array(self)
+        case .rating:
+            return enumerated()
+                .sorted { lhs, rhs in
+                    let a = lhs.element.ratings.weightedRating
+                    let b = rhs.element.ratings.weightedRating
+                    if a != b { return a > b }
+                    return lhs.offset < rhs.offset // tie-break: earliest order
+                }
+                .map(\.element)
+        }
+    }
+
     /// Drop screenings already in the past and re-sort cinemas by the
     /// earliest remaining slot of the day. Mirrors the web's
     /// `MovieController.toSchedules`:

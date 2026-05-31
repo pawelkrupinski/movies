@@ -56,6 +56,22 @@ struct Film: Identifiable, Hashable, Codable {
         var isEmpty: Bool {
             imdb == nil && metascore == nil && rottenTomatoes == nil && filmweb == nil
         }
+
+        /// Equal-weight average of every rating we hold, each normalised to
+        /// a 0–10 scale (Metacritic and Rotten Tomatoes are 0–100, so they
+        /// divide by 10). Missing sources are skipped — present sources share
+        /// the weight equally — and a film with no ratings scores 0. Mirrors
+        /// the server's `MovieRecord.weightedRating`; it's the sort key
+        /// behind the "Ocena" sort order.
+        var weightedRating: Double {
+            let normalised: [Double] = [
+                imdb,
+                filmweb,
+                metascore.map { Double($0) / 10.0 },
+                rottenTomatoes.map { Double($0) / 10.0 }
+            ].compactMap { $0 }
+            return normalised.isEmpty ? 0 : normalised.reduce(0, +) / Double(normalised.count)
+        }
     }
 }
 
