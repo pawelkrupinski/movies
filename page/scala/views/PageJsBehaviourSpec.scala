@@ -341,18 +341,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       totalCards should be > 5
 
       // "Diabeł" matches the Polish-titled Prada rows in the 17-05-2026
-      // corpus: the regular row + the Polish-titled Ukrainian-dub row
-      // ("Diabeł ubiera się u Prady 2 ukraiński dubbing"). The Cyrillic
-      // dub ("ДИЯВОЛ НОСИТЬ ПРАДА 2") is a separate card and doesn't
-      // share the substring. Asserting exactly 2 catches a regression
-      // where the search either over-matches (folds in the Cyrillic
-      // card, e.g. by stripping diacritics too aggressively) or under-
-      // matches (drops one of the Polish rows).
+      // corpus: the regular row, the Polish-titled Ukrainian-dub row
+      // ("Diabeł ubiera się u Prady 2 ukraiński dubbing"), and the
+      // separate "Filmowy klub seniora: diabeł ubiera się u prady 2"
+      // programme row (senior-club screenings keep their own card via
+      // TitleNormalizer.ProgrammePrefix). The Cyrillic dub
+      // ("ДИЯВОЛ НОСИТЬ ПРАДА 2") is a separate card and doesn't share the
+      // substring. Asserting exactly 3 catches a regression where the
+      // search either over-matches (folds in the Cyrillic card, e.g. by
+      // stripping diacritics too aggressively) or under-matches (drops
+      // one of the Polish rows).
       page.eval("document.getElementById('search-input').value = 'Diabeł'; applyFilters()")
       val matchingCards = page.evalInt(
         "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
       )
-      matchingCards shouldBe 2
+      matchingCards shouldBe 3
       page.evalBool(
         "[...document.querySelectorAll('.col[data-title]')]" +
           ".filter(c => c.style.display !== 'none')" +
