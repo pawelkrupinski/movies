@@ -59,6 +59,13 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     await expect(page.locator('#film-grid .cinema-section')).toHaveCount(0);
     await expect(page.locator('#cinema-pills')).toHaveCount(0);     // pill strip gone with Kina
     await expect(page.locator('#filtry-cinema-section')).toHaveCount(1); // Filtry section restored
+    // The `.cinema-label` CSS lives in _sharedStyles (not repertoire's <head>),
+    // so the swapped-in film cards' cinema labels are styled — guards the
+    // "cinema name unstyled after swap" regression (#66aadd = rgb(102,170,221)).
+    const label = page.locator('.cinema-label').first();
+    if (await label.count()) {
+      await expect(label).toHaveCSS('color', 'rgb(102, 170, 221)');
+    }
   });
 
   test('no id collisions survive a swap', async ({ page }) => {

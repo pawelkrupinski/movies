@@ -11,28 +11,11 @@
   @_analytics()
   @* Bootstrap self-hosted — see kina.scala.html for the reasoning. *@
   <link rel="stylesheet" href="@routes.Assets.versioned("css/bootstrap-5.3.3.min.css")" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  @* The Filmy view-chrome CSS (`.cinema-label`, film-card content-visibility)
+     lives in `_sharedStyles` so it's present on every page — the Filmy↔Kina
+     slide-swap injects only `#view-root`, so a head-local <style> here would
+     leave the swapped-in Filmy view's cinema labels unstyled. *@
   @_sharedStyles(devMode)
-  @_minified(devMode) {
-  <style>
-    /* Off-screen film cards skip layout + paint until they scroll into
-       view. With ~190 cards in the grid but only the first ~12 visible
-       at first paint, this knocks ~30–45% off initial render. The
-       intrinsic-size placeholder is sized to a typical card so the
-       scrollbar doesn't jump as cards measure themselves on entry. */
-    #film-grid > .col { content-visibility: auto; contain-intrinsic-size: 0 460px; }
-    .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: .1rem; margin-top: .3rem; }
-    .cinema-label-link { color: #66aadd; text-decoration: none; }
-    .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
-    /* The per-cinema label sitting above each card's pill row rides
-       the shared `--mobile-scale` (defined in `_sharedStyles`) so it
-       tracks the rest of the card text on narrow phones. .65rem at
-       the 0.85 floor still reads as ~8.8 px, just above the
-       "comfortably legible" threshold for a small UI label. */
-    @@media (max-width: 575px) {
-      .cinema-label { font-size: calc(.65 * var(--mobile-scale)); }
-    }
-  </style>
-  }
 </head>
 <body>
 

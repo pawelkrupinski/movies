@@ -856,6 +856,24 @@
      `.container-fluid`) whose own horizontal scroll must keep working. */
   #view-pager .container-fluid { touch-action: pan-y; }
 
+  /* ── Filmy (/) view chrome ─────────────────────────────────────────────────
+     Lives here (shared, every page) rather than in repertoire's <head> for the
+     same reason as the /kina chrome below: the slide-swap injects only
+     `#view-root`, so a head-local <style> would leave the swapped-in Filmy view
+     unstyled (missing cinema labels). Inert on Kina/Plan (Kina nests `.col`
+     under `.cinema-section`, so `#film-grid > .col` doesn't match it). */
+  /* Off-screen film cards skip layout + paint until scrolled into view
+     (~460 px intrinsic-size keeps the scrollbar from jumping on measure). */
+  #film-grid > .col { content-visibility: auto; contain-intrinsic-size: 0 460px; }
+  .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: .1rem; margin-top: .3rem; }
+  .cinema-label-link { color: #66aadd; text-decoration: none; }
+  .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
+  /* The per-cinema label above each card's pill row rides the shared
+     `--mobile-scale` so it tracks the card text on narrow phones. */
+  @@media (max-width: 575px) {
+    .cinema-label { font-size: calc(.65 * var(--mobile-scale)); }
+  }
+
   /* ── /kina view chrome ─────────────────────────────────────────────────────
      These rules style the Kina view's cinema sections + the cinema-pill picker
      strip. They live HERE (shared, on every page) rather than in kina's <head>
