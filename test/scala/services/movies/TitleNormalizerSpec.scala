@@ -227,7 +227,7 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
   // row both resolve to the same TMDB id / FW URL while staying as distinct
   // cache rows that aggregate their cinema's two screenings separately.
 
-  import TitleNormalizer.{searchTitle, apiQuery}
+  import TitleNormalizer.{searchTitle, apiQuery, programmePrefix}
 
   "searchTitle" should "leave the 'Kino bez barier:' programme prefix AND the trailing accessibility tag intact (cache-key boundary)" in {
     // Cache key must differ from a plain "Freak Show" row (or a DKF "Arco"
@@ -291,6 +291,18 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     // enriched off the clean base title upstream.
     apiQuery("Filmowy Klub Seniora: Ojczyzna") shouldBe "Ojczyzna"
     searchTitle("Filmowy Klub Seniora: Ojczyzna") shouldBe "Filmowy Klub Seniora: Ojczyzna"
+  }
+
+  // ── programmePrefix — split point for prefix-vs-film-title casing ──────────
+
+  "programmePrefix" should "return the matched prefix including the ': ' delimiter" in {
+    programmePrefix("Filmowy Klub Seniora: OJCZYZNA")              shouldBe Some("Filmowy Klub Seniora: ")
+    programmePrefix("Filmowe spotkania z psychoanalizą: DOBRY CHŁOPIEC") shouldBe Some("Filmowe spotkania z psychoanalizą: ")
+  }
+
+  it should "return None for a title without a recognised programme prefix" in {
+    programmePrefix("Mavka. Prawdziwy mit") shouldBe None
+    programmePrefix("Top Gun: Maverick")    shouldBe None // a real colon title, not a programme
   }
 
   it should "strip the 'Plenerowe Pałacowe:' prefix (Kino Pałacowe outdoor screenings)" in {

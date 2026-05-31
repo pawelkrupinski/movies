@@ -95,6 +95,13 @@ object TitleNormalizer {
     searchTitle(tagless)
   }
 
+  /** When `title` opens with a recognised programme prefix (Kino bez barier,
+   *  Filmowy Klub Seniora, …), return the matched prefix INCLUDING the trailing
+   *  ": " delimiter, so a caller can split the prefix from the film title and
+   *  case each half on its own. None when no programme prefix is present. */
+  def programmePrefix(title: String): Option[String] =
+    ProgrammePrefix.findPrefixMatchOf(title).map(_.matched)
+
   // Conditional cleanups for merging — applied only when another title in
   // `allTitles` reduces to the same canonical form. Builds on `searchTitle` so
   // anniversary/wersja variants merge with their base film, then adds the

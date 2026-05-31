@@ -41,10 +41,10 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
       "Ale mam | ну мам | wersja ukraińska z ang. napisami",
       "Człowiek z marmuru",
       "Diabeł ubiera się u prady 2",
-      "Filmowe spotkania z psychoanalizą: dobry chłopiec",
+      "Filmowe spotkania z psychoanalizą: Dobry chłopiec",
       // Senior-club showings kept as their own row (cycle prefix preserved).
-      "Filmowy klub seniora: diabeł ubiera się u prady 2",
-      "Filmowy klub seniora: młode matki",
+      "Filmowy klub seniora: Diabeł ubiera się u prady 2",
+      "Filmowy klub seniora: Młode matki",
       "Mavka. Prawdziwy mit",
       "Modigliani: portret odarty z legendy",
       "Munch: miłość, duchy i wampirzyce",
@@ -65,7 +65,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     runtimes("Ale mam | ну мам | wersja ukraińska z ang. napisami") shouldBe Some(90)
     runtimes("Człowiek z marmuru")                                   shouldBe Some(156)
     runtimes("Diabeł ubiera się u prady 2")                         shouldBe Some(120)
-    runtimes("Filmowe spotkania z psychoanalizą: dobry chłopiec")    shouldBe Some(110)
+    runtimes("Filmowe spotkania z psychoanalizą: Dobry chłopiec")    shouldBe Some(110)
     runtimes("Mavka. Prawdziwy mit")                                 shouldBe Some(100)
     runtimes("Modigliani: portret odarty z legendy")                 shouldBe Some(90)
     runtimes("Munch: miłość, duchy i wampirzyce")                   shouldBe Some(90)
@@ -84,7 +84,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Ale mam | ну мам | wersja ukraińska z ang. napisami").movie.releaseYear shouldBe Some(2026)
     byTitle("Człowiek z marmuru").movie.releaseYear                                   shouldBe Some(1976)
     byTitle("Diabeł ubiera się u prady 2").movie.releaseYear                         shouldBe Some(2026)
-    byTitle("Filmowe spotkania z psychoanalizą: dobry chłopiec").movie.releaseYear    shouldBe Some(2025)
+    byTitle("Filmowe spotkania z psychoanalizą: Dobry chłopiec").movie.releaseYear    shouldBe Some(2025)
     byTitle("Mavka. Prawdziwy mit").movie.releaseYear                                 shouldBe Some(2026)
     byTitle("Modigliani: portret odarty z legendy").movie.releaseYear                 shouldBe Some(2020)
     byTitle("Munch: miłość, duchy i wampirzyce").movie.releaseYear                   shouldBe Some(2022)
@@ -103,7 +103,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Ale mam | ну мам | wersja ukraińska z ang. napisami").movie.countries shouldBe Seq("Ukraina")
     byTitle("Człowiek z marmuru").movie.countries shouldBe Seq("Polska")
     byTitle("Diabeł ubiera się u prady 2").movie.countries shouldBe Seq("USA")
-    byTitle("Filmowe spotkania z psychoanalizą: dobry chłopiec").movie.countries shouldBe Seq("Polska", "Wielka Brytania")
+    byTitle("Filmowe spotkania z psychoanalizą: Dobry chłopiec").movie.countries shouldBe Seq("Polska", "Wielka Brytania")
     byTitle("Mavka. Prawdziwy mit").movie.countries shouldBe Seq("Ukraina")
     byTitle("Modigliani: portret odarty z legendy").movie.countries shouldBe Seq("Włochy")
     byTitle("Munch: miłość, duchy i wampirzyce").movie.countries shouldBe Seq("Wielka Brytania", "Włochy")
@@ -133,7 +133,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     posters("Ale mam | ну мам | wersja ukraińska z ang. napisami") shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/a1a0-v3-1x-062logo.jpg")
     posters("Człowiek z marmuru")                                   shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/czlowiek-z-marmuru-plakat1.jpg")
     posters("Diabeł ubiera się u prady 2")                         shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/diabel-ubiera-sie-u-prady-2-plakat1.jpg")
-    posters("Filmowe spotkania z psychoanalizą: dobry chłopiec")    shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dobry-chlopiec-plakat.jpg")
+    posters("Filmowe spotkania z psychoanalizą: Dobry chłopiec")    shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dobry-chlopiec-plakat.jpg")
     posters("Mavka. Prawdziwy mit")                                 shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/untitled-1-copy.jpg")
     posters("Modigliani: portret odarty z legendy")                 shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/modigliani-plakat-pion-scaled.jpg")
     posters("Munch: miłość, duchy i wampirzyce")                   shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/munch-plakat-b1.jpg")
@@ -153,7 +153,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     filmUrls("Ale mam | ну мам | wersja ukraińska z ang. napisami") shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155841")
     filmUrls("Człowiek z marmuru")                                   shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155445")
     filmUrls("Diabeł ubiera się u prady 2")                         shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=154210")
-    filmUrls("Filmowe spotkania z psychoanalizą: dobry chłopiec")    shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155850")
+    filmUrls("Filmowe spotkania z psychoanalizą: Dobry chłopiec")    shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155850")
     filmUrls("Mavka. Prawdziwy mit")                                 shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=155441")
     filmUrls("Modigliani: portret odarty z legendy")                 shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=87240")
     filmUrls("Munch: miłość, duchy i wampirzyce")                   shouldBe Some("https://www.kinorialto.poznan.pl/wydarzenie/?id=95047")
@@ -171,7 +171,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
   it should "return correct director for films that have one" in {
     byTitle("Człowiek z marmuru").director                                shouldBe Seq("Andrzej Wajda")
     byTitle("Diabeł ubiera się u prady 2").director                      shouldBe Seq("David Frankel")
-    byTitle("Filmowe spotkania z psychoanalizą: dobry chłopiec").director shouldBe Seq("Jan Komasa")
+    byTitle("Filmowe spotkania z psychoanalizą: Dobry chłopiec").director shouldBe Seq("Jan Komasa")
     byTitle("Mavka. Prawdziwy mit").director                              shouldBe Seq("Katya Tsarik")
     byTitle("Modigliani: portret odarty z legendy").director              shouldBe Seq("Valeria Parisi")
     byTitle("Munch: miłość, duchy i wampirzyce").director                shouldBe Seq("Michele Mally")
@@ -219,8 +219,8 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     RialtoClient.normalizeTitle("DKF Absolwent: MILCZĄCA PRZYJACIÓŁKA") shouldBe "Milcząca przyjaciółka"
   }
 
-  it should "keep the 'Filmowy Klub Seniora:' prefix so the senior-club showing stays a separate row" in {
-    RialtoClient.normalizeTitle("Filmowy Klub Seniora: OJCZYZNA") shouldBe "Filmowy klub seniora: ojczyzna"
+  it should "keep the 'Filmowy Klub Seniora:' prefix (lower-cased) but capitalize the film title after it" in {
+    RialtoClient.normalizeTitle("Filmowy Klub Seniora: OJCZYZNA") shouldBe "Filmowy klub seniora: Ojczyzna"
   }
 
   // ── Showtime counts ───────────────────────────────────────────────────────
@@ -230,9 +230,9 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     counts("Ale mam | ну мам | wersja ukraińska z ang. napisami") shouldBe 11
     counts("Człowiek z marmuru")                                   shouldBe 11
     counts("Diabeł ubiera się u prady 2")                         shouldBe 22
-    counts("Filmowe spotkania z psychoanalizą: dobry chłopiec")    shouldBe 11
-    counts("Filmowy klub seniora: diabeł ubiera się u prady 2")    shouldBe 11
-    counts("Filmowy klub seniora: młode matki")                    shouldBe 11
+    counts("Filmowe spotkania z psychoanalizą: Dobry chłopiec")    shouldBe 11
+    counts("Filmowy klub seniora: Diabeł ubiera się u prady 2")    shouldBe 11
+    counts("Filmowy klub seniora: Młode matki")                    shouldBe 11
     counts("Mavka. Prawdziwy mit")                                 shouldBe 11
     counts("Modigliani: portret odarty z legendy")                 shouldBe 11
     counts("Munch: miłość, duchy i wampirzyce")                   shouldBe 11

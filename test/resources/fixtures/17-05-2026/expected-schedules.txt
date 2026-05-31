@@ -1391,9 +1391,9 @@ cinemaScrapes:
 showings:
   2026-05-24  Helios Posnania               10:30 2D/DUB
 
-=== Filmowe spotkania z psychoanalizą: dobry chłopiec ===
-displayTitle:      Filmowe spotkania z psychoanalizą: dobry chłopiec
-cinemaTitles:      Filmowe spotkania z psychoanalizą: dobry chłopiec
+=== Filmowe spotkania z psychoanalizą: Dobry chłopiec ===
+displayTitle:      Filmowe spotkania z psychoanalizą: Dobry chłopiec
+cinemaTitles:      Filmowe spotkania z psychoanalizą: Dobry chłopiec
 runtimeMinutes:    110
 releaseYear:       2025
 countries:         Polska, Wielka Brytania
@@ -1414,13 +1414,13 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=155850
 cinemaScrapes:
-  Kino Rialto / Filmowe spotkania z psychoanalizą: dobry chłopiec / 2025
+  Kino Rialto / Filmowe spotkania z psychoanalizą: Dobry chłopiec / 2025
 showings:
   2026-05-24  Kino Rialto                   18:45
 
-=== Filmowy klub seniora: diabeł ubiera się u prady 2 ===
-displayTitle:      Filmowy klub seniora: diabeł ubiera się u prady 2
-cinemaTitles:      Filmowy klub seniora: diabeł ubiera się u prady 2
+=== Filmowy klub seniora: Diabeł ubiera się u prady 2 ===
+displayTitle:      Filmowy klub seniora: Diabeł ubiera się u prady 2
+cinemaTitles:      Filmowy klub seniora: Diabeł ubiera się u prady 2
 runtimeMinutes:    120
 releaseYear:       2026
 countries:         USA
@@ -1441,13 +1441,13 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=155004
 cinemaScrapes:
-  Kino Rialto / Filmowy klub seniora: diabeł ubiera się u prady 2 / 2026
+  Kino Rialto / Filmowy klub seniora: Diabeł ubiera się u prady 2 / 2026
 showings:
   2026-05-19  Kino Rialto                   13:00 · 15:30
 
-=== Filmowy klub seniora: mów mi jimpa ===
-displayTitle:      Filmowy klub seniora: mów mi jimpa
-cinemaTitles:      Filmowy klub seniora: mów mi jimpa
+=== Filmowy klub seniora: Mów mi jimpa ===
+displayTitle:      Filmowy klub seniora: Mów mi jimpa
+cinemaTitles:      Filmowy klub seniora: Mów mi jimpa
 runtimeMinutes:    113
 releaseYear:       2025
 countries:         Australia, Finlandia, Holandia
@@ -1455,26 +1455,26 @@ posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235
 synopsis.length:   457
 cast:              —
 director:          Sophie Hyde
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+tmdbId:            1286491
+imdbId:            tt23745668
+originalTitle:     Jimpa
+imdbRating:        5.6
+metascore:         47
+rottenTomatoes:    52
+filmwebRating:     5.89958
+metacriticUrl:     https://www.metacritic.com/movie/jimpa
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/jimpa
+filmwebUrl:        https://www.filmweb.pl/film/M%C3%B3w+mi+Jimpa-2025-10068168
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=155984
 cinemaScrapes:
-  Kino Rialto / Filmowy klub seniora: mów mi jimpa / 2025
+  Kino Rialto / Filmowy klub seniora: Mów mi jimpa / 2025
 showings:
   2026-05-26  Kino Rialto                   13:00
 
-=== Filmowy klub seniora: młode matki ===
-displayTitle:      Filmowy klub seniora: młode matki
-cinemaTitles:      Filmowy klub seniora: młode matki
+=== Filmowy klub seniora: Młode matki ===
+displayTitle:      Filmowy klub seniora: Młode matki
+cinemaTitles:      Filmowy klub seniora: Młode matki
 runtimeMinutes:    104
 releaseYear:       2025
 countries:         Belgia, Francja
@@ -1482,20 +1482,20 @@ posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235
 synopsis.length:   1540
 cast:              —
 director:          Jean-Pierre Dardenne, Luc Dardenne
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+tmdbId:            1242015
+imdbId:            tt32909489
+originalTitle:     Jeunes mères
+imdbRating:        7.0
+metascore:         80
+rottenTomatoes:    95
+filmwebRating:     6.47826
+metacriticUrl:     https://www.metacritic.com/movie/young-mothers
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/jeunes_meres
+filmwebUrl:        https://www.filmweb.pl/film/M%C5%82ode+matki-2025-10075956
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=155894
 cinemaScrapes:
-  Kino Rialto / Filmowy klub seniora: młode matki / 2025
+  Kino Rialto / Filmowy klub seniora: Młode matki / 2025
 showings:
   2026-05-26  Kino Rialto                   15:30
 

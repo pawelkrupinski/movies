@@ -151,9 +151,18 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
 object RialtoClient {
 
   /** Full title cleanup: drop the cycle prefix, strip event-decoration
-   *  suffixes, then sentence-case. Public so it can be unit-tested directly. */
-  def normalizeTitle(raw: String): String =
-    normalizeCase(stripPreviewSuffix(stripCyclePrefix(raw)))
+   *  suffixes, then sentence-case. When a recognised programme prefix survives
+   *  (e.g. "Filmowy Klub Seniora:"), case the prefix and the film title
+   *  independently so the film title keeps its own leading capital
+   *  ("Filmowy klub seniora: Ojczyzna", not "… ojczyzna"). Public so it can be
+   *  unit-tested directly. */
+  def normalizeTitle(raw: String): String = {
+    val cleaned = stripPreviewSuffix(stripCyclePrefix(raw))
+    services.movies.TitleNormalizer.programmePrefix(cleaned) match {
+      case Some(prefix) => normalizeCase(prefix) + normalizeCase(cleaned.substring(prefix.length))
+      case None         => normalizeCase(cleaned)
+    }
+  }
 
   // Recurring-programme prefixes whose screenings are their OWN row, not folded
   // into the base film — a senior-club showing targets a distinct audience and
