@@ -154,12 +154,12 @@ class Chrome private[tools] (
 
   /** Open `url` in a fresh tab, run `body`, then close the tab. The page
    *  is loaded synchronously — `body` runs after `document.readyState`
-   *  is `complete`, so DOMContentLoaded handlers (buildCinemaPills,
+   *  is `complete`, so DOMContentLoaded handlers (buildCinemaSelect,
    *  buildIndex, the boot-time applyFilters() in _sharedJs) have fired.
    *
    *  Callers usually point at `TestHttpServer.baseUrl + "/some/path"`.
-   *  Avoid file:// — `history.replaceState` (used by /kina's pill toggle
-   *  to rewrite the URL) throws SecurityError on file:// origins, which
+   *  Avoid file:// — `history.replaceState` (used by /kina's cinema
+   *  picker to rewrite the URL) throws SecurityError on file:// origins, which
    *  silently aborts the rest of the click handler in production code. */
   def openPage[T](url: String)(body: CdpPage => T): T = {
     // Open a blank tab first, then navigate via CDP. Chrome ≥ 130 silently

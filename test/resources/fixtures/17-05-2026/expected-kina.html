@@ -38,7 +38,7 @@
 
 
   
-  <style>.cinema-section{content-visibility:auto;contain-intrinsic-size:0 1200px}.cinema-section-title{color:#aad4ff;font-size:1rem;font-weight:600;border-bottom:1px solid #3a3a6e;padding-bottom:.4rem}.cinema-nav-row{gap:.25rem;padding-top:.35rem !important;padding-bottom:.35rem !important;border-top:1px solid #2a2a4e;& > div:first-child{height:auto;max-height:none}position:static}.cinema-pill{background:transparent;color:#aad4ff;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.875rem;font-family:inherit;cursor:pointer;-webkit-user-select:none;user-select:none}@media (hover:hover) and (pointer:fine){.cinema-pill:hover{background:#3a3a6e;color:#fff}}.cinema-pill.active{background:#3a3a6e;color:#fff}@media (max-width:575px){.cinema-section-title{font-size:var(--mobile-scale)}.cinema-nav-row{padding-left:calc(.75 * var(--mobile-scale)) !important;padding-right:calc(.75 * var(--mobile-scale)) !important;gap:calc(.25 * var(--mobile-scale))}.cinema-pill{font-size:calc(.875 * var(--mobile-scale));padding:calc(.25 * var(--mobile-scale)) calc(.6 * var(--mobile-scale))}}</style>
+  <style>.cinema-section{content-visibility:auto;contain-intrinsic-size:0 1200px}.cinema-section-title{color:#aad4ff;font-size:1rem;font-weight:600;border-bottom:1px solid #3a3a6e;padding-bottom:.4rem}.cinema-nav-row{gap:.4rem;padding-top:.35rem !important;padding-bottom:.35rem !important;border-top:1px solid #2a2a4e;position:static}.cinema-select-label{color:#aad4ff;font-size:.875rem;flex-shrink:0}@media (max-width:575px){.cinema-section-title{font-size:var(--mobile-scale)}.cinema-select-label{font-size:calc(.875 * var(--mobile-scale))}.cinema-nav-row{padding-left:calc(.75 * var(--mobile-scale)) !important;padding-right:calc(.75 * var(--mobile-scale)) !important}}</style>
   
 
 </head>
@@ -208,8 +208,9 @@
 <script src="/assets/js/shared.js"></script>
 
 
-<nav class="navbar cinema-nav-row px-4 d-flex align-items-center" style="flex-wrap:wrap">
-  <div id="cinema-pills" class="d-flex align-items-center" style="flex-wrap:wrap; gap:.25rem"></div>
+<nav class="navbar cinema-nav-row px-4 d-flex align-items-center">
+  <label for="cinema-select" class="cinema-select-label">Kino:</label>
+  <select id="cinema-select" class="filter-select" aria-label="Wybierz kino"></select>
 </nav>
 
 <div class="container-fluid py-4 px-4">
@@ -38156,28 +38157,33 @@ truncateAllShowings(false);
 updateCounter(visibleCount, showtimeCount);
 }
 let _kinaPinned = null;
-function buildCinemaPills() {
-const row = document.getElementById('cinema-pills');
-if (!row) return;
-row.innerHTML = '';
+function buildCinemaSelect() {
+const sel = document.getElementById('cinema-select');
+if (!sel) return;
+sel.innerHTML = '';
+const all = document.createElement('option');
+all.value = '';
+all.textContent = 'Wszystkie kina';
+sel.appendChild(all);
 ALL_CINEMAS.forEach(cinema => {
-const pill = document.createElement('button');
-pill.type = 'button';
-pill.className = 'cinema-pill' + (cinema === _kinaPinned ? ' active' : '');
-pill.dataset.cinema = cinema;
-pill.textContent = CINEMA_PILLS[cinema] || cinema;
-pill.onclick = () => toggleCinemaPill(cinema);
-row.appendChild(pill);
+const opt = document.createElement('option');
+opt.value = cinema;
+opt.textContent = CINEMA_PILLS[cinema] || cinema;
+sel.appendChild(opt);
 });
+sel.value = _kinaPinned || '';
 }
-function toggleCinemaPill(cinema) {
-_kinaPinned = (_kinaPinned === cinema) ? null : cinema;
+function onCinemaSelectChange() {
+const sel = document.getElementById('cinema-select');
+_kinaPinned = sel.value || null;
 const path = _kinaPinned ? '/kina/' + encodeURIComponent(_kinaPinned) : '/kina';
 history.replaceState(null, '', path + window.location.search + window.location.hash);
-buildCinemaPills();
 applyFilters();
 }
-document.addEventListener('DOMContentLoaded', buildCinemaPills);
+document.addEventListener('DOMContentLoaded', () => {
+buildCinemaSelect();
+document.getElementById('cinema-select').addEventListener('change', onCinemaSelectChange);
+});
 function sortSection(section, earlyMap) {
 const visible = [];
 for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);

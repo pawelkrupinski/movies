@@ -18,12 +18,12 @@ import java.time.LocalDateTime
  *
  * Complements `PageSnapshotSpec`: that spec catches "the markup the
  * server emits" regressions; this spec catches "the JS that decides
- * what to show in that markup" regressions — `applyFilters` math, pill
- * toggle semantics, `_kinaPinned` lifecycle, the /kina ↔ /kina/<cinema>
- * URL ↔ pin sync via `history.replaceState`.
+ * what to show in that markup" regressions — `applyFilters` math, the
+ * cinema-picker select semantics, `_kinaPinned` lifecycle, the /kina ↔
+ * /kina/<cinema> URL ↔ pin sync via `history.replaceState`.
  *
  * Why an HTTP server and not file://: `history.replaceState` (called by
- * `toggleCinemaPill` to rewrite the URL on pin/un-pin) throws a
+ * `onCinemaSelectChange` to rewrite the URL on pin/un-pin) throws a
  * SecurityError under file:// — the target URL isn't same-origin with
  * the file's directory-scoped origin. Without http://, the rewrite
  * throws synchronously and the rest of the click handler (the
@@ -126,9 +126,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
-  // ── /kina pill behaviour ─────────────────────────────────────────────────
+  // ── /kina cinema-picker behaviour ─────────────────────────────────────────
 
-  "the /kina pill row" should "filter to only the pinned cinema's section on click" in {
+  "the /kina cinema picker" should "filter to only the selected cinema's section" in {
     onPath("/kina") { page =>
       setDateAnytime(page)
       val totalSections = page.evalInt("document.querySelectorAll('.cinema-section').length")
@@ -139,7 +139,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Kino Apollo with no showtimes today) would mask a filter
       // regression with a legitimately empty result.
       val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
-      clickPill(page, pinTarget)
+      selectCinema(page, pinTarget)
 
       val visibleSections = page.evalInt(
         "[...document.querySelectorAll('.cinema-section')].filter(s => s.style.display !== 'none').length"
@@ -148,11 +148,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString(
         "document.querySelector('.cinema-section:not([style*=\"none\"])').dataset.cinema"
       ) shouldBe pinTarget
-      page.evalInt("document.querySelectorAll('#cinema-pills .cinema-pill.active').length") shouldBe 1
+      page.evalString("document.getElementById('cinema-select').value") shouldBe pinTarget
     }
   }
 
-  it should "restore every cinema section when the active pill is clicked again" in {
+  it should "restore every cinema section when Wszystkie kina is selected" in {
     onPath("/kina") { page =>
       setDateAnytime(page)
       val totalVisibleAtBoot = page.evalInt(
@@ -160,21 +160,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       )
       val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
 
-      clickPill(page, pinTarget)
-      page.evalInt("document.querySelectorAll('#cinema-pills .cinema-pill.active').length") shouldBe 1
+      selectCinema(page, pinTarget)
+      page.evalString("document.getElementById('cinema-select').value") shouldBe pinTarget
 
-      clickPill(page, pinTarget)
-      page.evalInt("document.querySelectorAll('#cinema-pills .cinema-pill.active').length") shouldBe 0
+      selectAllCinemas(page)
+      page.evalString("document.getElementById('cinema-select').value") shouldBe ""
       page.evalInt(
         "[...document.querySelectorAll('.cinema-section')].filter(s => s.style.display !== 'none').length"
       ) shouldBe totalVisibleAtBoot
     }
   }
 
-  it should "rewrite the URL path to /kina/<cinema> when a pill is pinned" in {
+  it should "rewrite the URL path to /kina/<cinema> when a cinema is selected" in {
     onPath("/kina") { page =>
       val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
-      clickPill(page, pinTarget)
+      selectCinema(page, pinTarget)
 
       // history.replaceState moves the address bar to /kina/<cinema> so
       // a refresh keeps the pin. Comparing the decoded path sidesteps
@@ -184,7 +184,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // bytes are exactly this encoding".
       java.net.URLDecoder.decode(page.evalString("location.pathname"), "UTF-8") shouldBe ("/kina/" + pinTarget)
 
-      clickPill(page, pinTarget)
+      selectAllCinemas(page)
       page.evalString("location.pathname") shouldBe "/kina"
     }
   }
@@ -192,15 +192,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "not write the pin into the shared `disabledCinemas` localStorage" in {
     onPath("/kina") { page =>
       // Pre-seed localStorage as if Filtry on `/` had set it. /kina
-      // ignores this on load AND must not overwrite it when a pill is
-      // clicked — the persistent filter on / stays intact.
+      // ignores this on load AND must not overwrite it when a cinema is
+      // selected — the persistent filter on / stays intact.
       val preset = """["Multikino Stary Browar","Helios Posnania"]"""
       page.eval(s"localStorage.setItem('disabledCinemas', ${jsString(preset)})")
       page.reload()
 
-      page.evalInt("document.querySelectorAll('#cinema-pills .cinema-pill.active').length") shouldBe 0
+      page.evalString("document.getElementById('cinema-select').value") shouldBe ""
       val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
-      clickPill(page, pinTarget)
+      selectCinema(page, pinTarget)
       page.evalString("localStorage.getItem('disabledCinemas')") shouldBe preset
     }
   }
@@ -214,10 +214,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/kina/" + java.net.URLEncoder.encode(target, "UTF-8")) { page =>
       setDateAnytime(page)
       page.evalString("_kinaPinned") shouldBe target
-      page.evalInt("document.querySelectorAll('#cinema-pills .cinema-pill.active').length") shouldBe 1
-      page.evalString(
-        "document.querySelector('#cinema-pills .cinema-pill.active').dataset.cinema"
-      ) shouldBe target
+      page.evalString("document.getElementById('cinema-select').value") shouldBe target
       page.evalInt(
         "[...document.querySelectorAll('.cinema-section')].filter(s => s.style.display !== 'none').length"
       ) shouldBe 1
@@ -227,7 +224,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "still not remember the pin across a plain /kina reload" in {
     onPath("/kina") { page =>
       val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
-      clickPill(page, pinTarget)
+      selectCinema(page, pinTarget)
       page.evalString("_kinaPinned") shouldBe pinTarget
 
       // Force a navigation back to plain /kina (the test server, like
@@ -1162,10 +1159,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "preserve ?date= when a /kina cinema pill is toggled" in {
+  it should "preserve ?date= when a /kina cinema is selected" in {
     onPath("/kina?date=tomorrow") { page =>
       val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
-      clickPill(page, pinTarget)
+      selectCinema(page, pinTarget)
       page.evalString("new URL(location.href).searchParams.get('date')") shouldBe "tomorrow"
       java.net.URLDecoder.decode(page.evalString("location.pathname"), "UTF-8") shouldBe ("/kina/" + pinTarget)
     }
@@ -1753,13 +1750,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def setDateAnytime(page: CdpPage): Unit =
     page.eval("document.getElementById('date-filter').value = 'anytime'; applyFilters()")
 
-  private def clickPill(page: CdpPage, cinema: String): Unit = {
+  /** Pick a cinema in the `/kina` `<select>` and fire its change handler —
+   *  the dropdown equivalent of clicking a pill. Throws if no option for
+   *  `cinema` exists (setting an absent value silently leaves it ''). */
+  private def selectCinema(page: CdpPage, cinema: String): Unit = {
     val js =
-      s"(() => { const p = [...document.querySelectorAll('#cinema-pills .cinema-pill')]" +
-        s".find(el => el.dataset.cinema === ${jsString(cinema)}); " +
-        s"if (!p) throw new Error('no pill for ' + ${jsString(cinema)}); p.click(); return true; })()"
+      s"(() => { const s = document.getElementById('cinema-select'); " +
+        s"s.value = ${jsString(cinema)}; " +
+        s"if (s.value !== ${jsString(cinema)}) throw new Error('no option for ' + ${jsString(cinema)}); " +
+        s"s.dispatchEvent(new Event('change')); return true; })()"
     page.evalBool(js) shouldBe true
   }
+
+  /** Select "Wszystkie kina" (value '') — the un-pin path. */
+  private def selectAllCinemas(page: CdpPage): Unit =
+    page.eval("(() => { const s = document.getElementById('cinema-select'); s.value = ''; s.dispatchEvent(new Event('change')); })()")
 
   /** Quote a string for embedding inside a JS expression. Round-trips
    *  Polish diacritics + apostrophes via `JSON.stringify`-compatible

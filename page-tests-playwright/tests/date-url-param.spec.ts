@@ -54,12 +54,14 @@ test.describe('date selector ↔ URL', () => {
     expect(new URL(page.url()).pathname).toBe('/kina');
   });
 
-  test('toggling a cinema pill on /kina preserves ?date=', async ({ page }) => {
+  test('selecting a cinema on /kina preserves ?date=', async ({ page }) => {
     await page.goto('/kina?date=tomorrow');
     await waitForCards(page);
 
-    const firstPill = page.locator('#cinema-pills .cinema-pill').first();
-    await firstPill.click();
+    // Pick the first real cinema (option index 1; index 0 is "Wszystkie kina").
+    const select = page.locator('#cinema-select');
+    const firstCinema = await select.locator('option').nth(1).getAttribute('value');
+    await select.selectOption(firstCinema!);
 
     const url = new URL(page.url());
     expect(url.pathname).toMatch(/^\/kina\//);

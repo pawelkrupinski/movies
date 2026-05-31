@@ -32,75 +32,41 @@
     .cinema-section { content-visibility: auto; contain-intrinsic-size: 0 1200px; }
     .cinema-section-title { color: #aad4ff; font-size: 1rem; font-weight: 600; border-bottom: 1px solid #3a3a6e; padding-bottom: .4rem; }
     /* Cinema-picker row — a second navbar row directly under the main
-       navbar on /kina. Drives the same `disabledCinemas` localStorage
-       state as the Filtry-side Kina section on the other pages. A pill
-       is "active" only when it's the single pinned cinema (i.e. every
-       other cinema is in `disabledCinemas`); the default "show all"
-       state leaves every pill inactive so the grid's visual mode reads
-       as "no filter applied". */
+       navbar on /kina. A native <select> (single-select) pins the grid to
+       one cinema; "Wszystkie kina" un-pins. State lives in the URL path
+       (`/kina/:cinema`), independent of the persistent `disabledCinemas`
+       localStorage the Filtry-side Kina section drives on the other pages. */
     .cinema-nav-row {
-      gap: .25rem;
+      gap: .4rem;
       padding-top: .35rem !important;
       padding-bottom: .35rem !important;
       border-top: 1px solid #2a2a4e;
-      /* Override the shared `.navbar > div:first-child { height: 28px;
-         max-height: 28px }` — that rule keeps the main navbar's tab
-         row a fixed height, but here the pills wrap to multiple rows
-         on narrow phones and must be allowed to grow. */
-      & > div:first-child { height: auto; max-height: none; }
       /* `.navbar` is `position: sticky; top: 0` so the main filter bar
          stays on-screen during scroll. Override here — if BOTH navbar
          rows were sticky they'd stack on top of each other at the
-         viewport's top edge. The second row scrolls away with the
-         grid; the pinned cinema lives in the URL path so users don't
-         lose the "which cinema am I looking at" affordance. */
+         viewport's top edge. The second row scrolls away with the grid;
+         the pinned cinema lives in the URL path so users don't lose the
+         "which cinema am I looking at" affordance. */
       position: static;
     }
-    /* Pills inherit nav-tab look so they sit visually as a second row of
-       the navbar (transparent bg, same text colour and hover/active
-       styling as Filmy / Kina / ★). Reset <button> chrome since each
-       pill is a real <button> for keyboard activation. */
-    .cinema-pill {
-      background: transparent;
-      color: #aad4ff;
-      border: none;
-      border-radius: 6px;
-      padding: .25rem .6rem;
-      font-size: .875rem;
-      font-family: inherit;
-      cursor: pointer;
-      -webkit-user-select: none;
-      user-select: none;
-    }
-    /* Gate `:hover` behind `hover: hover` so iOS/Android Safari don't
-       paint the post-tap sticky hover — same purple background that
-       `.active` uses — onto a pill the user just *un*-pinned. Without
-       this, tapping a pill twice ends with the pill still looking
-       selected until you tap somewhere else. `.active` (the pinned
-       state) stays unconditional. */
-    @@media (hover: hover) and (pointer: fine) {
-      .cinema-pill:hover { background: #3a3a6e; color: #fff; }
-    }
-    .cinema-pill.active { background: #3a3a6e; color: #fff; }
+    /* "Kino:" label sitting left of the select, in the muted nav-tab blue. */
+    .cinema-select-label { color: #aad4ff; font-size: .875rem; flex-shrink: 0; }
     /* Below 576 px the kina-specific chrome rides the shared
-       `--mobile-scale` knob defined in `_sharedStyles` — same factor
-       as the navbar and card text, so the section header, pill row
-       and per-cinema pills shrink/grow in lockstep with everything
-       else on the page. At 575 px the scale is 1.0 and the value
-       lands exactly on the desktop ceiling, so the transition out of
-       this @@media block is seamless. */
+       `--mobile-scale` knob defined in `_sharedStyles` — same factor as
+       the navbar and card text, so the section header and picker row
+       shrink/grow in lockstep with everything else on the page. At 575 px
+       the scale is 1.0 and the value lands exactly on the desktop ceiling,
+       so the transition out of this @@media block is seamless. */
     @@media (max-width: 575px) {
       .cinema-section-title {
         font-size: var(--mobile-scale);
       }
+      .cinema-select-label {
+        font-size: calc(.875 * var(--mobile-scale));
+      }
       .cinema-nav-row {
         padding-left:  calc(.75 * var(--mobile-scale)) !important;
         padding-right: calc(.75 * var(--mobile-scale)) !important;
-        gap: calc(.25 * var(--mobile-scale));
-      }
-      .cinema-pill {
-        font-size: calc(.875 * var(--mobile-scale));
-        padding: calc(.25 * var(--mobile-scale)) calc(.6 * var(--mobile-scale));
       }
     }
   </style>
@@ -115,13 +81,13 @@
 @_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
-@* Cinema-picker as a second navbar row — populated from JS at boot off
-   ALL_CINEMAS and `disabledCinemas` localStorage. Renders empty
-   server-side; the JS pill builder is the source of truth so the
-   active/inactive state stays in sync with the same localStorage
-   everywhere else in the app reads from. *@
-<nav class="navbar cinema-nav-row px-4 d-flex align-items-center" style="flex-wrap:wrap">
-  <div id="cinema-pills" class="d-flex align-items-center" style="flex-wrap:wrap; gap:.25rem"></div>
+@* Cinema-picker as a second navbar row — a native <select> populated from
+   the JS config at boot (ALL_CINEMAS + CINEMA_PILLS). Renders empty
+   server-side; `buildCinemaSelect` seeds the options and pre-selects the
+   current pin so refreshing a `/kina/:cinema` URL shows the right choice. *@
+<nav class="navbar cinema-nav-row px-4 d-flex align-items-center">
+  <label for="cinema-select" class="cinema-select-label">Kino:</label>
+  <select id="cinema-select" class="filter-select" aria-label="Wybierz kino"></select>
 </nav>
 
 <div class="container-fluid py-4 px-4">
@@ -311,47 +277,53 @@
     updateCounter(visibleCount, showtimeCount);
   }
 
-  // ── Cinema-picker pills ───────────────────────────────────────────────────
+  // ── Cinema-picker dropdown ────────────────────────────────────────────────
   //
-  // The pill row is the only cinema filter on /kina. State lives in the URL
-  // path (`/kina/:cinema`) — the server seeds `_kinaPinned` from the path so
-  // refreshing a pinned URL keeps the pin, and `toggleCinemaPill` rewrites
-  // the URL via `history.replaceState` so the address bar and the pin never
-  // drift apart. It doesn't share state with the Filtry checkboxes on other
-  // pages (their `disabledCinemas` localStorage stays untouched).
+  // A native <select> is the only cinema filter on /kina. State lives in the
+  // URL path (`/kina/:cinema`) — the server seeds `_kinaPinned` from the path
+  // so refreshing a pinned URL keeps the pin, and `onCinemaSelectChange`
+  // rewrites the URL via `history.replaceState` so the address bar and the pin
+  // never drift apart. It doesn't share state with the Filtry checkboxes on
+  // other pages (their `disabledCinemas` localStorage stays untouched).
   let _kinaPinned = @Html(play.api.libs.json.Json.toJson(pinnedCinema).toString);
 
-  function buildCinemaPills() {
-    const row = document.getElementById('cinema-pills');
-    if (!row) return;
-    row.innerHTML = '';
+  // Build the <select>: "Wszystkie kina" (un-pinned) followed by every cinema,
+  // with the current pin pre-selected. Options come from the JS config
+  // (ALL_CINEMAS order + CINEMA_PILLS display names) so the picker matches the
+  // rest of the app exactly.
+  function buildCinemaSelect() {
+    const sel = document.getElementById('cinema-select');
+    if (!sel) return;
+    sel.innerHTML = '';
+    const all = document.createElement('option');
+    all.value = '';
+    all.textContent = 'Wszystkie kina';
+    sel.appendChild(all);
     ALL_CINEMAS.forEach(cinema => {
-      const pill = document.createElement('button');
-      pill.type = 'button';
-      pill.className = 'cinema-pill' + (cinema === _kinaPinned ? ' active' : '');
-      pill.dataset.cinema = cinema;
-      pill.textContent = CINEMA_PILLS[cinema] || cinema;
-      pill.onclick = () => toggleCinemaPill(cinema);
-      row.appendChild(pill);
+      const opt = document.createElement('option');
+      opt.value = cinema;
+      opt.textContent = CINEMA_PILLS[cinema] || cinema;
+      sel.appendChild(opt);
     });
+    sel.value = _kinaPinned || '';
   }
 
-  // Single-select semantics: clicking a pill pins the grid to that cinema;
-  // clicking the active pill again un-pins and restores all cinemas. The
-  // URL path is rewritten in lock-step (`/kina/:cinema` ↔ `/kina`) so a
-  // refresh keeps whatever the user picked.
-  function toggleCinemaPill(cinema) {
-    _kinaPinned = (_kinaPinned === cinema) ? null : cinema;
-    // Preserve query string (e.g. `?date=tomorrow`) when rewriting the path —
-    // the date selector also lives in the URL and shouldn't get dropped when
-    // the user pins/unpins a cinema.
+  // Single-select: picking a cinema pins the grid to it; "Wszystkie kina"
+  // un-pins. The URL path is rewritten in lock-step (`/kina/:cinema` ↔
+  // `/kina`) so a refresh keeps the choice. Query string + hash (e.g.
+  // `?date=tomorrow`) are preserved.
+  function onCinemaSelectChange() {
+    const sel = document.getElementById('cinema-select');
+    _kinaPinned = sel.value || null;
     const path = _kinaPinned ? '/kina/' + encodeURIComponent(_kinaPinned) : '/kina';
     history.replaceState(null, '', path + window.location.search + window.location.hash);
-    buildCinemaPills();
     applyFilters();
   }
 
-  document.addEventListener('DOMContentLoaded', buildCinemaPills);
+  document.addEventListener('DOMContentLoaded', () => {
+    buildCinemaSelect();
+    document.getElementById('cinema-select').addEventListener('change', onCinemaSelectChange);
+  });
 
   function sortSection(section, earlyMap) {
     // Same logic as repertoire's sortByEarliestVisible (see comment there).
