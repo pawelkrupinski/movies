@@ -1,7 +1,9 @@
 package pl.kinowo
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -37,7 +39,16 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        // The app is dark-only (see KinowoTheme). Force the dark system-bar
+        // style so the status/nav-bar icons stay light regardless of the
+        // device's night mode — the default `auto` style derives icon colour
+        // from the system setting, which on a light-mode device yields dark
+        // icons that vanish against our near-black background (the status bar
+        // then reads as an empty gap at the top).
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         setContent {
             KinowoTheme {
