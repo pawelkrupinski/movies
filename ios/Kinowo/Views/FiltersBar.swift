@@ -162,8 +162,15 @@ struct CinemaPillsRow: View {
     let allCinemas: [String]
     @Binding var pinnedCinema: String?
 
+    /// Half the gap between neighbouring pills. It lives as padding
+    /// *inside* each pill's tap target (with FlowLayout spacing 0), so the
+    /// rectangular hit areas of adjacent pills meet exactly — no dead gap
+    /// to miss-tap into — while the visible capsules keep a `2 * tapMargin`
+    /// gap between them.
+    private static let tapMargin: CGFloat = 3
+
     var body: some View {
-        FlowLayout(spacing: 6, lineSpacing: 6, centered: true) {
+        FlowLayout(spacing: 0, lineSpacing: 0, centered: true) {
             ForEach(allCinemas, id: \.self) { cinema in
                 Button {
                     pinnedCinema = (pinnedCinema == cinema) ? nil : cinema
@@ -179,12 +186,17 @@ struct CinemaPillsRow: View {
                             in: Capsule()
                         )
                         .foregroundColor(pinnedCinema == cinema ? .white : .primary)
+                        // Gap-filling margin + a rectangular hit shape, so
+                        // the whole rectangle around the capsule is tappable
+                        // and the rectangles of adjacent pills touch exactly.
+                        .padding(Self.tapMargin)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(BounceButtonStyle())
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 5)
         .frame(maxWidth: .infinity)
     }
 }

@@ -41,6 +41,31 @@ final class TabSwipeUITests: XCTestCase {
                       "Expected film grid back after swiping right")
     }
 
+    func testTappingCinemaPillPinsThatCinema() throws {
+        app.swipeLeft()
+
+        let headers = app.descendants(matching: .any)
+            .matching(identifier: A11y.CinemaPage.sectionHeader)
+        XCTAssertTrue(headers.firstMatch.waitForExistence(timeout: 10),
+                      "No cinema sections on /kina")
+        let originalCount = headers.count
+        try XCTSkipIf(originalCount < 2, "Need ≥2 cinema sections to test pinning")
+
+        // The first section header names a cinema that has films right now;
+        // its pill in the row carries the same label. Tapping the pill (its
+        // hit area is the rectangle around the capsule) pins that cinema and
+        // hides every other section.
+        let cinemaName = headers.firstMatch.label
+        let pill = app.buttons[cinemaName]
+        XCTAssertTrue(pill.waitForExistence(timeout: 5), "No cinema pill for \(cinemaName)")
+        pill.tap()
+
+        let pinnedToOne = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in headers.count == 1 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [pinnedToOne], timeout: 5), .completed,
+                       "Expected exactly one cinema section after pinning \(cinemaName)")
+    }
+
     private func firstFilmCard(_ app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)
             .matching(identifier: A11y.FilmGrid.cell)
