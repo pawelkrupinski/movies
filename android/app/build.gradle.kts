@@ -71,6 +71,12 @@ dependencies {
 
     implementation("io.coil-kt:coil-compose:2.7.0")
 
+    // Backdrop blur for the floating search pill — real frosted-glass that
+    // distorts the grid scrolling under it (RenderEffect on API 32+, graceful
+    // tint-only fallback below). 1.1.x is the Compose 1.7 line; newer Haze
+    // needs Compose 1.8+.
+    implementation("dev.chrisbanes.haze:haze:1.1.1")
+
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")

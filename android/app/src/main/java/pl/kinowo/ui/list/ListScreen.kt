@@ -1,6 +1,6 @@
 package pl.kinowo.ui.list
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
@@ -67,10 +68,14 @@ import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeChild
+import pl.kinowo.ui.theme.Background
 import pl.kinowo.ui.theme.Brand
-import pl.kinowo.ui.theme.CardElevated
 import pl.kinowo.ui.theme.CinemaBlue
-import pl.kinowo.ui.theme.Divider
 import pl.kinowo.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,6 +86,9 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     val error by vm.error.collectAsState()
 
     val pager = rememberPagerState(pageCount = { 2 })
+    // Backdrop captured by `Modifier.haze` (the grid) and sampled by the
+    // floating search pill's `hazeChild` to blur whatever scrolls under it.
+    val hazeState = remember { HazeState() }
     var showFilters by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -151,19 +159,22 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
 
             // ── content ───────────────────────────────────────────────────────
             // The search field floats over the grid as a bottom capsule
-            // (mirrors the iOS `SearchBar`) rather than taking its own row —
-            // the grid scrolls visibly behind it, with bottom content padding
-            // so the last row still clears the pill.
+            // (mirrors the iOS `SearchBar`) rather than taking its own row.
+            // The grid is the haze source; the pill samples it through
+            // `hazeChild`, so the cards blur and shift as they scroll under it.
+            // Bottom content padding keeps the last row clear of the pill.
             Box(Modifier.fillMaxSize()) {
-                when {
-                    isLoading && films.isEmpty() -> CenteredMessage("Ładowanie repertuaru…")
-                    error != null && films.isEmpty() -> ErrorState(error!!) { vm.reload() }
-                    else -> HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
-                        PullToRefreshBox(isRefreshing = isLoading, onRefresh = { vm.reload() }) {
-                            if (page == 0) {
-                                FilmsGrid(vm.filmsForFilmsTab(films), onOpenFilm) { vm.hide(it) }
-                            } else {
-                                CinemaGrid(vm.cinemaSections(films), onOpenFilm) { vm.hide(it) }
+                Box(Modifier.fillMaxSize().haze(hazeState)) {
+                    when {
+                        isLoading && films.isEmpty() -> CenteredMessage("Ładowanie repertuaru…")
+                        error != null && films.isEmpty() -> ErrorState(error!!) { vm.reload() }
+                        else -> HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
+                            PullToRefreshBox(isRefreshing = isLoading, onRefresh = { vm.reload() }) {
+                                if (page == 0) {
+                                    FilmsGrid(vm.filmsForFilmsTab(films), onOpenFilm) { vm.hide(it) }
+                                } else {
+                                    CinemaGrid(vm.cinemaSections(films), onOpenFilm) { vm.hide(it) }
+                                }
                             }
                         }
                     }
@@ -172,6 +183,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 FloatingSearchBar(
                     value = vm.search,
                     onValueChange = { vm.search = it },
+                    hazeState = hazeState,
                     modifier = Modifier.align(Alignment.BottomCenter).imePadding(),
                 )
             }
@@ -247,51 +259,57 @@ private fun SwipeHintOverlay(modifier: Modifier = Modifier) {
 private fun FloatingSearchBar(
     value: String,
     onValueChange: (String) -> Unit,
+    hazeState: HazeState,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        shape = RoundedCornerShape(28.dp),
-        // Translucent fill so the grid scrolls visibly behind the pill —
-        // the closest Android gets to the iOS frosted-glass look without a
-        // backdrop-blur RenderEffect. Low alpha on the dark card tint, with
-        // a slightly stronger border so the capsule edge still reads against
-        // busy posters.
-        color = CardElevated.copy(alpha = 0.55f),
-        border = BorderStroke(1.dp, Divider.copy(alpha = 0.85f)),
-        shadowElevation = 8.dp,
-        modifier = modifier
+    val shape = RoundedCornerShape(28.dp)
+    Row(
+        modifier
             .padding(horizontal = 24.dp, vertical = 14.dp)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .clip(shape)
+            // Real frosted glass: blur the grid captured by `haze` and lay a
+            // whisper-thin light tint over it, so the pill reads as clear glass
+            // (like the iOS `.ultraThinMaterial`) rather than a solid fill. The
+            // hairline white border catches the edge against busy posters.
+            .hazeChild(
+                state = hazeState,
+                style = HazeStyle(
+                    // The opaque base Haze composites the blur over (the app
+                    // background) — required, else it throws at draw time.
+                    backgroundColor = Background,
+                    blurRadius = 28.dp,
+                    tint = HazeTint(Color.White.copy(alpha = 0.08f)),
+                ),
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.22f), shape)
+            .padding(horizontal = 18.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            Modifier.padding(horizontal = 18.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.Filled.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Box(Modifier.weight(1f)) {
-                if (value.isEmpty()) {
-                    Text("Szukaj filmu", color = TextSecondary)
-                }
-                BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    singleLine = true,
-                    textStyle = LocalTextStyle.current.copy(color = Color.White),
-                    cursorBrush = SolidColor(Brand),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+        Icon(Icons.Filled.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(10.dp))
+        Box(Modifier.weight(1f)) {
+            if (value.isEmpty()) {
+                Text("Szukaj filmu", color = TextSecondary)
             }
-            if (value.isNotEmpty()) {
-                Spacer(Modifier.width(8.dp))
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = "Wyczyść",
-                    tint = TextSecondary,
-                    modifier = Modifier.size(20.dp).clickable { onValueChange("") },
-                )
-            }
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = LocalTextStyle.current.copy(color = Color.White),
+                cursorBrush = SolidColor(Brand),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (value.isNotEmpty()) {
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                Icons.Filled.Close,
+                contentDescription = "Wyczyść",
+                tint = TextSecondary,
+                modifier = Modifier.size(20.dp).clickable { onValueChange("") },
+            )
         }
     }
 }
