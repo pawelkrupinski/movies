@@ -908,7 +908,7 @@ showings:
   2026-05-19  Cinema City Kinepolis         13:10 Sala 17 2D/NAP · 13:50 Sala 15 2D/NAP · 14:30 Sala 12 2D/NAP · 15:50 Sala 17 2D/NAP · 16:00 Sala 6 2D/NAP · 16:30 Sala 15 2D/NAP · 17:10 Sala 12 2D/NAP · 17:40 Sala 1 2D/NAP · 18:30 Sala 17 2D/NAP · 18:40 Sala 6 2D/NAP · 19:20 Sala 15 2D/NAP · 19:50 Sala 12 2D/NAP · 20:20 Sala 1 2D/NAP · 21:10 Sala 17 2D/NAP · 21:20 Sala 6 2D/NAP · 22:00 Sala 15 2D/NAP
   2026-05-19  Cinema City Poznań Plaza      10:30 Sala 4 2D/NAP · 11:20 Sala 6 2D/NAP · 12:10 Sala 3 2D/NAP · 13:10 Sala 4 2D/NAP · 14:00 Sala 6 2D/NAP · 15:50 Sala 4 2D/NAP · 16:40 Sala 6 2D/NAP · 17:45 Sala 3 2D/NAP · 19:20 Sala 6 2D/NAP · 20:30 Sala 3 2D/NAP · 21:00 Sala 4 2D/NAP · 22:00 Sala 6 2D/NAP
   2026-05-19  Helios Posnania               10:00 2D/NAP · 12:45 2D/NAP · 15:30 2D/NAP · 17:15 2D/NAP/ATMOS · 18:15 2D/NAP · 20:00 2D/NAP/ATMOS · 21:00 2D/NAP
-  2026-05-19  Kino Rialto                   13:00 · 15:30 · 18:00
+  2026-05-19  Kino Rialto                   18:00
   2026-05-19  Multikino Stary Browar        09:00 Sala 2 2D/NAP · 11:40 Sala 2 2D/NAP · 13:00 Sala 6 2D/NAP · 14:20 Sala 2 2D/NAP · 15:00 Sala 4 2D/NAP · 15:40 Sala 6 2D/NAP · 17:00 Sala 2 2D/NAP · 18:20 Sala 6 2D/NAP · 19:40 Sala 2 2D/NAP · 21:00 Sala 6 2D/NAP
   2026-05-20  Cinema City Kinepolis         13:10 Sala 17 2D/NAP · 13:50 Sala 15 2D/NAP · 14:30 Sala 12 2D/NAP · 15:50 Sala 17 2D/NAP · 16:00 Sala 6 2D/NAP · 16:30 Sala 15 2D/NAP · 17:10 Sala 12 2D/NAP · 17:40 Sala 1 2D/NAP · 18:30 Sala 17 2D/NAP · 18:40 Sala 6 2D/NAP · 19:20 Sala 15 2D/NAP · 19:50 Sala 12 2D/NAP · 20:20 Sala 1 2D/NAP · 21:10 Sala 17 2D/NAP · 21:20 Sala 6 2D/NAP · 22:00 Sala 15 2D/NAP
   2026-05-20  Cinema City Poznań Plaza      10:30 Sala 4 2D/NAP · 12:10 Sala 3 2D/NAP · 13:10 Sala 4 2D/NAP · 14:00 Sala 6 2D/NAP · 15:50 Sala 4 2D/NAP · 16:40 Sala 6 2D/NAP · 17:45 Sala 3 2D/NAP · 19:20 Sala 6 2D/NAP · 20:30 Sala 3 2D/NAP · 21:00 Sala 4 2D/NAP · 22:00 Sala 6 2D/NAP
@@ -1417,6 +1417,87 @@ cinemaScrapes:
   Kino Rialto / Filmowe spotkania z psychoanalizą: dobry chłopiec / 2025
 showings:
   2026-05-24  Kino Rialto                   18:45
+
+=== Filmowy klub seniora: diabeł ubiera się u prady 2 ===
+displayTitle:      Filmowy klub seniora: diabeł ubiera się u prady 2
+cinemaTitles:      Filmowy klub seniora: diabeł ubiera się u prady 2
+runtimeMinutes:    120
+releaseYear:       2026
+countries:         USA
+posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/diabel-ubiera-sie-u-prady-2-plakat1.jpg
+synopsis.length:   581
+cast:              —
+director:          David Frankel
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
+cinemaFilmUrls:
+  Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=155004
+cinemaScrapes:
+  Kino Rialto / Filmowy klub seniora: diabeł ubiera się u prady 2 / 2026
+showings:
+  2026-05-19  Kino Rialto                   13:00 · 15:30
+
+=== Filmowy klub seniora: mów mi jimpa ===
+displayTitle:      Filmowy klub seniora: mów mi jimpa
+cinemaTitles:      Filmowy klub seniora: mów mi jimpa
+runtimeMinutes:    113
+releaseYear:       2025
+countries:         Australia, Finlandia, Holandia
+posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/mow-mi-jimpa-plakat-pl.jpg
+synopsis.length:   457
+cast:              —
+director:          Sophie Hyde
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
+cinemaFilmUrls:
+  Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=155984
+cinemaScrapes:
+  Kino Rialto / Filmowy klub seniora: mów mi jimpa / 2025
+showings:
+  2026-05-26  Kino Rialto                   13:00
+
+=== Filmowy klub seniora: młode matki ===
+displayTitle:      Filmowy klub seniora: młode matki
+cinemaTitles:      Filmowy klub seniora: młode matki
+runtimeMinutes:    104
+releaseYear:       2025
+countries:         Belgia, Francja
+posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/plakat-mlode-matki-700x1050.jpg
+synopsis.length:   1540
+cast:              —
+director:          Jean-Pierre Dardenne, Luc Dardenne
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
+cinemaFilmUrls:
+  Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=155894
+cinemaScrapes:
+  Kino Rialto / Filmowy klub seniora: młode matki / 2025
+showings:
+  2026-05-26  Kino Rialto                   15:30
 
 === Follemente. W tym szaleństwie jest metoda ===
 displayTitle:      Follemente. W tym szaleństwie jest metoda
@@ -3446,33 +3527,6 @@ cinemaScrapes:
 showings:
   2026-06-13  Kino Rialto                   15:30
 
-=== Mów mi jimpa ===
-displayTitle:      Mów mi jimpa
-cinemaTitles:      Mów mi jimpa
-runtimeMinutes:    113
-releaseYear:       2025
-countries:         Australia, Finlandia, Holandia
-posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/mow-mi-jimpa-plakat-pl.jpg
-synopsis.length:   457
-cast:              —
-director:          Sophie Hyde
-tmdbId:            1286491
-imdbId:            tt23745668
-originalTitle:     Jimpa
-imdbRating:        5.6
-metascore:         47
-rottenTomatoes:    52
-filmwebRating:     5.89958
-metacriticUrl:     https://www.metacritic.com/movie/jimpa
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/jimpa
-filmwebUrl:        https://www.filmweb.pl/film/M%C3%B3w+mi+Jimpa-2025-10068168
-cinemaFilmUrls:
-  Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=155984
-cinemaScrapes:
-  Kino Rialto / Mów mi jimpa / 2025
-showings:
-  2026-05-26  Kino Rialto                   13:00
-
 === Młode matki ===
 displayTitle:      Młode matki
 cinemaTitles:      Młode matki
@@ -3499,7 +3553,7 @@ cinemaScrapes:
   Kino Rialto / Młode matki / 2025
 showings:
   2026-05-22  Kino Rialto                   17:00
-  2026-05-26  Kino Rialto                   15:30 · 18:00
+  2026-05-26  Kino Rialto                   18:00
 
 === Młodsza siostra ===
 displayTitle:      Młodsza siostra

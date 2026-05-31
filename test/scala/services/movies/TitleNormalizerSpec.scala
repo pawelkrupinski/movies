@@ -286,6 +286,13 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     apiQuery("Filmowe spotkania z psychoanalizą: dobry chłopiec") shouldBe "dobry chłopiec"
   }
 
+  it should "strip the 'Filmowy Klub Seniora:' prefix (Rialto senior-club screening)" in {
+    // Kept its own cache row (a senior-club showing is listed separately) but
+    // enriched off the clean base title upstream.
+    apiQuery("Filmowy Klub Seniora: Ojczyzna") shouldBe "Ojczyzna"
+    searchTitle("Filmowy Klub Seniora: Ojczyzna") shouldBe "Filmowy Klub Seniora: Ojczyzna"
+  }
+
   it should "strip the 'Plenerowe Pałacowe:' prefix (Kino Pałacowe outdoor screenings)" in {
     apiQuery("Plenerowe Pałacowe: La Grazia") shouldBe "La Grazia"
   }

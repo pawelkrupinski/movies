@@ -16,8 +16,8 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
 
   // ── Totals ────────────────────────────────────────────────────────────────
 
-  "RialtoClient.fetch" should "return exactly 14 movies from fixture" in {
-    results.size shouldBe 14
+  "RialtoClient.fetch" should "return exactly 16 movies from fixture" in {
+    results.size shouldBe 16
   }
 
   it should "return 231 showtimes in total" in {
@@ -42,6 +42,9 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
       "Człowiek z marmuru",
       "Diabeł ubiera się u prady 2",
       "Filmowe spotkania z psychoanalizą: dobry chłopiec",
+      // Senior-club showings kept as their own row (cycle prefix preserved).
+      "Filmowy klub seniora: diabeł ubiera się u prady 2",
+      "Filmowy klub seniora: młode matki",
       "Mavka. Prawdziwy mit",
       "Modigliani: portret odarty z legendy",
       "Munch: miłość, duchy i wampirzyce",
@@ -212,18 +215,28 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     RialtoClient.normalizeTitle("Mavka. Prawdziwy mit") shouldBe "Mavka. Prawdziwy mit"
   }
 
+  it should "strip an ordinary cycle prefix" in {
+    RialtoClient.normalizeTitle("DKF Absolwent: MILCZĄCA PRZYJACIÓŁKA") shouldBe "Milcząca przyjaciółka"
+  }
+
+  it should "keep the 'Filmowy Klub Seniora:' prefix so the senior-club showing stays a separate row" in {
+    RialtoClient.normalizeTitle("Filmowy Klub Seniora: OJCZYZNA") shouldBe "Filmowy klub seniora: ojczyzna"
+  }
+
   // ── Showtime counts ───────────────────────────────────────────────────────
 
   it should "return correct showtime count for every movie" in {
     val counts = results.map(m => m.movie.title -> m.showtimes.size).toMap
     counts("Ale mam | ну мам | wersja ukraińska z ang. napisami") shouldBe 11
     counts("Człowiek z marmuru")                                   shouldBe 11
-    counts("Diabeł ubiera się u prady 2")                         shouldBe 33
+    counts("Diabeł ubiera się u prady 2")                         shouldBe 22
     counts("Filmowe spotkania z psychoanalizą: dobry chłopiec")    shouldBe 11
+    counts("Filmowy klub seniora: diabeł ubiera się u prady 2")    shouldBe 11
+    counts("Filmowy klub seniora: młode matki")                    shouldBe 11
     counts("Mavka. Prawdziwy mit")                                 shouldBe 11
     counts("Modigliani: portret odarty z legendy")                 shouldBe 11
     counts("Munch: miłość, duchy i wampirzyce")                   shouldBe 11
-    counts("Młode matki")                                          shouldBe 33
+    counts("Młode matki")                                          shouldBe 22
     counts("Niesamowite przygody skarpetek 3. Ale kosmos!")        shouldBe 22
     counts("Szepty lasu")                                          shouldBe 11
     counts("Sprawiedliwość owiec")                                 shouldBe 33

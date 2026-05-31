@@ -155,11 +155,16 @@ object RialtoClient {
   def normalizeTitle(raw: String): String =
     normalizeCase(stripPreviewSuffix(stripCyclePrefix(raw)))
 
+  // Recurring-programme prefixes whose screenings are their OWN row, not folded
+  // into the base film — a senior-club showing targets a distinct audience and
+  // is listed separately. Matched on the registered programme set so the row
+  // still enriches off the clean base title (see TitleNormalizer.ProgrammePrefix).
   private def stripCyclePrefix(title: String): String = {
     val colonIdx = title.indexOf(": ")
     if (colonIdx > 0 && colonIdx < 30) {
       val prefix = title.substring(0, colonIdx)
-      if (prefix != prefix.toUpperCase) title.substring(colonIdx + 2) else title
+      if (prefix.equalsIgnoreCase("Filmowy Klub Seniora")) title
+      else if (prefix != prefix.toUpperCase) title.substring(colonIdx + 2) else title
     } else title
   }
 

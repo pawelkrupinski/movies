@@ -7,11 +7,11 @@ import tools.HttpFetch
 
 import java.time.LocalDateTime
 
-/** Rialto lists the same film under several repertoire blocks — a plain title,
- *  a "Filmowy Klub Seniora:" cycle prefix, and a "- pokaz przedpremierowy"
- *  preview suffix — each linking to its own event page. `normalizeTitle`
- *  collapses all three to "Ojczyzna", and `fetch` must merge the showtimes
- *  from every linked event page into the single row, not just the first one.
+/** Rialto lists the same film under several repertoire blocks, each linking its
+ *  own event page. The plain title and a "- pokaz przedpremierowy" preview
+ *  screening both normalize to "Ojczyzna" and MERGE into one row. A
+ *  "Filmowy Klub Seniora:" senior-club showing targets a distinct audience and
+ *  stays its OWN row (its prefix is kept by `stripCyclePrefix`).
  *
  *  Each event page double-lists every slot (two ticket buttons per showing),
  *  which `parseEventPage`'s `distinctBy(_.dateTime)` folds back to one. */
@@ -57,17 +57,24 @@ class RialtoOjczyznaReproSpec extends AnyFlatSpec with Matchers {
     def post(url: String, body: String, contentType: String): String = ???
   }
 
-  "RialtoClient" should "merge every Ojczyzna event page into one row" in {
-    val ojczyzna = new RialtoClient(http).fetch()
-      .filter(_.movie.title.equalsIgnoreCase("Ojczyzna"))
+  private val results = new RialtoClient(http).fetch()
+  private def times(cm: models.CinemaMovie) = cm.showtimes.map(_.dateTime).toSet
 
+  "RialtoClient" should "merge the plain and preview blocks into one Ojczyzna row" in {
+    val ojczyzna = results.filter(_.movie.title.equalsIgnoreCase("Ojczyzna"))
     ojczyzna.size shouldBe 1
-    val times = ojczyzna.head.showtimes.map(_.dateTime).toSet
-    times.size shouldBe (seniora ++ regular ++ preview).size
-    // A date that exists only on each respective event page — proves none of
-    // the three blocks was dropped during the merge.
-    times should contain(LocalDateTime.of(2026, 6, 23, 13, 0)) // cycle-prefix block (157099)
-    times should contain(LocalDateTime.of(2026, 6, 14, 17, 30)) // plain block (157098)
-    times should contain(LocalDateTime.of(2026, 6, 4, 17, 0))  // preview-suffix block (157192)
+    val t = times(ojczyzna.head)
+    t.size shouldBe (regular ++ preview).size
+    t should contain(LocalDateTime.of(2026, 6, 14, 17, 30)) // plain (157098)
+    t should contain(LocalDateTime.of(2026, 6, 4, 17, 0))   // preview (157192)
+    t should not contain LocalDateTime.of(2026, 6, 23, 13, 0) // NOT the Klub Seniora slot
+  }
+
+  it should "keep the Filmowy Klub Seniora showing as its own row" in {
+    val seniorRow = results.filter(_.movie.title.toLowerCase.contains("klub seniora"))
+    seniorRow.size shouldBe 1
+    seniorRow.head.movie.title shouldBe "Filmowy klub seniora: ojczyzna"
+    val t = times(seniorRow.head)
+    t shouldBe Set(LocalDateTime.of(2026, 6, 23, 13, 0), LocalDateTime.of(2026, 6, 23, 15, 30))
   }
 }

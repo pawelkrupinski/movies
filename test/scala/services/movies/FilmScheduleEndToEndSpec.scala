@@ -162,7 +162,9 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
         Multikino             -> 51,
         CharlieMonroe         -> 3,
         CinemaCityKinepolis   -> 84,
-        Rialto                -> 12,
+        // Rialto's two "Filmowy Klub Seniora: Diabeł…" slots are kept as their
+        // own senior-club row, so the regular Diabeł row carries 10, not 12.
+        Rialto                -> 10,
         CinemaCityPoznanPlaza -> 57
       )
 
