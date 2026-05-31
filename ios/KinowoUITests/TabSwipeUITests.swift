@@ -41,38 +41,36 @@ final class TabSwipeUITests: XCTestCase {
                       "Expected film grid back after swiping right")
     }
 
-    func testSelectingCinemaFromPillsPinsThatCinema() throws {
+    func testPinningCinemaHidesSectionHeaders() throws {
         app.swipeLeft()
 
         let headers = app.descendants(matching: .any)
             .matching(identifier: A11y.CinemaPage.sectionHeader)
         XCTAssertTrue(headers.firstMatch.waitForExistence(timeout: 10),
                       "No cinema sections on /kina")
-        let originalCount = headers.count
-        try XCTSkipIf(originalCount < 2, "Need ≥2 cinema sections to test pinning")
+        try XCTSkipIf(headers.count < 2, "Need ≥2 cinema sections to test pinning")
 
-        // The first section header names a cinema that has films right now;
-        // its pill carries the same label. Tapping the pill (its hit area is
-        // the rectangle around the capsule) pins that cinema and hides every
-        // other section.
-        let cinemaName = headers.firstMatch.label
-        let pill = app.buttons[cinemaName]
-        XCTAssertTrue(pill.waitForExistence(timeout: 5), "No cinema pill for \(cinemaName)")
+        // Pills in row order: [0] = "Wszystkie", [1] = first cinema. Both are
+        // on-screen at the start, and tapping a pill doesn't scroll the row,
+        // so no horizontal scrolling is needed.
+        let pills = app.buttons.matching(identifier: A11y.CinemaPage.pill)
+        let firstCinema = pills.element(boundBy: 1)
+        XCTAssertTrue(firstCinema.waitForExistence(timeout: 5), "No cinema pill")
 
-        // The pill row scrolls horizontally; nudge it until the pill is
-        // on-screen (swiping the row, not the page, so the tab doesn't flip).
-        let pillRow = app.scrollViews[A11y.CinemaPage.pillRow]
-        var tries = 0
-        while !pill.isHittable && pillRow.exists && tries < 8 {
-            pillRow.swipeLeft()
-            tries += 1
-        }
-        pill.tap()
+        // Pin a concrete cinema → its pill already names it, so every
+        // per-section header is dropped.
+        firstCinema.tap()
+        let headersHidden = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in headers.count == 0 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [headersHidden], timeout: 5), .completed,
+                       "Section headers should be hidden when a cinema is pinned")
 
-        let pinnedToOne = XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in headers.count == 1 }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [pinnedToOne], timeout: 5), .completed,
-                       "Expected exactly one cinema section after pinning \(cinemaName)")
+        // Back to "Wszystkie" → the per-section headers return.
+        pills.element(boundBy: 0).tap()
+        let headersBack = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in headers.count >= 1 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [headersBack], timeout: 5), .completed,
+                       "Section headers should return for Wszystkie")
     }
 
     private func firstFilmCard(_ app: XCUIApplication) -> XCUIElement {

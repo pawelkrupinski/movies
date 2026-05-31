@@ -212,6 +212,9 @@ struct ContentView: View {
     private var cinemasPage: some View {
         CinemaSectionedGridView(
             sections: filmsForCinemasTab.groupedByCinema(),
+            // A pinned cinema is already named by its pill, so drop the
+            // now-redundant per-section header; "Wszystkie" keeps them.
+            showSectionHeaders: pinnedCinema == nil,
             header: {
                 CinemaPillsRow(
                     allCinemas: allCinemas,

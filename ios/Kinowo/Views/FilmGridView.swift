@@ -110,12 +110,18 @@ struct FilmGridView: View {
 /// (cinema → movie → screening) — the section header announces the
 /// cinema, so the inner cards run with `showCinemaHeaders=false` to
 /// drop the now-redundant per-card cinema label.
+///
+/// `showSectionHeaders` is false when a single cinema is pinned: the pill
+/// row already names it, so a per-section header would just repeat it.
 struct CinemaSectionedGridView<Header: View>: View {
     let sections: [CinemaSection]
+    let showSectionHeaders: Bool
     let header: () -> Header
 
-    init(sections: [CinemaSection], @ViewBuilder header: @escaping () -> Header = { EmptyView() }) {
+    init(sections: [CinemaSection], showSectionHeaders: Bool = true,
+         @ViewBuilder header: @escaping () -> Header = { EmptyView() }) {
         self.sections = sections
+        self.showSectionHeaders = showSectionHeaders
         self.header = header
     }
 
@@ -130,7 +136,9 @@ struct CinemaSectionedGridView<Header: View>: View {
                     LazyVStack(alignment: .leading, spacing: 20) {
                         ForEach(sections) { section in
                             VStack(alignment: .leading, spacing: 12) {
-                                sectionHeader(CinemaSection.pillName(for: section.cinema))
+                                if showSectionHeaders {
+                                    sectionHeader(CinemaSection.pillName(for: section.cinema))
+                                }
                                 LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
                                     ForEach(section.films) { film in
                                         NavigationLink(value: film) {

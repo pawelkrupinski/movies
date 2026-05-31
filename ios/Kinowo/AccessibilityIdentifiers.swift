@@ -32,7 +32,7 @@ enum A11y {
 
     enum CinemaPage {
         static let sectionHeader = "cinema.section.header"
-        static let pillRow       = "cinema.pillRow"
+        static let pill          = "cinema.pill"
     }
 
     enum TabOverlay {

@@ -188,7 +188,6 @@ struct CinemaPillsRow: View {
             }
             .padding(.horizontal, 11)
         }
-        .accessibilityIdentifier(A11y.CinemaPage.pillRow)
         .padding(.vertical, 5)
     }
 
@@ -213,6 +212,7 @@ struct CinemaPillsRow: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(BounceButtonStyle())
+        .accessibilityIdentifier(A11y.CinemaPage.pill)
     }
 }
 
