@@ -19,47 +19,56 @@ private val WARSAW_DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("y
 /**
  * Date axis of the Filtry bar. Dated options first (Dziś / Jutro / 7 dni),
  * the catch-all `Wszystkie` pushed rightmost so the row reads narrow → broad.
+ *
+ * The fixed options are an [enum][Kind] rather than parameterless `object`
+ * subclasses: a sealed class whose companion (and the ViewModel's default)
+ * reference its own nested `object`s is a circular class-init hazard (outer ⇄
+ * companion ⇄ objects). On the Android runtime that initialised the singletons
+ * inconsistently — once as a `null` in `presets` (launch crash), and
+ * intermittently leaving the default filter behaving as a different option than
+ * `Today`. Enum constants initialise eagerly in one well-defined static block
+ * with no cycle, so `Kind.TODAY` is always the same value. The public API
+ * (`DateFilter.Today`, `.Anytime`, `.Specific(...)`, `.presets`, `.label`,
+ * `.matches`) is unchanged.
  */
-sealed class DateFilter {
-    object Anytime : DateFilter()
-    object Today : DateFilter()
-    object Tomorrow : DateFilter()
-    object Week : DateFilter()
-    data class Specific(val date: String) : DateFilter()
-
+sealed interface DateFilter {
     val label: String
-        get() = when (this) {
-            Anytime -> "Wszystkie"
-            Today -> "Dziś"
-            Tomorrow -> "Jutro"
-            Week -> "7 dni"
-            is Specific -> date
-        }
+    fun matches(date: String, now: Instant = Instant.now()): Boolean
 
-    /** Does a `DayShowings.date` (YYYY-MM-DD) pass this filter? */
-    fun matches(date: String, now: Instant = Instant.now()): Boolean {
-        val todayDate = LocalDate.ofInstant(now, WARSAW)
-        return when (this) {
-            Anytime -> true
-            Today -> date == todayDate.format(ISO_DATE)
-            Tomorrow -> date == todayDate.plusDays(1).format(ISO_DATE)
-            Week -> {
-                val today = todayDate.format(ISO_DATE)
-                val in7 = todayDate.plusDays(7).format(ISO_DATE)
-                date in today..in7
+    enum class Kind(override val label: String) : DateFilter {
+        TODAY("Dziś"),
+        TOMORROW("Jutro"),
+        WEEK("7 dni"),
+        ANYTIME("Wszystkie");
+
+        override fun matches(date: String, now: Instant): Boolean {
+            val todayDate = LocalDate.ofInstant(now, WARSAW)
+            return when (this) {
+                ANYTIME -> true
+                TODAY -> date == todayDate.format(ISO_DATE)
+                TOMORROW -> date == todayDate.plusDays(1).format(ISO_DATE)
+                WEEK -> {
+                    val today = todayDate.format(ISO_DATE)
+                    val in7 = todayDate.plusDays(7).format(ISO_DATE)
+                    date in today..in7
+                }
             }
-            is Specific -> date == this.date
         }
     }
 
+    data class Specific(val date: String) : DateFilter {
+        override val label: String get() = date
+        override fun matches(date: String, now: Instant): Boolean = date == this.date
+    }
+
     companion object {
-        // Computed via a getter, NOT an eagerly-initialised `val`: referencing
-        // the nested `object` subclasses from the companion's initializer is a
-        // circular class-init hazard (outer class ⇄ companion ⇄ objects) that
-        // leaves entries null on the Android runtime — crashing DateChips with
-        // an NPE on `preset.label`. A getter builds the list after the objects
-        // are fully initialised, every call.
-        val presets: List<DateFilter> get() = listOf(Today, Tomorrow, Week, Anytime)
+        val Anytime: DateFilter get() = Kind.ANYTIME
+        val Today: DateFilter get() = Kind.TODAY
+        val Tomorrow: DateFilter get() = Kind.TOMORROW
+        val Week: DateFilter get() = Kind.WEEK
+
+        // Dated options first, catch-all rightmost.
+        val presets: List<DateFilter> get() = listOf(Kind.TODAY, Kind.TOMORROW, Kind.WEEK, Kind.ANYTIME)
         fun iso(now: Instant): String = LocalDate.ofInstant(now, WARSAW).format(ISO_DATE)
     }
 }
