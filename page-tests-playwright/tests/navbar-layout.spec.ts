@@ -130,6 +130,64 @@ test.describe('navbar uniformity — mobile portrait', () => {
   });
 });
 
+// ── Logged-in avatar pill: matches navbar control height ──────────
+//
+// The live/fixture server renders the navbar logged-OUT (a "Zaloguj"
+// button), so the `.auth-menu` avatar pill never appears in the other
+// uniformity specs above — they list `.auth-name`, which is
+// `display:none` on mobile anyway. The pill's height is pure CSS, so
+// we inject the real logged-in markup and measure it. Regression for
+// the pill keeping `min-height:35px` on mobile while every other
+// control was pinned to 28px (the mobile blocks pinned `.auth-name`,
+// the hidden inner span, instead of the `.auth-menu` container).
+
+const AUTH_MENU_HTML = `
+  <div class="auth-menu" id="auth-menu">
+    <span class="auth-avatar-fallback">P</span>
+    <span class="auth-name">Paweł</span>
+    <div class="auth-dropdown" id="auth-dropdown">
+      <form method="post" action="/auth/logout" class="auth-logout-form">
+        <button type="submit" class="auth-logout-btn">Wyloguj się</button>
+      </form>
+    </div>
+  </div>`;
+
+async function injectAuthMenu(page: Page): Promise<void> {
+  await page.evaluate((html) => {
+    const slot = document.querySelector('.navbar-auth');
+    if (slot) slot.innerHTML = html;
+  }, AUTH_MENU_HTML);
+}
+
+test.describe('logged-in avatar pill height', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    const name = testInfo.project.name;
+    const isPortraitMobile = !name.includes('desktop') && !name.includes('landscape');
+    test.skip(!isPortraitMobile, 'mobile portrait only');
+    await page.goto('/');
+    await waitForCards(page);
+    await injectAuthMenu(page);
+  });
+
+  test('avatar pill is the same height as the search input', async ({ page }) => {
+    const heights = await page.evaluate(() => {
+      const nav = document.querySelector('.navbar')!;
+      const pill = nav.querySelector('.auth-menu') as HTMLElement | null;
+      const search = nav.querySelector('.search-input') as HTMLElement | null;
+      return {
+        pill:   pill   ? pill.getBoundingClientRect().height   : -1,
+        search: search ? search.getBoundingClientRect().height : -1,
+      };
+    });
+    expect(heights.pill,   'auth-menu pill not rendered').toBeGreaterThan(0);
+    expect(heights.search, '.search-input not rendered').toBeGreaterThan(0);
+    expect(
+      Math.abs(heights.pill - heights.search),
+      `avatar pill ${heights.pill.toFixed(1)}px ≠ search ${heights.search.toFixed(1)}px`,
+    ).toBeLessThanOrEqual(1);
+  });
+});
+
 // ── Mobile landscape: font + height uniformity ────────────────────
 
 test.describe('navbar uniformity — mobile landscape', () => {
