@@ -188,6 +188,11 @@
       cols:    [...section.querySelectorAll('.col[data-title]')].map(col => ({
         el:       col,
         title:    col.dataset.title.toLowerCase(),
+        // Sort keys, parsed once — same shape as repertoire's INDEX. `rating`
+        // is the server-computed weighted average (0 when unrated); `year` is
+        // -Infinity when absent so it sinks in a year sort.
+        rating:    parseFloat(col.dataset.rating) || 0,
+        year:      col.dataset.year ? parseInt(col.dataset.year, 10) : -Infinity,
         countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
         directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
         cast:      new Set((col.dataset.cast     || '').split(',').map(s => s.trim()).filter(Boolean)),
@@ -397,10 +402,10 @@
     // keeps `hideFilm` from jumping the scroll position.
     const visible = [];
     for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);
-    visible.sort((a, b) => {
-      const ta = earlyMap[a], tb = earlyMap[b];
-      return ta < tb ? -1 : ta > tb ? 1 : (a - b);
-    });
+    const sortBy = getSortBy();
+    visible.sort((a, b) => compareCards(sortBy,
+      { earliest: earlyMap[a], rating: section.cols[a].rating, year: section.cols[a].year, idx: a },
+      { earliest: earlyMap[b], rating: section.cols[b].rating, year: section.cols[b].year, idx: b }));
     if (isSubsequence(visible, section.prevVisibleOrder || [])) return;
     section.prevVisibleOrder = visible;
     const frag = document.createDocumentFragment();

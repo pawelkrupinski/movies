@@ -52,6 +52,22 @@ case class MovieRecord(
   def imdbUrl: Option[String] = imdbId.map(id => s"https://www.imdb.com/title/$id/")
   def tmdbUrl: Option[String] = tmdbId.map(id => s"https://www.themoviedb.org/movie/$id")
 
+  /** Equal-weight average of every external rating we hold, each normalised
+   *  to a 0–10 scale so the four sources are comparable (Metacritic and
+   *  Rotten Tomatoes are 0–100, so they're divided by 10). Sources without a
+   *  value are skipped — present sources share the weight equally — and a
+   *  record with no ratings at all scores 0. This is the sort key behind the
+   *  grid's "Ocena" (weighted rating) sort order. */
+  def weightedRating: Double = {
+    val normalised: Seq[Double] = Seq(
+      imdbRating,
+      filmwebRating,
+      metascore.map(_ / 10.0),
+      rottenTomatoes.map(_ / 10.0)
+    ).flatten
+    if (normalised.isEmpty) 0.0 else normalised.sum / normalised.size
+  }
+
   // ── Slices and views ──────────────────────────────────────────────────────
 
   /** Cinema-only view of `data` — used by the per-cinema controller paths

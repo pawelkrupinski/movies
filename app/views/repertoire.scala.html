@@ -63,6 +63,11 @@
       el:       col,
       title:    col.dataset.title.toLowerCase(),
       rawTitle: col.dataset.title,
+      // Sort keys, parsed once. `rating` is the server-computed weighted
+      // average (0 when the film has no ratings); `year` is -Infinity when
+      // the film has no release year so it sinks in a year sort.
+      rating:    parseFloat(col.dataset.rating) || 0,
+      year:      col.dataset.year ? parseInt(col.dataset.year, 10) : -Infinity,
       countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
       genres:    new Set((col.dataset.genres    || '').split('|').filter(Boolean)),
       directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
@@ -240,10 +245,10 @@
     // and don't participate in layout. Sort just those by earliest showtime.
     const visible = [];
     for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);
-    visible.sort((a, b) => {
-      const ta = earlyMap[a], tb = earlyMap[b];
-      return ta < tb ? -1 : ta > tb ? 1 : (a - b);
-    });
+    const sortBy = getSortBy();
+    visible.sort((a, b) => compareCards(sortBy,
+      { earliest: earlyMap[a], rating: INDEX[a].rating, year: INDEX[a].year, idx: a },
+      { earliest: earlyMap[b], rating: INDEX[b].rating, year: INDEX[b].year, idx: b }));
 
     // Skip the rebuild when the new order is a subsequence of the last applied
     // one — i.e. cards only became hidden, the remaining ones are in the same

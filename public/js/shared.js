@@ -38,6 +38,43 @@
     return h * 60 + m;
   }
 
+  // ── Sort axis ─────────────────────────────────────────────────────────────
+  //
+  // The grid orders by one of three axes, picked in the Filtry panel's
+  // "Sortuj" select: earliest screening (the default), weighted rating, or
+  // release year. `rating` / `year` sort biggest-first; both fall back to
+  // earliest-screening for ties, and earliest is the final default. The
+  // select is absent on pages with no grid — treat that as the default axis.
+  // The sort keys themselves (`data-rating`, `data-year`) are pre-parsed onto
+  // each card's INDEX entry by the per-page buildIndex, so the comparator
+  // never re-reads the DOM.
+  function getSortBy() {
+    var el = document.getElementById('sort-by');
+    var v = el ? el.value : 'earliest';
+    return (v === 'rating' || v === 'year') ? v : 'earliest';
+  }
+
+  // Order two visible cards for the active sort axis. `a`/`b` are
+  // { earliest, rating, year, idx }: `earliest` an ISO "<date>T<HH:MM>" string
+  // (never null here — only already-visible cards reach the sort), `rating` a
+  // number (0 when the film has no ratings), `year` a number (-Infinity when
+  // the film has no release year, so it sinks to the bottom of a year sort).
+  // `idx` (the card's original DOM position) is the stable final tiebreak so
+  // equal keys preserve server order.
+  function compareCards(sortBy, a, b) {
+    if (sortBy === 'rating' && a.rating !== b.rating) return b.rating - a.rating;
+    if (sortBy === 'year'   && a.year   !== b.year)   return b.year   - a.year;
+    if (a.earliest !== b.earliest) return a.earliest < b.earliest ? -1 : 1;
+    return a.idx - b.idx;
+  }
+
+  // Sort select changed — re-run the page's filter+sort pass. Guarded for
+  // pages that render the navbar but have no real grid (/plan's stub
+  // applyFilters is harmless, but a page without one at all mustn't throw).
+  function onSortChange() {
+    if (typeof applyFilters === 'function') applyFilters();
+  }
+
   // requiredTokens may be empty → fast-path. Otherwise checks a pre-built Set
   // attached to each indexed badge (so we don't re-parse `dataset.format` on
   // every filter pass).
@@ -114,6 +151,8 @@
     document.getElementById('format-imax').checked   = false;
     document.getElementById('from-hour').value       = '';
     document.getElementById('from-minute').value     = '0';
+    var sortSel = document.getElementById('sort-by');
+    if (sortSel) sortSel.value = 'earliest';
     ['country', 'genre', 'director', 'cast'].forEach(function(key) {
       var list = document.getElementById(key + '-list');
       if (list) {
@@ -988,6 +1027,7 @@
   //   lang    — format-lang radio (NAP / DUB)
   //   imax    — format-imax checkbox ("1" when on)
   //   from    — from-hour:minute composite (HH:MM)
+  //   sort    — sort-by select ('rating' / 'year'; 'earliest' default omitted)
   //   country, director, cast, room — repeated `?key=value` entries listing the
   //             CHECKED items (the inclusion set). Omitted when every box is
   //             ticked — the no-filter default → empty URL. Previously stored
@@ -1045,6 +1085,11 @@
     } else {
       p.delete('from');
     }
+
+    // Sort axis: the default ('earliest') stays out of the URL so a plain
+    // share link is clean; 'rating' / 'year' are materialised as ?sort=.
+    const sortSel = document.getElementById('sort-by');
+    setOrDel('sort', sortSel && sortSel.value !== 'earliest' ? sortSel.value : '');
 
     ['country', 'genre', 'director', 'cast', 'room'].forEach(key => {
       p.delete(key);
@@ -1149,6 +1194,12 @@
       const mSel = document.getElementById('from-minute');
       if (hSel) hSel.value = String(parseInt(h, 10));
       if (mSel) mSel.value = String(parseInt(m, 10));
+    }
+
+    const sortSel = document.getElementById('sort-by');
+    if (sortSel) {
+      const s = p.get('sort');
+      if (s === 'rating' || s === 'year' || s === 'earliest') sortSel.value = s;
     }
 
     // URL values are the INCLUSION set (checked items). Empty/absent → all

@@ -38,6 +38,19 @@
       </div>
       <div id="hidden-row-divider" class="panel-divider" style="display:none"></div>
 
+      @* Sort axis — orders the visible film grid. "Najbliższy seans" is the
+         default (earliest upcoming screening first); "Ocena" sorts by the
+         equal-weight average of every rating a film has (highest first);
+         "Rok produkcji" sorts newest first. Inert on pages without a grid
+         (/plan) — `onSortChange` no-ops when the page has no `applyFilters`. *@
+      <div class="panel-section-label">Sortuj</div>
+      <select id="sort-by" class="filter-select w-100" onchange="onSortChange()" style="margin-bottom:.4rem">
+        <option value="earliest">Najbliższy seans</option>
+        <option value="rating">Ocena</option>
+        <option value="year">Rok produkcji</option>
+      </select>
+      <div class="panel-divider"></div>
+
       @* Kina cinema picker — moved here from its own dropdown. Same DOM
          ids (`cinema-all`, `cinema-list`) so the existing
          `buildCinemaPanel`/`toggleAllCinemas` JS keeps working unchanged.

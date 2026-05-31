@@ -1102,6 +1102,99 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Sortuj (sort axis) ─────────────────────────────────────────────────────
+  //
+  // The Filtry panel's "Sortuj" select reorders the visible grid: earliest
+  // screening (default), weighted rating, or release year. Rating + year sort
+  // biggest-first. On / the whole grid is one sorted list; on /kina each
+  // cinema section is sorted independently. The sort keys ride on each card's
+  // `data-rating` / `data-year` (server-computed), parsed once into INDEX.
+
+  "the Sortuj control" should "default to 'earliest'" in {
+    onPath("/") { page =>
+      page.evalString("document.getElementById('sort-by').value") shouldBe "earliest"
+    }
+  }
+
+  it should "order the visible grid by descending weighted rating on /" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      page.eval("document.getElementById('sort-by').value = 'rating'; onSortChange()")
+      // Read the visible cards in DOM order and assert the rating sequence is
+      // non-increasing. `length > 1` guards against a trivially-true pass on
+      // an empty/one-card grid.
+      val nonIncreasing = page.evalBool(
+        "(() => { const r = [...document.querySelectorAll('#film-grid > .col[data-title]')]" +
+        "  .filter(c => c.style.display !== 'none')" +
+        "  .map(c => parseFloat(c.dataset.rating) || 0);" +
+        "  for (let i = 1; i < r.length; i++) if (r[i] > r[i-1] + 1e-9) return false;" +
+        "  return r.length > 1; })()"
+      )
+      nonIncreasing shouldBe true
+    }
+  }
+
+  it should "order the visible grid by descending year, films without a year last, on /" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      page.eval("document.getElementById('sort-by').value = 'year'; onSortChange()")
+      val nonIncreasing = page.evalBool(
+        "(() => { const ys = [...document.querySelectorAll('#film-grid > .col[data-title]')]" +
+        "  .filter(c => c.style.display !== 'none')" +
+        "  .map(c => c.dataset.year ? parseInt(c.dataset.year, 10) : -Infinity);" +
+        "  for (let i = 1; i < ys.length; i++) if (ys[i] > ys[i-1]) return false;" +
+        "  return ys.length > 1; })()"
+      )
+      nonIncreasing shouldBe true
+    }
+  }
+
+  it should "re-sort back to earliest-screening order when switched away from rating" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val earliestOrder = visibleTitleOrder(page)
+      page.eval("document.getElementById('sort-by').value = 'rating'; onSortChange()")
+      page.eval("document.getElementById('sort-by').value = 'earliest'; onSortChange()")
+      visibleTitleOrder(page) shouldBe earliestOrder
+    }
+  }
+
+  it should "sort each cinema section independently by descending rating on /kina" in {
+    onPath("/kina") { page =>
+      setDateAnytime(page)
+      page.eval("document.getElementById('sort-by').value = 'rating'; onSortChange()")
+      val ok = page.evalBool(
+        "(() => { let checked = 0;" +
+        "  for (const s of [...document.querySelectorAll('.cinema-section')].filter(x => x.style.display !== 'none')) {" +
+        "    const r = [...s.querySelectorAll('.col[data-title]')]" +
+        "      .filter(c => c.style.display !== 'none')" +
+        "      .map(c => parseFloat(c.dataset.rating) || 0);" +
+        "    if (r.length > 1) checked++;" +
+        "    for (let i = 1; i < r.length; i++) if (r[i] > r[i-1] + 1e-9) return false;" +
+        "  }" +
+        "  return checked > 0; })()"
+      )
+      ok shouldBe true
+    }
+  }
+
+  "the sort axis ↔ URL sync" should "round-trip through ?sort= when the Copy button is used" in {
+    onPath("/") { page =>
+      page.eval("document.getElementById('sort-by').value = 'rating'; copyFilterLinkToClipboard()")
+      page.evalString("new URL(location.href).searchParams.get('sort')") shouldBe "rating"
+    }
+    onPath("/?sort=year") { page =>
+      page.evalString("document.getElementById('sort-by').value") shouldBe "year"
+    }
+  }
+
+  it should "keep the default 'earliest' out of the URL" in {
+    onPath("/") { page =>
+      page.eval("document.getElementById('sort-by').value = 'earliest'; copyFilterLinkToClipboard()")
+      page.evalBool("new URL(location.href).searchParams.has('sort')") shouldBe false
+    }
+  }
+
   // ── Date filter narrowing ──────────────────────────────────────────────────
 
   "the date filter" should "produce a today ≤ week ≤ anytime ordering" in {
@@ -1704,6 +1797,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   private def visibleCardCount(page: CdpPage): Int =
     page.evalInt("[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length")
+
+  /** Pipe-joined titles of the visible `/` grid cards in current DOM order —
+   *  used to assert the sort axis reorders (and restores) the grid. */
+  private def visibleTitleOrder(page: CdpPage): String =
+    page.evalString(
+      "[...document.querySelectorAll('#film-grid > .col[data-title]')]" +
+      "  .filter(c => c.style.display !== 'none').map(c => c.dataset.title).join('|')"
+    )
 
   private def firstVisibleTitle(page: CdpPage): String =
     page.evalString(
