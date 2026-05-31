@@ -198,6 +198,20 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
     )
   }
 
+  // ── Suffix stripping (normalizeTitle) ─────────────────────────────────────
+
+  "RialtoClient.normalizeTitle" should "strip a ' - pokaz przedpremierowy' suffix" in {
+    RialtoClient.normalizeTitle("Ojczyzna - pokaz przedpremierowy") shouldBe "Ojczyzna"
+  }
+
+  it should "strip the suffix regardless of case and dash style" in {
+    RialtoClient.normalizeTitle("OJCZYZNA – POKAZ PRZEDPREMIEROWY") shouldBe "Ojczyzna"
+  }
+
+  it should "leave a title without the suffix untouched" in {
+    RialtoClient.normalizeTitle("Mavka. Prawdziwy mit") shouldBe "Mavka. Prawdziwy mit"
+  }
+
   // ── Showtime counts ───────────────────────────────────────────────────────
 
   it should "return correct showtime count for every movie" in {
