@@ -1,7 +1,7 @@
 package modules
 
 import clients.TmdbClient
-import controllers.{AuthController, HealthController, MovieController, MovieControllerService, PlanController, UptimeController, UserStateController}
+import controllers.{AuthController, HealthController, LegalController, MovieController, MovieControllerService, PlanController, UptimeController, UserStateController}
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
@@ -164,6 +164,7 @@ trait Wiring {
   lazy val uptimeController = new UptimeController(controllerComponents, uptimeMonitor)(using materializer)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, userRepo)
+  lazy val legalController   = new LegalController(controllerComponents)
 
   // Subscribe BEFORE ShowtimeCache.start() so the bus's first MovieRecordCreated
   // events reach the enrichment handlers. Bus uses PartialFunction.applyOrElse,

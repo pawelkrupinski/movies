@@ -59,6 +59,12 @@ GET     /uptime/stream              controllers.UptimeController.stream()
 + nocsrf
 POST    /uptime/img-event           controllers.UptimeController.imgEvent()
 
+# ── Legal ─────────────────────────────────────────────────────────────────────
+# Public privacy policy (Polish). Required by Meta/Facebook before the Login
+# app can leave Development mode; the URL goes in the dashboard's Privacy
+# Policy field.
+GET     /polityka-prywatnosci       controllers.LegalController.privacy
+
 # ── robots.txt ────────────────────────────────────────────────────────────────
 # Returning a 404 on /robots.txt confused Facebook's link-preview scraper
 # (`facebookexternalhit`) — its debugger reported "403 due to robots.txt
