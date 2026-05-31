@@ -315,12 +315,14 @@ tasks.register("runOnEmulator") {
         logger.lifecycle("   Not detecting your terminal? Re-run with -PfocusApp=<AppName>. Ctrl+C to stop.\n")
 
         var lastBuilt = newestSrcMtime()
-        val quietMs = 600L // let a burst of saves settle before building
+        val quietMs = 250L // let a burst of saves settle before building
         while (true) {
-            Thread.sleep(700)
-            if (!terminalFocused()) continue
+            Thread.sleep(200)
+            // Cheap local-FS scan first; only pay for the focus check (two
+            // lsappinfo spawns) once there's actually a change waiting.
             val newest = newestSrcMtime()
             if (newest <= lastBuilt || System.currentTimeMillis() - newest < quietMs) continue
+            if (!terminalFocused()) continue
             logger.lifecycle("↻  Change detected — rebuilding & reinstalling…")
             val ok = rebuild()
             lastBuilt = newestSrcMtime()
