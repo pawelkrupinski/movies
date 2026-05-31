@@ -1,16 +1,21 @@
 package pl.kinowo.ui.list
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -30,7 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -46,6 +52,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -61,7 +68,9 @@ import pl.kinowo.filter.DateFilter
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.theme.Brand
+import pl.kinowo.ui.theme.CardElevated
 import pl.kinowo.ui.theme.CinemaBlue
+import pl.kinowo.ui.theme.Divider
 import pl.kinowo.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,28 +145,15 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
 
             DateChips(vm)
 
-            OutlinedTextField(
-                value = vm.search,
-                onValueChange = { vm.search = it },
-                placeholder = { Text("Szukaj filmu") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (vm.search.isNotEmpty()) {
-                        IconButton(onClick = { vm.search = "" }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Wyczyść")
-                        }
-                    }
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-            )
-
             if (pager.currentPage == 1) {
                 CinemaChips(vm, films)
             }
 
             // ── content ───────────────────────────────────────────────────────
+            // The search field floats over the grid as a bottom capsule
+            // (mirrors the iOS `SearchBar`) rather than taking its own row —
+            // the grid scrolls visibly behind it, with bottom content padding
+            // so the last row still clears the pill.
             Box(Modifier.fillMaxSize()) {
                 when {
                     isLoading && films.isEmpty() -> CenteredMessage("Ładowanie repertuaru…")
@@ -172,6 +168,12 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                         }
                     }
                 }
+
+                FloatingSearchBar(
+                    value = vm.search,
+                    onValueChange = { vm.search = it },
+                    modifier = Modifier.align(Alignment.BottomCenter).imePadding(),
+                )
             }
         }
 
@@ -235,6 +237,60 @@ private fun SwipeHintOverlay(modifier: Modifier = Modifier) {
     }
 }
 
+// Floating search pill, pinned bottom-centre and overlaid on the grid —
+// the Android counterpart to the iOS `SearchBar` (FiltersBar.swift). A
+// translucent capsule with a leading magnifier, an inline text field, and
+// a trailing clear glyph that appears once there's a query. `imePadding`
+// (applied by the caller) lifts it above the soft keyboard on focus; the
+// grids reserve `SearchBarBottomInset` so their last row clears the pill.
+@Composable
+private fun FloatingSearchBar(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = CardElevated.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, Divider.copy(alpha = 0.7f)),
+        shadowElevation = 8.dp,
+        modifier = modifier
+            .padding(horizontal = 24.dp, vertical = 14.dp)
+            .fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 18.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Box(Modifier.weight(1f)) {
+                if (value.isEmpty()) {
+                    Text("Szukaj filmu", color = TextSecondary)
+                }
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(color = Color.White),
+                    cursorBrush = SolidColor(Brand),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (value.isNotEmpty()) {
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Wyczyść",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(20.dp).clickable { onValueChange("") },
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DateChips(vm: KinowoViewModel) {
@@ -271,6 +327,12 @@ private fun CinemaChips(vm: KinowoViewModel, films: List<Film>) {
     }
 }
 
+// Vertical room the floating search pill occupies at the bottom of the
+// grid — capsule height (~46dp) plus its 14dp margin plus breathing space.
+// Grids carry it as bottom content padding so the last card row can scroll
+// clear of the pill instead of sitting permanently behind it.
+private val SearchBarBottomInset = 84.dp
+
 @Composable
 private fun FilmsGrid(films: List<Film>, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
     if (films.isEmpty()) {
@@ -280,7 +342,7 @@ private fun FilmsGrid(films: List<Film>, onOpen: (String) -> Unit, onHide: (Stri
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 170.dp),
         state = rememberLazyGridState(),
-        contentPadding = PaddingValues(12.dp),
+        contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = SearchBarBottomInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize(),
@@ -299,7 +361,7 @@ private fun CinemaGrid(sections: List<CinemaSection>, onOpen: (String) -> Unit, 
     }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 170.dp),
-        contentPadding = PaddingValues(12.dp),
+        contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = SearchBarBottomInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize(),
