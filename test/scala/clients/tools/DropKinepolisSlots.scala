@@ -22,7 +22,7 @@ import scala.concurrent.duration._
  */
 object DropKinepolisSlots {
   def main(args: Array[String]): Unit = {
-    val conn = new MongoConnection()
+    val conn = MongoConnection.fromEnv(required = false)
     try {
       val db = conn.database.getOrElse {
         println("MONGODB_URI not set — nothing to do.")

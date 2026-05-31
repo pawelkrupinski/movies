@@ -69,7 +69,10 @@ trait Wiring {
   // monitor thread — together they tipped the JVM RSS past Fly's 512 MB
   // cgroup ceiling, causing the kernel OOM cycle. Sharing one connection
   // is the standard Mongo driver usage pattern.
-  lazy val mongoConnection: MongoConnection = new MongoConnection
+  // In production a missing/unreachable Mongo is a hard boot failure (throws
+  // out of construction, aborts startup) rather than silently serving a
+  // film-less site. Dev / Test keep degrading — see `MongoConnection`.
+  lazy val mongoConnection: MongoConnection = MongoConnection.fromEnv(required = environmentMode == Mode.Prod)
 
   // ── Users ─────────────────────────────────────────────────────────────────
   // Wrap the Mongo-backed user repos in caching decorators — every

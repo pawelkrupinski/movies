@@ -6,7 +6,7 @@ import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * Single Mongo connection shared across every repository. Prior to this,
@@ -25,34 +25,49 @@ import scala.util.Try
  * view. The underlying connection pool / IO threads / monitor threads are
  * shared.
  *
- * Disabled silently when `MONGODB_URI` is unset (local dev / tests).
+ * Config (`uri` / `dbName` / `required`) is passed in, not read from the
+ * ambient environment — `MongoConnection.fromEnv` is the production entry
+ * point that resolves `MONGODB_URI` / `MONGODB_DB`. Keeping the class a pure
+ * function of its inputs is what lets the boot-failure behaviour be tested
+ * without poking at process env vars.
+ *
+ * `required` decides what an absent/unreachable Mongo means:
+ *   - `false` (dev / tests) — disable silently and degrade: `database` is
+ *     `None`, pages render with no films, repos no-op.
+ *   - `true`  (production) — throw at construction so the app refuses to
+ *     start rather than serve a broken, film-less site.
+ *
  * `close()` is idempotent. Wiring constructs one of these and calls
  * `close()` in its shutdown hook; each repo's own `close()` becomes a
  * no-op when it borrowed the database from here.
  */
-class MongoConnection extends Logging {
+class MongoConnection(uri: Option[String], dbName: String, required: Boolean) extends Logging {
 
   // Eager — connecting now (at construction) surfaces wiring / network
   // problems at boot rather than at the first request. `Wiring` touches
   // `database` at the top of `start()` so the chain fires before any
-  // background worker tries to read or write.
+  // background worker tries to read or write. When `required`, a failure
+  // here throws straight out of construction and aborts boot.
   private val initResult: (Option[MongoClient], Option[MongoDatabase]) = init()
 
-  /** The shared `MongoDatabase` view — pre-bound to `MONGODB_DB` (or
-   *  `kinowo` as the default). Repos `.withCodecRegistry(...)` it. */
+  /** The shared `MongoDatabase` view — pre-bound to `dbName`. Repos
+   *  `.withCodecRegistry(...)` it. `None` only when `required` is false and
+   *  Mongo was absent/unreachable (when `required`, init threw instead). */
   def database: Option[MongoDatabase] = initResult._2
 
   def close(): Unit = initResult._1.foreach(_.close())
 
   private def init(): (Option[MongoClient], Option[MongoDatabase]) =
-    Env.get("MONGODB_URI") match {
+    uri match {
       case None =>
+        if (required)
+          throw new IllegalStateException(
+            "MONGODB_URI is not set but a Mongo connection is required — refusing to start.")
         logger.info("MONGODB_URI not set — MongoConnection disabled.")
         (None, None)
-      case Some(uri) =>
+      case Some(connectionString) =>
         Try {
-          val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
-          val client = MongoClient(uri)
+          val client = MongoClient(connectionString)
           val db     = client.getDatabase(dbName)
           // Touch the database to surface connectivity errors at boot
           // (same `countDocuments`-against-a-known-collection probe the
@@ -62,17 +77,29 @@ class MongoConnection extends Logging {
           Await.result(db.getCollection("movies").countDocuments().toFuture(), 10.seconds)
           logger.info(s"MongoConnection connected to $dbName")
           (client, db)
-        }.recover {
-          case ex: Throwable =>
-            val isLocalUri = uri.contains("127.0.0.1") || uri.contains("localhost")
+        } match {
+          case Success((client, db)) =>
+            (Some(client), Some(db))
+          case Failure(ex) =>
+            val isLocalUri = connectionString.contains("127.0.0.1") || connectionString.contains("localhost")
             val hint = if (isLocalUri)
               " (local URI — start the tunnel with `flyctl proxy 27017:27017 --app kinowo-mongo` and restart, or uncomment the Atlas fallback in .env.local)"
             else ""
+            if (required)
+              throw new IllegalStateException(
+                s"MongoConnection init failed and a Mongo connection is required — refusing to start: ${ex.getMessage}$hint",
+                ex)
             logger.error(s"MongoConnection init failed (${ex.getMessage}) — disabled.$hint")
-            null
-        }.toOption.filter(_ != null) match {
-          case Some((c, d)) => (Some(c), Some(d))
-          case None         => (None, None)
+            (None, None)
         }
     }
+}
+
+object MongoConnection {
+  /** Build from the ambient environment (`MONGODB_URI` / `MONGODB_DB`,
+   *  defaulting the db name to `kinowo`) — the production wiring's entry
+   *  point. `required = true` turns a missing or unreachable Mongo into a
+   *  hard boot failure instead of silent degradation. */
+  def fromEnv(required: Boolean): MongoConnection =
+    new MongoConnection(Env.get("MONGODB_URI"), Env.get("MONGODB_DB").getOrElse("kinowo"), required)
 }
