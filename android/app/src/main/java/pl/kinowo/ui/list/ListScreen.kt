@@ -278,8 +278,12 @@ private fun FloatingSearchBar(
                     // The opaque base Haze composites the blur over (the app
                     // background) — required, else it throws at draw time.
                     backgroundColor = Background,
-                    blurRadius = 28.dp,
-                    tint = HazeTint(Color.White.copy(alpha = 0.08f)),
+                    // Keep enough blur to visibly distort the cards underneath,
+                    // but barely any tint and no noise grain — so it reads as
+                    // clear, see-through glass rather than a frosty pane.
+                    blurRadius = 18.dp,
+                    tint = HazeTint(Color.White.copy(alpha = 0.03f)),
+                    noiseFactor = 0f,
                 ),
             )
             .border(1.dp, Color.White.copy(alpha = 0.22f), shape)
