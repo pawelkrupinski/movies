@@ -84,15 +84,15 @@ fun FiltersSheet(
                 item(key = "sec_hidden") {
                     CollapsibleSection("Ukryte filmy", "${hidden.size}") {
                         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
-                            item(key = "hid_unhide_all") {
-                                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.End) {
-                                    TextButton(onClick = { vm.unhideAll() }) { Text("Pokaż wszystkie") }
-                                }
-                            }
                             items(hidden.toList(), key = { "hid_$it" }) { title ->
                                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
                                     TextButton(onClick = { vm.unhide(title) }) { Text("Pokaż") }
+                                }
+                            }
+                            item(key = "hid_unhide_all") {
+                                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.End) {
+                                    TextButton(onClick = { vm.unhideAll() }) { Text("Pokaż wszystkie") }
                                 }
                             }
                         }
