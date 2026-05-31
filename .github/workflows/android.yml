@@ -21,8 +21,11 @@ concurrency:
 # Single lane: Linux runner, JDK 17 (AGP 8.6 needs 17+), the preinstalled
 # Android SDK + Gradle wrapper (8.9). Runs the JVM unit suite, assembles the
 # debug APK, then builds the R8-minified release APK + AAB and ships all three
-# as artifacts. The release build signs with the keystore decoded from repo
-# secrets (see below); with no secrets it still builds, just unsigned. No
+# as (login-gated) workflow artifacts. On main pushes it ALSO publishes the
+# signed release APK to a rolling `android-latest` GitHub Release, which has a
+# stable anonymous download URL anyone can install from. The release build
+# signs with the keystore decoded from repo secrets (see below); with no
+# secrets it still builds, just unsigned (and the publish step then fails). No
 # emulator job: the app has no instrumented (androidTest) suite yet, and an
 # emulator lane is slow; add one here if/when Compose UI tests land.
 #
@@ -35,9 +38,11 @@ jobs:
     build:
         runs-on: ubuntu-latest
         # `checks: write` so action-junit-report can post the failure
-        # check-run + summary from the Gradle JUnit XML.
+        # check-run + summary from the Gradle JUnit XML. `contents: write`
+        # so the rolling-release step can create/update the public
+        # `android-latest` GitHub Release + its tag.
         permissions:
-            contents: read
+            contents: write
             checks: write
         defaults:
             run:
@@ -130,6 +135,37 @@ jobs:
                   name: kinowo-release-aab
                   path: android/app/build/outputs/bundle/release/app-release.aab
                   if-no-files-found: error
+
+            # Publish the signed release APK to a rolling `android-latest`
+            # GitHub Release so it has a stable, anonymous download URL that
+            # doesn't require a GitHub login (unlike the upload-artifact above):
+            #   https://github.com/${{ github.repository }}/releases/download/android-latest/kinowo.apk
+            #
+            # Only on main pushes / manual runs — never on PRs. We delete +
+            # recreate the release each time so its tag tracks the newest main
+            # commit (a rolling "latest", not a versioned release). Marked
+            # prerelease so it stays out of the repo's "Latest release" slot.
+            # Requires the KINOWO_RELEASE_* signing secrets: an unsigned APK
+            # won't install, so we fail loudly rather than publish a dud.
+            - name: Publish rolling APK release
+              if: success() && github.event_name != 'pull_request'
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  apk=app/build/outputs/apk/release/app-release.apk
+                  if [ ! -f "$apk" ]; then
+                      echo "::error::Signed $apk not found — set KINOWO_RELEASE_KEYSTORE_BASE64 (+ store/key secrets); unsigned builds won't install."
+                      exit 1
+                  fi
+                  cp "$apk" "$RUNNER_TEMP/kinowo.apk"
+                  gh release delete android-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+                  gh release create android-latest \
+                      --repo "$GITHUB_REPOSITORY" \
+                      --target "$GITHUB_SHA" \
+                      --prerelease \
+                      --title "Kinowo Android (latest)" \
+                      --notes "Signed APK from the latest \`main\` build (${GITHUB_SHA:0:7}). Sideload \`kinowo.apk\` on Android — enable installing from unknown sources." \
+                      "$RUNNER_TEMP/kinowo.apk"
 
             - name: Upload test report
               uses: actions/upload-artifact@v4
