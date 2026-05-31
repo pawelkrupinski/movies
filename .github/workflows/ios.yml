@@ -14,6 +14,12 @@ on:
         - cron: '0 4 * * *'
     workflow_dispatch:
 
+# A newer push to the same ref cancels the older run mid-flight, freeing the
+# slow macOS Simulator lane instead of queueing stale UI-test work behind it.
+concurrency:
+    group: ios-${{ github.ref }}
+    cancel-in-progress: true
+
 # `checks: write` so action-junit-report can post failure check-runs +
 # summaries; `contents: read` for checkout. All jobs are same-repo.
 permissions:

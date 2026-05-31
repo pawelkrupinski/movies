@@ -12,6 +12,12 @@ on:
             - '.github/workflows/android.yml'
     workflow_dispatch:
 
+# A newer push to the same ref cancels the older run mid-flight instead of
+# letting both build the APK/AAB in parallel.
+concurrency:
+    group: android-${{ github.ref }}
+    cancel-in-progress: true
+
 # Single lane: Linux runner, JDK 17 (AGP 8.6 needs 17+), the preinstalled
 # Android SDK + Gradle wrapper (8.9). Runs the JVM unit suite, assembles the
 # debug APK, then builds the R8-minified release APK + AAB and ships all three
