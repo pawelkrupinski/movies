@@ -866,12 +866,15 @@
      normally would) once the swap settles and the class comes off. */
   #view-pager.view-swapping .grid-status { display: none !important; }
   /* Claim horizontal gestures over the grid for the swipe-to-switch handler:
-     `pan-y` lets the browser keep vertical scrolling but stops it treating a
+     it lets the browser keep vertical scrolling but stops it treating a
      horizontal drag as a (non-existent) horizontal scroll and cancelling the
-     pointer stream mid-swipe. Scoped to the grid wrapper, NOT `#view-root`,
-     so it doesn't sit above the cinema-pill strip (a sibling outside
+     pointer stream mid-swipe. `pinch-zoom` is kept in the value so two-finger
+     pinch-to-zoom on the cards still works — only single-finger HORIZONTAL pan
+     is reserved for the swipe (`pan-y pinch-zoom` = everything `manipulation`
+     allows minus `pan-x`). Scoped to the grid wrapper, NOT `#view-root`, so it
+     doesn't sit above the cinema-pill strip (a sibling outside
      `.container-fluid`) whose own horizontal scroll must keep working. */
-  #view-pager .container-fluid { touch-action: pan-y; }
+  #view-pager .container-fluid { touch-action: pan-y pinch-zoom; }
 
   /* ── Filmy (/) view chrome ─────────────────────────────────────────────────
      Lives here (shared, every page) rather than in repertoire's <head> for the

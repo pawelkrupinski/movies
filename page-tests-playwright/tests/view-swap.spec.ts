@@ -97,6 +97,16 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     await expect(page.locator('.navbar .nav-tab.active')).toContainText('Filmy');
   });
 
+  test('the cards area keeps pinch-zoom enabled (only horizontal pan is reserved for the swipe)', async ({ page }) => {
+    await page.goto('/');
+    await waitForCards(page);
+    const ta = await page.evaluate(() =>
+      getComputedStyle(document.querySelector('#view-pager .container-fluid')).touchAction);
+    expect(ta).toContain('pinch-zoom');  // two-finger pinch-to-zoom must still work
+    expect(ta).toContain('pan-y');       // vertical scroll still works
+    expect(ta).not.toContain('pan-x');   // horizontal stays reserved for swipe-to-switch
+  });
+
   test('reduced-motion still completes the swap (no transition to wait on)', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
