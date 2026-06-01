@@ -316,9 +316,22 @@
     min-height: 35px;
   }
   .auth-menu:hover { background: #5a5a9e; color: #fff; }
-  .auth-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; display: block; }
+  /* `flex: 0 0 auto` + explicit `min-width/min-height` are load-bearing, not
+     belt-and-braces: `.auth-avatar` is a flex item of `.auth-menu`
+     (display:inline-flex), and a flex item's default `min-width/min-height:auto`
+     resolves to a REPLACED element's intrinsic size — so a real (large) avatar
+     photo overrides `width/height:22px` and balloons the pill. Pinning the
+     min-size to 22px is what holds it to a 22px circle on iOS Safari. */
+  .auth-avatar {
+    width: 22px; height: 22px;
+    min-width: 22px; min-height: 22px;
+    flex: 0 0 auto;
+    border-radius: 50%; object-fit: cover; display: block;
+  }
   .auth-avatar-fallback {
     width: 22px; height: 22px;
+    min-width: 22px; min-height: 22px;
+    flex: 0 0 auto;
     border-radius: 50%;
     background: #1a1a2e; color: #ffd24a;
     display: inline-flex; align-items: center; justify-content: center;

@@ -141,22 +141,34 @@ test.describe('navbar uniformity — mobile portrait', () => {
 // control was pinned to 28px (the mobile blocks pinned `.auth-name`,
 // the hidden inner span, instead of the `.auth-menu` container).
 
-const AUTH_MENU_HTML = `
-  <div class="auth-menu" id="auth-menu">
-    <span class="auth-avatar-fallback">P</span>
-    <span class="auth-name">Paweł</span>
-    <div class="auth-dropdown" id="auth-dropdown">
-      <form method="post" action="/auth/logout" class="auth-logout-form">
-        <button type="submit" class="auth-logout-btn">Wyloguj się</button>
-      </form>
-    </div>
-  </div>`;
-
+// IMPORTANT: inject the real `<img class="auth-avatar">` carrying a LARGE
+// intrinsic image (like a Google/OAuth photo), NOT the text fallback span. The
+// image is the regression surface: as a flex item its default `min-*:auto`
+// resolves to the photo's intrinsic size and balloons the 22px avatar unless
+// the min-size is pinned — that's the "logged-in icon too tall / misaligned"
+// bug on iOS. An earlier version of this test used the fallback span (a
+// non-replaced element that never balloons), so it missed the bug entirely.
 async function injectAuthMenu(page: Page): Promise<void> {
-  await page.evaluate((html) => {
+  await page.evaluate(() => {
     const slot = document.querySelector('.navbar-auth');
-    if (slot) slot.innerHTML = html;
-  }, AUTH_MENU_HTML);
+    if (!slot) return;
+    const big = 'data:image/svg+xml,' + encodeURIComponent(
+      "<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><rect width='256' height='256' fill='#888'/></svg>");
+    slot.innerHTML =
+      '<div class="auth-menu" id="auth-menu">' +
+      '<img class="auth-avatar" alt="" src="' + big + '">' +
+      '<span class="auth-name">Paweł</span>' +
+      '<div class="auth-dropdown" id="auth-dropdown">' +
+      '<form method="post" action="/auth/logout" class="auth-logout-form">' +
+      '<button type="submit" class="auth-logout-btn">Wyloguj się</button>' +
+      '</form></div></div>';
+  });
+  // Wait until the avatar image has loaded its intrinsic size — that's the
+  // state that balloons an unpinned flex-item img.
+  await page.waitForFunction(() => {
+    const img = document.querySelector('.auth-menu .auth-avatar') as HTMLImageElement | null;
+    return !!img && img.complete && img.naturalWidth > 0;
+  });
 }
 
 test.describe('logged-in avatar pill height', () => {
@@ -188,6 +200,42 @@ test.describe('logged-in avatar pill height', () => {
       Math.abs(heights.pill - heights.search),
       `avatar pill ${heights.pill.toFixed(1)}px ≠ search ${heights.search.toFixed(1)}px`,
     ).toBeLessThanOrEqual(1);
+  });
+
+  test('the avatar image stays a pinned 22px circle, never ballooned or misaligned', async ({ page }) => {
+    const m = await page.evaluate(() => {
+      const nav = document.querySelector('.navbar')!;
+      const img = nav.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
+      const search = nav.querySelector('.search-input') as HTMLElement | null;
+      if (!img) return null;
+      const cs = getComputedStyle(img);
+      const ir = img.getBoundingClientRect();
+      const sr = search ? search.getBoundingClientRect() : null;
+      return {
+        w: ir.width, h: ir.height, top: ir.top,
+        minW: cs.minWidth, minH: cs.minHeight,
+        searchH: sr ? sr.height : -1,
+        searchMid: sr ? sr.top + sr.height / 2 : null,
+        imgMid: ir.top + ir.height / 2,
+      };
+    });
+    expect(m, 'avatar image not rendered').not.toBeNull();
+    // THE defense: the min-size must stay pinned. If it reverts to `auto`, a
+    // flex-item replaced element grows to the photo's intrinsic size on iOS.
+    expect(m!.minW, 'auth-avatar min-width must be pinned (not auto)').toBe('22px');
+    expect(m!.minH, 'auth-avatar min-height must be pinned (not auto)').toBe('22px');
+    // Stays the intended small square — never ballooned to the photo's size.
+    expect(m!.w, `avatar width ${m!.w}px`).toBeLessThanOrEqual(24);
+    expect(m!.h, `avatar height ${m!.h}px`).toBeLessThanOrEqual(24);
+    // When the search box is visible: never taller than it, and centred on the
+    // same row (no vertical misalignment).
+    if (m!.searchH > 0) {
+      expect(m!.h, `avatar ${m!.h}px taller than search ${m!.searchH}px`).toBeLessThanOrEqual(m!.searchH + 1);
+      expect(
+        Math.abs(m!.imgMid - (m!.searchMid as number)),
+        `avatar mid ${m!.imgMid.toFixed(1)} vs search mid ${(m!.searchMid as number).toFixed(1)}`,
+      ).toBeLessThan(6);
+    }
   });
 });
 
