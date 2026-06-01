@@ -41,6 +41,25 @@ export async function waitForCards(page: Page): Promise<void> {
 }
 
 /**
+ * Navigate to `url` and wait for the listing's cards to attach.
+ *
+ * `waitUntil: 'domcontentloaded'` is deliberate and load-bearing for
+ * stability: the `.col[data-title]` cards and the navbar's `#date-filter`
+ * are all SERVER-rendered, so they're in the DOM at DOMContentLoaded, and
+ * the inline boot script that reads `?date=` runs during parse — none of
+ * it needs the poster images. The default `waitUntil: 'load'` instead
+ * blocks `goto` until every image has loaded; on a slow/contended CI
+ * runner (seen on webkit-iphone-se-landscape) that stall can eat the whole
+ * 30s test budget, so the *next* call — `waitForCards` — is the one that
+ * trips the test timeout even though the cards are long since present.
+ * Settling at DCL sidesteps the image-load wait entirely.
+ */
+export async function gotoAndWaitForCards(page: Page, url: string): Promise<void> {
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForCards(page);
+}
+
+/**
  * Read a JSON value out of `localStorage`. Returns `null` if the key
  * is absent or holds invalid JSON. Generic so callers can narrow the
  * return type without an `as` cast at the call site.

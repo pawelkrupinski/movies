@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setDateFilter, waitForCards } from './helpers';
+import { setDateFilter, gotoAndWaitForCards } from './helpers';
 
 // `?date=` is the round-trip URL representation of the navbar's
 // `#date-filter`. Selecting a day rewrites the URL via
@@ -10,8 +10,7 @@ import { setDateFilter, waitForCards } from './helpers';
 test.describe('date selector ↔ URL', () => {
 
   test('selecting a non-default day adds ?date= to the URL', async ({ page }) => {
-    await page.goto('/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/');
 
     await setDateFilter(page, 'tomorrow');
 
@@ -19,8 +18,7 @@ test.describe('date selector ↔ URL', () => {
   });
 
   test('returning to "today" strips ?date= from the URL', async ({ page }) => {
-    await page.goto('/?date=tomorrow');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/?date=tomorrow');
     expect(new URL(page.url()).searchParams.get('date')).toBe('tomorrow');
 
     await setDateFilter(page, 'today');
@@ -29,22 +27,19 @@ test.describe('date selector ↔ URL', () => {
   });
 
   test('opening /?date=anytime applies the filter on first paint', async ({ page }) => {
-    await page.goto('/?date=anytime');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/?date=anytime');
 
     await expect(page.locator('#date-filter')).toHaveValue('anytime');
   });
 
   test('an unrecognised ?date= value is ignored — default stays as "today"', async ({ page }) => {
-    await page.goto('/?date=tomorrowish');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/?date=tomorrowish');
 
     await expect(page.locator('#date-filter')).toHaveValue('today');
   });
 
   test('?date= works the same on /kina', async ({ page }) => {
-    await page.goto('/kina?date=week');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/kina?date=week');
 
     await expect(page.locator('#date-filter')).toHaveValue('week');
 
@@ -55,8 +50,7 @@ test.describe('date selector ↔ URL', () => {
   });
 
   test('toggling a cinema pill on /kina preserves ?date=', async ({ page }) => {
-    await page.goto('/kina?date=tomorrow');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/kina?date=tomorrow');
 
     const firstPill = page.locator('#cinema-pills .cinema-pill').first();
     await firstPill.click();
