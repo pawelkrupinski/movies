@@ -28,13 +28,6 @@ inputs:
   shard:
     description: Playwright shard when kind=playwright (e.g. `1/2`).
     required: false
-  prebaked_browser:
-    description: |
-      Set "true" when the job runs inside the official Playwright container
-      (browsers + OS deps already baked in). Skips the ~90s
-      `npx playwright install --with-deps` apt step and the browser cache.
-    required: false
-    default: "false"
 
 runs:
   using: composite
@@ -44,15 +37,6 @@ runs:
         distribution: temurin
         java-version: 25
         cache: sbt
-
-    # The Playwright container (prebaked_browser=true) is minimal and omits
-    # `unzip`, which sbt/setup-sbt needs to extract the sbt launcher. Installing
-    # just unzip is a ~5s apt — still far below the ~90s `--with-deps` webkit
-    # apt the container lets us skip. No-op on the bare runner (has unzip).
-    - name: Ensure unzip (Playwright container omits it)
-      if: inputs.prebaked_browser == 'true'
-      shell: bash
-      run: apt-get update && apt-get install -y --no-install-recommends unzip
 
     - uses: sbt/setup-sbt@v1
 
@@ -87,7 +71,7 @@ runs:
     # package-lock + the row's browser so a Playwright bump pulls
     # fresh and rows don't share each other's tarball.
     - uses: actions/cache@v4
-      if: inputs.kind == 'playwright' && inputs.prebaked_browser != 'true'
+      if: inputs.kind == 'playwright'
       with:
         path: ~/.cache/ms-playwright
         key: playwright-${{ runner.os }}-${{ inputs.browser }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
@@ -101,10 +85,8 @@ runs:
       shell: bash
       run: cd page-tests-playwright && npm ci
 
-    # Skipped inside the Playwright container (browsers + deps prebaked) —
-    # that avoids the ~90s `--with-deps` apt-get the bare runner pays per shard.
     - name: Install Playwright browser
-      if: inputs.kind == 'playwright' && inputs.prebaked_browser != 'true'
+      if: inputs.kind == 'playwright'
       shell: bash
       run: cd page-tests-playwright && npx playwright install --with-deps ${{ inputs.browser }}
 
