@@ -382,6 +382,61 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  /**
+   * Blurring the navbar search resets an iOS-style focus-zoom back to
+   * fit-width by briefly pinning `maximum-scale=1` on the viewport meta, then
+   * restoring it on the next frame so pinch-zoom still works. iOS Safari's own
+   * focus auto-zoom can't be reproduced in headless Chrome, so this drives
+   * `resetSearchZoom` deterministically: it stubs `visualViewport.scale` to
+   * look zoomed-in and queues `requestAnimationFrame` so the restore only fires
+   * when we flush it.
+   */
+  it should "reset an iOS focus-zoom to fit-width when the search input blurs" in {
+    onPath("/") { page =>
+      // shared.js must be loaded — the inline `onblur="resetSearchZoom()"`
+      // resolves the global. (Catches a stale/unserved asset early.)
+      page.evalBool("typeof resetSearchZoom === 'function'") shouldBe true
+
+      // Stub a zoomed-in visualViewport and capture rAF callbacks instead of
+      // running them, so the restore only fires when we flush it. Wrapped in an
+      // IIFE so the eval resolves to `undefined` — returning the
+      // `Object.defineProperty` result (the `window` object) makes CDP's
+      // return-by-value serializer fail with "Object reference chain too long".
+      page.eval(
+        "(() => {" +
+          " window.__raf = [];" +
+          " window.requestAnimationFrame = (cb) => { window.__raf.push(cb); return 1; };" +
+          " Object.defineProperty(window, 'visualViewport', { configurable: true, value: { scale: 2 } });" +
+          " })()"
+      )
+      val base = page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')")
+
+      // Dispatch `blur` directly: headless Chrome has no real window focus, so
+      // `el.focus(); el.blur()` doesn't reliably fire it — but a dispatched
+      // event still invokes the inline `onblur` handler.
+      page.eval("document.getElementById('search-input').dispatchEvent(new Event('blur'))")
+
+      // Synchronous phase: max-scale pinned so Safari snaps the zoom back out.
+      val pinned = page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')")
+      withClue(s"viewport after blur was [$pinned]: ") {
+        pinned should include("maximum-scale=1")
+      }
+
+      // The queued rAF restores the original content, re-enabling pinch-zoom.
+      page.eval("window.__raf.forEach(cb => cb());")
+      page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')") shouldBe base
+    }
+  }
+
+  /** Guard: when the page isn't zoomed (scale == 1), blur leaves the meta alone. */
+  it should "leave the viewport meta untouched on blur when the page isn't zoomed" in {
+    onPath("/") { page =>
+      val base = page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')")
+      page.eval("document.getElementById('search-input').dispatchEvent(new Event('blur'))")
+      page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')") shouldBe base
+    }
+  }
+
   /** Switch the date filter to "Kiedykolwiek" (anytime) and re-run
    *  `applyFilters()` so the visible-card set no longer depends on the
    *  browser's wall-clock relative to the fixture's recorded dates. */
