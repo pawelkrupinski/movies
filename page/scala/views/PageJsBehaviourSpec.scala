@@ -882,6 +882,75 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── /film poster/details stacking ────────────────────────────────────────
+  //
+  // The detail layout is a Bootstrap flex row: poster (`.col-auto`,
+  // capped at 300 px) beside the details column (`.col`). On a phone
+  // (≤ 575 px) that 300 px poster + the gutter leave the details column
+  // so narrow the title wraps one word per line and a dead gap opens
+  // below the (shorter) poster column. Below the breakpoint the two must
+  // stack — the title begins *below* the poster — while desktop keeps
+  // them side by side. Geometry assertion, since the markup looks fine
+  // either way; only the rendered layout flips.
+
+  /** (posterTop, posterRight, posterBottom, posterLeft, titleTop, titleLeft)
+   *  for the /film hero — the poster box and the title that heads the
+   *  details column. */
+  private def filmHeroGeometry(page: CdpPage): (Double, Double, Double, Double, Double, Double) =
+    page.evalString(
+      "(() => { const p = document.querySelector('.poster-wrap').getBoundingClientRect();" +
+      "          const t = document.querySelector('.film-title').getBoundingClientRect();" +
+      "          return [p.top, p.right, p.bottom, p.left, t.top, t.left].join('|'); })()"
+    ).split('|').map(_.toDouble) match {
+      case Array(pt, pr, pb, pl, tt, tl) => (pt, pr, pb, pl, tt, tl)
+    }
+
+  // Widths in the "cramped band": wide enough that the 300 px poster +
+  // a sliver of details column *just* fit side by side (so without the
+  // stack fix the row does NOT wrap on its own), but narrow enough that
+  // the sliver is unusable — the title breaks one word per line and a
+  // dead gap opens below the poster. iPhone 16/17 Pro (~402), the Pro
+  // Max class (430), and the top of the breakpoint (540, 575) all land
+  // here. Below ~395 px the row wraps on its own regardless, so those
+  // widths can't tell the fix from the default.
+  private val FilmCrampedWidths = Seq(402, 430, 540, 575)
+
+  "the /film poster and details" should "stack vertically across the cramped phone band" in {
+    onPath(filmTarget) { page =>
+      val rows = FilmCrampedWidths.map { w =>
+        page.setViewport(w, 1100)
+        Thread.sleep(60L)
+        val (_, _, posterBottom, _, titleTop, _) = filmHeroGeometry(page)
+        (w, posterBottom, titleTop)
+      }
+      page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
+      val table = rows.map { case (w, pb, tt) =>
+        f"  $w%3d px → posterBottom=$pb%.0f titleTop=$tt%.0f"
+      }.mkString("\n")
+      info(s"/film stacking sweep:\n$table")
+      withClue(s"/film stacking sweep (title must start below the poster):\n$table\n") {
+        // titleTop ≥ posterBottom means the details column starts below
+        // the poster — stacked, not crammed beside it.
+        all (rows.map { case (_, pb, tt) => tt - pb }) should be >= -4.0
+      }
+    }
+  }
+
+  it should "sit side by side at desktop width (1280px)" in {
+    onPath(filmTarget) { page =>
+      page.setDesktopViewport(1280, 900)
+      Thread.sleep(60L)
+      val (_, posterRight, posterBottom, _, titleTop, titleLeft) = filmHeroGeometry(page)
+      page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
+      withClue(s"posterRight=$posterRight posterBottom=$posterBottom titleTop=$titleTop titleLeft=$titleLeft ") {
+        // Title shares the poster's row (above its bottom edge) and sits
+        // to the right of the poster — the side-by-side desktop layout.
+        titleTop  should be < posterBottom
+        titleLeft should be > posterRight
+      }
+    }
+  }
+
   // ── Desktop layout invariants ────────────────────────────────────────────
   //
   // The mobile sweep above pins the < 576 px branch; this one pins the

@@ -162,6 +162,16 @@
        container padding are intentionally left untouched — tap-target
        and iOS-zoom-guard floors that the scale would push under. */
     @@media (max-width: 575px) {
+      /* Stack the poster above the details. The side-by-side flex row
+         caps the poster at 300 px, which on a phone leaves the details
+         column so narrow the title wraps one word per line and a dead
+         gap opens below the (shorter) poster. Below the sm breakpoint
+         the poster takes its own full-width row — centred at its 300 px
+         cap — and the title / ratings / cinema pills / Opis flow beneath
+         it across the whole width. The `g-4` row gutter supplies the
+         vertical gap between the two stacked rows. */
+      .film-row > .col-auto   { width: 100%; }
+      .film-row .poster-wrap  { margin-left: auto; margin-right: auto; }
       .back-link  { font-size: calc(.9 * var(--mobile-scale)); }
       .no-poster  { font-size: var(--mobile-scale); }
       .film-title { font-size: calc(1.6 * var(--mobile-scale)); }
@@ -222,7 +232,7 @@
 @_loginModal(oauthProviders)
 
 <div class="container py-4" style="max-width: 860px;">
-  <div class="row g-4">
+  <div class="row g-4 film-row">
 
     <div class="col-auto">
       <div class="poster-wrap">
