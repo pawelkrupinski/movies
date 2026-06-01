@@ -1588,10 +1588,18 @@
     if (!path) return;
     const hit = _prefetch.get(path);
     if (hit && Date.now() - hit.ts < PREFETCH_TTL_MS) return;
-    fetch(path, { headers: { 'X-Requested-With': 'view-swap' } })
-      .then(r => (r.ok ? r.text() : null))
-      .then(html => { if (html) _prefetch.set(path, { html, ts: Date.now() }); })
-      .catch(() => {});
+    // The boot prefetch runs on the idle callback, which can fire just as the
+    // page is navigating away (e.g. tapping a film card right after load). In
+    // that torn-down context WebKit's `fetch()` THROWS synchronously ("…due to
+    // access control checks") rather than rejecting — the `.catch` only handles
+    // the async rejection, so without this try the throw escapes as an uncaught
+    // pageerror. Swallow it: a prefetch that loses the race is a no-op anyway.
+    try {
+      fetch(path, { headers: { 'X-Requested-With': 'view-swap' } })
+        .then(r => (r.ok ? r.text() : null))
+        .then(html => { if (html) _prefetch.set(path, { html, ts: Date.now() }); })
+        .catch(() => {});
+    } catch (e) { /* page unloading — skip the prefetch */ }
   }
 
   // (Re)start the `_swapping` inactivity watchdog. Armed whenever `_swapping`
