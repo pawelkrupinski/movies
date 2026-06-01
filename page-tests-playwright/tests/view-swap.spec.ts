@@ -288,6 +288,27 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await page.waitForTimeout(500);   // let the sibling prefetch settle (localhost fetch)
   }
 
+  // The invariant a swap must always settle to: exactly one live view, whose
+  // data-view, active tab, and rendered+booted content all agree. The mobile
+  // desync bug violated this — the tab said Filmy while the (unbooted) Kina
+  // cinema list showed. `view` is what we expect to be live; pass `undefined`
+  // to just assert internal consistency with whatever ended up live.
+  async function assertConsistent(page, view) {
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);   // no half-swapped leftover
+    const live = view ?? await page.evaluate(() => document.getElementById('view-root')?.dataset.view);
+    await expect(page.locator('#view-root')).toHaveAttribute('data-view', live);
+    if (live === 'kina') {
+      await expect(page.locator('.navbar .nav-tab.active')).toContainText('Kina');     // tab matches content
+      await expect(page.locator('#film-grid .cinema-section')).not.toHaveCount(0);     // Kina grid rendered
+      await expect(page.locator('#cinema-pills .cinema-pill')).not.toHaveCount(0);     // …and booted (pills built)
+    } else {
+      await expect(page.locator('.navbar .nav-tab.active')).toContainText('Filmy');
+      await expect(page.locator('#film-grid > .col[data-title]')).not.toHaveCount(0);  // Filmy grid rendered
+      await expect(page.locator('#film-grid .cinema-section')).toHaveCount(0);         // not the Kina shape
+      await expect(page.locator('#cinema-pills')).toHaveCount(0);                      // no Kina-only chrome
+    }
+  }
+
   test('swipe left switches Filmy → Kina and highlights Kina', async ({ page }) => {
     await waitForCards(page);
     await swipe(page, '#film-grid', -200);
@@ -303,6 +324,45 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await page.waitForURL((u) => new URL(u).pathname === '/');
     expect(await isKina(page)).toBe('films');
     await expect(page.locator('.navbar .nav-tab.active')).toContainText('Filmy');
+  });
+
+  test('swiping both directions keeps tab, view, and booted content consistent', async ({ page }) => {
+    // Regression for the mobile desync (tab on Filmy while the unbooted Kina
+    // list showed). Each settled swap must agree across data-view, tab, and
+    // rendered+booted content — in both directions.
+    await waitForCards(page);
+    await warmCaches(page);
+    await swipe(page, '#film-grid', -220);
+    await page.waitForURL(/\/kina$/);
+    await assertConsistent(page, 'kina');
+    await swipe(page, '#film-grid', 220);
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await assertConsistent(page, 'films');
+  });
+
+  test('a reverse swipe begun mid-animation still settles to a consistent state', async ({ page }) => {
+    // The exact "drag back to Kina and get a half-swapped screen" scenario:
+    // commit one swap, then fire the reverse gesture synchronously while the
+    // first is still animating. Whatever it lands on, it must be internally
+    // consistent — never the tab/content desync. Dispatched on `document` so a
+    // mid-swap removal of the grid node can't strand the later events.
+    await waitForCards(page);
+    await warmCaches(page);
+    await page.evaluate(() => {
+      const W = window.innerWidth, y = 120;
+      const pe = (t, x) => document.dispatchEvent(new PointerEvent(t,
+        { clientX: x, clientY: y, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true }));
+      const a = W * 0.8;                                            // Filmy → Kina, commit
+      pe('pointerdown', a);
+      for (let i = 1; i <= 6; i++) pe('pointermove', a - (240 * i) / 6);
+      pe('pointerup', a - 240);
+      const b = W * 0.2;                                            // immediately back the other way
+      pe('pointerdown', b);
+      for (let i = 1; i <= 6; i++) pe('pointermove', b + (240 * i) / 6);
+      pe('pointerup', b + 240);
+    });
+    await page.waitForTimeout(600);                                 // let any animation settle
+    await assertConsistent(page);                                   // consistent with whatever is live
   });
 
   test('a swipe that starts with a little vertical jitter still switches (axis bias)', async ({ page }) => {
