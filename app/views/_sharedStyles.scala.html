@@ -328,24 +328,23 @@
   }
   .auth-menu:hover { background: #5a5a9e; color: #fff; }
   /* `flex: 0 0 auto` + explicit `min-width/min-height` are load-bearing, not
-     belt-and-braces: `.auth-avatar` is a flex item of `.auth-menu`
+     belt-and-braces: the avatar is a flex item of `.auth-menu`
      (display:inline-flex), and a flex item's default `min-width/min-height:auto`
      resolves to a REPLACED element's intrinsic size — so a real (large) avatar
      photo overrides `width/height:22px` and balloons the pill. Pinning the
-     min-size to 22px is what holds it to a 22px circle on iOS Safari. */
-  .auth-avatar {
-    width: 22px; height: 22px;
-    min-width: 22px; min-height: 22px;
-    max-width: 22px; max-height: 22px;
-    flex: 0 0 auto;
-    border-radius: 50%; object-fit: cover; display: block;
-  }
+     min-size to 22px is what holds it to a 22px circle on iOS Safari. The
+     <img> avatar and the text-initial fallback are the same 22px circle, so
+     they share the size pin + round clip; each then adds only its own paint. */
+  .auth-avatar,
   .auth-avatar-fallback {
     width: 22px; height: 22px;
     min-width: 22px; min-height: 22px;
     max-width: 22px; max-height: 22px;
     flex: 0 0 auto;
     border-radius: 50%;
+  }
+  .auth-avatar { object-fit: cover; display: block; }
+  .auth-avatar-fallback {
     background: #1a1a2e; color: #ffd24a;
     display: inline-flex; align-items: center; justify-content: center;
     font-size: .7rem; font-weight: 600;
@@ -568,7 +567,16 @@
   .navbar-search    { order: 1; margin-left: auto; }
   .navbar-date      { order: 2; }
   .navbar-filtry    { order: 3; }
-  .navbar-auth      { order: 4; }
+  /* `display:flex; align-items:center` is load-bearing, not cosmetic: the
+     child `.auth-menu` is `display:inline-flex`, so in a plain block wrapper
+     it sits on the text baseline and the wrapper reserves line-height
+     descender space BELOW it — making `.navbar-auth` ~3px taller than the
+     28px pill, with the pill pinned to the wrapper's top. The navbar then
+     centres that too-tall wrapper, leaving the pill ~1.5px ABOVE the search
+     box's midline (invisible at 100%, obvious under pinch-zoom on Safari).
+     Flex-centring collapses the wrapper to the pill's exact height so the
+     pill shares the search box's midline. Locked by navbar-layout.spec.ts. */
+  .navbar-auth      { order: 4; display: flex; align-items: center; }
   .navbar-row-break { display: none; }
 
   @@media (min-width: 576px) {
