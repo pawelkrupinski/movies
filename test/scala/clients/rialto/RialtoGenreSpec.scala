@@ -27,8 +27,18 @@ class RialtoGenreSpec extends AnyFlatSpec with Matchers {
     client.parseGenres(recordedEventPage) shouldBe Seq("Dramat", "Komedia")
   }
 
+  it should "split a space-separated genre list (the form Rialto now serves)" in {
+    client.parseGenres(
+      """<p class="movie-parameters">Przygodowy Horror Sci-Fi | Od lat 12 | 99 min</p>"""
+    ) shouldBe Seq("Przygodowy", "Horror", "Sci-Fi")
+  }
+
   it should "read a single genre before the runtime pipe" in {
     client.parseGenres("""<p class="movie-parameters">Animowany | 55 min</p>""") shouldBe Seq("Animowany")
+  }
+
+  it should "not mistake the age-rating segment for a genre when the film has none" in {
+    client.parseGenres("""<p class="movie-parameters">Od lat 12 | 99 min</p>""") shouldBe empty
   }
 
   it should "ignore a duration-only line with no genre" in {
