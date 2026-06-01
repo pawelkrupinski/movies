@@ -365,6 +365,32 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await assertConsistent(page);                                   // consistent with whatever is live
   });
 
+  test('a finger landing warms the sibling so a cold-start swipe can track', async ({ page }) => {
+    // Cold-start responsiveness: until the sibling is cached, beginDrag returns
+    // null and the drag has no live tracking (release-only). A pointerdown now
+    // kicks the prefetch. Keep the cache cold (fail every prefetch) so each
+    // prefetchView call is observable on the wire.
+    const reqs = [];
+    await page.route('**/kina**', (route) => {
+      if (route.request().headers()['x-requested-with'] === 'view-swap') {
+        reqs.push(route.request().url());
+        return route.abort();
+      }
+      return route.continue();
+    });
+    await page.goto('/');
+    await waitForCards(page);
+    await page.waitForTimeout(800);             // let the boot warm fire (idle timeout 600)
+    const before = reqs.length;
+    expect(before).toBeGreaterThan(0);          // sanity: the boot warm tried
+    await page.evaluate(() => {
+      const r = document.getElementById('film-grid').getBoundingClientRect();
+      document.getElementById('film-grid').dispatchEvent(new PointerEvent('pointerdown',
+        { clientX: r.left + r.width / 2, clientY: r.top + 40, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true }));
+    });
+    await expect.poll(() => reqs.length).toBeGreaterThan(before);   // the touch kicked another warm
+  });
+
   test('a swipe that starts with a little vertical jitter still switches (axis bias)', async ({ page }) => {
     // Regression: the first move sample leaning slightly vertical (dx=-10,dy=+11)
     // used to lock the axis to vertical and kill the gesture for the whole

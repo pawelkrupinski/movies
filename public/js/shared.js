@@ -1874,10 +1874,16 @@
   document.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' || _swapping) return;
     if (!matchMedia('(pointer: coarse)').matches) return;
-    if (!document.getElementById('view-root')) return;
+    const root = document.getElementById('view-root');
+    if (!root) return;
     if (e.target instanceof Element && e.target.closest('.cinema-nav-row, #cinema-pills')) return;
     _drag = { x0: e.clientX, y0: e.clientY, axis: null, ctx: null, fallbackDest: null,
               lastDx: 0, vx: 0, lastT: e.timeStamp };
+    // Warm the sibling the instant a finger lands so even a cold-start swipe can
+    // engage live tracking (beginDrag is retried on every move). Set `_drag`
+    // first so this stays a pure side-effect — prefetchView never mounts or
+    // touches the swap, it only fills the cache (and self-guards on the TTL).
+    prefetchView(root.dataset.view === 'films' ? 'kina' : 'films');
   }, { passive: true });
 
   // Claim a single-finger HORIZONTAL drag so the browser can't decide mid-drag
@@ -1992,14 +1998,18 @@
     bootView();
     setActiveTab(document.getElementById('view-root')?.dataset.view || 'films');
     bootMergeFromServer();
-    // Warm the sibling so the first switch is instant — but on the IDLE
-    // callback so the full-page sibling fetch doesn't compete with first paint
-    // / the critical-path resources of the page that just loaded.
+    // Warm the sibling so the first switch is instant. Keep it off the critical
+    // first paint (one rAF), but cap the wait with a short idle timeout — on a
+    // busy page (every poster loading) `requestIdleCallback` can otherwise be
+    // starved for seconds, and while the cache is cold a swipe can't track the
+    // finger and falls back to the less-responsive release-only threshold.
     const here = document.getElementById('view-root')?.dataset.view;
     if (here) {
       const warm = () => prefetchView(here === 'films' ? 'kina' : 'films');
-      if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 2000 });
-      else setTimeout(warm, 200);
+      requestAnimationFrame(() => {
+        if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 600 });
+        else setTimeout(warm, 150);
+      });
     }
   });
 
