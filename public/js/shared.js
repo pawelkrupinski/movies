@@ -1549,13 +1549,6 @@
   const _prefetch      = new Map();   // path -> { html, ts }
   let   _swapping      = false;
   let   _finishSwap    = null;   // snaps the in-flight swap to its end on demand
-  // Safety net for `_swapping`: a swap/drag clears the flag from its own
-  // settle/animation path, but if a `pointerup`/`pointercancel` is lost to the
-  // OS (or a transition never lands) the flag would stay true and dead-lock
-  // every future swipe until reload. This inactivity timer force-clears it —
-  // re-armed on each drag move, so it only fires on a truly stalled gesture.
-  let   _swapWatchdog  = null;
-  const SWAP_WATCHDOG_MS = 1500;   // > the 450ms transition fallback + slack
   // Per-view vertical scroll memory. Filmy and Kina share one window scroll, so
   // without this every swap would land at the top. We snapshot the outgoing
   // view's `scrollY` on the way out and restore the destination's on the way in
@@ -1602,23 +1595,6 @@
     } catch (e) { /* page unloading — skip the prefetch */ }
   }
 
-  // (Re)start the `_swapping` inactivity watchdog. Armed whenever `_swapping`
-  // goes true and re-armed on every drag move; the legitimate settle paths
-  // disarm it long before it fires, so it only trips when a gesture stalls with
-  // no further moves and no release.
-  function armSwapWatchdog() {
-    clearTimeout(_swapWatchdog);
-    _swapWatchdog = setTimeout(() => {
-      // A live drag stalled with no further moves and no release (lost
-      // pointerup/cancel) → resolve it like a release so the pager doesn't sit
-      // half-swiped. A stuck flag with no live drag (an animation that never
-      // settled) → just clear it so the next swipe isn't blocked.
-      if (_drag && _drag.ctx) endDrag();
-      else { _swapping = false; _drag = null; _finishSwap = null; }
-    }, SWAP_WATCHDOG_MS);
-  }
-  function clearSwapWatchdog() { clearTimeout(_swapWatchdog); _swapWatchdog = null; }
-
   async function fetchViewHtml(path) {
     const hit = _prefetch.get(path);
     if (hit && Date.now() - hit.ts < PREFETCH_TTL_MS) return hit.html;
@@ -1659,7 +1635,6 @@
     if (!pager || !current) { window.location = path; return; }
     if (_swapping || current.dataset.view === destView) return;
     _swapping = true;
-    armSwapWatchdog();
     _viewScroll[current.dataset.view] = window.scrollY;   // remember where we left this column
 
     let incoming;
@@ -1709,7 +1684,6 @@
     const settle = () => {
       if (settled) return;            // guard the transitionend + timeout + snap paths
       settled = true;
-      clearSwapWatchdog();
       current.remove();
       incoming.classList.remove('view-entering');
       incoming.style.transform = '';
@@ -1843,12 +1817,7 @@
     // finger at this same offset throughout the drag, so leaving it put keeps
     // the gesture visually continuous (a scrollTo here would jump it).
     if (commit) _viewScroll[originView] = window.scrollY;
-    let finished = false;
     const finish = () => {
-      if (finished) return;   // guard the transitionend + timeout + pointerdown-snap paths
-      finished = true;
-      clearSwapWatchdog();
-      _finishSwap = null;
       pager.classList.remove('view-swapping', 'view-sliding');
       if (commit) {
         current.remove();
@@ -1876,7 +1845,6 @@
       }
       _swapping = false;
     };
-    _finishSwap = finish;   // let a fresh pointerdown snap this swap to its end
 
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       if (commit) {
@@ -1904,18 +1872,10 @@
   }
 
   document.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') return;
+    if (e.pointerType === 'mouse' || _swapping) return;
     if (!matchMedia('(pointer: coarse)').matches) return;
-    const root = document.getElementById('view-root');
-    if (!root) return;
+    if (!document.getElementById('view-root')) return;
     if (e.target instanceof Element && e.target.closest('.cinema-nav-row, #cinema-pills')) return;
-    // A swap is still animating: snap it to its end so this touch can start a
-    // fresh drag immediately, instead of being dropped for the ~300ms window.
-    if (_swapping) { if (_finishSwap) _finishSwap(); else return; }
-    // Warm the sibling the instant a finger lands, so even the first swipe after
-    // a load/swap tracks live (beginDrag is retried each move) instead of
-    // falling back to the release-only threshold switch. Idempotent (TTL guard).
-    prefetchView(root.dataset.view === 'films' ? 'kina' : 'films');
     _drag = { x0: e.clientX, y0: e.clientY, axis: null, ctx: null, fallbackDest: null,
               lastDx: 0, vx: 0, lastT: e.timeStamp };
   }, { passive: true });
@@ -1974,12 +1934,11 @@
       if (dx !== 0 && dest !== cur) {
         const w   = document.getElementById('view-pager').offsetWidth || window.innerWidth;
         const ctx = beginDrag(dest, w);
-        if (ctx) { _drag.ctx = ctx; _swapping = true; armSwapWatchdog(); _drag.fallbackDest = null; }
+        if (ctx) { _drag.ctx = ctx; _swapping = true; _drag.fallbackDest = null; }
         else     { _drag.fallbackDest = dest; }   // cold cache → threshold switch on release
       }
     }
     if (_drag.ctx) {
-      armSwapWatchdog();   // active drag — push the stall timeout out so it can't yank a live gesture
       // The view follows the finger 1:1, clamped to [neighbour, origin] (you
       // can drag the neighbour in and back out, but not past either edge).
       const { current, incoming, dir, enter, w, destView, originView } = _drag.ctx;
@@ -2033,18 +1992,14 @@
     bootView();
     setActiveTab(document.getElementById('view-root')?.dataset.view || 'films');
     bootMergeFromServer();
-    // Warm the sibling so the first switch is instant. Keep it off the critical
-    // first paint (one rAF), but don't let an idle-starved busy page (every
-    // poster loading) defer it for seconds — a short idle timeout caps the wait,
-    // because while the cache is cold a swipe can't track the finger and falls
-    // back to the release-only threshold switch.
+    // Warm the sibling so the first switch is instant — but on the IDLE
+    // callback so the full-page sibling fetch doesn't compete with first paint
+    // / the critical-path resources of the page that just loaded.
     const here = document.getElementById('view-root')?.dataset.view;
     if (here) {
       const warm = () => prefetchView(here === 'films' ? 'kina' : 'films');
-      requestAnimationFrame(() => {
-        if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 500 });
-        else setTimeout(warm, 150);
-      });
+      if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 2000 });
+      else setTimeout(warm, 200);
     }
   });
 
