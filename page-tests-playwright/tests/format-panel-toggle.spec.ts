@@ -37,14 +37,38 @@ test.describe('Filtry dropdown panel', () => {
     await expect(page.locator('#format-panel')).toBeVisible();
 
     // Click the document body well away from the panel. The shared.js
-    // global click handler calls `closeOtherPanels(null)` on every
-    // outside click.
+    // capture-phase guard calls `closeOtherPanels(null)` whenever a click
+    // lands outside an open dropdown.
     await page.evaluate(() => document.body.click());
 
     const afterOutside = await page.evaluate(
       () => (document.getElementById('format-panel') as HTMLElement).style.display
     );
     expect(afterOutside).toBe('none');
+  });
+
+  test('an outside click only dismisses — it does not navigate', async ({ page }) => {
+    await page.locator('#format-filter-btn').click();
+    await expect(page.locator('#format-panel')).toBeVisible();
+
+    const startUrl = page.url();
+
+    // Click a real card poster link (outside the panel). Before the fix this
+    // both closed the panel AND followed the link to /film. The capture-phase
+    // guard in shared.js must now swallow the click: panel closes, URL unchanged.
+    const posterLink = page
+      .locator('.col[data-title] .card .poster-wrap > a')
+      .first();
+    await posterLink.click();
+
+    // Give any (unwanted) navigation a beat to start.
+    await page.waitForTimeout(300);
+
+    expect(page.url()).toBe(startUrl);
+    const afterClick = await page.evaluate(
+      () => (document.getElementById('format-panel') as HTMLElement).style.display
+    );
+    expect(afterClick).toBe('none');
   });
 
   test('clicking inside the panel does NOT close it', async ({ page }) => {

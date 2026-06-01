@@ -1219,6 +1219,47 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Clicking outside the open panel must do exactly ONE thing — dismiss it.
+  // Regression: the same outside-click also bubbled to the card-tap handler
+  // (or followed the link under the cursor) and navigated to /film, so closing
+  // the filter accidentally opened a page.
+  it should "only dismiss on an outside click — never trigger a link or navigation" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      page.eval("document.getElementById('format-filter-btn').click()")
+      page.evalString("document.getElementById('format-panel').style.display") shouldBe "block"
+
+      // Dispatch a real, cancelable click on a card's poster <a> (outside the
+      // panel). The fix runs in the capture phase and preventDefault()s it.
+      val defaultPrevented = page.evalBool(
+        s"(() => { const a = $firstCardPosterLink;" +
+        "  const e = new MouseEvent('click', { bubbles: true, cancelable: true });" +
+        "  a.dispatchEvent(e);" +
+        "  return e.defaultPrevented; })()"
+      )
+      defaultPrevented shouldBe true
+      page.evalString("location.pathname") shouldBe "/"
+      page.evalString("document.getElementById('format-panel').style.display") shouldBe "none"
+    }
+  }
+
+  // The flip side: with no panel open the same click is left completely alone,
+  // so ordinary card navigation still works.
+  it should "leave clicks untouched when no panel is open" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      val defaultPrevented = page.evalBool(
+        s"(() => { const a = $firstCardPosterLink;" +
+        "  const e = new MouseEvent('click', { bubbles: true, cancelable: true });" +
+        "  a.dispatchEvent(e);" +
+        "  return e.defaultPrevented; })()"
+      )
+      defaultPrevented shouldBe false
+    }
+  }
+
   // ── Sortuj (sort axis) ─────────────────────────────────────────────────────
   //
   // The Filtry panel's "Sortuj" select reorders the visible grid: earliest

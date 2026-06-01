@@ -979,25 +979,37 @@
     if (e.key === 'ArrowRight') stepDate(1);
   });
 
-  // ── Global click: close panels ────────────────────────────────────────────
+  // ── Click outside an open dropdown: dismiss only, swallow everything else ──
   //
-  // Every dropdown trigger calls `event.stopPropagation()` on open, and
-  // the panel wrappers do the same on their own click so inside-clicks
-  // (radio buttons, cinema toggles, etc.) don't close them. That leaves
-  // outside-clicks free to bubble to `document` — which calls
-  // `closeOtherPanels(null)` to hide every `.dropdown-panel` in one go.
+  // When a `.dropdown-panel` (Filtry) or the auth menu is open, a click
+  // anywhere outside it must do exactly ONE thing: close it. Without this the
+  // same click also bubbled on to the card-tap handler (which navigates to
+  // `/film`) or followed whatever link sat under the cursor — so dismissing
+  // the filter accidentally opened a page.
   //
-  // Used to also reach for `#hidden-panel` directly; that element is
-  // gone (the hidden-films UI is now a centred modal) and the bare
-  // `getElementById(...).style` throw aborted the handler before it
-  // could hide the format-panel, which is exactly the "click outside
-  // Filtry doesn't close it" regression the user reported. Routing
-  // through `closeOtherPanels` keeps the close path robust against
+  // We run in the CAPTURE phase (the `true` below) so this fires before any
+  // bubble-phase handler and before a link's default navigation, then
+  // `stopImmediatePropagation` + `preventDefault` so nothing else acts on the
+  // click. Inside-clicks and trigger-clicks are left alone so the panel's own
+  // controls (radios, cinema toggles, the Filtry button itself) keep working.
+  // When nothing is open this is a no-op, so ordinary card taps and links
+  // behave normally.
+  //
+  // Routing the close through `closeOtherPanels(null)` keeps it robust against
   // future additions/removals of dropdowns.
-  document.addEventListener('click', () => {
+  document.addEventListener('click', e => {
+    if (!(e.target instanceof Element)) return;
+    const panelOpen = [...document.querySelectorAll('.dropdown-panel')]
+      .some(p => p.style.display !== 'none');
+    const menuOpen = !!document.querySelector('.auth-menu.open');
+    if (!panelOpen && !menuOpen) return;
+    // Clicks on a panel/menu or its trigger drive their own toggle logic.
+    if (e.target.closest('.dropdown-panel, #format-filter-btn, .auth-menu')) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
     closeOtherPanels(null);
     closeAuthMenu();
-  });
+  }, true);
 
   // ── Counter ───────────────────────────────────────────────────────────────
 
@@ -1537,6 +1549,13 @@
   const _prefetch      = new Map();   // path -> { html, ts }
   let   _swapping      = false;
   let   _finishSwap    = null;   // snaps the in-flight swap to its end on demand
+  // Safety net for `_swapping`: a swap/drag clears the flag from its own
+  // settle/animation path, but if a `pointerup`/`pointercancel` is lost to the
+  // OS (or a transition never lands) the flag would stay true and dead-lock
+  // every future swipe until reload. This inactivity timer force-clears it —
+  // re-armed on each drag move, so it only fires on a truly stalled gesture.
+  let   _swapWatchdog  = null;
+  const SWAP_WATCHDOG_MS = 1500;   // > the 450ms transition fallback + slack
   // Per-view vertical scroll memory. Filmy and Kina share one window scroll, so
   // without this every swap would land at the top. We snapshot the outgoing
   // view's `scrollY` on the way out and restore the destination's on the way in
@@ -1548,7 +1567,14 @@
   const COMMIT_FRACTION   = 0.4;   // drag past this fraction of the width → commit
   const FLICK_VX          = 0.4;   // px/ms — a quick flick commits a shorter drag
   const FLICK_MIN_PX      = 24;    // ignore micro-flicks
-  const SWIPE_DEADZONE_PX = 10;    // axis-lock deadzone
+  const SWIPE_DEADZONE_PX = 10;    // horizontal travel before we lock to a swipe
+  // Axis lock is biased toward HORIZONTAL so a swipe that starts with a little
+  // vertical jitter (a finger rolling on touchdown) isn't misread as a scroll
+  // and killed. We only concede to vertical scrolling when it CLEARLY dominates;
+  // a tie or a slight vertical lean keeps the gesture alive and waits for the
+  // next move to disambiguate.
+  const SWIPE_VBAIL_PX    = 16;    // vertical must travel at least this far to even consider bailing
+  const SWIPE_VBIAS_RATIO = 1.6;   // …and beat horizontal by this factor → it's a real vertical scroll
 
   function viewOfPath(path) {
     const p = (path || location.pathname).split('?')[0].split('#')[0];
@@ -1567,6 +1593,23 @@
       .then(html => { if (html) _prefetch.set(path, { html, ts: Date.now() }); })
       .catch(() => {});
   }
+
+  // (Re)start the `_swapping` inactivity watchdog. Armed whenever `_swapping`
+  // goes true and re-armed on every drag move; the legitimate settle paths
+  // disarm it long before it fires, so it only trips when a gesture stalls with
+  // no further moves and no release.
+  function armSwapWatchdog() {
+    clearTimeout(_swapWatchdog);
+    _swapWatchdog = setTimeout(() => {
+      // A live drag stalled with no further moves and no release (lost
+      // pointerup/cancel) → resolve it like a release so the pager doesn't sit
+      // half-swiped. A stuck flag with no live drag (an animation that never
+      // settled) → just clear it so the next swipe isn't blocked.
+      if (_drag && _drag.ctx) endDrag();
+      else { _swapping = false; _drag = null; _finishSwap = null; }
+    }, SWAP_WATCHDOG_MS);
+  }
+  function clearSwapWatchdog() { clearTimeout(_swapWatchdog); _swapWatchdog = null; }
 
   async function fetchViewHtml(path) {
     const hit = _prefetch.get(path);
@@ -1608,6 +1651,7 @@
     if (!pager || !current) { window.location = path; return; }
     if (_swapping || current.dataset.view === destView) return;
     _swapping = true;
+    armSwapWatchdog();
     _viewScroll[current.dataset.view] = window.scrollY;   // remember where we left this column
 
     let incoming;
@@ -1657,6 +1701,7 @@
     const settle = () => {
       if (settled) return;            // guard the transitionend + timeout + snap paths
       settled = true;
+      clearSwapWatchdog();
       current.remove();
       incoming.classList.remove('view-entering');
       incoming.style.transform = '';
@@ -1790,7 +1835,12 @@
     // finger at this same offset throughout the drag, so leaving it put keeps
     // the gesture visually continuous (a scrollTo here would jump it).
     if (commit) _viewScroll[originView] = window.scrollY;
+    let finished = false;
     const finish = () => {
+      if (finished) return;   // guard the transitionend + timeout + pointerdown-snap paths
+      finished = true;
+      clearSwapWatchdog();
+      _finishSwap = null;
       pager.classList.remove('view-swapping', 'view-sliding');
       if (commit) {
         current.remove();
@@ -1818,6 +1868,7 @@
       }
       _swapping = false;
     };
+    _finishSwap = finish;   // let a fresh pointerdown snap this swap to its end
 
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       if (commit) {
@@ -1845,10 +1896,18 @@
   }
 
   document.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' || _swapping) return;
+    if (e.pointerType === 'mouse') return;
     if (!matchMedia('(pointer: coarse)').matches) return;
-    if (!document.getElementById('view-root')) return;
+    const root = document.getElementById('view-root');
+    if (!root) return;
     if (e.target instanceof Element && e.target.closest('.cinema-nav-row, #cinema-pills')) return;
+    // A swap is still animating: snap it to its end so this touch can start a
+    // fresh drag immediately, instead of being dropped for the ~300ms window.
+    if (_swapping) { if (_finishSwap) _finishSwap(); else return; }
+    // Warm the sibling the instant a finger lands, so even the first swipe after
+    // a load/swap tracks live (beginDrag is retried each move) instead of
+    // falling back to the release-only threshold switch. Idempotent (TTL guard).
+    prefetchView(root.dataset.view === 'films' ? 'kina' : 'films');
     _drag = { x0: e.clientX, y0: e.clientY, axis: null, ctx: null, fallbackDest: null,
               lastDx: 0, vx: 0, lastT: e.timeStamp };
   }, { passive: true });
@@ -1863,21 +1922,29 @@
   // pointer handler set, and uses the same `|dx|>|dy|` lean test so the very
   // first move is already claimed (before `pointermove` has locked the axis).
   document.addEventListener('touchmove', (e) => {
-    if (!_drag || _drag.axis === 'y' || !e.cancelable || e.touches.length !== 1) return;
-    const t = e.touches[0];
-    if (_drag.axis === 'x' ||
-        Math.abs(t.clientX - _drag.x0) > Math.abs(t.clientY - _drag.y0)) {
-      e.preventDefault();
-    }
+    if (!_drag || !e.cancelable || e.touches.length !== 1) return;
+    if (_drag.axis === 'x') { e.preventDefault(); return; }   // already a swipe — keep it
+    const tdx = Math.abs(e.touches[0].clientX - _drag.x0);
+    const tdy = Math.abs(e.touches[0].clientY - _drag.y0);
+    // Mirror pointermove's bias: never preventDefault a clear vertical scroll
+    // (or a two-finger pinch, guarded above), but claim a horizontal-leaning
+    // drag the moment it clears the deadzone — before pointermove has locked the
+    // axis — so the browser can't scroll-steal an ambiguous slow start.
+    if (tdy >= SWIPE_VBAIL_PX && tdy > tdx * SWIPE_VBIAS_RATIO) return;
+    if (tdx >= SWIPE_DEADZONE_PX && tdx >= tdy) e.preventDefault();
   }, { passive: false });
 
   document.addEventListener('pointermove', (e) => {
     if (!_drag) return;
     const dx = e.clientX - _drag.x0, dy = e.clientY - _drag.y0;
     if (_drag.axis === null) {
-      if (Math.abs(dx) < SWIPE_DEADZONE_PX && Math.abs(dy) < SWIPE_DEADZONE_PX) return;
-      _drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
-      if (_drag.axis === 'y') { _drag = null; return; }     // vertical scroll — bail
+      const adx = Math.abs(dx), ady = Math.abs(dy);
+      // Clear vertical scroll — enough vertical travel AND vertical dominates → yield to the browser.
+      if (ady >= SWIPE_VBAIL_PX && ady > adx * SWIPE_VBIAS_RATIO) { _drag = null; return; }
+      // Horizontal intent — past the deadzone and at least as horizontal as vertical → lock the swipe.
+      if (adx >= SWIPE_DEADZONE_PX && adx >= ady) { _drag.axis = 'x'; }
+      // Otherwise still ambiguous (tiny, or leaning vertical but not decisively) → wait for the next move.
+      else return;
     }
     if (_drag.axis !== 'x') return;
     // Track the latest delta + a smoothed velocity HERE — `pointerup`'s clientX
@@ -1899,11 +1966,12 @@
       if (dx !== 0 && dest !== cur) {
         const w   = document.getElementById('view-pager').offsetWidth || window.innerWidth;
         const ctx = beginDrag(dest, w);
-        if (ctx) { _drag.ctx = ctx; _swapping = true; _drag.fallbackDest = null; }
+        if (ctx) { _drag.ctx = ctx; _swapping = true; armSwapWatchdog(); _drag.fallbackDest = null; }
         else     { _drag.fallbackDest = dest; }   // cold cache → threshold switch on release
       }
     }
     if (_drag.ctx) {
+      armSwapWatchdog();   // active drag — push the stall timeout out so it can't yank a live gesture
       // The view follows the finger 1:1, clamped to [neighbour, origin] (you
       // can drag the neighbour in and back out, but not past either edge).
       const { current, incoming, dir, enter, w, destView, originView } = _drag.ctx;
@@ -1957,14 +2025,18 @@
     bootView();
     setActiveTab(document.getElementById('view-root')?.dataset.view || 'films');
     bootMergeFromServer();
-    // Warm the sibling so the first switch is instant — but on the IDLE
-    // callback so the full-page sibling fetch doesn't compete with first paint
-    // / the critical-path resources of the page that just loaded.
+    // Warm the sibling so the first switch is instant. Keep it off the critical
+    // first paint (one rAF), but don't let an idle-starved busy page (every
+    // poster loading) defer it for seconds — a short idle timeout caps the wait,
+    // because while the cache is cold a swipe can't track the finger and falls
+    // back to the release-only threshold switch.
     const here = document.getElementById('view-root')?.dataset.view;
     if (here) {
       const warm = () => prefetchView(here === 'films' ? 'kina' : 'films');
-      if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 2000 });
-      else setTimeout(warm, 200);
+      requestAnimationFrame(() => {
+        if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 500 });
+        else setTimeout(warm, 150);
+      });
     }
   });
 
