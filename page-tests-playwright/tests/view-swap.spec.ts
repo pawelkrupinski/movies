@@ -696,6 +696,38 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     expect(prevented).toBe(true);
   });
 
+  test('a small horizontal lean is claimed immediately (no deadzone) so a slow start is not scroll-stolen', async ({ page }) => {
+    // The browser decides scroll-vs-gesture in the first few px. Claim a
+    // horizontal-leaning touchmove on the very first move — before the 10px
+    // axis-lock deadzone — or a slow drag gets scroll-stolen and "doesn't
+    // respond." A vertical-leaning move must still pass through to scroll.
+    await waitForCards(page);
+    const res = await page.evaluate(() => {
+      const el = document.getElementById('film-grid');
+      const r = el.getBoundingClientRect();
+      const y = r.top + 40;
+      const x0 = r.left + r.width * 0.7;
+      const pe = (type, x) => el.dispatchEvent(new PointerEvent(type,
+        { clientX: x, clientY: y, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true }));
+      const touchLean = (dx, dy) => {
+        const t = new Touch({ identifier: 1, target: el, clientX: x0 + dx, clientY: y + dy });
+        const tm = new TouchEvent('touchmove',
+          { cancelable: true, bubbles: true, touches: [t], targetTouches: [t], changedTouches: [t] });
+        el.dispatchEvent(tm);
+        return tm.defaultPrevented;
+      };
+      pe('pointerdown', x0);
+      const horiz = touchLean(-6, -2);   // 6px left, 2px up — under the deadzone, horizontal-leaning
+      pe('pointerup', x0 - 6);
+      pe('pointerdown', x0);
+      const vert = touchLean(-2, -20);   // clearly vertical — must not be claimed
+      pe('pointerup', x0 - 2);
+      return { horiz, vert };
+    });
+    expect(res.horiz).toBe(true);    // claimed before the deadzone → no scroll-steal
+    expect(res.vert).toBe(false);    // vertical scroll passes through
+  });
+
   test('swipe starting on the cinema-pill strip does NOT switch view', async ({ page }) => {
     await page.goto('/kina');
     await waitForCards(page);

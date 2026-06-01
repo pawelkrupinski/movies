@@ -1900,12 +1900,16 @@
     if (_drag.axis === 'x') { e.preventDefault(); return; }   // already a swipe — keep it
     const tdx = Math.abs(e.touches[0].clientX - _drag.x0);
     const tdy = Math.abs(e.touches[0].clientY - _drag.y0);
-    // Mirror pointermove's bias: never preventDefault a clear vertical scroll
-    // (or a two-finger pinch, guarded above), but claim a horizontal-leaning
-    // drag the moment it clears the deadzone — before pointermove has locked the
-    // axis — so the browser can't scroll-steal an ambiguous slow start.
+    // Never preventDefault a clear vertical scroll (or a two-finger pinch,
+    // guarded above) — but claim a horizontal-leaning drag on the VERY FIRST
+    // leaning move, with no deadzone wait. The browser's scroll-vs-gesture
+    // arbitration happens in the first few px of a slow drag, so deferring the
+    // claim until a 10px deadzone (as an earlier version did) leaves a window
+    // where it scroll-steals the gesture — which reads as "the swipe didn't
+    // respond at all." pointermove still needs the deadzone to LOCK the axis and
+    // start tracking; this only needs to hold the browser off, so it's eager.
     if (tdy >= SWIPE_VBAIL_PX && tdy > tdx * SWIPE_VBIAS_RATIO) return;
-    if (tdx >= SWIPE_DEADZONE_PX && tdx >= tdy) e.preventDefault();
+    if (tdx > tdy) e.preventDefault();
   }, { passive: false });
 
   document.addEventListener('pointermove', (e) => {
