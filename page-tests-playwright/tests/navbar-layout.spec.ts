@@ -214,6 +214,7 @@ test.describe('logged-in avatar pill height', () => {
       return {
         w: ir.width, h: ir.height, top: ir.top,
         minW: cs.minWidth, minH: cs.minHeight,
+        maxW: cs.maxWidth, maxH: cs.maxHeight,
         searchH: sr ? sr.height : -1,
         searchMid: sr ? sr.top + sr.height / 2 : null,
         imgMid: ir.top + ir.height / 2,
@@ -224,6 +225,10 @@ test.describe('logged-in avatar pill height', () => {
     // flex-item replaced element grows to the photo's intrinsic size on iOS.
     expect(m!.minW, 'auth-avatar min-width must be pinned (not auto)').toBe('22px');
     expect(m!.minH, 'auth-avatar min-height must be pinned (not auto)').toBe('22px');
+    // Hard cap too — min+max+width all 22px means no engine/version/zoom can
+    // render it any taller, even where the flex min-size balloon is live.
+    expect(m!.maxW, 'auth-avatar max-width must cap at 22px').toBe('22px');
+    expect(m!.maxH, 'auth-avatar max-height must cap at 22px').toBe('22px');
     // Stays the intended small square — never ballooned to the photo's size.
     expect(m!.w, `avatar width ${m!.w}px`).toBeLessThanOrEqual(24);
     expect(m!.h, `avatar height ${m!.h}px`).toBeLessThanOrEqual(24);
