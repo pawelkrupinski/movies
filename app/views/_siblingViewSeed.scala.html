@@ -1,0 +1,11 @@
+@(siblingPath: String, siblingHtml: String)
+@* Inert seed for the Filmy↔Kina pager: the sibling view's `#view-root`
+   fragment, embedded so shared.js can prime its prefetch cache at boot — the
+   first swipe then tracks live with no network fetch. Emitted as
+   `type="application/json"` so the fragment's own inline <script> does NOT run
+   here (it runs only when the swap mounts it). Every `<` is escaped to its
+   `<` JSON form so the fragment's `</script>`/`<script>` can't terminate
+   or confuse this data block; JSON.parse restores them on the client. *@
+@if(siblingHtml.nonEmpty) {
+<script type="application/json" id="kinowo-sibling-view">@Html(play.api.libs.json.Json.obj("path" -> siblingPath, "html" -> siblingHtml).toString.replace("<", "\\u003c"))</script>
+}

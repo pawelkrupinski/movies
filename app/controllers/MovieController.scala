@@ -272,6 +272,9 @@ class MovieController( cc: ControllerComponents,
       Ok(views.html._repertoireView(schedules, devMode)).withHeaders(varyOnSwap)
     else {
       val meta = FilterDescription.forIndex(request.queryString, schedules)
+      // Embed the Kina sibling fragment so the first swipe tracks instantly with
+      // no network fetch — shared.js seeds its prefetch cache from this at boot.
+      val sibling = views.html._kinaView(movieControllerService.toCinemaSchedules(), None, devMode).body
       Ok(views.html.repertoire(
         schedules, Cinema.all.map(_.displayName), Cinema.pillMap,
         devMode, user, oauthProviders,
@@ -279,6 +282,8 @@ class MovieController( cc: ControllerComponents,
         pageDescription = meta.description,
         pageUrl         = PageMeta.canonicalUrl(request),
         fbAppId         = PageMeta.fbAppId,
+        siblingPath     = "/kina",
+        siblingHtml     = sibling,
       )).withHeaders(varyOnSwap)
     }
   }
@@ -333,13 +338,19 @@ class MovieController( cc: ControllerComponents,
     val cinemas = movieControllerService.toCinemaSchedules()
     if (isViewSwap(request))
       Ok(views.html._kinaView(cinemas, pinned, devMode)).withHeaders(varyOnSwap)
-    else
+    else {
+      // Embed the Filmy sibling fragment so the first swipe tracks instantly with
+      // no network fetch — shared.js seeds its prefetch cache from this at boot.
+      val sibling = views.html._repertoireView(movieControllerService.toSchedules(), devMode).body
       Ok(views.html.kina(
         cinemas, allCinemas, Cinema.pillMap,
         devMode, user, oauthProviders, pinned,
         pageUrl = PageMeta.canonicalUrl(request),
         fbAppId = PageMeta.fbAppId,
+        siblingPath = "/",
+        siblingHtml = sibling,
       )).withHeaders(varyOnSwap)
+    }
   }
 
   /** Conditional-GET wrapper shared by the JSON API endpoints: returns 304 if

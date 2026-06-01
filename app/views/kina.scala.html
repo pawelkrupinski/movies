@@ -1,5 +1,5 @@
 @import controllers.CinemaSchedule
-@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pinnedCinema: Option[String] = None, pageUrl: String = "", fbAppId: Option[String] = None)
+@(cinemas: Seq[CinemaSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pinnedCinema: Option[String] = None, pageUrl: String = "", fbAppId: Option[String] = None, siblingPath: String = "", siblingHtml: String = "")
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -33,6 +33,7 @@
 @_hiddenModal()
 
 @_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
+@_siblingViewSeed(siblingPath, siblingHtml)
 <script defer src="@routes.Assets.versioned("js/shared.js")"></script>
 
 @* `#view-pager`/`#view-root` — the swappable region for the Filmy↔Kina

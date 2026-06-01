@@ -365,30 +365,46 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await assertConsistent(page);                                   // consistent with whatever is live
   });
 
-  test('a finger landing warms the sibling so a cold-start swipe can track', async ({ page }) => {
-    // Cold-start responsiveness: until the sibling is cached, beginDrag returns
-    // null and the drag has no live tracking (release-only). A pointerdown now
-    // kicks the prefetch. Keep the cache cold (fail every prefetch) so each
-    // prefetchView call is observable on the wire.
-    const reqs = [];
-    await page.route('**/kina**', (route) => {
-      if (route.request().headers()['x-requested-with'] === 'view-swap') {
-        reqs.push(route.request().url());
-        return route.abort();
-      }
+  test('the server-embedded sibling lets the first swipe track live with zero network', async ({ page }) => {
+    // The page embeds the Kina #view-root fragment; shared.js seeds its prefetch
+    // cache at boot. So a swipe right after load must mount the sibling LIVE
+    // (in-place swap) without any view-swap fetch — even with every such fetch
+    // blocked. Without the embed it would fall back to a full-page navigation
+    // (a reload), which the sentinel below detects.
+    await page.route('**', (route) => {
+      if (route.request().headers()['x-requested-with'] === 'view-swap') return route.abort();
       return route.continue();
     });
     await page.goto('/');
     await waitForCards(page);
-    await page.waitForTimeout(800);             // let the boot warm fire (idle timeout 600)
-    const before = reqs.length;
-    expect(before).toBeGreaterThan(0);          // sanity: the boot warm tried
-    await page.evaluate(() => {
-      const r = document.getElementById('film-grid').getBoundingClientRect();
-      document.getElementById('film-grid').dispatchEvent(new PointerEvent('pointerdown',
-        { clientX: r.left + r.width / 2, clientY: r.top + 40, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true }));
+    await page.evaluate(() => { (window as any).__noReload = 'kept'; });   // wiped by a full navigation
+    // No tab-click warm — straight to a swipe.
+    await swipe(page, '#film-grid', -250);
+    await page.waitForURL(/\/kina/);
+    expect(await page.evaluate(() => (window as any).__noReload)).toBe('kept');   // in-place, not a reload
+    await assertConsistent(page, 'kina');
+  });
+
+  test('both directions swipe live with zero network (embed forward, current-view cache back)', async ({ page }) => {
+    // The embed warms the sibling; the boot capture of the current view warms
+    // the one we're on. So from a single load, swiping Filmy→Kina AND back
+    // Kina→Filmy both mount in-place with every view-swap fetch blocked — no
+    // cold back-swipe, no reload. Without the back-cache, the return swipe would
+    // fall back to a full navigation (reload), wiping the sentinel.
+    await page.route('**', (route) => {
+      if (route.request().headers()['x-requested-with'] === 'view-swap') return route.abort();
+      return route.continue();
     });
-    await expect.poll(() => reqs.length).toBeGreaterThan(before);   // the touch kicked another warm
+    await page.goto('/');
+    await waitForCards(page);
+    await page.evaluate(() => { (window as any).__noReload = 'kept'; });
+    await swipe(page, '#film-grid', -250);                         // Filmy → Kina (embed seed)
+    await page.waitForURL(/\/kina/);
+    await assertConsistent(page, 'kina');
+    await swipe(page, '#film-grid', 250);                          // Kina → Filmy (current-view cache)
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    expect(await page.evaluate(() => (window as any).__noReload)).toBe('kept');   // both in-place, no reload
+    await assertConsistent(page, 'films');
   });
 
   test('a swipe that starts with a little vertical jitter still switches (axis bias)', async ({ page }) => {

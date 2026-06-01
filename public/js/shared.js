@@ -1993,6 +1993,16 @@
   document.addEventListener('pointercancel', endDrag, { passive: true });
 
   document.addEventListener('DOMContentLoaded', () => {
+    // Cache the CURRENT view as-rendered, before bootView mutates it (sort /
+    // display:none). The embedded seed below warms the sibling; this warms the
+    // view we're on — so swiping (or clicking the tab) BACK to it is instant
+    // too, not a cold fetch. Only for the bare routes the swap targets
+    // (`/`, `/kina`); a pinned `/kina/:cinema` is left to fetch.
+    const liveRoot = document.getElementById('view-root');
+    const liveView = liveRoot?.dataset.view;
+    if (liveView && location.pathname === VIEW_PATHS[liveView]) {
+      _prefetch.set(VIEW_PATHS[liveView], { html: liveRoot.outerHTML, ts: Date.now() });
+    }
     // One-time shell init — navbar chrome that survives view swaps and must
     // NOT re-run (date options, square nav buttons, hidden-films badge).
     populateDayOptions();
@@ -2002,6 +2012,18 @@
     bootView();
     setActiveTab(document.getElementById('view-root')?.dataset.view || 'films');
     bootMergeFromServer();
+    // Seed the prefetch cache from the sibling fragment the server embedded in
+    // the page (a `type="application/json"` block). This makes the FIRST swipe
+    // track live with zero network — no fetch latency, no release-only fallback,
+    // even on a slow connection or a cold dev server. The warm below still runs
+    // (refreshes the cache / covers the no-embed case).
+    try {
+      const seedEl = document.getElementById('kinowo-sibling-view');
+      if (seedEl) {
+        const seed = JSON.parse(seedEl.textContent);
+        if (seed && seed.path && seed.html) _prefetch.set(seed.path, { html: seed.html, ts: Date.now() });
+      }
+    } catch (e) { /* malformed seed — fall back to the network warm below */ }
     // Warm the sibling so the first switch is instant. Fire it one frame after
     // load — off the critical first paint, but PROMPTLY: the earlier idle
     // callback could be starved for up to its timeout on a busy page (every

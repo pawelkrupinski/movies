@@ -58,23 +58,28 @@ object FixtureServerMain {
     val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(now)
 
     val pills = Cinema.pillMap
+
+    // `#view-root`-only fragments served for `X-Requested-With: view-swap`
+    // requests — mirrors the production controller so the in-place swap (and
+    // its tests) exercise the real "fetch just the fragment" path. The full
+    // pages also embed the SIBLING fragment as the prefetch seed (same as the
+    // controller), so the embed-seed test sees it.
+    val indexFragment: String = views.html._repertoireView(schedules, devMode = false).body
+    def renderKinaFragment(pinned: Option[String]): String =
+      views.html._kinaView(cinemaSchedules, pinned, devMode = false).body
+
     def renderKina(pinned: Option[String]): String = views.html.kina(
       cinemaSchedules, cinemas, pills, devMode = false,
       currentUser = anon, oauthProviders = noOauth,
-      pinnedCinema = pinned
+      pinnedCinema = pinned,
+      siblingPath = "/", siblingHtml = indexFragment
     ).body
 
     val indexHtml: String = views.html.repertoire(
       schedules, cinemas, pills, devMode = false,
-      currentUser = anon, oauthProviders = noOauth
+      currentUser = anon, oauthProviders = noOauth,
+      siblingPath = "/kina", siblingHtml = renderKinaFragment(None)
     ).body
-
-    // `#view-root`-only fragments served for `X-Requested-With: view-swap`
-    // requests — mirrors the production controller so the in-place swap (and
-    // its tests) exercise the real "fetch just the fragment" path.
-    val indexFragment: String = views.html._repertoireView(schedules, devMode = false).body
-    def renderKinaFragment(pinned: Option[String]): String =
-      views.html._kinaView(cinemaSchedules, pinned, devMode = false).body
 
     val filmyHtml: String = views.html.browse(
       schedules, "Filmy", devMode = false,
