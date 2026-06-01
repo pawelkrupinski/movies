@@ -320,6 +320,66 @@ test.describe('avatar pill without Bootstrap CSS', () => {
   });
 });
 
+// ── Avatar pill matches the search box on a DESKTOP browser narrowed
+//    to mobile width ────────────────────────────────────────────────
+//
+// This is the case the mobile-emulation projects (webkit-iphone-*) miss:
+// a real desktop browser dragged narrow. The reported bug — the avatar pill
+// noticeably TALLER than the search box — only shows up at ≤575px, which is
+// exactly why "it works at desktop width but breaks when I narrow it" reads
+// like a width regression. The cause is the auth pill keeping its 35px
+// desktop height at narrow widths while the search box drops to the 28px
+// mobile height; the fix is the `@media (max-width:575px) { .navbar
+// .auth-menu { height:28px; … } }` pin that makes the pill track the search
+// box. Driving an actual desktop project (not a mobile-emulation viewport)
+// and resizing it reproduces the user's exact repro. Pre-fix CSS → pill 35px
+// vs search 28px (fails); fixed CSS → both 28px (passes).
+test.describe('avatar pill on a desktop browser narrowed to mobile width', () => {
+  // Desktop projects only — these are non-emulated browsers we can resize to a
+  // phone-narrow viewport, the way the user reproduced it in desktop Safari.
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(!testInfo.project.name.includes('desktop'), 'desktop projects only');
+    await page.setViewportSize({ width: 400, height: 800 });
+    await page.goto('/');
+    await waitForCards(page);
+    await injectAuthMenu(page);
+  });
+
+  test('the avatar pill is the same height as the search box at 400px wide', async ({ page }) => {
+    const m = await page.evaluate(() => {
+      const nav = document.querySelector('.navbar')!;
+      const pill = nav.querySelector('.auth-menu') as HTMLElement | null;
+      const search = nav.querySelector('.search-input') as HTMLElement | null;
+      const img = nav.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
+      if (!pill || !img) return null;
+      const pr = pill.getBoundingClientRect();
+      const sr = search ? search.getBoundingClientRect() : null;
+      const ir = img.getBoundingClientRect();
+      return {
+        pillH: pr.height,
+        searchH: sr ? sr.height : -1,
+        imgMid: ir.top + ir.height / 2,
+        pillMid: pr.top + pr.height / 2,
+        vw: window.innerWidth,
+      };
+    });
+    expect(m, 'auth-menu / avatar not rendered').not.toBeNull();
+    expect(m!.vw, 'expected a narrow (mobile-width) viewport').toBeLessThanOrEqual(575);
+    expect(m!.searchH, 'search box should be visible at 400px').toBeGreaterThan(0);
+    // The headline assertion: the pill must NOT stand taller than the search
+    // box. Pre-fix it stayed 35px while search dropped to 28px.
+    expect(
+      Math.abs(m!.pillH - m!.searchH),
+      `avatar pill ${m!.pillH.toFixed(1)}px ≠ search ${m!.searchH.toFixed(1)}px at ${m!.vw}px wide`,
+    ).toBeLessThanOrEqual(1);
+    // …and the avatar stays centred within whatever height the pill is.
+    expect(
+      Math.abs(m!.imgMid - m!.pillMid),
+      `avatar mid ${m!.imgMid.toFixed(1)} not centred in pill mid ${m!.pillMid.toFixed(1)}`,
+    ).toBeLessThanOrEqual(1.5);
+  });
+});
+
 // ── Mobile landscape: font + height uniformity ────────────────────
 
 test.describe('navbar uniformity — mobile landscape', () => {
