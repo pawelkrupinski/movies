@@ -383,57 +383,44 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   }
 
   /**
-   * Blurring the navbar search resets an iOS-style focus-zoom back to
-   * fit-width by briefly pinning `maximum-scale=1` on the viewport meta, then
-   * restoring it on the next frame so pinch-zoom still works. iOS Safari's own
-   * focus auto-zoom can't be reproduced in headless Chrome, so this drives
-   * `resetSearchZoom` deterministically: it stubs `visualViewport.scale` to
-   * look zoomed-in and queues `requestAnimationFrame` so the restore only fires
-   * when we flush it.
+   * iOS Safari auto-zooms when focus lands on an input whose font-size is
+   * below 16px — and the navbar search is intentionally ~12.5px (see
+   * `--navbar-fs` in `_sharedStyles`). The robust fix is PREVENTION, not
+   * correction: while the field is focused we pin `maximum-scale=1` on the
+   * viewport meta so iOS never zooms in the first place; on blur we drop it so
+   * pinch-zoom works everywhere else.
+   *
+   * Why prevention over the earlier on-blur "undo the zoom" approach: undoing
+   * an already-applied zoom proved unreliable on real MobileSafari, and the
+   * behaviour can't be reproduced in any local automation (Playwright WebKit
+   * doesn't model iOS focus-zoom; the Simulator can't be tap-driven into it).
+   * The meta-pinning MECHANISM, by contrast, is pure DOM and fully testable.
    */
-  it should "reset an iOS focus-zoom to fit-width when the search input blurs" in {
+  it should "pin maximum-scale=1 on the viewport while the search input is focused" in {
     onPath("/") { page =>
-      // shared.js must be loaded — the inline `onblur="resetSearchZoom()"`
-      // resolves the global. (Catches a stale/unserved asset early.)
-      page.evalBool("typeof resetSearchZoom === 'function'") shouldBe true
-
-      // Stub a zoomed-in visualViewport and capture rAF callbacks instead of
-      // running them, so the restore only fires when we flush it. Wrapped in an
-      // IIFE so the eval resolves to `undefined` — returning the
-      // `Object.defineProperty` result (the `window` object) makes CDP's
-      // return-by-value serializer fail with "Object reference chain too long".
-      page.eval(
-        "(() => {" +
-          " window.__raf = [];" +
-          " window.requestAnimationFrame = (cb) => { window.__raf.push(cb); return 1; };" +
-          " Object.defineProperty(window, 'visualViewport', { configurable: true, value: { scale: 2 } });" +
-          " })()"
-      )
       val base = page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')")
-
-      // Dispatch `blur` directly: headless Chrome has no real window focus, so
-      // `el.focus(); el.blur()` doesn't reliably fire it — but a dispatched
-      // event still invokes the inline `onblur` handler.
-      page.eval("document.getElementById('search-input').dispatchEvent(new Event('blur'))")
-
-      // Synchronous phase: max-scale pinned so Safari snaps the zoom back out.
-      val pinned = page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')")
-      withClue(s"viewport after blur was [$pinned]: ") {
-        pinned should include("maximum-scale=1")
+      withClue("baseline meta should be zoomable (no maximum-scale): ") {
+        base should not include "maximum-scale"
       }
 
-      // The queued rAF restores the original content, re-enabling pinch-zoom.
-      page.eval("window.__raf.forEach(cb => cb());")
-      page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')") shouldBe base
+      page.eval("document.getElementById('search-input').dispatchEvent(new Event('focus'))")
+      val focused = page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')")
+      withClue(s"viewport while focused was [$focused]: ") {
+        focused should include("maximum-scale=1")
+      }
     }
   }
 
-  /** Guard: when the page isn't zoomed (scale == 1), blur leaves the meta alone. */
-  it should "leave the viewport meta untouched on blur when the page isn't zoomed" in {
+  it should "restore the zoomable viewport when the search input blurs" in {
     onPath("/") { page =>
       val base = page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')")
+      page.eval("document.getElementById('search-input').dispatchEvent(new Event('focus'))")
       page.eval("document.getElementById('search-input').dispatchEvent(new Event('blur'))")
-      page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')") shouldBe base
+      val restored = page.evalString("document.querySelector('meta[name=viewport]').getAttribute('content')")
+      withClue(s"viewport after blur was [$restored]: ") {
+        restored shouldBe base
+        restored should not include "maximum-scale"
+      }
     }
   }
 

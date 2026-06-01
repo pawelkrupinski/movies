@@ -88,24 +88,33 @@
     _filterDebounce = setTimeout(applyFilters, 80);
   }
 
-  // iOS Safari zooms the viewport IN when focus lands on the navbar search
-  // (font-size < 16px — a deliberate trade-off, see `_sharedStyles`) and does
-  // NOT zoom back out when the field is blurred, leaving the page stuck wider
-  // than the screen. Momentarily pinning `maximum-scale=1` forces Safari to
-  // snap the zoom back to fit-width; restoring the original content on the next
-  // frame re-enables pinch-zoom (leaving it pinned would disable zoom for good
-  // — a WCAG no-no). Guarded on `visualViewport.scale` so it's a pure no-op
-  // when the page isn't actually zoomed in (desktop, or a phone never zoomed).
-  function resetSearchZoom() {
-    const vv = window.visualViewport;
-    if (!vv || vv.scale <= 1) return;
-    const vp = document.querySelector('meta[name="viewport"]');
-    if (!vp) return;
-    const base = vp.getAttribute('content');
-    vp.setAttribute('content', base + ', maximum-scale=1');
-    requestAnimationFrame(() => vp.setAttribute('content', base));
+  // iOS Safari auto-zooms the viewport when focus lands on an input whose
+  // font-size is below 16px — and the navbar search is intentionally ~12.5px
+  // (`--navbar-fs`, a deliberate trade-off for navbar typography uniformity,
+  // see `_sharedStyles`). Worse, Safari does NOT zoom back out on blur, leaving
+  // the page stuck wider than the screen.
+  //
+  // PREVENT it rather than undo it: while the field is focused, pin
+  // `maximum-scale=1` so iOS never zooms in the first place; on blur, restore
+  // the original content so pinch-zoom works everywhere else (leaving it pinned
+  // would disable zoom for good — a WCAG no-no). Undoing an already-applied
+  // zoom proved unreliable on real MobileSafari; preventing it is robust.
+  const _viewportMeta = () => document.querySelector('meta[name="viewport"]');
+  let _searchBaseViewport = null;
+  function lockSearchZoom() {
+    const vp = _viewportMeta();
+    if (!vp || _searchBaseViewport !== null) return;   // already locked — no-op
+    _searchBaseViewport = vp.getAttribute('content');
+    vp.setAttribute('content', _searchBaseViewport + ', maximum-scale=1');
   }
-  window.resetSearchZoom = resetSearchZoom;
+  function unlockSearchZoom() {
+    const vp = _viewportMeta();
+    if (!vp || _searchBaseViewport === null) return;
+    vp.setAttribute('content', _searchBaseViewport);
+    _searchBaseViewport = null;
+  }
+  window.lockSearchZoom   = lockSearchZoom;
+  window.unlockSearchZoom = unlockSearchZoom;
 
   function updateFormatBtn() {
     const parts = [...getFormatFilter()];

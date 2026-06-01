@@ -167,7 +167,7 @@
   
   
     <div class="navbar-search">
-      <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()" onblur="resetSearchZoom()">
+      <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
     </div>
     <div class="d-flex align-items-stretch navbar-date" style="gap:2px">
       <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
