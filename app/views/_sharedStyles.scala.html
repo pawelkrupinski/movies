@@ -149,7 +149,15 @@
      ≤575px, even roomy ones), the select flex-shrinks — see the
      `.navbar-date` rule in the portrait block below. It shows its
      full label when the row has slack and only ellipsizes when the
-     row genuinely overflows. */
+     row genuinely overflows.
+
+     Exception, the narrowest phones (≤379px): `flex-shrink` doesn't save
+     row 2 there, because flexbox WRAPS to a new line before it shrinks an
+     item — so a full-width select + a maxed-out Filtry label spill into a
+     3rd row (navbar-overflow test). Cap the select at those widths so the
+     two stay on one row. Roomier phones (390px+, where the day-selector
+     no-clip test lives) keep the uncapped flex-shrink behaviour. */
+  @@media (max-width: 379px) { #date-filter { max-width: 6.5rem; } }
   .hide-btn {
     position: absolute;
     top: 6px; right: 6px;
