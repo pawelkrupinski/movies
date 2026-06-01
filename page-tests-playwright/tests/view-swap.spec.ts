@@ -637,17 +637,23 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
       const el = document.getElementById('film-grid');
       const r = el.getBoundingClientRect();
       const y = r.top + 40;
-      const x0 = r.left + r.width * 0.85;
+      const x0 = r.left + r.width * 0.9;
+      // The preview is position-based (|drag| > 40% of the pager width), so the
+      // drag distances must be a fraction of the VIEWPORT, not a fixed pixel
+      // count — otherwise 260px clears 40% on a 360px phone but not on a 760px
+      // landscape, and the preview never flips to Kina there.
+      const W = window.innerWidth;
       const pe = (type, x) => el.dispatchEvent(new PointerEvent(type, {
         clientX: x, clientY: y, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true,
       }));
       if (phase === 'past') {
         pe('pointerdown', x0);
-        for (let i = 1; i <= 6; i++) pe('pointermove', x0 - (260 * i) / 6);   // well past 40% toward Kina
+        for (let i = 1; i <= 6; i++) pe('pointermove', x0 - (W * 0.55 * i) / 6);  // past 40% toward Kina
       } else if (phase === 'back') {
-        for (let i = 1; i <= 6; i++) pe('pointermove', x0 - 260 + (240 * i) / 6); // back near the origin
+        const from = x0 - W * 0.55, to = x0 - W * 0.2;                            // back under 40% again
+        for (let i = 1; i <= 6; i++) pe('pointermove', from + ((to - from) * i) / 6);
       } else {
-        pe('pointerup', x0 - 20);                                            // release near origin
+        pe('pointerup', x0 - 20);                                                // release near origin
       }
     }, phase);
 
