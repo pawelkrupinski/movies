@@ -361,6 +361,12 @@ jobs:
                     - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, shard: '2/2' }
                     - { variant: pw desktop,           kind: playwright, project: webkit-desktop,              browser: webkit }
         runs-on: ubuntu-latest
+        # Run inside the official Playwright image: webkit + its OS deps are
+        # baked in, so each shard skips the ~90s `npx playwright install
+        # --with-deps` apt step (the biggest per-shard overhead on this, the
+        # slowest matrix). Tag MUST match the @playwright/test version in
+        # page-tests-playwright/package-lock.json (currently 1.60.0).
+        container: mcr.microsoft.com/playwright:v1.60.0-noble
         permissions:
             contents: read
             checks: write
@@ -368,10 +374,11 @@ jobs:
             - uses: actions/checkout@v4
             - uses: ./.github/actions/run-page-test
               with:
-                  kind:          ${{ matrix.kind }}
-                  project:       ${{ matrix.project }}
-                  browser:       ${{ matrix.browser }}
-                  shard:         ${{ matrix.shard }}
+                  kind:             ${{ matrix.kind }}
+                  project:          ${{ matrix.project }}
+                  browser:          ${{ matrix.browser }}
+                  shard:            ${{ matrix.shard }}
+                  prebaked_browser: 'true'
 
     page-tests-firefox:
         name: page tests (firefox / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})

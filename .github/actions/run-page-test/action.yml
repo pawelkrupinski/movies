@@ -28,6 +28,13 @@ inputs:
   shard:
     description: Playwright shard when kind=playwright (e.g. `1/2`).
     required: false
+  prebaked_browser:
+    description: |
+      Set "true" when the job runs inside the official Playwright container
+      (browsers + OS deps already baked in). Skips the ~90s
+      `npx playwright install --with-deps` apt step and the browser cache.
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -71,18 +78,24 @@ runs:
     # package-lock + the row's browser so a Playwright bump pulls
     # fresh and rows don't share each other's tarball.
     - uses: actions/cache@v4
-      if: inputs.kind == 'playwright'
+      if: inputs.kind == 'playwright' && inputs.prebaked_browser != 'true'
       with:
         path: ~/.cache/ms-playwright
         key: playwright-${{ runner.os }}-${{ inputs.browser }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
+        # Fall back to any prior cache for this engine so a package-lock bump
+        # restores the old binary instead of a cold re-download.
+        restore-keys: |
+          playwright-${{ runner.os }}-${{ inputs.browser }}-
 
     - name: Install npm deps
       if: inputs.kind == 'playwright'
       shell: bash
       run: cd page-tests-playwright && npm ci
 
+    # Skipped inside the Playwright container (browsers + deps prebaked) —
+    # that avoids the ~90s `--with-deps` apt-get the bare runner pays per shard.
     - name: Install Playwright browser
-      if: inputs.kind == 'playwright'
+      if: inputs.kind == 'playwright' && inputs.prebaked_browser != 'true'
       shell: bash
       run: cd page-tests-playwright && npx playwright install --with-deps ${{ inputs.browser }}
 
