@@ -172,10 +172,11 @@ async function injectAuthMenu(page: Page): Promise<void> {
 }
 
 test.describe('logged-in avatar pill height', () => {
-  test.beforeEach(async ({ page }, testInfo) => {
-    const name = testInfo.project.name;
-    const isPortraitMobile = !name.includes('desktop') && !name.includes('landscape');
-    test.skip(!isPortraitMobile, 'mobile portrait only');
+  // Runs on EVERY project — desktop + mobile, Chromium + WebKit + Firefox.
+  // The "avatar pinned to the top of a tall pill" misalignment reproduces in
+  // desktop Safari too, so gating this to mobile-portrait (as it once was) let
+  // the bug slip through on exactly the engine the user hit it on.
+  test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await waitForCards(page);
     await injectAuthMenu(page);
@@ -206,15 +207,19 @@ test.describe('logged-in avatar pill height', () => {
     const m = await page.evaluate(() => {
       const nav = document.querySelector('.navbar')!;
       const img = nav.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
+      const pill = nav.querySelector('.auth-menu') as HTMLElement | null;
       const search = nav.querySelector('.search-input') as HTMLElement | null;
-      if (!img) return null;
+      if (!img || !pill) return null;
       const cs = getComputedStyle(img);
       const ir = img.getBoundingClientRect();
+      const pr = pill.getBoundingClientRect();
       const sr = search ? search.getBoundingClientRect() : null;
       return {
         w: ir.width, h: ir.height, top: ir.top,
         minW: cs.minWidth, minH: cs.minHeight,
         maxW: cs.maxWidth, maxH: cs.maxHeight,
+        pillH: pr.height,
+        pillMid: pr.top + pr.height / 2,
         searchH: sr ? sr.height : -1,
         searchMid: sr ? sr.top + sr.height / 2 : null,
         imgMid: ir.top + ir.height / 2,
@@ -232,6 +237,16 @@ test.describe('logged-in avatar pill height', () => {
     // Stays the intended small square — never ballooned to the photo's size.
     expect(m!.w, `avatar width ${m!.w}px`).toBeLessThanOrEqual(24);
     expect(m!.h, `avatar height ${m!.h}px`).toBeLessThanOrEqual(24);
+    // THE misalignment defense: the avatar must sit vertically CENTRED inside
+    // its own pill, regardless of how tall the pill grows. The reported bug is
+    // the avatar pinned to the TOP of a tall purple pill with empty space
+    // below it — i.e. the pill stretched (to the navbar row height) while the
+    // 22px avatar, unable to stretch, fell to flex-start. A centred avatar has
+    // |imgMid - pillMid| ≈ 0; a top-pinned one in a tall pill blows past this.
+    expect(
+      Math.abs(m!.imgMid - m!.pillMid),
+      `avatar mid ${m!.imgMid.toFixed(1)} not centred in pill mid ${m!.pillMid.toFixed(1)} (pill ${m!.pillH.toFixed(1)}px tall)`,
+    ).toBeLessThanOrEqual(1.5);
     // When the search box is visible: never taller than it, and centred on the
     // same row (no vertical misalignment).
     if (m!.searchH > 0) {
@@ -241,6 +256,67 @@ test.describe('logged-in avatar pill height', () => {
         `avatar mid ${m!.imgMid.toFixed(1)} vs search mid ${(m!.searchMid as number).toFixed(1)}`,
       ).toBeLessThan(6);
     }
+  });
+});
+
+// ── Avatar pill survives Bootstrap CSS NOT being applied ──────────
+//
+// The reported "avatar pinned to the top of a tall purple pill" bug only ever
+// reproduced in the wild, never in these injected tests — because the test
+// page always loaded Bootstrap, and the navbar got its `align-items:center`
+// from Bootstrap's `.align-items-center` utility class. In real Safari that
+// CSS can be missing at layout time (slow CDN, blocked, a stale cache entry),
+// and the navbar falls back to flex's DEFAULT `align-items:stretch`: the auth
+// pill stretches to the navbar row height (driven by the taller search box)
+// while the 22px avatar — unable to stretch — drops to the top of the pill.
+//
+// This block reproduces that exact condition by ABORTING the Bootstrap
+// stylesheet request, so the only navbar centering left is whatever the
+// page's own inline `<style>` provides. The fix is the inlined
+// `.navbar { ...; align-items: center; ... }` rule; with Bootstrap blocked
+// this test FAILS on the pre-fix CSS (pill stretches, avatar top-pinned) and
+// PASSES once the navbar owns its own `align-items:center`.
+test.describe('avatar pill without Bootstrap CSS', () => {
+  test.beforeEach(async ({ page }) => {
+    // Drop the Bootstrap stylesheet on the floor — simulate it never applying.
+    await page.route(/bootstrap.*\.css$/, (route) => route.abort());
+    await page.goto('/');
+    await waitForCards(page);
+    await injectAuthMenu(page);
+  });
+
+  test('avatar stays centred in its pill even when Bootstrap never loads', async ({ page }) => {
+    const m = await page.evaluate(() => {
+      const nav = document.querySelector('.navbar')!;
+      const img = nav.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
+      const pill = nav.querySelector('.auth-menu') as HTMLElement | null;
+      const search = nav.querySelector('.search-input') as HTMLElement | null;
+      if (!img || !pill) return null;
+      const ir = img.getBoundingClientRect();
+      const pr = pill.getBoundingClientRect();
+      const sr = search ? search.getBoundingClientRect() : null;
+      return {
+        avatarH: ir.height,
+        pillH: pr.height,
+        imgMid: ir.top + ir.height / 2,
+        pillMid: pr.top + pr.height / 2,
+        navAlign: getComputedStyle(nav as HTMLElement).alignItems,
+        searchH: sr ? sr.height : -1,
+      };
+    });
+    expect(m, 'auth-menu / avatar not rendered').not.toBeNull();
+    // The navbar must center its own children — not lean on Bootstrap's utility.
+    expect(m!.navAlign, '.navbar align-items must be center from inline CSS').toBe('center');
+    // The avatar must sit centred in its pill (the bug pins it to the top of a
+    // stretched pill). This is the assertion that fails on the pre-fix CSS.
+    // (A tall pill is fine as long as the avatar is centred in it — without
+    // Bootstrap every navbar control renders at its natural ~40px height and
+    // the pill matches them. The BUG is the avatar pinned to the TOP of the
+    // pill with empty space below, i.e. align-items falling back to stretch.)
+    expect(
+      Math.abs(m!.imgMid - m!.pillMid),
+      `avatar mid ${m!.imgMid.toFixed(1)} not centred in pill mid ${m!.pillMid.toFixed(1)} (pill ${m!.pillH.toFixed(1)}px, avatar ${m!.avatarH.toFixed(1)}px, search ${m!.searchH.toFixed(1)}px)`,
+    ).toBeLessThanOrEqual(1.5);
   });
 });
 
