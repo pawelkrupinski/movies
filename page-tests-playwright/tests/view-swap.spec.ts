@@ -159,7 +159,14 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     await page.waitForURL(/\/kina/);
     await page.waitForSelector('#cinema-pills .cinema-pill', { state: 'attached' });
     await settle();
-    expect(await scrollY()).toBeLessThan(5);   // at the top (≤1px sub-pixel/anchoring slack), not retained at Filmy's deep offset
+    // "Landed at the top", not retained at Filmy's deep offset. The tolerance
+    // is generous (50px) on purpose: as the fixture's 404-ing posters collapse,
+    // scroll-anchoring nudges the position a handful of px even after settle()
+    // (observed up to 8px on CI), so a <5px bound flaked. 50px is still an
+    // order of magnitude below the smallest offset a *bug* would leave behind
+    // here — Kina's shallow park (>250) or Filmy's deep one (>1500) — so it
+    // proves "top, not a retained offset" without chasing sub-pixel drift.
+    expect(await scrollY()).toBeLessThan(50);
 
     // Park Kina shallow — clearly distinct from Filmy's deep offset.
     await parkAt(400);
