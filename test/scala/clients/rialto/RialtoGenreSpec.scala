@@ -33,6 +33,12 @@ class RialtoGenreSpec extends AnyFlatSpec with Matchers {
     ) shouldBe Seq("Przygodowy", "Horror", "Sci-Fi")
   }
 
+  it should "split a slash-separated genre list without emitting the slash as a genre" in {
+    client.parseGenres(
+      """<p class="movie-parameters">Fantastyczny / romantyczny | 90 min</p>"""
+    ) shouldBe Seq("Fantastyczny", "Romantyczny")
+  }
+
   it should "read a single genre before the runtime pipe" in {
     client.parseGenres("""<p class="movie-parameters">Animowany | 55 min</p>""") shouldBe Seq("Animowany")
   }

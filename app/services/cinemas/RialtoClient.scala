@@ -22,12 +22,17 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
   // pipe-delimited parameters line whose first segment is the genre list:
   //   `<p class="movie-parameters">Dramat, Komedia | 120 min</p>`
   //   `<p class="movie-parameters">Przygodowy Horror Sci-Fi | Od lat 12 | 99 min</p>`
+  //   `<p class="movie-parameters">Fantastyczny / romantyczny | 90 min</p>`
   //   `<p class="movie-parameters">Animowany | 55 min</p>`
-  // Genres come comma-separated on some pages and space-separated on others; the
+  // Genres are delimited inconsistently across pages — by comma, by a bare
+  // space, or by " / " — so split the first segment on any run of those. The
   // remaining segments are an optional age rating and the runtime. Capture the
   // first segment; the `|` is required so a duration-only line ("55 min") can't
   // masquerade as a genre.
   private val GenrePat    = """movie-parameters[^>]*>\s*([^<|]+?)\s*\|""".r
+  // Genre separators: a run of commas, slashes, and/or whitespace. Hyphens stay
+  // intact so "Sci-Fi" survives as one genre.
+  private val GenreSepPat = """[,/\s]+""".r
   // A first segment that is itself an age rating ("Od lat 12", "b.o.") or a
   // runtime means the film simply has no genre — don't emit it as one.
   private val NonGenreSegmentPat = """(?i)^(?:od lat \d+|b\.o\.|\d+\s*min)$""".r
@@ -132,14 +137,13 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
   private case class EventData(showtimes: Seq[Showtime], genres: Seq[String])
 
   /** Genres from the event page's `movie-parameters` line, when present.
-   *  Split (on commas, or on whitespace when the page serves a space-separated
-   *  list) and title-cased to match the genres TMDB / Filmweb and the other
-   *  cinemas contribute. Empty for pages without the marker or whose first
-   *  segment is an age rating / runtime rather than a genre. */
+   *  Split on the page's inconsistent comma / space / slash delimiters and
+   *  title-cased to match the genres TMDB / Filmweb and the other cinemas
+   *  contribute. Empty for pages without the marker or whose first segment is
+   *  an age rating / runtime rather than a genre. */
   def parseGenres(html: String): Seq[String] =
     GenrePat.findFirstMatchIn(html).map(_.group(1).trim).filterNot(NonGenreSegmentPat.matches).map { segment =>
-      val parts = if (segment.contains(",")) segment.split(",") else segment.split("""\s+""")
-      parts.map(_.trim).filter(_.nonEmpty)
+      GenreSepPat.split(segment).map(_.trim).filter(_.nonEmpty)
         .map(tools.TextNormalization.titleCaseIfAllLower).toSeq
     }.getOrElse(Seq.empty)
 
