@@ -251,10 +251,17 @@ test.describe('logged-in avatar pill height', () => {
     // same row (no vertical misalignment).
     if (m!.searchH > 0) {
       expect(m!.h, `avatar ${m!.h}px taller than search ${m!.searchH}px`).toBeLessThanOrEqual(m!.searchH + 1);
+      // The pill must share the search box's MIDLINE, not merely be "roughly on
+      // the same row". A ~1.5px offset — the avatar pill riding above the search
+      // box because its block wrapper (`.navbar-auth`) reserved line-height
+      // descender space below the inline-flex pill, pinning the pill to the
+      // wrapper's top — is invisible at 100% but glaring under the pinch-zoom a
+      // phone user applies. A 1px bound catches it; the old 6px bound let it
+      // through. Fixed by `.navbar-auth { display:flex; align-items:center }`.
       expect(
-        Math.abs(m!.imgMid - (m!.searchMid as number)),
-        `avatar mid ${m!.imgMid.toFixed(1)} vs search mid ${(m!.searchMid as number).toFixed(1)}`,
-      ).toBeLessThan(6);
+        Math.abs(m!.pillMid - (m!.searchMid as number)),
+        `pill mid ${m!.pillMid.toFixed(1)} not on search mid ${(m!.searchMid as number).toFixed(1)} — avatar pill vertically misaligned vs the search box`,
+      ).toBeLessThanOrEqual(1);
     }
   });
 });
@@ -360,6 +367,7 @@ test.describe('avatar pill on a desktop browser narrowed to mobile width', () =>
         searchH: sr ? sr.height : -1,
         imgMid: ir.top + ir.height / 2,
         pillMid: pr.top + pr.height / 2,
+        searchMid: sr ? sr.top + sr.height / 2 : null,
         vw: window.innerWidth,
       };
     });
@@ -377,6 +385,16 @@ test.describe('avatar pill on a desktop browser narrowed to mobile width', () =>
       Math.abs(m!.imgMid - m!.pillMid),
       `avatar mid ${m!.imgMid.toFixed(1)} not centred in pill mid ${m!.pillMid.toFixed(1)}`,
     ).toBeLessThanOrEqual(1.5);
+    // …and the pill itself shares the search box's MIDLINE. This is the
+    // misalignment the user hit: the pill rode ~1.5px above the search box
+    // because `.navbar-auth` (a block wrapper around an inline-flex pill)
+    // reserved line-height descender space below the pill. A 1px bound; fixed
+    // by `.navbar-auth { display:flex; align-items:center }`.
+    expect(m!.searchMid, 'search not visible at 400px').not.toBeNull();
+    expect(
+      Math.abs(m!.pillMid - (m!.searchMid as number)),
+      `pill mid ${m!.pillMid.toFixed(1)} not on search mid ${(m!.searchMid as number).toFixed(1)}`,
+    ).toBeLessThanOrEqual(1);
   });
 });
 
