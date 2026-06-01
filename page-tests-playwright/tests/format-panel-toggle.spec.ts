@@ -56,10 +56,22 @@ test.describe('Filtry dropdown panel', () => {
     // Click a real card poster link (outside the panel). Before the fix this
     // both closed the panel AND followed the link to /film. The capture-phase
     // guard in shared.js must now swallow the click: panel closes, URL unchanged.
-    const posterLink = page
-      .locator('.col[data-title] .card .poster-wrap > a')
-      .first();
-    await posterLink.click();
+    //
+    // Dispatched through the DOM (like the sibling test's `document.body.click()`)
+    // rather than a real viewport click, because: (a) `.col[data-title].first()`
+    // is a date-filtered `display:none` card — not clickable — so we must pick
+    // the first VISIBLE one; and (b) on phones the open Filtry panel covers most
+    // of the grid, so a real click would hit the panel, not a card. A synthetic
+    // click still fires the same bubbling event the capture-phase guard sees.
+    const clicked = await page.evaluate(() => {
+      const col = [...document.querySelectorAll('.col[data-title]')]
+        .find((c) => (c as HTMLElement).style.display !== 'none');
+      const a = col?.querySelector('.card .poster-wrap > a') as HTMLElement | undefined;
+      if (!a) return false;
+      a.click();   // follows href to /film unless the guard preventDefaults it
+      return true;
+    });
+    expect(clicked, 'no visible card poster to click').toBe(true);
 
     // Give any (unwanted) navigation a beat to start.
     await page.waitForTimeout(300);
