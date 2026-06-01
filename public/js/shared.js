@@ -1564,8 +1564,11 @@
   // Switch to `destView` (path '/' or '/kina[/cinema]'). `direction` is 'left'
   // when the new view enters from the right (Filmy→Kina) or 'right'
   // (Kina→Filmy). `push` adds a history entry (false when called from popstate,
-  // where the browser already moved the URL).
-  async function navigateTo(path, destView, direction, push) {
+  // where the browser already moved the URL). `restoreScroll` lands the
+  // destination at its remembered offset (tab click / back button); the
+  // cold-cache swipe fallback passes false so it behaves like a live swipe and
+  // leaves the scroll where the finger left it.
+  async function navigateTo(path, destView, direction, push, restoreScroll = true) {
     // If a previous swap is still animating, snap it to its end first (removes
     // the outgoing node, clears the flag) so a fast follow-up — e.g. a back
     // button pressed mid-slide — isn't dropped, which would leave the URL and
@@ -1655,7 +1658,7 @@
       setTimeout(onEnd, 450);   // fallback if transitionend is missed
     }
 
-    window.scrollTo(0, _viewScroll[destView] || 0);   // land where this column last was
+    if (restoreScroll) window.scrollTo(0, _viewScroll[destView] || 0);   // land where this column last was
     prefetchView(destView === 'kina' ? 'films' : 'kina');
   }
 
@@ -1753,7 +1756,10 @@
   function settleDrag(ctx, commit) {
     const { pager, current, incoming, dir, enter, w, destView, originView, saved, globals } = ctx;
     // A drag is horizontal, so window.scrollY is still the origin column's
-    // position — snapshot it before the commit restores the destination's.
+    // position — record it for a later tab-nav restore. The swipe itself does
+    // NOT reposition the scroll on commit: the incoming pane has tracked the
+    // finger at this same offset throughout the drag, so leaving it put keeps
+    // the gesture visually continuous (a scrollTo here would jump it).
     if (commit) _viewScroll[originView] = window.scrollY;
     const finish = () => {
       pager.classList.remove('view-swapping', 'view-sliding');
@@ -1766,7 +1772,6 @@
         // already filtered against it during the drag (e.g. ?date= persists).
         history.pushState({ view: destView }, '',
           VIEW_PATHS[destView] + location.search + location.hash);
-        window.scrollTo(0, _viewScroll[destView] || 0);
         prefetchView(destView === 'kina' ? 'films' : 'kina');
       } else {
         // Snap-back: drop the incoming and restore the outgoing as the live
@@ -1906,7 +1911,7 @@
       const flick  = Math.abs(drag.vx) > FLICK_VX && Math.abs(dx) > FLICK_MIN_PX;
       if (toward && (Math.abs(dx) >= window.innerWidth * COMMIT_FRACTION || flick)) {
         navigateTo(VIEW_PATHS[drag.fallbackDest], drag.fallbackDest,
-                   drag.fallbackDest === 'kina' ? 'left' : 'right', true);
+                   drag.fallbackDest === 'kina' ? 'left' : 'right', true, false);
       }
     }
   }

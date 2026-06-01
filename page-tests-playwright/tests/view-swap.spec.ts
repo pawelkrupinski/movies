@@ -240,6 +240,48 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await expect(page.locator('.navbar .nav-tab.active')).toContainText('Filmy');
   });
 
+  test('a committed swipe leaves the scroll where the finger left it (no goto)', async ({ page }) => {
+    // A horizontal swipe never moves the scroll, and the incoming pane tracks
+    // the finger at the same offset throughout — so a commit must NOT reposition
+    // the scroll (no jump to the top, no snap to the other column's saved
+    // offset). Tab clicks still restore; the swipe does not.
+    await page.goto('/?date=anytime');
+    await waitForCards(page);
+    // Warm both prefetch caches so the swipe engages live finger-tracking
+    // (settleDrag), not the cold navigateTo fallback.
+    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
+    await page.waitForURL(/\/kina/);
+    await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);
+
+    // Park Filmy deep; retry through the boot reflow that drops the scroll.
+    await expect.poll(async () => {
+      await page.evaluate(() => window.scrollTo(0, 800));
+      return page.evaluate(() => window.scrollY);
+    }).toBeGreaterThan(700);
+
+    // Real horizontal swipe-left at a fixed viewport point → commits Filmy→Kina.
+    const vp = page.viewportSize()!;
+    const y = Math.round(vp.height * 0.4), x0 = Math.round(vp.width * 0.8);
+    const client = await page.context().newCDPSession(page);
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
+    for (let i = 1; i <= 6; i++) {
+      await client.send('Input.dispatchTouchEvent',
+        { type: 'touchMove', touchPoints: [{ x: x0 - (vp.width * 0.6 * i) / 6, y }] });
+    }
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await client.detach();
+
+    await page.waitForURL(/\/kina/);
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);   // swap settled (finish ran)
+    expect(await isKina(page)).toBe('kina');
+    // Still deep — not reset to the top, not snapped to Kina's (unset → 0) offset.
+    // (A generous floor absorbs the fixture's async card-collapse drift; the
+    // contrast under test is ~800 vs 0.)
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(400);
+  });
+
   // Regression: tapping a tab leaves a sticky `:hover` on touch devices (the
   // browser parks hover on the last-tapped element until you tap elsewhere).
   // If `.nav-tab:hover` paints the same highlight as `.nav-tab.active`, a
