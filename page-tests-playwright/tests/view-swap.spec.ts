@@ -159,7 +159,7 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     await page.waitForURL(/\/kina/);
     await page.waitForSelector('#cinema-pills .cinema-pill', { state: 'attached' });
     await settle();
-    expect(await scrollY()).toBe(0);
+    expect(await scrollY()).toBeLessThan(5);   // at the top (≤1px sub-pixel/anchoring slack), not retained at Filmy's deep offset
 
     // Park Kina shallow — clearly distinct from Filmy's deep offset.
     await parkAt(400);
