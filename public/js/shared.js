@@ -163,6 +163,7 @@
     event.stopPropagation();
     const panel = document.getElementById('format-panel');
     const opening = panel.style.display === 'none';
+    if (opening) ensureSubmenuPanels();   // lazily build the grid-scanned lists
     closeOtherPanels(opening ? panel : null);
     panel.style.display = opening ? 'block' : 'none';
     if (opening) clampPanel(panel);
@@ -322,6 +323,32 @@
       label.appendChild(cnt);
       list.appendChild(label);
     });
+  }
+
+  // The submenu panels (country/genre/director/cast/room) scan the WHOLE grid
+  // to tally values, but they populate dropdowns hidden until the user opens
+  // Filtry. So build them lazily — on first Filtry-open, or on demand when a
+  // shared `?genre=…`/`?room=…` link needs one applied at boot — instead of
+  // eagerly at load. `_panelBuilt` is reset per view (see `bootView`) so each
+  // view's grid gets a fresh tally.
+  const _panelBuilt = {};
+  function ensurePanel(key) {
+    if (_panelBuilt[key]) return;
+    switch (key) {
+      case 'country':  buildCountryPanel();  break;
+      case 'genre':    buildGenrePanel();    break;
+      case 'director': buildDirectorPanel(); break;
+      case 'cast':     buildCastPanel();     break;
+      case 'room':     buildRoomPanel();     break;
+      default: return;
+    }
+    _panelBuilt[key] = true;
+  }
+  function ensureSubmenuPanels() {
+    ['country', 'genre', 'director', 'cast', 'room'].forEach(ensurePanel);
+  }
+  function resetSubmenuPanels() {
+    Object.keys(_panelBuilt).forEach(function(k) { delete _panelBuilt[k]; });
   }
 
   function buildCountryPanel() {
@@ -1243,6 +1270,8 @@
     ['country', 'genre', 'director', 'cast', 'room'].forEach(key => {
       const checked = p.getAll(key).flatMap(v => v.split(','));
       if (checked.length === 0) return;
+      ensurePanel(key);   // a shared link references this filter → build it now
+                          // so the checkboxes exist for the state to land on
       const list = document.getElementById(key + '-list');
       if (!list) return;
       const checkedSet = new Set(checked);
@@ -1477,17 +1506,17 @@
     buildIndex();
     // Cinema picker lives in the Filtry dropdown now — populate the list so the
     // first open of Filtry has the checkboxes ready (no-ops on Kina: section
-    // stashed, so `#cinema-list` is absent).
+    // stashed, so `#cinema-list` is absent). It's cheap (one row per cinema, no
+    // grid scan), so it stays eager.
     buildCinemaPanel();
-    buildCountryPanel();
-    buildGenrePanel();
-    buildDirectorPanel();
-    buildCastPanel();
-    buildRoomPanel();
+    // The grid-scanning submenu panels are built lazily (on Filtry-open) — just
+    // drop the previous view's build-flags so they re-tally this view's grid.
+    // `applyFiltersFromURL` below rebuilds any a shared link actually needs.
+    resetSubmenuPanels();
     if (typeof window.__viewInit === 'function') window.__viewInit();
-    // URL → controls AFTER every panel/picker is built so the checkbox updates
-    // land on real DOM nodes; then a single `applyFilters()` pass renders the
-    // view already filtered.
+    // URL → controls AFTER the picker is built so the checkbox updates land on
+    // real DOM nodes; then a single `applyFilters()` pass renders the view
+    // already filtered.
     applyFiltersFromURL();
     updateFormatBtn();
     applyFilters();

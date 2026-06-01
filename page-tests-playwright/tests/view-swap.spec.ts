@@ -182,6 +182,25 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     expect(Math.abs(await scrollY() - kinaY)).toBeLessThan(100);
   });
 
+  test('a view-swap fetch returns just the #view-root fragment, not the whole page', async ({ page }) => {
+    await page.goto('/');
+    const { swap, full } = await page.evaluate(async () => {
+      const swap = await (await fetch('/kina', { headers: { 'X-Requested-With': 'view-swap' } })).text();
+      const full = await (await fetch('/kina')).text();
+      return { swap, full };
+    });
+    // The swap response is just the swappable region — no page shell — so it
+    // transfers a fraction of the bytes. (It DOES contain the Kina pill strip's
+    // own `<nav class="cinema-nav-row">`, so key the "no shell" check off the
+    // main navbar's Filtry button, which lives only in the shell.)
+    expect(swap.trimStart().startsWith('<main id="view-root"')).toBe(true);
+    expect(swap).not.toContain('format-filter-btn');   // shell-only (Filtry button)
+    expect(swap).not.toContain('<!DOCTYPE');
+    expect(swap.length).toBeLessThan(full.length);
+    // The full navigation still gets the whole page.
+    expect(full).toContain('format-filter-btn');
+  });
+
   test('reduced-motion still completes the swap (no transition to wait on)', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');

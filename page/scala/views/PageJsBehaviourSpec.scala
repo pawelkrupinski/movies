@@ -430,6 +430,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def pinDateFilterAnytime(page: CdpPage): Unit =
     page.eval("document.getElementById('date-filter').value = 'anytime'; applyFilters()")
 
+  // The Filtry submenu panels (country/genre/director/cast/room) are now built
+  // lazily on first Filtry-open, not at boot. Tests that read those lists
+  // directly must open Filtry first to trigger the build.
+  private def openFiltry(page: CdpPage): Unit =
+    page.eval("document.getElementById('format-filter-btn').click()")
+
   // ── Hidden-films modal search ────────────────────────────────────────────
 
   "the hidden-films modal search input" should "filter listed titles by substring as the user types" in {
@@ -1450,9 +1456,23 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  "the Filtry submenu panels" should "build lazily — empty at boot, populated on first Filtry open" in {
+    onPath("/") { page =>
+      // Perf: the grid-scanning lists (genre/room/…) are NOT built at boot — so
+      // first paint doesn't pay for scanning ~190 cards into hidden dropdowns.
+      page.evalInt("document.querySelectorAll('#genre-list input').length") shouldBe 0
+      page.evalInt("document.querySelectorAll('#room-list input').length")  shouldBe 0
+      openFiltry(page)
+      // Opening Filtry builds them on demand.
+      page.evalInt("document.querySelectorAll('#genre-list input').length") should be > 0
+      page.evalInt("document.querySelectorAll('#room-list input').length")  should be > 0
+    }
+  }
+
   "unchecking a country" should "leave ?country= listing the still-checked countries (inclusion set, captured on Copy)" in {
     onPath("/") { page =>
       clearLocalStorage(page)
+      openFiltry(page)
       val firstCountry = page.evalString(
         "document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )
@@ -1472,6 +1492,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "?country= on boot" should "check exactly the named countries (inclusion set)" in {
     onPath("/") { page =>
       clearLocalStorage(page)
+      openFiltry(page)
       // Pick one country known to be in the corpus, then drive a second tab
       // via the URL-derived state and assert ONLY that country is checked.
       val firstCountry = page.evalString(
@@ -1494,6 +1515,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   "the Gatunek submenu" should "list genre entries pulled from the cards' data-genres on /" in {
     onPath("/") { page =>
+      openFiltry(page)
       val rowCount = page.evalInt(
         "document.querySelectorAll('#genre-list input[type=\"checkbox\"]:not(.submenu-all)').length"
       )
@@ -1507,6 +1529,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "?genre= on boot" should "check exactly the named genre (inclusion set)" in {
     onPath("/") { page =>
       clearLocalStorage(page)
+      openFiltry(page)
       val firstGenre = page.evalString(
         "document.querySelector('#genre-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )
@@ -1574,6 +1597,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "the Sale (room) submenu" should "list one entry per (cinema, room) pair on /" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
+      openFiltry(page)
       val rowDisplay = page.evalString("document.getElementById('room-row').style.display")
       rowDisplay should not be "none"
       val rowCount = page.evalInt("document.querySelectorAll('#room-list input[type=\"checkbox\"]:not(.submenu-all)').length")
@@ -1588,6 +1612,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "group rooms under a cinema header that's clickable to expand" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
+      openFiltry(page)
       val headerCount = page.evalInt("document.querySelectorAll('#room-list .room-cinema-header').length")
       headerCount should be > 1
 
@@ -1607,6 +1632,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "sort rooms inside a cinema naturally — Sala 10 after Sala 9, not after Sala 1" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
+      openFiltry(page)
 
       // Pick a cinema known to have rooms numbered past 9 (Multikino Stary
       // Browar / Cinema City sites in the fixture corpus). Then assert the
@@ -1633,6 +1659,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "show a per-cinema count badge once a room is unchecked" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
+      openFiltry(page)
       // Pick a header whose inner list has ≥ 2 rooms so unchecking one
       // leaves a visible "1/N" state instead of a hidden "0/N".
       val headerInfo = page.evalString(
@@ -1657,6 +1684,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "narrow visible badges to only the picked room when a single Sala is checked" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
+      openFiltry(page)
       val baseline = visibleBadgeCount(page)
       baseline should be > 1
 
@@ -1691,6 +1719,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "leave the still-checked (cinema|room) pairs in ?room= (inclusion set, captured on Copy)" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
+      openFiltry(page)
       val targetPair = page.evalString(
         "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )
@@ -1709,6 +1738,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "apply ?room= to check ONLY the named (cinema|room) pair on boot (inclusion set)" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
+      openFiltry(page)
       val targetPair = page.evalString(
         "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )

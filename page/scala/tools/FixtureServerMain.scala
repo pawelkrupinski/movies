@@ -69,6 +69,13 @@ object FixtureServerMain {
       currentUser = anon, oauthProviders = noOauth
     ).body
 
+    // `#view-root`-only fragments served for `X-Requested-With: view-swap`
+    // requests — mirrors the production controller so the in-place swap (and
+    // its tests) exercise the real "fetch just the fragment" path.
+    val indexFragment: String = views.html._repertoireView(schedules, devMode = false).body
+    def renderKinaFragment(pinned: Option[String]): String =
+      views.html._kinaView(cinemaSchedules, pinned, devMode = false).body
+
     val filmyHtml: String = views.html.browse(
       schedules, "Filmy", devMode = false,
       currentUser = anon, oauthProviders = noOauth
@@ -90,7 +97,7 @@ object FixtureServerMain {
       }
     }
 
-    val server = new TestHttpServer({
+    val routes: PartialFunction[String, String] = {
       // Each top-level route accepts an arbitrary `?…` suffix — the real Play
       // routes ignore unknown query params on these paths, and the
       // day-selector ↔ URL Playwright tests boot directly with `?date=` in the
@@ -116,7 +123,20 @@ object FixtureServerMain {
         renderKina(pinned)
       case p if p.startsWith("/film?title=") =>
         renderFilm(p.stripPrefix("/film?title="))
-    })
+    }
+
+    // `#view-root`-only responses for view-swap requests — the swap-managed
+    // routes (`/`, `/filmy`, `/kina`, `/kina/<cinema>`) only.
+    val swapRoutes: PartialFunction[String, String] = {
+      case p if p == "/"      || p.startsWith("/?")     => indexFragment
+      case p if p == "/filmy" || p.startsWith("/filmy?")=> indexFragment
+      case p if p == "/kina"  || p.startsWith("/kina?") => renderKinaFragment(None)
+      case p if p.startsWith("/kina/") =>
+        val raw    = URLDecoder.decode(p.stripPrefix("/kina/").takeWhile(_ != '?'), "UTF-8")
+        renderKinaFragment(cinemas.find(_ == raw))
+    }
+
+    val server = new TestHttpServer(routes, swapRoutes)
 
     Files.write(portFile, server.port.toString.getBytes(StandardCharsets.UTF_8))
     System.err.println(s"[FixtureServerMain] listening on ${server.baseUrl} — wrote port $portFile")

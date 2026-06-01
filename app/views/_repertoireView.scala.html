@@ -1,0 +1,241 @@
+@import controllers.FilmSchedule
+@(films: Seq[FilmSchedule], devMode: Boolean)
+@* The swappable Filmy view-root. Rendered inside `#view-pager` on the full
+   page, and returned on its own by the controller for a view-swap fetch
+   (X-Requested-With: view-swap) so the swap transfers just this fragment. *@
+<main id="view-root" data-view="films">
+<div class="container-fluid py-4 px-4">
+  <p id="film-counter" class="grid-status text-secondary mb-4" style="display:none"></p>
+  <div id="no-films" class="grid-status text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
+  <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
+    @_filmCards(films)
+  </div>
+</div>
+
+@_minified(devMode) {
+<script>
+  // Wrapped in an IIFE so the slide-swap (shared.js `navigateTo`) can
+  // re-execute an injected copy of this exact block when the user switches
+  // back to Filmy: a fresh IIFE scope re-creates the per-view locals
+  // (`INDEX`, `_prevVisibleOrder`) and re-assigns the `window.*` entry points
+  // below, instead of throwing "Identifier 'INDEX' has already been declared".
+  (function () {
+  // ── DOM index ─────────────────────────────────────────────────────────────
+
+  let INDEX = null;
+
+  function buildIndex() {
+    const grid = document.getElementById('film-grid');
+    INDEX = [...grid.querySelectorAll('.col[data-title]')].map(col => ({
+      el:       col,
+      title:    col.dataset.title.toLowerCase(),
+      rawTitle: col.dataset.title,
+      // Sort key, parsed once: the server-computed weighted rating average
+      // (0 when the film has no ratings).
+      rating:    parseFloat(col.dataset.rating) || 0,
+      countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
+      genres:    new Set((col.dataset.genres    || '').split('|').filter(Boolean)),
+      directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
+      cast:      new Set((col.dataset.cast     || '').split(',').map(s => s.trim()).filter(Boolean)),
+      visible:  true,  // remembered so we only write style.display on changes
+      groups:   [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
+        el:           group,
+        date:         group.dataset.date,
+        visible:      true,
+        cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg => ({
+          el:      cg,
+          cinema:  cg.dataset.cinema,
+          visible: true,
+          // Pre-parse each badge's format tokens into a Set + a numeric
+          // minutes-since-midnight for the time filter. Re-reading
+          // dataset.format / parsing "HH:MM" on every filter pass adds up —
+          // these never change.
+          badges:  [...cg.querySelectorAll('.badge-time')].map(b => {
+            const t = (b.dataset.time || '').trim();
+            const colon = t.indexOf(':');
+            const timeMin = colon > 0
+              ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10)
+              : -1;
+            const room = b.dataset.room || '';
+            return {
+              el:          b,
+              time:        t,
+              timeMin:     timeMin,
+              formats:     new Set((b.dataset.format || '').split(' ').filter(Boolean)),
+              // Pre-compose the room-filter key so the applyFilters inner
+              // loop doesn't pay a string-concat per badge per pass. Empty
+              // when the badge carries no `data-room` — those badges fall
+              // out of view as soon as the user picks any room (the filter
+              // is an include-list and can't include "no room").
+              roomKey:     room ? (cg.dataset.cinema + '|' + room) : '',
+              visible:     true
+            };
+          })
+        }))
+      }))
+    }));
+  }
+
+  // ── Master filter ─────────────────────────────────────────────────────────
+
+  // Helper: only write style.display when the visibility actually changed —
+  // avoids triggering layout when nothing moved.
+  function setVisible(node, want) {
+    if (node.visible !== want) {
+      node.el.style.display = want ? '' : 'none';
+      node.visible = want;
+    }
+  }
+
+  // Last-applied DOM order of VISIBLE cards (by their INDEX position).
+  // Hidden cards never appear here — they're display:none and their DOM
+  // position is irrelevant to layout. The subsequence check below uses this
+  // to decide when the rebuild is a no-op.
+  let _prevVisibleOrder = [];
+
+  function applyFilters() {
+    if (!INDEX) return;
+    // Only the day select rides the URL in real time — every other filter
+    // stays local until the user opts in via the Filtry panel's "Skopiuj
+    // link do schowka" button. `syncDateToURL` covers the date dropdown,
+    // the `stepDate` arrows, and the URL-driven day-step keyboard shortcut.
+    syncDateToURL();
+    undoTruncation();
+    const filter    = document.getElementById('date-filter')?.value || 'anytime';
+    const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
+    const hidden    = new Set(getHidden());
+    const disabled  = new Set(getDisabledCinemas());
+    const fmtTokens     = getFormatFilter();
+    const hasFmt        = fmtTokens.length > 0;
+    const fromMin       = getFromMinutes();
+    const hasFrom       = fromMin !== null;
+    const countryFilter  = getCountryFilter();
+    const hasCountry     = countryFilter !== null;
+    const genreFilter    = getSubmenuFilter('genre');
+    const hasGenre       = genreFilter !== null;
+    const directorFilter = getDirectorFilter();
+    const hasDirector    = directorFilter !== null;
+    const castFilter     = getCastFilter();
+    const hasCast        = castFilter !== null;
+    const roomList       = getSubmenuFilter('room');
+    const hasRoom        = roomList !== null;
+    const roomSet        = hasRoom ? new Set(roomList) : null;
+    const { today, tomorrow, in7Days } = dateBounds();
+
+    const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
+    const dateOk = filter === 'today'    ? d => d === today :
+                   filter === 'tomorrow' ? d => d === tomorrow :
+                   filter === 'week'     ? d => d >= today && d <= in7Days :
+                   isSpecific            ? d => d === filter :
+                                           _  => true;
+
+    let visibleCount = 0, showtimeCount = 0;
+    const earlyMap = new Array(INDEX.length);
+
+    for (let i = 0; i < INDEX.length; i++) {
+      const col = INDEX[i];
+      if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))
+          || (hasCountry  && !countryFilter.some(c  => col.countries.has(c)))
+          || (hasGenre    && !genreFilter.some(g    => col.genres.has(g)))
+          || (hasDirector && !directorFilter.some(d => col.directors.has(d)))
+          || (hasCast     && !castFilter.some(a     => col.cast.has(a)))) {
+        setVisible(col, false);
+        earlyMap[i] = null;
+        continue;
+      }
+      let colVisible = false, colEarliest = null;
+
+      for (const group of col.groups) {
+        if (!dateOk(group.date)) { setVisible(group, false); continue; }
+
+        let groupVisible = false;
+        for (const cg of group.cinemaGroups) {
+          if (disabled.has(cg.cinema)) { setVisible(cg, false); continue; }
+
+          let cgVisibleCount = 0, cgFirstTime = null;
+          const needsBadgeLoop = hasFmt || hasFrom || hasRoom;
+          if (needsBadgeLoop) {
+            for (const badge of cg.badges) {
+              const fmtOk  = !hasFmt  || badgeFormatMatch(badge.formats, fmtTokens);
+              const timeOk = !hasFrom || badge.timeMin < 0 || badge.timeMin >= fromMin;
+              // Empty roomKey (badge with no `data-room`) can't match any
+              // include-list entry; treat as a miss when the room filter is on.
+              const roomOk = !hasRoom || (badge.roomKey && roomSet.has(badge.roomKey));
+              const ok = fmtOk && timeOk && roomOk;
+              setVisible(badge, ok);
+              if (ok) {
+                cgVisibleCount++;
+                if (!cgFirstTime) cgFirstTime = group.date + 'T' + badge.time;
+              }
+            }
+          } else {
+            // Fast-path: no filter constraints, every badge in this cinema-group is on.
+            for (const badge of cg.badges) setVisible(badge, true);
+            cgVisibleCount = cg.badges.length;
+            if (cg.badges.length > 0) cgFirstTime = group.date + 'T' + cg.badges[0].time;
+          }
+
+          if (cgVisibleCount > 0) {
+            setVisible(cg, true);
+            groupVisible = true;
+            showtimeCount += cgVisibleCount;
+            if (cgFirstTime && (!colEarliest || cgFirstTime < colEarliest))
+              colEarliest = cgFirstTime;
+          } else {
+            setVisible(cg, false);
+          }
+        }
+
+        setVisible(group, groupVisible);
+        if (groupVisible) colVisible = true;
+      }
+
+      if (colVisible) {
+        setVisible(col, true);
+        visibleCount++;
+        earlyMap[i] = colEarliest;
+      } else {
+        setVisible(col, false);
+        earlyMap[i] = null;
+      }
+    }
+
+    sortByEarliestVisible(earlyMap);
+    truncateAllShowings(true);
+    updateCounter(visibleCount, showtimeCount);
+  }
+
+  function sortByEarliestVisible(earlyMap) {
+    // Only the VISIBLE cards' DOM order matters — hidden ones are display:none
+    // and don't participate in layout. Sort just those by earliest showtime.
+    const visible = [];
+    for (let i = 0; i < earlyMap.length; i++) if (earlyMap[i] !== null) visible.push(i);
+    const sortBy = getSortBy();
+    visible.sort((a, b) => compareCards(sortBy,
+      { earliest: earlyMap[a], rating: INDEX[a].rating, idx: a },
+      { earliest: earlyMap[b], rating: INDEX[b].rating, idx: b }));
+
+    // Skip the rebuild when the new order is a subsequence of the last applied
+    // one — i.e. cards only became hidden, the remaining ones are in the same
+    // relative position in the DOM. This is what keeps `hideFilm` jump-free:
+    // appendChild detaches+reattaches every visible card and breaks the
+    // browser's scroll anchor; we'd rather not touch the DOM at all.
+    if (isSubsequence(visible, _prevVisibleOrder)) return;
+    _prevVisibleOrder = visible;
+
+    const grid = document.getElementById('film-grid');
+    const frag = document.createDocumentFragment();
+    for (const i of visible) frag.appendChild(INDEX[i].el);
+    grid.appendChild(frag);
+  }
+
+  // Entry points shared.js drives at boot and after a swap (`bootView`).
+  window.buildIndex   = buildIndex;
+  window.applyFilters = applyFilters;
+  // Filmy has no per-view boot hook; clear any stale one a previous Kina
+  // view may have left so a Kina→Filmy swap doesn't re-run `buildCinemaPills`.
+  window.__viewInit   = null;
+  })();
+</script>
+}
+</main>

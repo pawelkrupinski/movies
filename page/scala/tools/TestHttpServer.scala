@@ -20,7 +20,14 @@ import java.nio.file.{Files, Paths}
  * can express the path-to-body mapping declaratively, including a
  * wildcard for `/kina/<cinema>` URL-path pinning.
  */
-class TestHttpServer(routes: PartialFunction[String, String]) extends AutoCloseable {
+class TestHttpServer(
+  routes: PartialFunction[String, String],
+  // Served instead of `routes` when the request carries
+  // `X-Requested-With: view-swap` — mirrors the production controller, which
+  // returns just the `#view-root` fragment for an in-place Filmy↔Kina swap.
+  // Defaults to empty so existing single-arg callers are unaffected.
+  swapRoutes: PartialFunction[String, String] = PartialFunction.empty,
+) extends AutoCloseable {
   private val server: HttpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
   server.createContext("/", new HttpHandler {
     override def handle(ex: HttpExchange): Unit = {
@@ -60,7 +67,12 @@ class TestHttpServer(routes: PartialFunction[String, String]) extends AutoClosea
             val os = ex.getResponseBody
             try os.write(bytes) finally os.close()
           }
-        } else routes.lift(routeKey) match {
+        } else {
+          val isSwap = Option(ex.getRequestHeaders.getFirst("X-Requested-With"))
+                         .contains("view-swap")
+          val body   = if (isSwap) swapRoutes.lift(routeKey).orElse(routes.lift(routeKey))
+                       else        routes.lift(routeKey)
+          body match {
           case Some(html) =>
             val bytes = html.getBytes(StandardCharsets.UTF_8)
             ex.getResponseHeaders.add("Content-Type", "text/html; charset=UTF-8")
@@ -69,6 +81,7 @@ class TestHttpServer(routes: PartialFunction[String, String]) extends AutoClosea
             try os.write(bytes) finally os.close()
           case None =>
             ex.sendResponseHeaders(404, -1)
+          }
         }
       } finally ex.close()
     }

@@ -250,6 +250,16 @@ class MovieController( cc: ControllerComponents,
   private def currentUser(request: RequestHeader): Option[models.User] =
     request.session.get("userId").flatMap(userRepo.findById)
 
+  // The Filmy↔Kina slide-swap fetches the sibling page with this marker. When
+  // present we return ONLY the `#view-root` fragment (the bit the swap injects)
+  // instead of the whole page — head, navbar, modals and the inline configs are
+  // the stable shell the client already has, so re-sending them is pure waste.
+  private def isViewSwap(request: RequestHeader): Boolean =
+    request.headers.get("X-Requested-With").contains("view-swap")
+
+  // Caches must not serve a fragment to a normal navigation (or vice versa).
+  private val varyOnSwap = "Vary" -> "X-Requested-With"
+
   // Render the main "Filmy" listing — repertoire view, full corpus,
   // OG meta derived from `?…` filter params. Shared between `/` and
   // `/filmy` (no params) so both URLs are interchangeable; `/filmy`
@@ -258,15 +268,19 @@ class MovieController( cc: ControllerComponents,
   private def renderIndex(request: RequestHeader): Result = {
     val user      = currentUser(request)
     val schedules = movieControllerService.toSchedules()
-    val meta      = FilterDescription.forIndex(request.queryString, schedules)
-    Ok(views.html.repertoire(
-      schedules, Cinema.all.map(_.displayName), Cinema.pillMap,
-      devMode, user, oauthProviders,
-      pageTitle       = meta.title,
-      pageDescription = meta.description,
-      pageUrl         = PageMeta.canonicalUrl(request),
-      fbAppId         = PageMeta.fbAppId,
-    ))
+    if (isViewSwap(request))
+      Ok(views.html._repertoireView(schedules, devMode)).withHeaders(varyOnSwap)
+    else {
+      val meta = FilterDescription.forIndex(request.queryString, schedules)
+      Ok(views.html.repertoire(
+        schedules, Cinema.all.map(_.displayName), Cinema.pillMap,
+        devMode, user, oauthProviders,
+        pageTitle       = meta.title,
+        pageDescription = meta.description,
+        pageUrl         = PageMeta.canonicalUrl(request),
+        fbAppId         = PageMeta.fbAppId,
+      )).withHeaders(varyOnSwap)
+    }
   }
 
   def index(): Action[AnyContent] = Action(renderIndex)
@@ -316,12 +330,16 @@ class MovieController( cc: ControllerComponents,
     val user = currentUser(request)
     val allCinemas = Cinema.all.map(_.displayName)
     val pinned = pinnedCinema.filter(allCinemas.contains)
-    Ok(views.html.kina(
-      movieControllerService.toCinemaSchedules(), allCinemas, Cinema.pillMap,
-      devMode, user, oauthProviders, pinned,
-      pageUrl = PageMeta.canonicalUrl(request),
-      fbAppId = PageMeta.fbAppId,
-    ))
+    val cinemas = movieControllerService.toCinemaSchedules()
+    if (isViewSwap(request))
+      Ok(views.html._kinaView(cinemas, pinned, devMode)).withHeaders(varyOnSwap)
+    else
+      Ok(views.html.kina(
+        cinemas, allCinemas, Cinema.pillMap,
+        devMode, user, oauthProviders, pinned,
+        pageUrl = PageMeta.canonicalUrl(request),
+        fbAppId = PageMeta.fbAppId,
+      )).withHeaders(varyOnSwap)
   }
 
   /** Conditional-GET wrapper shared by the JSON API endpoints: returns 304 if
