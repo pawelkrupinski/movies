@@ -37,6 +37,18 @@ final class FilmDetailsDecodingTests: XCTestCase {
         XCTAssertEqual(map["Film bez zwiastuna"]?.trailerURLs, [])
     }
 
+    func testDecodesOriginalTitleWhenPresent() throws {
+        let map = try loadDetails().keyedByTitle()
+        XCTAssertEqual(map["Mandalorian i Grogu"]?.originalTitle, "The Mandalorian and Grogu")
+    }
+
+    func testMissingOriginalTitleDecodesToNil() throws {
+        let map = try loadDetails().keyedByTitle()
+        // Most rows omit it (the backend only sends a distinct original title),
+        // and the absent key must decode to nil rather than failing the row.
+        XCTAssertNil(map["Diuna: Część druga"]?.originalTitle)
+    }
+
     func testInvalidTrailerURLIsDropped() throws {
         let map = try loadDetails().keyedByTitle()
         // The empty-string entry isn't a valid URL, so it's dropped

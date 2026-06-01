@@ -230,6 +230,26 @@ case class MovieRecord(
   def cinemaOriginalTitle: Option[String] =
     prioritizedCinema.iterator.flatMap(_._2.originalTitle).nextOption()
 
+  /** Best available original (production-language) title across sources —
+   *  the TMDB-resolved one first, then IMDb's `originalTitleText`, then
+   *  whatever a cinema's own API exposed (only Multikino does). None when no
+   *  source supplied one. Distinct from `originalTitle`, which is TMDB-only
+   *  and stays that way for the search/URL fallbacks that rely on it. */
+  def anyOriginalTitle: Option[String] =
+    originalTitle
+      .orElse(data.get(Imdb).flatMap(_.originalTitle))
+      .orElse(cinemaOriginalTitle)
+
+  /** The original title worth showing alongside `displayed` — present, and
+   *  not merely a case/whitespace re-spelling of the title already on screen.
+   *  An English-language film carries the same string as both its cinema
+   *  title and its original title, so showing it would just repeat the line.
+   *  Centralising the "is it redundant?" test here lets every frontend render
+   *  the result unconditionally. */
+  def distinctOriginalTitle(displayed: String): Option[String] =
+    anyOriginalTitle.map(_.trim).filter(_.nonEmpty)
+      .filterNot(_.equalsIgnoreCase(displayed.trim))
+
   /** Display-time URL: validated stored URL if we have one, else an on-the-fly
    *  search URL (for legacy records that pre-date URL persistence). */
   def metacriticHref(fallbackTitle: String): String = metacriticUrl.getOrElse {

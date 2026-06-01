@@ -12,6 +12,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class FilmDetails(
     val title: String,
+    // Original (production-language) title — e.g. the English name of a film
+    // listed under a Polish cinema title. The backend only sends it when it
+    // genuinely differs from [title], so it can be shown verbatim.
+    val originalTitle: String? = null,
     val synopsis: String? = null,
     val trailerURLs: List<String> = emptyList(),
 )

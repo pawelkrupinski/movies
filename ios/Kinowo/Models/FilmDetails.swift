@@ -14,15 +14,20 @@ import Foundation
 /// `TrailerEmbedHTML` for inline playback.
 struct FilmDetails: Hashable, Codable {
     let title: String
+    /// Original (production-language) title, e.g. the English name of a film
+    /// listed under a Polish cinema title. The backend only sends this when
+    /// it genuinely differs from `title`, so it can be shown verbatim.
+    let originalTitle: String?
     let synopsis: String?
     let trailerURLs: [URL]
 
     enum CodingKeys: String, CodingKey {
-        case title, synopsis, trailerURLs
+        case title, originalTitle, synopsis, trailerURLs
     }
 
-    init(title: String, synopsis: String?, trailerURLs: [URL]) {
+    init(title: String, originalTitle: String? = nil, synopsis: String?, trailerURLs: [URL]) {
         self.title = title
+        self.originalTitle = originalTitle
         self.synopsis = synopsis
         self.trailerURLs = trailerURLs
     }
@@ -30,6 +35,7 @@ struct FilmDetails: Hashable, Codable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.title = try c.decode(String.self, forKey: .title)
+        self.originalTitle = try c.decodeIfPresent(String.self, forKey: .originalTitle)
         self.synopsis = try c.decodeIfPresent(String.self, forKey: .synopsis)
         // Mirror how `Film` decodes URLs: drop any string that isn't a
         // valid URL rather than failing the whole row. A malformed

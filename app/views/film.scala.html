@@ -82,6 +82,7 @@
     }
     .film-title { font-size: 1.6rem; font-weight: 700; margin-bottom: .5rem; }
     .film-title .pill { font-weight: 400; }
+    .film-original-title { font-size: 1rem; font-style: italic; color: #aaa; margin: -.35rem 0 .6rem; }
     .meta-label { font-size: .75rem; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .15rem; margin-top: .9rem; }
     .meta-value { font-size: .9rem; color: #ddd; }
     .meta-link { color: #aad4ff; text-decoration: none; }
@@ -258,6 +259,10 @@
 }@for(g <- film.movie.genres) {
   <a href="@BrowseHref.genre(g)" class="pill genre" title="Filmy gatunku @g">@g</a>
 }</div>
+
+      @film.enrichment.flatMap(_.distinctOriginalTitle(film.movie.title)).map { ot =>
+        <div class="film-original-title">@ot</div>
+      }
 
       @_ratingBadges(film.enrichment, film.movie.title)
 

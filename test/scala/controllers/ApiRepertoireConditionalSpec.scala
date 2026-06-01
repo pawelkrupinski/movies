@@ -28,7 +28,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
           trailerUrl  = Some("https://www.youtube.com/watch?v=abc123DEF45"),
           showtimes   = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
         ),
-        Tmdb -> SourceData(originalTitle = Some("Test Film"))
+        Tmdb -> SourceData(originalTitle = Some("The Test Movie"))
       )
     )
     val repo  = new InMemoryMovieRepo(Seq(("Test Film", Some(2024), record)))
@@ -78,6 +78,16 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     (entry \ "synopsis").as[String] shouldBe "A test synopsis."
     // Raw watch URL is normalised to a YouTube embed URL.
     (entry \ "trailerURLs").as[Seq[String]] shouldBe Seq("https://www.youtube.com/embed/abc123DEF45")
+    // The TMDB original title differs from the Polish cinema title, so it
+    // rides on the detail payload.
+    (entry \ "originalTitle").as[String] shouldBe "The Test Movie"
+  }
+
+  it should "keep the original title off the lean listing (detail-only field)" in {
+    val (ctrl, _) = buildController()
+    val film = play.api.libs.json.Json.parse(contentAsString(ctrl.apiRepertoire()(FakeRequest())))
+      .as[Seq[play.api.libs.json.JsValue]].head
+    (film \ "originalTitle").toOption shouldBe None
   }
 
   it should "omit films with neither synopsis nor trailers" in {

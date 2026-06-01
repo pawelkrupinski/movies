@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -91,6 +92,16 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(film.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    // Original (production-language) title, when the backend
+                    // reports one distinct from the Polish cinema title.
+                    details?.originalTitle?.takeIf { it.isNotBlank() }?.let { original ->
+                        Text(
+                            original,
+                            fontSize = 14.sp,
+                            fontStyle = FontStyle.Italic,
+                            color = Color(0xFFAAAAAA),
+                        )
+                    }
                     // Runtime / year / genre pills — the `/film` title block
                     // shows every genre (no cap, unlike the listing card).
                     MetaPills(

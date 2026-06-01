@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.kinowo.model.Film
@@ -65,5 +66,15 @@ class JsonDecodingTest {
             "trailer URLs should be ready-to-embed",
             withBoth!!.trailerURLs.all { it.contains("/embed/") || it.contains("player.vimeo") },
         )
+    }
+
+    @Test
+    fun `details payload decodes the original title when present and null when absent`() {
+        val details = json.decodeFromString<List<FilmDetails>>(fixture("details_sample.json"))
+        val byTitle = details.associateBy { it.title }
+        // The backend only sends a distinct original title, so it's present on
+        // some rows and absent (decoding to null) on others.
+        assertEquals("The Magic Tree", byTitle["Drzewo Magii"]?.originalTitle)
+        assertNull(byTitle["Film bez zwiastuna"]?.originalTitle)
     }
 }

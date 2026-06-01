@@ -36,21 +36,26 @@ case class ApiFilm(
  *  parallel and merge by `title`. Only films carrying a synopsis or at least
  *  one trailer are emitted. */
 case class ApiFilmDetails(
-  title: String, synopsis: Option[String], trailerURLs: Seq[String]
+  title: String, originalTitle: Option[String], synopsis: Option[String], trailerURLs: Seq[String]
 )
 
 object ApiFilmDetails {
   implicit val writes: Writes[ApiFilmDetails] = Json.writes[ApiFilmDetails]
 
   def from(fs: FilmSchedule): ApiFilmDetails = ApiFilmDetails(
-    title       = fs.movie.title,
-    synopsis    = fs.synopsis,
+    title         = fs.movie.title,
+    // Only the genuinely-distinct original title (English/production-language
+    // name when it differs from the Polish cinema title) — the redundancy
+    // check lives on MovieRecord so clients can render it unconditionally.
+    originalTitle = fs.enrichment.flatMap(_.distinctOriginalTitle(fs.movie.title)),
+    synopsis      = fs.synopsis,
     // Same source + transform the /film detail page uses (raw trailer URLs →
     // embed URLs, deduped) so clients get a ready-to-embed Zwiastun set.
-    trailerURLs = fs.enrichment.toSeq.flatMap(_.trailerUrls).flatMap(TrailerEmbed.embedUrlFor).distinct,
+    trailerURLs   = fs.enrichment.toSeq.flatMap(_.trailerUrls).flatMap(TrailerEmbed.embedUrlFor).distinct,
   )
 
-  def hasContent(d: ApiFilmDetails): Boolean = d.synopsis.nonEmpty || d.trailerURLs.nonEmpty
+  def hasContent(d: ApiFilmDetails): Boolean =
+    d.synopsis.nonEmpty || d.trailerURLs.nonEmpty || d.originalTitle.nonEmpty
 }
 
 object ApiFilm {

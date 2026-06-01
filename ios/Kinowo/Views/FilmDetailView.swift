@@ -58,6 +58,15 @@ struct FilmDetailView: View {
                     .font(.system(size: 22, weight: .bold))
                     .foregroundColor(.white)
                     .fixedSize(horizontal: false, vertical: true)
+                // Original (production-language) title, when the backend
+                // reports one distinct from the Polish cinema title.
+                if let original = filmDetails?.originalTitle, !original.isEmpty {
+                    Text(original)
+                        .font(.system(size: 15))
+                        .italic()
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 // Runtime / year / genre pills — the `/film` title block
                 // shows every genre (no cap, unlike the listing card).
                 MetaPillsView(
