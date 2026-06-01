@@ -242,6 +242,52 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await client.detach();
   }
 
+  // Real CDP touch with BOTH axes ramping — for the "diagonal/vertical" cases
+  // (axis-bias and stickiness) the pure-horizontal `swipe` can't express.
+  async function swipeXY(page, selector, dx, dy) {
+    const box = await page.locator(selector).first().boundingBox();
+    const x0 = box.x + box.width / 2;
+    const y0 = box.y + Math.min(40, box.height / 2);
+    const client = await page.context().newCDPSession(page);
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y: y0 }] });
+    for (let i = 1; i <= 6; i++) {
+      await client.send('Input.dispatchTouchEvent',
+        { type: 'touchMove', touchPoints: [{ x: x0 + (dx * i) / 6, y: y0 + (dy * i) / 6 }] });
+    }
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await client.detach();
+  }
+
+  // Drive a synthetic touch-pointer path through the document swipe handlers
+  // (exact deltas, no touch-action arbitration). `moves` are [dx, dy] offsets
+  // from the start point (70% across #film-grid, 40px down). Used where we need
+  // a precise first sample (the axis-bias regression) or a stall with no release.
+  async function synthSwipe(page, moves, { release = true } = {}) {
+    await page.evaluate(({ moves, release }) => {
+      const el = document.getElementById('film-grid');
+      const r = el.getBoundingClientRect();
+      const x0 = r.left + r.width * 0.7, y0 = r.top + 40;
+      const pe = (t, x, y) => el.dispatchEvent(new PointerEvent(t,
+        { clientX: x, clientY: y, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true }));
+      pe('pointerdown', x0, y0);
+      for (const [dx, dy] of moves) pe('pointermove', x0 + dx, y0 + (dy || 0));
+      if (release) { const m = moves[moves.length - 1]; pe('pointerup', x0 + m[0], y0 + (m[1] || 0)); }
+    }, { moves, release });
+  }
+
+  // Round-trip a tab click both ways so both prefetch caches are warm and a
+  // drag engages live finger-tracking (settleDrag), not the cold release-only
+  // fallback. The trailing wait lets the post-landing `prefetchView` of the
+  // sibling actually complete before the test swipes.
+  async function warmCaches(page) {
+    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
+    await page.waitForURL(/\/kina$/);
+    await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);
+    await page.waitForTimeout(500);   // let the sibling prefetch settle (localhost fetch)
+  }
+
   test('swipe left switches Filmy → Kina and highlights Kina', async ({ page }) => {
     await waitForCards(page);
     await swipe(page, '#film-grid', -200);
@@ -257,6 +303,104 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await page.waitForURL((u) => new URL(u).pathname === '/');
     expect(await isKina(page)).toBe('films');
     await expect(page.locator('.navbar .nav-tab.active')).toContainText('Filmy');
+  });
+
+  test('a swipe that starts with a little vertical jitter still switches (axis bias)', async ({ page }) => {
+    // Regression: the first move sample leaning slightly vertical (dx=-10,dy=+11)
+    // used to lock the axis to vertical and kill the gesture for the whole
+    // finger-down — so an intended horizontal swipe just never engaged. The
+    // axis lock is now biased toward horizontal and waits when ambiguous.
+    await waitForCards(page);
+    await warmCaches(page);
+    await synthSwipe(page, [[-10, 11], [-43, 11], [-86, 11], [-129, 11], [-172, 11], [-215, 11]]);
+    await page.waitForURL(/\/kina$/);
+    expect(await isKina(page)).toBe('kina');
+  });
+
+  test('a clearly vertical drag still scrolls and does not switch view', async ({ page }) => {
+    // Guard against the horizontal bias making vertical scroll "sticky": a
+    // vertical-dominant gesture must bail immediately and never swap.
+    await waitForCards(page);
+    await warmCaches(page);
+    await swipeXY(page, '#film-grid', 12, 160);
+    await page.waitForTimeout(200);
+    expect(await isKina(page)).toBe('films');
+    await expect(page).toHaveURL((u) => new URL(u).pathname === '/');
+  });
+
+  test('a swipe started while the previous swap is still animating is not dropped', async ({ page }) => {
+    // Right after committing one swap there was a ~300ms window where `_swapping`
+    // was true and pointerdown early-returned, so an immediate reverse swipe did
+    // nothing. A fresh touch now snaps the in-flight swap to its end and starts
+    // a new drag. Both gestures run synchronously in one evaluate so the second
+    // pointerdown is guaranteed to land mid-animation.
+    await waitForCards(page);
+    await warmCaches(page);
+    // Dispatch on `document` (not #film-grid): gesture 1's commit snaps mid-way
+    // and removes the outgoing view, so a captured grid node would be detached
+    // and gesture 2's events would never reach the document-level handlers.
+    await page.evaluate(() => {
+      const W = window.innerWidth, y = 120;
+      const pe = (t, x) => document.dispatchEvent(new PointerEvent(t,
+        { clientX: x, clientY: y, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true }));
+      // Gesture 1: Filmy → Kina, commit (its settle animation now starts).
+      const a = W * 0.8;
+      pe('pointerdown', a);
+      for (let i = 1; i <= 6; i++) pe('pointermove', a - (240 * i) / 6);
+      pe('pointerup', a - 240);
+      // Gesture 2: immediately, mid-animation, swipe back the other way.
+      const b = W * 0.2;
+      pe('pointerdown', b);
+      for (let i = 1; i <= 6; i++) pe('pointermove', b + (240 * i) / 6);
+      pe('pointerup', b + 240);
+    });
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    expect(await isKina(page)).toBe('films');
+  });
+
+  test('a first touch warms the sibling so a cold-start swipe can track (not release-only)', async ({ page }) => {
+    // After a reload the sibling can be uncached, so beginDrag returns null and
+    // the drag gives no feedback until a >40% release. A finger landing now
+    // kicks the prefetch. Keep the cache cold (abort every prefetch) so each
+    // prefetchView call is observable on the wire.
+    const reqs = [];
+    await page.route('**/kina**', (route) => {
+      if (route.request().headers()['x-requested-with'] === 'view-swap') {
+        reqs.push(route.request().url());
+        return route.abort();
+      }
+      return route.continue();
+    });
+    await page.goto('/');
+    await waitForCards(page);
+    await page.waitForTimeout(700);             // let the boot warm definitely fire (idle timeout 500)
+    const before = reqs.length;
+    expect(before).toBeGreaterThan(0);          // sanity: the boot warm did try
+    await page.evaluate(() => {
+      const r = document.getElementById('film-grid').getBoundingClientRect();
+      document.getElementById('film-grid').dispatchEvent(new PointerEvent('pointerdown',
+        { clientX: r.left + r.width / 2, clientY: r.top + 40, pointerType: 'touch', pointerId: 1, bubbles: true, cancelable: true }));
+    });
+    await expect.poll(() => reqs.length).toBeGreaterThan(before);
+  });
+
+  test('a lost pointerup does not dead-lock future swipes (watchdog)', async ({ page }) => {
+    // If a drag mounts the live pager (`_swapping` true) and the release is lost
+    // to the OS, every later swipe used to be blocked until reload. A stall
+    // watchdog now resolves it. Mount a short (snap-back) drag with NO release,
+    // wait past the watchdog, then a fresh swipe must work.
+    await waitForCards(page);
+    await warmCaches(page);
+    // Short drag (under the flick + commit thresholds) so the watchdog resolves
+    // it by snapping back to Filmy — a deterministic resting state.
+    await synthSwipe(page, [[-15, 0], [-20, 0]], { release: false });            // mount, then never lift
+    await page.waitForTimeout(1800);            // > SWAP_WATCHDOG_MS (1500)
+    await expect(page.locator('#view-pager > main')).toHaveCount(1);             // stall resolved, single view
+    expect(await isKina(page)).toBe('films');
+    // A fresh swipe must now work (the stuck flag is cleared).
+    await swipe(page, '#film-grid', -220);
+    await page.waitForURL(/\/kina$/);
+    expect(await isKina(page)).toBe('kina');
   });
 
   test('a committed swipe leaves the scroll where the finger left it (no goto)', async ({ page }) => {
