@@ -45,6 +45,15 @@ runs:
         java-version: 25
         cache: sbt
 
+    # The Playwright container (prebaked_browser=true) is minimal and omits
+    # `unzip`, which sbt/setup-sbt needs to extract the sbt launcher. Installing
+    # just unzip is a ~5s apt — still far below the ~90s `--with-deps` webkit
+    # apt the container lets us skip. No-op on the bare runner (has unzip).
+    - name: Ensure unzip (Playwright container omits it)
+      if: inputs.prebaked_browser == 'true'
+      shell: bash
+      run: apt-get update && apt-get install -y --no-install-recommends unzip
+
     - uses: sbt/setup-sbt@v1
 
     - uses: browser-actions/setup-chrome@v1
