@@ -319,7 +319,12 @@
     cursor: pointer;
     -webkit-user-select: none;
     user-select: none;
-    min-height: 35px;
+    /* 28px is the MOBILE control height — make it the BASE so the pill aligns
+       with the search box even if the max-width:575px media block that pins the
+       other controls doesn't win (the avatar pill was the only control with a
+       35px base, so when that block didn't apply it stuck out taller than
+       search). Desktop bumps back to 35px in the min-width:576px block below. */
+    min-height: 28px;
   }
   .auth-menu:hover { background: #5a5a9e; color: #fff; }
   /* `flex: 0 0 auto` + explicit `min-width/min-height` are load-bearing, not
@@ -570,6 +575,9 @@
     .navbar { padding-top: .25rem; padding-bottom: .25rem; }
     .container-fluid { padding-top: .75rem !important; }
     #film-counter    { margin-bottom: .75rem !important; }
+    /* Desktop control height — the avatar pill matches the 35px nav controls
+       here (its base is the 28px mobile height; see `.auth-menu` above). */
+    .auth-menu { min-height: 35px; }
   }
 
   /* The Debug tab is a dev-mode-only link. On mobile (both portrait
