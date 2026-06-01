@@ -1998,18 +1998,16 @@
     bootView();
     setActiveTab(document.getElementById('view-root')?.dataset.view || 'films');
     bootMergeFromServer();
-    // Warm the sibling so the first switch is instant. Keep it off the critical
-    // first paint (one rAF), but cap the wait with a short idle timeout — on a
-    // busy page (every poster loading) `requestIdleCallback` can otherwise be
-    // starved for seconds, and while the cache is cold a swipe can't track the
-    // finger and falls back to the less-responsive release-only threshold.
+    // Warm the sibling so the first switch is instant. Fire it one frame after
+    // load — off the critical first paint, but PROMPTLY: the earlier idle
+    // callback could be starved for up to its timeout on a busy page (every
+    // poster loading), and a cold cache is exactly when a swipe can't track the
+    // finger and falls back to the less-responsive release-only threshold. The
+    // fetch is async and small (a #view-root fragment), so it won't block paint.
     const here = document.getElementById('view-root')?.dataset.view;
     if (here) {
       const warm = () => prefetchView(here === 'films' ? 'kina' : 'films');
-      requestAnimationFrame(() => {
-        if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 600 });
-        else setTimeout(warm, 150);
-      });
+      requestAnimationFrame(() => setTimeout(warm, 0));
     }
   });
 
