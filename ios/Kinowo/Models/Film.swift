@@ -99,4 +99,13 @@ struct Showtime: Hashable, Identifiable, Codable {
     let format: String
     let room: String?
     let bookingURL: URL?
+
+    /// Room/hall name to surface on a long-press, or `nil` when the
+    /// scraper left it blank (e.g. Apollo, Rialto) or it's only
+    /// whitespace — so a blank value never pops an empty tooltip.
+    var displayRoom: String? {
+        guard let room = room?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !room.isEmpty else { return nil }
+        return room
+    }
 }

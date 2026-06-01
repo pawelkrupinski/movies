@@ -198,13 +198,18 @@ struct ShowingsView: View {
 }
 
 private struct ShowtimeBadge: View {
+    @Environment(\.openURL) private var openURL
     let showtime: Showtime
     var displayFormat: String = ""
 
+    /// True while a long-press is held down — drives the room tooltip.
+    @GestureState private var holding = false
+
     var body: some View {
         let trimmedFormat = displayFormat.trimmingCharacters(in: .whitespacesAndNewlines)
+        let room = showtime.displayRoom
 
-        let body = HStack(spacing: 4) {
+        let pill = HStack(spacing: 4) {
             Text(showtime.time)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(.white)
@@ -216,13 +221,58 @@ private struct ShowtimeBadge: View {
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 4)
-        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 5))
+        .background(Color.white.opacity(holding ? 0.16 : 0.08), in: RoundedRectangle(cornerRadius: 5))
+        .overlay(alignment: .top) {
+            if holding, let room {
+                roomTooltip(room)
+            }
+        }
+        .animation(.easeOut(duration: 0.1), value: holding)
 
-        if let url = showtime.bookingURL {
-            Link(destination: url) { body }
+        // A quick tap opens the booking link (when present); pressing and
+        // holding reveals the room name for as long as the finger stays
+        // down, mirroring the web's long-press tooltip. The hold is high
+        // priority so a deliberate long-press never also fires the booking
+        // link on release.
+        if let room {
+            pill
+                .highPriorityGesture(holdGesture)
+                .onTapGesture { if let url = showtime.bookingURL { openURL(url) } }
+                .accessibilityHint("Przytrzymaj, aby zobaczyć salę: \(room)")
+        } else if let url = showtime.bookingURL {
+            Link(destination: url) { pill }
                 .buttonStyle(.plain)
         } else {
-            body
+            pill
         }
+    }
+
+    /// Long-press (≥0.3s) that then tracks the held finger via a
+    /// zero-distance drag, so `holding` stays true until release.
+    private var holdGesture: some Gesture {
+        LongPressGesture(minimumDuration: 0.3)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .updating($holding) { value, state, _ in
+                if case .second(true, _) = value { state = true }
+            }
+    }
+
+    @ViewBuilder
+    private func roomTooltip(_ room: String) -> some View {
+        Text(room)
+            .font(.system(size: 10, weight: .medium))
+            .foregroundColor(Color(white: 0.85))
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(Color(red: 0.055, green: 0.055, blue: 0.118), in: RoundedRectangle(cornerRadius: 4))
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color(red: 0.23, green: 0.23, blue: 0.43), lineWidth: 1)
+            )
+            .fixedSize()
+            .offset(y: -27)
+            .transition(.opacity)
+            .allowsHitTesting(false)
+            .zIndex(1)
     }
 }
