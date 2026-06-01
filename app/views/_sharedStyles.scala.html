@@ -18,7 +18,13 @@
      and modal backdrops. The /kina-only second row (`.cinema-nav-row`)
      opts back out of sticky so the two rows don't both jam against
      the top edge. */
-  .navbar { background: #1a1a2e; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; gap: .4rem; }
+  /* `display:flex; align-items:center` are inlined here, not left to Bootstrap's
+     `.d-flex.align-items-center` classes on the element: Bootstrap is a SEPARATE
+     stylesheet, and until it loads (cold load / slow link) the navbar would not
+     be a centred flex row — the avatar pill then renders at its block height and
+     off-centre (the "logged-in icon misaligned" report). Owning the flex here
+     means the row is correct from first paint, independent of Bootstrap. */
+  .navbar { background: #1a1a2e; display: flex; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; gap: .4rem; }
   .navbar-logo { flex-shrink: 0; }
   .card {
     background: #1e1e2e;
