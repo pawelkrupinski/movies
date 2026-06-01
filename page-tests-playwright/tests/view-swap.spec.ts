@@ -118,6 +118,70 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     await expect(page.locator('#date-filter')).toHaveValue('tomorrow');
   });
 
+  test('each view keeps its own scroll position across swaps (no reset to top)', async ({ page }) => {
+    // Filmy and Kina share one window scroll, so without per-view memory every
+    // swap would land at the top. Each column should "stay where you left it".
+    // A narrow, short viewport guarantees both grids overflow so the scroll is
+    // real; date=anytime keeps every card visible regardless of wall-clock.
+    //
+    // The fixture's poster images all 404 and collapse their cards
+    // asynchronously, so the document height keeps shrinking for a beat after
+    // load — a scroll captured mid-shrink wouldn't map to the same content
+    // after a fresh re-fetch. `settle()` waits for the height to stop moving so
+    // each saved/restored offset is taken against a stable layout. The two
+    // views are parked far apart (deep vs shallow) so a restored offset is
+    // unambiguously the right column's, never the top and never the other view.
+    const settle = () => page.evaluate(() => new Promise((resolve) => {
+      let last = -1, stableSince = performance.now();
+      const tick = () => {
+        const h = document.documentElement.scrollHeight;
+        if (h !== last) { last = h; stableSince = performance.now(); }
+        else if (performance.now() - stableSince > 400) { resolve(last); return; }
+        requestAnimationFrame(tick);
+      };
+      tick();
+    }));
+    const scrollY = () => page.evaluate(() => window.scrollY);
+    const parkAt = async (y: number) => { await page.evaluate((v) => window.scrollTo(0, v), y); await settle(); };
+
+    await page.setViewportSize({ width: 390, height: 600 });
+    await page.goto('/?date=anytime');
+    await waitForCards(page);
+    await settle();
+
+    // Park Filmy deep in its (very tall) grid.
+    await parkAt(2000);
+    const filmsY = await scrollY();
+    expect(filmsY).toBeGreaterThan(1500);   // genuinely scrolled, holds after settle
+
+    // Swap to Kina — first visit, no memory yet → lands at the top.
+    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
+    await page.waitForURL(/\/kina/);
+    await page.waitForSelector('#cinema-pills .cinema-pill', { state: 'attached' });
+    await settle();
+    expect(await scrollY()).toBe(0);
+
+    // Park Kina shallow — clearly distinct from Filmy's deep offset.
+    await parkAt(400);
+    const kinaY = await scrollY();
+    expect(kinaY).toBeGreaterThan(250);
+    expect(kinaY).toBeLessThan(700);
+
+    // Back to Filmy — restores its deep offset, not the top, not Kina's shallow one.
+    await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
+    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await waitForCards(page);
+    await settle();
+    expect(Math.abs(await scrollY() - filmsY)).toBeLessThan(100);
+
+    // Forward to Kina again — restores its shallow offset, not Filmy's deep one.
+    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
+    await page.waitForURL(/\/kina/);
+    await page.waitForSelector('#cinema-pills .cinema-pill', { state: 'attached' });
+    await settle();
+    expect(Math.abs(await scrollY() - kinaY)).toBeLessThan(100);
+  });
+
   test('reduced-motion still completes the swap (no transition to wait on)', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');

@@ -1508,6 +1508,12 @@
   const _prefetch      = new Map();   // path -> { html, ts }
   let   _swapping      = false;
   let   _finishSwap    = null;   // snaps the in-flight swap to its end on demand
+  // Per-view vertical scroll memory. Filmy and Kina share one window scroll, so
+  // without this every swap would land at the top. We snapshot the outgoing
+  // view's `scrollY` on the way out and restore the destination's on the way in
+  // — so each column "stays where you left it" instead of both resetting to 0.
+  // First visit to a view has no entry → falls back to the top.
+  const _viewScroll    = { films: 0, kina: 0 };
   // Swipe-gesture tuning (shared by the live drag-preview and the release
   // decision so the highlighted tab and where it actually lands stay in sync).
   const COMMIT_FRACTION   = 0.4;   // drag past this fraction of the width → commit
@@ -1570,6 +1576,7 @@
     if (!pager || !current) { window.location = path; return; }
     if (_swapping || current.dataset.view === destView) return;
     _swapping = true;
+    _viewScroll[current.dataset.view] = window.scrollY;   // remember where we left this column
 
     let incoming;
     try {
@@ -1648,7 +1655,7 @@
       setTimeout(onEnd, 450);   // fallback if transitionend is missed
     }
 
-    window.scrollTo(0, 0);
+    window.scrollTo(0, _viewScroll[destView] || 0);   // land where this column last was
     prefetchView(destView === 'kina' ? 'films' : 'kina');
   }
 
@@ -1744,7 +1751,10 @@
   }
 
   function settleDrag(ctx, commit) {
-    const { pager, current, incoming, dir, enter, w, destView, saved, globals } = ctx;
+    const { pager, current, incoming, dir, enter, w, destView, originView, saved, globals } = ctx;
+    // A drag is horizontal, so window.scrollY is still the origin column's
+    // position — snapshot it before the commit restores the destination's.
+    if (commit) _viewScroll[originView] = window.scrollY;
     const finish = () => {
       pager.classList.remove('view-swapping', 'view-sliding');
       if (commit) {
@@ -1756,7 +1766,7 @@
         // already filtered against it during the drag (e.g. ?date= persists).
         history.pushState({ view: destView }, '',
           VIEW_PATHS[destView] + location.search + location.hash);
-        window.scrollTo(0, 0);
+        window.scrollTo(0, _viewScroll[destView] || 0);
         prefetchView(destView === 'kina' ? 'films' : 'kina');
       } else {
         // Snap-back: drop the incoming and restore the outgoing as the live
