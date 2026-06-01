@@ -9,8 +9,6 @@
   @_ogTagsApp(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = fbAppId)
   @_errorTracking()
   @_analytics()
-  @* Bootstrap self-hosted — see kina.scala.html for the reasoning. *@
-  <link rel="stylesheet" href="@routes.Assets.versioned("css/bootstrap-5.3.3.min.css")" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   @* The Filmy view-chrome CSS (`.cinema-label`, film-card content-visibility)
      lives in `_sharedStyles` so it's present on every page — the Filmy↔Kina
      slide-swap injects only `#view-root`, so a head-local <style> here would

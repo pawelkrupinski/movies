@@ -8,6 +8,83 @@
   html { touch-action: manipulation; }
   body { background: #111; color: #eee; overflow-x: hidden; }
 
+  /* ── Bootstrap 5.3.3 subset (the full stylesheet was dropped) ─────────────
+     Bootstrap used to load as a render-blocking <link> in every page <head>
+     purely for the reboot defaults + grid + the handful of utilities below.
+     These are the verbatim 5.3.3 rules for every Bootstrap class the templates
+     actually use (audited across all `*.scala.html` + `shared.js`), inlined so
+     first paint no longer waits on a second CSS request. Copying the real
+     values means the render is unchanged. If a new template needs another
+     Bootstrap class, add its rule here — don't re-add the stylesheet. */
+  /* Reboot — global defaults the whole app silently relied on. Without these
+     it loses border-box sizing and falls back to the serif UA font. */
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    font-size: 1rem; font-weight: 400; line-height: 1.5;
+    -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  }
+  h1, h2, h3, h4, h5, h6 { margin-top: 0; margin-bottom: .5rem; font-weight: 500; line-height: 1.2; }
+  p { margin-top: 0; margin-bottom: 1rem; }
+  ul, ol { margin-top: 0; margin-bottom: 1rem; }
+  a { color: #0d6efd; text-decoration: underline; }
+  img, svg { vertical-align: middle; }
+  button { margin: 0; font-family: inherit; font-size: inherit; line-height: inherit; }
+  button, [type="button"], [type="submit"] { -webkit-appearance: button; }
+  button, [role="button"] { cursor: pointer; }
+  /* Grid — the film listing (.row + .row-cols-* + gutters) and the /film
+     two-column layout (.col-auto poster + .col details). */
+  .container, .container-fluid { width: 100%; padding-right: calc(var(--bs-gutter-x, 1.5rem) * .5); padding-left: calc(var(--bs-gutter-x, 1.5rem) * .5); margin-right: auto; margin-left: auto; }
+  @@media (min-width: 576px)  { .container { max-width: 540px; } }
+  @@media (min-width: 768px)  { .container { max-width: 720px; } }
+  @@media (min-width: 992px)  { .container { max-width: 960px; } }
+  @@media (min-width: 1200px) { .container { max-width: 1140px; } }
+  @@media (min-width: 1400px) { .container { max-width: 1320px; } }
+  .row {
+    --bs-gutter-x: 1.5rem; --bs-gutter-y: 0;
+    display: flex; flex-wrap: wrap;
+    margin-top: calc(-1 * var(--bs-gutter-y));
+    margin-right: calc(-.5 * var(--bs-gutter-x));
+    margin-left: calc(-.5 * var(--bs-gutter-x));
+  }
+  .row > * { flex-shrink: 0; width: 100%; max-width: 100%; padding-right: calc(var(--bs-gutter-x) * .5); padding-left: calc(var(--bs-gutter-x) * .5); margin-top: var(--bs-gutter-y); }
+  .col { flex: 1 0 0%; }
+  .col-auto { flex: 0 0 auto; width: auto; }
+  .row-cols-2 > * { flex: 0 0 auto; width: 50%; }
+  @@media (min-width: 576px)  { .row-cols-sm-3 > * { flex: 0 0 auto; width: 33.33333333%; } }
+  @@media (min-width: 768px)  { .row-cols-md-4 > * { flex: 0 0 auto; width: 25%; } }
+  @@media (min-width: 992px)  { .row-cols-lg-5 > * { flex: 0 0 auto; width: 20%; } }
+  @@media (min-width: 1200px) { .row-cols-xl-6 > * { flex: 0 0 auto; width: 16.66666667%; } }
+  .g-3 { --bs-gutter-x: 1rem; --bs-gutter-y: 1rem; }
+  .g-4 { --bs-gutter-x: 1.5rem; --bs-gutter-y: 1.5rem; }
+  /* Button base — the Filtry / date-arrow / Wyczyść buttons are
+     `.btn .refresh-btn .btn-sm`: `.refresh-btn` paints bg/border/colour/height,
+     the `.btn` pair supplies padding, radius, font-size and cursor. */
+  .btn { display: inline-block; padding: .375rem .75rem; font-size: 1rem; font-weight: 400; line-height: 1.5; text-align: center; text-decoration: none; vertical-align: middle; cursor: pointer; user-select: none; border: 1px solid transparent; border-radius: .375rem; }
+  .btn-sm { padding: .25rem .5rem; font-size: .875rem; border-radius: .25rem; }
+  /* Utilities — Bootstrap generates these with !important; kept so override
+     behaviour against the project's own rules is identical. */
+  .d-flex { display: flex !important; }
+  .align-items-center  { align-items: center !important; }
+  .align-items-stretch { align-items: stretch !important; }
+  .justify-content-between { justify-content: space-between !important; }
+  .gap-1 { gap: .25rem !important; }
+  .gap-3 { gap: 1rem !important; }
+  .px-1 { padding-right: .25rem !important; padding-left: .25rem !important; }
+  .px-4 { padding-right: 1.5rem !important; padding-left: 1.5rem !important; }
+  .py-3 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+  .py-4 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+  .py-5 { padding-top: 3rem !important; padding-bottom: 3rem !important; }
+  .mb-3 { margin-bottom: 1rem !important; }
+  .mb-4 { margin-bottom: 1.5rem !important; }
+  .mb-5 { margin-bottom: 3rem !important; }
+  .w-100 { width: 100% !important; }
+  .text-center { text-align: center !important; }
+  .text-secondary { color: #6c757d !important; }
+  .fw-bold { font-weight: 700 !important; }
+  .fs-5 { font-size: 1.25rem !important; }
+
   /* The `--mobile-scale` / `--mobile-scale-px` variables defined in `_pillStyles` linearly
      interpolate 0.85 → 1.0 between 320 px and 575 px viewport. */
   /* Sticky so the filter bar stays on-screen as the user scrolls
@@ -18,13 +95,15 @@
      and modal backdrops. The /kina-only second row (`.cinema-nav-row`)
      opts back out of sticky so the two rows don't both jam against
      the top edge. */
-  /* `display:flex; align-items:center` are inlined here, not left to Bootstrap's
-     `.d-flex.align-items-center` classes on the element: Bootstrap is a SEPARATE
-     stylesheet, and until it loads (cold load / slow link) the navbar would not
-     be a centred flex row — the avatar pill then renders at its block height and
-     off-centre (the "logged-in icon misaligned" report). Owning the flex here
-     means the row is correct from first paint, independent of Bootstrap. */
-  .navbar { background: #1a1a2e; display: flex; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; gap: .4rem; }
+  /* The navbar owns its own flex layout (rather than relying solely on the
+     `.navbar .d-flex .align-items-center` classes on the element). Historically
+     this guarded against Bootstrap loading late (cold load / slow link) leaving
+     the avatar pill at its block height and off-centre — the "logged-in icon
+     misaligned" report. Bootstrap's utilities are now inlined just above (same
+     first-paint <style>), so the timing risk is gone, but keeping the navbar's
+     flex on its own rule means the row is correct regardless of class ordering.
+     `justify-content: space-between` preserves what Bootstrap's `.navbar` gave. */
+  .navbar { background: #1a1a2e; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; gap: .4rem; }
   .navbar-logo { flex-shrink: 0; }
   .card {
     background: #1e1e2e;

@@ -14,12 +14,6 @@
   )
   @_errorTracking()
   @_analytics()
-  @* Bootstrap self-hosted under `/assets/css/` so the render-blocking
-     stylesheet rides the same HTTP/2 connection as the HTML — no
-     cross-origin handshake on cold iPhone hits. The earlier
-     `<link rel="preconnect" href="...jsdelivr.net">` is no longer
-     needed and was removed alongside this change. *@
-  <link rel="stylesheet" href="@routes.Assets.versioned("css/bootstrap-5.3.3.min.css")" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   @* The /kina view-chrome CSS (cinema sections + cinema-pill picker strip)
      lives in `_sharedStyles` so it's present on every page — the Filmy↔Kina
      slide-swap injects only `#view-root` (the body fragment), so a head-local
