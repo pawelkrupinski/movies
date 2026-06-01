@@ -108,10 +108,30 @@ private struct PosterView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            poster
+            // The 2:3 box is defined by a zero-intrinsic-size `Color.clear`,
+            // NOT by the poster itself. A wide/landscape source image
+            // (e.g. the "Kino bez barier" banner) under `.aspectRatio(_,
+            // .fit)` reported a frame WIDER than its grid column and
+            // painted over the neighbouring card — `.clipped()` never
+            // reined the width in because the `.fill` image was the thing
+            // sizing the frame. `Color.clear` can't be driven past the
+            // proposed column width, so the box is always exactly one
+            // column wide; the poster fills it via `.overlay` (which can't
+            // affect the parent's size) and the overflow is clipped.
+            Color.clear
                 .frame(maxWidth: .infinity)
                 .aspectRatio(2.0/3.0, contentMode: .fit)
+                .overlay { poster }
                 .clipped()
+                // `.clipped()` only masks the *render*: a `.fill` image
+                // keeps its oversized layout/hit/accessibility bounds, so
+                // a wide poster's tap target (and the VoiceOver element)
+                // still spilled past the column into the next card.
+                // `contentShape` reins the hit region back to the clipped
+                // box; the image carries no information the title text
+                // doesn't already, so drop it from the a11y tree.
+                .contentShape(Rectangle())
+                .accessibilityHidden(true)
             HStack {
                 Spacer()
                 hideButton
