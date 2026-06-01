@@ -8,6 +8,7 @@ import play.api.routing.Router
 import play.api._
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
+import play.filters.gzip.GzipFilterComponents
 import router.Routes
 
 import scala.concurrent.Future
@@ -52,13 +53,20 @@ class AppComponents(context: Context)
     extends BuiltInComponentsFromContext(context)
     with HttpFiltersComponents
     with CORSComponents
+    with GzipFilterComponents
     with AssetsComponents with Wiring {
   def environmentMode: Mode = environment.mode
 
   // ── Router + filters ──────────────────────────────────────────────────────
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)
+  // Gzip last so it compresses the final rendered body. The pages are large
+  // (the `/` listing is ~4.2 MB of uncompressed HTML — 200+ server-rendered
+  // cards + the embedded sibling view); gzip takes that to ~300 KB on the
+  // wire, the single biggest mobile-load win. The filter is a no-op for
+  // clients that don't send `Accept-Encoding: gzip` and skips already-
+  // compressed payloads (images), so it only ever helps.
   override def httpFilters: Seq[EssentialFilter] =
-    super.httpFilters :+ corsFilter :+ cspFilter
+    super.httpFilters :+ corsFilter :+ cspFilter :+ gzipFilter
 
   // Replace Play's default error handler with the truncation-tolerant
   // variant so `EntityStreamException` from client-side body cutoffs
