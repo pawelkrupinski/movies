@@ -9,6 +9,10 @@ import Foundation
 enum A11y {
     enum TopBar {
         static let filtryButton     = "topbar.filtry"
+        /// 1pt automation anchor pinned to the frosted bar's bottom edge, so
+        /// tests can read the true bar bottom — the pills / Filtry button sit
+        /// on the row *above* it, inside the bar's bottom padding.
+        static let bottomEdge       = "topbar.bottom"
         static let datePillToday    = "topbar.date.today"
         static let datePillTomorrow = "topbar.date.tomorrow"
         static let datePillWeek     = "topbar.date.week"

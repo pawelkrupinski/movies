@@ -82,6 +82,15 @@ struct TopBar: View {
         // only visible because the scroll content extends beneath the bar;
         // see `ContentView`'s edge-to-edge grid + top content inset.
         .background(.ultraThinMaterial, ignoresSafeAreaEdges: .top)
+        // Zero-visual automation anchor at the bar's true bottom edge. The
+        // pills / Filtry button sit on the row above, inside the 8pt bottom
+        // padding, so they can't stand in for the bar bottom in UI tests.
+        .overlay(alignment: .bottom) {
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: 1)
+                .accessibilityElement()
+                .accessibilityIdentifier(A11y.TopBar.bottomEdge)
+        }
     }
 
     /// Linear scale relative to the iPhone 17 viewport (393pt wide).

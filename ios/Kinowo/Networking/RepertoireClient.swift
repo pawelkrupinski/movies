@@ -20,6 +20,12 @@ final class RepertoireStore: ObservableObject {
     }
 
     func loadCachedData(now: Date = Date()) {
+        // Warm-start UI-test hook: deliver the fixture synchronously so the grid
+        // mounts at first paint, exactly like a warm disk cache.
+        if RepertoireStore.uiTestFixtureEnabled {
+            films = RepertoireStore.uiTestFixture
+            return
+        }
         if films.isEmpty, let cached = RepertoireCache.load() {
             films = cached
         }
@@ -29,6 +35,11 @@ final class RepertoireStore: ObservableObject {
         isLoading = true
         error = nil
         defer { isLoading = false }
+        // UI tests run against the in-memory fixture, never the network.
+        if RepertoireStore.uiTestFixtureEnabled {
+            lastReloadedAt = now
+            return
+        }
         do {
             var request = URLRequest(url: url)
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
@@ -70,5 +81,54 @@ final class RepertoireStore: ObservableObject {
     func pruneStaleShowings(now: Date = Date()) {
         let pruned = films.prunedPastShowings(now: now)
         if pruned != films { films = pruned }
+    }
+}
+
+// MARK: - UI-test fixture hook
+
+extension RepertoireStore {
+    /// When `KINOWO_UITEST_FIXTURE=1`, the store serves a deterministic
+    /// in-memory repertoire instead of the network — the grid mounts at first
+    /// paint like a warm cache, independent of real network timing (the live
+    /// repertoire is empty late at night). `false` in every normal run, so the
+    /// production code path is untouched.
+    static var uiTestFixtureEnabled: Bool {
+        ProcessInfo.processInfo.environment["KINOWO_UITEST_FIXTURE"] == "1"
+    }
+
+    /// Deterministic stand-in repertoire served when the fixture hook is on —
+    /// enough cards to fill the grid well past the first row so the top
+    /// content inset actually matters. No poster URLs: the cards lay out from
+    /// their fixed aspect ratio, keeping the test fully offline.
+    static var uiTestFixture: [Film] {
+        (1...12).map { n in
+            Film(
+                title: "Film \(n)",
+                posterURL: nil,
+                fallbackPosterURLs: [],
+                runtimeMinutes: 120,
+                releaseYear: 2026,
+                genres: ["Dramat"],
+                ratings: .empty,
+                countries: ["Polska"],
+                directors: [],
+                cast: [],
+                showings: [
+                    // Dated today so the default "Dziś" filter shows it at
+                    // launch, with the day's last slot so `pruneStaleShowings`
+                    // keeps it.
+                    DayShowings(
+                        date: DateFilter.iso(Date()),
+                        label: "Dziś",
+                        cinemas: [
+                            CinemaShowings(
+                                cinema: "Kino", cinemaURL: nil,
+                                showtimes: [Showtime(time: "23:59", format: "2D", room: nil, bookingURL: nil)]
+                            )
+                        ]
+                    )
+                ]
+            )
+        }
     }
 }

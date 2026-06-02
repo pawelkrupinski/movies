@@ -43,6 +43,7 @@
 		DD0000000000000000001E /* FilterSheetUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001E /* FilterSheetUITests.swift */; };
 		DD0000000000000000005F /* ScrollInsetUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001F /* ScrollInsetUITests.swift */; };
 		DD00000000000000000070 /* PosterOverlapUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000070 /* PosterOverlapUITests.swift */; };
+		DD00000000000000000071 /* InitialGapUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000071 /* InitialGapUITests.swift */; };
 		DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001B /* AccessibilityIdentifiers.swift */; };
 
 		DD00000000000000000022 /* RetryBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000022 /* RetryBackoff.swift */; };
@@ -100,6 +101,7 @@
 		CC0000000000000000001E /* FilterSheetUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterSheetUITests.swift; sourceTree = "<group>"; };
 		CC0000000000000000001F /* ScrollInsetUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollInsetUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000070 /* PosterOverlapUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterOverlapUITests.swift; sourceTree = "<group>"; };
+		CC00000000000000000071 /* InitialGapUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InitialGapUITests.swift; sourceTree = "<group>"; };
 
 		CC00000000000000000022 /* RetryBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryBackoff.swift; sourceTree = "<group>"; };
 		CC00000000000000000044 /* SwipeHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeHint.swift; sourceTree = "<group>"; };
@@ -233,6 +235,7 @@
 				CC0000000000000000001E /* FilterSheetUITests.swift */,
 				CC0000000000000000001F /* ScrollInsetUITests.swift */,
 				CC00000000000000000070 /* PosterOverlapUITests.swift */,
+				CC00000000000000000071 /* InitialGapUITests.swift */,
 			);
 			path = KinowoUITests;
 			sourceTree = "<group>";
@@ -375,6 +378,7 @@
 				DD0000000000000000001E /* FilterSheetUITests.swift in Sources */,
 				DD0000000000000000005F /* ScrollInsetUITests.swift in Sources */,
 				DD00000000000000000070 /* PosterOverlapUITests.swift in Sources */,
+				DD00000000000000000071 /* InitialGapUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
