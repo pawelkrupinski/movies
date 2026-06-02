@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import pl.kinowo.model.Ratings
 import pl.kinowo.ui.theme.CardElevated
 import pl.kinowo.ui.theme.FwOrange
@@ -45,7 +46,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
         ratings.imdb?.let { v ->
             LabelValuePill(
                 label = "IMDb", labelBg = ImdbYellow, labelFg = Color.Black,
-                value = trimNum(v), valueFg = ImdbYellow,
+                value = oneDecimal(v), valueFg = ImdbYellow,
                 onClick = { openUrl(context, ratings.imdbURL) },
             )
         }
@@ -64,17 +65,18 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
         ratings.filmweb?.let { v ->
             LabelValuePill(
                 label = "FW", labelBg = FwOrange, labelFg = Color.White,
-                value = trimNum(v), valueFg = FwOrangeLight,
+                value = oneDecimal(v), valueFg = FwOrangeLight,
                 onClick = { openUrl(context, ratings.filmwebURL) },
             )
         }
     }
 }
 
-private fun trimNum(v: Double): String {
-    val r = Math.round(v * 10.0) / 10.0
-    return if (r == r.toLong().toDouble()) r.toLong().toString() else r.toString()
-}
+/** One-decimal score for the IMDb / Filmweb pills. Always shows the tenths
+ *  place — a whole-number score like 7.0 renders "7.0", not "7" — and pins
+ *  [Locale.US] so the separator is a dot, never a Polish-locale comma. Matches
+ *  the web's `f"$r%.1f"` and iOS's `Film.Ratings.scoreText`. */
+internal fun oneDecimal(v: Double): String = String.format(Locale.US, "%.1f", v)
 
 @Composable
 private fun LabelValuePill(

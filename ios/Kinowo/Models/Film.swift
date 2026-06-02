@@ -72,6 +72,15 @@ struct Film: Identifiable, Hashable, Codable {
             ].compactMap { $0 }
             return normalised.isEmpty ? 0 : normalised.reduce(0, +) / Double(normalised.count)
         }
+
+        /// One-decimal score string for the IMDb / Filmweb pills. Always shows
+        /// the tenths place — a whole-number score like 7.0 renders "7.0", not
+        /// "7". `String(format:)` is not locale-aware for `%f`, so the separator
+        /// is always a dot, matching the web's `f"$r%.1f"` and Android's
+        /// `oneDecimal`.
+        static func scoreText(_ value: Double) -> String {
+            String(format: "%.1f", value)
+        }
     }
 }
 

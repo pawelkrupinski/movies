@@ -19,7 +19,7 @@ struct RatingBadgesView: View {
             if let imdb = ratings.imdb {
                 Badge.twoTone(
                     label:    "IMDb",
-                    value:    String(format: "%.1f", imdb),
+                    value:    Film.Ratings.scoreText(imdb),
                     url:      ratings.imdbURL,
                     labelBg:  Color(red: 0.961, green: 0.773, blue: 0.094),  // #f5c518
                     labelFg:  .black,
@@ -50,7 +50,7 @@ struct RatingBadgesView: View {
             if let fw = ratings.filmweb {
                 Badge.twoTone(
                     label:    "FW",
-                    value:    String(format: "%.1f", fw),
+                    value:    Film.Ratings.scoreText(fw),
                     url:      ratings.filmwebURL,
                     labelBg:  Color(red: 1.0,   green: 0.424, blue: 0.0),    // #ff6c00
                     labelFg:  .white,
