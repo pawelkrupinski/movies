@@ -1000,8 +1000,17 @@
      that id-keyed rule and leaks the number back into view as the panel slides.
      Targeting the `.grid-status` class (not the id) re-hides BOTH panels for the
      duration of the swap regardless of the id-strip; it reappears (where it
-     normally would) once the swap settles and the class comes off. */
-  #view-pager.view-swapping .grid-status { display: none !important; }
+     normally would) once the swap settles and the class comes off.
+
+     Scoped to the SAME mobile breakpoint as the at-rest `#film-counter` hide:
+     this rule only exists to plug the id-strip leak on phones, where the count
+     is meant to stay hidden. On desktop / wide tablets the counter is a
+     permanent part of the chrome, so it should ride the slide with the rest of
+     the panel content rather than blink out for the duration of every swap. */
+  @@media (max-width: 575px),
+         (max-height: 500px) and (orientation: landscape) {
+    #view-pager.view-swapping .grid-status { display: none !important; }
+  }
   /* Claim horizontal gestures over the grid for the swipe-to-switch handler:
      it lets the browser keep vertical scrolling but stops it treating a
      horizontal drag as a (non-existent) horizontal scroll and cancelling the

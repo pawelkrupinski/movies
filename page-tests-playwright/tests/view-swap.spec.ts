@@ -81,6 +81,24 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     await expect(page.locator('#no-films')).toHaveCount(1);
   });
 
+  test('the counter rides the slide on desktop — it is NOT hidden mid-swap', async ({ page }) => {
+    // On phones the "N tytułów · M seansów" counter is hidden at rest and a
+    // `.view-swapping .grid-status { display:none }` rule keeps it hidden while
+    // a swap is in flight (plugging the id-strip leak — see the swipe block).
+    // On desktop / wide tablets the counter is permanent chrome, so that rule
+    // is scoped to the mobile breakpoint and the count must stay visible while
+    // the panels slide rather than blink out for the duration of every swap.
+    await page.goto('/');
+    await waitForCards(page);
+    const counter = page.locator('#film-counter');
+    await expect(counter).toBeVisible();                  // shown at rest on desktop
+
+    // Force the in-flight state the gesture sets, without racing the animation.
+    await page.evaluate(() => document.getElementById('view-pager').classList.add('view-swapping'));
+    await expect(counter).toBeVisible();                  // still shown mid-swap
+    await page.evaluate(() => document.getElementById('view-pager').classList.remove('view-swapping'));
+  });
+
   test('back button slides back to Filmy and re-highlights it', async ({ page }) => {
     await page.goto('/');
     await waitForCards(page);
