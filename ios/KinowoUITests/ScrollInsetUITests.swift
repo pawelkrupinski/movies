@@ -1,12 +1,12 @@
 import XCTest
 
 /// Regression guard for the "movie cards skip and tuck under the top bar on
-/// the first drag" bug. The grids' enclosing `UIScrollView`s defaulted to
-/// `contentInsetAdjustmentBehavior == .automatic`; UIKit recomputed the
-/// adjusted inset the first time the scroll view was touched, yanking the
-/// grid up ~17pt and parking the top row under the floating top bar. The
-/// fix pins those scroll views to `.never` (see `PinScrollContentInset`)
-/// while the bar reserves its height via `.safeAreaInset(edge: .top)`.
+/// the first drag" bug. The grid's scroll view takes its top content inset
+/// from `ContentView`'s `.safeAreaInset(edge: .top)`, so the first poster row
+/// rests just below the translucent bar while posters scroll *beneath* it.
+/// The earlier failure mode was the top row creeping up under the bar on the
+/// first touch; this test asserts the resting position neither jumps up nor
+/// ends up behind the bar.
 ///
 /// We reproduce with a slow pull-down at the top (the gesture in the bug
 /// report) and assert the top-left card's resting position neither jumps up

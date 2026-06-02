@@ -76,15 +76,13 @@ struct ContentView: View {
                 // across.
                 .ignoresSafeArea(edges: [.bottom, .horizontal])
                 .toolbar(.hidden, for: .navigationBar)
-                // safeAreaInset (not overlay): reserving the bar's measured
-                // height as a real top inset positions each grid's scroll
-                // frame just below the bar on every device — no fixed top
-                // padding to guess at, and the translucent bar still has
-                // grid content scrolling visibly beneath it. The companion
-                // half of the fix lives in `PinScrollContentInset`
-                // (FilmGridView): it stops the scroll views from
-                // auto-adjusting their inset on the first touch, which was
-                // what made the grid "skip" up under the bar on first drag.
+                // safeAreaInset (not overlay): it reserves the bar's measured
+                // height as a real top content inset on every grid's scroll
+                // view — so the first poster row rests just below the bar — and,
+                // because a scroll view extends its frame under that inset, the
+                // posters scroll *beneath* the translucent bar (and the status
+                // bar above it) for the frosted-glass blur, rather than being
+                // clipped at the bar's bottom edge.
                 .safeAreaInset(edge: .top, spacing: 0) {
                     TopBar(
                         dateFilter: $dateFilter,

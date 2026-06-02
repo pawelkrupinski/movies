@@ -76,11 +76,12 @@ struct TopBar: View {
         // grid scrolling beneath it.
         .padding(.top, 2 * s)
         .padding(.bottom, 8 * s)
-        // A translucent blur, not a solid fill — the grid scrolls visibly
-        // beneath the bar. `ultraThinMaterial` is already the lightest system
-        // material; dropping its opacity makes the bar read as mostly
-        // transparent with only a faint blur of the content underneath.
-        .background(.ultraThinMaterial.opacity(0.6), ignoresSafeAreaEdges: .top)
+        // A translucent frosted blur, not a solid fill — the grid scrolls
+        // under the bar (and the status bar above it), so posters blur
+        // through it rather than sitting below an opaque slab. The blur is
+        // only visible because the scroll content extends beneath the bar;
+        // see `ContentView`'s edge-to-edge grid + top content inset.
+        .background(.ultraThinMaterial, ignoresSafeAreaEdges: .top)
     }
 
     /// Linear scale relative to the iPhone 17 viewport (393pt wide).
