@@ -1,10 +1,16 @@
 import SwiftUI
 import UIKit
 
-// Top safe-area inset: 🎬 brand mark + four date-filter pills sharing
-// the available width + Filtry button on the right. Built as a plain
+// Top safe-area inset: 🎬 brand mark + four date-filter pills + (on wide
+// screens) the search field + Filtry button on the right. Built as a plain
 // HStack instead of SwiftUI `ToolbarItem`s because the native nav bar
 // clips its contents to a few dozen points of width.
+//
+// `searchInline` (decided by `TopBarLayout` from the viewport width) moves
+// search onto this row, between the pills and Filtry; on narrow screens it
+// stays a floating bottom pill (`SearchBar`) and this row holds only the
+// pills. When search is inline the pills hug their content and the field
+// claims the leftover width; otherwise the pills spread to fill the row.
 //
 // Every numeric size below is multiplied by `scale = viewportWidth / 393`
 // (iPhone 17 reference width). Smaller phones get a proportionally
@@ -13,20 +19,27 @@ import UIKit
 // size that has to fit the smallest screen.
 struct TopBar: View {
     @Binding var dateFilter: DateFilter
+    @Binding var search: String
+    @FocusState.Binding var searchFocused: Bool
+    let searchInline: Bool
     let filtersActive: Bool
     let onTapFilters: () -> Void
 
     var body: some View {
         let s = TopBar.viewportScale
         // `spacing: 6 * s` matches the inter-pill gap inside
-        // `DatePillsRow`, so the gap from 🎬 → first pill and from
-        // last pill → Filtry icon reads as the same width as the
+        // `DatePillsRow`, so every gap on the bar — 🎬 → pills,
+        // pills → search/Filtry — reads as the same width as the
         // gaps between the four pills.
         HStack(spacing: 6 * s) {
             Text("🎬")
                 .font(.system(size: 24 * s))
-            DatePillsRow(dateFilter: $dateFilter, scale: s)
-                .frame(maxWidth: .infinity)
+            DatePillsRow(dateFilter: $dateFilter, scale: s, fillWidth: !searchInline)
+                .frame(maxWidth: searchInline ? nil : .infinity)
+            if searchInline {
+                InlineSearchField(search: $search, focused: $searchFocused, scale: s)
+                    .frame(maxWidth: .infinity)
+            }
             Button(action: onTapFilters) {
                 // `line.3.horizontal.decrease.circle` is the funnel-in-
                 // circle SF Symbol the iOS app shipped with — the circle
@@ -90,19 +103,28 @@ struct TopBar: View {
 struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
     let scale: CGFloat
+    /// When true (the default) the pills spread to fill the row, as above.
+    /// When false — the inline-search layout on wide screens — every pill
+    /// keeps its intrinsic width so the row hugs its content and the search
+    /// field beside it can claim the leftover space.
+    var fillWidth: Bool = true
     @Environment(\.horizontalSizeClass) private var hSize
 
     var body: some View {
         let landscape = hSize == .regular || UIScreen.main.bounds.width > UIScreen.main.bounds.height
         HStack(spacing: 6 * scale) {
             ForEach(DateFilter.presets, id: \.self) { f in
+                // Expand to share the row width unless we're hugging content
+                // (`!fillWidth`) or this is Wszystkie in portrait (which keeps
+                // its intrinsic 9-character width).
+                let expand = fillWidth && !(f == .anytime && !landscape)
                 Button {
                     dateFilter = f
                 } label: {
                     Text(f.label)
                         .font(.system(size: 14 * scale, weight: .medium))
                         .lineLimit(1)
-                        .frame(maxWidth: (f == .anytime && !landscape) ? nil : .infinity)
+                        .frame(maxWidth: expand ? .infinity : nil)
                         .padding(.horizontal, 12 * scale)
                         .padding(.vertical, 7 * scale)
                         .background(
@@ -114,9 +136,67 @@ struct DatePillsRow: View {
                         .foregroundColor(dateFilter == f ? .white : .primary)
                 }
                 .buttonStyle(.plain)
-                .fixedSize(horizontal: f == .anytime && !landscape, vertical: false)
+                .fixedSize(horizontal: !expand, vertical: false)
             }
         }
+    }
+}
+
+// The magnifier + text field + clear-button row shared by both search
+// placements: the floating bottom `SearchBar` and the inline
+// `InlineSearchField` on the top bar. Glyph size and font scale with the
+// placement so the inline field matches the date-pill height.
+struct SearchFieldContent: View {
+    @Binding var search: String
+    @FocusState.Binding var focused: Bool
+    var iconSize: CGFloat = 17
+    var font: Font = .body
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: iconSize))
+                .foregroundStyle(.secondary)
+            TextField("Szukaj filmu", text: $search)
+                .font(font)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .focused($focused)
+                .foregroundColor(.primary)
+                .accessibilityIdentifier(A11y.Search.field)
+            if !search.isEmpty {
+                Button {
+                    search = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: iconSize))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+// Inline search on the top bar (wide screens): the shared field in a
+// translucent capsule sized to the date pills, sitting between the pills
+// and the Filtry button. Sizes track the same `scale` as the rest of the
+// bar so it matches the pill height.
+struct InlineSearchField: View {
+    @Binding var search: String
+    @FocusState.Binding var focused: Bool
+    let scale: CGFloat
+
+    var body: some View {
+        SearchFieldContent(
+            search: $search,
+            focused: $focused,
+            iconSize: 15 * scale,
+            font: .system(size: 14 * scale)
+        )
+        .padding(.horizontal, 12 * scale)
+        .padding(.vertical, 6 * scale)
+        .modifier(GlassyPillBackground())
     }
 }
 
@@ -130,26 +210,7 @@ struct SearchBar: View {
     @FocusState.Binding var focused: Bool
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 17))
-                .foregroundStyle(.secondary)
-            TextField("Szukaj filmu", text: $search)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .focused($focused)
-                .foregroundColor(.primary)
-            if !search.isEmpty {
-                Button {
-                    search = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 17))
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-        }
+        SearchFieldContent(search: $search, focused: $focused)
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
         .modifier(GlassyPillBackground())

@@ -15,6 +15,10 @@ enum A11y {
         static let datePillAnytime  = "topbar.date.anytime"
     }
 
+    enum Search {
+        static let field = "search.field"
+    }
+
     enum FilmGrid {
         static let cell = "filmgrid.cell"
     }

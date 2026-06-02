@@ -26,6 +26,13 @@ struct ContentView: View {
     @State private var showFilters: Bool = false
     @FocusState private var searchFocused: Bool
 
+    /// Live viewport width, tracked by a backing GeometryReader so the
+    /// search placement re-evaluates on rotation / iPad split-view resize.
+    @State private var viewportWidth: CGFloat = UIScreen.main.bounds.width
+    /// Wide screens host search inline on the top bar; narrow ones keep it
+    /// as the floating bottom pill. See `TopBarLayout`.
+    private var searchInline: Bool { TopBarLayout.searchInline(width: viewportWidth) }
+
     @State private var tabLabel: String? = nil
     @State private var tabLabelTask: Task<Void, Never>?
 
@@ -81,13 +88,29 @@ struct ContentView: View {
                 .safeAreaInset(edge: .top, spacing: 0) {
                     TopBar(
                         dateFilter: $dateFilter,
+                        search: $search,
+                        searchFocused: $searchFocused,
+                        searchInline: searchInline,
                         filtersActive: filtersActive,
                         onTapFilters: { showFilters = true }
                     )
                 }
+                // Narrow screens float search at the bottom; wide screens
+                // host it inline on the top bar instead (see TopBar).
                 .overlay(alignment: .bottom) {
-                    SearchBar(search: $search, focused: $searchFocused)
+                    if !searchInline {
+                        SearchBar(search: $search, focused: $searchFocused)
+                    }
                 }
+                // Track the live width so `searchInline` follows rotation
+                // and resize. A clear backing layer — no layout effect.
+                .background(
+                    GeometryReader { geo in
+                        Color.clear
+                            .onAppear { viewportWidth = geo.size.width }
+                            .onChange(of: geo.size.width) { viewportWidth = $0 }
+                    }
+                )
                 .sheet(isPresented: $showFilters) {
                     FiltersSheet(
                         sortOption: $sortOption,

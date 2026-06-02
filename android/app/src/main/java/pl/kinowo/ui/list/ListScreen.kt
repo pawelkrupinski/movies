@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.pager.HorizontalPager
@@ -74,6 +75,7 @@ import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
+import pl.kinowo.ui.TopBarLayout
 import pl.kinowo.ui.common.PosterPrefetch
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
@@ -95,6 +97,11 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     // or toggling a cinema recomposes the grid — see filmsForFilmsTab's comment.
     val hidden by vm.hiddenFilms.collectAsState()
     val disabled by vm.disabledCinemas.collectAsState()
+
+    // Wide screens (tablets, landscape phones) host search inline on the top
+    // bar; narrow ones keep it as the floating bottom pill. screenWidthDp
+    // recomposes on rotation / resize, so the placement follows. See TopBarLayout.
+    val wide = TopBarLayout.searchInline(LocalConfiguration.current.screenWidthDp)
 
     val pager = rememberPagerState(pageCount = { 2 })
     // Backdrop captured by `Modifier.haze` (the grid) and sampled by the
@@ -154,7 +161,12 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("🎬", fontSize = 22.sp)
-                DatePills(vm)
+                // When search is inline the pills hug their content and the
+                // field claims the leftover width; otherwise the pills fill it.
+                DatePills(vm, fillWidth = !wide)
+                if (wide) {
+                    InlineSearchField(value = vm.search, onValueChange = { vm.search = it })
+                }
                 IconButton(onClick = { showFilters = true }) {
                     Icon(
                         Icons.Outlined.FilterList,
@@ -175,6 +187,9 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
             // `hazeChild`, so the cards blur and shift as they scroll under it.
             // Bottom content padding keeps the last row clear of the pill.
             Box(Modifier.fillMaxSize()) {
+                // No floating pill on wide screens (search is inline up top), so the
+                // grid only needs to clear it on narrow ones.
+                val gridBottomInset = if (wide) 12.dp else SearchBarBottomInset
                 Box(Modifier.fillMaxSize().haze(hazeState)) {
                     when {
                         isLoading && films.isEmpty() -> CenteredMessage("Ładowanie repertuaru…")
@@ -182,13 +197,14 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                         else -> HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
                             PullToRefreshBox(isRefreshing = isLoading, onRefresh = { vm.reload() }) {
                                 if (page == 0) {
-                                    FilmsGrid(vm.filmsForFilmsTab(films, hidden, disabled), onOpenFilm) { vm.hide(it) }
+                                    FilmsGrid(vm.filmsForFilmsTab(films, hidden, disabled), gridBottomInset, onOpenFilm) { vm.hide(it) }
                                 } else {
                                     CinemaGrid(
                                         vm.cinemaSections(films, hidden),
                                         // A pinned cinema shows only its own section, so the
                                         // per-cinema header is redundant — the pill already names it.
                                         showHeaders = vm.pinnedCinema == null,
+                                        bottomInset = gridBottomInset,
                                         onOpen = onOpenFilm,
                                     ) { vm.hide(it) }
                                 }
@@ -197,12 +213,14 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                     }
                 }
 
-                FloatingSearchBar(
-                    value = vm.search,
-                    onValueChange = { vm.search = it },
-                    hazeState = hazeState,
-                    modifier = Modifier.align(Alignment.BottomCenter).imePadding(),
-                )
+                if (!wide) {
+                    FloatingSearchBar(
+                        value = vm.search,
+                        onValueChange = { vm.search = it },
+                        hazeState = hazeState,
+                        modifier = Modifier.align(Alignment.BottomCenter).imePadding(),
+                    )
+                }
             }
         }
 
@@ -310,31 +328,64 @@ private fun FloatingSearchBar(
             .padding(horizontal = 18.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Filled.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(10.dp))
-        Box(Modifier.weight(1f)) {
-            if (value.isEmpty()) {
-                Text("Szukaj filmu", color = TextSecondary)
-            }
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                singleLine = true,
-                textStyle = LocalTextStyle.current.copy(color = Color.White),
-                cursorBrush = SolidColor(Brand),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                modifier = Modifier.fillMaxWidth(),
-            )
+        SearchFieldContent(value, onValueChange)
+    }
+}
+
+// Inline search on the top bar (wide screens): the shared field in a
+// translucent capsule sized to the date pills, sitting between the pills and
+// the Filtry button. `weight(1f)` claims the row's leftover width once the
+// pills hug their content. The Android counterpart to the iOS InlineSearchField.
+@Composable
+private fun RowScope.InlineSearchField(value: String, onValueChange: (String) -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        Modifier
+            .weight(1f)
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.08f))
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SearchFieldContent(value, onValueChange, compact = true)
+    }
+}
+
+// The magnifier + text field + clear glyph shared by both search placements:
+// the floating bottom FloatingSearchBar and the inline InlineSearchField. In
+// compact mode (inline) the glyphs and text shrink to match the date-pill height.
+@Composable
+private fun RowScope.SearchFieldContent(value: String, onValueChange: (String) -> Unit, compact: Boolean = false) {
+    val iconSize = if (compact) 16.dp else 20.dp
+    val baseStyle = LocalTextStyle.current
+    val textStyle = baseStyle.copy(
+        color = Color.White,
+        fontSize = if (compact) 14.sp else baseStyle.fontSize,
+    )
+    Icon(Icons.Filled.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(iconSize))
+    Spacer(Modifier.width(if (compact) 8.dp else 10.dp))
+    Box(Modifier.weight(1f)) {
+        if (value.isEmpty()) {
+            Text("Szukaj filmu", color = TextSecondary, fontSize = textStyle.fontSize)
         }
-        if (value.isNotEmpty()) {
-            Spacer(Modifier.width(8.dp))
-            Icon(
-                Icons.Filled.Close,
-                contentDescription = "Wyczyść",
-                tint = TextSecondary,
-                modifier = Modifier.size(20.dp).clickable { onValueChange("") },
-            )
-        }
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = textStyle,
+            cursorBrush = SolidColor(Brand),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+    if (value.isNotEmpty()) {
+        Spacer(Modifier.width(8.dp))
+        Icon(
+            Icons.Filled.Close,
+            contentDescription = "Wyczyść",
+            tint = TextSecondary,
+            modifier = Modifier.size(iconSize).clickable { onValueChange("") },
+        )
     }
 }
 
@@ -342,14 +393,16 @@ private fun FloatingSearchBar(
 // DatePillsRow): the three short pills (Dziś / Jutro / 7 dni) share the
 // leftover row width equally via `weight`, while "Wszystkie" keeps its
 // intrinsic width — so they fit one row beside the 🎬 mark and Filtry icon
-// without a separate strip or horizontal scrolling.
+// without a separate strip or horizontal scrolling. When `fillWidth` is false
+// — the inline-search layout on wide screens — every pill keeps its intrinsic
+// width so the row hugs its content and the search field beside it takes over.
 @Composable
-private fun RowScope.DatePills(vm: KinowoViewModel) {
+private fun RowScope.DatePills(vm: KinowoViewModel, fillWidth: Boolean = true) {
     for (preset in DateFilter.presets) {
         DatePill(
             label = preset.label,
             selected = vm.dateFilter == preset,
-            modifier = if (preset == DateFilter.Anytime) Modifier else Modifier.weight(1f),
+            modifier = if (fillWidth && preset != DateFilter.Anytime) Modifier.weight(1f) else Modifier,
         ) { vm.dateFilter = preset }
     }
 }
@@ -447,7 +500,7 @@ private fun posterGridCells(): GridCells {
 }
 
 @Composable
-private fun FilmsGrid(films: List<Film>, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
+private fun FilmsGrid(films: List<Film>, bottomInset: Dp, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
     if (films.isEmpty()) {
         EmptyState("Brak repertuaru.")
         return
@@ -458,7 +511,7 @@ private fun FilmsGrid(films: List<Film>, onOpen: (String) -> Unit, onHide: (Stri
     LazyVerticalGrid(
         columns = posterGridCells(),
         state = gridState,
-        contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = SearchBarBottomInset),
+        contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = bottomInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize(),
@@ -470,7 +523,7 @@ private fun FilmsGrid(films: List<Film>, onOpen: (String) -> Unit, onHide: (Stri
 }
 
 @Composable
-private fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
+private fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, bottomInset: Dp, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
     if (sections.isEmpty()) {
         EmptyState("Brak repertuaru.")
         return
@@ -490,7 +543,7 @@ private fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, onOp
     LazyVerticalGrid(
         columns = posterGridCells(),
         state = gridState,
-        contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = SearchBarBottomInset),
+        contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = bottomInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize(),
