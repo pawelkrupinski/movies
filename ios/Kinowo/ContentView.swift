@@ -1,5 +1,14 @@
 import SwiftUI
 
+/// Carries the floating top bar's bottom edge (in screen/global space) up to
+/// `ContentView`, which feeds it back down as the grids' explicit top inset.
+private struct TopBarBottomKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
@@ -32,6 +41,18 @@ struct ContentView: View {
     /// Wide screens host search inline on the top bar; narrow ones keep it
     /// as the floating bottom pill. See `TopBarLayout`.
     private var searchInline: Bool { TopBarLayout.searchInline(width: viewportWidth) }
+
+    /// The floating top bar's bottom edge in screen space, measured live via
+    /// `TopBarBottomKey`. The grids extend edge-to-edge under the bar (so
+    /// posters render behind the frosted glass and the status bar) and use
+    /// this as an explicit top content inset so the first poster row still
+    /// rests just below the bar. Explicit — not the scroll view's `.automatic`
+    /// safe-area inset — so the resting gap can't be silently recomputed away
+    /// on first touch. Seeded with a plain constant (a touch low so the
+    /// one-time refine to the measured value only ever grows the gap, never
+    /// shrinks it); the real value lands on the first layout pass, before the
+    /// grid mounts, so the seed is effectively never seen.
+    @State private var topInset: CGFloat = 60
 
     @State private var tabLabel: String? = nil
     @State private var tabLabelTask: Task<Void, Never>?
@@ -76,13 +97,14 @@ struct ContentView: View {
                 // across.
                 .ignoresSafeArea(edges: [.bottom, .horizontal])
                 .toolbar(.hidden, for: .navigationBar)
-                // safeAreaInset (not overlay): it reserves the bar's measured
-                // height as a real top content inset on every grid's scroll
-                // view — so the first poster row rests just below the bar — and,
-                // because a scroll view extends its frame under that inset, the
-                // posters scroll *beneath* the translucent bar (and the status
-                // bar above it) for the frosted-glass blur, rather than being
-                // clipped at the bar's bottom edge.
+                // safeAreaInset draws the bar pinned below the status bar (its
+                // material extends up under it). We do NOT lean on the safe-area
+                // inset it adds for the grids' resting position — the grids
+                // ignore the top safe area (so they render edge-to-edge behind
+                // the bar) and instead use an explicit `topInset` padding,
+                // measured here as the bar's bottom edge in screen space. That
+                // keeps the resting gap stable (no `.automatic` recompute can
+                // collapse it) while posters still scroll behind the frosted bar.
                 .safeAreaInset(edge: .top, spacing: 0) {
                     TopBar(
                         dateFilter: $dateFilter,
@@ -92,7 +114,16 @@ struct ContentView: View {
                         filtersActive: filtersActive,
                         onTapFilters: { showFilters = true }
                     )
+                    .background(
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: TopBarBottomKey.self,
+                                value: proxy.frame(in: .global).maxY
+                            )
+                        }
+                    )
                 }
+                .onPreferenceChange(TopBarBottomKey.self) { topInset = $0 }
                 // Narrow screens float search at the bottom; wide screens
                 // host it inline on the top bar instead (see TopBar).
                 .overlay(alignment: .bottom) {
@@ -201,7 +232,7 @@ struct ContentView: View {
             errorState(error)
         } else {
             TabView(selection: $tab) {
-                FilmGridView(films: filmsForFilmsTab)
+                FilmGridView(films: filmsForFilmsTab, topInset: topInset)
                     .refreshable { await store.reload() }
                     .tag(Tab.films)
                 cinemasPage
@@ -212,7 +243,12 @@ struct ContentView: View {
             // the floating Filmy / Kina label is the only "where am I"
             // affordance.
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .ignoresSafeArea(edges: [.bottom, .horizontal])
+            // Ignore the top safe area too (not just bottom/horizontal): the
+            // paged TabView would otherwise clip its pages at the bar's bottom
+            // edge, so nothing rendered behind the frosted bar. Extending under
+            // it — with the grids' explicit `topInset` keeping the first row
+            // below the bar — is what lets posters blur through the glass.
+            .ignoresSafeArea(edges: [.top, .bottom, .horizontal])
             // Resolves NavigationLink(value: Film) from both grids to
             // the per-film detail screen, the iOS counterpart of
             // /film?title=… on the web.
@@ -238,6 +274,7 @@ struct ContentView: View {
             // A pinned cinema is already named by its pill, so drop the
             // now-redundant per-section header; "Wszystkie" keeps them.
             showSectionHeaders: pinnedCinema == nil,
+            topInset: topInset,
             header: {
                 CinemaPillsRow(
                     allCinemas: allCinemas,

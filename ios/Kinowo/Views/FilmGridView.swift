@@ -17,6 +17,11 @@ private struct EmptyRepertoireView: View {
 
 struct FilmGridView: View {
     let films: [Film]
+    /// Screen-space height of the floating top bar, supplied by `ContentView`.
+    /// The grid renders edge-to-edge under the bar; this padding keeps the
+    /// first poster row resting just below it (a stable, explicit inset — not
+    /// the scroll view's `.automatic` safe-area inset, which could collapse).
+    var topInset: CGFloat = 0
 
     var body: some View {
         if films.isEmpty {
@@ -40,11 +45,10 @@ struct FilmGridView: View {
                     }
                 }
                 .padding(.horizontal, 12)
-                // The shared TopBar's height is already reserved by
-                // ContentView's `.safeAreaInset(edge: .top)`; this small
-                // top pad is just a breathing gap so the first poster row
-                // doesn't sit flush against the bar.
-                .padding(.top, 10)
+                // `topInset` clears the floating top bar (the grid scrolls
+                // under it); +10 is the breathing gap so the first poster row
+                // doesn't sit flush against the bar's bottom edge.
+                .padding(.top, topInset + 10)
                 .padding(.bottom, 70)
             }
             .scrollDismissesKeyboard(.immediately)
@@ -64,12 +68,18 @@ struct FilmGridView: View {
 struct CinemaSectionedGridView<Header: View>: View {
     let sections: [CinemaSection]
     let showSectionHeaders: Bool
+    /// Screen-space height of the floating top bar (see `FilmGridView.topInset`):
+    /// the cinema grid scrolls under the bar, this keeps the pill-row header
+    /// resting just below it.
+    let topInset: CGFloat
     let header: () -> Header
 
     init(sections: [CinemaSection], showSectionHeaders: Bool = true,
+         topInset: CGFloat = 0,
          @ViewBuilder header: @escaping () -> Header = { EmptyView() }) {
         self.sections = sections
         self.showSectionHeaders = showSectionHeaders
+        self.topInset = topInset
         self.header = header
     }
 
@@ -101,10 +111,10 @@ struct CinemaSectionedGridView<Header: View>: View {
                 }
             }
             .padding(.horizontal, 12)
-            // No explicit top gap here: the pill row's own vertical padding
-            // already equals the gap below it (pill → first poster), so the
-            // row sits symmetrically between the bar and the content. The
-            // bar height is reserved by ContentView's `.safeAreaInset(.top)`.
+            // `topInset` clears the floating top bar (the grid scrolls under
+            // it); the pill row's own vertical padding then supplies the gap
+            // between the row and the first poster.
+            .padding(.top, topInset)
             .padding(.bottom, 70)
         }
         .scrollDismissesKeyboard(.immediately)
