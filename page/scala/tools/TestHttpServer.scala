@@ -27,7 +27,18 @@ class TestHttpServer(
   // returns just the `#view-root` fragment for an in-place Filmy↔Kina swap.
   // Defaults to empty so existing single-arg callers are unaffected.
   swapRoutes: PartialFunction[String, String] = PartialFunction.empty,
+  // JSON API routes (`/api/repertoire`, `/api/details`) the mobile apps
+  // consume. Served as `application/json` with a `Last-Modified` header so the
+  // Android `KinowoApi` / iOS `RepertoireStore` exercise the real wire
+  // contract — not text/html like the page routes. Defaults to empty.
+  jsonRoutes: PartialFunction[String, String] = PartialFunction.empty,
 ) extends AutoCloseable {
+  // Stable HTTP-date stamped on every JSON response so clients can capture a
+  // `Last-Modified` (and a future conditional-GET test has a value to echo
+  // back). Anchored at the fixture snapshot midnight, GMT.
+  private val jsonLastModified: String =
+    java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.format(
+      java.time.ZonedDateTime.of(2026, 5, 17, 0, 0, 0, 0, java.time.ZoneOffset.UTC))
   private val server: HttpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
   server.createContext("/", new HttpHandler {
     override def handle(ex: HttpExchange): Unit = {
@@ -67,6 +78,13 @@ class TestHttpServer(
             val os = ex.getResponseBody
             try os.write(bytes) finally os.close()
           }
+        } else if (jsonRoutes.isDefinedAt(routeKey)) {
+          val bytes = jsonRoutes(routeKey).getBytes(StandardCharsets.UTF_8)
+          ex.getResponseHeaders.add("Content-Type", "application/json; charset=UTF-8")
+          ex.getResponseHeaders.add("Last-Modified", jsonLastModified)
+          ex.sendResponseHeaders(200, bytes.length.toLong)
+          val os = ex.getResponseBody
+          try os.write(bytes) finally os.close()
         } else {
           val isSwap = Option(ex.getRequestHeaders.getFirst("X-Requested-With"))
                          .contains("view-swap")

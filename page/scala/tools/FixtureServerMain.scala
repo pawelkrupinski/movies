@@ -1,6 +1,8 @@
 package tools
 
+import controllers.{ApiFilm, ApiFilmDetails}
 import models.Cinema
+import play.api.libs.json.Json
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -141,7 +143,22 @@ object FixtureServerMain {
         renderKinaFragment(cinemas.find(_ == raw))
     }
 
-    val server = new TestHttpServer(routes, swapRoutes)
+    // The two JSON endpoints the mobile apps consume — the Android `KinowoApi`
+    // and iOS `RepertoireStore` both decode these. Rendered from the same
+    // fixture `schedules` the HTML routes use, via the production
+    // `ApiFilm` / `ApiFilmDetails` projections, so a wire-shape drift in
+    // `MovieController`'s JSON is caught by the mobile LocalServer suites.
+    val repertoireJson: String = Json.toJson(schedules.map(ApiFilm.from)).toString
+    val detailsJson: String = Json.toJson(
+      schedules.map(ApiFilmDetails.from).filter(ApiFilmDetails.hasContent)
+    ).toString
+
+    val jsonRoutes: PartialFunction[String, String] = {
+      case "/api/repertoire" => repertoireJson
+      case "/api/details"    => detailsJson
+    }
+
+    val server = new TestHttpServer(routes, swapRoutes, jsonRoutes)
 
     Files.write(portFile, server.port.toString.getBytes(StandardCharsets.UTF_8))
     System.err.println(s"[FixtureServerMain] listening on ${server.baseUrl} — wrote port $portFile")
