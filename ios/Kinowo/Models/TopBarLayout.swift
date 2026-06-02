@@ -1,4 +1,10 @@
+#if canImport(CoreGraphics)
 import CoreGraphics
+#else
+// `CoreGraphics` isn't on Linux, but Foundation re-exports `CGFloat`
+// there — enough for this pure-logic type to build under `swift test` CI.
+import Foundation
+#endif
 
 /// Decides, from the viewport width, where the search field lives.
 ///
