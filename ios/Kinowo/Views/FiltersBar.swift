@@ -9,8 +9,9 @@ import UIKit
 // `searchInline` (decided by `TopBarLayout` from the viewport width) moves
 // search onto this row, between the pills and Filtry; on narrow screens it
 // stays a floating bottom pill (`SearchBar`) and this row holds only the
-// pills. When search is inline the pills hug their content and the field
-// claims the leftover width; otherwise the pills spread to fill the row.
+// pills. The search field is capped at a sensible max width so it doesn't
+// sprawl across a wide screen; the date pills always spread to fill the
+// leftover row width.
 //
 // Every numeric size below is multiplied by `scale = viewportWidth / 393`
 // (iPhone 17 reference width). Smaller phones get a proportionally
@@ -34,11 +35,13 @@ struct TopBar: View {
         HStack(spacing: 6 * s) {
             Text("🎬")
                 .font(.system(size: 24 * s))
-            DatePillsRow(dateFilter: $dateFilter, scale: s, fillWidth: !searchInline)
-                .frame(maxWidth: searchInline ? nil : .infinity)
+            DatePillsRow(dateFilter: $dateFilter, scale: s)
+                .frame(maxWidth: .infinity)
             if searchInline {
+                // Cap the field so it stays a comfortable type-into width
+                // rather than eating the whole row — the pills get the rest.
                 InlineSearchField(search: $search, focused: $searchFocused, scale: s)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: 240 * s)
             }
             Button(action: onTapFilters) {
                 // `line.3.horizontal.decrease.circle` is the funnel-in-
@@ -103,21 +106,15 @@ struct TopBar: View {
 struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
     let scale: CGFloat
-    /// When true (the default) the pills spread to fill the row, as above.
-    /// When false — the inline-search layout on wide screens — every pill
-    /// keeps its intrinsic width so the row hugs its content and the search
-    /// field beside it can claim the leftover space.
-    var fillWidth: Bool = true
     @Environment(\.horizontalSizeClass) private var hSize
 
     var body: some View {
         let landscape = hSize == .regular || UIScreen.main.bounds.width > UIScreen.main.bounds.height
         HStack(spacing: 6 * scale) {
             ForEach(DateFilter.presets, id: \.self) { f in
-                // Expand to share the row width unless we're hugging content
-                // (`!fillWidth`) or this is Wszystkie in portrait (which keeps
-                // its intrinsic 9-character width).
-                let expand = fillWidth && !(f == .anytime && !landscape)
+                // Expand to share the row width unless this is Wszystkie in
+                // portrait (which keeps its intrinsic 9-character width).
+                let expand = !(f == .anytime && !landscape)
                 Button {
                     dateFilter = f
                 } label: {
