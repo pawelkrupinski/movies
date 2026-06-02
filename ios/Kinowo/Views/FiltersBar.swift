@@ -76,7 +76,11 @@ struct TopBar: View {
         // grid scrolling beneath it.
         .padding(.top, 2 * s)
         .padding(.bottom, 8 * s)
-        .background(.ultraThinMaterial, ignoresSafeAreaEdges: .top)
+        // A translucent blur, not a solid fill — the grid scrolls visibly
+        // beneath the bar. `ultraThinMaterial` is already the lightest system
+        // material; dropping its opacity makes the bar read as mostly
+        // transparent with only a faint blur of the content underneath.
+        .background(.ultraThinMaterial.opacity(0.6), ignoresSafeAreaEdges: .top)
     }
 
     /// Linear scale relative to the iPhone 17 viewport (393pt wide).
