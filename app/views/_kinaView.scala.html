@@ -14,8 +14,7 @@
 </nav>
 
 <div class="container-fluid py-4 px-4">
-  <p id="film-counter" class="grid-status text-secondary mb-4" style="display:none"></p>
-  <div id="no-films" class="grid-status text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
+  <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
   <div id="film-grid">
     @_cinemaCards(cinemas)
   </div>
@@ -133,7 +132,7 @@
                    isSpecific            ? d => d === filter :
                                            _  => true;
 
-    let visibleCount = 0, showtimeCount = 0;
+    let visibleCount = 0;
 
     for (const section of INDEX) {
       if (disabled.has(section.cinema)) { setVisible(section, false); continue; }
@@ -152,7 +151,7 @@
           continue;
         }
 
-        let colVisible = false, colEarliest = null, colShowtimes = 0;
+        let colVisible = false, colEarliest = null;
 
         for (const group of col.groups) {
           if (!dateOk(group.date)) { setVisible(group, false); continue; }
@@ -181,7 +180,6 @@
           if (groupVisibleCount > 0) {
             setVisible(group, true);
             colVisible = true;
-            colShowtimes += groupVisibleCount;
             if (groupFirstBadge && (!colEarliest || groupFirstBadge < colEarliest))
               colEarliest = groupFirstBadge;
           } else {
@@ -193,7 +191,6 @@
           setVisible(col, true);
           sectionVisible = true;
           visibleCount++;
-          showtimeCount += colShowtimes;
           earlyMap[i] = colEarliest;
         } else {
           setVisible(col, false);
@@ -206,7 +203,7 @@
     }
 
     truncateAllShowings(false);
-    updateCounter(visibleCount, showtimeCount);
+    updateEmptyState(visibleCount);
   }
 
   // ── Cinema-picker pills ───────────────────────────────────────────────────

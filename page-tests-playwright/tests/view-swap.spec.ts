@@ -77,26 +77,7 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     // After the outgoing view-root is removed, exactly one of each shared id.
     await expect(page.locator('#view-root')).toHaveCount(1);
     await expect(page.locator('#film-grid')).toHaveCount(1);
-    await expect(page.locator('#film-counter')).toHaveCount(1);
     await expect(page.locator('#no-films')).toHaveCount(1);
-  });
-
-  test('the counter rides the slide on desktop — it is NOT hidden mid-swap', async ({ page }) => {
-    // On phones the "N tytułów · M seansów" counter is hidden at rest and a
-    // `.view-swapping .grid-status { display:none }` rule keeps it hidden while
-    // a swap is in flight (plugging the id-strip leak — see the swipe block).
-    // On desktop / wide tablets the counter is permanent chrome, so that rule
-    // is scoped to the mobile breakpoint and the count must stay visible while
-    // the panels slide rather than blink out for the duration of every swap.
-    await page.goto('/');
-    await waitForCards(page);
-    const counter = page.locator('#film-counter');
-    await expect(counter).toBeVisible();                  // shown at rest on desktop
-
-    // Force the in-flight state the gesture sets, without racing the animation.
-    await page.evaluate(() => document.getElementById('view-pager').classList.add('view-swapping'));
-    await expect(counter).toBeVisible();                  // still shown mid-swap
-    await page.evaluate(() => document.getElementById('view-pager').classList.remove('view-swapping'));
   });
 
   test('back button slides back to Filmy and re-highlights it', async ({ page }) => {
@@ -565,40 +546,6 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await client.detach();
     // Settles back to a single live view (snap-back or commit — either is fine).
     await expect(page.locator('#view-pager > main')).toHaveCount(1);
-  });
-
-  test('the screenings/movies counter does not leak into view while dragging', async ({ page }) => {
-    // The "N tytułów · M seansów" counter is hidden on phones (a media-query
-    // rule keyed on #film-counter). The swap strips the outgoing view-root's id,
-    // which used to drop it out of that rule and flash the count in mid-drag.
-    await waitForCards(page);
-    // Warm both prefetch caches so the drag engages live tracking.
-    await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
-    await page.waitForURL(/\/kina$/);
-    await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/');
-    await expect(page.locator('#view-pager > main')).toHaveCount(1);
-
-    // Hidden on mobile at rest (no status line visible on either count).
-    await expect(page.locator('#view-pager .grid-status:visible')).toHaveCount(0);
-
-    const box = await page.locator('#film-grid').boundingBox();
-    const y = box.y + Math.min(40, box.height / 2);
-    const x0 = box.x + box.width * 0.6;
-    const client = await page.context().newCDPSession(page);
-    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
-    for (const x of [x0 - 20, x0 - 90]) {
-      await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] });
-    }
-
-    // Mid-drag: still no status line of EITHER panel shows (the regression was
-    // the outgoing counter leaking visible once its id was stripped).
-    await expect(page.locator('#view-pager .grid-status:visible')).toHaveCount(0);
-
-    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await client.detach();
-    await expect(page.locator('#view-pager > main')).toHaveCount(1);
-    await expect(page.locator('#view-pager .grid-status:visible')).toHaveCount(0);
   });
 
   test('commit reads the tracked delta, not the (unreliable) pointerup coordinate', async ({ page }) => {

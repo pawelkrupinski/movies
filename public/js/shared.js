@@ -1011,19 +1011,15 @@
     closeAuthMenu();
   }, true);
 
-  // ── Counter ───────────────────────────────────────────────────────────────
+  // ── Empty state ───────────────────────────────────────────────────────────
 
-  function updateCounter(visibleCount, showtimeCount) {
+  function updateEmptyState(visibleCount) {
     const noFilms = document.getElementById('no-films');
-    const counter = document.getElementById('film-counter');
     if (visibleCount === 0) {
       noFilms.textContent = 'Brak repertuaru.';
       noFilms.style.display = '';
-      counter.style.display = 'none';
     } else {
       noFilms.style.display = 'none';
-      counter.textContent = visibleCount + ' tytuł(ów) · ' + showtimeCount + ' seansów';
-      counter.style.display = '';
     }
   }
 
@@ -1669,7 +1665,7 @@
     const exit   = direction === 'left' ? '-100%' : '100%';
     const enter  = direction === 'left' ? '100%'  : '-100%';
 
-    pager.classList.add('view-swapping', 'view-sliding');
+    pager.classList.add('view-sliding');
     incoming.classList.add('view-entering');     // position:absolute over the pager
     incoming.style.transform = 'translateX(' + enter + ')';
     pager.appendChild(incoming);
@@ -1687,7 +1683,7 @@
       current.remove();
       incoming.classList.remove('view-entering');
       incoming.style.transform = '';
-      pager.classList.remove('view-swapping', 'view-sliding');
+      pager.classList.remove('view-sliding');
       _swapping = false;
       _finishSwap = null;
     };
@@ -1762,7 +1758,7 @@
   function detachViewIds(root) {
     const saved = [{ el: root, id: root.id }];
     root.removeAttribute('id');
-    ['film-grid', 'film-counter', 'no-films', 'cinema-pills'].forEach(id => {
+    ['film-grid', 'no-films', 'cinema-pills'].forEach(id => {
       const el = root.querySelector('#' + id);
       if (el) { saved.push({ el, id }); el.removeAttribute('id'); }
     });
@@ -1798,7 +1794,6 @@
       viewInit:     window.__viewInit,
       kinaPinned:   window._kinaPinned,
     };
-    pager.classList.add('view-swapping');   // hides the grid status line while dragging
     incoming.classList.add('view-entering');
     incoming.style.transform = 'translateX(' + enter + 'px)';
     pager.appendChild(incoming);
@@ -1818,7 +1813,7 @@
     // the gesture visually continuous (a scrollTo here would jump it).
     if (commit) _viewScroll[originView] = window.scrollY;
     const finish = () => {
-      pager.classList.remove('view-swapping', 'view-sliding');
+      pager.classList.remove('view-sliding');
       if (commit) {
         current.remove();
         incoming.classList.remove('view-entering');

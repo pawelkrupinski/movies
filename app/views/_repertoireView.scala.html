@@ -5,8 +5,7 @@
    (X-Requested-With: view-swap) so the swap transfers just this fragment. *@
 <main id="view-root" data-view="films">
 <div class="container-fluid py-4 px-4">
-  <p id="film-counter" class="grid-status text-secondary mb-4" style="display:none"></p>
-  <div id="no-films" class="grid-status text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
+  <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
     @_filmCards(films)
   </div>
@@ -129,7 +128,7 @@
                    isSpecific            ? d => d === filter :
                                            _  => true;
 
-    let visibleCount = 0, showtimeCount = 0;
+    let visibleCount = 0;
     const earlyMap = new Array(INDEX.length);
 
     for (let i = 0; i < INDEX.length; i++) {
@@ -178,7 +177,6 @@
           if (cgVisibleCount > 0) {
             setVisible(cg, true);
             groupVisible = true;
-            showtimeCount += cgVisibleCount;
             if (cgFirstTime && (!colEarliest || cgFirstTime < colEarliest))
               colEarliest = cgFirstTime;
           } else {
@@ -202,7 +200,7 @@
 
     sortByEarliestVisible(earlyMap);
     truncateAllShowings(true);
-    updateCounter(visibleCount, showtimeCount);
+    updateEmptyState(visibleCount);
   }
 
   function sortByEarliestVisible(earlyMap) {

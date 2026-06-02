@@ -64,7 +64,6 @@
 
 <div class="container-fluid py-4 px-4">
   <h1 style="font-size:1.3rem; font-weight:600; margin-bottom:1.2rem; color:#eee;">@heading</h1>
-  <p id="film-counter" class="text-secondary mb-4" style="display:none"></p>
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak filmów.</div>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
     @_filmCards(films)
@@ -86,17 +85,14 @@
     undoTruncation();
     var cols = document.querySelectorAll('#film-grid > .col[data-title]');
     var hidden = new Set(getHidden());
-    var visible = 0, showings = 0;
+    var visible = 0;
     cols.forEach(function(col) {
       var isHidden = hidden.has(col.dataset.title);
       col.style.display = isHidden ? 'none' : '';
-      if (!isHidden) {
-        visible++;
-        showings += col.querySelectorAll('.badge-time').length;
-      }
+      if (!isHidden) visible++;
     });
     truncateAllShowings(true);
-    updateCounter(visible, showings);
+    updateEmptyState(visible);
   }
 
   function toggleAuthMenu(event) {
