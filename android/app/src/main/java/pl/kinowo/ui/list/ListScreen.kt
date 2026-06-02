@@ -161,9 +161,10 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("🎬", fontSize = 22.sp)
-                // When search is inline the pills hug their content and the
-                // field claims the leftover width; otherwise the pills fill it.
-                DatePills(vm, fillWidth = !wide)
+                // The date pills always spread to fill the row; on wide screens
+                // the inline search field sits between them and Filtry, capped
+                // at a fixed width rather than eating the leftover space.
+                DatePills(vm)
                 if (wide) {
                     InlineSearchField(value = vm.search, onValueChange = { vm.search = it })
                 }
@@ -334,14 +335,15 @@ private fun FloatingSearchBar(
 
 // Inline search on the top bar (wide screens): the shared field in a
 // translucent capsule sized to the date pills, sitting between the pills and
-// the Filtry button. `weight(1f)` claims the row's leftover width once the
-// pills hug their content. The Android counterpart to the iOS InlineSearchField.
+// the Filtry button. Capped at a fixed width so it stays a comfortable
+// type-into size and the date pills get the rest of the row. The Android
+// counterpart to the iOS InlineSearchField.
 @Composable
-private fun RowScope.InlineSearchField(value: String, onValueChange: (String) -> Unit) {
+private fun InlineSearchField(value: String, onValueChange: (String) -> Unit) {
     val shape = RoundedCornerShape(20.dp)
     Row(
         Modifier
-            .weight(1f)
+            .width(240.dp)
             .clip(shape)
             .background(Color.White.copy(alpha = 0.08f))
             .padding(horizontal = 12.dp, vertical = 7.dp),
@@ -393,16 +395,14 @@ private fun RowScope.SearchFieldContent(value: String, onValueChange: (String) -
 // DatePillsRow): the three short pills (Dziś / Jutro / 7 dni) share the
 // leftover row width equally via `weight`, while "Wszystkie" keeps its
 // intrinsic width — so they fit one row beside the 🎬 mark and Filtry icon
-// without a separate strip or horizontal scrolling. When `fillWidth` is false
-// — the inline-search layout on wide screens — every pill keeps its intrinsic
-// width so the row hugs its content and the search field beside it takes over.
+// without a separate strip or horizontal scrolling.
 @Composable
-private fun RowScope.DatePills(vm: KinowoViewModel, fillWidth: Boolean = true) {
+private fun RowScope.DatePills(vm: KinowoViewModel) {
     for (preset in DateFilter.presets) {
         DatePill(
             label = preset.label,
             selected = vm.dateFilter == preset,
-            modifier = if (fillWidth && preset != DateFilter.Anytime) Modifier.weight(1f) else Modifier,
+            modifier = if (preset != DateFilter.Anytime) Modifier.weight(1f) else Modifier,
         ) { vm.dateFilter = preset }
     }
 }
