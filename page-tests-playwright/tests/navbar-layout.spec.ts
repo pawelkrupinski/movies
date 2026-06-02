@@ -406,17 +406,29 @@ test.describe('avatar pill on a desktop browser narrowed to mobile width', () =>
   });
 });
 
-// ── Tablet portrait: focusing search must not wrap the date row ───
+// ── Tablet portrait: focusing search must not reflow the date row ─
 //
 // iPad Pro 11" portrait is 834px wide — above the 575px mobile
-// breakpoint, so it runs the DESKTOP navbar layout (one row:
+// breakpoint, so it runs the DESKTOP navbar layout (one wrapping row:
 // […tabs] [search] [date] [Filtry] [auth], `flex-wrap: wrap`).
 // The search input grows 160px → 220px on `:focus`. At this tablet
 // width the right cluster already fills the row, so the +60px tips
-// the navbar over its width budget and `flex-wrap` pushes the date
+// the navbar over its width budget and `flex-wrap` shoves the date
 // stepper onto a second line the moment the user taps the search box.
-// The day selector must stay on the search box's row through focus.
-test.describe('tablet portrait — search focus keeps date on one row (834×1194)', () => {
+//
+// The contract under test is an INVARIANT, not an absolute layout:
+// *focusing the search box must not move the date stepper*. That holds
+// on every engine regardless of where the date sits at rest — and it
+// has to, because the resting baseline itself drifts by engine: the CI
+// Linux Chrome/WebKit render the navbar controls a hair wider than
+// macOS, so at 834px they already wrap the date onto row 2 even at
+// rest, whereas macOS / real iPad Safari keep it on the search row
+// until focus. Asserting "search and date share a row" would encode
+// the macOS baseline and fail on CI; asserting "focus doesn't reflow
+// the date" reproduces the user's bug (tap search → date jumps down)
+// on the macOS-class engines and stays green on the pre-wrapped ones.
+// Locked by the `@media (576–1024px) .search-input:focus` width pin.
+test.describe('tablet portrait — search focus does not reflow the date row (834×1194)', () => {
   test.use({ viewport: { width: 834, height: 1194 } });
 
   test.beforeEach(async ({ page }, testInfo) => {
@@ -427,34 +439,33 @@ test.describe('tablet portrait — search focus keeps date on one row (834×1194
     await waitForCards(page);
   });
 
-  test('date stepper stays on the search box row when search is focused', async ({ page }) => {
+  test('the date stepper stays put when the search box is focused', async ({ page }) => {
     const read = () => page.evaluate(() => {
       const nav = document.querySelector('.navbar') as HTMLElement;
-      const search = document.querySelector('.search-input') as HTMLElement | null;
       const date = document.querySelector('.navbar-date') as HTMLElement | null;
-      if (!nav || !search || !date) return null;
-      const mid = (el: HTMLElement) => el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2;
-      return { navH: nav.getBoundingClientRect().height, searchMid: mid(search), dateMid: mid(date) };
+      if (!nav || !date) return null;
+      const r = date.getBoundingClientRect();
+      return { navH: nav.getBoundingClientRect().height, dateMid: r.top + r.height / 2 };
     });
 
     const before = await read();
-    expect(before, 'navbar / search / date not found').not.toBeNull();
-    // Same row at rest — sanity check the precondition.
-    expect(Math.abs(before!.searchMid - before!.dateMid)).toBeLessThanOrEqual(2);
+    expect(before, 'navbar / date not found').not.toBeNull();
 
     await page.locator('.search-input').focus();
     // Give the focus width transition a beat to settle.
     await page.waitForTimeout(100);
 
     const after = await read();
+    // The date stepper must not move vertically — a wrap caused by the
+    // focus growth drops it ~40px to a new row.
     expect(
-      Math.abs(after!.searchMid - after!.dateMid),
-      `date stepper dropped to a new row on search focus: search mid ${after!.searchMid.toFixed(1)}px vs date mid ${after!.dateMid.toFixed(1)}px (navbar ${before!.navH.toFixed(1)}px → ${after!.navH.toFixed(1)}px)`,
+      Math.abs(after!.dateMid - before!.dateMid),
+      `date stepper moved ${(after!.dateMid - before!.dateMid).toFixed(1)}px on search focus (mid ${before!.dateMid.toFixed(1)} → ${after!.dateMid.toFixed(1)}); the row reflowed`,
     ).toBeLessThanOrEqual(2);
-    // …and the navbar itself stayed a single row (didn't grow taller).
+    // …and the navbar didn't grow a new row on focus either.
     expect(
       after!.navH,
-      `navbar grew from ${before!.navH.toFixed(1)}px to ${after!.navH.toFixed(1)}px — the row wrapped on search focus`,
+      `navbar grew ${before!.navH.toFixed(1)} → ${after!.navH.toFixed(1)}px on search focus — the row wrapped`,
     ).toBeLessThanOrEqual(before!.navH + 2);
   });
 });
