@@ -164,7 +164,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 // The date pills always spread to fill the row; on wide screens
                 // the inline search field sits between them and Filtry, capped
                 // at a fixed width rather than eating the leftover space.
-                DatePills(vm)
+                DatePills(vm, wide)
                 if (wide) {
                     InlineSearchField(value = vm.search, onValueChange = { vm.search = it })
                 }
@@ -392,17 +392,20 @@ private fun RowScope.SearchFieldContent(value: String, onValueChange: (String) -
 }
 
 // The four date presets, laid out inline in the top bar (mirroring iOS
-// DatePillsRow): the three short pills (Dziś / Jutro / 7 dni) share the
-// leftover row width equally via `weight`, while "Wszystkie" keeps its
-// intrinsic width — so they fit one row beside the 🎬 mark and Filtry icon
-// without a separate strip or horizontal scrolling.
+// DatePillsRow). On wide screens all four pills share the row width equally
+// via `weight` — including "Wszystkie" — so they read as one evenly-spaced
+// segmented control. On narrow screens only the three short pills (Dziś /
+// Jutro / 7 dni) get weight while "Wszystkie" keeps its intrinsic width, so
+// the row still fits beside the 🎬 mark and Filtry icon without a separate
+// strip or horizontal scrolling. See TopBarLayout.datePillFillsRow.
 @Composable
-private fun RowScope.DatePills(vm: KinowoViewModel) {
+private fun RowScope.DatePills(vm: KinowoViewModel, wide: Boolean) {
     for (preset in DateFilter.presets) {
+        val fills = TopBarLayout.datePillFillsRow(preset == DateFilter.Anytime, wide)
         DatePill(
             label = preset.label,
             selected = vm.dateFilter == preset,
-            modifier = if (preset != DateFilter.Anytime) Modifier.weight(1f) else Modifier,
+            modifier = if (fills) Modifier.weight(1f) else Modifier,
         ) { vm.dateFilter = preset }
     }
 }
