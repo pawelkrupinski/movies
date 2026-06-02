@@ -203,7 +203,9 @@ private struct ShowtimeBadge: View {
     var displayFormat: String = ""
 
     /// True while a long-press is held down — drives the room tooltip.
-    @GestureState private var holding = false
+    /// Set when the long-press succeeds (≥0.3s) and cleared on release, so
+    /// a quick tap never flashes the tooltip.
+    @State private var holding = false
 
     var body: some View {
         let trimmedFormat = displayFormat.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -231,13 +233,19 @@ private struct ShowtimeBadge: View {
 
         // A quick tap opens the booking link (when present); pressing and
         // holding reveals the room name for as long as the finger stays
-        // down, mirroring the web's long-press tooltip. The hold is high
-        // priority so a deliberate long-press never also fires the booking
-        // link on release.
+        // down, mirroring the web's long-press tooltip and Android's
+        // `detectTapGestures(onTap/onLongPress)`. Tap and long-press are
+        // mutually exclusive, so a deliberate hold never also fires the
+        // booking link on release — and a quick tap never flashes the
+        // tooltip, because `holding` only flips once the press is recognised.
         if let room {
             pill
-                .highPriorityGesture(holdGesture)
                 .onTapGesture { if let url = showtime.bookingURL { openURL(url) } }
+                .onLongPressGesture(minimumDuration: 0.3) {
+                    holding = true
+                } onPressingChanged: { pressing in
+                    if !pressing { holding = false }
+                }
                 .accessibilityHint("Przytrzymaj, aby zobaczyć salę: \(room)")
         } else if let url = showtime.bookingURL {
             Link(destination: url) { pill }
@@ -245,16 +253,6 @@ private struct ShowtimeBadge: View {
         } else {
             pill
         }
-    }
-
-    /// Long-press (≥0.3s) that then tracks the held finger via a
-    /// zero-distance drag, so `holding` stays true until release.
-    private var holdGesture: some Gesture {
-        LongPressGesture(minimumDuration: 0.3)
-            .sequenced(before: DragGesture(minimumDistance: 0))
-            .updating($holding) { value, state, _ in
-                if case .second(true, _) = value { state = true }
-            }
     }
 
     @ViewBuilder

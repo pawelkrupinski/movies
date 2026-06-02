@@ -75,6 +75,38 @@ final class ShowingsParserTests: XCTestCase {
         XCTAssertGreaterThan(formats + rooms, 0, "expected at least one showtime with format or room metadata")
     }
 
+    /// The `<a class="badge-time" href=…>` pill carries the cinema's
+    /// booking URL even when it also has a room — that's the link the iOS
+    /// pill opens on tap. A `<span class="badge-time">` (no href) is the
+    /// web's non-bookable fallback and must decode to `bookingURL == nil`.
+    func testParsesBookingURLAndRoomFromAnchorPill() {
+        let chunk = """
+        <div class="date-group" data-date="2026-06-02">
+          <div class="date-label">Wtorek</div>
+          <div class="cinema-group" data-cinema="Multikino">
+            <a href="https://multikino.pl/film/abc?showing=123&amp;date=2026-06-02" class="badge-time" target="_blank" data-room="Sala 9" data-format="2D NAP" data-time="18:30">18:30</a>
+            <span class="badge-time" data-format="2D" data-time="20:00">20:00</span>
+          </div>
+        </div>
+        """
+        let days = ShowingsParser.parseShowings(in: chunk)
+        let showtimes = try! XCTUnwrap(days.first?.cinemas.first?.showtimes)
+        XCTAssertEqual(showtimes.count, 2)
+
+        let bookable = showtimes[0]
+        XCTAssertEqual(bookable.time, "18:30")
+        XCTAssertEqual(bookable.room, "Sala 9")
+        XCTAssertEqual(
+            bookable.bookingURL,
+            URL(string: "https://multikino.pl/film/abc?showing=123&date=2026-06-02"),
+            "the anchor's href (html-decoded) is the booking link the pill opens on tap"
+        )
+
+        let nonBookable = showtimes[1]
+        XCTAssertEqual(nonBookable.time, "20:00")
+        XCTAssertNil(nonBookable.bookingURL, "a <span> pill has no href, so it is non-bookable")
+    }
+
     func testReturnsEmptyForUnrelatedHTML() {
         let days = ShowingsParser.parseShowings(in: "<p>nothing to see</p>")
         XCTAssertTrue(days.isEmpty)
