@@ -219,6 +219,17 @@
   }
   .search-input::placeholder { color: #778; }
   .search-input:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; width: 220px; }
+  /* Tablet portrait (iPad Pro 11" = 834px, iPad Air/mini, iPad Pro 12.9"
+     = 1024px) runs the DESKTOP navbar layout — one wrapping row of
+     [tabs] [search] [date] [Filtry] [auth]. At these widths the right
+     cluster already fills the row, so the 160→220px focus growth tips
+     the navbar over its width budget and `flex-wrap` shoves the date
+     stepper onto a second line the instant the search box is tapped.
+     Pin the focused width to the rest width across the tablet-portrait
+     band so focus never wraps the row; wide desktops (≥1025px) keep the
+     expansion since they have the slack to absorb it. Locked by
+     navbar-layout.spec.ts. */
+  @@media (min-width: 576px) and (max-width: 1024px) { .search-input:focus { width: 160px; } }
   @@media (max-width: 575px) { .search-input, .search-input:focus { width: 90px; } }
   @@media (max-width: 379px) { .search-input, .search-input:focus { width: 55px; } }
   /* Row-1 items (logo+tabs 152 px + search 55 px + auth 79 px = 286 px)

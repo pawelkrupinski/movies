@@ -406,6 +406,59 @@ test.describe('avatar pill on a desktop browser narrowed to mobile width', () =>
   });
 });
 
+// ── Tablet portrait: focusing search must not wrap the date row ───
+//
+// iPad Pro 11" portrait is 834px wide — above the 575px mobile
+// breakpoint, so it runs the DESKTOP navbar layout (one row:
+// […tabs] [search] [date] [Filtry] [auth], `flex-wrap: wrap`).
+// The search input grows 160px → 220px on `:focus`. At this tablet
+// width the right cluster already fills the row, so the +60px tips
+// the navbar over its width budget and `flex-wrap` pushes the date
+// stepper onto a second line the moment the user taps the search box.
+// The day selector must stay on the search box's row through focus.
+test.describe('tablet portrait — search focus keeps date on one row (834×1194)', () => {
+  test.use({ viewport: { width: 834, height: 1194 } });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    // Desktop-class projects only — non-emulated browsers we can drive to
+    // a tablet-portrait viewport that runs the desktop navbar layout.
+    test.skip(!testInfo.project.name.includes('desktop'), 'desktop projects only');
+    await page.goto('/');
+    await waitForCards(page);
+  });
+
+  test('date stepper stays on the search box row when search is focused', async ({ page }) => {
+    const read = () => page.evaluate(() => {
+      const nav = document.querySelector('.navbar') as HTMLElement;
+      const search = document.querySelector('.search-input') as HTMLElement | null;
+      const date = document.querySelector('.navbar-date') as HTMLElement | null;
+      if (!nav || !search || !date) return null;
+      const mid = (el: HTMLElement) => el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2;
+      return { navH: nav.getBoundingClientRect().height, searchMid: mid(search), dateMid: mid(date) };
+    });
+
+    const before = await read();
+    expect(before, 'navbar / search / date not found').not.toBeNull();
+    // Same row at rest — sanity check the precondition.
+    expect(Math.abs(before!.searchMid - before!.dateMid)).toBeLessThanOrEqual(2);
+
+    await page.locator('.search-input').focus();
+    // Give the focus width transition a beat to settle.
+    await page.waitForTimeout(100);
+
+    const after = await read();
+    expect(
+      Math.abs(after!.searchMid - after!.dateMid),
+      `date stepper dropped to a new row on search focus: search mid ${after!.searchMid.toFixed(1)}px vs date mid ${after!.dateMid.toFixed(1)}px (navbar ${before!.navH.toFixed(1)}px → ${after!.navH.toFixed(1)}px)`,
+    ).toBeLessThanOrEqual(2);
+    // …and the navbar itself stayed a single row (didn't grow taller).
+    expect(
+      after!.navH,
+      `navbar grew from ${before!.navH.toFixed(1)}px to ${after!.navH.toFixed(1)}px — the row wrapped on search focus`,
+    ).toBeLessThanOrEqual(before!.navH + 2);
+  });
+});
+
 // ── Mobile landscape: font + height uniformity ────────────────────
 
 test.describe('navbar uniformity — mobile landscape', () => {
