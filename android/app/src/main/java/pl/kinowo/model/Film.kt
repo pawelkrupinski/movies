@@ -121,4 +121,11 @@ data class Showtime(
     val bookingURL: String? = null,
 ) {
     val id: String get() = "$time|$format|${bookingURL ?: ""}"
+
+    /**
+     * Room/hall name to surface on a long-press, or `null` when the scraper
+     * left it blank (e.g. Apollo, Rialto) or it's only whitespace — so a
+     * blank value never pops an empty tooltip. Mirrors iOS `displayRoom`.
+     */
+    val displayRoom: String? get() = room?.trim()?.ifEmpty { null }
 }

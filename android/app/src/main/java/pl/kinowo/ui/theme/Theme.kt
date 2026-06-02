@@ -15,6 +15,11 @@ val CinemaBlue = Color(0xFFAAD4FF)
 val Divider = Color(0xFF3A3A6E)
 val TextSecondary = Color(0xB3FFFFFF)
 
+// Long-press room tooltip on a showtime pill (mirrors iOS ShowtimeBadge).
+val RoomTooltipBackground = Color(0xFF0E0E1E)
+val RoomTooltipBorder = Color(0xFF3B3B6E)
+val RoomTooltipText = Color(0xFFD9D9D9)
+
 // Rating-badge palette (mirrors iOS RatingBadgesView).
 val ImdbYellow = Color(0xFFF5C518)
 val MetaGood = Color(0xFF66CC66)
