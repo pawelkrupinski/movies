@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct FilmCardView: View {
     let film: Film
@@ -44,6 +45,20 @@ struct FilmCardView: View {
         }
         .background(Color(red: 0.12, green: 0.12, blue: 0.18))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        // Long-press the card for its share link. iOS has no
+        // address bar to copy from, so the context menu is where the
+        // canonical `/film?title=…` URL surfaces — Share opens the
+        // system sheet, Skopiuj link drops it straight on the pasteboard.
+        .contextMenu {
+            ShareLink(item: FilmShareLink.url(forTitle: film.title), subject: Text(film.title)) {
+                Label("Udostępnij", systemImage: "square.and.arrow.up")
+            }
+            Button {
+                UIPasteboard.general.string = FilmShareLink.url(forTitle: film.title).absoluteString
+            } label: {
+                Label("Skopiuj link", systemImage: "link")
+            }
+        }
     }
 }
 

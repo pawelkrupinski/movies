@@ -118,3 +118,34 @@ struct Showtime: Hashable, Identifiable, Codable {
         return room
     }
 }
+
+/// Canonical public URL for a film's `/film?title=…` page — the iOS
+/// counterpart of the server's `controllers.FilmHref`. Backs the Share
+/// button on `FilmDetailView` and the long-press "Skopiuj link" on
+/// `FilmCardView`. Mirrors `FilmHref`'s RFC 3986 encoding (spaces → `%20`,
+/// not the form `+`) so a link shared from the app is byte-identical to one
+/// copied off the website and round-trips through link-preview scrapers and
+/// the web router alike.
+///
+/// The host is hardcoded rather than reusing `kinowoBaseURL` because that
+/// constant lives in the Combine-only `Auth` layer, which `KinowoCore`
+/// (this file's SPM target) excludes — the networking layer hardcodes the
+/// same host for the same reason.
+enum FilmShareLink {
+    /// Allowed set for the `title` query value: the unreserved chars plus
+    /// the `*-._` that Java's `URLEncoder.encode` also leaves literal.
+    /// Everything else — space, `:`, `&`, `?`, diacritics — percent-encodes,
+    /// matching `URLEncoder.encode(title).replace("+", "%20")` byte for byte.
+    private static let titleAllowed: CharacterSet = {
+        var set = CharacterSet()
+        set.insert(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789*-._")
+        return set
+    }()
+
+    static func url(forTitle title: String) -> URL {
+        let encoded = title.addingPercentEncoding(withAllowedCharacters: titleAllowed) ?? title
+        // Safe to force-unwrap: `encoded` contains only URL-safe characters
+        // and the surrounding string is a fixed, valid absolute URL.
+        return URL(string: "https://kinowo.fly.dev/film?title=\(encoded)")!
+    }
+}

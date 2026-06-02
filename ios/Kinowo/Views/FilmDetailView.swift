@@ -35,6 +35,15 @@ struct FilmDetailView: View {
         .background(Color(red: 0.067, green: 0.067, blue: 0.067).ignoresSafeArea())
         .navigationTitle(film.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                // Shares the canonical `/film?title=…` link — same URL a
+                // user would copy from the website's address bar.
+                ShareLink(item: FilmShareLink.url(forTitle: film.title), subject: Text(film.title)) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+            }
+        }
     }
 
     private var filmDetails: FilmDetails? { details.details(for: film.title) }

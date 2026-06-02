@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +53,7 @@ import pl.kinowo.ui.common.PosterImage
 import pl.kinowo.ui.common.RatingBadges
 import pl.kinowo.ui.common.Showings
 import pl.kinowo.ui.common.openUrl
+import pl.kinowo.ui.common.shareFilm
 import pl.kinowo.ui.theme.Brand
 import pl.kinowo.ui.theme.CardElevated
 import pl.kinowo.ui.theme.CinemaBlue
@@ -67,6 +69,16 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wstecz")
+                    }
+                },
+                actions = {
+                    // Shares the canonical `/film?title=…` link — same URL a
+                    // user would copy from the website's address bar.
+                    if (film != null) {
+                        val context = LocalContext.current
+                        IconButton(onClick = { shareFilm(context, film.title) }) {
+                            Icon(Icons.Filled.Share, contentDescription = "Udostępnij")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(),
