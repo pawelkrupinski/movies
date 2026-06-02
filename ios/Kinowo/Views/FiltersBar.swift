@@ -110,15 +110,15 @@ struct TopBar: View {
 struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
     let scale: CGFloat
-    @Environment(\.horizontalSizeClass) private var hSize
 
     var body: some View {
-        let landscape = hSize == .regular || UIScreen.main.bounds.width > UIScreen.main.bounds.height
         HStack(spacing: 6 * scale) {
             ForEach(DateFilter.presets, id: \.self) { f in
-                // Expand to share the row width unless this is Wszystkie in
-                // portrait (which keeps its intrinsic 9-character width).
-                let expand = !(f == .anytime && !landscape)
+                // The three short pills expand to share the leftover row
+                // width; Wszystkie always keeps its intrinsic 9-character
+                // width so its label is never clipped — including on iPad
+                // portrait, where the inline search field shares the row.
+                let expand = f != .anytime
                 Button {
                     dateFilter = f
                 } label: {
