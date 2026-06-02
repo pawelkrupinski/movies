@@ -114,11 +114,7 @@ struct DatePillsRow: View {
     var body: some View {
         HStack(spacing: 6 * scale) {
             ForEach(DateFilter.presets, id: \.self) { f in
-                // The three short pills expand to share the leftover row
-                // width; Wszystkie always keeps its intrinsic 9-character
-                // width so its label is never clipped — including on iPad
-                // portrait, where the inline search field shares the row.
-                let expand = f != .anytime
+                let expand = TopBarLayout.datePillExpands(f)
                 Button {
                     dateFilter = f
                 } label: {

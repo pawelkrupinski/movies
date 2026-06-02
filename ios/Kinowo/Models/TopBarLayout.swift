@@ -21,4 +21,11 @@ enum TopBarLayout {
     static let wideThreshold: CGFloat = 600
 
     static func searchInline(width: CGFloat) -> Bool { width >= wideThreshold }
+
+    /// Whether a date-filter pill expands to share the leftover row width.
+    /// The three short pills (Dziś / Jutro / 7 dni) spread to fill the row;
+    /// Wszystkie (`.anytime`) always keeps its intrinsic 9-character width so
+    /// its label is never clipped — including on iPad portrait, where the
+    /// inline search field also competes for the row.
+    static func datePillExpands(_ filter: DateFilter) -> Bool { filter != .anytime }
 }

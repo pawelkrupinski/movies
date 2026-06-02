@@ -21,4 +21,18 @@ final class TopBarLayoutTests: XCTestCase {
         XCTAssertFalse(TopBarLayout.searchInline(width: 599))
         XCTAssertTrue(TopBarLayout.searchInline(width: 600))
     }
+
+    // Regression: Wszystkie (.anytime) is the widest, 9-character label. If
+    // it expands to an equal share of the row it gets clipped once the inline
+    // search field also takes the row — the bug seen on iPad portrait. It
+    // must always keep its intrinsic width; only the short pills expand.
+    func testWszystkiePillNeverExpands() {
+        XCTAssertFalse(TopBarLayout.datePillExpands(.anytime))
+    }
+
+    func testShortDatePillsExpandToShareTheRow() {
+        XCTAssertTrue(TopBarLayout.datePillExpands(.today))
+        XCTAssertTrue(TopBarLayout.datePillExpands(.tomorrow))
+        XCTAssertTrue(TopBarLayout.datePillExpands(.week))
+    }
 }
