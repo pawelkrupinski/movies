@@ -30,10 +30,10 @@ import pl.kinowo.ui.theme.KinowoTheme
  * Off-device (Robolectric) Compose layout test pinning the showtime chip's
  * vertical inset. It renders the real chip beside a bare reference `Text` at the
  * chip's time font (9sp SemiBold) with no padding; the chip's extra height over
- * the reference is exactly the top+bottom inset. That should be `2 × 2 dp = 4 dp`
- * after matching the web mobile `.badge-time` (`padding: .2em`), where it was
- * `2 × 4 dp = 8 dp` — so this fails-before / passes-after. NATIVE graphics gives
- * real text metrics. Runs on the JVM via `./gradlew app:testDebugUnitTest`.
+ * the reference is exactly the top+bottom inset. That should be `2 × 1 dp = 2 dp`
+ * after halving the inset to ~.1em, where it was `2 × 2 dp = 4 dp` — so this
+ * fails-before / passes-after. NATIVE graphics gives real text metrics. Runs on
+ * the JVM via `./gradlew app:testDebugUnitTest`.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -60,7 +60,7 @@ class ShowtimeChipPaddingTest {
     )
 
     @Test
-    fun showtimeChipVerticalInsetIsTwoDpEachSide() {
+    fun showtimeChipVerticalInsetIsOneDpEachSide() {
         compose.setContent {
             KinowoTheme {
                 Column {
@@ -87,9 +87,9 @@ class ShowtimeChipPaddingTest {
 
         val verticalPadding = chipHeight - referenceHeight
         assertEquals(
-            "chip vertical inset should be 4 dp total (2 dp each side); " +
+            "chip vertical inset should be 2 dp total (1 dp each side); " +
                 "got $verticalPadding dp (chip $chipHeight dp, reference $referenceHeight dp)",
-            4.0, verticalPadding.toDouble(), 1.0,
+            2.0, verticalPadding.toDouble(), 1.0,
         )
     }
 }

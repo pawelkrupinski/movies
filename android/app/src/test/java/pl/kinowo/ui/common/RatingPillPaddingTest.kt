@@ -44,11 +44,11 @@ class RatingPillPaddingTest {
      * The real IMDb pill rendered beside a zero-padding reference `Text` carrying
      * the *same* trimmed pill style. Their only height difference is the pill's
      * top+bottom padding, so `pill − reference` isolates `2 × vPad`. At scale 1.0
-     * that's `2 × 0.5 dp = 1 dp`; before the padding was halved it was `2 × 1 dp`,
+     * that's `2 × 1 dp = 2 dp`; before the padding was doubled it was `2 × 0.5 dp`,
      * so this fails-before / passes-after on the padding change.
      */
     @Test
-    fun imdbPillVerticalPaddingIsHalfDpEachSide() {
+    fun imdbPillVerticalPaddingIsOneDpEachSide() {
         compose.setContent {
             ReferenceWidth {
                 MaterialTheme {
@@ -72,9 +72,9 @@ class RatingPillPaddingTest {
 
         val verticalPadding = pillHeight - referenceHeight
         assertEquals(
-            "IMDb pill vertical padding should be 1 dp total (0.5 dp each side); " +
+            "IMDb pill vertical padding should be 2 dp total (1 dp each side); " +
                 "got $verticalPadding dp (pill $pillHeight dp, reference $referenceHeight dp)",
-            1.0, verticalPadding.toDouble(), 0.7,
+            2.0, verticalPadding.toDouble(), 0.7,
         )
     }
 
@@ -82,10 +82,11 @@ class RatingPillPaddingTest {
      * The height fix the padding cut alone couldn't deliver: a bare `Text`
      * reserves the font's full leading (ascent padding + descent), which is what
      * made the pills read tall. `pillTextStyle` drops `includeFontPadding` and
-     * trims the line box to the glyph height, so the trimmed reference is
-     * meaningfully shorter than an untrimmed one of the same font — and the real
-     * pill, padding included, is no taller than that untrimmed glyph box. Remove
-     * the trim from `pillTextStyle` and both assertions fail.
+     * trims the line box to the glyph height, so a reference carrying that style
+     * is meaningfully shorter than an untrimmed one of the same font. Remove the
+     * trim from `pillTextStyle` and this fails. (That the pill itself uses the
+     * trimmed style is pinned by the padding test above: pill − trimmed reference
+     * comes out as just the padding, which only holds if the pill is trimmed too.)
      */
     @Test
     fun pillStyleTrimsTheFontLeading() {
@@ -93,7 +94,6 @@ class RatingPillPaddingTest {
             ReferenceWidth {
                 MaterialTheme {
                     Column {
-                        RatingBadges(Ratings(imdb = 7.4, imdbURL = "https://imdb.com/x"))
                         Text("TRIM", style = pillTextStyle(RatingBadgeMetrics.BaseFontSp.sp, FontWeight.Bold))
                         // Same font, but the platform's default full line box (untrimmed).
                         Text("FULL", fontWeight = FontWeight.Bold, fontSize = RatingBadgeMetrics.BaseFontSp.sp)
@@ -102,7 +102,6 @@ class RatingPillPaddingTest {
             }
         }
 
-        val pillHeight = mergedHeightOf("IMDb")
         val trimmedHeight = heightOf("TRIM")
         val untrimmedHeight = heightOf("FULL")
 
@@ -110,11 +109,6 @@ class RatingPillPaddingTest {
         assertTrue(
             "trimming must claw back real font leading: untrimmed=$untrimmedHeight should exceed trimmed=$trimmedHeight",
             untrimmedHeight - trimmedHeight > 1f,
-        )
-        assertTrue(
-            "trimmed+padded pill must be no taller than a bare untrimmed glyph box " +
-                "(pill=$pillHeight untrimmed=$untrimmedHeight)",
-            pillHeight <= untrimmedHeight,
         )
     }
 

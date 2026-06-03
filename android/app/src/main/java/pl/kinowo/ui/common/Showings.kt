@@ -143,10 +143,11 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
             )
         }
         .background(if (holding) ShowtimeChipBackgroundPressed else ShowtimeChipBackground)
-        // Vertical inset mirrors the web mobile `.badge-time` (`padding: .2em`),
-        // ~0.2 × the 9sp time font — half the old flat 4dp, so the now-visible
-        // pill isn't taller than the web's.
-        .padding(horizontal = 3.dp, vertical = 2.dp)
+        // Vertical inset: 1dp top+bottom (~.1em of the 9sp time font) — half the
+        // web mobile `.badge-time` `.2em`. Padding is the chip's only height lever
+        // (unlike the rating pill, it keeps the font's full leading), so it's
+        // dialled tighter than the web to stop the chip reading tall on the card.
+        .padding(horizontal = 3.dp, vertical = 1.dp)
     Box(contentAlignment = Alignment.TopCenter) {
         Row(base, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(time, color = CinemaBlue, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)

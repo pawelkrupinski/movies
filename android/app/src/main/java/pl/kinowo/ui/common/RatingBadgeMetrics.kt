@@ -3,7 +3,7 @@ package pl.kinowo.ui.common
 /**
  * Sizes the rating pills relative to the viewport width.
  *
- * The base dimensions (11sp font, 6/2dp padding, 5dp corner) were tuned on the
+ * The base dimensions (9.5sp font, 6/1dp padding, 5dp corner) were tuned on the
  * Pixel 9a's ~411dp portrait width, so that width is the reference point: at it
  * the scale is exactly 1.0 and the pills render unchanged. Narrower phones
  * shrink the pills proportionally; wider screens grow them. The factor is
