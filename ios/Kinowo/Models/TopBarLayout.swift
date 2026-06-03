@@ -22,10 +22,24 @@ enum TopBarLayout {
 
     static func searchInline(width: CGFloat) -> Bool { width >= wideThreshold }
 
-    /// Whether a date-filter pill expands to share the leftover row width.
-    /// The three short pills (Dziś / Jutro / 7 dni) spread to fill the row;
-    /// Wszystkie (`.anytime`) always keeps its intrinsic 9-character width so
-    /// its label is never clipped — including on iPad portrait, where the
-    /// inline search field also competes for the row.
-    static func datePillExpands(_ filter: DateFilter) -> Bool { filter != .anytime }
+    /// Whether all date pills should render at one uniform width.
+    ///
+    /// Equal width forces every pill to at least the widest label's intrinsic
+    /// width (anything narrower clips that label), so a uniform row is only
+    /// safe when the available width can hold `count` copies of the widest
+    /// pill plus the `count - 1` gaps between them. When it can't, the pills
+    /// fall back to their own intrinsic widths so every label still fits —
+    /// fitting all the text takes priority over a uniform row.
+    ///
+    /// `intrinsicWidths` are the pills' natural (text + horizontal padding)
+    /// widths; the caller measures them. Returns `false` for an empty set.
+    static func datePillsEqualWidth(
+        available: CGFloat,
+        intrinsicWidths: [CGFloat],
+        spacing: CGFloat
+    ) -> Bool {
+        guard let widest = intrinsicWidths.max() else { return false }
+        let count = CGFloat(intrinsicWidths.count)
+        return available >= count * widest + (count - 1) * spacing
+    }
 }

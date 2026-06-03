@@ -106,33 +106,59 @@ struct TopBar: View {
 
 }
 
-// Three short pills (Dziś / Jutro / 7 dni) share one width via
-// `.frame(maxWidth: .infinity)` so the leftover row-width is split
-// equally between them. Wszystkie skips the maxWidth so it stays at
-// its intrinsic 9-character width — naturally the widest pill, but
-// the short pills now sit close to it rather than collapsed to their
-// own 4–5-character intrinsics. The result: three uniform shorter
-// pills and one slightly wider Wszystkie, no font shrinking.
+// The four date pills (Dziś / Jutro / 7 dni / Wszystkie). When the row is wide
+// enough to hold four copies of the widest pill (Wszystkie) plus the gaps, all
+// four render at one uniform width — `.frame(maxWidth: .infinity)` splits the
+// row equally. When it isn't, they drop to their intrinsic widths via
+// `.fixedSize` so every label still fits — fitting all the text beats a uniform
+// row. The choice is `TopBarLayout.datePillsEqualWidth`, fed the offered row
+// width (measured below) and the pills' intrinsic widths.
 //
-// Inter-pill spacing is fixed at `6 * scale` to match the
-// brand → pills and pills → Filtry gaps in `TopBar` — every gap on
-// the bar reads as the same width.
+// Inter-pill spacing is fixed at `6 * scale` to match the brand → pills and
+// pills → Filtry gaps in `TopBar` — every gap on the bar reads as the same
+// width.
 struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
     let scale: CGFloat
 
+    /// Width offered to the row, measured from the full-width frame below so it
+    /// reflects the space available regardless of how the pills size within it.
+    @State private var availableWidth: CGFloat = 0
+
+    private var spacing: CGFloat { 6 * scale }
+    private var fontSize: CGFloat { 14 * scale }
+    private var horizontalPadding: CGFloat { 12 * scale }
+
+    /// Each pill's natural width: its label's rendered text width plus the
+    /// horizontal padding on both sides.
+    private var intrinsicWidths: [CGFloat] {
+        let font = UIFont.systemFont(ofSize: fontSize, weight: .medium)
+        return DateFilter.presets.map { preset in
+            let textWidth = (preset.label as NSString)
+                .size(withAttributes: [.font: font]).width
+            return textWidth.rounded(.up) + 2 * horizontalPadding
+        }
+    }
+
+    private var equalWidth: Bool {
+        TopBarLayout.datePillsEqualWidth(
+            available: availableWidth,
+            intrinsicWidths: intrinsicWidths,
+            spacing: spacing
+        )
+    }
+
     var body: some View {
-        HStack(spacing: 6 * scale) {
+        HStack(spacing: spacing) {
             ForEach(DateFilter.presets, id: \.self) { f in
-                let expand = TopBarLayout.datePillExpands(f)
                 Button {
                     dateFilter = f
                 } label: {
                     Text(f.label)
-                        .font(.system(size: 14 * scale, weight: .medium))
+                        .font(.system(size: fontSize, weight: .medium))
                         .lineLimit(1)
-                        .frame(maxWidth: expand ? .infinity : nil)
-                        .padding(.horizontal, 12 * scale)
+                        .frame(maxWidth: equalWidth ? .infinity : nil)
+                        .padding(.horizontal, horizontalPadding)
                         .padding(.vertical, 7 * scale)
                         .background(
                             dateFilter == f
@@ -143,9 +169,19 @@ struct DatePillsRow: View {
                         .foregroundColor(dateFilter == f ? .white : .primary)
                 }
                 .buttonStyle(.plain)
-                .fixedSize(horizontal: !expand, vertical: false)
+                .fixedSize(horizontal: !equalWidth, vertical: false)
             }
         }
+        // Fill the offered width so the measurement reflects the space the row
+        // is given, not the width the pills happen to occupy.
+        .frame(maxWidth: .infinity)
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { availableWidth = geo.size.width }
+                    .onChange(of: geo.size.width) { availableWidth = $0 }
+            }
+        )
     }
 }
 
