@@ -90,31 +90,14 @@ final class PosterStore: @unchecked Sendable {
 
     /// Stable, process-independent filename for a poster URL. Swift's
     /// `Hasher` is seeded per launch so it can't key an on-disk cache;
-    /// FNV-1a 64-bit is deterministic across runs. The retry-bust query
-    /// param (`_kinowo_t`, added by `PosterImage` to dodge a stale failure
-    /// on retry) is stripped first, so a poster fetched on a retry caches
-    /// under the same key as its canonical URL — and so `reconcile`, which
-    /// only ever sees canonical film URLs, still matches it.
+    /// FNV-1a 64-bit is deterministic across runs.
     static func fileName(for url: URL) -> String {
-        let key = canonicalString(for: url)
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
-        for byte in key.utf8 {
+        for byte in url.absoluteString.utf8 {
             hash ^= UInt64(byte)
             hash = hash &* 0x0000_0100_0000_01b3
         }
         return String(hash, radix: 16) + ".img"
-    }
-
-    /// `url` with our own `_kinowo_t` retry token removed, so the canonical
-    /// and tokened forms collapse to one cache key.
-    private static func canonicalString(for url: URL) -> String {
-        guard var comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let items = comps.queryItems else {
-            return url.absoluteString
-        }
-        let kept = items.filter { $0.name != "_kinowo_t" }
-        comps.queryItems = kept.isEmpty ? nil : kept
-        return comps.url?.absoluteString ?? url.absoluteString
     }
 
     // MARK: - Production defaults

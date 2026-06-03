@@ -31,14 +31,6 @@ final class PosterStoreTests: XCTestCase {
         XCTAssertTrue(a.hasSuffix(".img"))
     }
 
-    func testRetryTokenIsStrippedFromKey() {
-        let canonical = PosterStore.fileName(for: url("https://img/x.jpg"))
-        let tokened = PosterStore.fileName(for: url("https://img/x.jpg?_kinowo_t=3"))
-        XCTAssertEqual(canonical, tokened, "the _kinowo_t retry token must not fork the cache key")
-        let realParam = PosterStore.fileName(for: url("https://img/x.jpg?v=2"))
-        XCTAssertNotEqual(canonical, realParam, "a genuine query param still keys distinctly")
-    }
-
     // MARK: - Disk-first caching
 
     func testDownloadsOnceThenServesFromDisk() async {
@@ -84,20 +76,6 @@ final class PosterStoreTests: XCTestCase {
 
         XCTAssertTrue(fileExists(keep), "a film still in the repertoire keeps its poster")
         XCTAssertFalse(fileExists(drop), "a film with no future screening loses its poster")
-    }
-
-    func testReconcileMatchesTokenedCacheAgainstCanonicalKeepURL() async {
-        // A poster fetched on a retry is stored under a tokened URL; the
-        // reconcile only knows the canonical film URL. The token-stripped
-        // key must let the canonical keep-URL protect that cached file.
-        let store = PosterStore(directory: dir, fetch: { _ in Data("x".utf8) })
-        let tokened = url("https://img/c.jpg?_kinowo_t=5")
-        _ = await store.data(for: tokened)
-
-        await store.reconcile(keepURLs: [url("https://img/c.jpg")])
-
-        XCTAssertTrue(fileExists(url("https://img/c.jpg")),
-                      "a retry-fetched poster must survive a reconcile keyed on the canonical URL")
     }
 }
 
