@@ -57,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
@@ -148,6 +149,13 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
             delay(2500)
             showSwipeHint = false
         }
+    }
+
+    // Once a day, after the repertoire lands, drop cached posters for films
+    // that have left it (no future screening). See KinowoViewModel.
+    val context = LocalContext.current
+    LaunchedEffect(moviesLoaded) {
+        if (moviesLoaded) vm.purgePostersIfNeeded(context, LocalDate.now().toString())
     }
 
     Box(Modifier.fillMaxSize()) {

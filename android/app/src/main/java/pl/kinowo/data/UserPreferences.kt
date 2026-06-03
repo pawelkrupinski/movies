@@ -46,6 +46,16 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     val swipeHintShownDate: Flow<String> =
         context.dataStore.data.map { it[KEY_HINT_DATE] ?: "" }
 
+    /** Poster URLs Coil has been asked to cache, persisted so the daily purge
+     *  can evict the ones that later fall out of the repertoire (Coil's
+     *  DiskCache can't enumerate its own keys). See [PosterCachePurge]. */
+    val seenPosterUrls: Flow<Set<String>> =
+        context.dataStore.data.map { it[KEY_POSTER_URLS] ?: emptySet() }
+
+    /** `yyyy-MM-dd` of the last day the poster purge ran, or "" if never. */
+    val posterPurgeDate: Flow<String> =
+        context.dataStore.data.map { it[KEY_POSTER_PURGE_DATE] ?: "" }
+
     suspend fun hide(title: String) = context.dataStore.edit { prefs ->
         prefs[KEY_HIDDEN] = (prefs[KEY_HIDDEN] ?: emptySet()) + title
     }
@@ -79,10 +89,20 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         prefs[KEY_HINT_DATE] = date
     }
 
+    suspend fun setSeenPosterUrls(urls: Set<String>) = context.dataStore.edit { prefs ->
+        prefs[KEY_POSTER_URLS] = urls
+    }
+
+    suspend fun setPosterPurgeDate(date: String) = context.dataStore.edit { prefs ->
+        prefs[KEY_POSTER_PURGE_DATE] = date
+    }
+
     private companion object {
         val KEY_HIDDEN = stringSetPreferencesKey("hiddenFilms")
         val KEY_DISABLED = stringSetPreferencesKey("disabledCinemas")
         val KEY_SWIPED = booleanPreferencesKey("swipedScreens")
         val KEY_HINT_DATE = stringPreferencesKey("swipeHintShownDate")
+        val KEY_POSTER_URLS = stringSetPreferencesKey("seenPosterUrls")
+        val KEY_POSTER_PURGE_DATE = stringPreferencesKey("posterPurgeDate")
     }
 }

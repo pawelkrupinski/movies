@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -13,8 +14,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import android.content.Context
+import coil.annotation.ExperimentalCoilApi
+import coil.imageLoader
+import coil.memory.MemoryCache
 import pl.kinowo.auth.AuthRepository
+import pl.kinowo.data.PosterCachePurge
 import pl.kinowo.auth.StateSyncService
 import pl.kinowo.auth.UserProfile
 import pl.kinowo.auth.UserStateClient
@@ -191,6 +197,34 @@ class KinowoViewModel(
                 async { detailsRepo.reloadIfStale() }
             }
         }
+    }
+
+    /**
+     * Once a day, after the repertoire has loaded, evict cached posters for
+     * films that no longer have any future screening. [films] is already pruned
+     * (server-side and by `prunedPastShowings`) to future-screening films, so
+     * its poster URLs are exactly what's worth keeping; Coil's `DiskCache`
+     * can't enumerate its keys, so we diff against the URL set persisted last
+     * run and remove the ones that fell out. Mirrors iOS
+     * `RepertoireStore.reconcilePostersIfNeeded`. Guarded on a non-empty list
+     * so a failed cold load can't wipe the cache.
+     */
+    @OptIn(ExperimentalCoilApi::class) // ImageLoader.diskCache / memoryCache accessors
+    fun purgePostersIfNeeded(context: Context, today: String) = viewModelScope.launch {
+        val current = films.value
+        if (current.isEmpty()) return@launch
+        if (prefs.posterPurgeDate.first() == today) return@launch
+        val keep = PosterCachePurge.keepUrls(current)
+        val toEvict = PosterCachePurge.toEvict(prefs.seenPosterUrls.first(), keep)
+        if (toEvict.isNotEmpty()) withContext(Dispatchers.IO) {
+            val loader = context.applicationContext.imageLoader
+            for (url in toEvict) {
+                loader.diskCache?.remove(url)
+                loader.memoryCache?.remove(MemoryCache.Key(url))
+            }
+        }
+        prefs.setSeenPosterUrls(keep)
+        prefs.setPosterPurgeDate(today)
     }
 
     // ── prefs mutations ───────────────────────────────────────────────────
