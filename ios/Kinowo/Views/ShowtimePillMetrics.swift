@@ -25,6 +25,17 @@ enum ShowtimePillMetrics {
     static let timeFontSize: CGFloat = 10
     static let formatFontSize: CGFloat = 7
 
+    /// Pill colours, mirroring the web `.badge-time` pill: a `#3a3a6e` fill
+    /// (`#5a5a9e` while pressed/held, matching the web hover), `#aad4ff` time
+    /// text, and the format tag at `formatAlpha` of that same blue. RGB in
+    /// 0...1 so they live in this SwiftUI-free module and stay unit-testable;
+    /// `ShowtimeBadge` builds its `Color`s from them. Keep in lockstep with the
+    /// web palette and Android's `ShowtimeChipBackground` / `CinemaBlue`.
+    static let backgroundRGB: (red: Double, green: Double, blue: Double) = (58 / 255, 58 / 255, 110 / 255)
+    static let pressedBackgroundRGB: (red: Double, green: Double, blue: Double) = (90 / 255, 90 / 255, 158 / 255)
+    static let textRGB: (red: Double, green: Double, blue: Double) = (170 / 255, 212 / 255, 255 / 255)
+    static let formatAlpha: Double = 0.7
+
     /// Per-side horizontal inset inside the pill (`.padding(.horizontal,)`).
     static let horizontalInset: CGFloat = 4
     /// Gap between the time and the format tag (`HStack(spacing:)`).

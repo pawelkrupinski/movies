@@ -45,5 +45,26 @@ final class ShowtimePillMetricsTests: XCTestCase {
         let tagged = ShowtimePillMetrics.pillWidth(time: "18:00", format: "2D DUB")
         XCTAssertLessThan(bare, tagged, "a pill with no format tag must be narrower")
     }
+
+    /// The pill colours `ShowtimeBadge` renders from must match the web
+    /// `.badge-time` palette: `#3a3a6e` fill, `#5a5a9e` pressed/hover, `#aad4ff`
+    /// time text, format tag at 0.7 alpha. (`ShowtimeBadge` lives in the
+    /// Xcode-only app target, so the on-screen render is pixel-verified on
+    /// Android's twin test; here we pin the shared source the view builds from.)
+    func testPillColoursMatchTheWebBadgePalette() {
+        func assertRGB(_ got: (red: Double, green: Double, blue: Double),
+                       _ hex: Int, _ label: String) {
+            let r = Double((hex >> 16) & 0xFF) / 255
+            let g = Double((hex >> 8) & 0xFF) / 255
+            let b = Double(hex & 0xFF) / 255
+            XCTAssertEqual(got.red, r, accuracy: 0.5 / 255, "\(label) red")
+            XCTAssertEqual(got.green, g, accuracy: 0.5 / 255, "\(label) green")
+            XCTAssertEqual(got.blue, b, accuracy: 0.5 / 255, "\(label) blue")
+        }
+        assertRGB(ShowtimePillMetrics.backgroundRGB, 0x3A3A6E, "fill")
+        assertRGB(ShowtimePillMetrics.pressedBackgroundRGB, 0x5A5A9E, "pressed fill")
+        assertRGB(ShowtimePillMetrics.textRGB, 0xAAD4FF, "time text")
+        XCTAssertEqual(ShowtimePillMetrics.formatAlpha, 0.7, accuracy: 0.001, "format tag alpha")
+    }
 }
 #endif

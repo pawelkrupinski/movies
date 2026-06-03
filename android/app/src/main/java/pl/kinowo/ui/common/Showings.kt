@@ -30,11 +30,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import pl.kinowo.filter.FormatTokenFilter
 import pl.kinowo.model.Film
-import pl.kinowo.ui.theme.CardElevated
 import pl.kinowo.ui.theme.CinemaBlue
 import pl.kinowo.ui.theme.RoomTooltipBackground
 import pl.kinowo.ui.theme.RoomTooltipBorder
 import pl.kinowo.ui.theme.RoomTooltipText
+import pl.kinowo.ui.theme.ShowtimeChipBackground
+import pl.kinowo.ui.theme.ShowtimeChipBackgroundPressed
 import pl.kinowo.ui.theme.TextSecondary
 
 /**
@@ -133,13 +134,13 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
                 },
             )
         }
-        .background(if (holding) RoomTooltipBorder else CardElevated)
+        .background(if (holding) ShowtimeChipBackgroundPressed else ShowtimeChipBackground)
         .padding(horizontal = 3.dp, vertical = 4.dp)
     Box(contentAlignment = Alignment.TopCenter) {
         Row(base, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(time, color = androidx.compose.ui.graphics.Color.White, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+            Text(time, color = CinemaBlue, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
             if (format.isNotEmpty()) {
-                Text(format, color = TextSecondary, fontSize = 7.sp, fontWeight = FontWeight.Medium)
+                Text(format, color = CinemaBlue.copy(alpha = 0.7f), fontSize = 7.sp, fontWeight = FontWeight.Medium)
             }
         }
         if (holding && room != null) {

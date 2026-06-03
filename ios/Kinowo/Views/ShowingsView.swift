@@ -184,6 +184,20 @@ private struct ShowtimeBadge: View {
     /// a quick tap never flashes the tooltip.
     @State private var holding = false
 
+    // Web `.badge-time` palette, sourced from the SwiftUI-free `ShowtimePillMetrics`.
+    private static let fill = Color(
+        red: ShowtimePillMetrics.backgroundRGB.red,
+        green: ShowtimePillMetrics.backgroundRGB.green,
+        blue: ShowtimePillMetrics.backgroundRGB.blue)
+    private static let pressedFill = Color(
+        red: ShowtimePillMetrics.pressedBackgroundRGB.red,
+        green: ShowtimePillMetrics.pressedBackgroundRGB.green,
+        blue: ShowtimePillMetrics.pressedBackgroundRGB.blue)
+    private static let timeColor = Color(
+        red: ShowtimePillMetrics.textRGB.red,
+        green: ShowtimePillMetrics.textRGB.green,
+        blue: ShowtimePillMetrics.textRGB.blue)
+
     var body: some View {
         let trimmedFormat = displayFormat.trimmingCharacters(in: .whitespacesAndNewlines)
         let room = showtime.displayRoom
@@ -191,16 +205,16 @@ private struct ShowtimeBadge: View {
         let pill = HStack(spacing: ShowtimePillMetrics.internalGap) {
             Text(showtime.time)
                 .font(.system(size: ShowtimePillMetrics.timeFontSize, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Self.timeColor)
             if !trimmedFormat.isEmpty {
                 Text(trimmedFormat)
                     .font(.system(size: ShowtimePillMetrics.formatFontSize, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(Self.timeColor.opacity(ShowtimePillMetrics.formatAlpha))
             }
         }
         .padding(.horizontal, ShowtimePillMetrics.horizontalInset)
         .padding(.vertical, 4)
-        .background(Color.white.opacity(holding ? 0.16 : 0.08), in: RoundedRectangle(cornerRadius: 5))
+        .background(holding ? Self.pressedFill : Self.fill, in: RoundedRectangle(cornerRadius: 5))
         .overlay(alignment: .top) {
             if holding, let room {
                 roomTooltip(room)

@@ -15,6 +15,11 @@ val CinemaBlue = Color(0xFFAAD4FF)
 val Divider = Color(0xFF3A3A6E)
 val TextSecondary = Color(0xB3FFFFFF)
 
+// Showtime chip — mirrors the web `.badge-time` pill: #3a3a6e fill with
+// #aad4ff text (CinemaBlue, the format tag at 0.7 alpha); pressed/hover #5a5a9e.
+val ShowtimeChipBackground = Color(0xFF3A3A6E)
+val ShowtimeChipBackgroundPressed = Color(0xFF5A5A9E)
+
 // Long-press room tooltip on a showtime pill (mirrors iOS ShowtimeBadge).
 val RoomTooltipBackground = Color(0xFF0E0E1E)
 val RoomTooltipBorder = Color(0xFF3B3B6E)
