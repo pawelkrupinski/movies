@@ -124,11 +124,31 @@ struct ContentView: View {
                     )
                 }
                 .onPreferenceChange(TopBarBottomKey.self) { topInset = $0 }
-                // The "fade/blur under the bar" (posters stay visible but
-                // progressively blur + dim as they scroll under the bar, like
-                // iOS Settings) is the native iOS-26 scroll edge effect, applied
-                // on the grids' scroll views — see `SoftTopScrollEdgeIfAvailable`
-                // in FilmGridView. No custom blur/gradient overlay needed.
+                // "Progressive blur under the bar," the iOS Settings look:
+                // content stays visible but blurs + dims more the closer it gets
+                // to the bar. The native iOS-26 scroll edge effect doesn't render
+                // in our paged-TabView / edge-to-edge layout (its blur band is
+                // sized to the scroll view's top safe-area inset, which we zero
+                // out), so we draw it ourselves: an `.ultraThinMaterial` strip
+                // pinned just below the bar, masked by a top→bottom gradient so
+                // the frost is full where it meets the bar and tapers to clear
+                // ~56pt down. Posters scrolling up therefore blur progressively
+                // into the bar. Offset by the measured `topInset`; the scroll
+                // content passes under it; non-interactive so taps fall through.
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .frame(height: 56)
+                        .mask(
+                            LinearGradient(
+                                colors: [.black, .black.opacity(0.85), .clear],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                        .padding(.top, topInset)
+                        .allowsHitTesting(false)
+                        .ignoresSafeArea(edges: .top)
+                }
                 // Narrow screens float search at the bottom; wide screens
                 // host it inline on the top bar instead (see TopBar).
                 .overlay(alignment: .bottom) {
