@@ -49,7 +49,11 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
     val scale = RatingBadgeMetrics.scale(LocalConfiguration.current.screenWidthDp)
     val fontSize = (RatingBadgeMetrics.BaseFontSp * scale).sp
     val hPad = (6f * scale).dp
-    val vPad = (1f * scale).dp
+    // No extra vertical padding: the trimmed font box already carries ~4px above
+    // the caps and the descent below the baseline (the pill text has no
+    // descenders), which is the whole pill height. Any vPad here just stacks on
+    // that and makes the pill read tall — see RatingPillVisualPaddingTest.
+    val vPad = 0.dp
     val corner = (5f * scale).dp
     val gap = (6f * scale).dp
     FlowRow(
@@ -93,16 +97,17 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
     }
 }
 
-/** The pill label/value text style. A bare `Text` reserves the font's full
- *  line height — ascent leading above the caps and descent below the baseline —
- *  which is what made the pills read tall even with the padding cut to nothing.
- *  Dropping `includeFontPadding` and trimming the line box to the glyph height
- *  (centred) collapses that leading, so the pill hugs the digits. This is the
- *  Compose twin of the web's `text-box-trim` fix for the same pills. */
+/** The pill label/value text style. A bare `Text` adds `includeFontPadding`
+ *  leading on top of the font's own ascent/descent, making the pill read taller
+ *  still. Turning it off drops that extra leading (the Compose cousin of the
+ *  web's `text-box-trim`); the line-box trim/centre is kept as a defensive
+ *  no-op so any future lineHeight change stays centred. What it can *not* remove
+ *  is the font's intrinsic descent box below the baseline — the pill text has no
+ *  descenders, so that space sits empty and sets the pill's height floor (see
+ *  RatingPillVisualPaddingTest). */
 internal fun pillTextStyle(fontSize: TextUnit, weight: FontWeight) = TextStyle(
     fontSize = fontSize,
     fontWeight = weight,
-    lineHeight = fontSize,
     platformStyle = PlatformTextStyle(includeFontPadding = false),
     lineHeightStyle = LineHeightStyle(
         alignment = LineHeightStyle.Alignment.Center,
