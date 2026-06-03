@@ -52,7 +52,7 @@ struct FilmGridView: View {
                 .padding(.bottom, 70)
             }
             .scrollDismissesKeyboard(.immediately)
-            .modifier(ScrollClipDisabledIfAvailable())
+            .modifier(SoftTopScrollEdgeIfAvailable())
         }
     }
 }
@@ -118,7 +118,7 @@ struct CinemaSectionedGridView<Header: View>: View {
             .padding(.bottom, 70)
         }
         .scrollDismissesKeyboard(.immediately)
-        .modifier(ScrollClipDisabledIfAvailable())
+        .modifier(SoftTopScrollEdgeIfAvailable())
     }
 
     @ViewBuilder
@@ -139,10 +139,20 @@ struct CinemaSectionedGridView<Header: View>: View {
     }
 }
 
-private struct ScrollClipDisabledIfAvailable: ViewModifier {
+/// The iOS-26 "scroll edge effect" in its `.soft` style: the system applies a
+/// variable blur + gradient dim to scroll content near the top edge, so posters
+/// scrolling under the bar stay visible but progressively blur and dim — the way
+/// iOS Settings / Music keep content legible-but-blurred beneath the navigation
+/// bar. No-op before iOS 26.
+///
+/// Two requirements, both met by `ContentView`'s layout: the content must render
+/// under the bar (the grids are edge-to-edge, `ignoresSafeArea(.top)`), and the
+/// scroll view must clip its content (so we deliberately do NOT disable scroll
+/// clipping here — that was what stopped the effect from ever showing).
+private struct SoftTopScrollEdgeIfAvailable: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 17.0, *) {
-            content.scrollClipDisabled()
+        if #available(iOS 26.0, *) {
+            content.scrollEdgeEffectStyle(.soft, for: .top)
         } else {
             content
         }

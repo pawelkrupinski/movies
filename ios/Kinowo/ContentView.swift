@@ -124,6 +124,11 @@ struct ContentView: View {
                     )
                 }
                 .onPreferenceChange(TopBarBottomKey.self) { topInset = $0 }
+                // The "fade/blur under the bar" (posters stay visible but
+                // progressively blur + dim as they scroll under the bar, like
+                // iOS Settings) is the native iOS-26 scroll edge effect, applied
+                // on the grids' scroll views — see `SoftTopScrollEdgeIfAvailable`
+                // in FilmGridView. No custom blur/gradient overlay needed.
                 // Narrow screens float search at the bottom; wide screens
                 // host it inline on the top bar instead (see TopBar).
                 .overlay(alignment: .bottom) {
