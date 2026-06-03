@@ -13,8 +13,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
@@ -38,27 +41,41 @@ import pl.kinowo.ui.theme.RtRotten
 fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
     if (ratings.isEmpty) return
     val context = LocalContext.current
+    // Pills scale with viewport width, anchored at the Pixel 9a's ~411dp where
+    // the base sizes were tuned (scale 1.0). See RatingBadgeMetrics.
+    val scale = RatingBadgeMetrics.scale(LocalConfiguration.current.screenWidthDp)
+    val fontSize = (11f * scale).sp
+    val hPad = (6f * scale).dp
+    val vPad = (2f * scale).dp
+    val corner = (5f * scale).dp
+    val gap = (6f * scale).dp
     FlowRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(gap),
+        verticalArrangement = Arrangement.spacedBy(gap),
     ) {
         ratings.imdb?.let { v ->
             LabelValuePill(
                 label = "IMDb", labelBg = ImdbYellow, labelFg = Color.Black,
                 value = oneDecimal(v), valueFg = ImdbYellow,
+                fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
                 onClick = { openUrl(context, ratings.imdbURL) },
             )
         }
         ratings.metascore?.let { v ->
             val c = if (v >= 61) MetaGood else if (v >= 40) MetaMid else MetaBad
-            SinglePill(text = v.toString(), fg = c, onClick = { openUrl(context, ratings.metacriticURL) })
+            SinglePill(
+                text = v.toString(), fg = c,
+                fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
+                onClick = { openUrl(context, ratings.metacriticURL) },
+            )
         }
         ratings.rottenTomatoes?.let { v ->
             val c = if (v >= 60) RtFresh else RtRotten
             LabelValuePill(
                 label = "RT", labelBg = c, labelFg = Color.White,
                 value = "$v%", valueFg = c,
+                fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
                 onClick = { openUrl(context, ratings.rottenTomatoesURL) },
             )
         }
@@ -66,6 +83,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
             LabelValuePill(
                 label = "FW", labelBg = FwOrange, labelFg = Color.White,
                 value = oneDecimal(v), valueFg = FwOrangeLight,
+                fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
                 onClick = { openUrl(context, ratings.filmwebURL) },
             )
         }
@@ -81,28 +99,34 @@ internal fun oneDecimal(v: Double): String = String.format(Locale.US, "%.1f", v)
 @Composable
 private fun LabelValuePill(
     label: String, labelBg: Color, labelFg: Color,
-    value: String, valueFg: Color, onClick: () -> Unit,
+    value: String, valueFg: Color,
+    fontSize: TextUnit, hPad: Dp, vPad: Dp, corner: Dp,
+    onClick: () -> Unit,
 ) {
-    Row(modifier = Modifier.clip(RoundedCornerShape(5.dp)).clickable(onClick = onClick)) {
+    Row(modifier = Modifier.clip(RoundedCornerShape(corner)).clickable(onClick = onClick)) {
         Text(
-            label, color = labelFg, fontSize = 11.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier.background(labelBg).padding(horizontal = 6.dp, vertical = 2.dp),
+            label, color = labelFg, fontSize = fontSize, fontWeight = FontWeight.Bold,
+            modifier = Modifier.background(labelBg).padding(horizontal = hPad, vertical = vPad),
         )
         Text(
-            value, color = valueFg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.background(CardElevated).padding(horizontal = 6.dp, vertical = 2.dp),
+            value, color = valueFg, fontSize = fontSize, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.background(CardElevated).padding(horizontal = hPad, vertical = vPad),
         )
     }
 }
 
 @Composable
-private fun SinglePill(text: String, fg: Color, onClick: () -> Unit) {
+private fun SinglePill(
+    text: String, fg: Color,
+    fontSize: TextUnit, hPad: Dp, vPad: Dp, corner: Dp,
+    onClick: () -> Unit,
+) {
     Text(
-        text, color = fg, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+        text, color = fg, fontSize = fontSize, fontWeight = FontWeight.Bold,
         modifier = Modifier
-            .clip(RoundedCornerShape(5.dp))
+            .clip(RoundedCornerShape(corner))
             .clickable(onClick = onClick)
             .background(CardElevated)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
+            .padding(horizontal = hPad, vertical = vPad),
     )
 }
