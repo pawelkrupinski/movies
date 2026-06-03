@@ -185,27 +185,20 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
         // breathing room around it. Inset + trim pinned by ShowtimeChipPaddingTest.
         .padding(horizontal = style.horizontalInset, vertical = style.verticalInset)
     Box(contentAlignment = Alignment.TopCenter) {
-        // Align the time and the smaller format tag on a shared baseline (via
-        // alignByBaseline) so the tag sits on the time's baseline rather than
-        // riding the top — Row's default is Alignment.Top. Pinned by
-        // ShowtimeChipAlignmentTest.
-        Row(base, horizontalArrangement = Arrangement.spacedBy(style.internalGap)) {
-            Text(
-                time,
-                color = CinemaBlue,
-                style = pillTextStyle(style.timeFontSize, style.timeWeight),
-                modifier = Modifier.alignByBaseline(),
-            )
+        // Center the smaller format tag vertically against the time (matching
+        // iOS's `.center` HStack) rather than letting it ride the top — Row's
+        // default is Alignment.Top. Pinned by ShowtimeChipAlignmentTest.
+        Row(
+            base,
+            horizontalArrangement = Arrangement.spacedBy(style.internalGap),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(time, color = CinemaBlue, style = pillTextStyle(style.timeFontSize, style.timeWeight))
             if (format.isNotEmpty()) {
                 // 7sp default, not larger: the time's 11sp is the most that still lets
                 // two chips share a row on the narrowest card; an 8sp+ tag pushes
                 // the second chip onto a new line. See ShowtimeChipFitTest.
-                Text(
-                    format,
-                    color = CinemaBlue.copy(alpha = 0.7f),
-                    style = pillTextStyle(style.formatFontSize, style.formatWeight),
-                    modifier = Modifier.alignByBaseline(),
-                )
+                Text(format, color = CinemaBlue.copy(alpha = 0.7f), style = pillTextStyle(style.formatFontSize, style.formatWeight))
             }
         }
         if (holding && room != null) {

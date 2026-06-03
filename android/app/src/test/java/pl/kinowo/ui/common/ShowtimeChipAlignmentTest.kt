@@ -2,9 +2,7 @@ package pl.kinowo.ui.common
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -25,16 +23,13 @@ import pl.kinowo.ui.theme.KinowoTheme
 
 /**
  * Off-device (Robolectric) Compose layout test pinning that the showtime chip's
- * time and format tag share one baseline. The bug it guards: the chip's `Row`
- * had no per-child `alignByBaseline`, so Compose defaulted to `Alignment.Top`
- * and the smaller format text rode the top of the larger time instead of
- * sitting on its baseline.
+ * time and smaller format tag are vertically centred against each other (the
+ * same `.center` alignment iOS's HStack uses). The bug it guards: the chip's
+ * `Row` had no `verticalAlignment`, so Compose defaulted to `Alignment.Top` and
+ * the format text rode the top of the larger time. NATIVE graphics gives real
+ * text metrics so the two boxes have genuinely different heights.
  *
- * It measures each text's box top from the layout and adds that font's
- * baseline-within-box offset (the line's first-baseline, captured from a
- * reference `Text` in the same style) to get each glyph baseline in root space;
- * baseline alignment means the two coincide. NATIVE graphics gives real text
- * metrics. Runs on the JVM via `./gradlew app:testDebugUnitTest` — no emulator.
+ * Runs on the JVM via `./gradlew app:testDebugUnitTest` — no emulator.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "xhdpi")
@@ -67,56 +62,38 @@ class ShowtimeChipAlignmentTest {
     )
 
     @Test
-    fun timeAndFormatShareABaseline() {
-        val style = ShowtimeChipStyle()
-        var density = 0f
-        // First-baseline (px from the layout top) of each font, learned from a
-        // reference Text in the exact chip style — independent of the glyphs, so
-        // any string works; equals the chip text's baseline-within-box.
-        var timeBaselineInBoxPx = -1f
-        var formatBaselineInBoxPx = -1f
-
+    fun formatTagIsVerticallyCentredWithTheTime() {
         compose.setContent {
             KinowoTheme {
-                density = LocalDensity.current.density
                 Box(Modifier.width(220.dp)) {
                     Showings(film = film(), showCinemaHeaders = false)
                 }
-                Text(
-                    "R",
-                    style = pillTextStyle(style.timeFontSize, style.timeWeight),
-                    onTextLayout = { timeBaselineInBoxPx = it.firstBaseline },
-                )
-                Text(
-                    "R",
-                    style = pillTextStyle(style.formatFontSize, style.formatWeight),
-                    onTextLayout = { formatBaselineInBoxPx = it.firstBaseline },
-                )
             }
         }
 
         val time = compose.onNodeWithText("12:55", useUnmergedTree = true).getUnclippedBoundsInRoot()
         val format = compose.onNodeWithText("2D DUB", useUnmergedTree = true).getUnclippedBoundsInRoot()
 
-        assertTrue("baseline metrics weren't captured — onTextLayout didn't fire",
-            timeBaselineInBoxPx > 0f && formatBaselineInBoxPx > 0f)
-        // The test only means something if the fonts genuinely differ in size.
+        val timeHeight = (time.bottom - time.top).value
+        val formatHeight = (format.bottom - format.top).value
+
+        // The test only means something if the two boxes differ in height — that's
+        // the whole reason alignment is visible. (Also guards stubbed metrics.)
         assertTrue(
-            "time ascent (${timeBaselineInBoxPx}px) should exceed format ascent (${formatBaselineInBoxPx}px)",
-            timeBaselineInBoxPx - formatBaselineInBoxPx > 1f,
+            "format box ($formatHeight dp) should be shorter than the time box ($timeHeight dp)",
+            timeHeight - formatHeight > 1f,
         )
 
-        // Glyph baseline in root pixels = box top (→px) + baseline-within-box.
-        val timeBaselinePx = time.top.value * density + timeBaselineInBoxPx
-        val formatBaselinePx = format.top.value * density + formatBaselineInBoxPx
-
-        // Baseline-aligned ⇒ they coincide. Top-aligned (the bug) would put the
-        // time baseline below the format's by (timeAscent − formatAscent).
+        // Centred ⇒ the box mid-lines coincide. Top-aligned (the bug) would put
+        // the format's centre well above the time's by half the height gap.
+        val timeCentre = (time.top.value + time.bottom.value) / 2f
+        val formatCentre = (format.top.value + format.bottom.value) / 2f
         assertEquals(
-            "time and format must share a baseline; got time=${timeBaselinePx}px " +
-                "format=${formatBaselinePx}px (Δ=${timeBaselinePx - formatBaselinePx}px). " +
-                "Top-aligned regression?",
-            timeBaselinePx.toDouble(), formatBaselinePx.toDouble(), 1.5,
+            "format tag should be vertically centred with the time; centres " +
+                "time=$timeCentre format=$formatCentre (Δ=${timeCentre - formatCentre} dp), " +
+                "boxes time=${time.top.value}..${time.bottom.value} " +
+                "format=${format.top.value}..${format.bottom.value}. Top-aligned regression?",
+            timeCentre.toDouble(), formatCentre.toDouble(), 1.0,
         )
     }
 }
