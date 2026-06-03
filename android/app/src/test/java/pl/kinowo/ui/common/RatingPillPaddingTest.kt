@@ -27,12 +27,15 @@ import pl.kinowo.model.Ratings
  * `Text` of the same font and no padding; the pill label's extra height over
  * the reference is exactly the top+bottom padding (`2 × vPad`). With the screen
  * width forced to the Pixel 9a reference (411 dp → scale 1.0) that should be
- * `2 × 1 dp = 2 dp`. Before the padding was halved it was `2 × 2 dp = 4 dp`, so
- * this fails-before / passes-after. NATIVE graphics gives real text metrics.
+ * `2 × 0.5 dp = 1 dp`. Before the padding was halved it was `2 × 1 dp = 2 dp`, so
+ * this fails-before / passes-after. The display is forced to `xhdpi` (density 2)
+ * because at Robolectric's default mdpi (density 1) both `0.5.dp` and `1.dp` round
+ * to a single pixel — the sub-dp change is only resolvable above density 1.
+ * NATIVE graphics gives real text metrics.
  * Runs on the JVM via `./gradlew app:testDebugUnitTest` — no emulator.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], qualifiers = "xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class RatingPillPaddingTest {
 
@@ -40,7 +43,7 @@ class RatingPillPaddingTest {
     val compose = createComposeRule()
 
     @Test
-    fun imdbPillVerticalPaddingIsOneDpEachSide() {
+    fun imdbPillVerticalPaddingIsHalfDpEachSide() {
         compose.setContent {
             // Force scale 1.0 (RatingBadgeMetrics anchors at 411 dp) so the
             // measured padding maps to a known base dp value.
@@ -72,9 +75,9 @@ class RatingPillPaddingTest {
 
         val verticalPadding = pillHeight - referenceHeight
         assertEquals(
-            "IMDb pill vertical padding should be 2 dp total (1 dp each side); " +
+            "IMDb pill vertical padding should be 1 dp total (0.5 dp each side); " +
                 "got $verticalPadding dp (pill $pillHeight dp, reference $referenceHeight dp)",
-            2.0, verticalPadding.toDouble(), 0.7,
+            1.0, verticalPadding.toDouble(), 0.7,
         )
     }
 }
