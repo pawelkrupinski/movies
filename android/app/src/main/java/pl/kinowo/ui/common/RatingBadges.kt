@@ -97,14 +97,15 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
     }
 }
 
-/** The pill label/value text style. A bare `Text` adds `includeFontPadding`
+/** The trimmed text style shared by every pill — rating badges *and* the
+ *  showtime time chips ([Showings]). A bare `Text` adds `includeFontPadding`
  *  leading on top of the font's own ascent/descent, making the pill read taller
  *  still. Turning it off drops that extra leading (the Compose cousin of the
  *  web's `text-box-trim`); the line-box trim/centre is kept as a defensive
  *  no-op so any future lineHeight change stays centred. What it can *not* remove
- *  is the font's intrinsic descent box below the baseline — the pill text has no
+ *  is the font's intrinsic descent box below the baseline — pill text has no
  *  descenders, so that space sits empty and sets the pill's height floor (see
- *  RatingPillVisualPaddingTest). */
+ *  RatingPillVisualPaddingTest / ShowtimeChipVisualPaddingTest). */
 internal fun pillTextStyle(fontSize: TextUnit, weight: FontWeight) = TextStyle(
     fontSize = fontSize,
     fontWeight = weight,

@@ -27,16 +27,20 @@ import pl.kinowo.model.Showtime
 import pl.kinowo.ui.theme.KinowoTheme
 
 /**
- * Off-device (Robolectric) Compose layout test pinning the showtime chip's
- * vertical inset. It renders the real chip beside a bare reference `Text` at the
- * chip's time font (9sp SemiBold) with no padding; the chip's extra height over
- * the reference is exactly the top+bottom inset. That should be `2 × 1 dp = 2 dp`
- * after halving the inset to ~.1em, where it was `2 × 2 dp = 4 dp` — so this
- * fails-before / passes-after. NATIVE graphics gives real text metrics. Runs on
- * the JVM via `./gradlew app:testDebugUnitTest`.
+ * Off-device (Robolectric) Compose layout tests pinning the showtime chip's
+ * vertical size — the sibling of [RatingPillPaddingTest] for the blue time chips.
+ * NATIVE graphics gives real text metrics; `xhdpi` (density 2) so sub-dp
+ * differences resolve.
+ *
+ * They pin the two height levers cheaply in CI: that the chip adds no inset over
+ * the trimmed time, and that the time uses the `includeFontPadding`-off
+ * `pillTextStyle`. How the chip actually *looks* is the emulator-side
+ * `ShowtimeChipVisualPaddingTest`.
+ *
+ * Runs on the JVM via `./gradlew app:testDebugUnitTest` — no emulator.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], qualifiers = "xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ShowtimeChipPaddingTest {
 
@@ -59,37 +63,69 @@ class ShowtimeChipPaddingTest {
         ),
     )
 
+    /**
+     * The chip carries no vertical inset: its height is just the trimmed time
+     * font box. Rendered beside a zero-padding reference `Text` in the chip's time
+     * style, the chip height should equal the reference. Re-add the inset and the
+     * chip grows past it, failing this.
+     */
     @Test
-    fun showtimeChipVerticalInsetIsOneDpEachSide() {
+    fun chipAddsNoVerticalInsetBeyondTheFontBox() {
         compose.setContent {
             KinowoTheme {
                 Column {
                     Box(Modifier.width(200.dp)) {
                         Showings(film = oneShowtimeFilm(), showCinemaHeaders = false)
                     }
-                    // Reference: the chip's time font, no padding. A distinct
-                    // string (line height is font-size driven, not glyph-specific)
-                    // so it doesn't collide with the chip's own "12:55".
-                    Text("REF", fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+                    // Reference: the chip's own trimmed time style, zero padding.
+                    Text("TRIM", style = pillTextStyle(9.sp, FontWeight.SemiBold))
                 }
             }
         }
 
-        val chip = compose.onNodeWithTag(ShowtimeChipTestTag).getUnclippedBoundsInRoot()
-        val reference = compose.onNodeWithText("REF").getUnclippedBoundsInRoot()
-        val chipHeight = (chip.bottom - chip.top).value
-        val referenceHeight = (reference.bottom - reference.top).value
+        val chipHeight = heightOfTag(ShowtimeChipTestTag)
+        val referenceHeight = heightOfText("TRIM")
 
-        // Real measurement guard (cf. ShowtimeChipFitTest): a stub renderer
-        // would hand back zero-height text and this would fail.
         assertTrue("reference text measured no height — metrics are stubbed", referenceHeight > 0f)
-        assertTrue("padded chip must be taller than the bare reference (chip=$chipHeight ref=$referenceHeight)", chipHeight > referenceHeight)
-
-        val verticalPadding = chipHeight - referenceHeight
         assertEquals(
-            "chip vertical inset should be 2 dp total (1 dp each side); " +
-                "got $verticalPadding dp (chip $chipHeight dp, reference $referenceHeight dp)",
-            2.0, verticalPadding.toDouble(), 1.0,
+            "showtime chip should add no vertical inset over the bare trimmed time; " +
+                "got chip $chipHeight dp vs reference $referenceHeight dp " +
+                "(${chipHeight - referenceHeight} dp of inset).",
+            referenceHeight.toDouble(), chipHeight.toDouble(), 0.7,
         )
     }
+
+    /**
+     * The chip's time uses `pillTextStyle`, so its `includeFontPadding`-off box is
+     * meaningfully shorter than an untrimmed `Text` of the same font — the leading
+     * that made the chip read tall. Drop `includeFontPadding = false` and this
+     * fails. (That the chip uses the trimmed style is pinned by the no-inset test
+     * above: the chip matches the trimmed reference height.)
+     */
+    @Test
+    fun chipTimeTrimsTheFontLeading() {
+        compose.setContent {
+            KinowoTheme {
+                Column {
+                    Text("TRIM", style = pillTextStyle(9.sp, FontWeight.SemiBold))
+                    Text("FULL", fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+
+        val trimmedHeight = heightOfText("TRIM")
+        val untrimmedHeight = heightOfText("FULL")
+
+        assertTrue("untrimmed reference measured no height — metrics are stubbed", untrimmedHeight > 0f)
+        assertTrue(
+            "trimming must claw back real font leading: untrimmed=$untrimmedHeight should exceed trimmed=$trimmedHeight",
+            untrimmedHeight - trimmedHeight > 1f,
+        )
+    }
+
+    private fun heightOfTag(tag: String): Float =
+        compose.onNodeWithTag(tag).getUnclippedBoundsInRoot().let { (it.bottom - it.top).value }
+
+    private fun heightOfText(text: String): Float =
+        compose.onNodeWithText(text).getUnclippedBoundsInRoot().let { (it.bottom - it.top).value }
 }

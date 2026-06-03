@@ -39,8 +39,8 @@ import pl.kinowo.ui.theme.ShowtimeChipBackground
 import pl.kinowo.ui.theme.ShowtimeChipBackgroundPressed
 import pl.kinowo.ui.theme.TextSecondary
 
-/** Test tag on the showtime pill, so `ShowtimeChipPaddingTest` can measure the
- *  rendered chip's height (text + vertical inset). */
+/** Test tag on the showtime pill, so the padding/visual tests can find the
+ *  rendered chip and measure its height. */
 internal const val ShowtimeChipTestTag = "showtime-chip"
 
 /**
@@ -143,16 +143,16 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
             )
         }
         .background(if (holding) ShowtimeChipBackgroundPressed else ShowtimeChipBackground)
-        // Vertical inset: 1dp top+bottom (~.1em of the 9sp time font) — half the
-        // web mobile `.badge-time` `.2em`. Padding is the chip's only height lever
-        // (unlike the rating pill, it keeps the font's full leading), so it's
-        // dialled tighter than the web to stop the chip reading tall on the card.
-        .padding(horizontal = 3.dp, vertical = 1.dp)
+        // No vertical inset: the time now uses the trimmed `pillTextStyle` (no
+        // includeFontPadding), so the chip height is just the font box — the same
+        // floor the rating pill sits at. Any vertical padding here only re-inflates
+        // it past that. See ShowtimeChipVisualPaddingTest.
+        .padding(horizontal = 3.dp)
     Box(contentAlignment = Alignment.TopCenter) {
         Row(base, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(time, color = CinemaBlue, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+            Text(time, color = CinemaBlue, style = pillTextStyle(9.sp, FontWeight.SemiBold))
             if (format.isNotEmpty()) {
-                Text(format, color = CinemaBlue.copy(alpha = 0.7f), fontSize = 7.sp, fontWeight = FontWeight.Medium)
+                Text(format, color = CinemaBlue.copy(alpha = 0.7f), style = pillTextStyle(7.sp, FontWeight.Medium))
             }
         }
         if (holding && room != null) {

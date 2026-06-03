@@ -12,7 +12,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import pl.kinowo.model.Ratings
-import kotlin.math.abs
 
 /**
  * On-device (emulator) **visual** regression for the rating pill's vertical
@@ -58,67 +57,38 @@ class RatingPillVisualPaddingTest {
         // the padding entirely. The pill is the yellow "IMDb" label cell beside the
         // dark value cell; we sample only the yellow cell, where black-on-yellow is
         // unambiguous.
+        // Capture the whole pill (merged clickable row) so the bitmap includes the
+        // vertical padding — an unmerged text node is just the font box and hides
+        // the padding entirely. The pill is the yellow "IMDb" label cell beside the
+        // dark value cell; we sample only the yellow cell, where black-on-yellow is
+        // unambiguous.
         val bmp = compose.onNodeWithText("IMDb", substring = true)
             .captureToImage().asAndroidBitmap()
-        val w = bmp.width
-        val h = bmp.height
 
         // Yellow fill reference: top row, but past the rounded-corner radius
         // (~5dp ≈ 13px) which clips to the dark background behind. Row 1 sits above
         // the caps, so it's always fill, never glyph ink.
         val yellow = bmp.getPixel(CORNER_PX + 4, 1)
         // Right edge of the yellow label cell: scan the top row until the fill turns
-        // dark (the value cell begins).
+        // dark (the value cell begins) — so ink scanning stays inside the label.
         var labelRight = CORNER_PX + 4
-        while (labelRight < w && colorDistance(bmp.getPixel(labelRight, 1), yellow) <= INK_THRESHOLD) {
+        while (labelRight < bmp.width &&
+            GlyphInkMetrics.distance(bmp.getPixel(labelRight, 1), yellow) <= INK_THRESHOLD
+        ) {
             labelRight++
         }
 
-        // Scan ink strictly inside the yellow cell: past the left corner, short of
-        // the value cell.
-        fun rowHasInk(y: Int): Boolean {
-            for (x in CORNER_PX until labelRight - 1) {
-                if (colorDistance(bmp.getPixel(x, y), yellow) > INK_THRESHOLD) return true
-            }
-            return false
-        }
-
-        var firstInk = -1
-        var lastInk = -1
-        for (y in 0 until h) {
-            if (rowHasInk(y)) {
-                if (firstInk < 0) firstInk = y
-                lastInk = y
-            }
-        }
-        assertTrue(
-            "No glyph ink detected in the ${w}x$h capture — sampling/threshold is off.",
-            firstInk in 0 until h && lastInk >= firstInk,
+        val band = GlyphInkMetrics.measure(
+            bmp, yellow, CORNER_PX until (labelRight - 1), INK_THRESHOLD,
         )
 
-        val topGap = firstInk
-        val bottomGap = h - 1 - lastInk
-        val inkHeight = lastInk - firstInk + 1
-        // Total empty fill above+below the glyph, relative to the glyph height. The
-        // floor (no vertical padding, just the font box) measures ≈0.53 on this
-        // device; each extra 1dp of vPad adds ≈0.27. The threshold sits above the
-        // floor but below the ≈0.84 the old 1dp padding produced — so re-adding any
-        // vertical padding to the pill fails this.
-        val totalGapRatio = (topGap + bottomGap).toFloat() / inkHeight
-
         assertTrue(
-            "Rating pill is too tall: ${topGap}px above + ${bottomGap}px below a " +
-                "${inkHeight}px glyph (pill ${w}x$h, gap/ink=${"%.2f".format(totalGapRatio)}). " +
-                "Expected ≤ $MAX_GAP_RATIO — the pill should hug the score, not pad it.",
-            totalGapRatio <= MAX_GAP_RATIO,
+            "Rating pill is too tall: ${band.topGap}px above + ${band.bottomGap}px below a " +
+                "${band.inkHeight}px glyph (pill ${bmp.width}x${bmp.height}, " +
+                "gap/ink=${"%.2f".format(band.gapRatio)}). Expected ≤ $MAX_GAP_RATIO — the pill " +
+                "should hug the score, not pad it.",
+            band.gapRatio <= MAX_GAP_RATIO,
         )
-    }
-
-    private fun colorDistance(a: Int, b: Int): Int {
-        val dr = abs(((a shr 16) and 0xFF) - ((b shr 16) and 0xFF))
-        val dg = abs(((a shr 8) and 0xFF) - ((b shr 8) and 0xFF))
-        val db = abs((a and 0xFF) - (b and 0xFF))
-        return dr + dg + db
     }
 
     private companion object {
@@ -129,7 +99,12 @@ class RatingPillVisualPaddingTest {
          *  top-left to the dark background; sample/scan past it. */
         const val CORNER_PX = 14
 
-        /** Total empty fill (above + below) as a fraction of the glyph height. */
+        /** Total empty fill (above + below) as a fraction of the glyph height.
+         *  The floor — no vertical padding, just the trimmed font box — measures
+         *  ≈0.53 on this device (≈4px above the caps, ≈6px below the baseline; the
+         *  pill text has no descenders so that font descent sits empty). The
+         *  threshold sits above that floor but below the ≈0.84 the old 1dp padding
+         *  produced, so re-adding any vertical padding fails this. */
         const val MAX_GAP_RATIO = 0.68f
     }
 }
