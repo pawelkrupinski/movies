@@ -24,6 +24,7 @@ import pl.kinowo.net.KinowoApi
 import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.ui.KinowoApp
 import pl.kinowo.ui.KinowoViewModel
+import pl.kinowo.ui.dev.ShowtimeTuningScreen
 import pl.kinowo.ui.theme.Background
 import pl.kinowo.ui.theme.KinowoTheme
 import java.util.concurrent.TimeUnit
@@ -69,10 +70,14 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
         handleAuthDeepLink(intent)
+        // Non-prod chip-tuning screen, DEBUG-only, gated behind a launch extra so
+        // it never shows in a normal run. Launch it with:
+        //   adb shell am start -n pl.kinowo/.MainActivity --ez kinowo_tuning true
+        val tuning = BuildConfig.DEBUG && intent.getBooleanExtra("kinowo_tuning", false)
         setContent {
             KinowoTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = Background) {
-                    KinowoApp(viewModel)
+                    if (tuning) ShowtimeTuningScreen() else KinowoApp(viewModel)
                 }
             }
         }

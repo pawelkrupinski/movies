@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +27,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -42,6 +45,38 @@ import pl.kinowo.ui.theme.TextSecondary
 /** Test tag on the showtime pill, so the padding/visual tests can find the
  *  rendered chip and measure its height. */
 internal const val ShowtimeChipTestTag = "showtime-chip"
+
+/**
+ * Live-tunable rendering parameters for a showtime chip, read by [ShowtimeChip]
+ * and the [Showings] flow row from [LocalShowtimeChipStyle].
+ *
+ * The defaults reproduce the SHIPPING chip byte for byte — time 11sp SemiBold,
+ * format 7sp Medium, 4dp padding each side, 2dp time↔format gap, 4dp between
+ * chips — so production (which never provides its own value) is visually
+ * unchanged. The non-prod `ShowtimeTuningScreen` injects an edited copy via
+ * `CompositionLocalProvider` to preview size / weight / padding / gap changes
+ * against the real [FilmCard] before any new value is baked into the constants
+ * here. Mirrors iOS `ShowtimePillStyle`.
+ */
+data class ShowtimeChipStyle(
+    val timeFontSize: TextUnit = 11.sp,
+    val timeWeight: FontWeight = FontWeight.SemiBold,
+    val formatFontSize: TextUnit = 7.sp,
+    val formatWeight: FontWeight = FontWeight.Medium,
+    /** Per-side horizontal padding inside the chip. */
+    val horizontalInset: Dp = 4.dp,
+    /** Per-side vertical padding inside the chip. */
+    val verticalInset: Dp = 4.dp,
+    /** Gap between the time and the format tag. */
+    val internalGap: Dp = 2.dp,
+    /** Gap between adjacent chips in the flow row. */
+    val interPillGap: Dp = 4.dp,
+)
+
+/** Style driving every showtime chip. The default equals today's shipping
+ *  values, so production renders exactly as before; the tuning screen overrides
+ *  it through `CompositionLocalProvider`. */
+val LocalShowtimeChipStyle = compositionLocalOf { ShowtimeChipStyle() }
 
 /**
  * The day-by-day showtimes tree for a film: day label → (optional cinema
@@ -61,6 +96,7 @@ fun Showings(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val chipStyle = LocalShowtimeChipStyle.current
     val total = film.showings.sumOf { d -> d.cinemas.sumOf { it.showtimes.size } }
     var budget = maxChips ?: Int.MAX_VALUE
     var shown = 0
@@ -92,8 +128,8 @@ fun Showings(
                 budget -= slots.size
                 shown += slots.size
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(chipStyle.interPillGap),
+                    verticalArrangement = Arrangement.spacedBy(chipStyle.interPillGap),
                 ) {
                     for (st in slots) {
                         ShowtimeChip(
@@ -127,6 +163,7 @@ fun Showings(
 @Composable
 private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (() -> Unit)?) {
     var holding by remember { mutableStateOf(false) }
+    val style = LocalShowtimeChipStyle.current
     val base = Modifier
         // Outermost, so the tagged node's bounds include the padding (a tag
         // placed after .padding() would wrap only the inner text).
@@ -144,17 +181,17 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
         }
         .background(if (holding) ShowtimeChipBackgroundPressed else ShowtimeChipBackground)
         // The time uses the trimmed `pillTextStyle` (no includeFontPadding), so it
-        // doesn't read tall on its own; the 4dp inset then adds the breathing room
-        // around it. Inset + trim pinned by ShowtimeChipPaddingTest.
-        .padding(4.dp)
+        // doesn't read tall on its own; the inset (4dp by default) then adds the
+        // breathing room around it. Inset + trim pinned by ShowtimeChipPaddingTest.
+        .padding(horizontal = style.horizontalInset, vertical = style.verticalInset)
     Box(contentAlignment = Alignment.TopCenter) {
-        Row(base, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(time, color = CinemaBlue, style = pillTextStyle(11.sp, FontWeight.SemiBold))
+        Row(base, horizontalArrangement = Arrangement.spacedBy(style.internalGap)) {
+            Text(time, color = CinemaBlue, style = pillTextStyle(style.timeFontSize, style.timeWeight))
             if (format.isNotEmpty()) {
-                // 7sp, not larger: the time's 11sp bump is the most that still lets
+                // 7sp default, not larger: the time's 11sp is the most that still lets
                 // two chips share a row on the narrowest card; an 8sp+ tag pushes
                 // the second chip onto a new line. See ShowtimeChipFitTest.
-                Text(format, color = CinemaBlue.copy(alpha = 0.7f), style = pillTextStyle(7.sp, FontWeight.Medium))
+                Text(format, color = CinemaBlue.copy(alpha = 0.7f), style = pillTextStyle(style.formatFontSize, style.formatWeight))
             }
         }
         if (holding && room != null) {
