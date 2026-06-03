@@ -15,7 +15,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -90,6 +93,23 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
     }
 }
 
+/** The pill label/value text style. A bare `Text` reserves the font's full
+ *  line height — ascent leading above the caps and descent below the baseline —
+ *  which is what made the pills read tall even with the padding cut to nothing.
+ *  Dropping `includeFontPadding` and trimming the line box to the glyph height
+ *  (centred) collapses that leading, so the pill hugs the digits. This is the
+ *  Compose twin of the web's `text-box-trim` fix for the same pills. */
+internal fun pillTextStyle(fontSize: TextUnit, weight: FontWeight) = TextStyle(
+    fontSize = fontSize,
+    fontWeight = weight,
+    lineHeight = fontSize,
+    platformStyle = PlatformTextStyle(includeFontPadding = false),
+    lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.Both,
+    ),
+)
+
 /** One-decimal score for the IMDb / Filmweb pills. Always shows the tenths
  *  place — a whole-number score like 7.0 renders "7.0", not "7" — and pins
  *  [Locale.US] so the separator is a dot, never a Polish-locale comma. Matches
@@ -105,11 +125,11 @@ private fun LabelValuePill(
 ) {
     Row(modifier = Modifier.clip(RoundedCornerShape(corner)).clickable(onClick = onClick)) {
         Text(
-            label, color = labelFg, fontSize = fontSize, fontWeight = FontWeight.Bold,
+            label, color = labelFg, style = pillTextStyle(fontSize, FontWeight.Bold),
             modifier = Modifier.background(labelBg).padding(horizontal = hPad, vertical = vPad),
         )
         Text(
-            value, color = valueFg, fontSize = fontSize, fontWeight = FontWeight.SemiBold,
+            value, color = valueFg, style = pillTextStyle(fontSize, FontWeight.SemiBold),
             modifier = Modifier.background(CardElevated).padding(horizontal = hPad, vertical = vPad),
         )
     }
@@ -122,7 +142,7 @@ private fun SinglePill(
     onClick: () -> Unit,
 ) {
     Text(
-        text, color = fg, fontSize = fontSize, fontWeight = FontWeight.Bold,
+        text, color = fg, style = pillTextStyle(fontSize, FontWeight.Bold),
         modifier = Modifier
             .clip(RoundedCornerShape(corner))
             .clickable(onClick = onClick)

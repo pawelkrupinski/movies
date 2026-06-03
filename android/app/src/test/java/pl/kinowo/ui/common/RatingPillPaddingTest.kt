@@ -22,16 +22,14 @@ import org.robolectric.annotation.GraphicsMode
 import pl.kinowo.model.Ratings
 
 /**
- * Off-device (Robolectric) Compose layout test pinning the rating pill's
- * vertical padding. It renders the real IMDb pill beside a bare reference
- * `Text` of the same font and no padding; the pill label's extra height over
- * the reference is exactly the top+bottom padding (`2 × vPad`). With the screen
- * width forced to the Pixel 9a reference (411 dp → scale 1.0) that should be
- * `2 × 0.5 dp = 1 dp`. Before the padding was halved it was `2 × 1 dp = 2 dp`, so
- * this fails-before / passes-after. The display is forced to `xhdpi` (density 2)
- * because at Robolectric's default mdpi (density 1) both `0.5.dp` and `1.dp` round
- * to a single pixel — the sub-dp change is only resolvable above density 1.
- * NATIVE graphics gives real text metrics.
+ * Off-device (Robolectric) Compose layout tests pinning the rating pill's
+ * vertical size. NATIVE graphics gives real text metrics, so measured heights
+ * reflect the actual font line box. The display is forced to `xhdpi` (density 2)
+ * because at Robolectric's default mdpi (density 1) sub-dp padding rounds to a
+ * single pixel and the change is unresolvable. Screen width is forced to the
+ * Pixel 9a reference (411 dp) so `RatingBadgeMetrics.scale` is exactly 1.0 and
+ * the base dp/sp values render unchanged.
+ *
  * Runs on the JVM via `./gradlew app:testDebugUnitTest` — no emulator.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -42,36 +40,35 @@ class RatingPillPaddingTest {
     @get:Rule
     val compose = createComposeRule()
 
+    /**
+     * The real IMDb pill rendered beside a zero-padding reference `Text` carrying
+     * the *same* trimmed pill style. Their only height difference is the pill's
+     * top+bottom padding, so `pill − reference` isolates `2 × vPad`. At scale 1.0
+     * that's `2 × 0.5 dp = 1 dp`; before the padding was halved it was `2 × 1 dp`,
+     * so this fails-before / passes-after on the padding change.
+     */
     @Test
     fun imdbPillVerticalPaddingIsHalfDpEachSide() {
         compose.setContent {
-            // Force scale 1.0 (RatingBadgeMetrics anchors at 411 dp) so the
-            // measured padding maps to a known base dp value.
-            val config = Configuration(LocalConfiguration.current).apply { screenWidthDp = 411 }
-            CompositionLocalProvider(LocalConfiguration provides config) {
+            ReferenceWidth {
                 MaterialTheme {
                     Column {
                         RatingBadges(Ratings(imdb = 7.4, imdbURL = "https://imdb.com/x"))
-                        // Reference: same font as the pill label, zero padding.
-                        Text("REF", fontWeight = FontWeight.Bold, fontSize = RatingBadgeMetrics.BaseFontSp.sp)
+                        // Reference: the pill's own trimmed style, zero padding.
+                        Text("TRIM", style = pillTextStyle(RatingBadgeMetrics.BaseFontSp.sp, FontWeight.Bold))
                     }
                 }
             }
         }
 
-        // The pill's `clickable` Row is a merged semantics node, so a (merged-tree)
-        // substring match on "IMDb" returns the whole Row — its bounds include the
-        // top+bottom padding. The bare reference Text carries only the font's line
-        // height, so (pill − reference) is exactly the vertical padding.
-        val pill = compose.onNodeWithText("IMDb", substring = true).getUnclippedBoundsInRoot()
-        val reference = compose.onNodeWithText("REF").getUnclippedBoundsInRoot()
-        val pillHeight = (pill.bottom - pill.top).value
-        val referenceHeight = (reference.bottom - reference.top).value
+        val pillHeight = mergedHeightOf("IMDb")
+        val referenceHeight = heightOf("TRIM")
 
-        // Real measurement guard (cf. ShowtimeChipFitTest): a stub renderer
-        // would hand back zero-height text and this would fail.
         assertTrue("reference text measured no height — metrics are stubbed", referenceHeight > 0f)
-        assertTrue("padded pill must be taller than the bare reference (pill=$pillHeight ref=$referenceHeight)", pillHeight > referenceHeight)
+        assertTrue(
+            "padded pill must be taller than the bare reference (pill=$pillHeight ref=$referenceHeight)",
+            pillHeight > referenceHeight,
+        )
 
         val verticalPadding = pillHeight - referenceHeight
         assertEquals(
@@ -80,4 +77,60 @@ class RatingPillPaddingTest {
             1.0, verticalPadding.toDouble(), 0.7,
         )
     }
+
+    /**
+     * The height fix the padding cut alone couldn't deliver: a bare `Text`
+     * reserves the font's full leading (ascent padding + descent), which is what
+     * made the pills read tall. `pillTextStyle` drops `includeFontPadding` and
+     * trims the line box to the glyph height, so the trimmed reference is
+     * meaningfully shorter than an untrimmed one of the same font — and the real
+     * pill, padding included, is no taller than that untrimmed glyph box. Remove
+     * the trim from `pillTextStyle` and both assertions fail.
+     */
+    @Test
+    fun pillStyleTrimsTheFontLeading() {
+        compose.setContent {
+            ReferenceWidth {
+                MaterialTheme {
+                    Column {
+                        RatingBadges(Ratings(imdb = 7.4, imdbURL = "https://imdb.com/x"))
+                        Text("TRIM", style = pillTextStyle(RatingBadgeMetrics.BaseFontSp.sp, FontWeight.Bold))
+                        // Same font, but the platform's default full line box (untrimmed).
+                        Text("FULL", fontWeight = FontWeight.Bold, fontSize = RatingBadgeMetrics.BaseFontSp.sp)
+                    }
+                }
+            }
+        }
+
+        val pillHeight = mergedHeightOf("IMDb")
+        val trimmedHeight = heightOf("TRIM")
+        val untrimmedHeight = heightOf("FULL")
+
+        assertTrue("untrimmed reference measured no height — metrics are stubbed", untrimmedHeight > 0f)
+        assertTrue(
+            "trimming must claw back real font leading: untrimmed=$untrimmedHeight should exceed trimmed=$trimmedHeight",
+            untrimmedHeight - trimmedHeight > 1f,
+        )
+        assertTrue(
+            "trimmed+padded pill must be no taller than a bare untrimmed glyph box " +
+                "(pill=$pillHeight untrimmed=$untrimmedHeight)",
+            pillHeight <= untrimmedHeight,
+        )
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun ReferenceWidth(content: @androidx.compose.runtime.Composable () -> Unit) {
+        val config = Configuration(LocalConfiguration.current).apply { screenWidthDp = 411 }
+        CompositionLocalProvider(LocalConfiguration provides config, content = content)
+    }
+
+    /** A pill's `clickable` Row is a merged semantics node; a substring match on
+     *  its label returns the whole Row, whose bounds include the padding. */
+    private fun mergedHeightOf(label: String): Float =
+        compose.onNodeWithText(label, substring = true).getUnclippedBoundsInRoot()
+            .let { (it.bottom - it.top).value }
+
+    private fun heightOf(text: String): Float =
+        compose.onNodeWithText(text).getUnclippedBoundsInRoot()
+            .let { (it.bottom - it.top).value }
 }
