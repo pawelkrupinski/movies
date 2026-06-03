@@ -151,7 +151,10 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
         Row(base, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(time, color = CinemaBlue, style = pillTextStyle(11.sp, FontWeight.SemiBold))
             if (format.isNotEmpty()) {
-                Text(format, color = CinemaBlue.copy(alpha = 0.7f), style = pillTextStyle(9.sp, FontWeight.Medium))
+                // 7sp, not larger: the time's 11sp bump is the most that still lets
+                // two chips share a row on the narrowest card; an 8sp+ tag pushes
+                // the second chip onto a new line. See ShowtimeChipFitTest.
+                Text(format, color = CinemaBlue.copy(alpha = 0.7f), style = pillTextStyle(7.sp, FontWeight.Medium))
             }
         }
         if (holding && room != null) {
