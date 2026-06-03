@@ -213,7 +213,7 @@ private struct ShowtimeBadge: View {
             }
         }
         .padding(.horizontal, ShowtimePillMetrics.horizontalInset)
-        .padding(.vertical, 4)
+        .padding(.vertical, ShowtimePillMetrics.verticalInset)
         .background(holding ? Self.pressedFill : Self.fill, in: RoundedRectangle(cornerRadius: 5))
         .overlay(alignment: .top) {
             if holding, let room {

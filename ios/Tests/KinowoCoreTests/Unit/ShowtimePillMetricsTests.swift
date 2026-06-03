@@ -66,5 +66,17 @@ final class ShowtimePillMetricsTests: XCTestCase {
         assertRGB(ShowtimePillMetrics.textRGB, 0xAAD4FF, "time text")
         XCTAssertEqual(ShowtimePillMetrics.formatAlpha, 0.7, accuracy: 0.001, "format tag alpha")
     }
+
+    /// The pill's vertical inset must match the web mobile `.badge-time` rule
+    /// (`padding: .2em`), i.e. 0.2 × the time font — so the pill reads the same
+    /// height as the web's, not the old flat 4 pt (twice as tall). (`ShowtimeBadge`
+    /// is in the Xcode-only app target; this pins the inset the view reads from.)
+    func testPillVerticalInsetMatchesTheWebMobilePadding() {
+        XCTAssertEqual(
+            ShowtimePillMetrics.verticalInset,
+            ShowtimePillMetrics.timeFontSize * 0.2,
+            accuracy: 0.5,
+            "vertical inset should be the web's .2em (0.2 × time font)")
+    }
 }
 #endif

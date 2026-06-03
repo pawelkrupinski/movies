@@ -38,6 +38,10 @@ enum ShowtimePillMetrics {
 
     /// Per-side horizontal inset inside the pill (`.padding(.horizontal,)`).
     static let horizontalInset: CGFloat = 4
+    /// Per-side vertical inset (`.padding(.vertical,)`). Mirrors the web mobile
+    /// `.badge-time` rule (`padding: .2em`), i.e. 0.2 × the time font — half the
+    /// old flat 4, so the pill isn't taller than the web's.
+    static let verticalInset: CGFloat = 2
     /// Gap between the time and the format tag (`HStack(spacing:)`).
     static let internalGap: CGFloat = 3
     /// Gap between adjacent pills (`FlowLayout(spacing:)`).

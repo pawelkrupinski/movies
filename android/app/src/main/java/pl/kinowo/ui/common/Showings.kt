@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +38,10 @@ import pl.kinowo.ui.theme.RoomTooltipText
 import pl.kinowo.ui.theme.ShowtimeChipBackground
 import pl.kinowo.ui.theme.ShowtimeChipBackgroundPressed
 import pl.kinowo.ui.theme.TextSecondary
+
+/** Test tag on the showtime pill, so `ShowtimeChipPaddingTest` can measure the
+ *  rendered chip's height (text + vertical inset). */
+internal const val ShowtimeChipTestTag = "showtime-chip"
 
 /**
  * The day-by-day showtimes tree for a film: day label → (optional cinema
@@ -123,6 +128,9 @@ fun Showings(
 private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (() -> Unit)?) {
     var holding by remember { mutableStateOf(false) }
     val base = Modifier
+        // Outermost, so the tagged node's bounds include the padding (a tag
+        // placed after .padding() would wrap only the inner text).
+        .testTag(ShowtimeChipTestTag)
         .clip(RoundedCornerShape(6.dp))
         .pointerInput(room, onClick) {
             detectTapGestures(
@@ -135,7 +143,10 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
             )
         }
         .background(if (holding) ShowtimeChipBackgroundPressed else ShowtimeChipBackground)
-        .padding(horizontal = 3.dp, vertical = 4.dp)
+        // Vertical inset mirrors the web mobile `.badge-time` (`padding: .2em`),
+        // ~0.2 × the 9sp time font — half the old flat 4dp, so the now-visible
+        // pill isn't taller than the web's.
+        .padding(horizontal = 3.dp, vertical = 2.dp)
     Box(contentAlignment = Alignment.TopCenter) {
         Row(base, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(time, color = CinemaBlue, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
