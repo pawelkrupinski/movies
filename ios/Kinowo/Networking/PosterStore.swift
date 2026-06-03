@@ -135,12 +135,22 @@ final class PosterStore: @unchecked Sendable {
     static func networkFetch(_ url: URL) async -> Data? {
         var request = URLRequest(url: url)
         request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
-        guard let (data, response) = try? await session.data(for: request),
-              let http = response as? HTTPURLResponse,
-              (200..<300).contains(http.statusCode),
-              !data.isEmpty else {
-            return nil
+        // Completion-handler `dataTask` bridged through a continuation
+        // rather than the async `data(for:)` — the latter isn't available
+        // on the Linux swift-corelibs-foundation toolchain CI compiles
+        // KinowoCore against. `dataTask` exists on both.
+        return await withCheckedContinuation { continuation in
+            let task = session.dataTask(with: request) { data, response, _ in
+                guard let data,
+                      let http = response as? HTTPURLResponse,
+                      (200..<300).contains(http.statusCode),
+                      !data.isEmpty else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                continuation.resume(returning: data)
+            }
+            task.resume()
         }
-        return data
     }
 }
