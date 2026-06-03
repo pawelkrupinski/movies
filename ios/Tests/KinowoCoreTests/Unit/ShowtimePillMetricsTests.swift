@@ -5,31 +5,39 @@ import CoreGraphics
 
 final class ShowtimePillMetricsTests: XCTestCase {
 
-    /// Content width of one card's showings column on the narrowest
-    /// two-column portrait phone we support (iPhone SE / 13 mini at
-    /// 375 pt): the grid's 12 pt horizontal padding + 12 pt inter-column
-    /// spacing give a card of `(375 - 36) / 2`, and `FilmCardView`'s
-    /// `.padding(12)` then takes 24 pt off the inside. Every wider phone
-    /// (incl. the Pro Max) gives the `FlowLayout` more room, so a fit
-    /// here is a fit everywhere in portrait.
-    private let narrowestPortraitContent: CGFloat = (375 - 36) / 2 - 24
+    /// Logical point widths of every iPhone on our iOS 16 deployment
+    /// floor, narrowest first. The 375 pt phones (SE 3, 13 mini) are the
+    /// binding case; the rest must keep fitting as screens grow. Derived
+    /// from `ShowtimePillMetrics.cardShowingsWidth` — the same formula the
+    /// grid uses — so a change to the column layout moves the test with it.
+    private static let iPhoneWidths: [(name: String, width: CGFloat)] = [
+        ("SE 3 / 13 mini", 375),
+        ("13 / 14 / 16",   390),
+        ("15 / 16 Pro",    393),
+        ("16 / 17",        402),
+        ("14 Plus / Pro Max", 430),
+        ("16 / 17 Pro Max", 440),
+    ]
 
-    func testTwoCanonicalPillsShareOneRowInNarrowestPortraitCard() {
+    func testTwoCanonicalPillsShareOneRowInEveryPortraitResolution() {
         let a = ShowtimePillMetrics.pillWidth(time: "12:55", format: "2D DUB")
         let b = ShowtimePillMetrics.pillWidth(time: "22:55", format: "3D NAP")
 
-        let result = FlowLayoutMath.layout(
-            sizes: [CGSize(width: a, height: 16), CGSize(width: b, height: 16)],
-            maxWidth: narrowestPortraitContent,
-            spacing: ShowtimePillMetrics.interPillGap,
-            lineSpacing: 4
-        )
-
-        XCTAssertTrue(
-            result.positions.allSatisfy { $0.y == 0 },
-            "two showtime pills must share one row at \(narrowestPortraitContent) pt "
-            + "(widths a=\(a), b=\(b)); got \(result.positions)"
-        )
+        for phone in Self.iPhoneWidths {
+            let content = ShowtimePillMetrics.cardShowingsWidth(screenWidth: phone.width)
+            let result = FlowLayoutMath.layout(
+                sizes: [CGSize(width: a, height: 16), CGSize(width: b, height: 16)],
+                maxWidth: content,
+                spacing: ShowtimePillMetrics.interPillGap,
+                lineSpacing: 4
+            )
+            XCTAssertTrue(
+                result.positions.allSatisfy { $0.y == 0 },
+                "two showtime pills must share one row on \(phone.name) "
+                + "(\(phone.width) pt → \(content) pt card; widths a=\(a), b=\(b)); "
+                + "got \(result.positions)"
+            )
+        }
     }
 
     func testFormatlessPillIsNarrowerThanFormattedOne() {

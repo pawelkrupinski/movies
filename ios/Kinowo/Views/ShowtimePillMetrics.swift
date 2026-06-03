@@ -49,6 +49,20 @@ enum ShowtimePillMetrics {
         return 2 * horizontalInset + timeWidth + formatWidth
     }
 
+    /// Width available to one card's showings `FlowLayout` on a phone of
+    /// the given logical screen width. Mirrors `FilmGridView`'s adaptive
+    /// `GridItem`: the grid's 12 pt horizontal padding + 12 pt spacing
+    /// between the two columns give a card of `(screen − 36) / 2`, clamped
+    /// to the `[160, 220]` adaptive bounds; `FilmCardView`'s `.padding(12)`
+    /// then takes 24 pt off the inside. Pure arithmetic so the fit test
+    /// can sweep it across every iPhone width — keep it the single source
+    /// of this derivation (don't re-spell `(screen − 36) / 2` elsewhere).
+    static func cardShowingsWidth(screenWidth: CGFloat) -> CGFloat {
+        let columnWidth = (screenWidth - 36) / 2
+        let cardWidth = min(220, max(160, columnWidth))
+        return cardWidth - 24
+    }
+
     /// Typographic width of `s` in the system font at `size`/`weight`.
     static func textWidth(_ s: String, size: CGFloat, weight: CGFloat) -> CGFloat {
         guard !s.isEmpty else { return 0 }

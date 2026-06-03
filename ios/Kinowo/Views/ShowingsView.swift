@@ -120,20 +120,14 @@ struct ShowingsView: View {
         )
     }
 
-    /// Width available to the showings FlowLayout inside one grid
-    /// card. Mirrors `FilmGridView`'s adaptive `GridItem`:
-    /// `.padding(.horizontal, 12)` on the LazyVGrid + 12pt spacing
-    /// between two columns gives card width `(screen − 36) / 2`,
-    /// clamped to the [160, 220] adaptive bounds; FilmCardView's own
-    /// `.padding(12)` then takes 24pt off the inside.
-    /// Computed once at view-construction time — the iOS app is
-    /// phone-only and the screen width is constant per launch.
-    private static let cardShowingsWidth: CGFloat = {
-        let screenWidth = UIScreen.main.bounds.width
-        let columnWidth = (screenWidth - 36) / 2
-        let cardWidth = min(220, max(160, columnWidth))
-        return cardWidth - 24
-    }()
+    /// Width available to the showings FlowLayout inside one grid card,
+    /// derived from the device screen width by
+    /// `ShowtimePillMetrics.cardShowingsWidth` (the same formula the
+    /// fit test sweeps every iPhone width through). Computed once at
+    /// view-construction time — the iOS app is phone-only and the screen
+    /// width is constant per launch.
+    private static let cardShowingsWidth: CGFloat =
+        ShowtimePillMetrics.cardShowingsWidth(screenWidth: UIScreen.main.bounds.width)
 
     @ViewBuilder
     private func cinemaLabel(_ cinema: CinemaShowings) -> some View {
