@@ -228,7 +228,11 @@ private struct PosterImage<NoPoster: View>: View {
             index == 0 ? primary
             : (index - 1 < fallbacks.count ? fallbacks[index - 1] : nil)
         let url = baseURL.flatMap { withRetryToken($0, generation) }
-        AsyncImage(url: url) { phase in
+        // `CachedAsyncImage` (not `AsyncImage`) so a poster downloads once
+        // and is served from `PosterStore`'s on-disk cache thereafter; it
+        // emits the same `AsyncImagePhase` values, so the fallback-walk and
+        // backoff-retry logic below is unchanged.
+        CachedAsyncImage(url: url) { phase in
             switch phase {
             case .success(let img):
                 img.resizable().aspectRatio(contentMode: .fill)
@@ -279,13 +283,15 @@ private struct PosterImage<NoPoster: View>: View {
         }
     }
 
-    /// `URLCache` keys responses by URL identity, so a retry of the
-    /// exact same URL can be served the cached failure. Stitching a
+    /// A retry of the exact same URL can be served a cached failure by
+    /// any layer that keys on URL identity. Stitching a
     /// monotonically-incrementing `_kinowo_t` query param onto every
     /// retry keeps the cinema CDN seeing the canonical URL (unknown
-    /// params get ignored) while invalidating the local cache key.
-    /// `generation == 0` is the first attempt — leave the URL alone
-    /// so we don't pollute the CDN cache key on the happy path.
+    /// params get ignored) while presenting a fresh key downstream.
+    /// `PosterStore` never caches failures and strips this token before
+    /// keying its disk store, so a successful retry still lands under the
+    /// canonical key. `generation == 0` is the first attempt — leave the
+    /// URL alone so we don't pollute the CDN cache key on the happy path.
     private func withRetryToken(_ base: URL, _ gen: Int) -> URL? {
         guard gen > 0 else { return base }
         var c = URLComponents(url: base, resolvingAgainstBaseURL: false) ?? URLComponents()

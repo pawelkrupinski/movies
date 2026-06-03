@@ -82,6 +82,27 @@ final class RepertoireStore: ObservableObject {
         let pruned = films.prunedPastShowings(now: now)
         if pruned != films { films = pruned }
     }
+
+    /// Once a day, after the repertoire has loaded, drop cached posters for
+    /// films that no longer have any future screening. `films` is already
+    /// pruned (server-side and by `prunedPastShowings`) to films with a
+    /// future showing, so its poster + fallback URLs are exactly the set
+    /// worth keeping; `PosterStore.reconcile` deletes every other cached
+    /// poster. Guarded on a non-empty list so a failed cold load (no
+    /// network, no disk cache) can't wipe the whole poster cache.
+    func reconcilePostersIfNeeded(now: Date = Date()) async {
+        guard !films.isEmpty else { return }
+        let today = DateFilter.iso(now)
+        let defaults = UserDefaults.standard
+        guard defaults.string(forKey: Self.posterPurgeDayKey) != today else { return }
+        let keepURLs = films.flatMap { film -> [URL] in
+            (film.posterURL.map { [$0] } ?? []) + film.fallbackPosterURLs
+        }
+        await PosterStore.shared.reconcile(keepURLs: keepURLs)
+        defaults.set(today, forKey: Self.posterPurgeDayKey)
+    }
+
+    private static let posterPurgeDayKey = "posterPurgeLastDay"
 }
 
 // MARK: - UI-test fixture hook

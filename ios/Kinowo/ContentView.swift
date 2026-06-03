@@ -213,6 +213,9 @@ struct ContentView: View {
             async let detailsLoad: Void = details.reload()
             _ = await (repertoire, detailsLoad)
             maybeShowSwipeHint()
+            // Once-a-day poster-cache purge: now that the fresh repertoire
+            // has landed, drop cached posters for films that have left it.
+            await store.reconcilePostersIfNeeded()
         }
         // Cold start: the first non-empty `store.films` is the first
         // repertoire load completing.

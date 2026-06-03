@@ -64,6 +64,7 @@ let package = Package(
                 // SwiftUI-free `FlowLayoutMath.swift` (pure
                 // CoreGraphics) still ships in `KinowoCore` and is
                 // reachable from the test target.
+                "Views/CachedAsyncImage.swift",
                 "Views/FilmCardView.swift",
                 "Views/FilmDetailView.swift",
                 "Views/FilmGridView.swift",

@@ -51,6 +51,8 @@
 		DD00000000000000000044 /* SwipeHint.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000044 /* SwipeHint.swift */; };
 		DD00000000000000000080 /* TopBarLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000080 /* TopBarLayout.swift */; };
 		DD00000000000000000036 /* FormatTokenFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000036 /* FormatTokenFilter.swift */; };
+		DD00000000000000000050 /* PosterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000050 /* PosterStore.swift */; };
+		DD00000000000000000051 /* CachedAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000051 /* CachedAsyncImage.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -109,6 +111,8 @@
 		CC00000000000000000044 /* SwipeHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeHint.swift; sourceTree = "<group>"; };
 		CC00000000000000000080 /* TopBarLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopBarLayout.swift; sourceTree = "<group>"; };
 		CC00000000000000000036 /* FormatTokenFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatTokenFilter.swift; sourceTree = "<group>"; };
+		CC00000000000000000050 /* PosterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterStore.swift; sourceTree = "<group>"; };
+		CC00000000000000000051 /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedAsyncImage.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -201,6 +205,7 @@
 				CC00000000000000000014 /* RatingsParser.swift */,
 				CC00000000000000000009 /* HTMLDecoding.swift */,
 				CC00000000000000000035 /* TrailerEmbedHTML.swift */,
+				CC00000000000000000050 /* PosterStore.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -226,6 +231,7 @@
 				CC00000000000000000099 /* ShowtimePillMetrics.swift */,
 				CC00000000000000000019 /* FlowLayoutMath.swift */,
 				CC00000000000000000036 /* FormatTokenFilter.swift */,
+				CC00000000000000000051 /* CachedAsyncImage.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -369,6 +375,8 @@
 				DD00000000000000000044 /* SwipeHint.swift in Sources */,
 				DD00000000000000000080 /* TopBarLayout.swift in Sources */,
 				DD00000000000000000036 /* FormatTokenFilter.swift in Sources */,
+				DD00000000000000000050 /* PosterStore.swift in Sources */,
+				DD00000000000000000051 /* CachedAsyncImage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
