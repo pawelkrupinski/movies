@@ -34,7 +34,7 @@ struct ShowingsView: View {
                         if showCinemaHeaders {
                             cinemaLabel(cinema)
                         }
-                        FlowLayout(spacing: 4, lineSpacing: 4) {
+                        FlowLayout(spacing: ShowtimePillMetrics.interPillGap, lineSpacing: 4) {
                             ForEach(cinema.showtimes) { st in
                                 ShowtimeBadge(
                                     showtime: st,
@@ -99,8 +99,8 @@ struct ShowingsView: View {
             let w = pillWidth(for: st, commonTokens: commonTokens)
             if rowWidth == 0 {
                 rowWidth = w
-            } else if rowWidth + pillGap + w <= contentWidth {
-                rowWidth += pillGap + w
+            } else if rowWidth + ShowtimePillMetrics.interPillGap + w <= contentWidth {
+                rowWidth += ShowtimePillMetrics.interPillGap + w
             } else {
                 rows += 1
                 rowWidth = w
@@ -109,33 +109,16 @@ struct ShowingsView: View {
         return rows
     }
 
-    /// Actual rendered width of one showtime pill, broken down to
-    /// match `ShowtimeBadge`'s layout: 7+7 horizontal padding, the
-    /// time text at 12pt semibold, an optional 9pt-medium format tag
-    /// preceded by 4pt spacing, then the 4pt + 9pt star. UIFont's
-    /// `(NSString).size(withAttributes:)` returns the same width
-    /// SwiftUI's Text uses, so the estimate tracks pill-by-pill
-    /// reality (no average / no fudge).
+    /// Rendered width of one showtime pill — delegated to
+    /// `ShowtimePillMetrics`, the same CoreText-backed measurement that
+    /// `ShowtimeBadge` is sized from, so this row count tracks what the
+    /// `FlowLayout` actually produces pill-by-pill (no average / no fudge).
     private static func pillWidth(for st: Showtime, commonTokens: Set<String> = []) -> CGFloat {
-        let timeWidth = textWidth(st.time, font: timeFont)
-        let trimmedFormat = FormatTokenFilter.filter(st.format, removing: commonTokens)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let formatWidth: CGFloat = trimmedFormat.isEmpty
-            ? 0
-            : pillInternalGap + textWidth(trimmedFormat, font: formatFont)
-        return pillHorizontalPadding + timeWidth + formatWidth + pillInternalGap + starWidth
+        ShowtimePillMetrics.pillWidth(
+            time: st.time,
+            format: FormatTokenFilter.filter(st.format, removing: commonTokens)
+        )
     }
-
-    private static func textWidth(_ s: String, font: UIFont) -> CGFloat {
-        (s as NSString).size(withAttributes: [.font: font]).width
-    }
-
-    private static let timeFont   = UIFont.systemFont(ofSize: 12, weight: .semibold)
-    private static let formatFont = UIFont.systemFont(ofSize: 9,  weight: .medium)
-    private static let starWidth: CGFloat = 9            // SF Symbol "star" at 9pt
-    private static let pillHorizontalPadding: CGFloat = 14  // 7 leading + 7 trailing
-    private static let pillInternalGap: CGFloat = 4      // HStack(spacing: 4) inside the pill
-    private static let pillGap: CGFloat = 4              // FlowLayout(spacing: 4) between pills
 
     /// Width available to the showings FlowLayout inside one grid
     /// card. Mirrors `FilmGridView`'s adaptive `GridItem`:
@@ -211,17 +194,17 @@ private struct ShowtimeBadge: View {
         let trimmedFormat = displayFormat.trimmingCharacters(in: .whitespacesAndNewlines)
         let room = showtime.displayRoom
 
-        let pill = HStack(spacing: 4) {
+        let pill = HStack(spacing: ShowtimePillMetrics.internalGap) {
             Text(showtime.time)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: ShowtimePillMetrics.timeFontSize, weight: .semibold))
                 .foregroundColor(.white)
             if !trimmedFormat.isEmpty {
                 Text(trimmedFormat)
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: ShowtimePillMetrics.formatFontSize, weight: .medium))
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.horizontal, 7)
+        .padding(.horizontal, ShowtimePillMetrics.horizontalInset)
         .padding(.vertical, 4)
         .background(Color.white.opacity(holding ? 0.16 : 0.08), in: RoundedRectangle(cornerRadius: 5))
         .overlay(alignment: .top) {

@@ -86,8 +86,8 @@ fun Showings(
                 budget -= slots.size
                 shown += slots.size
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     for (st in slots) {
                         ShowtimeChip(
@@ -134,12 +134,12 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
             )
         }
         .background(if (holding) RoomTooltipBorder else CardElevated)
-        .padding(horizontal = 8.dp, vertical = 4.dp)
+        .padding(horizontal = 4.dp, vertical = 4.dp)
     Box(contentAlignment = Alignment.TopCenter) {
-        Row(base, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(time, color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Row(base, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(time, color = androidx.compose.ui.graphics.Color.White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
             if (format.isNotEmpty()) {
-                Text(format, color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                Text(format, color = TextSecondary, fontSize = 7.sp, fontWeight = FontWeight.Medium)
             }
         }
         if (holding && room != null) {
