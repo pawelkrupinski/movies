@@ -123,11 +123,30 @@ next run can be tuned.
 
 ## Always add tests for new or changed functionality
 
-Every piece of new or modified behaviour MUST come with a test that
-exercises it. Non-negotiable for bug fixes (must fail before the fix
-and pass after), new methods or branches, parsing/normalisation
-changes, and any logic that decides what to persist or display. "I ran
-it once and it looked right" is not a substitute.
+**The commit gate — read this first.** Do not commit a change unless
+you can write a test that confirms the behaviour *was not there before
+and is there now*: a test that fails before your change and passes
+after. If no such test can be written, the change is not ready to
+commit. This is the exact bar `Commit at every stable state` means when
+it calls an untested production change "not stable" — it is a gate, not
+a suggestion.
+
+**"Test" means any layer that reaches the behaviour — not just a unit
+test.** The fail-before / pass-after gate is satisfied by whichever
+layer actually exercises the change: a `swift test` / `sbt test` unit
+spec, an `IntegrationTest` spec, a `PageTest` (real Chrome) or
+Playwright browser test, or an iOS LocalServer / emulator test. "It's
+UI, I can't unit-test it" is NOT grounds to skip — it is grounds to
+drop down to PageTest / Playwright / the emulator and assert there
+(e.g. pixel-sample the rendered result, per the top-bar memory). A
+visible UX change shipped without a browser-or-emulator test has not
+met the gate.
+
+Every piece of new or modified behaviour MUST come with that test.
+Non-negotiable for bug fixes (must fail before the fix and pass after),
+new methods or branches, parsing/normalisation changes, and any logic
+that decides what to persist or display. "I ran it once and it looked
+right" is not a substitute.
 
 **Default to writing the failing test first.** Whenever feasible — bug
 fixes, new features, parser/normaliser changes, investigations into
@@ -146,10 +165,17 @@ fastest way to confirm it is a test that feeds the suspect input
 through the real code. If it fails as predicted, you have both the
 diagnosis and the regression test in one step.
 
-Skip the test-first step only when genuinely impractical (exploratory
-spikes, behaviour observable only via a running server/browser). Still
-add a test after the fact. If a neighbouring test is the closest match,
-extend it rather than inventing a new style.
+The ONLY genuine exception is behaviour that even the browser/emulator
+harnesses cannot reach — e.g. sub-16px input-zoom, un-reproducible in
+Playwright WebKit and the Simulator alike (see the focus-zoom memory).
+In that case test the closest reachable mechanism instead (the
+maximum-scale toggle, not the zoom), AND state out loud in the commit
+message / report that the behaviour itself is unreachable by every test
+layer and why. "Observable only via a running server/browser" is NOT
+that exception — we have browser and server test layers, so use them.
+Exploratory spikes may skip the failing-test-first step, but still owe
+a test before the work is committed. If a neighbouring test is the
+closest match, extend it rather than inventing a new style.
 
 For pure logic (parsers, formatters, normalisers, decision functions),
 unit tests against in-memory inputs are enough. For composed services,
@@ -207,7 +233,10 @@ Stable:
 
 Not stable:
 
-- Production change without the matching test.
+- Production change without the matching test. The gate is concrete:
+  if you cannot write a test that fails before the change and passes
+  after (at any layer — unit, integration, browser, or emulator), the
+  change is NOT committable. See `Always add tests`.
 - Half-done work "going to need another pass anyway".
 - A green compile with skipped or commented-out tests.
 
