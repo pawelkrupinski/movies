@@ -70,7 +70,10 @@ test.describe('axe-core WCAG audit', () => {
       return cols.find((c) => c.style.display !== 'none')?.dataset.title ?? null;
     });
     expect(title).toBeTruthy();
-    await page.goto(`/film?title=${encodeURIComponent(title!)}`);
+    // `domcontentloaded`: the axe scan runs against the server-rendered
+    // DOM, which is complete at DCL — no need to block on the poster-proxy
+    // images / trailer iframe whose `load` can stall a contended runner.
+    await page.goto(`/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
     const result = await new AxeBuilder({ page })
       .withTags([...WCAG_TAGS])
       // Known-failing rule on the current site CSS: `.badge-fmt` (ATMOS

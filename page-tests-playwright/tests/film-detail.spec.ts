@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { firstVisibleTitle, pinDateFilterAnytime } from './helpers';
+import { firstVisibleTitle, gotoAndWaitForCards, pinDateFilterAnytime } from './helpers';
 
 // `/film?title=...` detail page. Walks from a card on `/` to its
 // detail screen and asserts the page's content blocks render +
@@ -9,11 +9,16 @@ test.describe('/film detail page', () => {
 
   // Helper: navigate to /film for the first visible card on /
   async function gotoFirstFilm(page: import('@playwright/test').Page): Promise<string> {
-    await page.goto('/');
+    await gotoAndWaitForCards(page, '/');
     await pinDateFilterAnytime(page);
     const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
-    await page.goto(`/film?title=${encodeURIComponent(title!)}`);
+    // `waitUntil: 'domcontentloaded'` for the same reason `gotoAndWaitForCards`
+    // does it: the detail page's content blocks + inline boot scripts are all
+    // present at DCL, but the default `'load'` wait blocks `goto` on the poster
+    // proxy images (and any trailer iframe). On a contended CI runner that
+    // image-load stall eats the whole 30s budget and times the navigation out.
+    await page.goto(`/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
     return title!;
   }
 
@@ -101,7 +106,7 @@ test.describe('/film detail page', () => {
       // `window.location.href = …` so the browser writes a real
       // Referer header — `page.goto(referer: …)` would also work but
       // this exercises the same code path a user's card-tap takes.
-      await page.goto(from);
+      await page.goto(from, { waitUntil: 'domcontentloaded' });
       const filmHref = await page.evaluate(() => {
         const col = document.querySelector('[data-title]');
         if (!col) return null;
@@ -110,7 +115,12 @@ test.describe('/film detail page', () => {
       });
       expect(filmHref).not.toBeNull();
       await Promise.all([
-        page.waitForURL((u) => new URL(u).pathname === '/film'),
+        // `waitUntil: 'domcontentloaded'` — same reasoning as `gotoFirstFilm`:
+        // the `/film` page's `load` event is gated on poster-proxy images and
+        // the trailer iframe, which can stall the full 30s on a contended
+        // runner. The back-link markup we assert on is server-rendered, so DCL
+        // is all we need.
+        page.waitForURL((u) => new URL(u).pathname === '/film', { waitUntil: 'domcontentloaded' }),
         page.evaluate((href) => { window.location.href = href; }, filmHref!),
       ]);
 

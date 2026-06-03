@@ -63,7 +63,11 @@ test.describe('kinowo.fly.dev smoke', () => {
     });
     expect(title).toBeTruthy();
 
-    const resp = await page.goto(`/film?title=${encodeURIComponent(title!)}`);
+    // `domcontentloaded`: the `/film` page's `load` event waits on
+    // poster-proxy images + the trailer iframe, which can stall the full
+    // timeout on a contended runner. The status + server-rendered title we
+    // assert on are present at DCL.
+    const resp = await page.goto(`/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
     expect(resp?.status()).toBe(200);
     // Don't pin to a specific element — view templates evolve. The
     // contract is just "the film's title shows up on its detail page".
