@@ -97,14 +97,34 @@ struct ContentView: View {
                 // across.
                 .ignoresSafeArea(edges: [.bottom, .horizontal])
                 .toolbar(.hidden, for: .navigationBar)
-                // safeAreaInset draws the bar pinned below the status bar (its
-                // material extends up under it). We do NOT lean on the safe-area
-                // inset it adds for the grids' resting position — the grids
-                // ignore the top safe area (so they render edge-to-edge behind
-                // the bar) and instead use an explicit `topInset` padding,
-                // measured here as the bar's bottom edge in screen space. That
-                // keeps the resting gap stable (no `.automatic` recompute can
-                // collapse it) while posters still scroll behind the frosted bar.
+                // Gradient FADE (a scrim, not a frost): opaque app-background
+                // behind the pills, holding solid through the bar then fading to
+                // clear over ~56pt just below it, so the grid scrolling up gently
+                // dims/fades out toward the bar — no frosted material, no
+                // separate band. Layered BEFORE the safeAreaInset bar so it sits
+                // under the pills (which stay sharp/legible) but above the scroll
+                // content. `topInset` (measured below) marks the bar's bottom.
+                .overlay(alignment: .top) {
+                    let fadeBand: CGFloat = 56
+                    LinearGradient(
+                        stops: [
+                            .init(color: Color(.systemBackground), location: 0),
+                            .init(color: Color(.systemBackground),
+                                  location: topInset / (topInset + fadeBand)),
+                            .init(color: .clear, location: 1),
+                        ],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .frame(height: topInset + fadeBand)
+                    .allowsHitTesting(false)
+                    .ignoresSafeArea(edges: .top)
+                }
+                // safeAreaInset draws the bar (pills) pinned below the status
+                // bar. We do NOT lean on the safe-area inset it adds for the
+                // grids' resting position — the grids ignore the top safe area
+                // (so they render edge-to-edge under the fade) and use an
+                // explicit `topInset` padding, measured here as the bar's bottom
+                // edge in screen space, so the resting gap can't collapse.
                 .safeAreaInset(edge: .top, spacing: 0) {
                     TopBar(
                         dateFilter: $dateFilter,
@@ -124,13 +144,11 @@ struct ContentView: View {
                     )
                 }
                 .onPreferenceChange(TopBarBottomKey.self) { topInset = $0 }
-                // The top bar's own `.ultraThinMaterial` (see TopBar) shows the
-                // grid scrolling under it, blurred — content is visible through
-                // the bar like iOS Settings. We deliberately do NOT add a
-                // separate frosted strip below it (it reads as a second bar); a
-                // true Settings-style progressive blur that extends below the bar
-                // without a visible band needs a variable-blur Metal shader
-                // (Variablur), which can't be verified in the Simulator.
+                // No frost and no separate strip: the under-bar treatment is the
+                // gradient fade above. A true Settings-style *blur* (content
+                // gently blurred, not just dimmed) would need a variable-blur
+                // Metal shader (Variablur), which renders black in the Simulator
+                // and so can't be verified here without a device.
                 // Narrow screens float search at the bottom; wide screens
                 // host it inline on the top bar instead (see TopBar).
                 .overlay(alignment: .bottom) {

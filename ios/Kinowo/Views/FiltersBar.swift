@@ -76,12 +76,11 @@ struct TopBar: View {
         // grid scrolling beneath it.
         .padding(.top, 2 * s)
         .padding(.bottom, 8 * s)
-        // Translucent material so posters are visible through the bar, then the
-        // iOS-26 scroll edge effect (see `SoftTopScrollEdgeIfAvailable` in
-        // FilmGridView) progressively blurs + dims them under it — the iOS
-        // Settings look. The grid scrolls edge-to-edge beneath the bar (and the
-        // status bar above it, via `ignoresSafeAreaEdges: .top`).
-        .background(.ultraThinMaterial, ignoresSafeAreaEdges: .top)
+        // No background here on purpose — no frosted material. The bar's
+        // backing is a gradient *fade* (a scrim, not a frost) drawn in
+        // `ContentView`: opaque app-background behind the pills, fading to
+        // clear just below the bar, so the grid scrolling up gently fades out
+        // toward the bar instead of meeting a frosted strip.
         // Zero-visual automation anchor at the bar's true bottom edge. The
         // pills / Filtry button sit on the row above, inside the 8pt bottom
         // padding, so they can't stand in for the bar bottom in UI tests.
