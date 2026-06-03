@@ -1,19 +1,19 @@
 @()
 <style>
   .ratings { display: flex; gap: .25rem; align-items: center; flex-wrap: wrap; margin-top: .25rem; }
-  .rating-imdb { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.3; text-decoration: none; }
+  .rating-imdb { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.15; text-decoration: none; }
   .rating-imdb-label { background: #f5c518; color: #000; font-weight: 700; padding: 0 .3rem; letter-spacing: .02em; }
   .rating-imdb-value { background: #2a2a3e; color: #f5c518; padding: 0 .35rem; font-weight: 600; }
   .rating-imdb:hover .rating-imdb-value { background: #3a3a6e; }
-  .rating-meta { background: #66cc66; color: #002200; font-size: .68rem; font-weight: 700; line-height: 1.3; padding: 0 .35rem; border-radius: 3px; text-decoration: none; }
+  .rating-meta { background: #66cc66; color: #002200; font-size: .68rem; font-weight: 700; line-height: 1.15; padding: 0 .35rem; border-radius: 3px; text-decoration: none; }
   a.rating-meta:hover { background: #88dd88; }
-  .rating-fw { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.3; text-decoration: none; }
+  .rating-fw { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.15; text-decoration: none; }
   .rating-fw-label { background: #ff6c00; color: #fff; font-weight: 700; padding: 0 .3rem; letter-spacing: .02em; }
   .rating-fw-value { background: #2a2a3e; color: #ff9c4a; padding: 0 .35rem; font-weight: 600; }
   .rating-fw:hover .rating-fw-value { background: #3a3a6e; }
   /* Rotten Tomatoes. Red label for fresh (≥60%), green for rotten — matches
      RT's own tomato vs splat visual cue. */
-  .rating-rt { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.3; text-decoration: none; }
+  .rating-rt { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.15; text-decoration: none; }
   .rating-rt-label { color: #fff; font-weight: 700; padding: 0 .3rem; letter-spacing: .02em; }
   .rating-rt-value { background: #2a2a3e; padding: 0 .35rem; font-weight: 600; }
   .rating-rt.fresh  .rating-rt-label { background: #fa320a; }
@@ -21,6 +21,20 @@
   .rating-rt.rotten .rating-rt-label { background: #1a8f1a; }
   .rating-rt.rotten .rating-rt-value { color: #6cd06c; }
   .rating-rt:hover  .rating-rt-value { background: #3a3a6e; }
+
+  /* Vertically centre the pill text. Without this the line-box leading sits a
+     descender's worth below the baseline, so the caps/digits ride high in the
+     coloured box — clearly visible in Android's Roboto (~2.5px high in a 32px
+     pill). `text-box-trim` crops the line box to the cap-height/baseline, so the
+     symmetric top/bottom padding then balances the glyphs on the centre line on
+     any font. Browsers without `text-box-trim` (e.g. Firefox) ignore it and fall
+     back to the leading-padded box — slightly taller pills, still legible. */
+  .rating-imdb-label, .rating-imdb-value,
+  .rating-fw-label, .rating-fw-value,
+  .rating-rt-label, .rating-rt-value, .rating-meta {
+    text-box-trim: trim-both; text-box-edge: cap alphabetic;
+    padding-top: .3em; padding-bottom: .3em;
+  }
 
   @@media (max-width: 575px),
          (max-height: 500px) and (orientation: landscape) {
