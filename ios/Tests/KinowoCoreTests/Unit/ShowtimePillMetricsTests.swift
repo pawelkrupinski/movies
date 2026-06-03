@@ -46,12 +46,12 @@ final class ShowtimePillMetricsTests: XCTestCase {
     }
 
     /// Pins the chip font sizes the on-screen `ShowtimeBadge` renders at:
-    /// 11 pt time (bumped up for arm's-length legibility, matching Android's
-    /// 11sp) / 7 pt format (held there so two pills still fit one row — see
-    /// the two-per-row test above).
-    func testFontSizesAreElevenAndSeven() {
+    /// 11 pt time / 8 pt format, both bumped up for arm's-length legibility.
+    /// The 8 pt format only fits two-up because the insets are trimmed (see
+    /// the two-per-row test above); don't grow either without re-measuring.
+    func testFontSizesAreElevenAndEight() {
         XCTAssertEqual(ShowtimePillMetrics.timeFontSize, 11, accuracy: 0.001)
-        XCTAssertEqual(ShowtimePillMetrics.formatFontSize, 7, accuracy: 0.001)
+        XCTAssertEqual(ShowtimePillMetrics.formatFontSize, 8, accuracy: 0.001)
     }
 
     func testFormatlessPillIsNarrowerThanFormattedOne() {

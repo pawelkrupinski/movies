@@ -16,17 +16,17 @@ import Foundation
 enum ShowtimePillMetrics {
     /// Font sizes for the time and the format tag inside a pill. The
     /// SwiftUI `ShowtimeBadge` renders at exactly these sizes, and the
-    /// web pill (`_pillStyles`) lands in the same ballpark. The time is
-    /// at 11 pt — the largest that still lets two canonical pills
-    /// ("12:55 2D DUB" + "22:55 3D NAP") share one row in the narrowest
-    /// two-column portrait card (a hard, pinned constraint — see
-    /// `ShowtimePillMetricsTests`). The format tag stays at 7 pt: at the
-    /// current insets, growing it past 7 would push the second pill onto
-    /// a new row, which we never do. The same constants drive both
-    /// orientations, so the showtime text is one consistent size whether
-    /// the phone is held portrait or landscape.
+    /// web pill (`_pillStyles`) lands in the same ballpark. Two canonical
+    /// pills ("12:55 2D DUB" + "22:55 3D NAP") must share one row in the
+    /// narrowest two-column portrait card — a hard, pinned constraint (see
+    /// `ShowtimePillMetricsTests`). At 11/8 pt that holds only because the
+    /// insets below are trimmed to reclaim the width; grow either font
+    /// further (or loosen the insets) and the second pill wraps, which we
+    /// never allow. The same constants drive both orientations, so the
+    /// showtime text is one consistent size whether the phone is held
+    /// portrait or landscape.
     static let timeFontSize: CGFloat = 11
-    static let formatFontSize: CGFloat = 7
+    static let formatFontSize: CGFloat = 8
 
     /// Pill colours, mirroring the web `.badge-time` pill: a `#3a3a6e` fill
     /// (`#5a5a9e` while pressed/held, matching the web hover), `#aad4ff` time
@@ -40,15 +40,19 @@ enum ShowtimePillMetrics {
     static let formatAlpha: Double = 0.7
 
     /// Per-side horizontal inset inside the pill (`.padding(.horizontal,)`).
-    static let horizontalInset: CGFloat = 4
+    /// Trimmed from 4 to 3 to buy back the width the 8 pt format tag costs, so
+    /// two pills still share a row at 11/8 — see `ShowtimePillMetricsTests`.
+    static let horizontalInset: CGFloat = 3
     /// Per-side vertical inset (`.padding(.vertical,)`). Mirrors the web mobile
-    /// `.badge-time` rule (`padding: .2em`), i.e. 0.2 × the time font — half the
-    /// old flat 4, so the pill isn't taller than the web's.
+    /// `.badge-time` rule (`padding: .2em`), i.e. 0.2 × the time font — well
+    /// below the time font so the pill isn't taller than the web's.
     static let verticalInset: CGFloat = 2
-    /// Gap between the time and the format tag (`HStack(spacing:)`).
-    static let internalGap: CGFloat = 3
-    /// Gap between adjacent pills (`FlowLayout(spacing:)`).
-    static let interPillGap: CGFloat = 4
+    /// Gap between the time and the format tag (`HStack(spacing:)`). Trimmed
+    /// from 3 to 2 as part of reclaiming width for the 8 pt format tag.
+    static let internalGap: CGFloat = 2
+    /// Gap between adjacent pills (`FlowLayout(spacing:)`). Trimmed from 4 to 2
+    /// as part of reclaiming width for the 8 pt format tag.
+    static let interPillGap: CGFloat = 2
 
     /// SwiftUI font weights, mirrored onto CoreText's normalised
     /// (-1...1) weight axis: `.semibold` ≈ 0.3, `.medium` ≈ 0.23.
