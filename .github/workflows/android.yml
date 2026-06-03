@@ -26,8 +26,10 @@ concurrency:
 # stable anonymous download URL anyone can install from. The release build
 # signs with the keystore decoded from repo secrets (see below); with no
 # secrets it still builds, just unsigned (and the publish step then fails). No
-# emulator job: the app has no instrumented (androidTest) suite yet, and an
-# emulator lane is slow; add one here if/when Compose UI tests land.
+# emulator job: the Compose UI tests we have (e.g. ShowtimeChipFitTest) render
+# off-device via Robolectric and run inside `testDebugUnitTest`, so they need no
+# emulator. Add an instrumented (androidTest) lane only if a test ever needs a
+# real device/GPU that Robolectric can't fake.
 #
 # Release signing secrets (Settings ▸ Secrets and variables ▸ Actions):
 #   KINOWO_RELEASE_KEYSTORE_BASE64 — `base64 -i kinowo-release.jks`

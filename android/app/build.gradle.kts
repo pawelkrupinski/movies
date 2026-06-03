@@ -75,7 +75,12 @@ android {
         buildConfig = true
     }
     testOptions {
-        unitTests.isReturnDefaultValues = true
+        unitTests {
+            isReturnDefaultValues = true
+            // Robolectric needs the merged resources/manifest on the JVM
+            // classpath to render real Compose layouts off-device.
+            isIncludeAndroidResources = true
+        }
     }
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -124,6 +129,15 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+
+    // JVM (off-device) Compose UI tests via Robolectric — renders the real
+    // composables and measures layout bounds without an emulator, so the
+    // "two showtime chips fit one row" guarantee runs in CI. ui-test-manifest
+    // (already a debugImplementation) supplies the ComponentActivity that
+    // createComposeRule launches.
+    testImplementation(composeBom)
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
 
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
