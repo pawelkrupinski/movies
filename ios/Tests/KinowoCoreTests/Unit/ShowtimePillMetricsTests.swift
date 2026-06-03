@@ -46,12 +46,12 @@ final class ShowtimePillMetricsTests: XCTestCase {
     }
 
     /// Pins the chip font sizes the on-screen `ShowtimeBadge` renders at:
-    /// 11 pt time / 8 pt format, both bumped up for arm's-length legibility.
-    /// The 8 pt format only fits two-up because the insets are trimmed (see
-    /// the two-per-row test above); don't grow either without re-measuring.
-    func testFontSizesAreElevenAndEight() {
+    /// 11 pt time / 7 pt format. The tag is held at 7 (not 8) so the pill can
+    /// carry the roomier uniform 4 pt inset and still fit two-up — see the
+    /// two-per-row test above; don't grow either without re-measuring.
+    func testFontSizesAreElevenAndSeven() {
         XCTAssertEqual(ShowtimePillMetrics.timeFontSize, 11, accuracy: 0.001)
-        XCTAssertEqual(ShowtimePillMetrics.formatFontSize, 8, accuracy: 0.001)
+        XCTAssertEqual(ShowtimePillMetrics.formatFontSize, 7, accuracy: 0.001)
     }
 
     func testFormatlessPillIsNarrowerThanFormattedOne() {
@@ -81,16 +81,15 @@ final class ShowtimePillMetricsTests: XCTestCase {
         XCTAssertEqual(ShowtimePillMetrics.formatAlpha, 0.7, accuracy: 0.001, "format tag alpha")
     }
 
-    /// The pill's vertical inset must match the web mobile `.badge-time` rule
-    /// (`padding: .2em`), i.e. 0.2 × the time font — so the pill reads the same
-    /// height as the web's, not the old flat 4 pt (twice as tall). (`ShowtimeBadge`
-    /// is in the Xcode-only app target; this pins the inset the view reads from.)
-    func testPillVerticalInsetMatchesTheWebMobilePadding() {
+    /// The pill inset is uniform — the same on both axes — so the time sits in
+    /// an even box of padding rather than a wide-short one. (`ShowtimeBadge` is
+    /// in the Xcode-only app target; this pins the insets the view reads from.)
+    func testPillInsetIsUniform() {
         XCTAssertEqual(
             ShowtimePillMetrics.verticalInset,
-            ShowtimePillMetrics.timeFontSize * 0.2,
-            accuracy: 0.5,
-            "vertical inset should be the web's .2em (0.2 × time font)")
+            ShowtimePillMetrics.horizontalInset,
+            accuracy: 0.001,
+            "pill inset should be uniform on both axes")
     }
 }
 #endif
