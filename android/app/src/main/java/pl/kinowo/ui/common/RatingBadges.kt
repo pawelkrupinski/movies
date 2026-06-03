@@ -46,7 +46,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
     val scale = RatingBadgeMetrics.scale(LocalConfiguration.current.screenWidthDp)
     val fontSize = (RatingBadgeMetrics.BaseFontSp * scale).sp
     val hPad = (6f * scale).dp
-    val vPad = (2f * scale).dp
+    val vPad = (1f * scale).dp
     val corner = (5f * scale).dp
     val gap = (6f * scale).dp
     FlowRow(
