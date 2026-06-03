@@ -243,7 +243,7 @@ tasks.matching { it.name == "installDebug" }.configureEach { mustRunAfter("bootE
 
 tasks.register("runOnEmulator") {
     group = "emulator"
-    description = "Boot/install/launch, stream logcat, and auto-rebuild + redeploy on source changes while this terminal is focused."
+    description = "Boot/install/launch, stream logcat, and auto-rebuild + redeploy on source changes while this terminal is focused. Pass -Ptuning to launch into the showtime tuning screen."
     dependsOn("bootEmulator", "installDebug")
     val adb = adbExe
     val appPkg = appId
@@ -254,6 +254,9 @@ tasks.register("runOnEmulator") {
     val rootDirPath = rootProject.projectDir.absolutePath
     val watchDir = layout.projectDirectory.dir("src/main").asFile.absolutePath
     val focusOverride = (findProperty("focusApp") as String?)
+    // `-Ptuning` launches the non-prod showtime tuning screen via the
+    // `kinowo_tuning` intent extra (DEBUG-gated in MainActivity).
+    val launchTuning = project.hasProperty("tuning")
     val termProgram: String? = System.getenv("TERM_PROGRAM")
     doLast {
         fun sh(vararg args: String): String {
@@ -288,7 +291,9 @@ tasks.register("runOnEmulator") {
             if (forceStop) sh(adb, "-s", serial, "shell", "am", "force-stop", appPkg)
             logcatProc?.destroy()
             sh(adb, "-s", serial, "logcat", "-c")
-            sh(adb, "-s", serial, "shell", "am", "start", "-n", component)
+            val startArgs = mutableListOf(adb, "-s", serial, "shell", "am", "start", "-n", component)
+            if (launchTuning) startArgs += listOf("--ez", "kinowo_tuning", "true")
+            sh(*startArgs.toTypedArray())
             val pid = pidOf()
             if (pid.isEmpty()) {
                 logger.lifecycle("⚠  $appPkg isn't running (crash on launch?) — fix it and save, I'll rebuild.")
@@ -390,7 +395,7 @@ tasks.register("runOnEmulator") {
 
 tasks.register("debugOnEmulator") {
     group = "emulator"
-    description = "Boot/install as runOnEmulator, but launch waiting for a debugger and forward JDWP (port -PdebugPort=, default 5005)."
+    description = "Boot/install as runOnEmulator, but launch waiting for a debugger and forward JDWP (port -PdebugPort=, default 5005). Pass -Ptuning to launch into the showtime tuning screen."
     dependsOn("bootEmulator", "installDebug")
     val adb = adbExe
     val appPkg = appId
@@ -398,6 +403,9 @@ tasks.register("debugOnEmulator") {
     val port = debugJdwpPort
     val sourcePath = layout.projectDirectory.dir("src/main/java").asFile.absolutePath
     val noSdk = noSdkMessage
+    // `-Ptuning` launches the non-prod showtime tuning screen via the
+    // `kinowo_tuning` intent extra (DEBUG-gated in MainActivity).
+    val launchTuning = project.hasProperty("tuning")
     doLast {
         fun sh(vararg args: String): String {
             val p = ProcessBuilder(*args).redirectErrorStream(true).start()
@@ -414,7 +422,9 @@ tasks.register("debugOnEmulator") {
 
         // `-D` makes the app process spawn and block until a debugger attaches.
         logger.lifecycle("Launching $component on $serial (waiting for debugger)…")
-        sh(adb, "-s", serial, "shell", "am", "start", "-D", "-n", component)
+        val startArgs = mutableListOf(adb, "-s", serial, "shell", "am", "start", "-D", "-n", component)
+        if (launchTuning) startArgs += listOf("--ez", "kinowo_tuning", "true")
+        sh(*startArgs.toTypedArray())
 
         // `am start -D` returns before the process is necessarily up; poll pidof.
         var pid = ""
