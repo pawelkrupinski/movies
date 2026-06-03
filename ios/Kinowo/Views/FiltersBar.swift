@@ -149,27 +149,18 @@ struct DatePillsRow: View {
     }
 
     var body: some View {
-        HStack(spacing: spacing) {
-            ForEach(DateFilter.presets, id: \.self) { f in
-                Button {
-                    dateFilter = f
-                } label: {
-                    Text(f.label)
-                        .font(.system(size: fontSize, weight: .medium))
-                        .lineLimit(1)
-                        .frame(maxWidth: equalWidth ? .infinity : nil)
-                        .padding(.horizontal, horizontalPadding)
-                        .padding(.vertical, 7 * scale)
-                        .background(
-                            dateFilter == f
-                                ? Color.accentColor.opacity(0.85)
-                                : Color.clear,
-                            in: Capsule()
-                        )
-                        .foregroundColor(dateFilter == f ? .white : .primary)
+        // Equal-width mode shares the row between four uniform pills through a
+        // fixed gap. The fallback keeps each pill at its text-fitting width but
+        // justifies them across the full row (space-between): `spacing: 0` plus
+        // an expanding `Spacer` between pills distributes the slack as the
+        // inter-pill gaps, so the row always fills its width — never centred or
+        // leading-aligned with empty margins.
+        HStack(spacing: equalWidth ? spacing : 0) {
+            ForEach(Array(DateFilter.presets.enumerated()), id: \.element) { index, f in
+                pill(f)
+                if !equalWidth, index < DateFilter.presets.count - 1 {
+                    Spacer(minLength: spacing)
                 }
-                .buttonStyle(.plain)
-                .fixedSize(horizontal: !equalWidth, vertical: false)
             }
         }
         // Fill the offered width so the measurement reflects the space the row
@@ -182,6 +173,28 @@ struct DatePillsRow: View {
                     .onChange(of: geo.size.width) { availableWidth = $0 }
             }
         )
+    }
+
+    private func pill(_ f: DateFilter) -> some View {
+        Button {
+            dateFilter = f
+        } label: {
+            Text(f.label)
+                .font(.system(size: fontSize, weight: .medium))
+                .lineLimit(1)
+                .frame(maxWidth: equalWidth ? .infinity : nil)
+                .padding(.horizontal, horizontalPadding)
+                .padding(.vertical, 7 * scale)
+                .background(
+                    dateFilter == f
+                        ? Color.accentColor.opacity(0.85)
+                        : Color.clear,
+                    in: Capsule()
+                )
+                .foregroundColor(dateFilter == f ? .white : .primary)
+        }
+        .buttonStyle(.plain)
+        .fixedSize(horizontal: !equalWidth, vertical: false)
     }
 }
 
