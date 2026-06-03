@@ -1,4 +1,9 @@
 import Foundation
+#if canImport(FoundationNetworking)
+// On Linux (swift-corelibs-foundation, used by `swift test` in CI)
+// URLSession/URLRequest live in this separate module, not Foundation.
+import FoundationNetworking
+#endif
 
 /// Disk-backed cache for poster images so each poster downloads at most
 /// once and survives across launches — the iOS counterpart of Android's
