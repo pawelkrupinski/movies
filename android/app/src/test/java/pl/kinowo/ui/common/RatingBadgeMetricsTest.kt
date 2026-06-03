@@ -7,6 +7,13 @@ import org.junit.Test
 class RatingBadgeMetricsTest {
 
     @Test
+    fun baseFontIsTrimmedBelowTheOriginal11sp() {
+        // Pills now read smaller on every device, including the reference width.
+        assertTrue(RatingBadgeMetrics.BaseFontSp < 11f)
+        assertTrue(RatingBadgeMetrics.BaseFontSp > 0f)
+    }
+
+    @Test
     fun pixel9aWidthIsTheUnscaledBaseline() {
         // The pill sizes (11sp font, 6/2dp padding) were tuned on the Pixel 9a's
         // ~411dp portrait width, so that width must map to scale 1.0 exactly.

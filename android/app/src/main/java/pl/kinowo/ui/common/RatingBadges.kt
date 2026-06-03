@@ -44,7 +44,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
     // Pills scale with viewport width, anchored at the Pixel 9a's ~411dp where
     // the base sizes were tuned (scale 1.0). See RatingBadgeMetrics.
     val scale = RatingBadgeMetrics.scale(LocalConfiguration.current.screenWidthDp)
-    val fontSize = (11f * scale).sp
+    val fontSize = (RatingBadgeMetrics.BaseFontSp * scale).sp
     val hPad = (6f * scale).dp
     val vPad = (2f * scale).dp
     val corner = (5f * scale).dp
