@@ -30,6 +30,8 @@
 		DD00000000000000000011 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000011 /* FlowLayout.swift */; };
 		DD00000000000000000099 /* ShowtimePillMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000099 /* ShowtimePillMetrics.swift */; };
 		DD00000000000000000098 /* RatingBadgeMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000098 /* RatingBadgeMetrics.swift */; };
+		DD00000000000000000097 /* ShowtimePillStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000097 /* ShowtimePillStyle.swift */; };
+		DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000096 /* ShowtimeTuningScreen.swift */; };
 		DD00000000000000000012 /* HTMLPrimitives.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000012 /* HTMLPrimitives.swift */; };
 		DD00000000000000000013 /* ShowingsParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000013 /* ShowingsParser.swift */; };
 		DD00000000000000000014 /* RatingsParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000014 /* RatingsParser.swift */; };
@@ -91,6 +93,8 @@
 		CC00000000000000000011 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		CC00000000000000000099 /* ShowtimePillMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimePillMetrics.swift; sourceTree = "<group>"; };
 		CC00000000000000000098 /* RatingBadgeMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingBadgeMetrics.swift; sourceTree = "<group>"; };
+		CC00000000000000000097 /* ShowtimePillStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimePillStyle.swift; sourceTree = "<group>"; };
+		CC00000000000000000096 /* ShowtimeTuningScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimeTuningScreen.swift; sourceTree = "<group>"; };
 		CC00000000000000000012 /* HTMLPrimitives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLPrimitives.swift; sourceTree = "<group>"; };
 		CC00000000000000000013 /* ShowingsParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowingsParser.swift; sourceTree = "<group>"; };
 		CC00000000000000000014 /* RatingsParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingsParser.swift; sourceTree = "<group>"; };
@@ -232,6 +236,8 @@
 				CC00000000000000000011 /* FlowLayout.swift */,
 				CC00000000000000000099 /* ShowtimePillMetrics.swift */,
 				CC00000000000000000098 /* RatingBadgeMetrics.swift */,
+				CC00000000000000000097 /* ShowtimePillStyle.swift */,
+				CC00000000000000000096 /* ShowtimeTuningScreen.swift */,
 				CC00000000000000000019 /* FlowLayoutMath.swift */,
 				CC00000000000000000036 /* FormatTokenFilter.swift */,
 				CC00000000000000000051 /* CachedAsyncImage.swift */,
@@ -365,6 +371,8 @@
 				DD00000000000000000011 /* FlowLayout.swift in Sources */,
 				DD00000000000000000099 /* ShowtimePillMetrics.swift in Sources */,
 				DD00000000000000000098 /* RatingBadgeMetrics.swift in Sources */,
+				DD00000000000000000097 /* ShowtimePillStyle.swift in Sources */,
+				DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */,
 				DD00000000000000000012 /* HTMLPrimitives.swift in Sources */,
 				DD00000000000000000013 /* ShowingsParser.swift in Sources */,
 				DD00000000000000000014 /* RatingsParser.swift in Sources */,

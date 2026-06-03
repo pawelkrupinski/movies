@@ -72,6 +72,8 @@ let package = Package(
                 "Views/FlowLayout.swift",
                 "Views/RatingBadgesView.swift",
                 "Views/ShowingsView.swift",
+                "Views/ShowtimePillStyle.swift",
+                "Views/ShowtimeTuningScreen.swift",
                 "ContentView.swift",
                 "KinowoApp.swift",
                 "Auth",

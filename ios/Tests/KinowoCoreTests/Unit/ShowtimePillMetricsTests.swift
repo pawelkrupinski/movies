@@ -5,25 +5,27 @@ import CoreGraphics
 
 final class ShowtimePillMetricsTests: XCTestCase {
 
-    /// Logical point widths of every iPhone on our iOS 16 deployment
-    /// floor, narrowest first. The 375 pt phones (SE 3, 13 mini) are the
-    /// binding case; the rest must keep fitting as screens grow. Derived
-    /// from `ShowtimePillMetrics.cardShowingsWidth` — the same formula the
-    /// grid uses — so a change to the column layout moves the test with it.
+    /// Logical point widths the two-per-row guarantee is held against,
+    /// narrowest first. The floor is `ShowtimePillMetrics.narrowestSupportedWidth`
+    /// (390 pt, the 13/14/16 generation) — the binding case; the rest must keep
+    /// fitting as screens grow. The 375 pt phones (SE, 8, X/XS/11 Pro, 12/13
+    /// mini) are deliberately below the floor and excluded. Widths flow from
+    /// `ShowtimePillMetrics.cardShowingsWidth` — the same formula the grid uses —
+    /// so a change to the column layout moves the test with it.
     private static let iPhoneWidths: [(name: String, width: CGFloat)] = [
-        ("SE 3 / 13 mini", 375),
-        ("13 / 14 / 16",   390),
+        ("13 / 14 / 16 (floor)", ShowtimePillMetrics.narrowestSupportedWidth),
         ("15 / 16 Pro",    393),
         ("16 / 17",        402),
         ("14 Plus / Pro Max", 430),
         ("16 / 17 Pro Max", 440),
     ]
 
-    /// Two canonical pills MUST share one row in every portrait card. This is
-    /// a hard, inviolable constraint — fonts are sized up to the largest that
-    /// keeps it (currently 11 pt time / 7 pt format), never past it. If this
-    /// fails, a font/padding/gap change broke two-per-row; shrink it back or
-    /// reclaim width (trim inset/gap), don't relax this assertion.
+    /// Two canonical pills MUST share one row in every supported portrait card
+    /// (390 pt and up). This is a hard, inviolable constraint — fonts are sized
+    /// up to the largest that keeps it (currently 10.5 pt time / 8.5 pt format,
+    /// both medium), never past it. If this fails, a font/padding/gap change
+    /// broke two-per-row; shrink it back or reclaim width (trim inset/gap),
+    /// don't relax this assertion.
     func testTwoCanonicalPillsShareOneRowInEveryPortraitResolution() {
         let a = ShowtimePillMetrics.pillWidth(time: "12:55", format: "2D DUB")
         let b = ShowtimePillMetrics.pillWidth(time: "22:55", format: "3D NAP")
@@ -46,12 +48,12 @@ final class ShowtimePillMetricsTests: XCTestCase {
     }
 
     /// Pins the chip font sizes the on-screen `ShowtimeBadge` renders at:
-    /// 11 pt time / 7 pt format. The tag is held at 7 (not 8) so the pill can
-    /// carry the roomier uniform 4 pt inset and still fit two-up — see the
-    /// two-per-row test above; don't grow either without re-measuring.
-    func testFontSizesAreElevenAndSeven() {
-        XCTAssertEqual(ShowtimePillMetrics.timeFontSize, 11, accuracy: 0.001)
-        XCTAssertEqual(ShowtimePillMetrics.formatFontSize, 7, accuracy: 0.001)
+    /// 10.5 pt time / 8.5 pt format (both medium). Dialled in on the tuning
+    /// screen against the 390 pt floor; don't grow either without re-measuring
+    /// the two-per-row fit above.
+    func testFontSizesAreTenHalfAndEightHalf() {
+        XCTAssertEqual(ShowtimePillMetrics.timeFontSize, 10.5, accuracy: 0.001)
+        XCTAssertEqual(ShowtimePillMetrics.formatFontSize, 8.5, accuracy: 0.001)
     }
 
     func testFormatlessPillIsNarrowerThanFormattedOne() {

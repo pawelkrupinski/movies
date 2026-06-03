@@ -15,6 +15,10 @@ struct ShowingsView: View {
     var truncatable: Bool = false
     var maxVisibleLines: Int = 13
 
+    /// Pill rendering parameters. Defaults to `ShowtimePillMetrics`; the
+    /// non-prod `ShowtimeTuningScreen` overrides it through the environment.
+    @Environment(\.showtimePillStyle) private var pillStyle
+
     var body: some View {
         let allDays = film.showings
         let (visibleDays, hiddenShowtimes) = truncated(allDays)
@@ -34,7 +38,7 @@ struct ShowingsView: View {
                         if showCinemaHeaders {
                             cinemaLabel(cinema)
                         }
-                        FlowLayout(spacing: ShowtimePillMetrics.interPillGap, lineSpacing: 4) {
+                        FlowLayout(spacing: pillStyle.interPillGap, lineSpacing: 4) {
                             ForEach(cinema.showtimes) { st in
                                 ShowtimeBadge(
                                     showtime: st,
@@ -176,6 +180,7 @@ struct ShowingsView: View {
 
 private struct ShowtimeBadge: View {
     @Environment(\.openURL) private var openURL
+    @Environment(\.showtimePillStyle) private var style
     let showtime: Showtime
     var displayFormat: String = ""
 
@@ -202,18 +207,18 @@ private struct ShowtimeBadge: View {
         let trimmedFormat = displayFormat.trimmingCharacters(in: .whitespacesAndNewlines)
         let room = showtime.displayRoom
 
-        let pill = HStack(spacing: ShowtimePillMetrics.internalGap) {
+        let pill = HStack(spacing: style.internalGap) {
             Text(showtime.time)
-                .font(.system(size: ShowtimePillMetrics.timeFontSize, weight: .semibold))
+                .font(.system(size: style.timeFontSize, weight: style.timeWeight))
                 .foregroundColor(Self.timeColor)
             if !trimmedFormat.isEmpty {
                 Text(trimmedFormat)
-                    .font(.system(size: ShowtimePillMetrics.formatFontSize, weight: .medium))
+                    .font(.system(size: style.formatFontSize, weight: style.formatWeight))
                     .foregroundColor(Self.timeColor.opacity(ShowtimePillMetrics.formatAlpha))
             }
         }
-        .padding(.horizontal, ShowtimePillMetrics.horizontalInset)
-        .padding(.vertical, ShowtimePillMetrics.verticalInset)
+        .padding(.horizontal, style.horizontalInset)
+        .padding(.vertical, style.verticalInset)
         .background(holding ? Self.pressedFill : Self.fill, in: RoundedRectangle(cornerRadius: 5))
         .overlay(alignment: .top) {
             if holding, let room {
