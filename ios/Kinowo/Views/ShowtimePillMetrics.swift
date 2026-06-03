@@ -16,16 +16,17 @@ import Foundation
 enum ShowtimePillMetrics {
     /// Font sizes for the time and the format tag inside a pill. The
     /// SwiftUI `ShowtimeBadge` renders at exactly these sizes, and the
-    /// web pill (`_pillStyles`) lands in the same ballpark. At 11/9 pt the
-    /// time reads clearly at arm's length, matching Android's 11sp/9sp
-    /// chip; the earlier "two pills share one row" guarantee was
-    /// deliberately traded for that legibility, so the contract
-    /// `ShowtimePillMetricsTests` now pins is narrower — a single pill
-    /// still fits the narrowest two-column portrait card. The same
-    /// constants drive both orientations, so the showtime text is one
-    /// consistent size whether the phone is held portrait or landscape.
+    /// web pill (`_pillStyles`) lands in the same ballpark. The time is
+    /// at 11 pt — the largest that still lets two canonical pills
+    /// ("12:55 2D DUB" + "22:55 3D NAP") share one row in the narrowest
+    /// two-column portrait card (a hard, pinned constraint — see
+    /// `ShowtimePillMetricsTests`). The format tag stays at 7 pt: at the
+    /// current insets, growing it past 7 would push the second pill onto
+    /// a new row, which we never do. The same constants drive both
+    /// orientations, so the showtime text is one consistent size whether
+    /// the phone is held portrait or landscape.
     static let timeFontSize: CGFloat = 11
-    static let formatFontSize: CGFloat = 9
+    static let formatFontSize: CGFloat = 7
 
     /// Pill colours, mirroring the web `.badge-time` pill: a `#3a3a6e` fill
     /// (`#5a5a9e` while pressed/held, matching the web hover), `#aad4ff` time

@@ -5,52 +5,53 @@ import CoreGraphics
 
 final class ShowtimePillMetricsTests: XCTestCase {
 
-    /// At the 11 pt time font the chips no longer fit two per row on a
-    /// portrait card — that earlier guarantee was deliberately traded for
-    /// legibility (matching Android's 11sp chip) — so the contract this pins
-    /// is narrower: a single canonical pill (time + a format token) still
-    /// fits inside the narrowest card's showings column without overflowing.
-    func testASinglePillFitsTheNarrowestCard() {
-        let worstCase = ShowtimePillMetrics.pillWidth(time: "22:55", format: "3D NAP")
-        let content = ShowtimePillMetrics.cardShowingsWidth(screenWidth: 375)
+    /// Logical point widths of every iPhone on our iOS 16 deployment
+    /// floor, narrowest first. The 375 pt phones (SE 3, 13 mini) are the
+    /// binding case; the rest must keep fitting as screens grow. Derived
+    /// from `ShowtimePillMetrics.cardShowingsWidth` — the same formula the
+    /// grid uses — so a change to the column layout moves the test with it.
+    private static let iPhoneWidths: [(name: String, width: CGFloat)] = [
+        ("SE 3 / 13 mini", 375),
+        ("13 / 14 / 16",   390),
+        ("15 / 16 Pro",    393),
+        ("16 / 17",        402),
+        ("14 Plus / Pro Max", 430),
+        ("16 / 17 Pro Max", 440),
+    ]
 
-        XCTAssertGreaterThan(worstCase, 0, "pill measured no width — metrics are stubbed")
-        XCTAssertLessThanOrEqual(
-            worstCase, content,
-            "a single showtime pill overflowed the \(content) pt card "
-            + "(375 pt phone); pill width \(worstCase)"
-        )
-    }
-
-    /// The inverse guard: two canonical pills are now wide enough that
-    /// `FlowLayout` wraps the second onto a new row in the narrowest card.
-    /// Proves the width math is real — a stub zero-width renderer would keep
-    /// them on one row and fail this — and documents the trade made above.
-    func testTwoPillsWrapInTheNarrowestCard() {
+    /// Two canonical pills MUST share one row in every portrait card. This is
+    /// a hard, inviolable constraint — fonts are sized up to the largest that
+    /// keeps it (currently 11 pt time / 7 pt format), never past it. If this
+    /// fails, a font/padding/gap change broke two-per-row; shrink it back or
+    /// reclaim width (trim inset/gap), don't relax this assertion.
+    func testTwoCanonicalPillsShareOneRowInEveryPortraitResolution() {
         let a = ShowtimePillMetrics.pillWidth(time: "12:55", format: "2D DUB")
         let b = ShowtimePillMetrics.pillWidth(time: "22:55", format: "3D NAP")
-        let content = ShowtimePillMetrics.cardShowingsWidth(screenWidth: 375)
-        let result = FlowLayoutMath.layout(
-            sizes: [CGSize(width: a, height: 16), CGSize(width: b, height: 16)],
-            maxWidth: content,
-            spacing: ShowtimePillMetrics.interPillGap,
-            lineSpacing: 4
-        )
-        XCTAssertEqual(
-            result.positions.count, 2, "expected both pills laid out; got \(result.positions)")
-        XCTAssertGreaterThan(
-            result.positions[1].y, result.positions[0].y,
-            "two canonical pills should wrap onto separate rows in the "
-            + "\(content) pt card; got \(result.positions)"
-        )
+
+        for phone in Self.iPhoneWidths {
+            let content = ShowtimePillMetrics.cardShowingsWidth(screenWidth: phone.width)
+            let result = FlowLayoutMath.layout(
+                sizes: [CGSize(width: a, height: 16), CGSize(width: b, height: 16)],
+                maxWidth: content,
+                spacing: ShowtimePillMetrics.interPillGap,
+                lineSpacing: 4
+            )
+            XCTAssertTrue(
+                result.positions.allSatisfy { $0.y == 0 },
+                "two showtime pills must share one row on \(phone.name) "
+                + "(\(phone.width) pt → \(content) pt card; widths a=\(a), b=\(b)); "
+                + "got \(result.positions)"
+            )
+        }
     }
 
     /// Pins the chip font sizes the on-screen `ShowtimeBadge` renders at:
-    /// 11 pt time / 9 pt format, bumped up for arm's-length legibility to
-    /// match Android's 11sp/9sp chip.
-    func testFontSizesAreElevenAndNine() {
+    /// 11 pt time (bumped up for arm's-length legibility, matching Android's
+    /// 11sp) / 7 pt format (held there so two pills still fit one row — see
+    /// the two-per-row test above).
+    func testFontSizesAreElevenAndSeven() {
         XCTAssertEqual(ShowtimePillMetrics.timeFontSize, 11, accuracy: 0.001)
-        XCTAssertEqual(ShowtimePillMetrics.formatFontSize, 9, accuracy: 0.001)
+        XCTAssertEqual(ShowtimePillMetrics.formatFontSize, 7, accuracy: 0.001)
     }
 
     func testFormatlessPillIsNarrowerThanFormattedOne() {
