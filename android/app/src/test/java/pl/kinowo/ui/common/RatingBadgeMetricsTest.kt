@@ -7,16 +7,16 @@ import org.junit.Test
 class RatingBadgeMetricsTest {
 
     @Test
-    fun baseFontIsTrimmedBelowTheOriginal11sp() {
-        // Pills now read smaller on every device, including the reference width.
-        assertTrue(RatingBadgeMetrics.BaseFontSp < 11f)
-        assertTrue(RatingBadgeMetrics.BaseFontSp > 0f)
+    fun baseFontIsElevenSp() {
+        // The pill font reads at 11sp at the reference width, matching the
+        // showtime chip's time.
+        assertEquals(11f, RatingBadgeMetrics.BaseFontSp, 0.001f)
     }
 
     @Test
     fun pixel9aWidthIsTheUnscaledBaseline() {
-        // The pill sizes (11sp font, 6/2dp padding) were tuned on the Pixel 9a's
-        // ~411dp portrait width, so that width must map to scale 1.0 exactly.
+        // The pill sizes (11sp font, 6dp horizontal padding) were tuned on the
+        // Pixel 9a's ~411dp portrait width, so that width must map to scale 1.0.
         assertEquals(1.0f, RatingBadgeMetrics.scale(411), 0.01f)
     }
 

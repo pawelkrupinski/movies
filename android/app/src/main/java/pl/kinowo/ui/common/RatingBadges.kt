@@ -105,7 +105,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
  *  no-op so any future lineHeight change stays centred. What it can *not* remove
  *  is the font's intrinsic descent box below the baseline — pill text has no
  *  descenders, so that space sits empty and sets the pill's height floor (see
- *  RatingPillVisualPaddingTest / ShowtimeChipVisualPaddingTest). */
+ *  RatingPillVisualPaddingTest). */
 internal fun pillTextStyle(fontSize: TextUnit, weight: FontWeight) = TextStyle(
     fontSize = fontSize,
     fontWeight = weight,

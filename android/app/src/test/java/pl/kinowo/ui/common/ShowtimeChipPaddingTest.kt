@@ -32,10 +32,10 @@ import pl.kinowo.ui.theme.KinowoTheme
  * NATIVE graphics gives real text metrics; `xhdpi` (density 2) so sub-dp
  * differences resolve.
  *
- * They pin the two height levers cheaply in CI: that the chip adds no inset over
- * the trimmed time, and that the time uses the `includeFontPadding`-off
- * `pillTextStyle`. How the chip actually *looks* is the emulator-side
- * `ShowtimeChipVisualPaddingTest`.
+ * They pin the two height levers in CI: the 4 dp vertical inset over the trimmed
+ * time, and (transitively) that the time uses the `includeFontPadding`-off
+ * `pillTextStyle` — drop the trim and the chip grows past the 8 dp inset the
+ * first test allows.
  *
  * Runs on the JVM via `./gradlew app:testDebugUnitTest` — no emulator.
  */
@@ -64,13 +64,12 @@ class ShowtimeChipPaddingTest {
     )
 
     /**
-     * The chip carries no vertical inset: its height is just the trimmed time
-     * font box. Rendered beside a zero-padding reference `Text` in the chip's time
-     * style, the chip height should equal the reference. Re-add the inset and the
-     * chip grows past it, failing this.
+     * The chip's height is the trimmed time font box plus a 4 dp inset top and
+     * bottom. Rendered beside a zero-padding reference `Text` in the chip's time
+     * style, the chip's extra height over the reference is exactly `2 × 4 dp`.
      */
     @Test
-    fun chipAddsNoVerticalInsetBeyondTheFontBox() {
+    fun chipVerticalInsetIsFourDpEachSide() {
         compose.setContent {
             KinowoTheme {
                 Column {
@@ -78,7 +77,7 @@ class ShowtimeChipPaddingTest {
                         Showings(film = oneShowtimeFilm(), showCinemaHeaders = false)
                     }
                     // Reference: the chip's own trimmed time style, zero padding.
-                    Text("TRIM", style = pillTextStyle(9.sp, FontWeight.SemiBold))
+                    Text("TRIM", style = pillTextStyle(11.sp, FontWeight.SemiBold))
                 }
             }
         }
@@ -87,11 +86,11 @@ class ShowtimeChipPaddingTest {
         val referenceHeight = heightOfText("TRIM")
 
         assertTrue("reference text measured no height — metrics are stubbed", referenceHeight > 0f)
+        val inset = chipHeight - referenceHeight
         assertEquals(
-            "showtime chip should add no vertical inset over the bare trimmed time; " +
-                "got chip $chipHeight dp vs reference $referenceHeight dp " +
-                "(${chipHeight - referenceHeight} dp of inset).",
-            referenceHeight.toDouble(), chipHeight.toDouble(), 0.7,
+            "showtime chip inset should be 8 dp total (4 dp each side); got $inset dp " +
+                "(chip $chipHeight dp, reference $referenceHeight dp).",
+            8.0, inset.toDouble(), 1.0,
         )
     }
 
@@ -107,8 +106,8 @@ class ShowtimeChipPaddingTest {
         compose.setContent {
             KinowoTheme {
                 Column {
-                    Text("TRIM", style = pillTextStyle(9.sp, FontWeight.SemiBold))
-                    Text("FULL", fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+                    Text("TRIM", style = pillTextStyle(11.sp, FontWeight.SemiBold))
+                    Text("FULL", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

@@ -19,9 +19,8 @@ object RatingBadgeMetrics {
     const val MaxScale = 1.4f
 
     /** Base font (sp) at the reference width. The actual rendered size is this
-     *  times [scale]. Trimmed below the original 11sp so the pills read less
-     *  chunky on every device, not just the narrow ones. */
-    const val BaseFontSp = 9.5f
+     *  times [scale]. */
+    const val BaseFontSp = 11f
 
     fun scale(screenWidthDp: Int): Float =
         (screenWidthDp / ReferenceWidthDp).coerceIn(MinScale, MaxScale)

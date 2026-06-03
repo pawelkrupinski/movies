@@ -143,16 +143,15 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
             )
         }
         .background(if (holding) ShowtimeChipBackgroundPressed else ShowtimeChipBackground)
-        // No vertical inset: the time now uses the trimmed `pillTextStyle` (no
-        // includeFontPadding), so the chip height is just the font box — the same
-        // floor the rating pill sits at. Any vertical padding here only re-inflates
-        // it past that. See ShowtimeChipVisualPaddingTest.
-        .padding(horizontal = 3.dp)
+        // The time uses the trimmed `pillTextStyle` (no includeFontPadding), so it
+        // doesn't read tall on its own; the 4dp inset then adds the breathing room
+        // around it. Inset + trim pinned by ShowtimeChipPaddingTest.
+        .padding(4.dp)
     Box(contentAlignment = Alignment.TopCenter) {
         Row(base, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(time, color = CinemaBlue, style = pillTextStyle(9.sp, FontWeight.SemiBold))
+            Text(time, color = CinemaBlue, style = pillTextStyle(11.sp, FontWeight.SemiBold))
             if (format.isNotEmpty()) {
-                Text(format, color = CinemaBlue.copy(alpha = 0.7f), style = pillTextStyle(7.sp, FontWeight.Medium))
+                Text(format, color = CinemaBlue.copy(alpha = 0.7f), style = pillTextStyle(9.sp, FontWeight.Medium))
             }
         }
         if (holding && room != null) {

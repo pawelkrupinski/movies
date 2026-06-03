@@ -5,10 +5,10 @@ import kotlin.math.abs
 
 /**
  * Pixel-measures the vertical whitespace around glyph ink in a captured pill
- * bitmap, for the on-emulator visual padding tests ([RatingPillVisualPaddingTest],
- * [ShowtimeChipVisualPaddingTest]). Both pills are a single fill colour under
- * higher-contrast text; this finds the rows that carry ink and reports the empty
- * band of fill above and below it — the gap the eye reads as padding.
+ * bitmap, for the on-emulator [RatingPillVisualPaddingTest]. The pill is a single
+ * fill colour under higher-contrast text; this finds the rows that carry ink and
+ * reports the empty band of fill above and below it — the gap the eye reads as
+ * padding.
  */
 object GlyphInkMetrics {
 
