@@ -88,14 +88,14 @@ private enum Badge {
     ) -> some View {
         let body = HStack(spacing: 0) {
             Text(label)
-                .font(.system(size: 9, weight: .heavy))
+                .font(.system(size: RatingBadgeMetrics.labelFontSize, weight: .heavy))
                 .foregroundColor(labelFg)
                 .lineLimit(1)
                 .padding(.horizontal, 4)
                 .padding(.vertical, 2)
                 .background(labelBg)
             Text(value)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: RatingBadgeMetrics.valueFontSize, weight: .semibold))
                 .foregroundColor(valueFg)
                 .lineLimit(1)
                 .padding(.horizontal, 5)
@@ -122,7 +122,7 @@ private enum Badge {
     @ViewBuilder
     static func solid(value: String, url: URL?, bg: Color, fg: Color) -> some View {
         let body = Text(value)
-            .font(.system(size: 10, weight: .heavy))
+            .font(.system(size: RatingBadgeMetrics.valueFontSize, weight: .heavy))
             .foregroundColor(fg)
             .lineLimit(1)
             .padding(.horizontal, 5)
