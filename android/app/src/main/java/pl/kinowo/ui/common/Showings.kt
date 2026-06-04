@@ -51,9 +51,9 @@ internal const val ShowtimeChipTestTag = "showtime-chip"
  * and the [Showings] flow row from [LocalShowtimeChipStyle].
  *
  * The defaults are the SHIPPING chip values, dialled in on the tuning screen at
- * the 360dp floor — time 11sp Normal, format 8.5sp Medium, 4dp padding each
- * side, 2.5dp time↔format gap, 3dp between chips — so production (which never
- * provides its own value) renders them. The non-prod `ShowtimeTuningScreen`
+ * the 360dp floor — time 11sp Normal, format 8.5sp Medium, 4dp horizontal /
+ * 4.5dp vertical padding, 2.5dp time↔format gap, 3dp between chips — so
+ * production (which never provides its own value) renders them. The non-prod `ShowtimeTuningScreen`
  * injects an edited copy via `CompositionLocalProvider` to preview size / weight
  * / padding / gap changes against the real [FilmCard]; two-per-row at 360dp is
  * pinned by `ShowtimeChipFitTest`. Mirrors iOS `ShowtimePillStyle`.
@@ -63,10 +63,13 @@ data class ShowtimeChipStyle(
     val timeWeight: FontWeight = FontWeight.Normal,
     val formatFontSize: TextUnit = 8.5.sp,
     val formatWeight: FontWeight = FontWeight.Medium,
-    /** Per-side horizontal padding inside the chip. */
+    /** Per-side horizontal padding inside the chip. Held at 4 (not the 4.5 the
+     *  tuning dump suggested) because 4.5 wraps the second chip to a new row at
+     *  the 360 dp floor — two-per-row is inviolable; see `ShowtimeChipFitTest`. */
     val horizontalInset: Dp = 4.dp,
-    /** Per-side vertical padding inside the chip. */
-    val verticalInset: Dp = 4.dp,
+    /** Per-side vertical padding inside the chip. Vertical doesn't affect the
+     *  two-per-row width, so the dialled-in 4.5 ships. */
+    val verticalInset: Dp = 4.5.dp,
     /** Gap between the time and the format tag. */
     val internalGap: Dp = 2.5.dp,
     /** Gap between adjacent chips in the flow row. */

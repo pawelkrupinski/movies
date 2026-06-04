@@ -64,12 +64,12 @@ class ShowtimeChipPaddingTest {
     )
 
     /**
-     * The chip's height is the trimmed time font box plus a 4 dp inset top and
+     * The chip's height is the trimmed time font box plus a 4.5 dp inset top and
      * bottom. Rendered beside a zero-padding reference `Text` in the chip's time
-     * style, the chip's extra height over the reference is exactly `2 × 4 dp`.
+     * style, the chip's extra height over the reference is exactly `2 × 4.5 dp`.
      */
     @Test
-    fun chipVerticalInsetIsFourDpEachSide() {
+    fun chipVerticalInsetIsFourPointFiveDpEachSide() {
         compose.setContent {
             KinowoTheme {
                 Column {
@@ -88,9 +88,9 @@ class ShowtimeChipPaddingTest {
         assertTrue("reference text measured no height — metrics are stubbed", referenceHeight > 0f)
         val inset = chipHeight - referenceHeight
         assertEquals(
-            "showtime chip inset should be 8 dp total (4 dp each side); got $inset dp " +
+            "showtime chip inset should be 9 dp total (4.5 dp each side); got $inset dp " +
                 "(chip $chipHeight dp, reference $referenceHeight dp).",
-            8.0, inset.toDouble(), 1.0,
+            9.0, inset.toDouble(), 1.0,
         )
     }
 
