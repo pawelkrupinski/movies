@@ -1,9 +1,16 @@
 import SwiftUI
-import UIKit
 
 private let gridColumns = [
     GridItem(.adaptive(minimum: 160, maximum: 220), spacing: 12, alignment: .top)
 ]
+
+/// A paged `TabView` (UIPageViewController) lays its scroll view a fixed 17pt
+/// ABOVE the top of the container it's given — verified identical on iPhone
+/// 17e and 17 Pro Max, so it's a constant offset, not a device-scaled one.
+/// The grids live in a VStack slot below the top bar, so they add this back to
+/// their top padding; otherwise the first poster row tucks 17pt up under the
+/// bar. (See ContentView's VStack and InitialGapUITests.)
+private let pagedTabViewTopOverflow: CGFloat = 17
 
 private struct EmptyRepertoireView: View {
     var body: some View {
@@ -17,11 +24,6 @@ private struct EmptyRepertoireView: View {
 
 struct FilmGridView: View {
     let films: [Film]
-    /// Screen-space height of the floating top bar, supplied by `ContentView`.
-    /// The grid renders edge-to-edge under the bar; this padding keeps the
-    /// first poster row resting just below it (a stable, explicit inset — not
-    /// the scroll view's `.automatic` safe-area inset, which could collapse).
-    var topInset: CGFloat = 0
 
     var body: some View {
         if films.isEmpty {
@@ -45,10 +47,10 @@ struct FilmGridView: View {
                     }
                 }
                 .padding(.horizontal, 12)
-                // `topInset` clears the floating top bar (the grid scrolls
-                // under it); +10 is the breathing gap so the first poster row
-                // doesn't sit flush against the bar's bottom edge.
-                .padding(.top, topInset + 10)
+                // Clear the paged TabView's fixed top overflow, then a 10pt
+                // breathing gap so the first poster row rests just below the
+                // bar instead of tucking under it.
+                .padding(.top, pagedTabViewTopOverflow + 10)
                 .padding(.bottom, 70)
             }
             .scrollDismissesKeyboard(.immediately)
@@ -68,18 +70,12 @@ struct FilmGridView: View {
 struct CinemaSectionedGridView<Header: View>: View {
     let sections: [CinemaSection]
     let showSectionHeaders: Bool
-    /// Screen-space height of the floating top bar (see `FilmGridView.topInset`):
-    /// the cinema grid scrolls under the bar, this keeps the pill-row header
-    /// resting just below it.
-    let topInset: CGFloat
     let header: () -> Header
 
     init(sections: [CinemaSection], showSectionHeaders: Bool = true,
-         topInset: CGFloat = 0,
          @ViewBuilder header: @escaping () -> Header = { EmptyView() }) {
         self.sections = sections
         self.showSectionHeaders = showSectionHeaders
-        self.topInset = topInset
         self.header = header
     }
 
@@ -111,10 +107,10 @@ struct CinemaSectionedGridView<Header: View>: View {
                 }
             }
             .padding(.horizontal, 12)
-            // `topInset` clears the floating top bar (the grid scrolls under
-            // it); the pill row's own vertical padding then supplies the gap
-            // between the row and the first poster.
-            .padding(.top, topInset)
+            // Clear the paged TabView's fixed top overflow so the pill-row
+            // header rests just below the bar; the header's own vertical
+            // padding then supplies the gap to the first poster row.
+            .padding(.top, pagedTabViewTopOverflow)
             .padding(.bottom, 70)
         }
         .scrollDismissesKeyboard(.immediately)

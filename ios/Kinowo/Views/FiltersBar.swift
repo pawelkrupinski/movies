@@ -194,6 +194,18 @@ struct DatePillsRow: View {
         }
         .buttonStyle(.plain)
         .fixedSize(horizontal: !equalWidth, vertical: false)
+        .accessibilityIdentifier(Self.accessibilityId(for: f))
+        .accessibilityAddTraits(dateFilter == f ? .isSelected : [])
+    }
+
+    private static func accessibilityId(for f: DateFilter) -> String {
+        switch f {
+        case .today:    return A11y.TopBar.datePillToday
+        case .tomorrow: return A11y.TopBar.datePillTomorrow
+        case .week:     return A11y.TopBar.datePillWeek
+        case .anytime:  return A11y.TopBar.datePillAnytime
+        case .specific: return A11y.TopBar.datePillAnytime
+        }
     }
 }
 

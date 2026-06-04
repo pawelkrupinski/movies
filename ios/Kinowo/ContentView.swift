@@ -1,14 +1,5 @@
 import SwiftUI
 
-/// Carries the floating top bar's bottom edge (in screen/global space) up to
-/// `ContentView`, which feeds it back down as the grids' explicit top inset.
-private struct TopBarBottomKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
 struct ContentView: View {
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
@@ -42,18 +33,6 @@ struct ContentView: View {
     /// as the floating bottom pill. See `TopBarLayout`.
     private var searchInline: Bool { TopBarLayout.searchInline(width: viewportWidth) }
 
-    /// The floating top bar's bottom edge in screen space, measured live via
-    /// `TopBarBottomKey`. The grids extend edge-to-edge under the bar (so
-    /// posters render behind the frosted glass and the status bar) and use
-    /// this as an explicit top content inset so the first poster row still
-    /// rests just below the bar. Explicit — not the scroll view's `.automatic`
-    /// safe-area inset — so the resting gap can't be silently recomputed away
-    /// on first touch. Seeded with a plain constant (a touch low so the
-    /// one-time refine to the measured value only ever grows the gap, never
-    /// shrinks it); the real value lands on the first layout pass, before the
-    /// grid mounts, so the seed is effectively never seen.
-    @State private var topInset: CGFloat = 60
-
     @State private var tabLabel: String? = nil
     @State private var tabLabelTask: Task<Void, Never>?
 
@@ -74,7 +53,45 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            content
+            // The bar and the paged grids are a VStack, NOT an overlay /
+            // safeAreaInset: the bar must sit ABOVE the TabView in the layout,
+            // so the paged scroll view's frame — and its pan gesture — starts
+            // below the bar. Overlaying the bar (or insetting it) left the
+            // TabView spanning the full height, so its scroll/page gesture
+            // reached up under the pill row and stole the day-pill taps (a
+            // still tap fired, a tap with the slightest movement, or one
+            // arriving while the grid coasted, got swallowed by the scroll).
+            VStack(spacing: 0) {
+                // No native nav bar: it clips a horizontal ScrollView to a few
+                // dozen points of width, crushing the pill row. We render the
+                // bar ourselves so the HStack gets the full screen width. The
+                // opaque backing bleeds up under the status bar so it (and the
+                // bar) read as solid app-background.
+                TopBar(
+                    dateFilter: $dateFilter,
+                    search: $search,
+                    searchFocused: $searchFocused,
+                    searchInline: searchInline,
+                    filtersActive: filtersActive,
+                    onTapFilters: { showFilters = true }
+                )
+                .background(Color(.systemBackground).ignoresSafeArea(edges: .top))
+
+                content
+                    // Gradient FADE (a scrim, not a frost): the grid scrolling
+                    // up gently fades to the app-background over ~56pt as it
+                    // reaches the bar, so rows dissolve into the bar rather than
+                    // meeting a hard clip edge. Opaque at the bar's bottom edge
+                    // (top of the content), clear 56pt below.
+                    .overlay(alignment: .top) {
+                        LinearGradient(
+                            colors: [Color(.systemBackground), .clear],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                        .frame(height: 56)
+                        .allowsHitTesting(false)
+                    }
+            }
                 // Tap-to-dismiss: a transparent backdrop sits behind the
                 // grid content and only intercepts taps while the search
                 // is focused. Hit-testing falls through to film cards /
@@ -88,67 +105,14 @@ struct ContentView: View {
                         .onTapGesture { searchFocused = false }
                         .allowsHitTesting(searchFocused)
                 )
-                // The SwiftUI nav-bar's `.navigationBarLeading` slot
-                // clips a horizontal ScrollView to a few dozen points of
-                // width, which crushed the date-pill row down to one
-                // half-visible pill. Hide the native nav bar entirely
-                // and render our own top chrome via `safeAreaInset(top)`,
-                // so the HStack gets the full screen width to spread
-                // across.
                 .ignoresSafeArea(edges: [.bottom, .horizontal])
                 .toolbar(.hidden, for: .navigationBar)
-                // Gradient FADE (a scrim, not a frost): opaque app-background
-                // behind the pills, holding solid through the bar then fading to
-                // clear over ~56pt just below it, so the grid scrolling up gently
-                // dims/fades out toward the bar — no frosted material, no
-                // separate band. Layered BEFORE the safeAreaInset bar so it sits
-                // under the pills (which stay sharp/legible) but above the scroll
-                // content. `topInset` (measured below) marks the bar's bottom.
-                .overlay(alignment: .top) {
-                    let fadeBand: CGFloat = 56
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color(.systemBackground), location: 0),
-                            .init(color: Color(.systemBackground),
-                                  location: topInset / (topInset + fadeBand)),
-                            .init(color: .clear, location: 1),
-                        ],
-                        startPoint: .top, endPoint: .bottom
-                    )
-                    .frame(height: topInset + fadeBand)
-                    .allowsHitTesting(false)
-                    .ignoresSafeArea(edges: .top)
-                }
-                // safeAreaInset draws the bar (pills) pinned below the status
-                // bar. We do NOT lean on the safe-area inset it adds for the
-                // grids' resting position — the grids ignore the top safe area
-                // (so they render edge-to-edge under the fade) and use an
-                // explicit `topInset` padding, measured here as the bar's bottom
-                // edge in screen space, so the resting gap can't collapse.
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    TopBar(
-                        dateFilter: $dateFilter,
-                        search: $search,
-                        searchFocused: $searchFocused,
-                        searchInline: searchInline,
-                        filtersActive: filtersActive,
-                        onTapFilters: { showFilters = true }
-                    )
-                    .background(
-                        GeometryReader { proxy in
-                            Color.clear.preference(
-                                key: TopBarBottomKey.self,
-                                value: proxy.frame(in: .global).maxY
-                            )
-                        }
-                    )
-                }
-                .onPreferenceChange(TopBarBottomKey.self) { topInset = $0 }
                 // No frost and no separate strip: the under-bar treatment is the
-                // gradient fade above. A true Settings-style *blur* (content
-                // gently blurred, not just dimmed) would need a variable-blur
-                // Metal shader (Variablur), which renders black in the Simulator
-                // and so can't be verified here without a device.
+                // gradient fade on the grid's top edge (see `content`). A true
+                // Settings-style *blur* (content gently blurred, not just
+                // dimmed) would need a variable-blur Metal shader (Variablur),
+                // which renders black in the Simulator and so can't be verified
+                // here without a device.
                 // Narrow screens float search at the bottom; wide screens
                 // host it inline on the top bar instead (see TopBar).
                 .overlay(alignment: .bottom) {
@@ -260,7 +224,7 @@ struct ContentView: View {
             errorState(error)
         } else {
             TabView(selection: $tab) {
-                FilmGridView(films: filmsForFilmsTab, topInset: topInset)
+                FilmGridView(films: filmsForFilmsTab)
                     .refreshable { await store.reload() }
                     .tag(Tab.films)
                 cinemasPage
@@ -271,12 +235,16 @@ struct ContentView: View {
             // the floating Filmy / Kina label is the only "where am I"
             // affordance.
             .tabViewStyle(.page(indexDisplayMode: .never))
-            // Ignore the top safe area too (not just bottom/horizontal): the
-            // paged TabView would otherwise clip its pages at the bar's bottom
-            // edge, so nothing rendered behind the frosted bar. Extending under
-            // it — with the grids' explicit `topInset` keeping the first row
-            // below the bar — is what lets posters blur through the glass.
-            .ignoresSafeArea(edges: [.top, .bottom, .horizontal])
+            // Ignore only bottom/horizontal — NOT the top. The TabView sits
+            // below the bar in ContentView's VStack, so its paged scroll view
+            // (and pan gesture) starts at the bar's bottom edge, never reaching
+            // up under the pill row to steal the day-pill taps. Ignoring `.top`
+            // here would let the paged scroll view span the full height again,
+            // putting its gesture back under the pills. Bottom/horizontal are
+            // ignored so pages run edge-to-edge and under the floating search
+            // pill; the grids pin their own content inset (see FilmGridView) so
+            // the first row still rests a clear gap below the bar.
+            .ignoresSafeArea(edges: [.bottom, .horizontal])
             // Resolves NavigationLink(value: Film) from both grids to
             // the per-film detail screen, the iOS counterpart of
             // /film?title=… on the web.
@@ -302,7 +270,6 @@ struct ContentView: View {
             // A pinned cinema is already named by its pill, so drop the
             // now-redundant per-section header; "Wszystkie" keeps them.
             showSectionHeaders: pinnedCinema == nil,
-            topInset: topInset,
             header: {
                 CinemaPillsRow(
                     allCinemas: allCinemas,
