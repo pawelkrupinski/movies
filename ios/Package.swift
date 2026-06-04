@@ -71,6 +71,7 @@ let package = Package(
                 "Views/FiltersBar.swift",
                 "Views/FlowLayout.swift",
                 "Views/RatingBadgesView.swift",
+                "Views/RatingPillStyle.swift",
                 "Views/ShowingsView.swift",
                 "Views/ShowtimePillStyle.swift",
                 "Views/ShowtimeTuningScreen.swift",

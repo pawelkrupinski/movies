@@ -14,6 +14,7 @@ import UIKit
 /// times), and enough showtimes to wrap across several rows.
 struct ShowtimeTuningScreen: View {
     @State private var style = ShowtimePillStyle()
+    @State private var ratingStyle = RatingPillStyle()
     @State private var sheetHeight: CGFloat = 360
     @State private var copied = false
     @GestureState private var dragTranslation: CGFloat = 0
@@ -46,6 +47,7 @@ struct ShowtimeTuningScreen: View {
             .padding(.bottom, bottomInset)
         }
         .environment(\.showtimePillStyle, style)
+        .environment(\.ratingPillStyle, ratingStyle)
     }
 
     // MARK: – draggable sheet
@@ -71,6 +73,26 @@ struct ShowtimeTuningScreen: View {
                     group("Odstępy") {
                         slider("Czas ↔ format", $style.internalGap, 0...12)
                         slider("Między pigułkami", $style.interPillGap, 0...16)
+                    }
+                    group("Ocena: etykieta (IMDb/FW/RT)") {
+                        weightRow("Grubość", get: { ratingStyle.labelWeight }, set: { ratingStyle.labelWeight = $0 })
+                        slider("Rozmiar", $ratingStyle.labelFontSize, 6...18)
+                    }
+                    group("Ocena: wartość") {
+                        weightRow("Grubość", get: { ratingStyle.valueWeight }, set: { ratingStyle.valueWeight = $0 })
+                        slider("Rozmiar", $ratingStyle.valueFontSize, 6...18)
+                    }
+                    group("Ocena: Metacritic (solid)") {
+                        weightRow("Grubość", get: { ratingStyle.solidWeight }, set: { ratingStyle.solidWeight = $0 })
+                    }
+                    group("Ocena: padding") {
+                        slider("Etykieta poziomy", $ratingStyle.labelHInset, 0...12)
+                        slider("Wartość poziomy", $ratingStyle.valueHInset, 0...12)
+                        slider("Pionowy", $ratingStyle.vInset, 0...10)
+                    }
+                    group("Ocena: kształt") {
+                        slider("Zaokrąglenie", $ratingStyle.cornerRadius, 0...12)
+                        slider("Między pigułkami", $ratingStyle.interPillGap, 0...16)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -121,7 +143,7 @@ struct ShowtimeTuningScreen: View {
                     .font(.system(size: 13, weight: .medium))
             }
             .buttonStyle(.bordered)
-            Button("Reset") { style = ShowtimePillStyle() }
+            Button("Reset") { style = ShowtimePillStyle(); ratingStyle = RatingPillStyle() }
                 .font(.system(size: 13, weight: .medium))
                 .buttonStyle(.bordered)
         }
@@ -140,6 +162,11 @@ struct ShowtimeTuningScreen: View {
         format: size=\(f(style.formatFontSize)) weight=\(w(style.formatWeight))
         padding: h=\(f(style.horizontalInset)) v=\(f(style.verticalInset))
         gaps: internal=\(f(style.internalGap)) interPill=\(f(style.interPillGap))
+        rating-label: size=\(f(ratingStyle.labelFontSize)) weight=\(w(ratingStyle.labelWeight))
+        rating-value: size=\(f(ratingStyle.valueFontSize)) weight=\(w(ratingStyle.valueWeight))
+        rating-solid: weight=\(w(ratingStyle.solidWeight))
+        rating-pad: labelH=\(f(ratingStyle.labelHInset)) valueH=\(f(ratingStyle.valueHInset)) v=\(f(ratingStyle.vInset))
+        rating-shape: corner=\(f(ratingStyle.cornerRadius)) interPill=\(f(ratingStyle.interPillGap))
         """
     }
 

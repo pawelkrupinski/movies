@@ -14,8 +14,12 @@ import SwiftUI
 struct RatingBadgesView: View {
     let ratings: Film.Ratings
 
+    /// Pill rendering parameters. Defaults to the shipping values; the non-prod
+    /// `ShowtimeTuningScreen` overrides it through the environment.
+    @Environment(\.ratingPillStyle) private var style
+
     var body: some View {
-        FlowLayout(spacing: 4, lineSpacing: 4) {
+        FlowLayout(spacing: style.interPillGap, lineSpacing: 4) {
             if let imdb = ratings.imdb {
                 Badge.twoTone(
                     label:    "IMDb",
@@ -23,7 +27,8 @@ struct RatingBadgesView: View {
                     url:      ratings.imdbURL,
                     labelBg:  Color(red: 0.961, green: 0.773, blue: 0.094),  // #f5c518
                     labelFg:  .black,
-                    valueFg:  Color(red: 0.961, green: 0.773, blue: 0.094)
+                    valueFg:  Color(red: 0.961, green: 0.773, blue: 0.094),
+                    style:    style
                 )
             }
             if let mc = ratings.metascore {
@@ -31,7 +36,8 @@ struct RatingBadgesView: View {
                     value: "\(mc)",
                     url:   ratings.metacriticURL,
                     bg:    metacriticColor(mc),
-                    fg:    Color(red: 0.0, green: 0.13, blue: 0.0)           // #002200
+                    fg:    Color(red: 0.0, green: 0.13, blue: 0.0),           // #002200
+                    style: style
                 )
             }
             if let rt = ratings.rottenTomatoes {
@@ -44,7 +50,8 @@ struct RatingBadgesView: View {
                                     : Color(red: 0.102, green: 0.561, blue: 0.102),  // #fa320a / #1a8f1a
                     labelFg:  .white,
                     valueFg:  fresh ? Color(red: 1.0,   green: 0.486, blue: 0.353)
-                                    : Color(red: 0.424, green: 0.816, blue: 0.424)   // #ff7c5a / #6cd06c
+                                    : Color(red: 0.424, green: 0.816, blue: 0.424),  // #ff7c5a / #6cd06c
+                    style:    style
                 )
             }
             if let fw = ratings.filmweb {
@@ -54,7 +61,8 @@ struct RatingBadgesView: View {
                     url:      ratings.filmwebURL,
                     labelBg:  Color(red: 1.0,   green: 0.424, blue: 0.0),    // #ff6c00
                     labelFg:  .white,
-                    valueFg:  Color(red: 1.0,   green: 0.612, blue: 0.290)   // #ff9c4a
+                    valueFg:  Color(red: 1.0,   green: 0.612, blue: 0.290),  // #ff9c4a
+                    style:    style
                 )
             }
         }
@@ -84,25 +92,26 @@ private enum Badge {
         url:     URL?,
         labelBg: Color,
         labelFg: Color,
-        valueFg: Color
+        valueFg: Color,
+        style:   RatingPillStyle
     ) -> some View {
         let body = HStack(spacing: 0) {
             Text(label)
-                .font(.system(size: RatingBadgeMetrics.labelFontSize, weight: .heavy))
+                .font(.system(size: style.labelFontSize, weight: style.labelWeight))
                 .foregroundColor(labelFg)
                 .lineLimit(1)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
+                .padding(.horizontal, style.labelHInset)
+                .padding(.vertical, style.vInset)
                 .background(labelBg)
             Text(value)
-                .font(.system(size: RatingBadgeMetrics.valueFontSize, weight: .semibold))
+                .font(.system(size: style.valueFontSize, weight: style.valueWeight))
                 .foregroundColor(valueFg)
                 .lineLimit(1)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
+                .padding(.horizontal, style.valueHInset)
+                .padding(.vertical, style.vInset)
                 .background(Color(red: 0.165, green: 0.165, blue: 0.243))    // #2a2a3e
         }
-        .clipShape(RoundedRectangle(cornerRadius: 3))
+        .clipShape(RoundedRectangle(cornerRadius: style.cornerRadius))
         // Pills render at their intrinsic width — never shrink the
         // text to the proposal, which is what produced "IMD…" /
         // "7…" tails on narrow grid cells. FlowLayout wraps overlong
@@ -120,14 +129,14 @@ private enum Badge {
     /// only. Matches web's `.rating-meta { background: #66cc66 }`
     /// with no label tab.
     @ViewBuilder
-    static func solid(value: String, url: URL?, bg: Color, fg: Color) -> some View {
+    static func solid(value: String, url: URL?, bg: Color, fg: Color, style: RatingPillStyle) -> some View {
         let body = Text(value)
-            .font(.system(size: RatingBadgeMetrics.valueFontSize, weight: .heavy))
+            .font(.system(size: style.valueFontSize, weight: style.solidWeight))
             .foregroundColor(fg)
             .lineLimit(1)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(bg, in: RoundedRectangle(cornerRadius: 3))
+            .padding(.horizontal, style.valueHInset)
+            .padding(.vertical, style.vInset)
+            .background(bg, in: RoundedRectangle(cornerRadius: style.cornerRadius))
             .fixedSize(horizontal: true, vertical: false)
 
         if let url {
