@@ -15,6 +15,11 @@ GET     /api/details                 controllers.MovieController.apiDetails()
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
 GET     /debug                      controllers.MovieController.debug()
+# Dev-only visual-tuning page: live sliders over the real movie card that drive
+# the CSS custom properties the production card styles read (vertical gaps,
+# showtime-pill + rating-pill font/padding/corner). Lets us eyeball spacing
+# without redeploying; never exposed in prod.
+GET     /debug/tune                 controllers.MovieController.tune()
 # Drop one row from cache+Mongo and re-fetch all upstream sources. Writes
 # incrementally as each stage completes so a debug-page reload shows the row
 # repopulating field-by-field.

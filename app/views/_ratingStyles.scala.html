@@ -1,21 +1,21 @@
 @()
 <style>
-  .ratings { display: flex; gap: .25rem; align-items: center; flex-wrap: wrap; margin-top: .25rem; }
-  .rating-imdb { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.15; text-decoration: none; }
-  .rating-imdb-label { background: #f5c518; color: #000; font-weight: 700; padding: 0 .3rem; letter-spacing: .02em; }
-  .rating-imdb-value { background: #2a2a3e; color: #f5c518; padding: 0 .35rem; font-weight: 600; }
+  .ratings { display: flex; gap: var(--gap-rating-pill-gap, .25rem); align-items: center; flex-wrap: wrap; margin-top: var(--gap-meta-ratings, .25rem); }
+  .rating-imdb { display: inline-flex; align-items: stretch; border-radius: var(--rating-pill-corner, 3px); overflow: hidden; font-size: var(--rating-pill-font, .68rem); line-height: 1.15; text-decoration: none; }
+  .rating-imdb-label { background: #f5c518; color: #000; font-weight: 700; padding: 0 var(--rating-pill-px-label, .3rem); letter-spacing: .02em; }
+  .rating-imdb-value { background: #2a2a3e; color: #f5c518; padding: 0 var(--rating-pill-px-value, .35rem); font-weight: 600; }
   .rating-imdb:hover .rating-imdb-value { background: #3a3a6e; }
-  .rating-meta { background: #66cc66; color: #002200; font-size: .68rem; font-weight: 700; line-height: 1.15; padding: 0 .35rem; border-radius: 3px; text-decoration: none; }
+  .rating-meta { background: #66cc66; color: #002200; font-size: var(--rating-pill-font, .68rem); font-weight: 700; line-height: 1.15; padding: 0 var(--rating-pill-px-value, .35rem); border-radius: var(--rating-pill-corner, 3px); text-decoration: none; }
   a.rating-meta:hover { background: #88dd88; }
-  .rating-fw { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.15; text-decoration: none; }
-  .rating-fw-label { background: #ff6c00; color: #fff; font-weight: 700; padding: 0 .3rem; letter-spacing: .02em; }
-  .rating-fw-value { background: #2a2a3e; color: #ff9c4a; padding: 0 .35rem; font-weight: 600; }
+  .rating-fw { display: inline-flex; align-items: stretch; border-radius: var(--rating-pill-corner, 3px); overflow: hidden; font-size: var(--rating-pill-font, .68rem); line-height: 1.15; text-decoration: none; }
+  .rating-fw-label { background: #ff6c00; color: #fff; font-weight: 700; padding: 0 var(--rating-pill-px-label, .3rem); letter-spacing: .02em; }
+  .rating-fw-value { background: #2a2a3e; color: #ff9c4a; padding: 0 var(--rating-pill-px-value, .35rem); font-weight: 600; }
   .rating-fw:hover .rating-fw-value { background: #3a3a6e; }
   /* Rotten Tomatoes. Red label for fresh (≥60%), green for rotten — matches
      RT's own tomato vs splat visual cue. */
-  .rating-rt { display: inline-flex; align-items: stretch; border-radius: 3px; overflow: hidden; font-size: .68rem; line-height: 1.15; text-decoration: none; }
-  .rating-rt-label { color: #fff; font-weight: 700; padding: 0 .3rem; letter-spacing: .02em; }
-  .rating-rt-value { background: #2a2a3e; padding: 0 .35rem; font-weight: 600; }
+  .rating-rt { display: inline-flex; align-items: stretch; border-radius: var(--rating-pill-corner, 3px); overflow: hidden; font-size: var(--rating-pill-font, .68rem); line-height: 1.15; text-decoration: none; }
+  .rating-rt-label { color: #fff; font-weight: 700; padding: 0 var(--rating-pill-px-label, .3rem); letter-spacing: .02em; }
+  .rating-rt-value { background: #2a2a3e; padding: 0 var(--rating-pill-px-value, .35rem); font-weight: 600; }
   .rating-rt.fresh  .rating-rt-label { background: #fa320a; }
   .rating-rt.fresh  .rating-rt-value { color: #ff7c5a; }
   .rating-rt.rotten .rating-rt-label { background: #1a8f1a; }
@@ -33,7 +33,7 @@
   .rating-fw-label, .rating-fw-value,
   .rating-rt-label, .rating-rt-value, .rating-meta {
     text-box-trim: trim-both; text-box-edge: cap alphabetic;
-    padding-top: .3em; padding-bottom: .3em;
+    padding-top: var(--rating-pill-py, .3em); padding-bottom: var(--rating-pill-py, .3em);
   }
 
   @@media (max-width: 575px),

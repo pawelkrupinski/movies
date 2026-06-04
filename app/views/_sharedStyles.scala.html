@@ -146,7 +146,7 @@
     font-style: italic;
     letter-spacing: .03em;
   }
-  .card-body { padding: 1rem; }
+  .card-body { padding: var(--card-body-pad, 1rem); }
   .card-title { min-height: 2.5rem; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .3rem; overflow-wrap: break-word; }
   .card-title a { font-size: .95rem; font-weight: 600; color: #fff; text-decoration: none; min-width: 0; }
   .card-title a:hover { color: #aad4ff; }
@@ -159,7 +159,7 @@
      a pill, and brighten on hover to signal it's tappable. */
   .pill.genre { font-size: .75rem; color: #888; text-decoration: none; }
   a.pill.genre:hover { color: #aad4ff; border-color: #4a4a8e; }
-  .date-label { font-size: .7rem; color: #888; margin-bottom: .2rem; margin-top: .5rem; }
+  .date-label { font-size: .7rem; color: #888; margin-bottom: var(--gap-date-cinema, .2rem); margin-top: var(--gap-ratings-date, .5rem); }
   #room-tooltip {
     position: fixed;
     background: #0e0e1e;
@@ -1011,7 +1011,7 @@
   /* Off-screen film cards skip layout + paint until scrolled into view
      (~460 px intrinsic-size keeps the scrollbar from jumping on measure). */
   #film-grid > .col { content-visibility: auto; contain-intrinsic-size: 0 460px; }
-  .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: .1rem; margin-top: .3rem; }
+  .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: var(--gap-cinema-pills, .1rem); margin-top: var(--gap-cinema-top, .3rem); }
   .cinema-label-link { color: #66aadd; text-decoration: none; }
   .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
   /* The per-cinema label above each card's pill row rides the shared

@@ -404,6 +404,17 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
+  /** Dev-only visual-tuning page. Renders the real `_movieCard` partial(s)
+   *  inside a `.tune-scope` wrapper plus a slider panel that drives the CSS
+   *  custom properties the production card styles read. Self-contained: the
+   *  sample films are built in-process so the page works regardless of cache
+   *  state. */
+  def tune(): Action[AnyContent] = Action {
+    devOnly {
+      Ok(views.html.tune(MovieController.tuneSampleFilms))
+    }
+  }
+
   def film(title: String): Action[AnyContent] = Action { request =>
     movieControllerService.film(title) match {
       case Some(schedule) =>
@@ -458,6 +469,62 @@ class MovieController( cc: ControllerComponents,
 }
 
 object MovieController {
+
+  /** Deterministic two-card sample for the `/debug/tune` page — built in
+   *  process so the tuning page renders the real `_movieCard` partial without
+   *  depending on live cache contents. One fully-enriched film (all four
+   *  ratings, two cinemas, multiple showtimes across two days) so every pill
+   *  row and vertical gap is visible, plus a sparser film (one rating, one
+   *  cinema) so the layout's looser case is also on screen. */
+  private[controllers] def tuneSampleFilms: Seq[FilmSchedule] = {
+    val base = LocalDate.of(2026, 6, 4)
+    def at(d: LocalDate, h: Int, m: Int): LocalDateTime = d.atTime(h, m)
+
+    def showtime(d: LocalDate, h: Int, m: Int, fmt: List[String]): Showtime =
+      Showtime(at(d, h, m), bookingUrl = Some("https://example.test/book"), room = Some("Sala 1"), format = fmt)
+
+    val richRecord = MovieRecord(
+      imdbId         = Some("tt1375666"),
+      imdbRating     = Some(8.8),
+      metascore      = Some(74),
+      rottenTomatoes = Some(87),
+      filmwebRating  = Some(7.6)
+    )
+    val rich = FilmSchedule(
+      movie          = Movie("Incepcja", runtimeMinutes = Some(148), releaseYear = Some(2010), genres = Seq("Sci-Fi", "Akcja")),
+      posterUrl      = None,
+      synopsis       = None,
+      cast           = Seq.empty,
+      director       = Seq.empty,
+      cinemaFilmUrls = Seq.empty,
+      showings       = Seq(
+        base -> Seq(
+          CinemaShowtimes(Multikino, Seq(showtime(base, 17, 30, List("2D", "NAP")), showtime(base, 20, 15, List("2D")))),
+          CinemaShowtimes(Helios,    Seq(showtime(base, 18, 0, List("IMAX", "2D"))))
+        ),
+        base.plusDays(1) -> Seq(
+          CinemaShowtimes(Multikino, Seq(showtime(base.plusDays(1), 19, 45, List("2D", "DUB"))))
+        )
+      ),
+      enrichment     = Some(richRecord)
+    )
+
+    val sparse = FilmSchedule(
+      movie          = Movie("Cicha noc", runtimeMinutes = Some(98), releaseYear = Some(2017), genres = Seq("Dramat")),
+      posterUrl      = None,
+      synopsis       = None,
+      cast           = Seq.empty,
+      director       = Seq.empty,
+      cinemaFilmUrls = Seq.empty,
+      showings       = Seq(
+        base -> Seq(CinemaShowtimes(KinoMuza, Seq(showtime(base, 21, 0, List("2D")))))
+      ),
+      enrichment     = Some(MovieRecord(filmwebRating = Some(7.1)))
+    )
+
+    Seq(rich, sparse)
+  }
+
   /** Build the `og:description` / `twitter:description` text for the film
    * page. Format: rating summary ("IMDb 8.7 · RT 86% · Metacritic 79 ·
    * Filmweb 7.5") prefixed to the synopsis, truncated to keep WhatsApp /

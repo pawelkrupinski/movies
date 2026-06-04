@@ -26,10 +26,10 @@
   .badge-time {
     background: #3a3a6e;
     color: #aad4ff;
-    font-size: .72rem;
-    padding: .25em .5em;
-    border-radius: 6px;
-    margin: 1px 2px 1px 0;
+    font-size: var(--showtime-pill-font, .72rem);
+    padding: var(--showtime-pill-py, .25em) var(--showtime-pill-px, .5em);
+    border-radius: var(--showtime-pill-corner, 6px);
+    margin: 1px var(--showtime-pill-gap, 2px) 1px 0;
     display: inline-block;
     text-decoration: none;
     /* Prevent iOS long-press selection / link-context sheet on the
@@ -41,7 +41,7 @@
     -webkit-touch-callout: none;
   }
   a.badge-time:hover { background: #5a5a9e; color: #fff; }
-  .badge-fmt { font-size: .62rem; opacity: .7; margin-left: 2px; }
+  .badge-fmt { font-size: var(--showtime-fmt-font, .62rem); opacity: .7; margin-left: 2px; }
 
   @@media (max-width: 575px),
          (max-height: 500px) and (orientation: landscape) {
@@ -54,7 +54,7 @@
 
   .showings-more {
     display: inline-block;
-    margin-top: .35rem;
+    margin-top: var(--gap-more, .35rem);
     font-size: .7rem;
     color: #6ab;
     text-decoration: none;
