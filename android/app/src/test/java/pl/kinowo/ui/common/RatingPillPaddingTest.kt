@@ -29,10 +29,10 @@ import pl.kinowo.model.Ratings
  * the Pixel 9a reference (411 dp) so `RatingBadgeMetrics.scale` is exactly 1.0 and
  * the base dp/sp values render unchanged.
  *
- * These pin the two height levers cheaply in CI: that the pill adds no padding,
- * and that `pillTextStyle` drops the `includeFontPadding` leading. How the result
- * actually *looks* (the residual font-box whitespace) is the emulator-side
- * `RatingPillVisualPaddingTest`.
+ * These pin the two height levers cheaply in CI: the pill's vertical padding
+ * (3 dp each side, from `RatingPillStyle().vPad`), and that `pillTextStyle` drops
+ * the `includeFontPadding` leading. How the result actually *looks* (the residual
+ * font-box whitespace) is the emulator-side `RatingPillVisualPaddingTest`.
  *
  * Runs on the JVM via `./gradlew app:testDebugUnitTest` — no emulator.
  */
@@ -45,16 +45,16 @@ class RatingPillPaddingTest {
     val compose = createComposeRule()
 
     /**
-     * The pill carries **no** extra vertical padding: its height is just the
-     * trimmed font box. Rendered beside a zero-padding reference `Text` in the
-     * same pill style, the pill's height should equal the reference (within a
-     * sub-dp rounding margin). Re-add any `vPad` and the pill grows past the
-     * reference, failing this. (The remaining visible whitespace is the font's
-     * own descent box, not padding — that's the emulator-side
+     * The pill's height is the trimmed font box plus `vPad` top and bottom.
+     * Rendered beside a zero-padding reference `Text` in the same pill style at
+     * the 411 dp reference width (scale 1.0), the pill's extra height over the
+     * reference is exactly `2 × vPad`. Drop `vPad` back to 0 and this fails.
+     * (The reference is the bare trimmed font box; the remaining residual
+     * whitespace is the font's own descent — the emulator-side
      * `RatingPillVisualPaddingTest`'s concern.)
      */
     @Test
-    fun imdbPillAddsNoVerticalPaddingBeyondTheFontBox() {
+    fun imdbPillVerticalPaddingMatchesTheStyle() {
         compose.setContent {
             ReferenceWidth {
                 MaterialTheme {
@@ -71,11 +71,13 @@ class RatingPillPaddingTest {
         val referenceHeight = heightOf("TRIM")
 
         assertTrue("reference text measured no height — metrics are stubbed", referenceHeight > 0f)
+        // At 411 dp the viewport scale is 1.0, so the rendered inset == the base vPad.
+        val expectedInset = 2 * RatingPillStyle().vPad.value
         assertEquals(
-            "IMDb pill should add no vertical padding over the bare trimmed text; " +
-                "got pill $pillHeight dp vs reference $referenceHeight dp " +
-                "(${pillHeight - referenceHeight} dp of padding).",
-            referenceHeight.toDouble(), pillHeight.toDouble(), 0.7,
+            "IMDb pill vertical padding should be 2 × ${RatingPillStyle().vPad.value} dp over the " +
+                "bare trimmed text; got pill $pillHeight dp vs reference $referenceHeight dp " +
+                "(${pillHeight - referenceHeight} dp).",
+            expectedInset.toDouble(), (pillHeight - referenceHeight).toDouble(), 1.0,
         )
     }
 

@@ -42,29 +42,29 @@ import pl.kinowo.ui.theme.RtRotten
  *
  * The fields hold the BASE (pre-scale) values: [RatingBadges] still multiplies
  * the dimensional ones by [RatingBadgeMetrics.scale] for the viewport so the row
- * grows/shrinks with the device, exactly as before. The defaults reproduce the
- * SHIPPING pill — 11sp font, Bold label / SemiBold value / Bold solid weights,
- * 6dp horizontal padding, no vertical padding, 5dp corner, 6dp inter-pill gap —
- * so production (which never provides its own value) is visually unchanged. The
- * non-prod `ShowtimeTuningScreen` injects an edited copy via
- * `CompositionLocalProvider` to preview the rating row. Mirrors iOS
- * `RatingPillStyle`; note that unlike iOS, label and value share one font size
- * here (Android renders both tabs at the same size).
+ * grows/shrinks with the device, exactly as before. The defaults are the
+ * SHIPPING pill values, dialled in on the tuning screen — 11sp font (base),
+ * Black label / SemiBold value / SemiBold solid weights, 4dp horizontal padding,
+ * 3dp vertical padding, 3dp corner, 4dp inter-pill gap — so production (which
+ * never provides its own value) renders them. The non-prod `ShowtimeTuningScreen`
+ * injects an edited copy via `CompositionLocalProvider` to preview the rating
+ * row. Mirrors iOS `RatingPillStyle`; note that unlike iOS, label and value
+ * share one font size here (Android renders both tabs at the same size).
  */
 data class RatingPillStyle(
     val baseFontSize: TextUnit = RatingBadgeMetrics.BaseFontSp.sp,
-    val labelWeight: FontWeight = FontWeight.Bold,
+    val labelWeight: FontWeight = FontWeight.Black,
     val valueWeight: FontWeight = FontWeight.SemiBold,
     /** Metacritic's label-less solid pill weight. */
-    val solidWeight: FontWeight = FontWeight.Bold,
+    val solidWeight: FontWeight = FontWeight.SemiBold,
     /** Per-side horizontal padding inside each tab. */
-    val hPad: Dp = 6.dp,
+    val hPad: Dp = 4.dp,
     /** Per-side vertical padding inside each tab. */
-    val vPad: Dp = 0.dp,
+    val vPad: Dp = 3.dp,
     /** Outer corner radius of the pill. */
-    val corner: Dp = 5.dp,
+    val corner: Dp = 3.dp,
     /** Gap between adjacent pills in the flow row. */
-    val interPillGap: Dp = 6.dp,
+    val interPillGap: Dp = 4.dp,
 )
 
 /** Style driving every rating pill. The default equals today's shipping values,

@@ -50,27 +50,27 @@ internal const val ShowtimeChipTestTag = "showtime-chip"
  * Live-tunable rendering parameters for a showtime chip, read by [ShowtimeChip]
  * and the [Showings] flow row from [LocalShowtimeChipStyle].
  *
- * The defaults reproduce the SHIPPING chip byte for byte — time 11sp SemiBold,
- * format 7sp Medium, 4dp padding each side, 2dp time↔format gap, 4dp between
- * chips — so production (which never provides its own value) is visually
- * unchanged. The non-prod `ShowtimeTuningScreen` injects an edited copy via
- * `CompositionLocalProvider` to preview size / weight / padding / gap changes
- * against the real [FilmCard] before any new value is baked into the constants
- * here. Mirrors iOS `ShowtimePillStyle`.
+ * The defaults are the SHIPPING chip values, dialled in on the tuning screen at
+ * the 360dp floor — time 11sp Normal, format 8.5sp Medium, 4dp padding each
+ * side, 2.5dp time↔format gap, 3dp between chips — so production (which never
+ * provides its own value) renders them. The non-prod `ShowtimeTuningScreen`
+ * injects an edited copy via `CompositionLocalProvider` to preview size / weight
+ * / padding / gap changes against the real [FilmCard]; two-per-row at 360dp is
+ * pinned by `ShowtimeChipFitTest`. Mirrors iOS `ShowtimePillStyle`.
  */
 data class ShowtimeChipStyle(
     val timeFontSize: TextUnit = 11.sp,
-    val timeWeight: FontWeight = FontWeight.SemiBold,
-    val formatFontSize: TextUnit = 7.sp,
+    val timeWeight: FontWeight = FontWeight.Normal,
+    val formatFontSize: TextUnit = 8.5.sp,
     val formatWeight: FontWeight = FontWeight.Medium,
     /** Per-side horizontal padding inside the chip. */
     val horizontalInset: Dp = 4.dp,
     /** Per-side vertical padding inside the chip. */
     val verticalInset: Dp = 4.dp,
     /** Gap between the time and the format tag. */
-    val internalGap: Dp = 2.dp,
+    val internalGap: Dp = 2.5.dp,
     /** Gap between adjacent chips in the flow row. */
-    val interPillGap: Dp = 4.dp,
+    val interPillGap: Dp = 3.dp,
 )
 
 /** Style driving every showtime chip. The default equals today's shipping
