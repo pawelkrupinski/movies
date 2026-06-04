@@ -66,7 +66,9 @@ let package = Package(
                 // reachable from the test target.
                 "Views/CachedAsyncImage.swift",
                 "Views/CardSpacingStyle.swift",
+                "Views/CinemaHeaderStyle.swift",
                 "Views/FilmCardView.swift",
+                "Views/FilmDetailStyle.swift",
                 "Views/FilmDetailView.swift",
                 "Views/FilmGridView.swift",
                 "Views/FiltersBar.swift",
