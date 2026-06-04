@@ -97,11 +97,12 @@ fun Showings(
 ) {
     val context = LocalContext.current
     val chipStyle = LocalShowtimeChipStyle.current
+    val cardSpacing = LocalCardSpacingStyle.current
     val total = film.showings.sumOf { d -> d.cinemas.sumOf { it.showtimes.size } }
     var budget = maxChips ?: Int.MAX_VALUE
     var shown = 0
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(cardSpacing.showingsBlock)) {
         for (day in film.showings) {
             if (budget <= 0) break
             Text(

@@ -54,6 +54,8 @@ import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
 import pl.kinowo.model.Ratings
 import pl.kinowo.model.Showtime
+import pl.kinowo.ui.common.CardSpacingStyle
+import pl.kinowo.ui.common.LocalCardSpacingStyle
 import pl.kinowo.ui.common.LocalRatingPillStyle
 import pl.kinowo.ui.common.LocalShowtimeChipStyle
 import pl.kinowo.ui.common.RatingBadgeMetrics
@@ -84,6 +86,7 @@ import pl.kinowo.ui.theme.TextSecondary
 fun ShowtimeTuningScreen() {
     var style by remember { mutableStateOf(ShowtimeChipStyle()) }
     var ratingStyle by remember { mutableStateOf(RatingPillStyle()) }
+    var cardSpacing by remember { mutableStateOf(CardSpacingStyle()) }
 
     Box(
         Modifier
@@ -94,6 +97,7 @@ fun ShowtimeTuningScreen() {
         CompositionLocalProvider(
             LocalShowtimeChipStyle provides style,
             LocalRatingPillStyle provides ratingStyle,
+            LocalCardSpacingStyle provides cardSpacing,
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -118,7 +122,13 @@ fun ShowtimeTuningScreen() {
             onStyleChange = { style = it },
             ratingStyle = ratingStyle,
             onRatingStyleChange = { ratingStyle = it },
-            onReset = { style = ShowtimeChipStyle(); ratingStyle = RatingPillStyle() },
+            cardSpacing = cardSpacing,
+            onCardSpacingChange = { cardSpacing = it },
+            onReset = {
+                style = ShowtimeChipStyle()
+                ratingStyle = RatingPillStyle()
+                cardSpacing = CardSpacingStyle()
+            },
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
@@ -141,6 +151,8 @@ private fun ControlsSheet(
     onStyleChange: (ShowtimeChipStyle) -> Unit,
     ratingStyle: RatingPillStyle,
     onRatingStyleChange: (RatingPillStyle) -> Unit,
+    cardSpacing: CardSpacingStyle,
+    onCardSpacingChange: (CardSpacingStyle) -> Unit,
     onReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -181,12 +193,14 @@ private fun ControlsSheet(
                 )
             }
 
-            SheetHeader(style = style, ratingStyle = ratingStyle, onReset = onReset)
+            SheetHeader(style = style, ratingStyle = ratingStyle, cardSpacing = cardSpacing, onReset = onReset)
             SheetControls(
                 style = style,
                 onStyleChange = onStyleChange,
                 ratingStyle = ratingStyle,
                 onRatingStyleChange = onRatingStyleChange,
+                cardSpacing = cardSpacing,
+                onCardSpacingChange = onCardSpacingChange,
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
@@ -199,7 +213,7 @@ private fun ControlsSheet(
 // ── sheet header: fit readout + copy + reset ────────────────────────────────
 
 @Composable
-private fun SheetHeader(style: ShowtimeChipStyle, ratingStyle: RatingPillStyle, onReset: () -> Unit) {
+private fun SheetHeader(style: ShowtimeChipStyle, ratingStyle: RatingPillStyle, cardSpacing: CardSpacingStyle, onReset: () -> Unit) {
     val clipboard = LocalClipboardManager.current
     val density = LocalDensity.current
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
@@ -219,7 +233,7 @@ private fun SheetHeader(style: ShowtimeChipStyle, ratingStyle: RatingPillStyle, 
                 fontSize = 11.sp,
             )
         }
-        OutlinedButton(onClick = { clipboard.setText(AnnotatedString(copyText(style, ratingStyle, screenWidthDp))) }) {
+        OutlinedButton(onClick = { clipboard.setText(AnnotatedString(copyText(style, ratingStyle, cardSpacing, screenWidthDp))) }) {
             Text("Kopiuj", fontSize = 13.sp)
         }
         Spacer(Modifier.width(8.dp))
@@ -235,6 +249,8 @@ private fun SheetControls(
     onStyleChange: (ShowtimeChipStyle) -> Unit,
     ratingStyle: RatingPillStyle,
     onRatingStyleChange: (RatingPillStyle) -> Unit,
+    cardSpacing: CardSpacingStyle,
+    onCardSpacingChange: (CardSpacingStyle) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -257,6 +273,12 @@ private fun SheetControls(
         Group("Odstępy") {
             DpSlider("Czas ↔ format", style.internalGap, 0f..12f) { onStyleChange(style.copy(internalGap = it)) }
             DpSlider("Między pigułkami", style.interPillGap, 0f..16f) { onStyleChange(style.copy(interPillGap = it)) }
+        }
+        Group("Odstępy karty") {
+            DpSlider("Tytuł ↔ meta", cardSpacing.titleToMeta, 0f..24f) { onCardSpacingChange(cardSpacing.copy(titleToMeta = it)) }
+            DpSlider("Meta ↔ oceny", cardSpacing.metaToRatings, 0f..24f) { onCardSpacingChange(cardSpacing.copy(metaToRatings = it)) }
+            DpSlider("Oceny ↔ seanse", cardSpacing.ratingsToShowings, 0f..24f) { onCardSpacingChange(cardSpacing.copy(ratingsToShowings = it)) }
+            DpSlider("Dni / kina", cardSpacing.showingsBlock, 0f..24f) { onCardSpacingChange(cardSpacing.copy(showingsBlock = it)) }
         }
 
         Group("Ocena: rozmiar bazowy") {
@@ -405,7 +427,7 @@ private fun twoDecimal(v: Float): String = String.format(java.util.Locale.US, "%
  *  space-separated `key=value` per line. The rating lines append after the
  *  showtime ones and carry the device-scale readout (Android-specific, since the
  *  pills size relative to viewport width). */
-internal fun copyText(s: ShowtimeChipStyle, r: RatingPillStyle, screenWidthDp: Int): String {
+internal fun copyText(s: ShowtimeChipStyle, r: RatingPillStyle, c: CardSpacingStyle, screenWidthDp: Int): String {
     val scale = RatingBadgeMetrics.scale(screenWidthDp)
     val rendered = r.baseFontSize.value * scale
     return buildString {
@@ -413,6 +435,7 @@ internal fun copyText(s: ShowtimeChipStyle, r: RatingPillStyle, screenWidthDp: I
         append("format: size=${oneDecimal(s.formatFontSize.value)} weight=${WeightOption.of(s.formatWeight).key}\n")
         append("padding: h=${oneDecimal(s.horizontalInset.value)} v=${oneDecimal(s.verticalInset.value)}\n")
         append("gaps: internal=${oneDecimal(s.internalGap.value)} interPill=${oneDecimal(s.interPillGap.value)}\n")
+        append("card-gaps: titleToMeta=${oneDecimal(c.titleToMeta.value)} metaToRatings=${oneDecimal(c.metaToRatings.value)} ratingsToShowings=${oneDecimal(c.ratingsToShowings.value)} showingsBlock=${oneDecimal(c.showingsBlock.value)}\n")
         append("rating-base: size=${oneDecimal(r.baseFontSize.value)} labelW=${WeightOption.of(r.labelWeight).key} valueW=${WeightOption.of(r.valueWeight).key} solidW=${WeightOption.of(r.solidWeight).key}\n")
         append("rating-pad: h=${oneDecimal(r.hPad.value)} v=${oneDecimal(r.vPad.value)}\n")
         append("rating-shape: corner=${oneDecimal(r.corner.value)} interPill=${oneDecimal(r.interPillGap.value)}\n")

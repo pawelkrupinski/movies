@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.model.Film
+import pl.kinowo.ui.common.LocalCardSpacingStyle
 import pl.kinowo.ui.common.MetaPills
 import pl.kinowo.ui.common.PosterImage
 import pl.kinowo.ui.common.RatingBadges
@@ -49,6 +50,7 @@ fun FilmCard(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val spacing = LocalCardSpacingStyle.current
     Surface(
         color = CardSurface,
         shape = RoundedCornerShape(12.dp),
@@ -100,16 +102,16 @@ fun FilmCard(
                 MetaPills(
                     runtimeMinutes = film.runtimeMinutes,
                     releaseYear = film.releaseYear,
-                    modifier = Modifier.padding(top = 8.dp),
+                    modifier = Modifier.padding(top = spacing.titleToMeta),
                 )
                 if (!film.ratings.isEmpty) {
-                    RatingBadges(film.ratings, Modifier.padding(top = 8.dp))
+                    RatingBadges(film.ratings, Modifier.padding(top = spacing.metaToRatings))
                 }
                 Showings(
                     film = film,
                     showCinemaHeaders = showCinemaHeaders,
                     maxChips = 14,
-                    modifier = Modifier.padding(top = 8.dp),
+                    modifier = Modifier.padding(top = spacing.ratingsToShowings),
                 )
             }
         }
