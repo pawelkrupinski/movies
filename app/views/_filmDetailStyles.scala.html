@@ -1,0 +1,151 @@
+@(devMode: Boolean)
+@*
+  Film-detail-specific CSS (poster, title, meta labels/values, cinema- and
+  trailer-link pills, the showings sub-headers + mobile scaling). Lives in
+  `_sharedStyles`'s sibling-of-the-detail-page slot — extracted from
+  `film.scala.html` so the dev-only `/debug/tune/film` page renders the REAL
+  detail chrome. `.badge-*` pills still come from `_pillStyles`/`_sharedStyles`.
+*@
+  @_minified(devMode) {
+  <style>
+    body { background: #111; color: #eee; }
+    .navbar { background: #1a1a2e; }
+    .back-link { color: #aad4ff; text-decoration: none; font-size: .9rem; display: inline-flex; align-items: center; gap: .3em; }
+    .back-link svg { width: .7em; height: .7em; flex-shrink: 0; }
+    .back-link:hover { color: #fff; }
+    .poster-wrap {
+      position: relative;
+      max-width: 300px;
+      padding-top: 0;
+    }
+    .poster-wrap img {
+      position: static;
+      inset: auto;
+      height: auto;
+      object-fit: initial;
+    }
+    .poster-img {
+      width: 100%;
+      max-width: 300px;
+      border-radius: 12px;
+      display: block;
+    }
+    .no-poster {
+      width: 100%;
+      max-width: 300px;
+      aspect-ratio: 2/3;
+      background: #2a2a3e;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: #99a;
+      font-style: italic;
+      letter-spacing: .03em;
+    }
+    .film-title { font-size: 1.6rem; font-weight: 700; margin-bottom: .5rem; }
+    .film-title .pill { font-weight: 400; }
+    .film-original-title { font-size: 1rem; font-style: italic; color: #aaa; margin: -.35rem 0 .6rem; }
+    .meta-label { font-size: .75rem; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .15rem; margin-top: .9rem; }
+    .meta-value { font-size: .9rem; color: #ddd; }
+    .meta-link { color: #aad4ff; text-decoration: none; }
+    .meta-link:hover { color: #fff; text-decoration: underline; }
+    .cinema-link {
+      display: inline-block;
+      background: #3a3a6e;
+      color: #aad4ff;
+      border-radius: 8px;
+      padding: .35rem .8rem;
+      font-size: .85rem;
+      text-decoration: none;
+      margin-right: .5rem;
+      margin-top: .4rem;
+    }
+    .cinema-link:hover { background: #5a5a9e; color: #fff; }
+    .trailer-frame {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+      margin-top: .6rem;
+    }
+    .trailer-frame iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+    .trailer-link {
+      background: #3a3a6e;
+      color: #aad4ff;
+      border: none;
+      border-radius: 8px;
+      padding: .35rem .8rem;
+      font-size: .85rem;
+      margin: 0 .5rem .4rem 0;
+      cursor: pointer;
+    }
+    .trailer-link:hover { background: #5a5a9e; color: #fff; }
+    /* Active = the trailer whose player is currently open. Distinct from
+       the hover colour so the "what's playing" pill stays visible at a
+       glance even when the cursor is elsewhere. */
+    .trailer-link.active { background: #aad4ff; color: #1a1a2e; }
+    .showtimes-section { margin-top: 2rem; }
+    /* date / cinema sub-headers keep their detail-page styling — bigger
+       than the listing card variant since the film page only renders one
+       film, so the section breaks need to read clearly. Pills themselves
+       inherit `_sharedStyles` so /film, /, /kina and /ulubione all show
+       the same showing-hour badges. */
+    .date-group .date-label {
+      font-size: .8rem;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      border-bottom: 1px solid #2a2a3e;
+      padding-bottom: .3rem;
+      margin-bottom: .6rem;
+      margin-top: 1.2rem;
+    }
+    .cinema-group { margin-bottom: .6rem; }
+    .cinema-label { font-size: .8rem; color: #66aadd; margin-bottom: .25rem; }
+    .cinema-label-link { color: #66aadd; text-decoration: none; }
+    .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
+
+    /* Mobile scaling. Rides the shared `--mobile-scale` variable
+       defined in `_pillStyles` (loaded right below). Same factor as
+       the listing pages, so the film-detail chrome (title, meta
+       labels, cinema-link / trailer-link pills, sub-section dates)
+       shrinks in lockstep with the rest of the site on narrow phones.
+       The 26 px ★ button, the 16 px-floor inputs and the bootstrap
+       container padding are intentionally left untouched — tap-target
+       and iOS-zoom-guard floors that the scale would push under. */
+    @@media (max-width: 575px) {
+      /* Stack the poster above the details. The side-by-side flex row
+         caps the poster at 300 px, which on a phone leaves the details
+         column so narrow the title wraps one word per line and a dead
+         gap opens below the (shorter) poster. Below the sm breakpoint
+         the poster takes its own full-width row — centred at its 300 px
+         cap — and the title / ratings / cinema pills / Opis flow beneath
+         it across the whole width. The `g-4` row gutter supplies the
+         vertical gap between the two stacked rows. */
+      .film-row > .col-auto   { width: 100%; }
+      .film-row .poster-wrap  { margin-left: auto; margin-right: auto; }
+      .back-link  { font-size: calc(.9 * var(--mobile-scale)); }
+      .no-poster  { font-size: var(--mobile-scale); }
+      .film-title { font-size: calc(1.6 * var(--mobile-scale)); }
+      .meta-label { font-size: calc(.75 * var(--mobile-scale)); }
+      .meta-value { font-size: calc(.9 * var(--mobile-scale)); }
+      .cinema-link, .trailer-link {
+        font-size: calc(.85 * var(--mobile-scale));
+        padding:   calc(.35 * var(--mobile-scale)) calc(.8 * var(--mobile-scale));
+      }
+      .date-group .date-label { font-size: calc(.8 * var(--mobile-scale)); }
+      .cinema-label           { font-size: calc(.8 * var(--mobile-scale)); }
+    }
+  </style>
+  }

@@ -1,0 +1,71 @@
+@import controllers.FilmSchedule
+@(film: FilmSchedule)
+@*
+  Dev-only visual-tuning page for the FILM-detail view. Renders the REAL
+  `_filmDetailContent` (the same partial `/film` uses) with the REAL
+  `_filmDetailStyles`, inside `.tune-scope`. The tunable title / meta / Seanse
+  fonts + gaps are re-declared scoped to the preview reading the sliders'
+  vars (defaulting to the production values), so the detail CSS partial and the
+  shared styles stay untouched — `/`, `/kina`, `/plan` snapshots unaffected.
+*@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tune · ekran filmu</title>
+  @_sharedStyles(devMode = true)
+  @_filmDetailStyles(devMode = true)
+  @_tuneStyles()
+  <style>
+    .tune-scope {
+      flex: 1 1 520px;
+      max-width: 760px;
+      background: #111;
+      padding: .75rem 1.25rem;
+      border: 1px solid #2a2a3e;
+      border-radius: 8px;
+    }
+    /* Scoped overrides of the film-detail typography levers. Defaults match
+       `_filmDetailStyles`; the Seanse `<h2>` carries an inline font-size so it
+       needs `!important` to yield to the slider. */
+    .tune-scope .film-title          { font-size: var(--film-title-font, 1.6rem); margin-bottom: var(--film-title-mb, 0.5rem); }
+    .tune-scope .film-original-title { font-size: var(--film-orig-font, 1rem); }
+    .tune-scope .meta-label          { font-size: var(--film-label-font, 0.75rem); margin-top: var(--film-label-gap, 0.9rem); }
+    .tune-scope .meta-value          { font-size: var(--film-value-font, 0.9rem); }
+    .tune-scope .showtimes-section h2 { font-size: var(--film-seanse-font, 1.1rem) !important; }
+  </style>
+</head>
+<body>
+  <h1>Tune · ekran filmu</h1>
+  @_tuneNav("film")
+  <p class="intro">Live-tune the film-detail title, meta blocks and the Seanse header on the
+     real <code>/film</code> markup. Sliders drive CSS variables scoped to the preview;
+     production CSS keeps today's values. Hit <em>Kopiuj</em> for the values.</p>
+
+  <div class="tune-layout">
+    <div class="tune-scope" id="scope">
+      @_filmDetailContent(film)
+    </div>
+
+    <script>
+      window.TUNE_CONTROLS = [
+        { group: 'Tytuł (title)', items: [
+          { v: '--film-title-font', def: 1.6, unit: 'rem', min: 1.0, max: 3.0, step: 0.05, css: '.film-title font-size' },
+          { v: '--film-title-mb',   def: 0.5, unit: 'rem', min: 0,   max: 1.5, step: 0.05, css: '.film-title margin-bottom' },
+          { v: '--film-orig-font',  def: 1.0, unit: 'rem', min: 0.7, max: 1.6, step: 0.05, css: '.film-original-title font-size' },
+        ]},
+        { group: 'Bloki meta (meta blocks)', items: [
+          { v: '--film-label-font', def: 0.75, unit: 'rem', min: 0.5, max: 1.2, step: 0.05, css: '.meta-label font-size' },
+          { v: '--film-label-gap',  def: 0.9,  unit: 'rem', min: 0,   max: 2.0, step: 0.05, css: '.meta-label margin-top' },
+          { v: '--film-value-font', def: 0.9,  unit: 'rem', min: 0.6, max: 1.4, step: 0.05, css: '.meta-value font-size' },
+        ]},
+        { group: 'Seanse', items: [
+          { v: '--film-seanse-font', def: 1.1, unit: 'rem', min: 0.8, max: 1.8, step: 0.05, css: '.showtimes-section h2 font-size' },
+        ]},
+      ];
+    </script>
+    @_tunePanel()
+  </div>
+</body>
+</html>

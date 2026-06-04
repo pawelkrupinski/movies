@@ -415,6 +415,22 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
+  /** Dev-only tuning page for the Kina (cinema-sectioned) view — live sliders
+   *  over the real `_cinemaCards` for the cinema-header font / spacing. */
+  def tuneKina(): Action[AnyContent] = Action {
+    devOnly {
+      Ok(views.html.tuneKina(MovieController.tuneSampleCinemas))
+    }
+  }
+
+  /** Dev-only tuning page for the film-detail view — live sliders over the real
+   *  `_filmDetailContent` for the title / meta / Seanse typography. */
+  def tuneFilm(): Action[AnyContent] = Action {
+    devOnly {
+      Ok(views.html.tuneFilm(MovieController.tuneSampleFilm))
+    }
+  }
+
   def film(title: String): Action[AnyContent] = Action { request =>
     movieControllerService.film(title) match {
       case Some(schedule) =>
@@ -593,6 +609,47 @@ object MovieController {
 
     Seq(rich, manyTimes, rotten, extremes, metaOnly, noRatings, seniorClub, sparse)
   }
+
+  /** Cinema-sectioned view of `tuneSampleFilms`, pivoted film→cinema, for the
+   *  `/debug/tune/kina` page. Derived from the same sample so the two tuning
+   *  pages stay in lockstep. */
+  private[controllers] def tuneSampleCinemas: Seq[CinemaSchedule] = {
+    val flat = for {
+      f               <- tuneSampleFilms
+      (date, perCine) <- f.showings
+      cs              <- perCine
+    } yield (cs.cinema, f, date, cs.showtimes)
+
+    flat.groupBy(_._1).toSeq.sortBy(_._1.displayName).map { case (cinema, rows) =>
+      val movies = rows.groupBy(_._2).toSeq.sortBy(_._1.movie.title).map { case (f, mRows) =>
+        CinemaMovieSchedule(
+          movie      = f.movie,
+          posterUrl  = f.posterUrl,
+          filmUrl    = None,
+          showings   = mRows.map(r => (r._3, r._4)).sortBy(_._1.toString),
+          enrichment = f.enrichment
+        )
+      }
+      CinemaSchedule(cinema, movies)
+    }
+  }
+
+  /** One fully-populated film (synopsis + cast + director, which the listing
+   *  samples leave empty) for the `/debug/tune/film` page, so every meta block
+   *  renders and its fonts are tunable. Built off the rich sample's ratings +
+   *  multi-cinema showings tree. */
+  private[controllers] def tuneSampleFilm: FilmSchedule =
+    tuneSampleFilms.head.copy(
+      synopsis       = Some(
+        "Dom Cobb to wytrawny złodziej, najlepszy w niebezpiecznej sztuce ekstrakcji — " +
+        "wykradania cennych sekretów z głębi podświadomości podczas snu. Tym razem dostaje " +
+        "szansę na odkupienie: zadanie odwrotne, zaszczepienie idei zamiast jej kradzieży. " +
+        "Tekst celowo długi, by dało się dostroić rozmiar i odstępy opisu na ekranie filmu."
+      ),
+      cast           = Seq("Leonardo DiCaprio", "Joseph Gordon-Levitt", "Elliot Page", "Tom Hardy", "Ken Watanabe"),
+      director       = Seq("Christopher Nolan"),
+      cinemaFilmUrls = Seq(Multikino -> "https://example.test/incepcja")
+    )
 
   /** Build the `og:description` / `twitter:description` text for the film
    * page. Format: rating summary ("IMDb 8.7 · RT 86% · Metacritic 79 ·

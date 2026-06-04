@@ -1,0 +1,123 @@
+@()
+@*
+  Shared slider-panel scaffolding for the dev-only `/debug/tune*` pages. The
+  three tuning pages (`tune`, `tuneKina`, `tuneFilm`) all drive CSS custom
+  properties on a `.tune-scope` element via identical machinery — a grouped
+  slider panel, ± steppers, and a "Kopiuj" button that dumps `var = value //
+  css` lines. Only the CONTROLS list and the preview markup differ per page,
+  so the markup + builder script live here once.
+
+  Contract the host page must satisfy:
+   - render the live preview inside `<div class="tune-scope" id="scope">…</div>`
+   - define `window.TUNE_CONTROLS` (the grouped `{group, items:[{v,def,unit,
+     min,max,step,css}]}` array) BEFORE including this partial.
+  The panel markup + builder below are then fully generic.
+*@
+<div class="panel" id="panel">
+  <!-- groups + sliders are generated below from TUNE_CONTROLS -->
+  <div class="actions">
+    <button type="button" class="copy" id="copyBtn">Kopiuj</button>
+    <span class="copied" id="copiedMsg" style="display:none">skopiowano ✓</span>
+  </div>
+  <textarea id="dump" readonly></textarea>
+</div>
+
+<script>
+  // Each control: the CSS var, its production fallback (string), the CSS
+  // property/selector it maps to (for the copy annotation), the slider range
+  // + step, and a unit. `rem`/`em` sliders work in their native unit; the
+  // displayed + copied value carries the unit so it pastes straight back into
+  // the production CSS.
+  const CONTROLS = window.TUNE_CONTROLS;
+
+  const scope = document.getElementById('scope');
+  const panel = document.getElementById('panel');
+  const actions = panel.querySelector('.actions');
+
+  const flat = [];
+  for (const g of CONTROLS) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'panel-group';
+    const h2 = document.createElement('h2');
+    h2.textContent = g.group;
+    groupEl.appendChild(h2);
+
+    for (const it of g.items) {
+      flat.push(it);
+      const row = document.createElement('div');
+      row.className = 'ctrl';
+
+      const label = document.createElement('label');
+      label.textContent = it.v;
+      label.title = it.css;
+
+      const input = document.createElement('input');
+      input.type = 'range';
+      input.min = it.min; input.max = it.max; input.step = it.step;
+      input.value = it.def;
+      input.dataset.var = it.v;
+      input.dataset.unit = it.unit;
+
+      const val = document.createElement('span');
+      val.className = 'val';
+
+      const fmt = (n) => (it.step < 1 ? Number(n).toFixed(2) : String(Number(n)));
+      const apply = () => {
+        const css = fmt(input.value) + it.unit;
+        scope.style.setProperty(it.v, css);
+        val.textContent = css;
+      };
+      input.addEventListener('input', apply);
+      it._input = input;
+      it._fmt = fmt;
+      apply();
+
+      // ± buttons on each side: stepDown/stepUp clamp to the slider's
+      // min/max and honour its step, so we get the same granularity as
+      // dragging without re-implementing the clamp.
+      const minus = document.createElement('button');
+      minus.type = 'button'; minus.className = 'step'; minus.textContent = '−';
+      minus.title = 'zmniejsz';
+      minus.addEventListener('click', () => { input.stepDown(); apply(); });
+
+      const plus = document.createElement('button');
+      plus.type = 'button'; plus.className = 'step'; plus.textContent = '+';
+      plus.title = 'zwiększ';
+      plus.addEventListener('click', () => { input.stepUp(); apply(); });
+
+      const wrap = document.createElement('div');
+      wrap.className = 'slider-wrap';
+      wrap.appendChild(minus);
+      wrap.appendChild(input);
+      wrap.appendChild(plus);
+
+      row.appendChild(label);
+      row.appendChild(wrap);
+      row.appendChild(val);
+      groupEl.appendChild(row);
+    }
+    panel.insertBefore(groupEl, actions);
+  }
+
+  function dumpText() {
+    return flat.map(it => {
+      const css = it._fmt(it._input.value) + it.unit;
+      return `${it.v} = ${css}    // ${it.css}`;
+    }).join('\n');
+  }
+
+  const dump = document.getElementById('dump');
+  const copiedMsg = document.getElementById('copiedMsg');
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    const text = dumpText();
+    dump.value = text;
+    dump.style.display = 'block';
+    try {
+      await navigator.clipboard.writeText(text);
+      copiedMsg.style.display = 'inline';
+      setTimeout(() => { copiedMsg.style.display = 'none'; }, 1500);
+    } catch (e) {
+      dump.select();
+    }
+  });
+</script>

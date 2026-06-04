@@ -1,13 +1,13 @@
 @import controllers.FilmSchedule
 @(films: Seq[FilmSchedule])
 @*
-  Dev-only visual-tuning page. Renders the REAL `_movieCard` partials (via
-  `_filmCards`) inside `.tune-scope` and exposes a slider panel that drives the
-  CSS custom properties the production card styles read. Each slider's `oninput`
-  sets its variable on `.tune-scope` via `style.setProperty`, so the card
-  re-layouts live. The "Kopiuj" button dumps the current values as
-  `key=value`-per-line text annotated with the production CSS property to edit —
-  same spirit as the iOS/Android tuning screens' copy-values format.
+  Dev-only visual-tuning page for the listing CARD. Renders the REAL
+  `_movieCard` partials (via `_filmCards`) inside `.tune-scope` and drives the
+  CSS custom properties the production card styles read. Page chrome (dark
+  body, panel, slider rows, copy button) + the generic slider machinery live
+  in `_tuneStyles` / `_tunePanel`; the sub-nav to the Kina / Film tuning pages
+  is `_tuneNav`. Only the card-specific `.tune-scope` grid + `TUNE_CONTROLS`
+  list are page-local.
 
   The variables default (fallback) to today's production values, so a freshly
   loaded page renders byte-identically to the live card until a slider moves.
@@ -17,16 +17,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tune · movie card</title>
+  <title>Tune · karta filmu</title>
   @* Pulls in the parametrized card CSS (.card-body / .date-label / .cinema-label
      + _pillStyles + _ratingStyles) — the same partials the listing pages load. *@
   @_sharedStyles(devMode = true)
+  @_tuneStyles()
   <style>
-    body { background: #0d0d0d; color: #ccc; font: 13px/1.4 system-ui, sans-serif; margin: 0; padding: 1rem 1rem 4rem; }
-    h1 { font-size: 15px; color: #aad4ff; margin: 0 0 .25rem; }
-    .intro { color: #777; font-size: 12px; margin: 0 0 1rem; max-width: 60ch; }
-    .tune-layout { display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; }
-
     /* The live preview — a faux 2-column grid so the cards size like the real
        listing. `.tune-scope` is the element the sliders set the vars on. */
     .tune-scope {
@@ -41,41 +37,11 @@
       border-radius: 8px;
     }
     .tune-scope .col { content-visibility: visible; }
-
-    /* Control panel. */
-    .panel { flex: 1 1 340px; min-width: 300px; }
-    .panel-group { margin-bottom: 1rem; }
-    .panel-group h2 {
-      font-size: 12px; color: #66aadd; text-transform: uppercase; letter-spacing: .06em;
-      margin: 0 0 .4rem; border-bottom: 1px solid #1a1a2e; padding-bottom: .2rem;
-    }
-    .ctrl { display: grid; grid-template-columns: 1fr 170px 5ch; gap: .4rem; align-items: center; margin-bottom: .3rem; }
-    .ctrl label { color: #ccc; }
-    .ctrl .val { color: #9df; font-variant-numeric: tabular-nums; text-align: right; }
-    .ctrl .slider-wrap { display: flex; align-items: center; gap: .25rem; }
-    .ctrl input[type=range] { flex: 1 1 auto; min-width: 0; }
-    .ctrl button.step {
-      flex: 0 0 auto; width: 1.5em; height: 1.5em; line-height: 1; padding: 0;
-      background: #1a1a2e; border: 1px solid #3a3a6e; color: #aad4ff;
-      border-radius: 4px; cursor: pointer; font: inherit; font-size: 13px;
-    }
-    .ctrl button.step:hover { background: #252540; color: #fff; }
-    .actions { margin-top: 1rem; display: flex; gap: .5rem; align-items: center; }
-    button.copy {
-      background: #1a1a2e; border: 1px solid #3a3a6e; color: #aad4ff;
-      padding: .4rem .8rem; border-radius: 6px; cursor: pointer; font: inherit;
-    }
-    button.copy:hover { background: #252540; color: #fff; }
-    .copied { color: #6c6; font-size: 12px; }
-    textarea#dump {
-      width: 100%; height: 160px; margin-top: .6rem; display: none;
-      background: #0a0a18; color: #ccc; border: 1px solid #2a2a3e; border-radius: 4px;
-      font: 11px/1.4 monospace; padding: .5rem; resize: vertical;
-    }
   </style>
 </head>
 <body>
-  <h1>Tune · movie card</h1>
+  <h1>Tune · karta filmu</h1>
+  @_tuneNav("card")
   <p class="intro">Live-tune the card's vertical gaps and the showtime / rating pill visuals.
      Each slider drives a CSS custom property on the preview; the production CSS reads the
      same variables with today's values as fallbacks. Hit <em>Kopiuj</em> to copy the current
@@ -86,140 +52,37 @@
       @_filmCards(films)
     </div>
 
-    <div class="panel" id="panel">
-      <!-- groups + sliders are generated below from CONTROLS -->
-      <div class="actions">
-        <button type="button" class="copy" id="copyBtn">Kopiuj</button>
-        <span class="copied" id="copiedMsg" style="display:none">skopiowano ✓</span>
-      </div>
-      <textarea id="dump" readonly></textarea>
-    </div>
+    @* `TUNE_CONTROLS` must be defined before `_tunePanel`'s builder runs. *@
+    <script>
+      window.TUNE_CONTROLS = [
+        { group: 'Pionowe odstępy (vertical gaps)', items: [
+          { v: '--gap-meta-ratings',  def: 0.25, unit: 'rem', min: 0, max: 1.5, step: 0.05, css: '.ratings margin-top (_ratingStyles)' },
+          { v: '--gap-ratings-date',  def: 0.5,  unit: 'rem', min: 0, max: 1.5, step: 0.05, css: '.date-label margin-top (_sharedStyles)' },
+          { v: '--gap-date-cinema',   def: 0.2,  unit: 'rem', min: 0, max: 1.0, step: 0.05, css: '.date-label margin-bottom (_sharedStyles)' },
+          { v: '--gap-cinema-top',    def: 0.3,  unit: 'rem', min: 0, max: 1.0, step: 0.05, css: '.cinema-label margin-top (_sharedStyles)' },
+          { v: '--gap-cinema-pills',  def: 0.1,  unit: 'rem', min: 0, max: 1.0, step: 0.05, css: '.cinema-label margin-bottom (_sharedStyles)' },
+          { v: '--gap-more',          def: 0.35, unit: 'rem', min: 0, max: 1.0, step: 0.05, css: '.showings-more margin-top (_pillStyles)' },
+          { v: '--card-body-pad',     def: 1.0,  unit: 'rem', min: 0, max: 2.0, step: 0.05, css: '.card-body padding (_sharedStyles)' },
+        ]},
+        { group: 'Pigułki seansów (showtime pills)', items: [
+          { v: '--showtime-pill-font',   def: 0.72, unit: 'rem', min: 0.5, max: 1.1, step: 0.01, css: '.badge-time font-size (_pillStyles)' },
+          { v: '--showtime-pill-py',     def: 0.25, unit: 'em',  min: 0,   max: 0.6, step: 0.01, css: '.badge-time padding-y (_pillStyles)' },
+          { v: '--showtime-pill-px',     def: 0.5,  unit: 'em',  min: 0,   max: 1.2, step: 0.01, css: '.badge-time padding-x (_pillStyles)' },
+          { v: '--showtime-pill-corner', def: 6,    unit: 'px',  min: 0,   max: 16,  step: 1,    css: '.badge-time border-radius (_pillStyles)' },
+          { v: '--showtime-pill-gap',    def: 2,    unit: 'px',  min: 0,   max: 10,  step: 1,    css: '.badge-time margin-right (_pillStyles)' },
+          { v: '--showtime-fmt-font',    def: 0.62, unit: 'rem', min: 0.4, max: 1.0, step: 0.01, css: '.badge-fmt font-size (_pillStyles)' },
+        ]},
+        { group: 'Pigułki ocen (rating pills)', items: [
+          { v: '--rating-pill-font',     def: 0.68, unit: 'rem', min: 0.5, max: 1.1, step: 0.01, css: '.rating-* font-size (_ratingStyles)' },
+          { v: '--rating-pill-py',       def: 0.3,  unit: 'em',  min: 0,   max: 0.7, step: 0.01, css: '.rating-* padding-y (_ratingStyles)' },
+          { v: '--rating-pill-px-label', def: 0.3,  unit: 'rem', min: 0,   max: 0.8, step: 0.01, css: '.rating-*-label padding-x (_ratingStyles)' },
+          { v: '--rating-pill-px-value', def: 0.35, unit: 'rem', min: 0,   max: 0.8, step: 0.01, css: '.rating-*-value padding-x (_ratingStyles)' },
+          { v: '--rating-pill-gap',      def: 0.25, unit: 'rem', min: 0,   max: 0.8, step: 0.01, css: '.ratings gap (_ratingStyles)' },
+          { v: '--rating-pill-corner',   def: 3,    unit: 'px',  min: 0,   max: 12,  step: 1,    css: '.rating-* border-radius (_ratingStyles)' },
+        ]},
+      ];
+    </script>
+    @_tunePanel()
   </div>
-
-  <script>
-    // Each control: the CSS var, its production fallback (string), the CSS
-    // property/selector it maps to (for the copy annotation), the slider range
-    // + step, and a unit. `rem`/`em` sliders work in their native unit; the
-    // displayed + copied value carries the unit so it pastes straight back into
-    // the production CSS.
-    const CONTROLS = [
-      { group: 'Pionowe odstępy (vertical gaps)', items: [
-        { v: '--gap-meta-ratings',  def: 0.25, unit: 'rem', min: 0, max: 1.5, step: 0.05, css: '.ratings margin-top (_ratingStyles)' },
-        { v: '--gap-ratings-date',  def: 0.5,  unit: 'rem', min: 0, max: 1.5, step: 0.05, css: '.date-label margin-top (_sharedStyles)' },
-        { v: '--gap-date-cinema',   def: 0.2,  unit: 'rem', min: 0, max: 1.0, step: 0.05, css: '.date-label margin-bottom (_sharedStyles)' },
-        { v: '--gap-cinema-top',    def: 0.3,  unit: 'rem', min: 0, max: 1.0, step: 0.05, css: '.cinema-label margin-top (_sharedStyles)' },
-        { v: '--gap-cinema-pills',  def: 0.1,  unit: 'rem', min: 0, max: 1.0, step: 0.05, css: '.cinema-label margin-bottom (_sharedStyles)' },
-        { v: '--gap-more',          def: 0.35, unit: 'rem', min: 0, max: 1.0, step: 0.05, css: '.showings-more margin-top (_pillStyles)' },
-        { v: '--card-body-pad',     def: 1.0,  unit: 'rem', min: 0, max: 2.0, step: 0.05, css: '.card-body padding (_sharedStyles)' },
-      ]},
-      { group: 'Pigułki seansów (showtime pills)', items: [
-        { v: '--showtime-pill-font',   def: 0.72, unit: 'rem', min: 0.5, max: 1.1, step: 0.01, css: '.badge-time font-size (_pillStyles)' },
-        { v: '--showtime-pill-py',     def: 0.25, unit: 'em',  min: 0,   max: 0.6, step: 0.01, css: '.badge-time padding-y (_pillStyles)' },
-        { v: '--showtime-pill-px',     def: 0.5,  unit: 'em',  min: 0,   max: 1.2, step: 0.01, css: '.badge-time padding-x (_pillStyles)' },
-        { v: '--showtime-pill-corner', def: 6,    unit: 'px',  min: 0,   max: 16,  step: 1,    css: '.badge-time border-radius (_pillStyles)' },
-        { v: '--showtime-pill-gap',    def: 2,    unit: 'px',  min: 0,   max: 10,  step: 1,    css: '.badge-time margin-right (_pillStyles)' },
-        { v: '--showtime-fmt-font',    def: 0.62, unit: 'rem', min: 0.4, max: 1.0, step: 0.01, css: '.badge-fmt font-size (_pillStyles)' },
-      ]},
-      { group: 'Pigułki ocen (rating pills)', items: [
-        { v: '--rating-pill-font',     def: 0.68, unit: 'rem', min: 0.5, max: 1.1, step: 0.01, css: '.rating-* font-size (_ratingStyles)' },
-        { v: '--rating-pill-py',       def: 0.3,  unit: 'em',  min: 0,   max: 0.7, step: 0.01, css: '.rating-* padding-y (_ratingStyles)' },
-        { v: '--rating-pill-px-label', def: 0.3,  unit: 'rem', min: 0,   max: 0.8, step: 0.01, css: '.rating-*-label padding-x (_ratingStyles)' },
-        { v: '--rating-pill-px-value', def: 0.35, unit: 'rem', min: 0,   max: 0.8, step: 0.01, css: '.rating-*-value padding-x (_ratingStyles)' },
-        { v: '--rating-pill-gap',      def: 0.25, unit: 'rem', min: 0,   max: 0.8, step: 0.01, css: '.ratings gap (_ratingStyles)' },
-        { v: '--rating-pill-corner',   def: 3,    unit: 'px',  min: 0,   max: 12,  step: 1,    css: '.rating-* border-radius (_ratingStyles)' },
-      ]},
-    ];
-
-    const scope = document.getElementById('scope');
-    const panel = document.getElementById('panel');
-    const actions = panel.querySelector('.actions');
-
-    const flat = [];
-    for (const g of CONTROLS) {
-      const groupEl = document.createElement('div');
-      groupEl.className = 'panel-group';
-      const h2 = document.createElement('h2');
-      h2.textContent = g.group;
-      groupEl.appendChild(h2);
-
-      for (const it of g.items) {
-        flat.push(it);
-        const row = document.createElement('div');
-        row.className = 'ctrl';
-
-        const label = document.createElement('label');
-        label.textContent = it.v;
-        label.title = it.css;
-
-        const input = document.createElement('input');
-        input.type = 'range';
-        input.min = it.min; input.max = it.max; input.step = it.step;
-        input.value = it.def;
-        input.dataset.var = it.v;
-        input.dataset.unit = it.unit;
-
-        const val = document.createElement('span');
-        val.className = 'val';
-
-        const fmt = (n) => (it.step < 1 ? Number(n).toFixed(2) : String(Number(n)));
-        const apply = () => {
-          const css = fmt(input.value) + it.unit;
-          scope.style.setProperty(it.v, css);
-          val.textContent = css;
-        };
-        input.addEventListener('input', apply);
-        it._input = input;
-        it._fmt = fmt;
-        apply();
-
-        // ± buttons on each side: stepDown/stepUp clamp to the slider's
-        // min/max and honour its step, so we get the same granularity as
-        // dragging without re-implementing the clamp.
-        const minus = document.createElement('button');
-        minus.type = 'button'; minus.className = 'step'; minus.textContent = '−';
-        minus.title = 'zmniejsz';
-        minus.addEventListener('click', () => { input.stepDown(); apply(); });
-
-        const plus = document.createElement('button');
-        plus.type = 'button'; plus.className = 'step'; plus.textContent = '+';
-        plus.title = 'zwiększ';
-        plus.addEventListener('click', () => { input.stepUp(); apply(); });
-
-        const wrap = document.createElement('div');
-        wrap.className = 'slider-wrap';
-        wrap.appendChild(minus);
-        wrap.appendChild(input);
-        wrap.appendChild(plus);
-
-        row.appendChild(label);
-        row.appendChild(wrap);
-        row.appendChild(val);
-        groupEl.appendChild(row);
-      }
-      panel.insertBefore(groupEl, actions);
-    }
-
-    function dumpText() {
-      return flat.map(it => {
-        const css = it._fmt(it._input.value) + it.unit;
-        return `${it.v} = ${css}    // ${it.css}`;
-      }).join('\n');
-    }
-
-    const dump = document.getElementById('dump');
-    const copiedMsg = document.getElementById('copiedMsg');
-    document.getElementById('copyBtn').addEventListener('click', async () => {
-      const text = dumpText();
-      dump.value = text;
-      dump.style.display = 'block';
-      try {
-        await navigator.clipboard.writeText(text);
-        copiedMsg.style.display = 'inline';
-        setTimeout(() => { copiedMsg.style.display = 'none'; }, 1500);
-      } catch (e) {
-        dump.select();
-      }
-    });
-  </script>
 </body>
 </html>

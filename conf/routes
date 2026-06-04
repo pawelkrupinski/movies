@@ -20,6 +20,11 @@ GET     /debug                      controllers.MovieController.debug()
 # showtime-pill + rating-pill font/padding/corner). Lets us eyeball spacing
 # without redeploying; never exposed in prod.
 GET     /debug/tune                 controllers.MovieController.tune()
+# Sibling tuning pages for the Kina (cinema-sectioned) view and the film-detail
+# view, linked by a sub-nav inside the three /debug/tune* pages. Same live-CSS-
+# variable approach as /debug/tune; dev-only.
+GET     /debug/tune/kina            controllers.MovieController.tuneKina()
+GET     /debug/tune/film            controllers.MovieController.tuneFilm()
 # Drop one row from cache+Mongo and re-fetch all upstream sources. Writes
 # incrementally as each stage completes so a debug-page reload shows the row
 # repopulating field-by-field.
