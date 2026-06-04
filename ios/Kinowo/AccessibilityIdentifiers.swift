@@ -56,4 +56,16 @@ enum A11y {
         static let repertoire = "empty.repertoire"
         static let error      = "error.repertoire"
     }
+
+    /// Non-prod `ShowtimeTuningScreen` only — lets `CardSpacingTuningUITests`
+    /// find a card to measure and a spacing slider to drag.
+    enum Tuning {
+        /// Prefix; the nth card is `"tuning.card.\(n)"`.
+        static let cardPrefix          = "tuning.card"
+        static let sectionSpacingSlider = "tuning.slider.section"
+        static let showingsBlockSlider = "tuning.slider.showingsBlock"
+        /// The controls scroll-view, so the test swipes inside the sheet to
+        /// reveal a slider rather than scrolling the cards behind it.
+        static let controlsScroll      = "tuning.controls"
+    }
 }

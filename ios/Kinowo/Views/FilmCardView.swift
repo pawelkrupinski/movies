@@ -9,11 +9,14 @@ struct FilmCardView: View {
     var showCinemaHeaders: Bool = true
     var truncatable: Bool = true
     @EnvironmentObject var prefs: UserPreferences
+    /// Vertical gaps. Defaults to the shipping layout; the non-prod
+    /// `ShowtimeTuningScreen` overrides it through the environment.
+    @Environment(\.cardSpacingStyle) private var spacing
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PosterView(film: film)
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: spacing.sectionSpacing) {
                 Text(film.title)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.white)
@@ -37,7 +40,7 @@ struct FilmCardView: View {
                         // bottom of every pill is followed by ≥ 14 pt
                         // before any neighbour can paint, regardless
                         // of which row the last pill ended up on.
-                        .padding(.bottom, 14)
+                        .padding(.bottom, spacing.ratingsBottom)
                 }
                 ShowingsView(film: film, showCinemaHeaders: showCinemaHeaders, truncatable: truncatable)
             }

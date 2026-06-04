@@ -15,6 +15,7 @@ import UIKit
 struct ShowtimeTuningScreen: View {
     @State private var style = ShowtimePillStyle()
     @State private var ratingStyle = RatingPillStyle()
+    @State private var spacing = CardSpacingStyle()
     @State private var sheetHeight: CGFloat = 360
     @State private var copied = false
     @GestureState private var dragTranslation: CGFloat = 0
@@ -39,8 +40,11 @@ struct ShowtimeTuningScreen: View {
     private func cards(bottomInset: CGFloat) -> some View {
         ScrollView {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                ForEach(films) { film in
+                ForEach(Array(films.enumerated()), id: \.element.id) { index, film in
                     FilmCardView(film: film, truncatable: false)
+                        // The XCUITest measures the first card's height before
+                        // and after dragging a spacing slider.
+                        .accessibilityIdentifier("\(A11y.Tuning.cardPrefix).\(index)")
                 }
             }
             .padding(12)
@@ -48,6 +52,7 @@ struct ShowtimeTuningScreen: View {
         }
         .environment(\.showtimePillStyle, style)
         .environment(\.ratingPillStyle, ratingStyle)
+        .environment(\.cardSpacingStyle, spacing)
     }
 
     // MARK: – draggable sheet
@@ -58,6 +63,14 @@ struct ShowtimeTuningScreen: View {
             header
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    group("Odstępy karty") {
+                        slider("Sekcje", $spacing.sectionSpacing, 0...24, id: A11y.Tuning.sectionSpacingSlider)
+                        slider("Pod ocenami", $spacing.ratingsBottom, 0...32)
+                        slider("Dni / kina", $spacing.showingsBlock, 0...24, id: A11y.Tuning.showingsBlockSlider)
+                        slider("Nad dniem", $spacing.dayLabelTop, 0...16)
+                        slider("Kino → seanse", $spacing.cinemaToPills, 0...16)
+                        slider("Rzędy pigułek", $spacing.pillRowSpacing, 0...16)
+                    }
                     group("Czas (time)") {
                         weightRow("Grubość", get: { style.timeWeight }, set: { style.timeWeight = $0 })
                         slider("Rozmiar", $style.timeFontSize, 7...20)
@@ -98,6 +111,7 @@ struct ShowtimeTuningScreen: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 32)
             }
+            .accessibilityIdentifier(A11y.Tuning.controlsScroll)
         }
         .frame(maxWidth: .infinity)
         .frame(height: height, alignment: .top)
@@ -143,7 +157,7 @@ struct ShowtimeTuningScreen: View {
                     .font(.system(size: 13, weight: .medium))
             }
             .buttonStyle(.bordered)
-            Button("Reset") { style = ShowtimePillStyle(); ratingStyle = RatingPillStyle() }
+            Button("Reset") { style = ShowtimePillStyle(); ratingStyle = RatingPillStyle(); spacing = CardSpacingStyle() }
                 .font(.system(size: 13, weight: .medium))
                 .buttonStyle(.bordered)
         }
@@ -167,6 +181,7 @@ struct ShowtimeTuningScreen: View {
         rating-solid: weight=\(w(ratingStyle.solidWeight))
         rating-pad: labelH=\(f(ratingStyle.labelHInset)) valueH=\(f(ratingStyle.valueHInset)) v=\(f(ratingStyle.vInset))
         rating-shape: corner=\(f(ratingStyle.cornerRadius)) interPill=\(f(ratingStyle.interPillGap))
+        card-gaps: section=\(f(spacing.sectionSpacing)) ratingsBottom=\(f(spacing.ratingsBottom)) showingsBlock=\(f(spacing.showingsBlock)) dayLabelTop=\(f(spacing.dayLabelTop)) cinemaToPills=\(f(spacing.cinemaToPills)) pillRow=\(f(spacing.pillRowSpacing))
         """
     }
 
@@ -227,10 +242,11 @@ struct ShowtimeTuningScreen: View {
         }
     }
 
-    private func slider(_ label: String, _ value: Binding<CGFloat>, _ range: ClosedRange<CGFloat>) -> some View {
+    private func slider(_ label: String, _ value: Binding<CGFloat>, _ range: ClosedRange<CGFloat>, id: String? = nil) -> some View {
         HStack(spacing: 10) {
             Text(label).font(.system(size: 12)).frame(width: 110, alignment: .leading)
             Slider(value: value, in: range, step: 0.5)
+                .accessibilityIdentifier(id ?? "")
             Text(String(format: "%.1f", value.wrappedValue))
                 .font(.system(size: 12, weight: .medium).monospacedDigit())
                 .frame(width: 38, alignment: .trailing)

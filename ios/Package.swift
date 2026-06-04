@@ -65,6 +65,7 @@ let package = Package(
                 // CoreGraphics) still ships in `KinowoCore` and is
                 // reachable from the test target.
                 "Views/CachedAsyncImage.swift",
+                "Views/CardSpacingStyle.swift",
                 "Views/FilmCardView.swift",
                 "Views/FilmDetailView.swift",
                 "Views/FilmGridView.swift",

@@ -18,6 +18,9 @@ struct ShowingsView: View {
     /// Pill rendering parameters. Defaults to `ShowtimePillMetrics`; the
     /// non-prod `ShowtimeTuningScreen` overrides it through the environment.
     @Environment(\.showtimePillStyle) private var pillStyle
+    /// Vertical gaps between days / cinemas / pill rows. Defaults to the
+    /// shipping layout; overridden by `ShowtimeTuningScreen`.
+    @Environment(\.cardSpacingStyle) private var spacing
 
     var body: some View {
         let allDays = film.showings
@@ -25,20 +28,20 @@ struct ShowingsView: View {
         let shouldTruncate = truncatable && hiddenShowtimes > 0
         let days = shouldTruncate ? visibleDays : allDays
 
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: spacing.showingsBlock) {
             ForEach(days, id: \.date) { day in
                 Text(day.label.uppercased())
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(Color.white.opacity(0.85))
                     .tracking(0.5)
-                    .padding(.top, 4)
+                    .padding(.top, spacing.dayLabelTop)
                 ForEach(day.cinemas, id: \.cinema) { cinema in
                     let commonTokens = FormatTokenFilter.commonTokens(cinema)
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: spacing.cinemaToPills) {
                         if showCinemaHeaders {
                             cinemaLabel(cinema)
                         }
-                        FlowLayout(spacing: pillStyle.interPillGap, lineSpacing: 4) {
+                        FlowLayout(spacing: pillStyle.interPillGap, lineSpacing: spacing.pillRowSpacing) {
                             ForEach(cinema.showtimes) { st in
                                 ShowtimeBadge(
                                     showtime: st,
