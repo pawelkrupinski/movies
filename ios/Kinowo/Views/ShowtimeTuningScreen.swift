@@ -243,14 +243,34 @@ struct ShowtimeTuningScreen: View {
     }
 
     private func slider(_ label: String, _ value: Binding<CGFloat>, _ range: ClosedRange<CGFloat>, id: String? = nil) -> some View {
-        HStack(spacing: 10) {
-            Text(label).font(.system(size: 12)).frame(width: 110, alignment: .leading)
-            Slider(value: value, in: range, step: 0.5)
+        let step: CGFloat = 0.5
+        return HStack(spacing: 8) {
+            Text(label).font(.system(size: 12)).frame(width: 92, alignment: .leading)
+            stepButton(systemName: "minus") {
+                value.wrappedValue = max(range.lowerBound, value.wrappedValue - step)
+            }
+            Slider(value: value, in: range, step: step)
                 .accessibilityIdentifier(id ?? "")
+            stepButton(systemName: "plus") {
+                value.wrappedValue = min(range.upperBound, value.wrappedValue + step)
+            }
             Text(String(format: "%.1f", value.wrappedValue))
                 .font(.system(size: 12, weight: .medium).monospacedDigit())
-                .frame(width: 38, alignment: .trailing)
+                .frame(width: 34, alignment: .trailing)
         }
+    }
+
+    /// Small −/+ button flanking a slider, nudging it by one 0.5 step (clamped
+    /// to the slider's range) for precise dialling without dragging.
+    private func stepButton(systemName: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 24, height: 26)
+                .background(Color.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 5))
+        }
+        .buttonStyle(.plain)
     }
 
     private func weightRow(_ label: String, get: @escaping () -> Font.Weight, set: @escaping (Font.Weight) -> Void) -> some View {
