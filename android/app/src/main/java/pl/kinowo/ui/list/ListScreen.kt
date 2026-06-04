@@ -50,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
@@ -68,6 +69,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.take
 import android.content.res.Configuration
@@ -103,6 +105,16 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     // bar; narrow ones keep it as the floating bottom pill. screenWidthDp
     // recomposes on rotation / resize, so the placement follows. See TopBarLayout.
     val wide = TopBarLayout.searchInline(LocalConfiguration.current.screenWidthDp)
+
+    // Pull-to-refresh indicator state. Driven ONLY by a user pull — NOT by the
+    // background `isLoading`. Binding the indicator to `isLoading` left it stuck:
+    // on a cold start the cache paints films instantly, so the PullToRefreshBox
+    // first composes while the automatic reload already has `isLoading == true`,
+    // and Material3's indicator, shown without a preceding pull gesture, never
+    // retracts. Here a pull flips `refreshing` true and the reload job's
+    // completion (join) flips it back — deterministic, no flow-conflation race.
+    val refreshScope = rememberCoroutineScope()
+    var refreshing by remember { mutableStateOf(false) }
 
     val pager = rememberPagerState(pageCount = { 2 })
     // Backdrop captured by `Modifier.haze` (the grid) and sampled by the
@@ -204,7 +216,16 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                         isLoading && films.isEmpty() -> CenteredMessage("Ładowanie repertuaru…")
                         error != null && films.isEmpty() -> ErrorState(error!!) { vm.reload() }
                         else -> HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
-                            PullToRefreshBox(isRefreshing = isLoading, onRefresh = { vm.reload() }) {
+                            PullToRefreshBox(
+                                isRefreshing = refreshing,
+                                onRefresh = {
+                                    refreshing = true
+                                    refreshScope.launch {
+                                        vm.reload().join()
+                                        refreshing = false
+                                    }
+                                },
+                            ) {
                                 if (page == 0) {
                                     FilmsGrid(vm.filmsForFilmsTab(films, hidden, disabled), gridBottomInset, onOpenFilm) { vm.hide(it) }
                                 } else {
