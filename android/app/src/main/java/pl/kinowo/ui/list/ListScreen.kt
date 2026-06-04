@@ -79,6 +79,7 @@ import pl.kinowo.filter.DateFilter
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.TopBarLayout
+import pl.kinowo.ui.common.LocalCinemaHeaderStyle
 import pl.kinowo.ui.common.PosterPrefetch
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
@@ -555,7 +556,7 @@ private fun FilmsGrid(films: List<Film>, bottomInset: Dp, onOpen: (String) -> Un
 }
 
 @Composable
-private fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, bottomInset: Dp, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
+internal fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, bottomInset: Dp, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
     if (sections.isEmpty()) {
         EmptyState("Brak repertuaru.")
         return
@@ -572,12 +573,13 @@ private fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, bott
         }
     }
     PosterPrefetch(posterUrls, gridState)
+    val headerStyle = LocalCinemaHeaderStyle.current
     LazyVerticalGrid(
         columns = posterGridCells(),
         state = gridState,
         contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = bottomInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(headerStyle.sectionSpacing),
         modifier = Modifier.fillMaxSize(),
     ) {
         for (section in sections) {
@@ -586,9 +588,9 @@ private fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, bott
                     Text(
                         text = CinemaSection.pillName(section.cinema),
                         color = CinemaBlue,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                        fontSize = headerStyle.fontSize,
+                        fontWeight = headerStyle.fontWeight,
+                        modifier = Modifier.padding(top = headerStyle.headerTopGap, bottom = headerStyle.headerToGrid),
                     )
                 }
             }

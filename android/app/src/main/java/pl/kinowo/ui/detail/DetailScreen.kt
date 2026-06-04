@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
+import pl.kinowo.ui.common.LocalFilmDetailStyle
 import pl.kinowo.ui.common.MetaPills
 import pl.kinowo.ui.common.PosterImage
 import pl.kinowo.ui.common.RatingBadges
@@ -62,6 +63,7 @@ import pl.kinowo.ui.theme.TextSecondary
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
+    val style = LocalFilmDetailStyle.current
     Scaffold(
         topBar = {
             TopAppBar(
@@ -93,7 +95,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
         }
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(style.outerSpacing),
         ) {
             // Header: poster + title/ratings.
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -102,14 +104,14 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                     contentDescription = film.title,
                     modifier = Modifier.width(150.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)),
                 )
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(film.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(style.headerSpacing)) {
+                    Text(film.title, fontSize = style.titleFontSize, fontWeight = style.titleWeight, color = Color.White)
                     // Original (production-language) title, when the backend
                     // reports one distinct from the Polish cinema title.
                     details?.originalTitle?.takeIf { it.isNotBlank() }?.let { original ->
                         Text(
                             original,
-                            fontSize = 14.sp,
+                            fontSize = style.originalTitleFontSize,
                             fontStyle = FontStyle.Italic,
                             color = Color(0xFFAAAAAA),
                         )
@@ -162,7 +164,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
             // Seanse (full).
             if (film.showings.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Seanse", fontWeight = FontWeight.SemiBold, color = Color.White)
+                    Text("Seanse", fontSize = style.showingsHeaderFontSize, fontWeight = FontWeight.SemiBold, color = Color.White)
                     Showings(film = film, showCinemaHeaders = true, maxChips = null)
                 }
             }
@@ -173,9 +175,10 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
 @Composable
 private fun MetaBlock(label: String, value: String?) {
     if (value.isNullOrBlank()) return
+    val style = LocalFilmDetailStyle.current
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(label.uppercase(), color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-        Text(value, color = Color.White, fontSize = 14.sp, lineHeight = 20.sp)
+        Text(label.uppercase(), color = TextSecondary, fontSize = style.sectionLabelFontSize, fontWeight = FontWeight.SemiBold)
+        Text(value, color = Color.White, fontSize = style.sectionBodyFontSize, lineHeight = 20.sp)
     }
 }
 
