@@ -279,7 +279,8 @@ private fun SheetControls(
             DpSlider("Tytuł ↔ meta", cardSpacing.titleToMeta, 0f..24f) { onCardSpacingChange(cardSpacing.copy(titleToMeta = it)) }
             DpSlider("Meta ↔ oceny", cardSpacing.metaToRatings, 0f..24f) { onCardSpacingChange(cardSpacing.copy(metaToRatings = it)) }
             DpSlider("Oceny ↔ seanse", cardSpacing.ratingsToShowings, 0f..24f) { onCardSpacingChange(cardSpacing.copy(ratingsToShowings = it)) }
-            DpSlider("Dni / kina", cardSpacing.showingsBlock, 0f..24f) { onCardSpacingChange(cardSpacing.copy(showingsBlock = it)) }
+            DpSlider("Dzień ↔ kino", cardSpacing.dayToCinema, 0f..24f) { onCardSpacingChange(cardSpacing.copy(dayToCinema = it)) }
+            DpSlider("Blok seansów", cardSpacing.showingsBlock, 0f..24f) { onCardSpacingChange(cardSpacing.copy(showingsBlock = it)) }
         }
 
         Group("Ocena: rozmiar bazowy") {
@@ -455,7 +456,7 @@ internal fun copyText(s: ShowtimeChipStyle, r: RatingPillStyle, c: CardSpacingSt
         append("format: size=${oneDecimal(s.formatFontSize.value)} weight=${WeightOption.of(s.formatWeight).key}\n")
         append("padding: h=${oneDecimal(s.horizontalInset.value)} v=${oneDecimal(s.verticalInset.value)}\n")
         append("gaps: internal=${oneDecimal(s.internalGap.value)} interPill=${oneDecimal(s.interPillGap.value)}\n")
-        append("card-gaps: titleToMeta=${oneDecimal(c.titleToMeta.value)} metaToRatings=${oneDecimal(c.metaToRatings.value)} ratingsToShowings=${oneDecimal(c.ratingsToShowings.value)} showingsBlock=${oneDecimal(c.showingsBlock.value)}\n")
+        append("card-gaps: titleToMeta=${oneDecimal(c.titleToMeta.value)} metaToRatings=${oneDecimal(c.metaToRatings.value)} ratingsToShowings=${oneDecimal(c.ratingsToShowings.value)} dayToCinema=${oneDecimal(c.dayToCinema.value)} showingsBlock=${oneDecimal(c.showingsBlock.value)}\n")
         append("rating-base: size=${oneDecimal(r.baseFontSize.value)} labelW=${WeightOption.of(r.labelWeight).key} valueW=${WeightOption.of(r.valueWeight).key} solidW=${WeightOption.of(r.solidWeight).key}\n")
         append("rating-pad: h=${oneDecimal(r.hPad.value)} v=${oneDecimal(r.vPad.value)}\n")
         append("rating-shape: corner=${oneDecimal(r.corner.value)} interPill=${oneDecimal(r.interPillGap.value)}\n")

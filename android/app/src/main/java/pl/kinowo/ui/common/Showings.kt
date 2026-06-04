@@ -105,40 +105,50 @@ fun Showings(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(cardSpacing.showingsBlock)) {
         for (day in film.showings) {
             if (budget <= 0) break
-            Text(
-                text = day.label.uppercase(),
-                color = TextSecondary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            for (cg in day.cinemas) {
-                if (budget <= 0) break
-                if (showCinemaHeaders) {
-                    Text(
-                        text = cg.cinema,
-                        color = CinemaBlue,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = if (cg.cinemaURL != null) {
-                            Modifier.clickable { openUrl(context, cg.cinemaURL) }
-                        } else Modifier,
-                    )
-                }
-                val common = FormatTokenFilter.commonTokens(cg)
-                val slots = cg.showtimes.take(budget)
-                budget -= slots.size
-                shown += slots.size
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(chipStyle.interPillGap),
-                    verticalArrangement = Arrangement.spacedBy(chipStyle.interPillGap),
+            // Each day is its own block so the gap below the day label
+            // (`dayToCinema`) is independent of `showingsBlock`, which spaces the
+            // cinema/pills rows and the day blocks from one another.
+            Column {
+                Text(
+                    text = day.label.uppercase(),
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Column(
+                    modifier = Modifier.padding(top = cardSpacing.dayToCinema),
+                    verticalArrangement = Arrangement.spacedBy(cardSpacing.showingsBlock),
                 ) {
-                    for (st in slots) {
-                        ShowtimeChip(
-                            time = st.time,
-                            format = FormatTokenFilter.filter(st.format, common),
-                            room = st.displayRoom,
-                            onClick = st.bookingURL?.let { url -> { openUrl(context, url) } },
-                        )
+                    for (cg in day.cinemas) {
+                        if (budget <= 0) break
+                        if (showCinemaHeaders) {
+                            Text(
+                                text = cg.cinema,
+                                color = CinemaBlue,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = if (cg.cinemaURL != null) {
+                                    Modifier.clickable { openUrl(context, cg.cinemaURL) }
+                                } else Modifier,
+                            )
+                        }
+                        val common = FormatTokenFilter.commonTokens(cg)
+                        val slots = cg.showtimes.take(budget)
+                        budget -= slots.size
+                        shown += slots.size
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(chipStyle.interPillGap),
+                            verticalArrangement = Arrangement.spacedBy(chipStyle.interPillGap),
+                        ) {
+                            for (st in slots) {
+                                ShowtimeChip(
+                                    time = st.time,
+                                    format = FormatTokenFilter.filter(st.format, common),
+                                    room = st.displayRoom,
+                                    onClick = st.bookingURL?.let { url -> { openUrl(context, url) } },
+                                )
+                            }
+                        }
                     }
                 }
             }

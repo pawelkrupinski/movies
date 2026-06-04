@@ -28,7 +28,7 @@ import pl.kinowo.ui.theme.KinowoTheme
  * [LocalCardSpacingStyle] gaps actually drive the card. It renders a [FilmCard]
  * with two day sections and measures the vertical gap between the two day
  * labels; the gap is the `showingsBlock` spacing. With a 40 dp override the gap
- * must be meaningfully larger than at the 8 dp default — which only holds if the
+ * must be meaningfully larger than at the 4.5 dp default — which only holds if the
  * lever is wired through to the showings block. NATIVE graphics for real
  * metrics; `xhdpi` so sub-dp differences resolve.
  *
@@ -64,11 +64,25 @@ class CardSpacingStyleTest {
         ),
     )
 
+    // One day, one named cinema, so the day-label → cinema-name gap is measurable.
+    private fun oneCinemaFilm(title: String, day: String, cinema: String) = Film(
+        title = title,
+        showings = listOf(
+            DayShowings(
+                date = "2026-06-08",
+                label = day,
+                cinemas = listOf(
+                    CinemaShowings(cinema = cinema, showtimes = listOf(Showtime(time = "12:55", format = "2D"))),
+                ),
+            ),
+        ),
+    )
+
     @androidx.compose.runtime.Composable
-    private fun card(film: Film, style: CardSpacingStyle) {
+    private fun card(film: Film, style: CardSpacingStyle, showCinemaHeaders: Boolean = false) {
         CompositionLocalProvider(LocalCardSpacingStyle provides style) {
             Box(Modifier.width(180.dp)) {
-                FilmCard(film = film, showCinemaHeaders = false, onOpen = {}, onHide = {})
+                FilmCard(film = film, showCinemaHeaders = showCinemaHeaders, onOpen = {}, onHide = {})
             }
         }
     }
@@ -85,9 +99,9 @@ class CardSpacingStyleTest {
 
     /**
      * One composition, two cards: the first driven by a 40 dp `showingsBlock`, the
-     * second by the 8 dp default. The wide card's day-to-day span must exceed the
+     * second by the default. The wide card's day-to-day span must exceed the
      * default card's — only true if [LocalCardSpacingStyle] feeds the showings
-     * block. Stub the lever (or hard-code 8 dp) and the two spans are equal → fail.
+     * block. Stub the lever (or hard-code the gap) and the two spans are equal → fail.
      */
     @Test
     fun showingsBlockGapWidensTheDaySpacing() {
@@ -105,7 +119,44 @@ class CardSpacingStyleTest {
 
         assertTrue("day-label span measured no height — metrics are stubbed", default > 0f)
         assertTrue(
-            "showingsBlock=40dp must widen the day-to-day span vs default 8dp: " +
+            "showingsBlock=40dp must widen the day-to-day span vs default: " +
+                "wide=$wide default=$default",
+            wide - default > 20f,
+        )
+    }
+
+    /** Gap from the bottom of the day label to the top of the cinema name — the
+     *  `dayToCinema` lever is exactly this distance. */
+    private fun dayToCinemaGap(day: String, cinema: String): Float {
+        val dayNode = compose.onNodeWithText(day.uppercase(), useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val cinemaNode = compose.onNodeWithText(cinema, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        return (cinemaNode.top - dayNode.bottom).value
+    }
+
+    /**
+     * `dayToCinema` is a SEPARATE lever from `showingsBlock`: with both cards held
+     * at the same `showingsBlock`, bumping only `dayToCinema` to 40 dp must widen
+     * the day-label → cinema-name gap while leaving everything else alone. Before
+     * the lever existed that gap was driven by `showingsBlock`, so a `dayToCinema`
+     * override would do nothing → fail.
+     */
+    @Test
+    fun dayToCinemaGapIsTunableIndependentlyOfShowingsBlock() {
+        compose.setContent {
+            KinowoTheme {
+                Row {
+                    card(oneCinemaFilm("WIDE", "WIDEPON", "WideKino"), CardSpacingStyle(dayToCinema = 40.dp), showCinemaHeaders = true)
+                    card(oneCinemaFilm("DEF", "DEFPON", "DefKino"), CardSpacingStyle(), showCinemaHeaders = true)
+                }
+            }
+        }
+
+        val wide = dayToCinemaGap("WIDEPON", "WideKino")
+        val default = dayToCinemaGap("DEFPON", "DefKino")
+
+        assertTrue("day→cinema gap measured no height — metrics are stubbed", default > 0f)
+        assertTrue(
+            "dayToCinema=40dp must widen the day→cinema gap vs default (both share showingsBlock): " +
                 "wide=$wide default=$default",
             wide - default > 20f,
         )
