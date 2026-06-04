@@ -470,59 +470,128 @@ class MovieController( cc: ControllerComponents,
 
 object MovieController {
 
-  /** Deterministic two-card sample for the `/debug/tune` page — built in
-   *  process so the tuning page renders the real `_movieCard` partial without
-   *  depending on live cache contents. One fully-enriched film (all four
-   *  ratings, two cinemas, multiple showtimes across two days) so every pill
-   *  row and vertical gap is visible, plus a sparser film (one rating, one
-   *  cinema) so the layout's looser case is also on screen. */
+  /** Deterministic sample cards for the `/debug/tune` page — built in process
+   *  so the tuning page renders the real `_movieCard` partial without depending
+   *  on live cache contents. The set is a deliberate spread of edge cases so
+   *  every pill row, rating variant, and vertical gap is on screen at once:
+   *
+   *   1. `rich`        — all four ratings (RT fresh), two cinemas, two days.
+   *   2. `manyTimes`   — long wrapping title + 3 genres, one cinema with many
+   *                      showtimes whose format tokens all differ, so the pills
+   *                      wrap across several rows with wide format badges.
+   *   3. `rotten`      — RT below 60 (the `.rotten` red variant) + a low
+   *                      single-digit IMDb, so the rotten styling and the
+   *                      narrowest rating values show.
+   *   4. `extremes`    — the widest possible values: IMDb 10.0, Metacritic 100,
+   *                      RT 100%, Filmweb 10.0 — stress-tests pill width.
+   *   5. `metaOnly`    — only the Metacritic bare-number pill, alone on its row.
+   *   6. `noRatings`   — no enrichment at all, so the ratings row is absent and
+   *                      the meta→date gap collapses to just the title gap.
+   *   7. `seniorClub`  — a programme-prefixed long title (the separate-row case)
+   *                      with a single no-booking showtime (the `<span>` badge
+   *                      variant, not the `<a>` one).
+   *   8. `sparse`      — one rating, one cinema, one showtime: the loosest case.
+   */
   private[controllers] def tuneSampleFilms: Seq[FilmSchedule] = {
     val base = LocalDate.of(2026, 6, 4)
     def at(d: LocalDate, h: Int, m: Int): LocalDateTime = d.atTime(h, m)
 
-    def showtime(d: LocalDate, h: Int, m: Int, fmt: List[String]): Showtime =
-      Showtime(at(d, h, m), bookingUrl = Some("https://example.test/book"), room = Some("Sala 1"), format = fmt)
+    def slot(d: LocalDate, h: Int, m: Int, fmt: List[String], booking: Boolean = true): Showtime =
+      Showtime(
+        at(d, h, m),
+        bookingUrl = if (booking) Some("https://example.test/book") else None,
+        room       = Some("Sala 1"),
+        format     = fmt
+      )
 
-    val richRecord = MovieRecord(
-      imdbId         = Some("tt1375666"),
-      imdbRating     = Some(8.8),
-      metascore      = Some(74),
-      rottenTomatoes = Some(87),
-      filmwebRating  = Some(7.6)
-    )
-    val rich = FilmSchedule(
-      movie          = Movie("Incepcja", runtimeMinutes = Some(148), releaseYear = Some(2010), genres = Seq("Sci-Fi", "Akcja")),
-      posterUrl      = None,
-      synopsis       = None,
-      cast           = Seq.empty,
-      director       = Seq.empty,
-      cinemaFilmUrls = Seq.empty,
-      showings       = Seq(
+    def film(
+      title:      String,
+      genres:     Seq[String],
+      runtime:    Option[Int],
+      year:       Option[Int],
+      enrichment: Option[MovieRecord],
+      showings:   Seq[(LocalDate, Seq[CinemaShowtimes])]
+    ): FilmSchedule =
+      FilmSchedule(
+        movie          = Movie(title, runtimeMinutes = runtime, releaseYear = year, genres = genres),
+        posterUrl      = None,
+        synopsis       = None,
+        cast           = Seq.empty,
+        director       = Seq.empty,
+        cinemaFilmUrls = Seq.empty,
+        showings       = showings,
+        enrichment     = enrichment
+      )
+
+    val rich = film(
+      "Incepcja", Seq("Sci-Fi", "Akcja"), Some(148), Some(2010),
+      Some(MovieRecord(imdbId = Some("tt1375666"), imdbRating = Some(8.8), metascore = Some(74), rottenTomatoes = Some(87), filmwebRating = Some(7.6))),
+      Seq(
         base -> Seq(
-          CinemaShowtimes(Multikino, Seq(showtime(base, 17, 30, List("2D", "NAP")), showtime(base, 20, 15, List("2D")))),
-          CinemaShowtimes(Helios,    Seq(showtime(base, 18, 0, List("IMAX", "2D"))))
+          CinemaShowtimes(Multikino, Seq(slot(base, 17, 30, List("2D", "NAP")), slot(base, 20, 15, List("2D")))),
+          CinemaShowtimes(Helios,    Seq(slot(base, 18, 0, List("IMAX", "2D"))))
         ),
         base.plusDays(1) -> Seq(
-          CinemaShowtimes(Multikino, Seq(showtime(base.plusDays(1), 19, 45, List("2D", "DUB"))))
+          CinemaShowtimes(Multikino, Seq(slot(base.plusDays(1), 19, 45, List("2D", "DUB"))))
         )
-      ),
-      enrichment     = Some(richRecord)
+      )
     )
 
-    val sparse = FilmSchedule(
-      movie          = Movie("Cicha noc", runtimeMinutes = Some(98), releaseYear = Some(2017), genres = Seq("Dramat")),
-      posterUrl      = None,
-      synopsis       = None,
-      cast           = Seq.empty,
-      director       = Seq.empty,
-      cinemaFilmUrls = Seq.empty,
-      showings       = Seq(
-        base -> Seq(CinemaShowtimes(KinoMuza, Seq(showtime(base, 21, 0, List("2D")))))
-      ),
-      enrichment     = Some(MovieRecord(filmwebRating = Some(7.1)))
+    // One cinema, eight showtimes, every slot a different format token set so
+    // none is stripped as "common" — the badges wrap to several rows and the
+    // wide tokens (4DX, VOSE, ATMOS) stress the pill's max width.
+    val manyTimes = film(
+      "Spider-Man: Poprzez multiwersum (wersja rozszerzona)", Seq("Animacja", "Akcja", "Przygodowy"), Some(140), Some(2023),
+      Some(MovieRecord(imdbId = Some("tt9362722"), imdbRating = Some(8.6), metascore = Some(86), rottenTomatoes = Some(95), filmwebRating = Some(7.9))),
+      Seq(base -> Seq(CinemaShowtimes(CinemaCityKinepolis, Seq(
+        slot(base, 10, 0,  List("2D", "DUB")),
+        slot(base, 12, 30, List("3D", "DUB")),
+        slot(base, 14, 15, List("IMAX", "NAP")),
+        slot(base, 16, 0,  List("4DX")),
+        slot(base, 18, 20, List("VOSE")),
+        slot(base, 20, 0,  List("ATMOS", "NAP")),
+        slot(base, 21, 30, List("2D", "NAP", "ATMOS")),
+        slot(base, 23, 0,  List("3D"))
+      ))))
     )
 
-    Seq(rich, sparse)
+    val rotten = film(
+      "Morbius", Seq("Akcja", "Horror"), Some(104), Some(2022),
+      Some(MovieRecord(imdbId = Some("tt5108870"), imdbRating = Some(4.3), metascore = Some(35), rottenTomatoes = Some(15), filmwebRating = Some(4.1))),
+      Seq(base -> Seq(CinemaShowtimes(Helios, Seq(slot(base, 19, 0, List("2D", "NAP"))))))
+    )
+
+    val extremes = film(
+      "Ojciec chrzestny", Seq("Dramat", "Kryminał"), Some(175), Some(1972),
+      Some(MovieRecord(imdbId = Some("tt0068646"), imdbRating = Some(10.0), metascore = Some(100), rottenTomatoes = Some(100), filmwebRating = Some(10.0))),
+      Seq(base -> Seq(CinemaShowtimes(KinoPalacowe, Seq(slot(base, 16, 45, List("2D", "NAP"))))))
+    )
+
+    val metaOnly = film(
+      "Aftersun", Seq("Dramat"), Some(102), Some(2022),
+      Some(MovieRecord(metascore = Some(95))),
+      Seq(base -> Seq(CinemaShowtimes(KinoMuza, Seq(slot(base, 20, 30, List("NAP"))))))
+    )
+
+    val noRatings = film(
+      "Pokaz przedpremierowy: Niezatytułowany film", Seq("Dramat"), None, Some(2026),
+      None,
+      Seq(base -> Seq(CinemaShowtimes(Rialto, Seq(slot(base, 18, 15, List("NAP"))))))
+    )
+
+    val seniorClub = film(
+      "Kino Seniora: Niebo nad Berlinem", Seq("Dramat", "Fantasy"), Some(128), Some(1987),
+      Some(MovieRecord(imdbId = Some("tt0093191"), imdbRating = Some(8.0), filmwebRating = Some(7.8))),
+      Seq(base -> Seq(CinemaShowtimes(KinoApollo, Seq(slot(base, 12, 0, List("NAP"), booking = false)))))
+    )
+
+    val sparse = film(
+      "Cicha noc", Seq("Dramat"), Some(98), Some(2017),
+      Some(MovieRecord(filmwebRating = Some(7.1))),
+      Seq(base -> Seq(CinemaShowtimes(KinoMuza, Seq(slot(base, 21, 0, List("2D"))))))
+    )
+
+    Seq(rich, manyTimes, rotten, extremes, metaOnly, noRatings, seniorClub, sparse)
   }
 
   /** Build the `og:description` / `twitter:description` text for the film

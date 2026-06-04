@@ -49,10 +49,17 @@
       font-size: 12px; color: #66aadd; text-transform: uppercase; letter-spacing: .06em;
       margin: 0 0 .4rem; border-bottom: 1px solid #1a1a2e; padding-bottom: .2rem;
     }
-    .ctrl { display: grid; grid-template-columns: 1fr 130px 5ch; gap: .4rem; align-items: center; margin-bottom: .3rem; }
+    .ctrl { display: grid; grid-template-columns: 1fr 170px 5ch; gap: .4rem; align-items: center; margin-bottom: .3rem; }
     .ctrl label { color: #ccc; }
     .ctrl .val { color: #9df; font-variant-numeric: tabular-nums; text-align: right; }
-    .ctrl input[type=range] { width: 100%; }
+    .ctrl .slider-wrap { display: flex; align-items: center; gap: .25rem; }
+    .ctrl input[type=range] { flex: 1 1 auto; min-width: 0; }
+    .ctrl button.step {
+      flex: 0 0 auto; width: 1.5em; height: 1.5em; line-height: 1; padding: 0;
+      background: #1a1a2e; border: 1px solid #3a3a6e; color: #aad4ff;
+      border-radius: 4px; cursor: pointer; font: inherit; font-size: 13px;
+    }
+    .ctrl button.step:hover { background: #252540; color: #fff; }
     .actions { margin-top: 1rem; display: flex; gap: .5rem; align-items: center; }
     button.copy {
       background: #1a1a2e; border: 1px solid #3a3a6e; color: #aad4ff;
@@ -165,8 +172,27 @@
         it._fmt = fmt;
         apply();
 
+        // ± buttons on each side: stepDown/stepUp clamp to the slider's
+        // min/max and honour its step, so we get the same granularity as
+        // dragging without re-implementing the clamp.
+        const minus = document.createElement('button');
+        minus.type = 'button'; minus.className = 'step'; minus.textContent = '−';
+        minus.title = 'zmniejsz';
+        minus.addEventListener('click', () => { input.stepDown(); apply(); });
+
+        const plus = document.createElement('button');
+        plus.type = 'button'; plus.className = 'step'; plus.textContent = '+';
+        plus.title = 'zwiększ';
+        plus.addEventListener('click', () => { input.stepUp(); apply(); });
+
+        const wrap = document.createElement('div');
+        wrap.className = 'slider-wrap';
+        wrap.appendChild(minus);
+        wrap.appendChild(input);
+        wrap.appendChild(plus);
+
         row.appendChild(label);
-        row.appendChild(input);
+        row.appendChild(wrap);
         row.appendChild(val);
         groupEl.appendChild(row);
       }

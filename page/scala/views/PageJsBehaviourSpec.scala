@@ -109,6 +109,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         case p if p.startsWith("/film?title=") =>
           renderFilm(p.stripPrefix("/film?title="))
         case p if p == "/plan" || p.startsWith("/plan?") => planHtml
+        // The dev-only visual-tuning page — rendered with real fixture films
+        // so its slider panel (and the ± step buttons) can be driven over CDP.
+        case "/debug/tune" => views.html.tune(schedules.take(3)).body
       })
     }
   }
@@ -1951,6 +1954,38 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         " h.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true})); })()"
       )
       isFolded(page) shouldBe true
+    }
+  }
+
+  // ── /debug/tune ± step buttons ───────────────────────────────────────────
+
+  "the /debug/tune slider ± buttons" should "step the value and update the CSS var on the preview" in {
+    onPath("/debug/tune") { page =>
+      val rangeSel = "document.querySelector('.ctrl input[type=range]')"
+      val varName  = page.evalString(s"$rangeSel.dataset.var")
+      def sliderValue: Double = page.evalString(s"$rangeSel.value").toDouble
+      // The var the production card CSS reads is set on `#scope` on load and
+      // re-set on every step — so the preview re-layouts live.
+      def scopeVar: String =
+        page.evalString(s"document.querySelector('#scope').style.getPropertyValue(${jsString(varName)}).trim()")
+
+      scopeVar should not be empty
+      val start = sliderValue
+
+      // The wrap holds [−, range, +] — last-child is +, first-child is −.
+      val wrap = "document.querySelector('.ctrl .slider-wrap')"
+      def click(child: String): Unit =
+        page.evalBool(s"(() => { $wrap.querySelector(${jsString(child)}).click(); return true; })()") shouldBe true
+
+      click("button.step:last-child")
+      val up = sliderValue
+      up should be > start
+      // The CSS var tracks the slider (2-dp format + the control's unit).
+      scopeVar shouldBe f"$up%.2f" + "rem"
+
+      click("button.step:first-child")
+      click("button.step:first-child")
+      sliderValue should be < up
     }
   }
 

@@ -43,6 +43,40 @@ class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
     contentAsString(result) should include("Incepcja")
   }
 
+  it should "render the pill / rating edge cases the page exists to tune" in {
+    val ctrl = buildController(Mode.Dev)
+    val html = contentAsString(ctrl.tune().apply(FakeRequest(GET, "/debug/tune")))
+
+    // RT below 60 → the `.rotten` red variant (Morbius, RT 15).
+    html should include("rating-rt rotten")
+    // A wide format token from the many-showtimes wrapping card.
+    html should include("4DX")
+    // The lone Metacritic bare-number pill (Aftersun) — and a card with no
+    // ratings row at all (the preview / untitled film, enrichment = None).
+    html should include("Aftersun")
+    html should include("Niezatytułowany")
+    // Programme-prefixed title kept verbatim (separate-row case).
+    html should include("Kino Seniora")
+  }
+
+  "tuneSampleFilms" should "cover the pill/rating edge cases" in {
+    val films = MovieController.tuneSampleFilms
+
+    // A card with no enrichment (no ratings row).
+    films.exists(_.enrichment.isEmpty) shouldBe true
+    // A rotten RT (below 60) and the widest values (10.0 / 100 / 100%).
+    films.flatMap(_.enrichment).flatMap(_.rottenTomatoes).min should be < 60
+    films.flatMap(_.enrichment).flatMap(_.imdbRating).max shouldBe 10.0
+    // A card whose single cinema has many showtimes (pills wrap several rows).
+    val maxSlotsInOneCinema = films
+      .flatMap(_.showings.flatMap(_._2))
+      .map(_.showtimes.size)
+      .max
+    maxSlotsInOneCinema should be >= 8
+    // At least one no-booking showtime → the `<span>` badge variant.
+    films.flatMap(_.showings.flatMap(_._2)).flatMap(_.showtimes).exists(_.bookingUrl.isEmpty) shouldBe true
+  }
+
   it should "404 in production" in {
     val ctrl   = buildController(Mode.Prod)
     val result = ctrl.tune().apply(FakeRequest(GET, "/debug/tune"))
