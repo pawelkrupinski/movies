@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -397,10 +398,12 @@ private fun LabeledSlider(
     range: ClosedFloatingPointRange<Float>,
     onChange: (Float) -> Unit,
 ) {
+    val step = 0.5f
     // Snap to 0.5 steps to match the iOS slider granularity.
-    val steps = ((range.endInclusive - range.start) / 0.5f).toInt() - 1
+    val steps = ((range.endInclusive - range.start) / step).toInt() - 1
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = Color.White, fontSize = 12.sp, modifier = Modifier.width(110.dp))
+        Text(label, color = Color.White, fontSize = 12.sp, modifier = Modifier.width(96.dp))
+        StepButton("−") { onChange((value - step).coerceIn(range.start, range.endInclusive)) }
         Slider(
             value = value,
             onValueChange = { onChange((Math.round(it * 2f) / 2f)) },
@@ -408,13 +411,30 @@ private fun LabeledSlider(
             steps = steps.coerceAtLeast(0),
             modifier = Modifier.weight(1f),
         )
+        StepButton("+") { onChange((value + step).coerceIn(range.start, range.endInclusive)) }
         Text(
             oneDecimal(value),
             color = Color.White,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.width(40.dp),
+            modifier = Modifier.width(36.dp),
         )
+    }
+}
+
+/** Small −/+ button flanking a slider, nudging it by one 0.5 step (clamped to
+ *  the slider's range) for precise dialling without dragging. */
+@Composable
+private fun StepButton(symbol: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(26.dp)
+            .clip(RoundedCornerShape(5.dp))
+            .background(Color.White.copy(alpha = 0.08f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(symbol, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }
 
