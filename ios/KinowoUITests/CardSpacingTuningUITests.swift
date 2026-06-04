@@ -66,6 +66,33 @@ final class CardSpacingTuningUITests: XCTestCase {
         )
     }
 
+    func testDayToCinemaSliderWidensDayHeaderToCinemaGap() throws {
+        let card = firstCard()
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "Tuning screen never showed its first card")
+
+        // Card 0 ("1 — Wszystkie przypadki"): the day label is uppercased by
+        // ShowingsView; "Kino Pod Baranami" is its first cinema. firstMatch lands
+        // on card 0 (topmost in the grid). The gap between them is `dayToCinema`.
+        let dayLabel = app.staticTexts["PONIEDZIAŁEK 8 CZERWCA"].firstMatch
+        let cinema = app.staticTexts["Kino Pod Baranami"].firstMatch
+        XCTAssertTrue(dayLabel.waitForExistence(timeout: 5), "Day label not found on card 0")
+        XCTAssertTrue(cinema.waitForExistence(timeout: 5), "Cinema label not found on card 0")
+        let gapBefore = cinema.frame.minY - dayLabel.frame.maxY
+
+        let slider = app.sliders[A11y.Tuning.dayToCinemaSlider]
+        XCTAssertTrue(slider.waitForExistence(timeout: 5), "dayToCinema slider missing")
+        if !slider.isHittable { app.scrollViews[A11y.Tuning.controlsScroll].swipeUp() }
+        slider.adjust(toNormalizedSliderPosition: 1.0) // 6 → 24pt
+        Thread.sleep(forTimeInterval: 0.4)
+
+        let gapAfter = cinema.frame.minY - dayLabel.frame.maxY
+        XCTAssertGreaterThan(
+            gapAfter, gapBefore + 8,
+            "Maxing dayToCinema barely moved the cinema name below the day label "
+            + "(gap \(gapBefore) → \(gapAfter)pt) — the dayToCinema lever isn't wired to ShowingsView."
+        )
+    }
+
     func testKinaPageFontSliderGrowsCinemaHeader() throws {
         let card = firstCard()
         XCTAssertTrue(card.waitForExistence(timeout: 20), "Tuning screen never showed its first card")

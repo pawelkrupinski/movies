@@ -215,7 +215,8 @@ struct ShowtimeTuningScreen: View {
         group("Odstępy karty") {
             slider("Sekcje", $spacing.sectionSpacing, 0...24, id: A11y.Tuning.sectionSpacingSlider)
             slider("Pod ocenami", $spacing.ratingsBottom, 0...32)
-            slider("Dni / kina", $spacing.showingsBlock, 0...24, id: A11y.Tuning.showingsBlockSlider)
+            slider("Blok seansów", $spacing.showingsBlock, 0...24, id: A11y.Tuning.showingsBlockSlider)
+            slider("Dzień → kino", $spacing.dayToCinema, 0...24, id: A11y.Tuning.dayToCinemaSlider)
             slider("Nad dniem", $spacing.dayLabelTop, 0...16)
             slider("Kino → seanse", $spacing.cinemaToPills, 0...16)
             slider("Rzędy pigułek", $spacing.pillRowSpacing, 0...16)
@@ -313,7 +314,7 @@ struct ShowtimeTuningScreen: View {
             rating-solid: weight=\(w(ratingStyle.solidWeight))
             rating-pad: labelH=\(f(ratingStyle.labelHInset)) valueH=\(f(ratingStyle.valueHInset)) v=\(f(ratingStyle.vInset))
             rating-shape: corner=\(f(ratingStyle.cornerRadius)) interPill=\(f(ratingStyle.interPillGap))
-            card-gaps: section=\(f(spacing.sectionSpacing)) ratingsBottom=\(f(spacing.ratingsBottom)) showingsBlock=\(f(spacing.showingsBlock)) dayLabelTop=\(f(spacing.dayLabelTop)) cinemaToPills=\(f(spacing.cinemaToPills)) pillRow=\(f(spacing.pillRowSpacing))
+            card-gaps: section=\(f(spacing.sectionSpacing)) ratingsBottom=\(f(spacing.ratingsBottom)) showingsBlock=\(f(spacing.showingsBlock)) dayToCinema=\(f(spacing.dayToCinema)) dayLabelTop=\(f(spacing.dayLabelTop)) cinemaToPills=\(f(spacing.cinemaToPills)) pillRow=\(f(spacing.pillRowSpacing))
             """
         case .kina:
             return """

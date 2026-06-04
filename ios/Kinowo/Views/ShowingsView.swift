@@ -30,26 +30,35 @@ struct ShowingsView: View {
 
         VStack(alignment: .leading, spacing: spacing.showingsBlock) {
             ForEach(days, id: \.date) { day in
-                Text(day.label.uppercased())
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(Color.white.opacity(0.85))
-                    .tracking(0.5)
-                    .padding(.top, spacing.dayLabelTop)
-                ForEach(day.cinemas, id: \.cinema) { cinema in
-                    let commonTokens = FormatTokenFilter.commonTokens(cinema)
-                    VStack(alignment: .leading, spacing: spacing.cinemaToPills) {
-                        if showCinemaHeaders {
-                            cinemaLabel(cinema)
-                        }
-                        FlowLayout(spacing: pillStyle.interPillGap, lineSpacing: spacing.pillRowSpacing) {
-                            ForEach(cinema.showtimes) { st in
-                                ShowtimeBadge(
-                                    showtime: st,
-                                    displayFormat: FormatTokenFilter.filter(st.format, removing: commonTokens)
-                                )
+                // Each day is its own block so the gap below the day label
+                // (`dayToCinema`) is independent of `showingsBlock`, which spaces
+                // the cinema rows within a day and the day blocks from one
+                // another. Mirrors Android's `Showings` layout.
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(day.label.uppercased())
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Color.white.opacity(0.85))
+                        .tracking(0.5)
+                        .padding(.top, spacing.dayLabelTop)
+                    VStack(alignment: .leading, spacing: spacing.showingsBlock) {
+                        ForEach(day.cinemas, id: \.cinema) { cinema in
+                            let commonTokens = FormatTokenFilter.commonTokens(cinema)
+                            VStack(alignment: .leading, spacing: spacing.cinemaToPills) {
+                                if showCinemaHeaders {
+                                    cinemaLabel(cinema)
+                                }
+                                FlowLayout(spacing: pillStyle.interPillGap, lineSpacing: spacing.pillRowSpacing) {
+                                    ForEach(cinema.showtimes) { st in
+                                        ShowtimeBadge(
+                                            showtime: st,
+                                            displayFormat: FormatTokenFilter.filter(st.format, removing: commonTokens)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
+                    .padding(.top, spacing.dayToCinema)
                 }
             }
             if shouldTruncate {

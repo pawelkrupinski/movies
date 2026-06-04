@@ -64,6 +64,7 @@ enum A11y {
         static let cardPrefix          = "tuning.card"
         static let sectionSpacingSlider = "tuning.slider.section"
         static let showingsBlockSlider = "tuning.slider.showingsBlock"
+        static let dayToCinemaSlider   = "tuning.slider.dayToCinema"
         /// The controls scroll-view, so the test swipes inside the sheet to
         /// reveal a slider rather than scrolling the cards behind it.
         static let controlsScroll      = "tuning.controls"

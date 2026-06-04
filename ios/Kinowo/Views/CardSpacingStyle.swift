@@ -22,9 +22,14 @@ struct CardSpacingStyle: Equatable {
     /// on top of `sectionSpacing`, so a wrapped last rating row can't crowd the
     /// showings block.
     var ratingsBottom: CGFloat = 14
-    /// `ShowingsView`'s outer `VStack(spacing:)` — between day labels and
-    /// cinema blocks.
+    /// `ShowingsView`'s outer `VStack(spacing:)` — between day blocks, and
+    /// between cinema blocks within a day.
     var showingsBlock: CGFloat = 6
+    /// Gap below a day label, above its first cinema name / pill row.
+    /// Independent of `showingsBlock` so the day↔cinema distance can be dialled
+    /// separately (the Android twin is `CardSpacingStyle.dayToCinema`). Default
+    /// equals the old shared `showingsBlock` gap, so production is unchanged.
+    var dayToCinema: CGFloat = 6
     /// Padding above each day label.
     var dayLabelTop: CGFloat = 4
     /// `ShowingsView`'s per-cinema inner `VStack(spacing:)` — cinema label to
