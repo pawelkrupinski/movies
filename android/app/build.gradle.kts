@@ -48,6 +48,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Tuning (the tweak screen + "Kinowo Tune" launcher icon) is on in
+            // debug builds.
+            buildConfigField("boolean", "ENABLE_TUNING", "true")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -55,11 +60,35 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // The public / Play build never exposes the tweak screen.
+            buildConfigField("boolean", "ENABLE_TUNING", "false")
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             } else {
                 logger.warn("kinowo: no release signing credentials — `release` build will be UNSIGNED (not uploadable to Play).")
             }
+        }
+        // A signed, minified build identical to `release` (so ~the same small
+        // APK) EXCEPT it exposes the tweak screen + the "Kinowo Tune" launcher
+        // icon. Built and published separately (GitHub release
+        // `android-tune-latest`) so the public `release` / Play build stays clean.
+        create("tuneRelease") {
+            initWith(getByName("release"))
+            buildConfigField("boolean", "ENABLE_TUNING", "true")
+        }
+    }
+
+    // The tweak-screen launcher (TuningLauncherActivity + its manifest entry)
+    // is shared by every build that enables tuning — `debug` and `tuneRelease` —
+    // from one `src/tuning` source set, so there's a single copy.
+    sourceSets {
+        getByName("debug") {
+            java.srcDir("src/tuning/java")
+            manifest.srcFile("src/tuning/AndroidManifest.xml")
+        }
+        getByName("tuneRelease") {
+            java.srcDir("src/tuning/java")
+            manifest.srcFile("src/tuning/AndroidManifest.xml")
         }
     }
 

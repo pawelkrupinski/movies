@@ -118,7 +118,7 @@ jobs:
                   KINOWO_RELEASE_STORE_PASSWORD: ${{ secrets.KINOWO_RELEASE_STORE_PASSWORD }}
                   KINOWO_RELEASE_KEY_ALIAS: ${{ secrets.KINOWO_RELEASE_KEY_ALIAS }}
                   KINOWO_RELEASE_KEY_PASSWORD: ${{ secrets.KINOWO_RELEASE_KEY_PASSWORD }}
-              run: ./gradlew --no-daemon assembleRelease bundleRelease
+              run: ./gradlew --no-daemon assembleRelease bundleRelease assembleTuneRelease
 
             - name: Upload release APK
               uses: actions/upload-artifact@v4
@@ -136,6 +136,17 @@ jobs:
               with:
                   name: kinowo-release-aab
                   path: android/app/build/outputs/bundle/release/app-release.aab
+                  if-no-files-found: error
+
+            - name: Upload tune APK
+              uses: actions/upload-artifact@v4
+              if: success()
+              with:
+                  name: kinowo-tune-apk
+                  # Signed, minified build that exposes the tweak screen (the
+                  # "Kinowo Tune" launcher icon). Glob catches the unsigned
+                  # fallback too when no signing secrets are present.
+                  path: android/app/build/outputs/apk/tuneRelease/app-tuneRelease*.apk
                   if-no-files-found: error
 
             # Publish the signed release APK to a rolling `android-latest`
@@ -168,6 +179,31 @@ jobs:
                       --title "Kinowo Android (latest)" \
                       --notes "Signed APK from the latest \`main\` build (${GITHUB_SHA:0:7}). Sideload \`kinowo.apk\` on Android — enable installing from unknown sources." \
                       "$RUNNER_TEMP/kinowo.apk"
+
+            # Same as above, for the tweak build: a signed, minified APK
+            # (≈ the same size as kinowo.apk) that adds the "Kinowo Tune"
+            # launcher icon → the on-device tweak screen. Published to its own
+            # rolling release so the public android-latest stays clean:
+            #   https://github.com/${{ github.repository }}/releases/download/android-tune-latest/kinowo-tune.apk
+            - name: Publish rolling tune APK release
+              if: success() && github.event_name != 'pull_request'
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  apk=app/build/outputs/apk/tuneRelease/app-tuneRelease.apk
+                  if [ ! -f "$apk" ]; then
+                      echo "::error::Signed $apk not found — set KINOWO_RELEASE_KEYSTORE_BASE64 (+ store/key secrets); unsigned builds won't install."
+                      exit 1
+                  fi
+                  cp "$apk" "$RUNNER_TEMP/kinowo-tune.apk"
+                  gh release delete android-tune-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+                  gh release create android-tune-latest \
+                      --repo "$GITHUB_REPOSITORY" \
+                      --target "$GITHUB_SHA" \
+                      --prerelease \
+                      --title "Kinowo Android — tweak build (latest)" \
+                      --notes "Signed APK from the latest \`main\` build (${GITHUB_SHA:0:7}) WITH the on-device tweak screen — tap the \"Kinowo Tune\" launcher icon to open it. Sideload \`kinowo-tune.apk\` on Android; enable installing from unknown sources." \
+                      "$RUNNER_TEMP/kinowo-tune.apk"
 
             - name: Upload test report
               uses: actions/upload-artifact@v4
