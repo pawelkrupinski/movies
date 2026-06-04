@@ -17,11 +17,12 @@ import SwiftUI
 struct FilmDetailView: View {
     let film: Film
     @EnvironmentObject var details: DetailsStore
+    @Environment(\.filmDetailStyle) private var style
     @State private var playingTrailerIndex: Int? = nil
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: style.sectionSpacing) {
                 header
                 metaBlocks
                 trailersSection
@@ -62,16 +63,17 @@ struct FilmDetailView: View {
             poster
                 .frame(width: width, height: width * 1.5)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: style.headerColumnSpacing) {
                 Text(film.title)
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: style.titleFontSize, weight: style.titleWeight))
                     .foregroundColor(.white)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier(A11y.Tuning.detailTitle)
                 // Original (production-language) title, when the backend
                 // reports one distinct from the Polish cinema title.
                 if let original = filmDetails?.originalTitle, !original.isEmpty {
                     Text(original)
-                        .font(.system(size: 15))
+                        .font(.system(size: style.originalTitleFontSize))
                         .italic()
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -162,7 +164,7 @@ struct FilmDetailView: View {
         // render immediately. Opis (synopsis) comes from the details
         // map — it's simply absent until `/api/details` lands, or for
         // films the backend has no synopsis for.
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: style.metaBlockSpacing) {
             metaBlock(label: "Opis",      value: filmDetails?.synopsis)
             metaBlock(label: "Reżyseria", value: joined(film.directors))
             metaBlock(label: "Obsada",    value: joined(film.cast))
@@ -179,13 +181,13 @@ struct FilmDetailView: View {
     @ViewBuilder
     private func metaBlock(label: String, value: String?) -> some View {
         if let value, !value.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: style.metaLabelToValue) {
                 Text(label.uppercased())
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: style.metaLabelFontSize, weight: .semibold))
                     .foregroundColor(.secondary)
                     .tracking(0.6)
                 Text(value)
-                    .font(.system(size: 14))
+                    .font(.system(size: style.metaValueFontSize))
                     .foregroundColor(Color(white: 0.87))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -245,7 +247,7 @@ struct FilmDetailView: View {
         if !film.showings.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Seanse")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: style.showingsHeaderFontSize, weight: .semibold))
                     .foregroundColor(.white)
                 // The listing already carries the full showings tree, so
                 // `ShowingsView` renders the same `Film` we were handed.

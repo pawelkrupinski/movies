@@ -78,4 +78,15 @@ final class DetailsStore: ObservableObject {
         }
         await reload(now: now)
     }
+
+    /// Build a store pre-seeded with details, bypassing the network — used by
+    /// the non-prod tuning pager's Film page so the synopsis / trailer
+    /// typography has real text to render. Never reached in a shipping run
+    /// (only `ShowtimeTuningScreen` calls it), but not `#if DEBUG`-gated
+    /// because that screen itself compiles in every configuration.
+    static func seeded(_ details: [FilmDetails]) -> DetailsStore {
+        let store = DetailsStore()
+        store.byTitle = details.keyedByTitle()
+        return store
+    }
 }

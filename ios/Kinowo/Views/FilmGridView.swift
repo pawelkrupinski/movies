@@ -71,6 +71,7 @@ struct CinemaSectionedGridView<Header: View>: View {
     let sections: [CinemaSection]
     let showSectionHeaders: Bool
     let header: () -> Header
+    @Environment(\.cinemaHeaderStyle) private var headerStyle
 
     init(sections: [CinemaSection], showSectionHeaders: Bool = true,
          @ViewBuilder header: @escaping () -> Header = { EmptyView() }) {
@@ -87,9 +88,9 @@ struct CinemaSectionedGridView<Header: View>: View {
                     EmptyRepertoireView()
                         .frame(minHeight: 300)
                 } else {
-                    LazyVStack(alignment: .leading, spacing: 20) {
+                    LazyVStack(alignment: .leading, spacing: headerStyle.sectionSpacing) {
                         ForEach(sections) { section in
-                            VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: headerStyle.headerToGrid) {
                                 if showSectionHeaders {
                                     sectionHeader(CinemaSection.pillName(for: section.cinema))
                                 }
@@ -122,14 +123,14 @@ struct CinemaSectionedGridView<Header: View>: View {
         // Matches the web's `.cinema-section-title`: #aad4ff text on a
         // thin #3a3a6e underline.
         Text(name)
-            .font(.system(size: 15, weight: .semibold))
+            .font(.system(size: headerStyle.fontSize, weight: headerStyle.fontWeight))
             .foregroundColor(Color(red: 0.667, green: 0.831, blue: 1.0))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, 6)
+            .padding(.bottom, headerStyle.titleBottomPadding)
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(Color(red: 0.227, green: 0.227, blue: 0.431))
-                    .frame(height: 1)
+                    .frame(height: headerStyle.underlineThickness)
             }
             .accessibilityIdentifier(A11y.CinemaPage.sectionHeader)
     }

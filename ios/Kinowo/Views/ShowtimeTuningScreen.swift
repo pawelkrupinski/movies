@@ -1,26 +1,37 @@
 import SwiftUI
 import UIKit
 
-/// Non-prod screen for dialling in the showtime-pill look. It renders six real
-/// `FilmCardView`s in the production grid and drives their pills from a live
-/// `ShowtimePillStyle` injected through the environment, so every slider /
-/// picker in the draggable bottom sheet redraws the cards instantly. Nothing
-/// here ships in a normal run — it's reached only via the `KINOWO_TUNING` launch
-/// env var (DEBUG) or the Xcode preview at the bottom of this file.
+/// Non-prod developer screen for dialling in the look of the three main views
+/// against their real renderers. A full-screen horizontal pager swaps between
+/// pages — swipe left/right, or tap a label in the page bar:
 ///
-/// The first two films cover the awkward cases on purpose: empty / short / long
-/// / multi-token formats, a pill with a room (long-press), common-token
-/// stripping (a cinema whose every showtime shares "2D NAP" renders bare
-/// times), and enough showtimes to wrap across several rows.
+///  - **Karta**  — six real `FilmCardView`s in the production grid, driven by a
+///    live `ShowtimePillStyle` / `RatingPillStyle` / `CardSpacingStyle`.
+///  - **Kina**   — the real `CinemaSectionedGridView`, driven by a live
+///    `CinemaHeaderStyle` (cinema section header font / underline / spacing).
+///  - **Film**   — the real `FilmDetailView`, driven by a live `FilmDetailStyle`
+///    (title / meta / showings-header fonts + the vertical gaps).
+///
+/// The sliders live in a draggable bottom sheet that is a *sibling* of the
+/// pager, not a child of it — a horizontal slider drag must not be stolen by
+/// the pager's swipe gesture (the same lesson as the top-bar pager: keep
+/// interactive controls out of the paged scroll view). The sheet's content
+/// switches to whichever page is showing.
+///
+/// Nothing here ships in a normal run — it's reached only via the
+/// `KINOWO_TUNING` launch env var (DEBUG) or the Xcode preview at the bottom.
 struct ShowtimeTuningScreen: View {
+    @State private var page: TuningPage = .card
     @State private var style = ShowtimePillStyle()
     @State private var ratingStyle = RatingPillStyle()
     @State private var spacing = CardSpacingStyle()
+    @State private var cinemaHeader = CinemaHeaderStyle()
+    @State private var filmStyle = FilmDetailStyle()
+    @StateObject private var details = DetailsStore.seeded(TuningSampleData.details)
     @State private var sheetHeight: CGFloat = 360
     @State private var copied = false
     @GestureState private var dragTranslation: CGFloat = 0
 
-    private let films = ShowtimeTuningData.films
     private let columns = [GridItem(.adaptive(minimum: 160, maximum: 220), spacing: 12, alignment: .top)]
 
     var body: some View {
@@ -29,7 +40,7 @@ struct ShowtimeTuningScreen: View {
             let minH: CGFloat = 96
             let height = min(maxH, max(minH, sheetHeight - dragTranslation))
             ZStack(alignment: .bottom) {
-                cards(bottomInset: minH + 16)
+                previews(bottomInset: minH + 16)
                 sheet(height: height, maxH: maxH, minH: minH)
             }
         }
@@ -37,10 +48,27 @@ struct ShowtimeTuningScreen: View {
         .preferredColorScheme(.dark)
     }
 
-    private func cards(bottomInset: CGFloat) -> some View {
+    // MARK: – paged previews (the real views behind the sheet)
+
+    private func previews(bottomInset: CGFloat) -> some View {
+        TabView(selection: $page) {
+            cardsPreview(bottomInset: bottomInset).tag(TuningPage.card)
+            kinaPreview.tag(TuningPage.kina)
+            filmPreview.tag(TuningPage.film)
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .ignoresSafeArea(edges: .bottom)
+        // Every page reads the card-level styles too (kina + film embed real
+        // cards / pills), so inject them once for the whole pager.
+        .environment(\.showtimePillStyle, style)
+        .environment(\.ratingPillStyle, ratingStyle)
+        .environment(\.cardSpacingStyle, spacing)
+    }
+
+    private func cardsPreview(bottomInset: CGFloat) -> some View {
         ScrollView {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                ForEach(Array(films.enumerated()), id: \.element.id) { index, film in
+                ForEach(Array(TuningSampleData.films.enumerated()), id: \.element.id) { index, film in
                     FilmCardView(film: film, truncatable: false)
                         // The XCUITest measures the first card's height before
                         // and after dragging a spacing slider.
@@ -50,9 +78,17 @@ struct ShowtimeTuningScreen: View {
             .padding(12)
             .padding(.bottom, bottomInset)
         }
-        .environment(\.showtimePillStyle, style)
-        .environment(\.ratingPillStyle, ratingStyle)
-        .environment(\.cardSpacingStyle, spacing)
+    }
+
+    private var kinaPreview: some View {
+        CinemaSectionedGridView(sections: TuningSampleData.sections)
+            .environment(\.cinemaHeaderStyle, cinemaHeader)
+    }
+
+    private var filmPreview: some View {
+        FilmDetailView(film: TuningSampleData.detailFilm)
+            .environmentObject(details)
+            .environment(\.filmDetailStyle, filmStyle)
     }
 
     // MARK: – draggable sheet
@@ -60,52 +96,14 @@ struct ShowtimeTuningScreen: View {
     private func sheet(height: CGFloat, maxH: CGFloat, minH: CGFloat) -> some View {
         VStack(spacing: 0) {
             handle(maxH: maxH, minH: minH)
+            pageBar
             header
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    group("Odstępy karty") {
-                        slider("Sekcje", $spacing.sectionSpacing, 0...24, id: A11y.Tuning.sectionSpacingSlider)
-                        slider("Pod ocenami", $spacing.ratingsBottom, 0...32)
-                        slider("Dni / kina", $spacing.showingsBlock, 0...24, id: A11y.Tuning.showingsBlockSlider)
-                        slider("Nad dniem", $spacing.dayLabelTop, 0...16)
-                        slider("Kino → seanse", $spacing.cinemaToPills, 0...16)
-                        slider("Rzędy pigułek", $spacing.pillRowSpacing, 0...16)
-                    }
-                    group("Czas (time)") {
-                        weightRow("Grubość", get: { style.timeWeight }, set: { style.timeWeight = $0 })
-                        slider("Rozmiar", $style.timeFontSize, 7...20)
-                    }
-                    group("Format") {
-                        weightRow("Grubość", get: { style.formatWeight }, set: { style.formatWeight = $0 })
-                        slider("Rozmiar", $style.formatFontSize, 5...16)
-                    }
-                    group("Padding (pigułki)") {
-                        slider("Poziomy", $style.horizontalInset, 0...14)
-                        slider("Pionowy", $style.verticalInset, 0...14)
-                    }
-                    group("Odstępy") {
-                        slider("Czas ↔ format", $style.internalGap, 0...12)
-                        slider("Między pigułkami", $style.interPillGap, 0...16)
-                    }
-                    group("Ocena: etykieta (IMDb/FW/RT)") {
-                        weightRow("Grubość", get: { ratingStyle.labelWeight }, set: { ratingStyle.labelWeight = $0 })
-                        slider("Rozmiar", $ratingStyle.labelFontSize, 6...18)
-                    }
-                    group("Ocena: wartość") {
-                        weightRow("Grubość", get: { ratingStyle.valueWeight }, set: { ratingStyle.valueWeight = $0 })
-                        slider("Rozmiar", $ratingStyle.valueFontSize, 6...18)
-                    }
-                    group("Ocena: Metacritic (solid)") {
-                        weightRow("Grubość", get: { ratingStyle.solidWeight }, set: { ratingStyle.solidWeight = $0 })
-                    }
-                    group("Ocena: padding") {
-                        slider("Etykieta poziomy", $ratingStyle.labelHInset, 0...12)
-                        slider("Wartość poziomy", $ratingStyle.valueHInset, 0...12)
-                        slider("Pionowy", $ratingStyle.vInset, 0...10)
-                    }
-                    group("Ocena: kształt") {
-                        slider("Zaokrąglenie", $ratingStyle.cornerRadius, 0...12)
-                        slider("Między pigułkami", $ratingStyle.interPillGap, 0...16)
+                    switch page {
+                    case .card: cardControls
+                    case .kina: kinaControls
+                    case .film: filmControls
                     }
                 }
                 .padding(.horizontal, 16)
@@ -139,13 +137,45 @@ struct ShowtimeTuningScreen: View {
             )
     }
 
+    /// Tappable page indicator doubling as the page switcher — swipe is the
+    /// primary gesture, but tapping a label jumps straight there (and gives the
+    /// UITests a reliable page hook that doesn't depend on a swipe distance).
+    private var pageBar: some View {
+        HStack(spacing: 6) {
+            ForEach(TuningPage.allCases) { p in
+                let active = p == page
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) { page = p }
+                } label: {
+                    Text(p.title)
+                        .font(.system(size: 12, weight: active ? .semibold : .regular))
+                        .foregroundColor(active ? Color(red: 0.10, green: 0.10, blue: 0.18) : .white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background(
+                            active ? Color(red: 0.42, green: 0.67, blue: 0.87) : Color.white.opacity(0.08),
+                            in: RoundedRectangle(cornerRadius: 7)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("\(A11y.Tuning.pageTabPrefix).\(p.rawValue)")
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Showtime tuning").font(.system(size: 13, weight: .semibold))
-                Text(fitReadout)
-                    .font(.system(size: 11))
-                    .foregroundStyle(fitOK ? Color.green : Color.orange)
+                Text("\(page.title) tuning").font(.system(size: 13, weight: .semibold))
+                // The two-per-row fit readout only makes sense for the card
+                // page (the showtime pills) — hide it elsewhere.
+                if page == .card {
+                    Text(fitReadout)
+                        .font(.system(size: 11))
+                        .foregroundStyle(fitOK ? Color.green : Color.orange)
+                }
             }
             Spacer()
             Button {
@@ -157,7 +187,7 @@ struct ShowtimeTuningScreen: View {
                     .font(.system(size: 13, weight: .medium))
             }
             .buttonStyle(.bordered)
-            Button("Reset") { style = ShowtimePillStyle(); ratingStyle = RatingPillStyle(); spacing = CardSpacingStyle() }
+            Button("Reset", action: reset)
                 .font(.system(size: 13, weight: .medium))
                 .buttonStyle(.bordered)
         }
@@ -165,29 +195,145 @@ struct ShowtimeTuningScreen: View {
         .padding(.bottom, 8)
     }
 
+    /// Reset only the styles the current page edits — switching pages and
+    /// hitting Reset shouldn't wipe another page's work.
+    private func reset() {
+        switch page {
+        case .card:
+            style = ShowtimePillStyle(); ratingStyle = RatingPillStyle(); spacing = CardSpacingStyle()
+        case .kina:
+            cinemaHeader = CinemaHeaderStyle()
+        case .film:
+            filmStyle = FilmDetailStyle()
+        }
+    }
+
+    // MARK: – per-page controls
+
+    @ViewBuilder
+    private var cardControls: some View {
+        group("Odstępy karty") {
+            slider("Sekcje", $spacing.sectionSpacing, 0...24, id: A11y.Tuning.sectionSpacingSlider)
+            slider("Pod ocenami", $spacing.ratingsBottom, 0...32)
+            slider("Dni / kina", $spacing.showingsBlock, 0...24, id: A11y.Tuning.showingsBlockSlider)
+            slider("Nad dniem", $spacing.dayLabelTop, 0...16)
+            slider("Kino → seanse", $spacing.cinemaToPills, 0...16)
+            slider("Rzędy pigułek", $spacing.pillRowSpacing, 0...16)
+        }
+        group("Czas (time)") {
+            weightRow("Grubość", get: { style.timeWeight }, set: { style.timeWeight = $0 })
+            slider("Rozmiar", $style.timeFontSize, 7...20)
+        }
+        group("Format") {
+            weightRow("Grubość", get: { style.formatWeight }, set: { style.formatWeight = $0 })
+            slider("Rozmiar", $style.formatFontSize, 5...16)
+        }
+        group("Padding (pigułki)") {
+            slider("Poziomy", $style.horizontalInset, 0...14)
+            slider("Pionowy", $style.verticalInset, 0...14)
+        }
+        group("Odstępy") {
+            slider("Czas ↔ format", $style.internalGap, 0...12)
+            slider("Między pigułkami", $style.interPillGap, 0...16)
+        }
+        group("Ocena: etykieta (IMDb/FW/RT)") {
+            weightRow("Grubość", get: { ratingStyle.labelWeight }, set: { ratingStyle.labelWeight = $0 })
+            slider("Rozmiar", $ratingStyle.labelFontSize, 6...18)
+        }
+        group("Ocena: wartość") {
+            weightRow("Grubość", get: { ratingStyle.valueWeight }, set: { ratingStyle.valueWeight = $0 })
+            slider("Rozmiar", $ratingStyle.valueFontSize, 6...18)
+        }
+        group("Ocena: Metacritic (solid)") {
+            weightRow("Grubość", get: { ratingStyle.solidWeight }, set: { ratingStyle.solidWeight = $0 })
+        }
+        group("Ocena: padding") {
+            slider("Etykieta poziomy", $ratingStyle.labelHInset, 0...12)
+            slider("Wartość poziomy", $ratingStyle.valueHInset, 0...12)
+            slider("Pionowy", $ratingStyle.vInset, 0...10)
+        }
+        group("Ocena: kształt") {
+            slider("Zaokrąglenie", $ratingStyle.cornerRadius, 0...12)
+            slider("Między pigułkami", $ratingStyle.interPillGap, 0...16)
+        }
+    }
+
+    @ViewBuilder
+    private var kinaControls: some View {
+        group("Nagłówek kina") {
+            weightRow("Grubość", get: { cinemaHeader.fontWeight }, set: { cinemaHeader.fontWeight = $0 })
+            slider("Rozmiar", $cinemaHeader.fontSize, 10...24, id: A11y.Tuning.cinemaHeaderFontSlider)
+            slider("Grubość linii", $cinemaHeader.underlineThickness, 0...4)
+            slider("Tytuł → linia", $cinemaHeader.titleBottomPadding, 0...16)
+        }
+        group("Odstępy") {
+            slider("Między kinami", $cinemaHeader.sectionSpacing, 0...40)
+            slider("Nagłówek → siatka", $cinemaHeader.headerToGrid, 0...24)
+        }
+    }
+
+    @ViewBuilder
+    private var filmControls: some View {
+        group("Układ") {
+            slider("Sekcje", $filmStyle.sectionSpacing, 0...32)
+            slider("Kolumna nagłówka", $filmStyle.headerColumnSpacing, 0...20)
+            slider("Bloki meta", $filmStyle.metaBlockSpacing, 0...24)
+        }
+        group("Tytuł") {
+            weightRow("Grubość", get: { filmStyle.titleWeight }, set: { filmStyle.titleWeight = $0 })
+            slider("Rozmiar", $filmStyle.titleFontSize, 14...34, id: A11y.Tuning.detailTitleFontSlider)
+            slider("Tytuł oryg.", $filmStyle.originalTitleFontSize, 10...22)
+        }
+        group("Bloki meta (tekst)") {
+            slider("Etykieta", $filmStyle.metaLabelFontSize, 8...16)
+            slider("Wartość", $filmStyle.metaValueFontSize, 10...20)
+            slider("Etykieta → wartość", $filmStyle.metaLabelToValue, 0...12)
+        }
+        group("Seanse") {
+            slider("Nagłówek", $filmStyle.showingsHeaderFontSize, 12...26)
+        }
+    }
+
     // MARK: – clipboard
 
-    /// Plain-text dump of every value, in the same format Android's tuning
-    /// screen emits — paste it back to compare or to ask for an adjustment.
+    /// Plain-text dump of the current page's values, in the same `key=value`
+    /// format Android's tuning screen emits — paste it back to compare or to
+    /// ask for an adjustment.
     private var valuesText: String {
         func w(_ x: Font.Weight) -> String { WeightOption(x).rawValue }
-        return """
-        time: size=\(f(style.timeFontSize)) weight=\(w(style.timeWeight))
-        format: size=\(f(style.formatFontSize)) weight=\(w(style.formatWeight))
-        padding: h=\(f(style.horizontalInset)) v=\(f(style.verticalInset))
-        gaps: internal=\(f(style.internalGap)) interPill=\(f(style.interPillGap))
-        rating-label: size=\(f(ratingStyle.labelFontSize)) weight=\(w(ratingStyle.labelWeight))
-        rating-value: size=\(f(ratingStyle.valueFontSize)) weight=\(w(ratingStyle.valueWeight))
-        rating-solid: weight=\(w(ratingStyle.solidWeight))
-        rating-pad: labelH=\(f(ratingStyle.labelHInset)) valueH=\(f(ratingStyle.valueHInset)) v=\(f(ratingStyle.vInset))
-        rating-shape: corner=\(f(ratingStyle.cornerRadius)) interPill=\(f(ratingStyle.interPillGap))
-        card-gaps: section=\(f(spacing.sectionSpacing)) ratingsBottom=\(f(spacing.ratingsBottom)) showingsBlock=\(f(spacing.showingsBlock)) dayLabelTop=\(f(spacing.dayLabelTop)) cinemaToPills=\(f(spacing.cinemaToPills)) pillRow=\(f(spacing.pillRowSpacing))
-        """
+        switch page {
+        case .card:
+            return """
+            time: size=\(f(style.timeFontSize)) weight=\(w(style.timeWeight))
+            format: size=\(f(style.formatFontSize)) weight=\(w(style.formatWeight))
+            padding: h=\(f(style.horizontalInset)) v=\(f(style.verticalInset))
+            gaps: internal=\(f(style.internalGap)) interPill=\(f(style.interPillGap))
+            rating-label: size=\(f(ratingStyle.labelFontSize)) weight=\(w(ratingStyle.labelWeight))
+            rating-value: size=\(f(ratingStyle.valueFontSize)) weight=\(w(ratingStyle.valueWeight))
+            rating-solid: weight=\(w(ratingStyle.solidWeight))
+            rating-pad: labelH=\(f(ratingStyle.labelHInset)) valueH=\(f(ratingStyle.valueHInset)) v=\(f(ratingStyle.vInset))
+            rating-shape: corner=\(f(ratingStyle.cornerRadius)) interPill=\(f(ratingStyle.interPillGap))
+            card-gaps: section=\(f(spacing.sectionSpacing)) ratingsBottom=\(f(spacing.ratingsBottom)) showingsBlock=\(f(spacing.showingsBlock)) dayLabelTop=\(f(spacing.dayLabelTop)) cinemaToPills=\(f(spacing.cinemaToPills)) pillRow=\(f(spacing.pillRowSpacing))
+            """
+        case .kina:
+            return """
+            cinema-header: size=\(f(cinemaHeader.fontSize)) weight=\(w(cinemaHeader.fontWeight))
+            cinema-underline: thickness=\(f(cinemaHeader.underlineThickness)) titleBottom=\(f(cinemaHeader.titleBottomPadding))
+            cinema-gaps: section=\(f(cinemaHeader.sectionSpacing)) headerToGrid=\(f(cinemaHeader.headerToGrid))
+            """
+        case .film:
+            return """
+            film-layout: section=\(f(filmStyle.sectionSpacing)) headerColumn=\(f(filmStyle.headerColumnSpacing)) metaBlock=\(f(filmStyle.metaBlockSpacing))
+            film-title: size=\(f(filmStyle.titleFontSize)) weight=\(w(filmStyle.titleWeight)) original=\(f(filmStyle.originalTitleFontSize))
+            film-meta: label=\(f(filmStyle.metaLabelFontSize)) value=\(f(filmStyle.metaValueFontSize)) labelToValue=\(f(filmStyle.metaLabelToValue))
+            film-showings: header=\(f(filmStyle.showingsHeaderFontSize))
+            """
+        }
     }
 
     private func f(_ v: CGFloat) -> String { String(format: "%.1f", v) }
 
-    // MARK: – live two-per-row readout
+    // MARK: – live two-per-row readout (card page)
 
     /// Estimated width of one pill at the current style, using the same CoreText
     /// measurement the fit test does. Approximate (the weight axis is mapped
@@ -284,6 +430,19 @@ struct ShowtimeTuningScreen: View {
     }
 }
 
+/// The pages the tuning pager swipes between, in display order.
+enum TuningPage: Int, CaseIterable, Identifiable {
+    case card, kina, film
+    var id: Int { rawValue }
+    var title: String {
+        switch self {
+        case .card: return "Karta"
+        case .kina: return "Kina"
+        case .film: return "Film"
+        }
+    }
+}
+
 /// The `Font.Weight` choices the tuning picker offers, with a reverse map so the
 /// segmented control can show the current style's weight. The `rawValue` is the
 /// token used in the copied-values text.
@@ -321,9 +480,46 @@ private enum WeightOption: String, CaseIterable, Identifiable {
 
 /// Deterministic sample repertoire — identical every launch. The first two
 /// films exercise every showtime-rendering case; films 3–6 are ordinary so the
-/// grid looks like a real screen.
-enum ShowtimeTuningData {
+/// grid looks like a real screen. `sections` regroups them by cinema for the
+/// Kina page, and `detailFilm` (+ `details`) feeds the Film page.
+enum TuningSampleData {
     static let films: [Film] = [edgeCases, manyShowtimes, drama, kids, latNight, festival]
+
+    /// Cinema-grouped view of the sample films for the Kina page. Uses real
+    /// cinema display names (so `CinemaSection.pillName` shortens them the way
+    /// the live Kina tab does).
+    static let sections: [CinemaSection] = [
+        CinemaSection(cinema: "Cinema City Kinepolis", films: [edgeCases, drama, festival]),
+        CinemaSection(cinema: "Multikino Stary Browar", films: [manyShowtimes, kids]),
+        CinemaSection(cinema: "Helios Posnania", films: [latNight]),
+    ]
+
+    /// One rich film for the Film-detail page — genres / directors / cast /
+    /// countries populated (the listing samples leave them empty) so every
+    /// meta block renders and its fonts are tunable.
+    static let detailFilm = Film(
+        title: "Wszystkie przypadki", posterURL: nil, fallbackPosterURLs: [],
+        runtimeMinutes: 128, releaseYear: 2025,
+        genres: ["Dramat", "Thriller"], ratings: ratings(7.8, 81, 92, 7.4),
+        countries: ["Polska", "Francja"], directors: ["Jan Kowalski"],
+        cast: ["Anna Nowak", "Piotr Wiśniewski", "Maria Lewandowska"],
+        showings: edgeCases.showings
+    )
+
+    /// Synopsis + trailers for `detailFilm` (matched by title), so the Opis
+    /// block and Zwiastuny section show real content to tune.
+    static let details: [FilmDetails] = [
+        FilmDetails(
+            title: "Wszystkie przypadki",
+            originalTitle: "All The Cases",
+            synopsis: "Wciągający dramat o splątanych losach kilku rodzin w powojennej "
+                + "Europie. Reżyser prowadzi widza przez kolejne odsłony tajemnicy, "
+                + "stopniowo odsłaniając, jak jeden wybór potrafi zaważyć na życiu "
+                + "wszystkich bohaterów. Tekst celowo długi, by dało się dostroić "
+                + "rozmiar i odstępy opisu na ekranie szczegółów.",
+            trailerURLs: [URL(string: "https://www.youtube.com/embed/aqz-KE-bpKQ")!]
+        )
+    ]
 
     private static func ratings(_ imdb: Double?, _ mc: Int?, _ rt: Int?, _ fw: Double?) -> Film.Ratings {
         Film.Ratings(imdb: imdb, imdbURL: nil, metascore: mc, metacriticURL: nil,

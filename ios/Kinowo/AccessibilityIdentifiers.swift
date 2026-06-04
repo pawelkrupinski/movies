@@ -57,8 +57,8 @@ enum A11y {
         static let error      = "error.repertoire"
     }
 
-    /// Non-prod `ShowtimeTuningScreen` only — lets `CardSpacingTuningUITests`
-    /// find a card to measure and a spacing slider to drag.
+    /// Non-prod tuning pager only — lets the tuning UITests find a card to
+    /// measure and the sliders to drag on each page.
     enum Tuning {
         /// Prefix; the nth card is `"tuning.card.\(n)"`.
         static let cardPrefix          = "tuning.card"
@@ -67,5 +67,13 @@ enum A11y {
         /// The controls scroll-view, so the test swipes inside the sheet to
         /// reveal a slider rather than scrolling the cards behind it.
         static let controlsScroll      = "tuning.controls"
+        /// Kina page: cinema section-header font-size slider + the page itself.
+        static let cinemaHeaderFontSlider = "tuning.slider.cinemaHeaderFont"
+        /// Film page: detail title font-size slider + the rendered title.
+        static let detailTitleFontSlider  = "tuning.slider.detailTitleFont"
+        static let detailTitle             = "tuning.detail.title"
+        /// Tab labels in the page bar — let a UITest jump to a page by tap
+        /// instead of relying on a swipe distance.
+        static let pageTabPrefix       = "tuning.page.tab"
     }
 }

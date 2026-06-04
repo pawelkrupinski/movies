@@ -18,6 +18,12 @@ import XCTest
 /// Before this feature existed there was no such slider and no
 /// `cardSpacingStyle` wiring, so the gap couldn't move — it fails before,
 /// passes after. Reached only via the `KINOWO_TUNING` launch env (DEBUG).
+///
+/// The Kina / Film tests below ride the same harness: they switch the tuning
+/// pager to the Kina or Film page and confirm that page's font slider moves a
+/// real-view element (a cinema section header / the detail title). Those
+/// sliders + the `CinemaHeaderStyle` / `FilmDetailStyle` wiring didn't exist
+/// before — fail before, pass after.
 final class CardSpacingTuningUITests: XCTestCase {
     var app: XCUIApplication!
 
@@ -58,6 +64,64 @@ final class CardSpacingTuningUITests: XCTestCase {
             "Widening the section spacing to max barely moved the runtime row "
             + "(gap \(gapBefore) → \(gapAfter)pt) — the sectionSpacing lever isn't wired to FilmCardView."
         )
+    }
+
+    func testKinaPageFontSliderGrowsCinemaHeader() throws {
+        let card = firstCard()
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "Tuning screen never showed its first card")
+
+        switchToPage(1) // Kina
+
+        let header = app.staticTexts.matching(identifier: A11y.CinemaPage.sectionHeader).firstMatch
+        XCTAssertTrue(header.waitForExistence(timeout: 5), "Kina page never showed a cinema section header")
+        let heightBefore = header.frame.height
+
+        let slider = app.sliders[A11y.Tuning.cinemaHeaderFontSlider]
+        XCTAssertTrue(slider.waitForExistence(timeout: 5), "Cinema-header font slider missing on the Kina page")
+        slider.adjust(toNormalizedSliderPosition: 1.0) // 15 → 24pt
+        Thread.sleep(forTimeInterval: 0.4)
+
+        let heightAfter = header.frame.height
+        XCTAssertGreaterThan(
+            heightAfter, heightBefore + 2,
+            "Maxing the cinema-header font barely moved the header height "
+            + "(\(heightBefore) → \(heightAfter)pt) — the CinemaHeaderStyle font lever isn't wired to CinemaSectionedGridView."
+        )
+    }
+
+    func testFilmPageFontSliderGrowsDetailTitle() throws {
+        let card = firstCard()
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "Tuning screen never showed its first card")
+
+        switchToPage(2) // Film
+
+        let title = app.staticTexts[A11y.Tuning.detailTitle]
+        XCTAssertTrue(title.waitForExistence(timeout: 5), "Film page never showed the detail title")
+        let heightBefore = title.frame.height
+
+        let slider = app.sliders[A11y.Tuning.detailTitleFontSlider]
+        XCTAssertTrue(slider.waitForExistence(timeout: 5), "Detail-title font slider missing on the Film page")
+        if !slider.isHittable { app.scrollViews[A11y.Tuning.controlsScroll].swipeUp() }
+        slider.adjust(toNormalizedSliderPosition: 1.0) // 22 → 34pt
+        Thread.sleep(forTimeInterval: 0.4)
+
+        let heightAfter = title.frame.height
+        XCTAssertGreaterThan(
+            heightAfter, heightBefore + 4,
+            "Maxing the detail-title font barely moved the title height "
+            + "(\(heightBefore) → \(heightAfter)pt) — the FilmDetailStyle title lever isn't wired to FilmDetailView."
+        )
+    }
+
+    /// Jump the pager to a page by tapping its label in the page bar (more
+    /// robust than a swipe, which depends on a distance threshold). `index`
+    /// is the `TuningPage` raw value (0 = card, 1 = kina, 2 = film) — kept as
+    /// a plain Int so the UI-test target needn't see the app's view types.
+    private func switchToPage(_ index: Int) {
+        let tab = app.buttons["\(A11y.Tuning.pageTabPrefix).\(index)"]
+        XCTAssertTrue(tab.waitForExistence(timeout: 5), "Page tab \(index) missing")
+        tab.tap()
+        Thread.sleep(forTimeInterval: 0.4) // let the pager settle on the new page
     }
 
     private func firstCard() -> XCUIElement {

@@ -32,6 +32,8 @@
 		DD00000000000000000098 /* RatingBadgeMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000098 /* RatingBadgeMetrics.swift */; };
 		DD00000000000000000097 /* ShowtimePillStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000097 /* ShowtimePillStyle.swift */; };
 		DD00000000000000000200 /* CardSpacingStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000200 /* CardSpacingStyle.swift */; };
+		DD00000000000000000210 /* CinemaHeaderStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000210 /* CinemaHeaderStyle.swift */; };
+		DD00000000000000000211 /* FilmDetailStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000211 /* FilmDetailStyle.swift */; };
 		DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000096 /* ShowtimeTuningScreen.swift */; };
 		DD00000000000000000095 /* RatingPillStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000095 /* RatingPillStyle.swift */; };
 		DD00000000000000000012 /* HTMLPrimitives.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000012 /* HTMLPrimitives.swift */; };
@@ -99,6 +101,8 @@
 		CC00000000000000000098 /* RatingBadgeMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingBadgeMetrics.swift; sourceTree = "<group>"; };
 		CC00000000000000000097 /* ShowtimePillStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimePillStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000200 /* CardSpacingStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSpacingStyle.swift; sourceTree = "<group>"; };
+		CC00000000000000000210 /* CinemaHeaderStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaHeaderStyle.swift; sourceTree = "<group>"; };
+		CC00000000000000000211 /* FilmDetailStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000096 /* ShowtimeTuningScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimeTuningScreen.swift; sourceTree = "<group>"; };
 		CC00000000000000000095 /* RatingPillStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingPillStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000012 /* HTMLPrimitives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLPrimitives.swift; sourceTree = "<group>"; };
@@ -246,6 +250,8 @@
 				CC00000000000000000098 /* RatingBadgeMetrics.swift */,
 				CC00000000000000000097 /* ShowtimePillStyle.swift */,
 				CC00000000000000000200 /* CardSpacingStyle.swift */,
+				CC00000000000000000210 /* CinemaHeaderStyle.swift */,
+				CC00000000000000000211 /* FilmDetailStyle.swift */,
 				CC00000000000000000096 /* ShowtimeTuningScreen.swift */,
 				CC00000000000000000095 /* RatingPillStyle.swift */,
 				CC00000000000000000019 /* FlowLayoutMath.swift */,
@@ -385,6 +391,8 @@
 				DD00000000000000000098 /* RatingBadgeMetrics.swift in Sources */,
 				DD00000000000000000097 /* ShowtimePillStyle.swift in Sources */,
 				DD00000000000000000200 /* CardSpacingStyle.swift in Sources */,
+				DD00000000000000000210 /* CinemaHeaderStyle.swift in Sources */,
+				DD00000000000000000211 /* FilmDetailStyle.swift in Sources */,
 				DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */,
 				DD00000000000000000095 /* RatingPillStyle.swift in Sources */,
 				DD00000000000000000012 /* HTMLPrimitives.swift in Sources */,
