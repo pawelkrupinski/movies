@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -36,6 +37,42 @@ import pl.kinowo.ui.theme.RtFresh
 import pl.kinowo.ui.theme.RtRotten
 
 /**
+ * Live-tunable rendering parameters for the rating pills, read by [RatingBadges]
+ * from [LocalRatingPillStyle].
+ *
+ * The fields hold the BASE (pre-scale) values: [RatingBadges] still multiplies
+ * the dimensional ones by [RatingBadgeMetrics.scale] for the viewport so the row
+ * grows/shrinks with the device, exactly as before. The defaults reproduce the
+ * SHIPPING pill — 11sp font, Bold label / SemiBold value / Bold solid weights,
+ * 6dp horizontal padding, no vertical padding, 5dp corner, 6dp inter-pill gap —
+ * so production (which never provides its own value) is visually unchanged. The
+ * non-prod `ShowtimeTuningScreen` injects an edited copy via
+ * `CompositionLocalProvider` to preview the rating row. Mirrors iOS
+ * `RatingPillStyle`; note that unlike iOS, label and value share one font size
+ * here (Android renders both tabs at the same size).
+ */
+data class RatingPillStyle(
+    val baseFontSize: TextUnit = RatingBadgeMetrics.BaseFontSp.sp,
+    val labelWeight: FontWeight = FontWeight.Bold,
+    val valueWeight: FontWeight = FontWeight.SemiBold,
+    /** Metacritic's label-less solid pill weight. */
+    val solidWeight: FontWeight = FontWeight.Bold,
+    /** Per-side horizontal padding inside each tab. */
+    val hPad: Dp = 6.dp,
+    /** Per-side vertical padding inside each tab. */
+    val vPad: Dp = 0.dp,
+    /** Outer corner radius of the pill. */
+    val corner: Dp = 5.dp,
+    /** Gap between adjacent pills in the flow row. */
+    val interPillGap: Dp = 6.dp,
+)
+
+/** Style driving every rating pill. The default equals today's shipping values,
+ *  so production renders exactly as before; the tuning screen overrides it
+ *  through `CompositionLocalProvider`. */
+val LocalRatingPillStyle = compositionLocalOf { RatingPillStyle() }
+
+/**
  * The IMDb / Metascore / RT / Filmweb pill row. Each pill links to its
  * external rating page. Mirrors iOS `RatingBadgesView` colours.
  */
@@ -44,18 +81,20 @@ import pl.kinowo.ui.theme.RtRotten
 fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
     if (ratings.isEmpty) return
     val context = LocalContext.current
+    val style = LocalRatingPillStyle.current
     // Pills scale with viewport width, anchored at the Pixel 9a's ~411dp where
-    // the base sizes were tuned (scale 1.0). See RatingBadgeMetrics.
+    // the base sizes were tuned (scale 1.0). See RatingBadgeMetrics. The style
+    // holds the pre-scale base values; we multiply the dimensional ones here.
     val scale = RatingBadgeMetrics.scale(LocalConfiguration.current.screenWidthDp)
-    val fontSize = (RatingBadgeMetrics.BaseFontSp * scale).sp
-    val hPad = (6f * scale).dp
-    // No extra vertical padding: the trimmed font box already carries ~4px above
-    // the caps and the descent below the baseline (the pill text has no
-    // descenders), which is the whole pill height. Any vPad here just stacks on
-    // that and makes the pill read tall — see RatingPillVisualPaddingTest.
-    val vPad = 0.dp
-    val corner = (5f * scale).dp
-    val gap = (6f * scale).dp
+    val fontSize = (style.baseFontSize.value * scale).sp
+    val hPad = (style.hPad.value * scale).dp
+    // No extra vertical padding by default: the trimmed font box already carries
+    // ~4px above the caps and the descent below the baseline (the pill text has
+    // no descenders), which is the whole pill height. Any vPad here just stacks
+    // on that and makes the pill read tall — see RatingPillVisualPaddingTest.
+    val vPad = (style.vPad.value * scale).dp
+    val corner = (style.corner.value * scale).dp
+    val gap = (style.interPillGap.value * scale).dp
     FlowRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(gap),
@@ -66,6 +105,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
                 label = "IMDb", labelBg = ImdbYellow, labelFg = Color.Black,
                 value = oneDecimal(v), valueFg = ImdbYellow,
                 fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
+                labelWeight = style.labelWeight, valueWeight = style.valueWeight,
                 onClick = { openUrl(context, ratings.imdbURL) },
             )
         }
@@ -74,6 +114,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
             SinglePill(
                 text = v.toString(), fg = c,
                 fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
+                weight = style.solidWeight,
                 onClick = { openUrl(context, ratings.metacriticURL) },
             )
         }
@@ -83,6 +124,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
                 label = "RT", labelBg = c, labelFg = Color.White,
                 value = "$v%", valueFg = c,
                 fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
+                labelWeight = style.labelWeight, valueWeight = style.valueWeight,
                 onClick = { openUrl(context, ratings.rottenTomatoesURL) },
             )
         }
@@ -91,6 +133,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
                 label = "FW", labelBg = FwOrange, labelFg = Color.White,
                 value = oneDecimal(v), valueFg = FwOrangeLight,
                 fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
+                labelWeight = style.labelWeight, valueWeight = style.valueWeight,
                 onClick = { openUrl(context, ratings.filmwebURL) },
             )
         }
@@ -127,15 +170,16 @@ private fun LabelValuePill(
     label: String, labelBg: Color, labelFg: Color,
     value: String, valueFg: Color,
     fontSize: TextUnit, hPad: Dp, vPad: Dp, corner: Dp,
+    labelWeight: FontWeight, valueWeight: FontWeight,
     onClick: () -> Unit,
 ) {
     Row(modifier = Modifier.clip(RoundedCornerShape(corner)).clickable(onClick = onClick)) {
         Text(
-            label, color = labelFg, style = pillTextStyle(fontSize, FontWeight.Bold),
+            label, color = labelFg, style = pillTextStyle(fontSize, labelWeight),
             modifier = Modifier.background(labelBg).padding(horizontal = hPad, vertical = vPad),
         )
         Text(
-            value, color = valueFg, style = pillTextStyle(fontSize, FontWeight.SemiBold),
+            value, color = valueFg, style = pillTextStyle(fontSize, valueWeight),
             modifier = Modifier.background(CardElevated).padding(horizontal = hPad, vertical = vPad),
         )
     }
@@ -145,10 +189,11 @@ private fun LabelValuePill(
 private fun SinglePill(
     text: String, fg: Color,
     fontSize: TextUnit, hPad: Dp, vPad: Dp, corner: Dp,
+    weight: FontWeight,
     onClick: () -> Unit,
 ) {
     Text(
-        text, color = fg, style = pillTextStyle(fontSize, FontWeight.Bold),
+        text, color = fg, style = pillTextStyle(fontSize, weight),
         modifier = Modifier
             .clip(RoundedCornerShape(corner))
             .clickable(onClick = onClick)

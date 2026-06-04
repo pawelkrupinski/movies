@@ -40,19 +40,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
 import pl.kinowo.model.Ratings
 import pl.kinowo.model.Showtime
+import pl.kinowo.ui.common.LocalRatingPillStyle
 import pl.kinowo.ui.common.LocalShowtimeChipStyle
+import pl.kinowo.ui.common.RatingBadgeMetrics
+import pl.kinowo.ui.common.RatingPillStyle
 import pl.kinowo.ui.common.ShowtimeChipStyle
 import pl.kinowo.ui.list.FilmCard
 import pl.kinowo.ui.theme.Background
@@ -78,14 +83,18 @@ import pl.kinowo.ui.theme.TextSecondary
 @Composable
 fun ShowtimeTuningScreen() {
     var style by remember { mutableStateOf(ShowtimeChipStyle()) }
+    var ratingStyle by remember { mutableStateOf(RatingPillStyle()) }
 
     Box(
         Modifier
             .fillMaxSize()
             .background(Background),
     ) {
-        // Cards scroll behind the sheet, driven by the edited chip style.
-        CompositionLocalProvider(LocalShowtimeChipStyle provides style) {
+        // Cards scroll behind the sheet, driven by the edited chip + rating styles.
+        CompositionLocalProvider(
+            LocalShowtimeChipStyle provides style,
+            LocalRatingPillStyle provides ratingStyle,
+        ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(12.dp),
@@ -107,7 +116,9 @@ fun ShowtimeTuningScreen() {
         ControlsSheet(
             style = style,
             onStyleChange = { style = it },
-            onReset = { style = ShowtimeChipStyle() },
+            ratingStyle = ratingStyle,
+            onRatingStyleChange = { ratingStyle = it },
+            onReset = { style = ShowtimeChipStyle(); ratingStyle = RatingPillStyle() },
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
@@ -128,6 +139,8 @@ private val SheetMinHeight = 56.dp
 private fun ControlsSheet(
     style: ShowtimeChipStyle,
     onStyleChange: (ShowtimeChipStyle) -> Unit,
+    ratingStyle: RatingPillStyle,
+    onRatingStyleChange: (RatingPillStyle) -> Unit,
     onReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -168,10 +181,12 @@ private fun ControlsSheet(
                 )
             }
 
-            SheetHeader(style = style, onReset = onReset)
+            SheetHeader(style = style, ratingStyle = ratingStyle, onReset = onReset)
             SheetControls(
                 style = style,
                 onStyleChange = onStyleChange,
+                ratingStyle = ratingStyle,
+                onRatingStyleChange = onRatingStyleChange,
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
@@ -184,9 +199,10 @@ private fun ControlsSheet(
 // ── sheet header: fit readout + copy + reset ────────────────────────────────
 
 @Composable
-private fun SheetHeader(style: ShowtimeChipStyle, onReset: () -> Unit) {
+private fun SheetHeader(style: ShowtimeChipStyle, ratingStyle: RatingPillStyle, onReset: () -> Unit) {
     val clipboard = LocalClipboardManager.current
     val density = LocalDensity.current
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
     Row(
         Modifier
             .fillMaxWidth()
@@ -203,7 +219,7 @@ private fun SheetHeader(style: ShowtimeChipStyle, onReset: () -> Unit) {
                 fontSize = 11.sp,
             )
         }
-        OutlinedButton(onClick = { clipboard.setText(AnnotatedString(copyText(style))) }) {
+        OutlinedButton(onClick = { clipboard.setText(AnnotatedString(copyText(style, ratingStyle, screenWidthDp))) }) {
             Text("Kopiuj", fontSize = 13.sp)
         }
         Spacer(Modifier.width(8.dp))
@@ -217,6 +233,8 @@ private fun SheetHeader(style: ShowtimeChipStyle, onReset: () -> Unit) {
 private fun SheetControls(
     style: ShowtimeChipStyle,
     onStyleChange: (ShowtimeChipStyle) -> Unit,
+    ratingStyle: RatingPillStyle,
+    onRatingStyleChange: (RatingPillStyle) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -240,7 +258,45 @@ private fun SheetControls(
             DpSlider("Czas ↔ format", style.internalGap, 0f..12f) { onStyleChange(style.copy(internalGap = it)) }
             DpSlider("Między pigułkami", style.interPillGap, 0f..16f) { onStyleChange(style.copy(interPillGap = it)) }
         }
+
+        Group("Ocena: rozmiar bazowy") {
+            // Android scales rating pills by device width (unlike iOS's flat
+            // sizing), so the slider sets the BASE sp and the readout shows what
+            // this device actually renders after RatingBadgeMetrics.scale().
+            RatingScaleReadout(ratingStyle.baseFontSize)
+            SpSlider("Rozmiar bazowy", ratingStyle.baseFontSize.value, 6f..18f) {
+                onRatingStyleChange(ratingStyle.copy(baseFontSize = it.sp))
+            }
+        }
+        Group("Ocena: grubości") {
+            WeightRow("Etykieta", ratingStyle.labelWeight) { onRatingStyleChange(ratingStyle.copy(labelWeight = it)) }
+            WeightRow("Wartość", ratingStyle.valueWeight) { onRatingStyleChange(ratingStyle.copy(valueWeight = it)) }
+            WeightRow("Solid (MC)", ratingStyle.solidWeight) { onRatingStyleChange(ratingStyle.copy(solidWeight = it)) }
+        }
+        Group("Ocena: padding") {
+            DpSlider("Poziomy", ratingStyle.hPad, 0f..12f) { onRatingStyleChange(ratingStyle.copy(hPad = it)) }
+            DpSlider("Pionowy", ratingStyle.vPad, 0f..10f) { onRatingStyleChange(ratingStyle.copy(vPad = it)) }
+        }
+        Group("Ocena: kształt") {
+            DpSlider("Zaokrąglenie", ratingStyle.corner, 0f..14f) { onRatingStyleChange(ratingStyle.copy(corner = it)) }
+            DpSlider("Między pigułkami", ratingStyle.interPillGap, 0f..16f) { onRatingStyleChange(ratingStyle.copy(interPillGap = it)) }
+        }
     }
+}
+
+/** Shows this device's pill scale and the resulting rendered font, the key
+ *  difference from iOS — Android sizes rating pills relative to viewport width,
+ *  so the same base sp renders differently per phone. */
+@Composable
+private fun RatingScaleReadout(baseFontSize: TextUnit) {
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val scale = RatingBadgeMetrics.scale(screenWidthDp)
+    val rendered = baseFontSize.value * scale
+    Text(
+        "skala ×${twoDecimal(scale)} @${RatingBadgeMetrics.ReferenceWidthDp.toInt()}dp → ${oneDecimal(rendered)}sp",
+        color = TextSecondary,
+        fontSize = 11.sp,
+    )
 }
 
 @Composable
@@ -343,14 +399,25 @@ private fun LabeledSlider(
 // ── copy format + fit estimate ──────────────────────────────────────────────
 
 private fun oneDecimal(v: Float): String = String.format(java.util.Locale.US, "%.1f", v)
+private fun twoDecimal(v: Float): String = String.format(java.util.Locale.US, "%.2f", v)
 
-/** Serialises the current style to the exact paste format shared with iOS:
- *  one space-separated `key=value` per line. */
-internal fun copyText(s: ShowtimeChipStyle): String = buildString {
-    append("time: size=${oneDecimal(s.timeFontSize.value)} weight=${WeightOption.of(s.timeWeight).key}\n")
-    append("format: size=${oneDecimal(s.formatFontSize.value)} weight=${WeightOption.of(s.formatWeight).key}\n")
-    append("padding: h=${oneDecimal(s.horizontalInset.value)} v=${oneDecimal(s.verticalInset.value)}\n")
-    append("gaps: internal=${oneDecimal(s.internalGap.value)} interPill=${oneDecimal(s.interPillGap.value)}")
+/** Serialises the current styles to the exact paste format shared with iOS: one
+ *  space-separated `key=value` per line. The rating lines append after the
+ *  showtime ones and carry the device-scale readout (Android-specific, since the
+ *  pills size relative to viewport width). */
+internal fun copyText(s: ShowtimeChipStyle, r: RatingPillStyle, screenWidthDp: Int): String {
+    val scale = RatingBadgeMetrics.scale(screenWidthDp)
+    val rendered = r.baseFontSize.value * scale
+    return buildString {
+        append("time: size=${oneDecimal(s.timeFontSize.value)} weight=${WeightOption.of(s.timeWeight).key}\n")
+        append("format: size=${oneDecimal(s.formatFontSize.value)} weight=${WeightOption.of(s.formatWeight).key}\n")
+        append("padding: h=${oneDecimal(s.horizontalInset.value)} v=${oneDecimal(s.verticalInset.value)}\n")
+        append("gaps: internal=${oneDecimal(s.internalGap.value)} interPill=${oneDecimal(s.interPillGap.value)}\n")
+        append("rating-base: size=${oneDecimal(r.baseFontSize.value)} labelW=${WeightOption.of(r.labelWeight).key} valueW=${WeightOption.of(r.valueWeight).key} solidW=${WeightOption.of(r.solidWeight).key}\n")
+        append("rating-pad: h=${oneDecimal(r.hPad.value)} v=${oneDecimal(r.vPad.value)}\n")
+        append("rating-shape: corner=${oneDecimal(r.corner.value)} interPill=${oneDecimal(r.interPillGap.value)}\n")
+        append("rating-scale: x${twoDecimal(scale)} rendered=${oneDecimal(rendered)}")
+    }
 }
 
 /**
