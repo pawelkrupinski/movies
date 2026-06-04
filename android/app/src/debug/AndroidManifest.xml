@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only overlay. Adds a second launcher icon ("Kinowo Tune") that opens the
+  non-prod tweak screen on-device without adb (see TuningLauncherActivity).
+  Merged into the app manifest only for the debug variant, so it never ships.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name=".TuningLauncherActivity"
+            android:exported="true"
+            android:label="Kinowo Tune"
+            android:taskAffinity="pl.kinowo.tune">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
