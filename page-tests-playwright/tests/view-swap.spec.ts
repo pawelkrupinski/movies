@@ -20,7 +20,7 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
   });
 
   test('clicking Kina swaps in place — no full reload, DOM + tab + URL update', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     // Sentinel: a full navigation wipes window globals; an in-place swap keeps it.
     await page.evaluate(() => { window.__noReload = 'kept'; });
@@ -47,10 +47,10 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
   });
 
   test('clicking Filmy swaps back to the film grid', async ({ page }) => {
-    await page.goto('/kina');
+    await page.goto('/poznan/kina');
     await waitForCards(page);
     await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     await waitForCards(page);
 
     expect(await isKina(page)).toBe('films');
@@ -69,7 +69,7 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
   });
 
   test('no id collisions survive a swap', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
     await page.waitForURL(/\/kina$/);
@@ -81,7 +81,7 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
   });
 
   test('back button slides back to Filmy and re-highlights it', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
     await page.waitForURL(/\/kina$/);
@@ -89,7 +89,7 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     await expect(page.locator('#view-pager')).not.toHaveClass(/view-sliding/); // let swap 1 settle
 
     await page.goBack();
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     // popstate kicks off an async fetch-and-swap — wait for it to settle
     // before asserting (the URL flips before the DOM does).
     await expect(page.locator('#view-root')).toHaveAttribute('data-view', 'films');
@@ -97,7 +97,7 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
   });
 
   test('the cards area keeps pinch-zoom enabled (only horizontal pan is reserved for the swipe)', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     const ta = await page.evaluate(() =>
       getComputedStyle(document.querySelector('#view-pager .container-fluid')).touchAction);
@@ -107,7 +107,7 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
   });
 
   test('switching views preserves the ?date= query', async ({ page }) => {
-    await page.goto('/?date=tomorrow');
+    await page.goto('/poznan/?date=tomorrow');
     await waitForCards(page);
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
     await page.waitForURL(/\/kina/);
@@ -144,7 +144,7 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
     const parkAt = async (y: number) => { await page.evaluate((v) => window.scrollTo(0, v), y); await settle(); };
 
     await page.setViewportSize({ width: 390, height: 600 });
-    await page.goto('/?date=anytime');
+    await page.goto('/poznan/?date=anytime');
     await waitForCards(page);
     await settle();
 
@@ -175,7 +175,7 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
 
     // Back to Filmy — restores its deep offset, not the top, not Kina's shallow one.
     await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     await waitForCards(page);
     await settle();
     expect(Math.abs(await scrollY() - filmsY)).toBeLessThan(100);
@@ -189,10 +189,10 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
   });
 
   test('a view-swap fetch returns just the #view-root fragment, not the whole page', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     const { swap, full } = await page.evaluate(async () => {
-      const swap = await (await fetch('/kina', { headers: { 'X-Requested-With': 'view-swap' } })).text();
-      const full = await (await fetch('/kina')).text();
+      const swap = await (await fetch('/poznan/kina', { headers: { 'X-Requested-With': 'view-swap' } })).text();
+      const full = await (await fetch('/poznan/kina')).text();
       return { swap, full };
     });
     // The swap response is just the swappable region — no page shell — so it
@@ -209,7 +209,7 @@ test.describe('Filmy ↔ Kina slide-swap (click)', () => {
 
   test('reduced-motion still completes the swap (no transition to wait on)', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
     await page.waitForURL(/\/kina$/);
@@ -226,7 +226,7 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
   // touch injection is chromium-only, so gate to a coarse-pointer chromium
   // project.
   test.beforeEach(async ({ page, browserName }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
     test.skip(!coarse || browserName !== 'chromium',
       'real-touch swipe needs a coarse-pointer chromium project (CDP touch)');
@@ -289,7 +289,7 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
     await page.waitForURL(/\/kina$/);
     await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     await expect(page.locator('#view-pager > main')).toHaveCount(1);
     await page.waitForTimeout(500);   // let the sibling prefetch settle (localhost fetch)
   }
@@ -324,10 +324,10 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
   });
 
   test('swipe right switches Kina → Filmy and highlights Filmy', async ({ page }) => {
-    await page.goto('/kina');
+    await page.goto('/poznan/kina');
     await waitForCards(page);
     await swipe(page, '#film-grid', 200);
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     expect(await isKina(page)).toBe('films');
     await expect(page.locator('.navbar .nav-tab.active')).toContainText('Filmy');
   });
@@ -342,7 +342,7 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await page.waitForURL(/\/kina$/);
     await assertConsistent(page, 'kina');
     await swipe(page, '#film-grid', 220);
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     await assertConsistent(page, 'films');
   });
 
@@ -381,7 +381,7 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
       if (route.request().headers()['x-requested-with'] === 'view-swap') return route.abort();
       return route.continue();
     });
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     await page.evaluate(() => { (window as any).__noReload = 'kept'; });   // wiped by a full navigation
     // No tab-click warm — straight to a swipe.
@@ -401,14 +401,14 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
       if (route.request().headers()['x-requested-with'] === 'view-swap') return route.abort();
       return route.continue();
     });
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     await page.evaluate(() => { (window as any).__noReload = 'kept'; });
     await swipe(page, '#film-grid', -250);                         // Filmy → Kina (embed seed)
     await page.waitForURL(/\/kina/);
     await assertConsistent(page, 'kina');
     await swipe(page, '#film-grid', 250);                          // Kina → Filmy (current-view cache)
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     expect(await page.evaluate(() => (window as any).__noReload)).toBe('kept');   // both in-place, no reload
     await assertConsistent(page, 'films');
   });
@@ -433,7 +433,7 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await swipeXY(page, '#film-grid', 12, 160);
     await page.waitForTimeout(200);
     expect(await isKina(page)).toBe('films');
-    await expect(page).toHaveURL((u) => new URL(u).pathname === '/');
+    await expect(page).toHaveURL((u) => new URL(u).pathname === '/poznan/');
   });
 
   test('a committed swipe leaves the scroll where the finger left it (no goto)', async ({ page }) => {
@@ -441,14 +441,14 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     // the finger at the same offset throughout — so a commit must NOT reposition
     // the scroll (no jump to the top, no snap to the other column's saved
     // offset). Tab clicks still restore; the swipe does not.
-    await page.goto('/?date=anytime');
+    await page.goto('/poznan/?date=anytime');
     await waitForCards(page);
     // Warm both prefetch caches so the swipe engages live finger-tracking
     // (settleDrag), not the cold navigateTo fallback.
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
     await page.waitForURL(/\/kina/);
     await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     await expect(page.locator('#view-pager > main')).toHaveCount(1);
 
     // Park Filmy deep; retry through the boot reflow that drops the scroll.
@@ -489,18 +489,18 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     // Only the two view tabs — the login pill carries #3a3a6e as its base fill.
     const litTabs = () => page.evaluate((hl) =>
       [...document.querySelectorAll('.navbar a.nav-tab')]
-        .filter((a) => ['/', '/kina'].includes(a.getAttribute('href')))
+        .filter((a) => ['/poznan/', '/poznan/kina'].includes(a.getAttribute('href')))
         .filter((a) => getComputedStyle(a).backgroundColor === hl)
         .map((a) => a.textContent.trim()), HIGHLIGHT);
 
     // Land on Kina, then park the pointer on its tab — the same sticky-hover
     // state a phone leaves behind after a tap.
-    await page.goto('/kina');
+    await page.goto('/poznan/kina');
     await waitForCards(page);
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).hover();
     // Swipe back to Filmy. The pointer never leaves the Kina tab.
     await swipe(page, '#film-grid', 200);
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     await expect(page.locator('.navbar .nav-tab.active')).toContainText('Filmy');
 
     expect(await litTabs()).toEqual(['Filmy']);
@@ -514,7 +514,7 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
     await page.waitForURL(/\/kina$/);
     await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     await expect(page.locator('#view-pager > main')).toHaveCount(1);
 
     const box = await page.locator('#film-grid').boundingBox();
@@ -558,7 +558,7 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
     await page.waitForURL(/\/kina$/);
     await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     await expect(page.locator('#view-pager > main')).toHaveCount(1);
 
     await page.evaluate(() => {
@@ -586,7 +586,7 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
     await page.waitForURL(/\/kina$/);
     await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     await expect(page.locator('#view-pager > main')).toHaveCount(1);
 
     await page.evaluate(() => {
@@ -605,7 +605,7 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
 
     await expect(page.locator('#view-pager > main')).toHaveCount(1);   // settled (snapped back)
     expect(await isKina(page)).toBe('films');                          // stayed on Filmy
-    await expect(page).toHaveURL((u) => new URL(u).pathname === '/');
+    await expect(page).toHaveURL((u) => new URL(u).pathname === '/poznan/');
   });
 
   test('the active tab previews the landing page while dragging (past the commit point)', async ({ page }) => {
@@ -618,7 +618,7 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
     await page.locator('.navbar .nav-tab', { hasText: 'Kina' }).click();
     await page.waitForURL(/\/kina$/);
     await page.locator('.navbar .nav-tab', { hasText: 'Filmy' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     await expect(page.locator('#view-pager > main')).toHaveCount(1);
 
     const move = (phase) => page.evaluate((phase) => {
@@ -717,7 +717,7 @@ test.describe('Filmy ↔ Kina slide-swap (swipe)', () => {
   });
 
   test('swipe starting on the cinema-pill strip does NOT switch view', async ({ page }) => {
-    await page.goto('/kina');
+    await page.goto('/poznan/kina');
     await waitForCards(page);
     await page.waitForSelector('#cinema-pills .cinema-pill', { state: 'attached' });
     await swipe(page, '#cinema-pills .cinema-pill', -200);

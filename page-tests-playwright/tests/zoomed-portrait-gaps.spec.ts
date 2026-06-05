@@ -13,7 +13,7 @@ test.describe('zoomed portrait card gaps', () => {
     test.skip(!testInfo.project.name.includes('zoomed')
               || testInfo.project.name.includes('landscape'),
       'zoomed portrait only');
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 

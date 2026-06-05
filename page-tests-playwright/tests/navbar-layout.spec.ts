@@ -89,7 +89,7 @@ function expectUniform(
 test.describe('navbar uniformity — desktop', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('desktop'), 'desktop projects only');
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 
@@ -113,7 +113,7 @@ test.describe('navbar uniformity — mobile portrait', () => {
     const name = testInfo.project.name;
     const isPortraitMobile = !name.includes('desktop') && !name.includes('landscape');
     test.skip(!isPortraitMobile, 'mobile portrait only');
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 
@@ -185,7 +185,7 @@ test.describe('logged-in avatar pill height', () => {
   // desktop Safari too, so gating this to mobile-portrait (as it once was) let
   // the bug slip through on exactly the engine the user hit it on.
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     await injectAuthMenu(page);
   });
@@ -295,7 +295,7 @@ test.describe('avatar pill without Bootstrap CSS', () => {
   test.beforeEach(async ({ page }) => {
     // Drop the Bootstrap stylesheet on the floor — simulate it never applying.
     await page.route(/bootstrap.*\.css$/, (route) => route.abort());
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     await injectAuthMenu(page);
   });
@@ -355,7 +355,7 @@ test.describe('avatar pill on a desktop browser narrowed to mobile width', () =>
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('desktop'), 'desktop projects only');
     await page.setViewportSize({ width: 400, height: 800 });
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     await injectAuthMenu(page);
   });
@@ -435,7 +435,7 @@ test.describe('tablet portrait — search focus does not reflow the date row (83
     // Desktop-class projects only — non-emulated browsers we can drive to
     // a tablet-portrait viewport that runs the desktop navbar layout.
     test.skip(!testInfo.project.name.includes('desktop'), 'desktop projects only');
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 
@@ -475,7 +475,7 @@ test.describe('tablet portrait — search focus does not reflow the date row (83
 test.describe('navbar uniformity — mobile landscape', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('landscape'), 'landscape projects only');
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 
@@ -504,7 +504,7 @@ test.describe('navbar orientation uniformity', () => {
       name.includes('landscape') || name.includes('desktop'),
       'rotates viewport itself — bare mobile portrait projects only',
     );
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 
@@ -540,7 +540,7 @@ test.describe('narrow landscape (760×360)', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name.includes('desktop'), 'mobile-class projects only');
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 
@@ -593,7 +593,7 @@ test.describe('portrait filtry button (360×760)', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name.includes('desktop'), 'mobile-class projects only');
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 
@@ -621,7 +621,7 @@ test.describe('day selector width (390×844)', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name.includes('desktop'), 'mobile-class projects only');
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 
@@ -661,7 +661,7 @@ test.describe('orientation flip: portrait → landscape', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name.includes('desktop'), 'mobile projects only');
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 
@@ -702,7 +702,7 @@ test.describe('orientation flip: landscape → portrait', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name.includes('desktop'), 'mobile projects only');
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 
@@ -729,7 +729,7 @@ test.describe('zoomed landscape — date-to-filtry gap', () => {
       !testInfo.project.name.includes('zoomed-landscape'),
       'zoomed-landscape projects only',
     );
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 

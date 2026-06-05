@@ -11,7 +11,7 @@ test.describe('card poster link on WebKit (iPhone emulation)', () => {
       testInfo.project.name !== 'webkit',
       'webkit (iPhone 13) project only',
     );
-    await page.goto('/');
+    await page.goto('/poznan/');
     await pinDateFilterAnytime(page);
   });
 

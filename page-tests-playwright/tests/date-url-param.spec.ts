@@ -10,7 +10,7 @@ import { setDateFilter, gotoAndWaitForCards } from './helpers';
 test.describe('date selector ↔ URL', () => {
 
   test('selecting a non-default day adds ?date= to the URL', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/');
+    await gotoAndWaitForCards(page, '/poznan/');
 
     await setDateFilter(page, 'tomorrow');
 
@@ -18,7 +18,7 @@ test.describe('date selector ↔ URL', () => {
   });
 
   test('returning to "today" strips ?date= from the URL', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/?date=tomorrow');
+    await gotoAndWaitForCards(page, '/poznan/?date=tomorrow');
     expect(new URL(page.url()).searchParams.get('date')).toBe('tomorrow');
 
     await setDateFilter(page, 'today');
@@ -27,36 +27,36 @@ test.describe('date selector ↔ URL', () => {
   });
 
   test('opening /?date=anytime applies the filter on first paint', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/?date=anytime');
+    await gotoAndWaitForCards(page, '/poznan/?date=anytime');
 
     await expect(page.locator('#date-filter')).toHaveValue('anytime');
   });
 
   test('an unrecognised ?date= value is ignored — default stays as "today"', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/?date=tomorrowish');
+    await gotoAndWaitForCards(page, '/poznan/?date=tomorrowish');
 
     await expect(page.locator('#date-filter')).toHaveValue('today');
   });
 
   test('?date= works the same on /kina', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/kina?date=week');
+    await gotoAndWaitForCards(page, '/poznan/kina?date=week');
 
     await expect(page.locator('#date-filter')).toHaveValue('week');
 
     await setDateFilter(page, 'tomorrow');
     expect(new URL(page.url()).searchParams.get('date')).toBe('tomorrow');
     // Path preserved — query change shouldn't move us off /kina.
-    expect(new URL(page.url()).pathname).toBe('/kina');
+    expect(new URL(page.url()).pathname).toBe('/poznan/kina');
   });
 
   test('toggling a cinema pill on /kina preserves ?date=', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/kina?date=tomorrow');
+    await gotoAndWaitForCards(page, '/poznan/kina?date=tomorrow');
 
     const firstPill = page.locator('#cinema-pills .cinema-pill').first();
     await firstPill.click();
 
     const url = new URL(page.url());
-    expect(url.pathname).toMatch(/^\/kina\//);
+    expect(url.pathname).toMatch(/^\/poznan\/kina\//);
     expect(url.searchParams.get('date')).toBe('tomorrow');
   });
 });

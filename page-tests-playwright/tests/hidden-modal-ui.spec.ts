@@ -11,7 +11,7 @@ import { setLocalStorageJson } from './helpers';
 test.describe('hidden films modal UI', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await setLocalStorageJson(page, 'hiddenFilms', ['Avatar', 'Cars']);
     // `reload()` defaults to waiting for `load` — that needs every poster
     // (~190 cards, each routed through `images.weserv.nl`) to finish, which

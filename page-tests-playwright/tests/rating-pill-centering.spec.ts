@@ -19,7 +19,7 @@ test.describe('rating pill vertical centring', () => {
   test('text-box-trim is applied to the pill text', async ({ page, browserName }) => {
     test.skip(browserName !== 'chromium', 'text-box-trim is not supported in this engine');
 
-    await gotoAndWaitForCards(page, '/');
+    await gotoAndWaitForCards(page, '/poznan/');
     await pinDateFilterAnytime(page);
 
     const value = page.locator('.rating-imdb-value').first();

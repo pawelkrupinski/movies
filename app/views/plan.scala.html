@@ -647,7 +647,7 @@
     // same way every other film link does).
     const title = document.createElement('a');
     title.className = 'plan-movie-title';
-    title.href = '/film?title=' + encodeURIComponent(movie);
+    title.href = '/' + CURRENT_CITY + '/film?title=' + encodeURIComponent(movie);
     title.textContent = movie;
     block.appendChild(title);
 

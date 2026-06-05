@@ -9,7 +9,7 @@ import { setDateFilter, waitForCards } from './helpers';
 test.describe('date stepper buttons', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     // Land on a known starting value so cycling is deterministic.
     await setDateFilter(page, 'today');

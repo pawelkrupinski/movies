@@ -32,7 +32,7 @@ test.describe('axe-core WCAG audit', () => {
   });
 
   test('home page has no axe violations', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     // `state: 'attached'` — the default `'visible'` doesn't hold here.
     // The home page's inline filter `display:none`-s out-of-window cards
     // and shuffles them to the front of DOM order, so Playwright's
@@ -58,7 +58,7 @@ test.describe('axe-core WCAG audit', () => {
   });
 
   test('film detail page has no axe violations', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     // `state: 'attached'` — the default `'visible'` doesn't hold here.
     // The home page's inline filter `display:none`-s out-of-window cards
     // and shuffles them to the front of DOM order, so Playwright's
@@ -73,7 +73,7 @@ test.describe('axe-core WCAG audit', () => {
     // `domcontentloaded`: the axe scan runs against the server-rendered
     // DOM, which is complete at DCL — no need to block on the poster-proxy
     // images / trailer iframe whose `load` can stall a contended runner.
-    await page.goto(`/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`/poznan/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
     const result = await new AxeBuilder({ page })
       .withTags([...WCAG_TAGS])
       // Known-failing rule on the current site CSS: `.badge-fmt` (ATMOS

@@ -14,7 +14,7 @@ const visibleCardCount = async (page: import('@playwright/test').Page) =>
 
 test.describe('kinowo.fly.dev smoke', () => {
   test('home page renders at least one visible card', async ({ page }) => {
-    const resp = await page.goto('/');
+    const resp = await page.goto('/poznan/');
     expect(resp?.status()).toBe(200);
     // `state: 'attached'` — the default `'visible'` doesn't hold here.
     // The home page's inline filter `display:none`-s out-of-window cards
@@ -27,7 +27,7 @@ test.describe('kinowo.fly.dev smoke', () => {
   });
 
   test('date filter narrows the visible set', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     // `state: 'attached'` — the default `'visible'` doesn't hold here.
     // The home page's inline filter `display:none`-s out-of-window cards
     // and shuffles them to the front of DOM order, so Playwright's
@@ -49,7 +49,7 @@ test.describe('kinowo.fly.dev smoke', () => {
   });
 
   test('film detail page renders title from home selection', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     // `state: 'attached'` — the default `'visible'` doesn't hold here.
     // The home page's inline filter `display:none`-s out-of-window cards
     // and shuffles them to the front of DOM order, so Playwright's
@@ -67,7 +67,7 @@ test.describe('kinowo.fly.dev smoke', () => {
     // poster-proxy images + the trailer iframe, which can stall the full
     // timeout on a contended runner. The status + server-rendered title we
     // assert on are present at DCL.
-    const resp = await page.goto(`/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
+    const resp = await page.goto(`/poznan/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
     expect(resp?.status()).toBe(200);
     // Don't pin to a specific element — view templates evolve. The
     // contract is just "the film's title shows up on its detail page".

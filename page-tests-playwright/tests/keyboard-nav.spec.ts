@@ -9,7 +9,7 @@ import { setDateFilter, waitForCards } from './helpers';
 test.describe('keyboard arrow date navigation', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
     // Land on a known starting value so the cycle is deterministic.
     await setDateFilter(page, 'today');

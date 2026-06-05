@@ -46,7 +46,7 @@ test.describe('/kina cinema-pill row layout', () => {
   }
 
   test('the row never wraps and is a scroll container at any width', async ({ page }) => {
-    await page.goto('/kina');
+    await page.goto('/poznan/kina');
     await waitForCards(page);
     await page.waitForSelector('#cinema-pills .cinema-pill', { state: 'attached' });
 
@@ -59,7 +59,7 @@ test.describe('/kina cinema-pill row layout', () => {
   });
 
   test('scrolls horizontally when the pills overflow — above the phone breakpoint too', async ({ page }) => {
-    await page.goto('/kina');
+    await page.goto('/poznan/kina');
     await waitForCards(page);
     await page.waitForSelector('#cinema-pills .cinema-pill', { state: 'attached' });
 

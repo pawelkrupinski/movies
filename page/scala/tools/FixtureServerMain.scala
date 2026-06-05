@@ -1,7 +1,7 @@
 package tools
 
 import controllers.{ApiFilm, ApiFilmDetails}
-import models.{City, Poznan}
+import models.City
 import play.api.libs.json.Json
 
 import java.net.URLDecoder
@@ -55,123 +55,120 @@ object FixtureServerMain {
     // tests get the production-shaped DOM directly so flows like the
     // anonymous-nag toast lifecycle can be tested end-to-end.
     val noOauth = Set("google")
-    // Single supported city today; every page is rendered city-scoped and
-    // served under `/poznan/…`, mirroring production's hard-cut routing.
-    implicit val city: City = Poznan
-    val cinemas = city.cinemaDisplayNames
-    val schedules       = wiring.movieControllerService.toSchedules(city, now)
-    val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(city, now)
 
-    val pills = city.cinemaPillMap
+    // Every page is served city-scoped under `/{city}/…`, mirroring
+    // production's hard-cut routing. The fixture corpus is Poznań's; the other
+    // cities resolve to empty schedules (no scrapers wired in tests), exactly
+    // as production serves a not-yet-populated city.
+    def schedulesFor(c: City)       = wiring.movieControllerService.toSchedules(c, now)
+    def cinemaSchedulesFor(c: City) = wiring.movieControllerService.toCinemaSchedules(c, now)
 
     // `#view-root`-only fragments served for `X-Requested-With: view-swap`
     // requests — mirrors the production controller so the in-place swap (and
     // its tests) exercise the real "fetch just the fragment" path. The full
-    // pages also embed the SIBLING fragment as the prefetch seed (same as the
-    // controller), so the embed-seed test sees it.
-    val indexFragment: String = views.html._repertoireView(schedules, devMode = false).body
-    def renderKinaFragment(pinned: Option[String]): String =
-      views.html._kinaView(cinemaSchedules, pinned, devMode = false).body
-
-    def renderKina(pinned: Option[String]): String = views.html.kina(
-      cinemaSchedules, cinemas, pills, devMode = false,
-      currentUser = anon, oauthProviders = noOauth,
-      pinnedCinema = pinned,
-      siblingPath = s"/${city.slug}/", siblingHtml = indexFragment
-    ).body
-
-    val indexHtml: String = views.html.repertoire(
-      schedules, cinemas, pills, devMode = false,
-      currentUser = anon, oauthProviders = noOauth,
-      siblingPath = s"/${city.slug}/kina", siblingHtml = renderKinaFragment(None)
-    ).body
-
-    val filmyHtml: String = views.html.browse(
-      schedules, "Filmy", devMode = false,
-      currentUser = anon, oauthProviders = noOauth
-    ).body
-
-    val planHtml: String = {
-      val data = controllers.PlanController.viewData(city, schedules)
-      views.html.plan(data, cinemas, pills, devMode = false,
-        currentUser = anon, oauthProviders = noOauth).body
+    // pages also embed the SIBLING fragment as the prefetch seed.
+    def indexFragmentFor(c: City): String = {
+      implicit val ci: City = c
+      views.html._repertoireView(schedulesFor(c), devMode = false).body
     }
-
-    // The bare `/` landing (city-selection screen), same as production.
-    val landingHtml: String = views.html.landing(City.all).body
-
-    def renderFilm(title: String): String = {
+    def kinaFragmentFor(c: City, pinned: Option[String]): String = {
+      implicit val ci: City = c
+      views.html._kinaView(cinemaSchedulesFor(c), pinned, devMode = false).body
+    }
+    def kinaPageFor(c: City, pinned: Option[String]): String = {
+      implicit val ci: City = c
+      views.html.kina(cinemaSchedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
+        currentUser = anon, oauthProviders = noOauth, pinnedCinema = pinned,
+        siblingPath = s"/${c.slug}/", siblingHtml = indexFragmentFor(c)).body
+    }
+    def indexPageFor(c: City): String = {
+      implicit val ci: City = c
+      views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
+        currentUser = anon, oauthProviders = noOauth,
+        siblingPath = s"/${c.slug}/kina", siblingHtml = kinaFragmentFor(c, None)).body
+    }
+    def filmyPageFor(c: City): String = {
+      implicit val ci: City = c
+      views.html.browse(schedulesFor(c), "Filmy", devMode = false, currentUser = anon, oauthProviders = noOauth).body
+    }
+    def planPageFor(c: City): String = {
+      implicit val ci: City = c
+      views.html.plan(controllers.PlanController.viewData(c, schedulesFor(c)),
+        c.cinemaDisplayNames, c.cinemaPillMap, devMode = false, currentUser = anon, oauthProviders = noOauth).body
+    }
+    def filmPageFor(c: City, title: String): String = {
+      implicit val ci: City = c
       val target = URLDecoder.decode(title, "UTF-8")
-      schedules.find(_.movie.title == target) match {
+      schedulesFor(c).find(_.movie.title == target) match {
         case Some(s) =>
-          views.html.film(s, s"http://test.local/${city.slug}/film?title=$title",
+          views.html.film(s, s"http://test.local/${c.slug}/film?title=$title",
             ogDescription = "", devMode = false).body
         case None    => "<html><body>Film not found</body></html>"
       }
     }
 
-    // Strip the `/{city}` prefix so the in-city arms below match the same
-    // sub-paths production serves under `/poznan/…`. A bare `/` (or `/?…`) is
-    // the landing screen, not a repertoire page — hard-cut, mirroring prod.
-    val cityPrefix = s"/${city.slug}"
-    def inCity(p: String): Option[String] =
-      if (p == cityPrefix) Some("/")
-      else if (p.startsWith(cityPrefix + "/") || p.startsWith(cityPrefix + "?")) Some(p.stripPrefix(cityPrefix))
-      else None
+    // The bare `/` landing (city-selection screen), same as production.
+    val landingHtml: String = views.html.landing(City.all).body
+
+    // Resolve `/{city}/…` to (City, in-city sub-path). The first path segment
+    // is matched against the known cities; an unknown first segment → None.
+    def resolve(p: String): Option[(City, String)] = {
+      val firstSeg = p.stripPrefix("/").takeWhile(ch => ch != '/' && ch != '?')
+      City.bySlug(firstSeg).map { c =>
+        val prefix = "/" + firstSeg
+        (c, if (p == prefix) "/" else p.stripPrefix(prefix))
+      }
+    }
 
     val routes: PartialFunction[String, String] = {
-      // Bare `/` → the city-selection landing.
+      // Bare `/` → the city-selection landing (hard-cut: not a repertoire page).
       case p if p == "/" || p.startsWith("/?") => landingHtml
-      // Everything else must be under `/{city}/…`; strip and match. Each route
-      // tolerates an arbitrary `?…` suffix (real Play ignores unknown query
-      // params; Playwright boots directly with `?date=` etc.).
-      case p if inCity(p).isDefined =>
-        val sub = inCity(p).get
+      // Everything else under `/{city}/…`. Each route tolerates a `?…` suffix.
+      case p if resolve(p).isDefined =>
+        val (c, sub) = resolve(p).get
         sub match {
-          case s if s == "/"     || s.startsWith("/?")     => indexHtml
-          case "/filmy"                                    => indexHtml
+          case s if s == "/"     || s.startsWith("/?")     => indexPageFor(c)
+          case "/filmy"                                    => indexPageFor(c)
           case s if s.startsWith("/filmy?") &&
-                     (s.contains("kraj=") || s.contains("rezyser=") || s.contains("aktor=")) => filmyHtml
-          case s if s.startsWith("/filmy?")                => indexHtml
-          case s if s == "/kina" || s.startsWith("/kina?") => renderKina(None)
-          case s if s == "/plan" || s.startsWith("/plan?") => planHtml
+                     (s.contains("kraj=") || s.contains("rezyser=") || s.contains("aktor=")) => filmyPageFor(c)
+          case s if s.startsWith("/filmy?")                => indexPageFor(c)
+          case s if s == "/kina" || s.startsWith("/kina?") => kinaPageFor(c, None)
+          case s if s == "/plan" || s.startsWith("/plan?") => planPageFor(c)
           case s if s.startsWith("/kina/") =>
             val raw = URLDecoder.decode(s.stripPrefix("/kina/").takeWhile(_ != '?'), "UTF-8")
-            renderKina(cinemas.find(_ == raw))
+            kinaPageFor(c, c.cinemaDisplayNames.find(_ == raw))
           case s if s.startsWith("/film?title=") =>
-            renderFilm(s.stripPrefix("/film?title="))
+            filmPageFor(c, s.stripPrefix("/film?title="))
         }
     }
 
     // `#view-root`-only responses for view-swap requests — the swap-managed
     // routes (`/{city}/`, `/{city}/filmy`, `/{city}/kina`, `/{city}/kina/<cinema>`).
     val swapRoutes: PartialFunction[String, String] = {
-      case p if inCity(p).isDefined && {
-        val s = inCity(p).get
+      case p if resolve(p).exists { case (_, s) =>
         s == "/" || s.startsWith("/?") || s == "/filmy" || s.startsWith("/filmy?") ||
           s == "/kina" || s.startsWith("/kina?") || s.startsWith("/kina/")
       } =>
-        val s = inCity(p).get
+        val (c, s) = resolve(p).get
         if (s.startsWith("/kina/")) {
           val raw = URLDecoder.decode(s.stripPrefix("/kina/").takeWhile(_ != '?'), "UTF-8")
-          renderKinaFragment(cinemas.find(_ == raw))
-        } else if (s == "/kina" || s.startsWith("/kina?")) renderKinaFragment(None)
-        else indexFragment
+          kinaFragmentFor(c, c.cinemaDisplayNames.find(_ == raw))
+        } else if (s == "/kina" || s.startsWith("/kina?")) kinaFragmentFor(c, None)
+        else indexFragmentFor(c)
     }
 
     // The two JSON endpoints the mobile apps consume — the Android `KinowoApi`
     // and iOS `RepertoireStore` both decode these. Rendered from the same
-    // fixture `schedules` the HTML routes use, via the production
-    // `ApiFilm` / `ApiFilmDetails` projections, so a wire-shape drift in
-    // `MovieController`'s JSON is caught by the mobile LocalServer suites.
-    val repertoireJson: String = Json.toJson(schedules.map(ApiFilm.from)).toString
-    val detailsJson: String = Json.toJson(
-      schedules.map(ApiFilmDetails.from).filter(ApiFilmDetails.hasContent)
-    ).toString
+    // fixture schedules the HTML routes use, via the production `ApiFilm` /
+    // `ApiFilmDetails` projections, so a wire-shape drift in `MovieController`'s
+    // JSON is caught by the mobile LocalServer suites.
+    def repertoireJsonFor(c: City): String = Json.toJson(schedulesFor(c).map(ApiFilm.from)).toString
+    def detailsJsonFor(c: City): String =
+      Json.toJson(schedulesFor(c).map(ApiFilmDetails.from).filter(ApiFilmDetails.hasContent)).toString
 
     val jsonRoutes: PartialFunction[String, String] = {
-      case p if inCity(p).contains("/api/repertoire") => repertoireJson
-      case p if inCity(p).contains("/api/details")    => detailsJson
+      case p if resolve(p).exists(_._2.startsWith("/api/repertoire")) => repertoireJsonFor(resolve(p).get._1)
+      case p if resolve(p).exists(_._2.startsWith("/api/details"))    => detailsJsonFor(resolve(p).get._1)
     }
 
     val server = new TestHttpServer(routes, swapRoutes, jsonRoutes)

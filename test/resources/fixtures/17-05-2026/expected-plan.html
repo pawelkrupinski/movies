@@ -65,6 +65,21 @@
       <div id="hidden-row-divider" class="panel-divider" style="display:none"></div>
 
       
+      
+        <div class="panel-section-label">Miasto</div>
+        <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
+          
+            <option value="poznan" selected>Poznań</option>
+          
+            <option value="wroclaw">Wrocław</option>
+          
+            <option value="warszawa">Warszawa</option>
+          
+        </select>
+        <div class="panel-divider"></div>
+      
+
+      
       <div class="panel-section-label">Sortuj</div>
       <select id="sort-by" class="filter-select w-100" onchange="onSortChange()" style="margin-bottom:.4rem">
         <option value="earliest">Najbliższy seans</option>
@@ -11173,7 +11188,7 @@ const block = document.createElement('div');
 block.className = 'plan-movie';
 const title = document.createElement('a');
 title.className = 'plan-movie-title';
-title.href = '/film?title=' + encodeURIComponent(movie);
+title.href = '/' + CURRENT_CITY + '/film?title=' + encodeURIComponent(movie);
 title.textContent = movie;
 block.appendChild(title);
 if (candidates.length === 0) {

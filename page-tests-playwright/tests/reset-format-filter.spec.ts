@@ -10,7 +10,7 @@ import { pinDateFilterAnytime } from './helpers';
 test.describe('Filtry > Wyczyść', () => {
 
   test('resets every format axis and the from-hour pickers', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await pinDateFilterAnytime(page);
 
     // Pile on every active axis the panel exposes so the reset has

@@ -11,7 +11,7 @@ test.describe('mobile landscape layout', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('landscape'),
       'landscape layout only applies to landscape projects');
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 

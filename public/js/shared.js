@@ -70,6 +70,17 @@
     if (typeof applyFilters === 'function') applyFilters();
   }
 
+  // City picker (Filtry → Miasto) changed — remember the choice so the bare
+  // `/` landing bounces here next time, then navigate to the chosen city's
+  // repertoire root. A full navigation (not a view-swap) because the whole
+  // corpus changes. No-op when the value is the current city.
+  function onCityChange(slug) {
+    if (!slug || slug === CURRENT_CITY) return;
+    document.cookie = 'city=' + slug + ';path=/;max-age=' + (60 * 60 * 24 * 365);
+    window.location.href = '/' + slug + '/';
+  }
+  window.onCityChange = onCityChange;
+
   // requiredTokens may be empty → fast-path. Otherwise checks a pre-built Set
   // attached to each indexed badge (so we don't re-parse `dataset.format` on
   // every filter pass).
@@ -578,7 +589,7 @@
     const card = e.target.closest('.card');
     if (card) {
       const col = card.closest('.col[data-title]');
-      if (col) window.location.href = '/film?title=' + encodeURIComponent(col.dataset.title);
+      if (col) window.location.href = CITY_BASE + '/film?title=' + encodeURIComponent(col.dataset.title);
     }
   });
 
@@ -1470,9 +1481,9 @@
   function setActiveTab(view) {
     document.querySelectorAll('.navbar .nav-tab').forEach(a => {
       const href = a.getAttribute('href');
-      if (href === '/' || href === '/kina') {
-        a.classList.toggle('active', (view === 'films' && href === '/') ||
-                                     (view === 'kina'  && href === '/kina'));
+      if (href === VIEW_PATHS.films || href === VIEW_PATHS.kina) {
+        a.classList.toggle('active', (view === 'films' && href === VIEW_PATHS.films) ||
+                                     (view === 'kina'  && href === VIEW_PATHS.kina));
       }
     });
   }
@@ -1540,7 +1551,10 @@
   // stable shell and never reload. A horizontal swipe on a phone triggers the
   // same path. Direct loads and `/kina/:cinema` still server-render normally.
 
-  const VIEW_PATHS     = { films: '/', kina: '/kina' };
+  // Every page is under `/{city}/…`, so the swap-managed view paths carry the
+  // current city's prefix. CURRENT_CITY is the global from `_sharedJsConfig`.
+  const CITY_BASE      = '/' + CURRENT_CITY;
+  const VIEW_PATHS     = { films: CITY_BASE + '/', kina: CITY_BASE + '/kina' };
   const PREFETCH_TTL_MS = 5 * 60 * 1000;
   const _prefetch      = new Map();   // path -> { html, ts }
   let   _swapping      = false;
@@ -1566,7 +1580,10 @@
   const SWIPE_VBIAS_RATIO = 1.6;   // …and beat horizontal by this factor → it's a real vertical scroll
 
   function viewOfPath(path) {
-    const p = (path || location.pathname).split('?')[0].split('#')[0];
+    let p = (path || location.pathname).split('?')[0].split('#')[0];
+    // Strip the `/{city}` prefix so the in-city view check is city-agnostic.
+    if (p === CITY_BASE) p = '/';
+    else if (p.startsWith(CITY_BASE + '/')) p = p.slice(CITY_BASE.length);
     if (p === '/') return 'films';
     if (p === '/kina' || p.startsWith('/kina/')) return 'kina';
     return null;   // a route the swap doesn't manage (e.g. /plan)
@@ -1722,11 +1739,11 @@
     const tab = e.target.closest('.navbar .nav-tab');
     if (!tab) return;
     const href = tab.getAttribute('href');
-    if (href !== '/' && href !== '/kina') return;   // e.g. the Debug tab → normal nav
+    if (href !== VIEW_PATHS.films && href !== VIEW_PATHS.kina) return;   // e.g. the Debug tab → normal nav
     const root = document.getElementById('view-root');
     if (!root) return;                               // not a swap-managed page
     e.preventDefault();
-    const destView = href === '/' ? 'films' : 'kina';
+    const destView = href === VIEW_PATHS.films ? 'films' : 'kina';
     if (root.dataset.view === destView) return;
     navigateTo(href, destView, destView === 'kina' ? 'left' : 'right', true);
   }, true);

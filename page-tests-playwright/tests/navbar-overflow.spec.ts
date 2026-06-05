@@ -170,7 +170,7 @@ async function navbarRowCount(page: Page, tolerance = 6): Promise<number> {
 // regressions that push "Zaloguj się" or the date row onto a third line.
 test.describe('navbar row count at project viewport', () => {
   test('≤ 2 rows in default state', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
 
     const rowCount = await navbarRowCount(page);
@@ -184,7 +184,7 @@ test.describe('navbar row count at project viewport', () => {
 
 test.describe('navbar overflow under maxed filters + long logged-in name', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await waitForCards(page);
   });
 

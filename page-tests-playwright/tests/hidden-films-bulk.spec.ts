@@ -8,7 +8,7 @@ test.describe('hidden films bulk unhide', () => {
 
   test('Wyczyść clears every hidden title at once', async ({ page }) => {
     const seeded = ['Avatar', 'Cars', 'Diabeł ubiera się u Prady 2'];
-    await page.goto('/');
+    await page.goto('/poznan/');
     await setLocalStorageJson(page, 'hiddenFilms', seeded);
     await page.reload();
     await pinDateFilterAnytime(page);

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { firstVisibleTitle, gotoAndWaitForCards, pinDateFilterAnytime } from './helpers';
 
-// `/film?title=...` detail page. Walks from a card on `/` to its
+// `/poznan/film?title=...` detail page. Walks from a card on `/` to its
 // detail screen and asserts the page's content blocks render +
 // trailer interaction works.
 
@@ -9,7 +9,7 @@ test.describe('/film detail page', () => {
 
   // Helper: navigate to /film for the first visible card on /
   async function gotoFirstFilm(page: import('@playwright/test').Page): Promise<string> {
-    await gotoAndWaitForCards(page, '/');
+    await gotoAndWaitForCards(page, '/poznan/');
     await pinDateFilterAnytime(page);
     const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
@@ -18,7 +18,7 @@ test.describe('/film detail page', () => {
     // present at DCL, but the default `'load'` wait blocks `goto` on the poster
     // proxy images (and any trailer iframe). On a contended CI runner that
     // image-load stall eats the whole 30s budget and times the navigation out.
-    await page.goto(`/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`/poznan/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
     return title!;
   }
 
@@ -85,7 +85,7 @@ test.describe('/film detail page', () => {
     // gotoFirstFilm started at `/` (with the date pin applied), so the
     // referrer-driven rewrite sends the user back to `/` — any preserved
     // query string is fine, we just need the pathname to be the listing.
-    await page.waitForURL((u) => new URL(u).pathname === '/');
+    await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
     await page.waitForSelector('.col[data-title]', { state: 'attached' });
   });
 
@@ -94,10 +94,10 @@ test.describe('/film detail page', () => {
   // /film means adding a row here AND the path → label entry in
   // film.scala.html's `LABELS` map.
   for (const { from, label } of [
-    { from: '/',      label: 'Filmy' },
-    { from: '/filmy', label: 'Filmy' },
-    { from: '/kina',  label: 'Kina'  },
-    { from: '/plan',  label: 'Plan'  },
+    { from: '/poznan/',      label: 'Filmy' },
+    { from: '/poznan/filmy', label: 'Filmy' },
+    { from: '/poznan/kina',  label: 'Kina'  },
+    { from: '/poznan/plan',  label: 'Plan'  },
   ]) {
     test(`the ← back link reads "${label}" and returns to ${from} when that was the referrer`, async ({ page }) => {
       // Land on the source page first so document.referrer is set when
@@ -111,7 +111,7 @@ test.describe('/film detail page', () => {
         const col = document.querySelector('[data-title]');
         if (!col) return null;
         const title = (col as HTMLElement).dataset.title;
-        return title ? `/film?title=${encodeURIComponent(title)}` : null;
+        return title ? `/poznan/film?title=${encodeURIComponent(title)}` : null;
       });
       expect(filmHref).not.toBeNull();
       await Promise.all([
@@ -120,7 +120,7 @@ test.describe('/film detail page', () => {
         // the trailer iframe, which can stall the full 30s on a contended
         // runner. The back-link markup we assert on is server-rendered, so DCL
         // is all we need.
-        page.waitForURL((u) => new URL(u).pathname === '/film', { waitUntil: 'domcontentloaded' }),
+        page.waitForURL((u) => new URL(u).pathname === '/poznan/film', { waitUntil: 'domcontentloaded' }),
         page.evaluate((href) => { window.location.href = href; }, filmHref!),
       ]);
 

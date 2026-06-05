@@ -82,7 +82,7 @@ async function firstMovieBlockSummary(page: Page): Promise<string> {
 test.describe('plan availability summary', () => {
 
   test('"tylko <day>" form for a movie playing on exactly one date', async ({ page }) => {
-    await page.goto('/plan');
+    await page.goto('/poznan/plan');
     await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
@@ -97,7 +97,7 @@ test.describe('plan availability summary', () => {
   });
 
   test('"X i Y" form for a movie playing on exactly two dates', async ({ page }) => {
-    await page.goto('/plan');
+    await page.goto('/poznan/plan');
     await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
@@ -114,7 +114,7 @@ test.describe('plan availability summary', () => {
   });
 
   test('"od X do Y" form for a movie playing continuously over 3+ days', async ({ page }) => {
-    await page.goto('/plan');
+    await page.goto('/poznan/plan');
     await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
@@ -131,7 +131,7 @@ test.describe('plan availability summary', () => {
   });
 
   test('"tylko: A, B, C" form for a movie playing on 3+ scattered dates', async ({ page }) => {
-    await page.goto('/plan');
+    await page.goto('/poznan/plan');
     await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
@@ -150,7 +150,7 @@ test.describe('plan availability summary', () => {
   });
 
   test('appends the cinema constraint after the date constraint when only one cinema plays the movie', async ({ page }) => {
-    await page.goto('/plan');
+    await page.goto('/poznan/plan');
     await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
@@ -171,7 +171,7 @@ test.describe('plan availability summary', () => {
 test.describe('plan option list', () => {
 
   test('renders one block per selected movie, each carrying that movie\'s options', async ({ page }) => {
-    await page.goto('/plan');
+    await page.goto('/poznan/plan');
     await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
@@ -199,7 +199,7 @@ test.describe('plan option list', () => {
   });
 
   test('truncates option lists past 8 entries with a "+ N więcej" tail', async ({ page }) => {
-    await page.goto('/plan');
+    await page.goto('/poznan/plan');
     await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
 
     const byMovie = indexByMovie(await readShowings(page), await readPageToday(page));
@@ -218,7 +218,7 @@ test.describe('plan option list', () => {
     // Conflict-tolerance: the old scheduler dropped the second movie of
     // a same-day collision into Ograniczenia. The new model shows
     // every option for both films instead.
-    await page.goto('/plan');
+    await page.goto('/poznan/plan');
     await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
 
     const showings = await readShowings(page);
@@ -258,7 +258,7 @@ test.describe('plan option list', () => {
     // Picks two movies whose earliest future dates differ. The one that
     // plays sooner must lead in the rendered list regardless of how the
     // titles sort alphabetically.
-    await page.goto('/plan');
+    await page.goto('/poznan/plan');
     await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
 
     const showings = await readShowings(page);
@@ -304,7 +304,7 @@ test.describe('plan option list', () => {
 test.describe('plan posters fold', () => {
 
   test('"Zwiń plakaty" folds the poster grid and persists across reloads', async ({ page }) => {
-    await page.goto('/plan');
+    await page.goto('/poznan/plan');
     await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
 
     const section = page.locator('#filmy-section');
@@ -338,7 +338,7 @@ test.describe('plan posters fold', () => {
   });
 
   test('movie title in the proposed plan is a link to /film', async ({ page }) => {
-    await page.goto('/plan');
+    await page.goto('/poznan/plan');
     await page.waitForSelector('.plan-card-col[data-title]', { state: 'attached' });
     const showings = await readShowings(page);
     const today    = await readPageToday(page);
@@ -352,7 +352,7 @@ test.describe('plan posters fold', () => {
     );
 
     const link = page.locator('a.plan-movie-title', { hasText: first });
-    await expect(link).toHaveAttribute('href', '/film?title=' + encodeURIComponent(first));
+    await expect(link).toHaveAttribute('href', '/poznan/film?title=' + encodeURIComponent(first));
   });
 
 });

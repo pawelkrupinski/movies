@@ -18,7 +18,7 @@ const visibleCinemaGroups = (page: import('@playwright/test').Page) =>
 test.describe('Filtry > Kina checkboxes', () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     await pinDateFilterAnytime(page);
   });
 

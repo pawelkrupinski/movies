@@ -20,7 +20,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe.skip('visual regression', () => {
   test('home page top chrome', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/poznan/');
     // `state: 'attached'` — the home page's inline filter hides
     // out-of-window cards and shuffles them to the front of DOM order,
     // so Playwright's default `'visible'` check would never resolve.
