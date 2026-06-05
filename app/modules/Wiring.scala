@@ -133,9 +133,7 @@ trait Wiring {
   // and the box stops answering. Each service keeps its OWN pool (so the
   // ordered cascade-drain in `stop()` still works); the budget only caps how
   // many tasks run at once across all of them. Tune via KINOWO_BG_CONCURRENCY.
-  lazy val backgroundBudget = new SharedExecutionBudget(
-    Env.get("KINOWO_BG_CONCURRENCY").flatMap(_.toIntOption).getOrElse(8)
-  )
+  lazy val backgroundBudget = new SharedExecutionBudget(Env.positiveInt("KINOWO_BG_CONCURRENCY", 8))
 
   // ── Events ────────────────────────────────────────────────────────────────
   lazy val eventBus: EventBus = new InProcessEventBus()

@@ -22,6 +22,17 @@ object Env {
       .orElse(fileVars.get(key))
       .filter(_.nonEmpty)
 
+  /** A strictly-positive Int from `key`, or `default` when unset, unparseable,
+   *  or ≤ 0. For numeric tuning knobs (concurrency budgets, …) where a bad value
+   *  should fall back to the sane default rather than crash or disable the work. */
+  def positiveInt(key: String, default: Int): Int =
+    get(key).flatMap(_.toIntOption).filter(_ > 0).getOrElse(default)
+
+  /** A strictly-positive Long from `key`, or `default` when unset, unparseable,
+   *  or ≤ 0. For numeric tuning knobs (intervals in seconds, …). */
+  def positiveLong(key: String, default: Long): Long =
+    get(key).flatMap(_.toLongOption).filter(_ > 0).getOrElse(default)
+
   private lazy val fileVars: Map[String, String] =
     Try {
       val file = new java.io.File(".env.local")

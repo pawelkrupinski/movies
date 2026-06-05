@@ -6,7 +6,7 @@ import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
 import services.events.{CinemaMovieAdded, EventBus, InProcessEventBus}
-import tools.{DaemonExecutors, TextNormalization}
+import tools.{DaemonExecutors, Env, TextNormalization}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.util.Try
@@ -584,18 +584,22 @@ class CaffeineMovieCache(
   // Out-of-band Mongo edits — `FilmwebUrlAudit` clearing a stale URL, a
   // manual `db.movies.update(...)` to fix one row — bypass the cache. The
   // running app would carry the stale value forever without an explicit
-  // `/debug/rehydrate`. A 30-s tick walks `repo.findAll()` and reconciles;
-  // the in-memory state lags Mongo by at most one tick. The `$set`-based
+  // `/debug/rehydrate`. This tick walks `repo.findAll()` and reconciles, so
+  // the in-memory state lags Mongo by at most one interval. The `$set`-based
   // `updateIfPresent` (see `MovieRepo`) makes those out-of-band writes
   // durable; this tick makes them visible.
   //
-  // Cost: ~150 ms per tick (measured against the production cluster, 200
-  // rows). Twice a minute, on a daemon thread — invisible to the rest of
-  // the app. The tick scheduler is owned here but only fires when
-  // `start()` is called (Wiring does, tests don't), so unit tests still
-  // get a single one-shot hydrate at construction.
-  private val refreshScheduler           = DaemonExecutors.scheduler("movie-cache-refresh")
-  private val RefreshIntervalSeconds     = 30L
+  // Cost scales with the corpus: `findAll()` is a full collection read, and
+  // Atlas serialises a single cursor at ~tens of ms per doc. At ~200 rows the
+  // tick was ~150 ms (hence the original 30-s cadence felt free); at 500+ rows
+  // it climbed to 6–9 s, so a twice-a-minute tick burned 20–30% of a (shared,
+  // single) vCPU continuously and starved page renders. The edits this exists
+  // to surface are rare (audit scripts, manual fixes), so a multi-minute lag is
+  // fine — default to 5 minutes, tunable via KINOWO_CACHE_REHYDRATE_SECONDS.
+  // The scheduler only fires when `start()` is called (Wiring does, tests
+  // don't), so unit tests still get a single one-shot hydrate at construction.
+  private val refreshScheduler       = DaemonExecutors.scheduler("movie-cache-refresh")
+  private val RefreshIntervalSeconds = Env.positiveLong("KINOWO_CACHE_REHYDRATE_SECONDS", 300L)
 
   def start(): Unit = {
     logger.info(s"MovieCache periodic rehydrate scheduled every ${RefreshIntervalSeconds}s.")
