@@ -13,6 +13,13 @@ import kotlin.math.sqrt
 data class City(val slug: String, val name: String, val lat: Double, val lon: Double)
 
 /**
+ * A one-shot offer to switch the repertoire to a [target] city the device is
+ * now nearer than the chosen one. [key] is the `chosen→nearest` pair the prompt
+ * is remembered against, so we only ask once per pair.
+ */
+data class CitySwitchSuggestion(val target: City, val key: String)
+
+/**
  * The (currently single) catalogue of supported cities, plus the location →
  * city resolution used by the first-launch gate. New cities are added by
  * extending [all]; nothing else here changes.
@@ -34,6 +41,27 @@ object Cities {
     fun nearestWithin100km(lat: Double, lon: Double): City? =
         all.minByOrNull { haversineKm(lat, lon, it.lat, it.lon) }
             ?.takeIf { haversineKm(lat, lon, it.lat, it.lon) <= 100.0 }
+
+    /**
+     * Whether to offer switching from [chosenSlug] to a nearer supported city
+     * for a device at ([lat], [lon]). Returns null — no offer — when the device
+     * is out of range of every city, when the nearest is already the chosen one,
+     * or when this exact `chosen→nearest` pair was the [lastPromptKey] last
+     * offered (so we ask at most once per pair, but re-ask after the pair
+     * changes — e.g. travelling back to a previously-declined city).
+     */
+    fun switchSuggestion(
+        chosenSlug: String,
+        lat: Double,
+        lon: Double,
+        lastPromptKey: String?,
+    ): CitySwitchSuggestion? {
+        val nearest = nearestWithin100km(lat, lon) ?: return null
+        if (nearest.slug == chosenSlug) return null
+        val key = "$chosenSlug→${nearest.slug}"
+        if (key == lastPromptKey) return null
+        return CitySwitchSuggestion(nearest, key)
+    }
 
     /** Great-circle distance in kilometres between two lat/lon points. */
     private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {

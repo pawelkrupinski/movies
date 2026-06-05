@@ -30,6 +30,9 @@ import pl.kinowo.auth.UserStateClient
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
+import pl.kinowo.location.LocationCityResolver
+import pl.kinowo.model.Cities
+import pl.kinowo.model.CitySwitchSuggestion
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
@@ -88,6 +91,13 @@ class KinowoViewModel(
         prefs.disabledCinemas.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     // Per-screen filter axes (Compose state).
+    /** A pending "you're nearer another city — switch?" prompt, or null. Set by
+     *  [checkCitySwitch] when a granted-only location lands nearer a different
+     *  supported city; cleared on accept ([setCity]) or decline
+     *  ([dismissCitySwitch]). */
+    var citySwitchSuggestion by mutableStateOf<CitySwitchSuggestion?>(null)
+        private set
+
     var dateFilter by mutableStateOf<DateFilter>(DateFilter.Today)
     var sortBy by mutableStateOf(SortOption.DEFAULT)
     var formatFilter by mutableStateOf(FormatFilter.EMPTY)
@@ -257,8 +267,39 @@ class KinowoViewModel(
     fun markSwipeHintShown(date: String) = viewModelScope.launch { prefs.markSwipeHintShown(date) }
 
     /** Persist the chosen city. `start()`'s `selectedCity` collector picks up
-     *  the change and re-fetches that city's repertoire — no explicit reload. */
-    fun setCity(slug: String) = viewModelScope.launch { prefs.setCity(slug) }
+     *  the change and re-fetches that city's repertoire — no explicit reload.
+     *  Also clears any pending switch prompt, since accepting one lands here. */
+    fun setCity(slug: String) = viewModelScope.launch {
+        citySwitchSuggestion = null
+        prefs.setCity(slug)
+    }
+
+    /**
+     * Offer to switch to a nearer supported city when the device — with location
+     * already granted — is closer to a different city than the chosen one. Reads
+     * a fix only if `ACCESS_COARSE_LOCATION` is granted (never prompts), then
+     * defers to [Cities.switchSuggestion] for the once-per-pair decision. On a
+     * hit, persists the pair key immediately so the prompt shows at most once per
+     * pair regardless of accept/decline, and surfaces it as [citySwitchSuggestion]
+     * for [KinowoApp] to render.
+     */
+    fun checkCitySwitch(context: Context) = viewModelScope.launch {
+        if (citySwitchSuggestion != null) return@launch
+        val chosen = selectedCity.value ?: return@launch
+        val fix = LocationCityResolver(context).resolveIfGranted() ?: return@launch
+        val suggestion = Cities.switchSuggestion(
+            chosenSlug = chosen,
+            lat = fix.first,
+            lon = fix.second,
+            lastPromptKey = prefs.citySwitchPromptKey.first(),
+        ) ?: return@launch
+        prefs.setCitySwitchPromptKey(suggestion.key)
+        citySwitchSuggestion = suggestion
+    }
+
+    /** Decline the nearer-city prompt — just clears the dialog; the pair key was
+     *  already persisted in [checkCitySwitch], so we won't re-ask for it. */
+    fun dismissCitySwitch() { citySwitchSuggestion = null }
 
     fun hide(title: String) = viewModelScope.launch { prefs.hide(title) }
     fun unhide(title: String) = viewModelScope.launch { prefs.unhide(title) }

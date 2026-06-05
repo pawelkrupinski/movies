@@ -1,7 +1,10 @@
 package pl.kinowo.location
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -22,9 +25,29 @@ class LocationCityResolver(private val context: Context) {
 
     @SuppressLint("MissingPermission") // the gate requests ACCESS_COARSE_LOCATION before calling
     suspend fun resolveNearestCity(): City? {
-        val client = LocationServices.getFusedLocationProviderClient(context)
-        val fix = lastLocation(client) ?: currentLocation(client) ?: return null
+        val fix = locationFix() ?: return null
         return Cities.nearestWithin100km(fix.first, fix.second)
+    }
+
+    /**
+     * A coarse `(lat, lon)` fix, but only when `ACCESS_COARSE_LOCATION` is
+     * *already* granted — never triggers a permission request. Used by the
+     * "you're nearer another city" prompt, which must stay silent (no system
+     * dialog) when location was never granted. Returns null on no permission,
+     * no fix, or any failure.
+     */
+    suspend fun resolveIfGranted(): Pair<Double, Double>? {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) return null
+        return locationFix()
+    }
+
+    @SuppressLint("MissingPermission")
+    private suspend fun locationFix(): Pair<Double, Double>? {
+        val client = LocationServices.getFusedLocationProviderClient(context)
+        return lastLocation(client) ?: currentLocation(client)
     }
 
     @SuppressLint("MissingPermission")

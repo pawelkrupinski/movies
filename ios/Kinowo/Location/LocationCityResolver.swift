@@ -20,9 +20,17 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         case unavailable
     }
 
+    /// A single coordinate fix — what the "switch city?" check needs from a
+    /// re-open, separate from the gate's nearest-`City` `Outcome`.
+    struct Coordinate: Equatable {
+        let lat: Double
+        let lon: Double
+    }
+
     private let manager = CLLocationManager()
     private let timeout: TimeInterval
     private var continuation: CheckedContinuation<Outcome, Never>?
+    private var coordinateContinuation: CheckedContinuation<Coordinate?, Never>?
     private var timeoutTask: Task<Void, Never>?
 
     init(timeout: TimeInterval = 8) {
@@ -45,6 +53,37 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
             }
             start(for: manager.authorizationStatus)
         }
+    }
+
+    /// Take a single fix **only when location is already authorized**, never
+    /// prompting for permission. Used by the app-open "you're nearer another
+    /// city" check, which must stay silent for users who haven't granted (or
+    /// have denied) access. Returns the coordinate, or `nil` when not
+    /// authorized / no fix / timed out.
+    func resolveIfAuthorized() async -> Coordinate? {
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            break
+        default:
+            return nil
+        }
+        return await withCheckedContinuation { (cont: CheckedContinuation<Coordinate?, Never>) in
+            coordinateContinuation = cont
+            timeoutTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64((self?.timeout ?? 8) * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                self?.finishCoordinate(nil)
+            }
+            manager.requestLocation()
+        }
+    }
+
+    private func finishCoordinate(_ coordinate: Coordinate?) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        guard let cont = coordinateContinuation else { return }
+        coordinateContinuation = nil
+        cont.resume(returning: coordinate)
     }
 
     private func start(for status: CLAuthorizationStatus) {
@@ -88,13 +127,17 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last else {
-            Task { @MainActor in self.finish(.unavailable) }
+            Task { @MainActor in self.deliverNoFix() }
             return
         }
         let lat = loc.coordinate.latitude
         let lon = loc.coordinate.longitude
         Task { @MainActor in
-            if let city = City.nearestWithin100km(lat: lat, lon: lon) {
+            // A bare-coordinate request (the "switch city?" check) wants the
+            // raw fix; the gate's request wants it resolved to a `City`.
+            if self.coordinateContinuation != nil {
+                self.finishCoordinate(Coordinate(lat: lat, lon: lon))
+            } else if let city = City.nearestWithin100km(lat: lat, lon: lon) {
                 self.finish(.city(city))
             } else {
                 self.finish(.unavailable)
@@ -103,6 +146,16 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in self.finish(.unavailable) }
+        Task { @MainActor in self.deliverNoFix() }
+    }
+
+    /// Fail whichever request is in flight: the coordinate request resolves
+    /// to `nil`, the gate's `Outcome` request to `.unavailable`.
+    private func deliverNoFix() {
+        if coordinateContinuation != nil {
+            finishCoordinate(nil)
+        } else {
+            finish(.unavailable)
+        }
     }
 }

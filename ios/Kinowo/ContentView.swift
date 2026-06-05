@@ -42,6 +42,13 @@ struct ContentView: View {
     @State private var swipeHintEvaluated = false
     @State private var swipeHintTask: Task<Void, Never>?
 
+    /// "You're nearer another city — switch?" prompt. Populated by the
+    /// authorized-only location check on open / foreground; presenting the
+    /// alert when non-nil. The resolver is held as state so it survives
+    /// across the async fix.
+    @State private var citySwitchSuggestion: City.CitySwitchSuggestion?
+    @StateObject private var locationResolver = LocationCityResolver()
+
     enum Tab: Hashable { case films, cinemas }
 
     private func tabLabel(for tab: Tab) -> String {
@@ -162,6 +169,27 @@ struct ContentView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
+        // "Jesteś bliżej miasta X" — offer to switch the repertoire to the
+        // nearer supported city. `citySwitchSuggestion` is set (and the
+        // prompt-key remembered) only by the authorized-only location check,
+        // so it never fires without an existing location grant.
+        .alert(
+            citySwitchSuggestion.map { "Jesteś bliżej miasta \($0.target.name)" } ?? "",
+            isPresented: Binding(
+                get: { citySwitchSuggestion != nil },
+                set: { if !$0 { citySwitchSuggestion = nil } }
+            ),
+            presenting: citySwitchSuggestion
+        ) { suggestion in
+            Button("Przełącz") {
+                prefs.setCity(suggestion.target.slug)
+                store.use(citySlug: suggestion.target.slug)
+                details.use(citySlug: suggestion.target.slug)
+            }
+            Button("Nie teraz", role: .cancel) {}
+        } message: { suggestion in
+            Text("Przełączyć repertuar na \(suggestion.target.name)?")
+        }
         .task {
             store.loadCachedData()
             store.pruneStaleShowings()
@@ -192,6 +220,7 @@ struct ContentView: View {
             // Idempotent — running on every appear is fine; the task
             // cancels the previous fade-out cleanly.
             showTabLabel(tabLabel(for: tab))
+            Task { await maybeSuggestCitySwitch() }
         }
         .onChange(of: scenePhase) { phase in
             // App came back from background — drop screenings that
@@ -212,8 +241,30 @@ struct ContentView: View {
                 store.pruneStaleShowings()
                 Task { await store.reloadIfStale() }
                 Task { await details.reloadIfStale() }
+                // Re-check on every foreground so travelling between cities
+                // mid-session offers the switch as soon as the app returns.
+                Task { await maybeSuggestCitySwitch() }
             }
         }
+    }
+
+    /// Authorized-only "you're nearer another city" check. No-op until a city
+    /// is chosen; never prompts for location permission (`resolveIfAuthorized`
+    /// returns `nil` unless already granted). Remembers the prompted pair the
+    /// moment it decides to show, so the alert fires at most once per
+    /// `chosen→nearest` pair whether the user accepts or declines.
+    private func maybeSuggestCitySwitch() async {
+        guard let chosen = prefs.selectedCity,
+              citySwitchSuggestion == nil,
+              let fix = await locationResolver.resolveIfAuthorized(),
+              let suggestion = City.switchSuggestion(
+                chosenSlug: chosen,
+                lat: fix.lat, lon: fix.lon,
+                lastPromptKey: prefs.citySwitchPromptKey
+              )
+        else { return }
+        prefs.setCitySwitchPromptKey(suggestion.key)
+        citySwitchSuggestion = suggestion
     }
 
     @ViewBuilder

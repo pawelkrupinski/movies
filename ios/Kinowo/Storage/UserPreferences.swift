@@ -13,6 +13,10 @@ final class UserPreferences: ObservableObject {
     /// Slug of the city the user is browsing, or `nil` until the
     /// first-launch gate resolves one (by location or explicit pick).
     @Published private(set) var selectedCity: String?
+    /// The most-recent `chosen→nearest` pair the "switch city?" prompt was
+    /// shown for, or `nil` if never. Only the single latest pair is kept, so
+    /// returning to a previously-declined city re-arms the prompt.
+    @Published private(set) var citySwitchPromptKey: String?
 
     private let store: UserDefaults
     private let kHidden        = "hiddenFilms"
@@ -20,6 +24,7 @@ final class UserPreferences: ObservableObject {
     private let kSwiped        = "swipedScreens"
     private let kHintDate      = "swipeHintShownDate"
     private let kCity          = "selectedCity"
+    private let kSwitchPrompt  = "citySwitchPromptKey"
 
     init(store: UserDefaults = .standard) {
         self.store = store
@@ -28,6 +33,7 @@ final class UserPreferences: ObservableObject {
         hasSwipedScreens    = store.bool(forKey: kSwiped)
         swipeHintShownDate  = store.string(forKey: kHintDate)              ?? ""
         selectedCity        = store.string(forKey: kCity)
+        citySwitchPromptKey = store.string(forKey: kSwitchPrompt)
     }
 
     func hide(_ title: String) {
@@ -71,5 +77,11 @@ final class UserPreferences: ObservableObject {
         guard selectedCity != slug else { return }
         selectedCity = slug
         store.set(slug, forKey: kCity)
+    }
+
+    func setCitySwitchPromptKey(_ key: String) {
+        guard citySwitchPromptKey != key else { return }
+        citySwitchPromptKey = key
+        store.set(key, forKey: kSwitchPrompt)
     }
 }

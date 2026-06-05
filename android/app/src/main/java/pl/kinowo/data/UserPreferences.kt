@@ -47,6 +47,16 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         prefs[KEY_CITY] = slug
     }
 
+    /** The `chosen→nearest` pair the "switch to a nearer city" prompt was last
+     *  shown for, or null if never. Remembering only the single most-recent pair
+     *  means the prompt fires once per pair but re-asks once the pair changes. */
+    val citySwitchPromptKey: Flow<String?> =
+        context.dataStore.data.map { it[KEY_CITY_SWITCH_PROMPT] }
+
+    suspend fun setCitySwitchPromptKey(key: String) = context.dataStore.edit { prefs ->
+        prefs[KEY_CITY_SWITCH_PROMPT] = key
+    }
+
     /** True once the user has swiped between Filmy / Kina at least once. */
     val hasSwipedScreens: Flow<Boolean> =
         context.dataStore.data.map { it[KEY_SWIPED] ?: false }
@@ -110,6 +120,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         val KEY_HIDDEN = stringSetPreferencesKey("hiddenFilms")
         val KEY_DISABLED = stringSetPreferencesKey("disabledCinemas")
         val KEY_CITY = stringPreferencesKey("selectedCity")
+        val KEY_CITY_SWITCH_PROMPT = stringPreferencesKey("citySwitchPromptKey")
         val KEY_SWIPED = booleanPreferencesKey("swipedScreens")
         val KEY_HINT_DATE = stringPreferencesKey("swipeHintShownDate")
         val KEY_POSTER_URLS = stringSetPreferencesKey("seenPosterUrls")

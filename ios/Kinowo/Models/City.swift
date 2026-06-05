@@ -37,6 +37,39 @@ struct City: Codable, Hashable {
         return nearest.city
     }
 
+    /// A "you're nearer another city — switch?" prompt the app should
+    /// surface: the city to offer (`target`) and a stable de-dupe `key`
+    /// for the `chosen → nearest` pair so the prompt fires at most once
+    /// per pair.
+    struct CitySwitchSuggestion: Equatable {
+        let target: City
+        let key: String
+    }
+
+    /// Decide whether to nudge a user who has chosen `chosenSlug` toward a
+    /// nearer supported city, given their current coordinate. Returns `nil`
+    /// when they're already in (or nearest to) the chosen city, when no city
+    /// is within range, or when this exact `chosen → nearest` pair was the
+    /// most recently prompted one (`lastPromptKey`). Remembering only the
+    /// single most-recent key means travelling back to a previously-declined
+    /// city can re-ask.
+    ///
+    /// Pure — no CoreLocation, no persistence — so the rule is unit-tested
+    /// in `KinowoCore`; the app feeds it a fix + the remembered key and acts
+    /// on the result.
+    static func switchSuggestion(
+        chosenSlug: String,
+        lat: Double,
+        lon: Double,
+        lastPromptKey: String?
+    ) -> CitySwitchSuggestion? {
+        guard let nearest = nearestWithin100km(lat: lat, lon: lon),
+              nearest.slug != chosenSlug else { return nil }
+        let key = chosenSlug + "→" + nearest.slug
+        guard key != lastPromptKey else { return nil }
+        return CitySwitchSuggestion(target: nearest, key: key)
+    }
+
     /// The city-prefixed API URL for `endpoint` (`"repertoire"` /
     /// `"details"`) against `base` — e.g. `…/poznan/api/repertoire`. The
     /// repertoire/details stores build their fetch URL through this so the

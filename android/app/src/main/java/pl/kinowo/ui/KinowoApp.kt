@@ -5,6 +5,9 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -45,7 +48,36 @@ fun KinowoApp(vm: KinowoViewModel) {
         CityGate(vm)
     } else {
         Repertoire(vm)
+        NearerCityPrompt(vm)
     }
+}
+
+/**
+ * "You're nearer another city — switch?" prompt. Once a city is chosen, checks
+ * (on entry and on every resume) whether a granted-only location fix lands
+ * nearer a different supported city; if so, [KinowoViewModel.checkCitySwitch]
+ * surfaces a suggestion we render as an [AlertDialog]. The check never requests
+ * location permission and fires at most once per `chosen→nearest` pair.
+ */
+@Composable
+private fun NearerCityPrompt(vm: KinowoViewModel) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { vm.checkCitySwitch(context) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.checkCitySwitch(context) }
+
+    val suggestion = vm.citySwitchSuggestion ?: return
+    val target = suggestion.target
+    AlertDialog(
+        onDismissRequest = { vm.dismissCitySwitch() },
+        title = { Text("Jesteś bliżej miasta ${target.name}") },
+        text = { Text("Przełączyć repertuar na ${target.name}?") },
+        confirmButton = {
+            TextButton(onClick = { vm.setCity(target.slug) }) { Text("Przełącz") }
+        },
+        dismissButton = {
+            TextButton(onClick = { vm.dismissCitySwitch() }) { Text("Nie teraz") }
+        },
+    )
 }
 
 /**

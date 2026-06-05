@@ -24,4 +24,11 @@ class UserPreferencesCityTest {
         prefs.setCity("poznan")
         assertEquals("poznan", prefs.selectedCity.first())
     }
+
+    @Test
+    fun citySwitchPromptKeyIsNullUntilSetThenReadsBack() = runBlocking {
+        assertNull("no prompt key before any switch is offered", prefs.citySwitchPromptKey.first())
+        prefs.setCitySwitchPromptKey("poznan→wroclaw")
+        assertEquals("poznan→wroclaw", prefs.citySwitchPromptKey.first())
+    }
 }

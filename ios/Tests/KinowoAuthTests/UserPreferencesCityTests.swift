@@ -43,4 +43,28 @@ final class UserPreferencesCityTests: XCTestCase {
         let reloaded = UserPreferences(store: defaults)
         XCTAssertEqual(reloaded.selectedCity, "warszawa")
     }
+
+    func testCitySwitchPromptKeyStartsNil() {
+        let prefs = UserPreferences(store: defaults)
+        XCTAssertNil(prefs.citySwitchPromptKey)
+    }
+
+    func testCitySwitchPromptKeyPersistsAndSurvivesAReload() {
+        let prefs = UserPreferences(store: defaults)
+        prefs.setCitySwitchPromptKey("poznan→wroclaw")
+        XCTAssertEqual(prefs.citySwitchPromptKey, "poznan→wroclaw")
+
+        let reloaded = UserPreferences(store: defaults)
+        XCTAssertEqual(reloaded.citySwitchPromptKey, "poznan→wroclaw")
+    }
+
+    func testCitySwitchPromptKeyOverwritesThePreviousPair() {
+        let prefs = UserPreferences(store: defaults)
+        prefs.setCitySwitchPromptKey("poznan→wroclaw")
+        prefs.setCitySwitchPromptKey("wroclaw→warszawa")
+        XCTAssertEqual(prefs.citySwitchPromptKey, "wroclaw→warszawa")
+
+        let reloaded = UserPreferences(store: defaults)
+        XCTAssertEqual(reloaded.citySwitchPromptKey, "wroclaw→warszawa")
+    }
 }

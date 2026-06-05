@@ -37,6 +37,47 @@ final class CityTests: XCTestCase {
         XCTAssertEqual(City.default.slug, "poznan")
     }
 
+    // ── switchSuggestion (you're-nearer-another-city prompt) ──────
+
+    func testSwitchSuggestionWhenNearerCityDiffers() {
+        // Chosen Poznań, but the device is sitting in Wrocław.
+        let s = City.switchSuggestion(
+            chosenSlug: "poznan",
+            lat: 51.1079, lon: 17.0385,
+            lastPromptKey: nil
+        )
+        XCTAssertEqual(s?.target.slug, "wroclaw")
+        XCTAssertEqual(s?.key, "poznan→wroclaw")
+    }
+
+    func testSwitchSuggestionSuppressedWhenAlreadyPromptedForThatPair() {
+        let s = City.switchSuggestion(
+            chosenSlug: "poznan",
+            lat: 51.1079, lon: 17.0385,
+            lastPromptKey: "poznan→wroclaw"
+        )
+        XCTAssertNil(s)
+    }
+
+    func testNoSwitchSuggestionWhenAlreadyInThatCity() {
+        let s = City.switchSuggestion(
+            chosenSlug: "wroclaw",
+            lat: 51.1079, lon: 17.0385,
+            lastPromptKey: nil
+        )
+        XCTAssertNil(s)
+    }
+
+    func testNoSwitchSuggestionWhenOutOfRangeOfEveryCity() {
+        // Kraków — beyond the 100 km radius of every supported city.
+        let s = City.switchSuggestion(
+            chosenSlug: "poznan",
+            lat: 50.0647, lon: 19.9450,
+            lastPromptKey: nil
+        )
+        XCTAssertNil(s)
+    }
+
     // ── apiURL (city-prefixed endpoints) ──────────────────────────
 
     func testRepertoireURLIsCityPrefixed() {
