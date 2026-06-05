@@ -102,6 +102,7 @@ trait Wiring {
     // new FalenicaClient(httoFetch),       // Warszawa — KINOkawiarnia Stacja Falenica
     // new SdkClient(httoFetch),            // Warszawa — Służewski Dom Kultury
     // new NoveKinoClient(httoFetch, "atlantic", KinoAtlantic),  // Warszawa — Kino Atlantic (Nove Kino)
+    // new KinotekaClient(httoFetch),       // Warszawa — Kinoteka
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Events ────────────────────────────────────────────────────────────────
