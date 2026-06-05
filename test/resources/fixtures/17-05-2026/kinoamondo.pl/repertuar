@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="pl-PL">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="profile" href="http://gmpg.org/xfn/11">
+<link rel="pingback" href="https://kinoamondo.pl/xmlrpc.php">
+<title>Repertuar &#8211; Kino Amondo</title>
+<meta name='robots' content='max-image-preview:large' />
+<link rel='dns-prefetch' href='//ajax.googleapis.com' />
+<link rel='dns-prefetch' href='//oss.maxcdn.com' />
+<link rel="alternate" type="application/rss+xml" title="Kino Amondo &raquo; Kanał z wpisami" href="https://kinoamondo.pl/feed/" />
+<link rel="alternate" type="application/rss+xml" title="Kino Amondo &raquo; Kanał z komentarzami" href="https://kinoamondo.pl/comments/feed/" />
+<link rel='stylesheet' id='wp-block-library-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/mn9urvub/p3sp.css' type='text/css' media='all' />
+<style id='classic-theme-styles-inline-css' type='text/css'>
+/*! This file is auto-generated */
+.wp-block-button__link{color:#fff;background-color:#32373c;border-radius:9999px;box-shadow:none;text-decoration:none;padding:calc(.667em + 2px) calc(1.333em + 2px);font-size:1.125em}.wp-block-file__button{background:#32373c;color:#fff;text-decoration:none}
+</style>
+<style id='global-styles-inline-css' type='text/css'>
+body{--wp--preset--color--black: #000000;--wp--preset--color--cyan-bluish-gray: #abb8c3;--wp--preset--color--white: #ffffff;--wp--preset--color--pale-pink: #f78da7;--wp--preset--color--vivid-red: #cf2e2e;--wp--preset--color--luminous-vivid-orange: #ff6900;--wp--preset--color--luminous-vivid-amber: #fcb900;--wp--preset--color--light-green-cyan: #7bdcb5;--wp--preset--color--vivid-green-cyan: #00d084;--wp--preset--color--pale-cyan-blue: #8ed1fc;--wp--preset--color--vivid-cyan-blue: #0693e3;--wp--preset--color--vivid-purple: #9b51e0;--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple: linear-gradient(135deg,rgba(6,147,227,1) 0%,rgb(155,81,224) 100%);--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan: linear-gradient(135deg,rgb(122,220,180) 0%,rgb(0,208,130) 100%);--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange: linear-gradient(135deg,rgba(252,185,0,1) 0%,rgba(255,105,0,1) 100%);--wp--preset--gradient--luminous-vivid-orange-to-vivid-red: linear-gradient(135deg,rgba(255,105,0,1) 0%,rgb(207,46,46) 100%);--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray: linear-gradient(135deg,rgb(238,238,238) 0%,rgb(169,184,195) 100%);--wp--preset--gradient--cool-to-warm-spectrum: linear-gradient(135deg,rgb(74,234,220) 0%,rgb(151,120,209) 20%,rgb(207,42,186) 40%,rgb(238,44,130) 60%,rgb(251,105,98) 80%,rgb(254,248,76) 100%);--wp--preset--gradient--blush-light-purple: linear-gradient(135deg,rgb(255,206,236) 0%,rgb(152,150,240) 100%);--wp--preset--gradient--blush-bordeaux: linear-gradient(135deg,rgb(254,205,165) 0%,rgb(254,45,45) 50%,rgb(107,0,62) 100%);--wp--preset--gradient--luminous-dusk: linear-gradient(135deg,rgb(255,203,112) 0%,rgb(199,81,192) 50%,rgb(65,88,208) 100%);--wp--preset--gradient--pale-ocean: linear-gradient(135deg,rgb(255,245,203) 0%,rgb(182,227,212) 50%,rgb(51,167,181) 100%);--wp--preset--gradient--electric-grass: linear-gradient(135deg,rgb(202,248,128) 0%,rgb(113,206,126) 100%);--wp--preset--gradient--midnight: linear-gradient(135deg,rgb(2,3,129) 0%,rgb(40,116,252) 100%);--wp--preset--font-size--small: 13px;--wp--preset--font-size--medium: 20px;--wp--preset--font-size--large: 36px;--wp--preset--font-size--x-large: 42px;--wp--preset--spacing--20: 0.44rem;--wp--preset--spacing--30: 0.67rem;--wp--preset--spacing--40: 1rem;--wp--preset--spacing--50: 1.5rem;--wp--preset--spacing--60: 2.25rem;--wp--preset--spacing--70: 3.38rem;--wp--preset--spacing--80: 5.06rem;--wp--preset--shadow--natural: 6px 6px 9px rgba(0, 0, 0, 0.2);--wp--preset--shadow--deep: 12px 12px 50px rgba(0, 0, 0, 0.4);--wp--preset--shadow--sharp: 6px 6px 0px rgba(0, 0, 0, 0.2);--wp--preset--shadow--outlined: 6px 6px 0px -3px rgba(255, 255, 255, 1), 6px 6px rgba(0, 0, 0, 1);--wp--preset--shadow--crisp: 6px 6px 0px rgba(0, 0, 0, 1);}:where(.is-layout-flex){gap: 0.5em;}:where(.is-layout-grid){gap: 0.5em;}body .is-layout-flex{display: flex;}body .is-layout-flex{flex-wrap: wrap;align-items: center;}body .is-layout-flex > *{margin: 0;}body .is-layout-grid{display: grid;}body .is-layout-grid > *{margin: 0;}:where(.wp-block-columns.is-layout-flex){gap: 2em;}:where(.wp-block-columns.is-layout-grid){gap: 2em;}:where(.wp-block-post-template.is-layout-flex){gap: 1.25em;}:where(.wp-block-post-template.is-layout-grid){gap: 1.25em;}.has-black-color{color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-color{color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-color{color: var(--wp--preset--color--white) !important;}.has-pale-pink-color{color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-color{color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-color{color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-color{color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-color{color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-color{color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-color{color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-color{color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-color{color: var(--wp--preset--color--vivid-purple) !important;}.has-black-background-color{background-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-background-color{background-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-background-color{background-color: var(--wp--preset--color--white) !important;}.has-pale-pink-background-color{background-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-background-color{background-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-background-color{background-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-background-color{background-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-background-color{background-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-background-color{background-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-background-color{background-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-background-color{background-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-background-color{background-color: var(--wp--preset--color--vivid-purple) !important;}.has-black-border-color{border-color: var(--wp--preset--color--black) !important;}.has-cyan-bluish-gray-border-color{border-color: var(--wp--preset--color--cyan-bluish-gray) !important;}.has-white-border-color{border-color: var(--wp--preset--color--white) !important;}.has-pale-pink-border-color{border-color: var(--wp--preset--color--pale-pink) !important;}.has-vivid-red-border-color{border-color: var(--wp--preset--color--vivid-red) !important;}.has-luminous-vivid-orange-border-color{border-color: var(--wp--preset--color--luminous-vivid-orange) !important;}.has-luminous-vivid-amber-border-color{border-color: var(--wp--preset--color--luminous-vivid-amber) !important;}.has-light-green-cyan-border-color{border-color: var(--wp--preset--color--light-green-cyan) !important;}.has-vivid-green-cyan-border-color{border-color: var(--wp--preset--color--vivid-green-cyan) !important;}.has-pale-cyan-blue-border-color{border-color: var(--wp--preset--color--pale-cyan-blue) !important;}.has-vivid-cyan-blue-border-color{border-color: var(--wp--preset--color--vivid-cyan-blue) !important;}.has-vivid-purple-border-color{border-color: var(--wp--preset--color--vivid-purple) !important;}.has-vivid-cyan-blue-to-vivid-purple-gradient-background{background: var(--wp--preset--gradient--vivid-cyan-blue-to-vivid-purple) !important;}.has-light-green-cyan-to-vivid-green-cyan-gradient-background{background: var(--wp--preset--gradient--light-green-cyan-to-vivid-green-cyan) !important;}.has-luminous-vivid-amber-to-luminous-vivid-orange-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-amber-to-luminous-vivid-orange) !important;}.has-luminous-vivid-orange-to-vivid-red-gradient-background{background: var(--wp--preset--gradient--luminous-vivid-orange-to-vivid-red) !important;}.has-very-light-gray-to-cyan-bluish-gray-gradient-background{background: var(--wp--preset--gradient--very-light-gray-to-cyan-bluish-gray) !important;}.has-cool-to-warm-spectrum-gradient-background{background: var(--wp--preset--gradient--cool-to-warm-spectrum) !important;}.has-blush-light-purple-gradient-background{background: var(--wp--preset--gradient--blush-light-purple) !important;}.has-blush-bordeaux-gradient-background{background: var(--wp--preset--gradient--blush-bordeaux) !important;}.has-luminous-dusk-gradient-background{background: var(--wp--preset--gradient--luminous-dusk) !important;}.has-pale-ocean-gradient-background{background: var(--wp--preset--gradient--pale-ocean) !important;}.has-electric-grass-gradient-background{background: var(--wp--preset--gradient--electric-grass) !important;}.has-midnight-gradient-background{background: var(--wp--preset--gradient--midnight) !important;}.has-small-font-size{font-size: var(--wp--preset--font-size--small) !important;}.has-medium-font-size{font-size: var(--wp--preset--font-size--medium) !important;}.has-large-font-size{font-size: var(--wp--preset--font-size--large) !important;}.has-x-large-font-size{font-size: var(--wp--preset--font-size--x-large) !important;}
+.wp-block-navigation a:where(:not(.wp-element-button)){color: inherit;}
+:where(.wp-block-post-template.is-layout-flex){gap: 1.25em;}:where(.wp-block-post-template.is-layout-grid){gap: 1.25em;}
+:where(.wp-block-columns.is-layout-flex){gap: 2em;}:where(.wp-block-columns.is-layout-grid){gap: 2em;}
+.wp-block-pullquote{font-size: 1.5em;line-height: 1.6;}
+</style>
+<link rel='stylesheet' id='trp-language-switcher-style-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/qsg7q617/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='fw-ext-builder-frontend-grid-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/2bpe2oaj/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='fw-ext-forms-default-styles-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/jr0je9nv/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='genericons-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/6mcuq10f/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='fw-unycon-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/30xn598p/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='fw-typcn-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/2enmchrh/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='fw-lnr-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/8y8jnmhc/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='fw-linecons-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/30wper1d/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='fw-entypo-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/6m8qp7oi/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='fw-font-awesome-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/7zk1vrvh/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='movie_star_bootstrap-css-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/1gls26el/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='movie_star_venobox-css-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/lznv3lrd/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='movie_star_slick-css-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/m0nypy60/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='movie_star_theme-style-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/6z9ictb5/p3sp.css' type='text/css' media='all' />
+<link rel='stylesheet' id='fw-shortcode-section-background-video-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/7bj95ja3/p3t8.css' type='text/css' media='all' />
+<link rel='stylesheet' id='fw-shortcode-section-css' href='//kinoamondo.pl/wp-content/cache/wpfc-minified/99g335yn/p3t8.css' type='text/css' media='all' />
+<link rel='stylesheet' id='fw-googleFonts-css' href='//fonts.googleapis.com/css?family=Roboto+Condensed%3Aregular&#038;subset=latin-ext&#038;ver=6.5.8' type='text/css' media='all' />
+<script type="text/javascript" src="https://kinoamondo.pl/wp-includes/js/jquery/jquery.min.js?ver=3.7.1" id="jquery-core-js"></script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-includes/js/jquery/jquery-migrate.min.js?ver=3.4.1" id="jquery-migrate-js"></script>
+<link rel="https://api.w.org/" href="https://kinoamondo.pl/wp-json/" /><link rel="alternate" type="application/json" href="https://kinoamondo.pl/wp-json/wp/v2/pages/191" /><link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://kinoamondo.pl/xmlrpc.php?rsd" />
+<meta name="generator" content="WordPress 6.5.8" />
+<link rel="canonical" href="https://kinoamondo.pl/repertuar/" />
+<link rel='shortlink' href='https://kinoamondo.pl/?p=191' />
+<link rel="alternate" type="application/json+oembed" href="https://kinoamondo.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fkinoamondo.pl%2Frepertuar%2F" />
+<link rel="alternate" type="text/xml+oembed" href="https://kinoamondo.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fkinoamondo.pl%2Frepertuar%2F&#038;format=xml" />
+<!-- GA Google Analytics @ https://m0n.co/ga -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KQVKTXN37Q"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-KQVKTXN37Q');
+</script>
+<script src="https://kicket.com/embeddables/embedded-manager.js"></script>
+<meta property="kicket:primaryColor" content="#ED7532">
+<meta property="kicket:backgroundColor" content="#FFFFFF"><link rel="alternate" hreflang="pl-PL" href="https://kinoamondo.pl/repertuar/"/>
+<link rel="alternate" hreflang="pl" href="https://kinoamondo.pl/repertuar/"/>
+<link rel="icon" href="https://kinoamondo.pl/wp-content/uploads/2017/08/favicon.png" sizes="32x32" />
+<link rel="icon" href="https://kinoamondo.pl/wp-content/uploads/2017/08/favicon.png" sizes="192x192" />
+<link rel="apple-touch-icon" href="https://kinoamondo.pl/wp-content/uploads/2017/08/favicon.png" />
+<meta name="msapplication-TileImage" content="https://kinoamondo.pl/wp-content/uploads/2017/08/favicon.png" />
+<style type="text/css">
+a:active, a:visited, .btn-ghost, input[type="submit"], .btn-ghost i, a.arrow-button, .tabs ul li.ui-state-active a, .accordion h2.ui-state-active, .accordion h3.ui-state-active, .accordion h4.ui-state-active, .live-search i, .movie-tabs span.title, .comingSoon-slides span.title, .news article .categories, .single-tags i, .single-tags a:hover, .social-share a, .pagination a:hover, .sidebar .widget .search-form label:before, .sidebar .widget h4, .sidebar .widget ul li a:hover, .sidebar .widget .tagcloud a:hover, .sidebar .movie-search-btn, ul.show-times li.today i, .icon-row span i, .icon-box i, .comments .date, .comment-respond #submit, .news-carousel .date, footer h6, footer .copyright a:hover, .single-post .leave-comment, .single-post .comments .comments-count {
+color: #ec7532;
+}
+::-moz-selection {
+background-color: #ec7532;
+}
+::selection {
+background-color: #ec7532;
+}
+blockquote:before, .error-search .search-submit, ul.social-profiles li a:hover, .btn-default:before, .btn-ghost:before, .btn-primary, input[type="submit"]:hover, ul.show-times li.today .time, .comment-respond #submit:hover, .fw-testimonials .fw-testimonials-pagination a:hover, .fw-testimonials .fw-testimonials-pagination a.selected {
+background-color: #ec7532;
+}
+h2:after, h3:after, h4:after, h5:after, .edit-link a, .nav li:after, .nav li.active a:after, .nav li.current_page_parent a:after, .nav .dropdown-menu, .btn-default, .slick-slider .slick-arrow, .tabs ul li a:after, .tabs.pill-style ul li.ui-state-active a, .movie-search .btn {
+background-image: linear-gradient(to right, #fbbd61, #ec7532);
+}
+.slick-slide .movie-poster:before, .accordion.pill-style h2.ui-state-active:before, .accordion.pill-style h3.ui-state-active:before, .accordion.pill-style h4.ui-state-active:before, .news article .img:before, .comments::-webkit-scrollbar-thumb {
+background-image: linear-gradient(to bottom, #fbbd61, #ec7532);
+}
+.btn-ghost, input[type="submit"], .comingSoon-slides .video i, .pagination a:hover, .pagination .current, .sidebar .widget .tagcloud a:hover, .comment-respond #submit {
+border-color: #ec7532;
+}
+span.title, .heading .search a:hover i, .navbar.banner--clone .nav li.active a, .navbar.banner--clone .nav li.current_page_parent a, .comingSoon-slides a.arrow-button:hover, .social-share a:hover, .social-share a:hover i, .sidebar .widget ul li.current-cat a, .share a:hover, footer ul li a:hover, footer ul li a:hover .fa, a:hover {
+color: #fbbd61;
+}
+input:focus, input:active, textarea:focus, textarea:active, select:focus, select:active, .share a:hover {
+border-color: #fbbd61;
+}
+.navbar-toggle .icon-bar, button.btn-default:hover, button.btn-primary:hover {
+background-color: #fbbd61;
+}
+html,
+body  {
+font-family: Roboto Condensed, latin-ext;
+font-weight: regular;
+color: #717171;
+font-size: 16px;
+}
+h1, h2, h3, h4, h5, h6 {
+font-family: Roboto Condensed, latin-ext;
+font-weight: regular;
+color: ;
+}
+footer {
+background: #101010;
+}
+</style>  </head>
+<body class="page-template-default page page-id-191 translatepress-pl_PL group-blog masthead-fixed full-width singular">
+<div class="movie-search">
+<form role="search" method="get" id="searchform" action="https://kinoamondo.pl/">
+<div>
+<input type="text" value="" name="s" id="search" placeholder="Szukaj filmu" />
+<input type="submit" id="searchsubmit" class="btn btn-default" value="Szukaj" />
+<input type="hidden" name="post_type" value="movie" />
+</div>
+</form></div>
+<!-- Navigation -->
+<div class="navbar" role="navigation">
+<!-- Heading -->
+<div class="heading">
+<div class="container">
+<div class="row">
+<div class="col-sm-12">
+<div class="search">
+<a href="#">
+<i class="fa fa-search"></i>
+</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="navbar-header">
+<a href="https://kinoamondo.pl/" title="Kino Amondo" class="logo">
+<img src="//kinoamondo.pl/wp-content/uploads/2017/07/logo-1.svg" alt="Kino Amondo">
+</a>
+<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+<span class="sr-only"></span>
+<span class="icon-bar top-bar"></span>
+<span class="icon-bar middle-bar"></span>
+<span class="icon-bar bottom-bar"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse">
+<ul id="menu-main-navigation" class="nav navbar-nav"><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-has-children menu-item-40 dropdown"><a title="Strona główna" href="https://kinoamondo.pl/" class="dropdown-toggle" aria-haspopup="false">Strona główna</a>
+<ul role="menu" class="dropdown-menu">
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-501"><a title="Bilety" href="https://kinoamondo.pl/bilety/">Bilety</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-210"><a title="Kontakt" href="https://kinoamondo.pl/kontakt/">Kontakt</a></li>
+<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-3736"><a title="Social media" href="https://www.facebook.com/AMONDOKINO">Social media</a></li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-3735"><a title="Twórz z nami kino" href="https://patronite.pl/kinoamondo">Twórz z nami kino</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page current-menu-item page_item page-item-191 current_page_item menu-item-has-children menu-item-194 dropdown active"><a title="Repertuar" href="https://kinoamondo.pl/repertuar/" class="dropdown-toggle" aria-haspopup="false">Repertuar</a>
+<ul role="menu" class="dropdown-menu">
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-6147"><a title="Amondo Grindhouse" href="https://kinoamondo.pl/home/amondo-grindhouse/">Amondo Grindhouse</a></li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-2109"><a title="WYNAJMIJ KINO" href="https://kinoamondo.pl/kino-do-wynajecia/">WYNAJMIJ KINO</a></li>
+</ul>    </div>
+</div>
+</div>	<div id="content_hero" style="background-image: url(//kinoamondo.pl/wp-content/uploads/2024/01/amondo-dziien-063-scaled.jpg);">
+<img src="https://kinoamondo.pl/wp-content/themes/movie-star/images/scroll-arrow.svg" alt="Scroll down" class="scroll" />
+<div class="container">
+<div class="row blurb">
+<div class="col-md-9">
+<span class="title">Repertuar</span>
+<h1>Co zobaczysz w kinie w najbliższym czasie</h1>
+</div>
+</div>
+</div>
+</div>
+<div class="container section">
+<div class="row">
+<div class="col-sm-12">
+<div class="fw-page-builder-content">
+<section style=" padding-top: 75px; padding-bottom: 75px; border-width: 0px 0px 0px 0px" id="section_6b4f2c36c7d58bf4534ced8c44f7ee54" class="fw-main-row "  >
+<div class="fw-container">
+<div class="fw-row">
+<div style="padding: 0;" class="fw-col-xs-12 ">
+<div class="fw-tabs movies">
+<ul>
+<li>
+<a href="#schedule-2026-06-05">
+Pt, 05.06.				</a>
+</li>
+<li>
+<a href="#schedule-2026-06-06">
+Sob, 06.06.				</a>
+</li>
+<li>
+<a href="#schedule-2026-06-07">
+Nie, 07.06.				</a>
+</li>
+<li>
+<a href="#schedule-2026-06-08">
+Pon, 08.06.				</a>
+</li>
+<li>
+<a href="#schedule-2026-06-09">
+Wt, 09.06.				</a>
+</li>
+<li>
+<a href="#schedule-2026-06-10">
+Śr, 10.06.				</a>
+</li>
+<li>
+<a href="#schedule-2026-06-11">
+Czw, 11.06.				</a>
+</li>
+<li>
+<a href="#schedule-2026-06-12">
+Pt, 12.06.				</a>
+</li>
+<li>
+<a href="#schedule-2026-06-13">
+Sob, 13.06.				</a>
+</li>
+<li>
+<a href="#schedule-2026-06-19">
+Pt, 19.06.				</a>
+</li>
+</ul>
+<div id="schedule-2026-06-05">
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/aftersun/" title="Aftersun">
+<img decoding="async" src="//kinoamondo.pl/wp-content/uploads/2023/05/Aftersun_B1_680x980_Oscar-scaled.jpeg" alt="Aftersun" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dramat												</span>
+<h3 class="no-underline">Aftersun</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=30561">KUP BILET</a></p><p>„Aftersun” to pełnometrażowy debiut reżyserski Szkotki Charlotte Wells, inspirowany jej własną historią. Wells porusza w nas najczulsze struny, budując swój film z nostalgicznych impresji i ulotnych emocji związanych z autentycznym wyjazdem wakacyjnym z ojcem do tureckiego kurortu w latach 90. Reżyserka opowiada o dojrzewaniu i o byciu sobą w relacji dziecka z rodzicem. Jednym z producentów „Aftersun” jest Barry Jenkins, nagrodzony Oscarem za „Moonlight”. W tle słyszymy muzyczne hity lat 90. – od „Macareny”, przez „Losing My Religion”, aż po wymowny utwór „Under Pressure” w wykonaniu Davida Bowiego i Freddiego Mercury’ego (jedna z najbardziej poruszających scen tańca we współczesnym kinie).</p>												<p><a href="https://kinoamondo.pl/movies/aftersun/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 18:15</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+96 minut <span class="certificate">15</span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/kawa-i-papierosy/" title="Kawa i papierosy">
+<img decoding="async" src="//kinoamondo.pl/wp-content/uploads/2021/11/Kawa-i-papierosy-scaled.jpeg" alt="Kawa i papierosy" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Komedia												</span>
+<h3 class="no-underline">Kawa i papierosy</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=27765">KUP BILET</a></p><p>Jarmusch rozpoczął swój cykl krótkich etiud filmowych 18 lat temu, w tych szczęśliwych czasach, gdy można było zapalić papierosa w publicznym miejscu bez narażenia się na zarzut próby zabójstwa Teraz otrzymujemy ich pełną antologię: 11 krótkich filmików, których bohaterowie popijając kawę i paląc papierosy rozmawiają na przeróżne tematy. Wyk: Roberto Benigni, Steven Wright, Steve Buscemi, Iggy Pop, Tom Waits, Cate Blanchett, Alfred Molina, Bill Murray</p><div class="filmPosterSection__info filmInfo"><h2 class="filmInfo__trailerInfo"></h2></div>												<p><a href="https://kinoamondo.pl/movies/kawa-i-papierosy/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 18:30</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+96 minut <span class="certificate">13</span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/bruce-lee-vs-superman-amondo-grindhouse/" title="Bruce Lee vs. Superman  | AMONDO GRINDHOUSE">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2025/07/7829072_2.8-270x340.webp" alt="Bruce Lee vs. Superman  | AMONDO GRINDHOUSE" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+</span>
+<h3 class="no-underline">Bruce Lee vs. Superman  | AMONDO GRINDHOUSE</h3>
+<div><p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=30422">KUP BILET</a></p><p><b>SCREENING WITH ENGLISH SUBS</b></p><p>AMONDO GRINDHOUSE to filmowa podróż przez różne oblicza kina exploitation – od grindhouse’ów z lat 60. i 70., przez europejskie kino erotyczne, po gatunkowe hybrydy z Azji i Ameryki Południowej. Filmy pokazujemy w wersjach z napisami w <b>języku angielskim</b>.</p><p>​<b>Bruce Lee vs. Superman (Hong Kong 1975, dir. Chia-Chun Wu)</b></p><p>Along with THE DRAGON LIVES AGAIN, BRUCE LEE VS. SUPERMAN is easily one of the most synapse-frying entries in the magical subgenre known as Bruceploitation. Triad gangsters call Superman out of retirement to kidnap a scientist who solved the global food shortage crisis. Superman agrees to the deal in exchange for "money, plenty of girls, and booze." The authorities enlist Kato (Bruce Li), the Green Hornet's partner, to help. Kato hires his friend Carter (also Bruce Li), who looks, dresses, acts, and wields nunchucks just like Bruce Lee. The result is total madness. A fascinating time capsule from the golden era of gonzo exploitation filmmaking, BRUCE LEE VS. SUPERMAN has been preserved from the only known 35mm print in existence.</p></div>												<p><a href="https://kinoamondo.pl/movies/bruce-lee-vs-superman-amondo-grindhouse/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 20:30</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+86 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/klatwa-doliny-wezy-z-autorska-narracja-lony/" title="Klątwa Doliny Węży z autorską narracją Łony">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/05/KDW_PLAKAT350-270x340.webp" alt="Klątwa Doliny Węży z autorską narracją Łony" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+przygodowy, horror, sci-fi												</span>
+<h3 class="no-underline">Klątwa Doliny Węży z autorską narracją Łony</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=31790">KUP BILET</a></p><p>"Klątwa Doliny Węży" - kultowa superprodukcja z lat 80. w gwiazdorskiej obsadzie, powróci już 15 maja do kin w zupełnie nowej, zaskakującej wersji.</p><p>Będzie ją można oglądać z autorską narracją rapera Łony, który z czułością i humorem prowadzi widzów przez jedną z najbardziej osobliwych przygód w historii polskiego kina.</p><p>Kultowy film Marka Piestraka z Romanem Wilhelmim i Krzysztofem Kolbergerem, balansujący między niezamierzoną groteską a szczerym rozmachem kina przygodowego, zyskuje nowy wymiar dzięki błyskotliwemu komentarzowi Łony, odkrywającemu w niej więcej znacznie więcej niż tylko powód do kinofilskiego żartu. To seans jednocześnie ironiczny i pełen sympatii - filmowa podróż przez dzieło, które przez lata obrosło legendą wśród widzów.</p>												<p><a href="https://kinoamondo.pl/movies/klatwa-doliny-wezy-z-autorska-narracja-lony/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 20:45</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+99 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="schedule-2026-06-06">
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/la-strada/" title="La Strada">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2020/08/1408530584-9a6cb19d598e901286954f6590933e4b-270x340.png" alt="La Strada" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dramat												</span>
+<h3 class="no-underline">La Strada</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=30716">KUP BILET</a></p><div class="filmPosterSection__plot clamped"></div><p>Tym przełomowym filmem Federico Fellini wyniósł zarówno siebie, jak i swoją żonę i współpracowniczkę Giuliettę Masinę do międzynarodowej sławy, zrywając z neorealizmem swojej wczesnej kariery na rzecz osobistej, poetyckiej wizji życia jako słodko-gorzkiego karnawału. Nieskończenie ekspresyjna Masina oddaje zarówno dziecięcy zachwyt, jak i rozdzierającą serce rozpacz w roli Gelsominy, lojalna towarzyszka podróżującego siłacza Zampanò (Anthony Quinn), którego bezduszność i brutalność stopniowo osłabiają jej łagodnego ducha. La strada, nagrodzona pierwszym w historii Oscarem dla najlepszego filmu nieanglojęzycznego, posiada czystość i ponadczasowy wydźwięk baśni i do tej pory jest jedną z najbardziej poruszających wizji ludzkości walczącej o przetrwanie w obliczu okrucieństw życia.</p><div class="filmPosterSection__info filmInfo"><h2 class="filmInfo__trailerInfo"></h2></div>												<p><a href="https://kinoamondo.pl/movies/la-strada/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 16:00</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+110 minut <span class="certificate">16</span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/baltyk/" title="Bałtyk">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/01/baltyk_poster_1-270x340.jpg" alt="Bałtyk" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+</span>
+<h3 class="no-underline">Bałtyk</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=29802">KUP BILET</a></p><p>W samym sercu Łeby, wśród wiatru, soli i zapachu dymu, Miecia od czterech dekad prowadzi kultową wędzarnię ryb. To miejsce nie jest tylko biznesem – to jej żywioł, powołanie i sens codzienności. Dzięki niej wędzarnia stała się lokalną legendą, a ona sama – postacią większą niż życie. Dla wielu mieszkańców to nie tylko sąsiadka czy szefowa – to Królowa Łeby z krwi i kości, z charakterem ostrym jak dym z pieca.</p><p>Ale nawet najsilniejsi muszą czasem się zatrzymać. Gdy zdrowie zaczyna dawać o sobie znać, Miecia staje przed niełatwym pytaniem: jak odnaleźć siebie poza pracą, która przez lata była wszystkim?</p><p>„Bałtyk” to opowieść o sile, pasji i delikatnym momencie zawieszenia – gdzieś pomiędzy tym, co było, a tym, co dopiero może się wydarzyć. W tle: niepowtarzalny nadmorski folklor i wakacje, które smakują jak świeżo wędzona ryba – prosto, mocno i prawdziwie. Całość doprawiona jest szczyptą ciętego, charakterystycznego dla bohaterki poczucia humoru. Miecia żyje pełnią nadbałtyckiego życia, kierując się własną, wypracowaną przez lata filozofią – bo, jak sama powtarza: „Całe życie żyć nie będę!”.</p><p>Brawurowy debiut dokumentalny Igi Lis to słodko-gorzki, pełen ciepła i błyskotliwej wesołości portret kobiety, która całe życie była dla innych, a teraz próbuje przypomnieć sobie, kim jest dla samej siebie.</p><p>Film miał swoją premierę w Konkursie Polskim Krakowskiego Festiwalu Filmowego jednocześnie będąc Filmem Otwarcia, zbierając entuzjastyczne reakcje widowni i krytyków, a także zdobył Jantara – Nagrodę za Najlepsze Zdjęcia – na Koszalińskim Festiwalu Debiutów Filmowych Młodzi i Film oraz główną nagrodę na Sopot Film Festival w Konkursie DOK.PL, którą przyznaje festiwalowa publiczność.</p>												<p><a href="https://kinoamondo.pl/movies/baltyk/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 16:30</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+72 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/delicatessen/" title="Delicatessen">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/03/delicatessen-plakat-cut-514260620-270x340.jpg" alt="Delicatessen" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Czarna Komedia												</span>
+<h3 class="no-underline">Delicatessen</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=31098">KUP BILET</a></p><div class="filmPosterSection__plot clamped"><p>„Delicatessen” (1991) to znakomicie przyjęty pełnometrażowy debiut duetu Jeana-Pierre’a Jeuneta (późniejszego twórcy „Amelii”) i Marca Caro. Akcja filmu rozgrywa się w postapokaliptycznej Francji, w której żywność stała się towarem deficytowym. W tym dziwnym świecie centralne miejsce zajmuje dom z rzeźnikiem (Jean-Claude Dreyfus) prowadzącym sklep mięsny. Do tego osobliwego budynku przybywa nowy lokator – były klaun Louison (Dominique Pinon) – który szybko odkrywa, że lokatorzy mają wyjątkowo mroczne sposoby na przetrwanie.<br />Jeunet i Caro stworzyli groteskowy świat balansujący między czarną komedią, horrorem i romansem, z wyraźnym wpływem kina niemego. Ich wizualny styl – pełen sepii, zniekształceń i absurdalnych detali – stał się znakiem rozpoznawczym duetu. Ścieżka dźwiękowa i rytmiczny montaż nadają filmowi niezwykły, niemal muzyczny rytm.<br />Dziś „Delicatessen” uchodzi za jedno z najoryginalniejszych dzieł francuskiego kina lat 90. i uznawane za klasyk filmowego surrealizmu. Pomimo lat pozostaje utworem mrocznie zabawnym, wizualnie olśniewającym i niepodrabialnym.</p></div>												<p><a href="https://kinoamondo.pl/movies/delicatessen/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 17:50</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+99 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/amelia/" title="Amelia">
+<img decoding="async" src="//kinoamondo.pl/wp-content/uploads/2025/03/amelia-plakat-18-08-PREV_01_680-x-980-scaled.jpg" alt="Amelia" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dramat												</span>
+<h3 class="no-underline">Amelia</h3>
+<div><p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=27218">KUP BILET</a></p><p>Żyjąca sama w wielkim Paryżu Amelia postanawia, że będzie uszczęśliwiać ludzi.</p></div>												<p><a href="https://kinoamondo.pl/movies/amelia/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 18:05</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+117 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/mickey-i-nicky/" title="Mikey i Nicky">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/05/Mikey-i-Nicky-plakat-270x340.png" alt="Mikey i Nicky" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Klasyk												</span>
+<h3 class="no-underline">Mikey i Nicky</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=32034">KUP BILET</a></p><p><strong>Najlepszy amerykański film lat 70., jakiego jeszcze nie widzieliście. Tylko w kinach</strong></p><p>Jedno z arcydzieł amerykańskiego kina lat 70., które w Polsce dopiero czeka na odkrycie. Mikey i Nicky został zrodzony w twórczych bólach: zdjęcia trwały aż 110 dni, nakręconego materiału było niesłychanie dużo, a montaż zajął dwa lata. Gangsterska tragikomedia Elaine May o dwóch przyjaciołach i zawodowej zdradzie to kameralna nocna odyseja dziejąca się w zaśmieconej Filadelfii – „mieście braterskiej miłości”, po którym w tym samym roku biegał już Rocky Sylvestre’a Stallone’a.</p><p>May, matka chrzestna amerykańskiej komedii improwizowanej, była w tamtej dekadzie jedyną kobietą, która reżyserowała filmy dla hollywoodzkich studiów. Dzięki jej uporowi i niezmordowanej inwencji otrzymaliśmy w Mikey i Nicky niezapomniany występ dwóch mistrzów: Petera Falka, czyli słynnego porucznika Columbo, oraz Johna Cassavetesa, guru amerykańskiego kina niezależnego. Przygotujcie się na śmiech, który więźnie w gardle i rozmowy kumpli, które znajdują się o krok od krindżu.</p><p><strong>„Nikt nie da ci w mordę tak, jak najlepszy kumpel” – Michał Oleszczyk, SpoilerMaster</strong></p>												<p><a href="https://kinoamondo.pl/movies/mickey-i-nicky/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 20:00</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+106 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/najgorszy-czlowiek-na-swiecie/" title="Najgorszy człowiek na świecie">
+<img decoding="async" src="//kinoamondo.pl/wp-content/uploads/2022/05/NCNS_B1_Final_Oscar-scaled.jpeg" alt="Najgorszy człowiek na świecie" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dramat, Komedia												</span>
+<h3 class="no-underline">Najgorszy człowiek na świecie</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=29931">KUP BILET</a></p><div class="filmPosterSection__plot clamped"></div><p>Julie wkrótce kończy trzydzieści lat i jest pełna życiowej energii, ale ma też pełno życiowych rozterek. Jest szczęśliwa z Akselem, utalentowanym i odnoszącym sukcesy zawodowe rysownikiem, ale ich spojrzenie na wspólną przyszłość nieco się różni. Kiedy na przypadkowej imprezie Julie poznaje Eivinda i spędza z nim całą noc, zaczyna zastanawiać się, czy ten młodszy od niej, pewny siebie i odrobinę szalony chłopak nie jest właśnie tym, czego potrzebuje w życiu.</p><div class="filmPosterSection__info filmInfo"><h2 class="filmInfo__trailerInfo"></h2></div>												<p><a href="https://kinoamondo.pl/movies/najgorszy-czlowiek-na-swiecie/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 20:20</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+128 minut <span class="certificate">15</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="schedule-2026-06-07">
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/erupcja/" title="Erupcja">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/04/ERUPCJA-FINAL-plakat-www-270x340.png" alt="Erupcja" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Niezależne												</span>
+<h3 class="no-underline">Erupcja</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=31522">KUP BILET</a></p><p>Jest upalne warszawskie lato. Bethany (Charli xcx) przyjeżdża do Polski na romantyczny wyjazd z chłopakiem. Kiedy spotyka Nel (Lena Góra), przyjaciółkę sprzed lat, wybucha między nimi niewypowiedziana chemia. Tęsknota za beztroską prowadzi je ulicami otulonego słońcem miasta – jak najdalej od miejsca, w którym będą musiały podjąć decyzje ważące na reszcie ich dorosłego życia.</p><p>„Erupcja” to intymna i szalona opowieść o spotkaniu, które zmienia wszystko, a jednocześnie filmowy list miłosny do Polski. Reżyser Pete Ohs portretuje Warszawę jako miasto twórczej energii i wolności. W roli Bethany występuje światowa gwiazda Charli xcx, która wnosi do filmu swoją charakterystyczną wrażliwość i ekranową charyzmę. Partneruje jej Lena Góra – jedna z najważniejszych aktorek młodego pokolenia, współtwórczyni projektu i emocjonalne serce „Erupcji”.</p>												<p><a href="https://kinoamondo.pl/movies/erupcja/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 15:50</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+71 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/oslo-31-sierpnia/" title="Oslo, 31 sierpnia">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2022/08/oslo-31-august-489311l-3581386800-270x340.jpg" alt="Oslo, 31 sierpnia" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dramat												</span>
+<h3 class="no-underline">Oslo, 31 sierpnia</h3>
+<div class="filmPosterSection__plot clamped"><p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=27779">KUP BILET</a></p><p>Anders nie żyje. Jest wprawdzie jeszcze dość młody i przystojny, ale jeśli nie osiągnęło się sukcesu przed trzydziestką, to tak, jakby nie osiągnęło się w życiu nic. Dręczą go wspomnienia wszystkich zmarnowanych szans i ludzi, których zawiódł. Kiedyś był ambitny, miał rodzinę, przyjaciół i wielkie plany. Dzisiaj zmaga się z demonami przeszłości, uzależnieniem od narkotyków i myślą dlaczego znalazł się w „martwym punkcie”. Kiedy pojawia się szansa nowego startu, Anders powraca do dawnych miejsc i wkracza w „idealne” życie przyjaciół. Wita go miasto wypełnione melancholią i sztucznymi gestami. Wieczorem, 31 sierpnia, wracają wspomnienia. Możliwości. Wolność. I wybór.</p></div>												<p><a href="https://kinoamondo.pl/movies/oslo-31-sierpnia/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 16:00</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+95 minut <span class="certificate">15</span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/romeria/" title="Romeria">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/05/1069037-romeria-0-230-0-345-crop-270x340.jpg" alt="Romeria" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dramat												</span>
+<h3 class="no-underline">Romeria</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=31791">KUP BILET</a></p><p>Przejmująca, osobista podróż do własnych korzeni, film, który choć rozgrywa się w kręgu jednej rodziny, zrywa ze zbiorowym wstydem i wyparciem. Carla Simón tym razem zabiera nas do hiszpańskiej Galicji, by odtworzyć pewne lato z własnej młodości. 17-letnia Marina przyjeżdża do miasteczka Vigo po dokument, niezbędny, by dostała studenckie stypendium. Pozornie błahy, biurokratyczny wymóg wydobywa na jaw rodzinną tajemnicę, jest świadectwem ukrywanej przez lata prawdy, przerwaniem zmowy milczenia. Simón jest mistrzynią w portretowaniu rodziny: jej ukrytej struktury, wrażliwych miejsc, rytuałów, maskarad. Pojawienie się Mariny, brakującego ogniwa w łańcuchu wspomnień i pokoleń, aktywuje wypartą przeszłość i wewnętrzne konflikty. Kanty dramatu obyczajowego łagodzi poetycki, niesłychanie zmysłowy język Romeríi, w której spotykają się różne plany czasowe, przeszłość – dosłownie – ożywa, a w fikcję wplecione zostały materiały z prywatnego archiwum.</p>												<p><a href="https://kinoamondo.pl/movies/romeria/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 17:30</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+114 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/zawiescie-czerwone-latarnie/" title="Zawieście czerwone latarnie">
+<img decoding="async" src="//kinoamondo.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-scaled.jpg" alt="Zawieście czerwone latarnie" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dramat, Historyczny												</span>
+<h3 class="no-underline">Zawieście czerwone latarnie</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=31906">KUP BILET</a></p><p>Słynne chińskie arcydzieło i jeden z najpiękniejszych filmów lat 90. już 22 maja w polskich kinach, w nowej wersji 4K.</p><p>„Zawieście czerwone latarnie” to absolutna perła w bogatym i eklektycznym dorobku Zhanga Yimou („Dom latających sztyletów”, „Żyć”, „Hero”). Adaptacja opowiadania Su Tonga „Żony i konkubiny” przyniosła mu międzynarodowe uznanie i status nowego mistrza światowego kina. Srebrny Lew w Wenecji, nagroda BAFTA dla najlepszego filmu nieanglojęzycznego oraz nominacja oscarowa tylko dopełniły sukcesu reżysera. W głównej roli błyszczy natomiast Gong Li („Czerwone sorgo”, „Wyznania gejszy”), która dziewięciokrotnie współpracowała z Zhangiem i szybko stała się ikoną współczesnego kina.</p><p>Film zachwyca nowatorskim użyciem koloru, mistrzowską aranżacją zabytkowych XVIII-wiecznych przestrzeni, dramaturgiczną precyzją czy głęboko feministyczną refleksją. Choć chińska cenzura dostrzegła w nim metaforę autorytarnego systemu i opóźniła krajową dystrybucję, nic nie mogło zaszkodzić jego sławie. Z czasem wyrafinowana kostiumowa opowieść zagościła na wielu listach z najlepszymi tytułami w historii kina.</p><p>Akcja rozgrywa się w Chinach w latach 20. XX wieku. 19-letnia Songlian zostaje czwartą konkubiną zamożnego pana Chena. Trafia do jego imponującej posiadłości, gdzie obowiązują specyficzne zasady, a każdy aspekt codzienności kształtują wielowiekowe tradycje. Główna bohaterka powoli odkrywa, że w kobiecym gronie, do którego dołączyła, trwa rywalizacja o względy pana domu. Do czego mogą jednak doprowadzić ciągłe erupcje zazdrości, atmosfera wzajemnych oskarżeń i niepewność dotycząca własnej pozycji? Czy niedoświadczona Songlian odnajdzie się w skomplikowanym labiryncie dziedzińców i korytarzy?</p><p>Rekonstrukcja filmu w jakości 4K pozwala jeszcze bardziej docenić jego wizualną urodę. Symetryczne malarskie kadry, gra czerwonych świateł oraz zjawiskowe kostiumy i scenografie tworzą niezapomniany estetyczny spektakl.</p>												<p><a href="https://kinoamondo.pl/movies/zawiescie-czerwone-latarnie/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 17:45</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+125 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/father-mother-sister-brother/" title="Father Mother Sister Brother">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/04/fmsb-plakat-pl-lq-270x340.jpg" alt="Father Mother Sister Brother" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Komediodramat												</span>
+<h3 class="no-underline">Father Mother Sister Brother</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=31323">KUP BILET</a></p><p>„FATHER MOTHER SISTER BROTHER" to zwycięzca ostatniego festiwalu w Wenecji i najlepszy od lat film Jima Jarmuscha, twórcy „Patersona" i „Broken Flowers". Pełen błyskotliwych obserwacji precyzyjnie skomponowany tryptyk filmowy o relacjach rodzinnych i o tym, co sprawia, że się od siebie oddalamy. Każdy z trzech rozdziałów rozgrywa się współcześnie, w innym kraju: FATHER – w północno-wschodnich Stanach Zjednoczonych, MOTHER – w Dublinie, a SISTER BROTHER – w Paryżu. Film Jarmuscha stanowi zbiór subtelnych, pełnych humoru, ale i nut melancholii portretów ludzkich charakterów. W rolach głównych m.in. Cate Blanchett, Adam Driver, Tom Waits, Vicky Krieps i Charlotte Rampling.</p><p>Sam reżyser tak mówi o swoim najnowszym filmie: „FATHER MOTHER SISTER BROTHER" to w pewnym sensie zaprzeczenie kina akcji. Jego wyciszony styl został świadomie ukształtowany po to, by pozwolić widzowi dostrzec drobne szczegóły – niczym starannie ułożone trzy kompozycje kwiatowe. Współpraca z wybitnymi operatorami Frederickiem Elmesem i Yorickiem Le Saux, znakomitym montażystą Affonso Gonçalvesem oraz innymi stałymi współpracownikami pozwoliła nam wynieść to, co początkowo istniało jedynie jako słowa na kartce papieru do rangi czystego kina.</p>												<p><a href="https://kinoamondo.pl/movies/father-mother-sister-brother/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 19:45</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+110 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/klatwa-doliny-wezy-z-autorska-narracja-lony/" title="Klątwa Doliny Węży z autorską narracją Łony">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/05/KDW_PLAKAT350-270x340.webp" alt="Klątwa Doliny Węży z autorską narracją Łony" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+przygodowy, horror, sci-fi												</span>
+<h3 class="no-underline">Klątwa Doliny Węży z autorską narracją Łony</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=31790">KUP BILET</a></p><p>"Klątwa Doliny Węży" - kultowa superprodukcja z lat 80. w gwiazdorskiej obsadzie, powróci już 15 maja do kin w zupełnie nowej, zaskakującej wersji.</p><p>Będzie ją można oglądać z autorską narracją rapera Łony, który z czułością i humorem prowadzi widzów przez jedną z najbardziej osobliwych przygód w historii polskiego kina.</p><p>Kultowy film Marka Piestraka z Romanem Wilhelmim i Krzysztofem Kolbergerem, balansujący między niezamierzoną groteską a szczerym rozmachem kina przygodowego, zyskuje nowy wymiar dzięki błyskotliwemu komentarzowi Łony, odkrywającemu w niej więcej znacznie więcej niż tylko powód do kinofilskiego żartu. To seans jednocześnie ironiczny i pełen sympatii - filmowa podróż przez dzieło, które przez lata obrosło legendą wśród widzów.</p>												<p><a href="https://kinoamondo.pl/movies/klatwa-doliny-wezy-z-autorska-narracja-lony/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 20:15</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+99 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="schedule-2026-06-08">
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/nienawisc/" title="Nienawiść">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2025/01/nienawisc_posty_01_1080-x-1080-270x340.jpg" alt="Nienawiść" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dramat												</span>
+<h3 class="no-underline">Nienawiść</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=27243">KUP BILET</a></p><div class="filmPosterSection__plot clamped">Słynny film z 1995 roku to opowieść o 24 godzinach z życia Araba Saida, Żyda Vince’a i czarnoskórego Huberta podczas których ważą się losy młodych ludzi. To moment decydujący po burzliwej nocy podczas której policja zraniła młodego Araba a jeden z funkcjonariuszy zgubił… broń.<br />Charakter tego głośnego obrazu, który krytyka uznała za “film dekady” tworzy paradokumentalny styl i niezapomniana ścieżka dźwiękowa. W jednej z głównych ról wystąpiła przyszła gwiazda francuskiego kina - Vincent Cassel.<br />“Nienawiść” przyniosła 28-letniemu reżyserowi nagrodę za reżyserię na Międzynarodowym Festiwalu Filmowym w Cannes, trzy Cezary (w tym za najlepszy film roku) a także nagrodę Europejskiej Akademii Filmowej dla najlepszego młodego europejskiego filmu roku.</div><div class="filmPosterSection__info filmInfo"><h2 class="filmInfo__trailerInfo"></h2></div>												<p><a href="https://kinoamondo.pl/movies/nienawisc/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 21:00</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+98 minut <span class="certificate">15</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="schedule-2026-06-09">
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/marinette-queer-week/" title="Marinette | QUEER WEEK">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/06/857755-marinette-0-230-0-345-crop-270x340.jpg" alt="Marinette | QUEER WEEK" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dramat												</span>
+<h3 class="no-underline">Marinette | QUEER WEEK</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=32148">KUP BILET</a></p><p>Marinette nie ma łatwo w życiu, a mimo to udaje się jej zostać członkinią francuskiej reprezentacji w piłce nożnej. Zauważona przez amerykański klub sportowy wyjeżdża za ocean, aby spełnić swoje marzenie i stać się najlepszą zawodniczką na świecie. Nie wszystko jednak idzie po jej myśli.</p>												<p><a href="https://kinoamondo.pl/movies/marinette-queer-week/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 17:45</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+96 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/znikniecie/" title="Zniknięcie">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/02/Znikniecie-oficjalny-plakat-dystrybucyjny-1066x1536-1-270x340.jpg" alt="Zniknięcie" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Thriller psychologiczny												</span>
+<h3 class="no-underline">Zniknięcie</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=30554">KUP BILET</a></p><p><strong>Czy chcesz poznać prawdę za wszelką cenę?</strong></p><p>Kultowy thriller po raz pierwszy w polskich kinach! Stanley Kubrick nazwał Zniknięcie (Spoorloos) „najbardziej przerażającym filmem, jaki kiedykolwiek widziałem”. Złowieszcza łamigłówka George’a Sluizera to mroczna podróż na drugą stronę moralności i intensywny portret pozbawionego skrupułów psychopaty. Wywołujące dreszcz grozy oraz ukłucia niepokoju Zniknięcie to wielki holenderski klasyk przypominający skrzyżowanie Milczenia owiec z Funny Games. Od momentu premiery film podstępnie wkrada się do świadomości widzów, którzy muszą sami odpowiedzieć na pytanie: „Czy chcesz poznać prawdę za wszelką cenę”?</p><p>Zaczyna się niewinnie – od wakacyjnej podróży. Para Holendrów, Saskia (Johanna ter Steege) i Rex (Gene Bervoets) jedzie do Francji samochodem. Po drodze sprzeczają się i droczą, uczą się francuskich słówek. W pewnym momencie zatrzymują się na stacji benzynowej. Saskia idzie do toalety – po czym znika. Jej zniknięcie będzie trapić Rexa przez całe życie. Szybko poznajemy też porywacza – jest nim Raymond (wstrząsająca rola Bernard-Pierre’a Donnadieu), niepozorny nauczyciel chemii. Czy Rex pozna kiedykolwiek oprawcę, na punkcie którego nabiera stopniowo obsesji?</p><p>Perfekcyjna adaptacja powieści Złote jajko Tima Krabbé to legendarny dziś film, który na początku miał kłopoty ze znalezieniem dystrybutora – a ostatecznie doczekał się amerykańskiego remake’u, również w reżyserii Sluizera. Zniknięcie to koszmar na jawie, narracyjna układanka, z której nie ma bezpiecznego wyjścia i filozoficzny horror rozegrany głównie w słonecznych plenerach i mieszczańskich wnętrzach. Wraz z Rexem podążamy za niewiadomą, tropimy ślady i szukamy rozwiązania zagadki.</p><p>Niezależny, niskobudżetowy przebój europejskiego kina ma rzesze wyznawców na całym świecie. Past Perfect z satysfakcją zaprezentuje film Sluizera w polskich kinach – czyli tam, gdzie jego upiorna magia działa zdecydowanie najsilniej.</p>												<p><a href="https://kinoamondo.pl/movies/znikniecie/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 18:00</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+107 <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/wielkie-piekno/" title="Wielkie piękno">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2025/08/WIELKIE_PIEKNO_sks_plk-270x340.jpg" alt="Wielkie piękno" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+</span>
+<h3 class="no-underline">Wielkie piękno</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=27219">KUP BILET</a></p><p><strong>„Wielkie piękno” to wizualnie oszałamiająca, kontemplacyjna podróż przez Rzym i życie głównego bohatera filmu, Jepa Gambardelli, starzejącego się dziennikarza i pisarza, który po latach hedonistycznego życia zaczyna rozliczać się ze swoją przeszłością.</strong></p><p>Słynący z ironicznego dystansu i bycia stałym bywalcem elitarnych przyjęć, Jep z pozornym spokojem dryfuje przez świat włoskiej wyższej sfery. Jednak pod powierzchnią blichtru, rozmów o sztuce i filozofii kryje się głęboka tęsknota za autentycznym pięknem i duchowym spełnieniem.</p>												<p><a href="https://kinoamondo.pl/movies/wielkie-piekno/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 19:50</span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/father-mother-sister-brother/" title="Father Mother Sister Brother">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/04/fmsb-plakat-pl-lq-270x340.jpg" alt="Father Mother Sister Brother" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Komediodramat												</span>
+<h3 class="no-underline">Father Mother Sister Brother</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=31323">KUP BILET</a></p><p>„FATHER MOTHER SISTER BROTHER" to zwycięzca ostatniego festiwalu w Wenecji i najlepszy od lat film Jima Jarmuscha, twórcy „Patersona" i „Broken Flowers". Pełen błyskotliwych obserwacji precyzyjnie skomponowany tryptyk filmowy o relacjach rodzinnych i o tym, co sprawia, że się od siebie oddalamy. Każdy z trzech rozdziałów rozgrywa się współcześnie, w innym kraju: FATHER – w północno-wschodnich Stanach Zjednoczonych, MOTHER – w Dublinie, a SISTER BROTHER – w Paryżu. Film Jarmuscha stanowi zbiór subtelnych, pełnych humoru, ale i nut melancholii portretów ludzkich charakterów. W rolach głównych m.in. Cate Blanchett, Adam Driver, Tom Waits, Vicky Krieps i Charlotte Rampling.</p><p>Sam reżyser tak mówi o swoim najnowszym filmie: „FATHER MOTHER SISTER BROTHER" to w pewnym sensie zaprzeczenie kina akcji. Jego wyciszony styl został świadomie ukształtowany po to, by pozwolić widzowi dostrzec drobne szczegóły – niczym starannie ułożone trzy kompozycje kwiatowe. Współpraca z wybitnymi operatorami Frederickiem Elmesem i Yorickiem Le Saux, znakomitym montażystą Affonso Gonçalvesem oraz innymi stałymi współpracownikami pozwoliła nam wynieść to, co początkowo istniało jedynie jako słowa na kartce papieru do rangi czystego kina.</p>												<p><a href="https://kinoamondo.pl/movies/father-mother-sister-brother/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 20:00</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+110 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="schedule-2026-06-10">
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/dziewczyna-pietaszek/" title="Dziewczyna piętaszek">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2020/11/his-girl-plakat-270x340.jpeg" alt="Dziewczyna piętaszek" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dramat												</span>
+<h3 class="no-underline">Dziewczyna piętaszek</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=27242">KUP BILET</a></p><div class="filmPosterSection__plot clamped">Rozwiedziona reporterka, Hildy Johnson, pragnie ponownie wyjść za mąż. Bierze jednak jeszcze ostatnie zlecenie od wydawcy swojej gazety i byłego męża - Waltera Burnsa. Podjęte poszukiwania wpędzają co prawda byłych małżonków w wielkie tarapaty ze skorumpowanymi prominentami. Prowadzą ich jednak do ponownego związku.</div><div class="filmPosterSection__info filmInfo"><h2 class="filmInfo__trailerInfo"></h2></div>												<p><a href="https://kinoamondo.pl/movies/dziewczyna-pietaszek/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 17:45</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+92 minuty <span class="certificate">15</span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/klatwa-doliny-wezy-z-autorska-narracja-lony/" title="Klątwa Doliny Węży z autorską narracją Łony">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/05/KDW_PLAKAT350-270x340.webp" alt="Klątwa Doliny Węży z autorską narracją Łony" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+przygodowy, horror, sci-fi												</span>
+<h3 class="no-underline">Klątwa Doliny Węży z autorską narracją Łony</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=31790">KUP BILET</a></p><p>"Klątwa Doliny Węży" - kultowa superprodukcja z lat 80. w gwiazdorskiej obsadzie, powróci już 15 maja do kin w zupełnie nowej, zaskakującej wersji.</p><p>Będzie ją można oglądać z autorską narracją rapera Łony, który z czułością i humorem prowadzi widzów przez jedną z najbardziej osobliwych przygód w historii polskiego kina.</p><p>Kultowy film Marka Piestraka z Romanem Wilhelmim i Krzysztofem Kolbergerem, balansujący między niezamierzoną groteską a szczerym rozmachem kina przygodowego, zyskuje nowy wymiar dzięki błyskotliwemu komentarzowi Łony, odkrywającemu w niej więcej znacznie więcej niż tylko powód do kinofilskiego żartu. To seans jednocześnie ironiczny i pełen sympatii - filmowa podróż przez dzieło, które przez lata obrosło legendą wśród widzów.</p>												<p><a href="https://kinoamondo.pl/movies/klatwa-doliny-wezy-z-autorska-narracja-lony/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 18:00</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+99 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/pillion-queerowe-kino/" title="Pillion | Queerowe Kino">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/06/pillion-plakat-lq-270x340.jpg" alt="Pillion | Queerowe Kino" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Komediodramat												</span>
+<h3 class="no-underline">Pillion | Queerowe Kino</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=32146">KUP BILET</a></p><p>Kiedy myślisz, że widziałeś już wszystko, pojawia się on: ostry jak kolczasta obroża, zmysłowy jak zapach skórzanej kurtki i romantyczny jak nocna przejażdżka motocyklem. „Pillion” Harry’ego Lightona to połączenie queerowego romansu i komediodramatu, w którym elektryzujący duet – Alexander Skarsgård („Wiking”, serial „Sukcesja”) i Harry Melling (serial „Gambit królowej”, „Bielmo”) – z czułością i humorem przełamuje erotyczne tabu. Portretując skomplikowaną relację poczciwego parkingowego i seksownego motocyklisty, „Pillion” zamienia sztywne filmowe konwencje w jazdę bez trzymanki. Seks jeszcze nigdy nie był tak zabawny, a humor — tak podniecający.</p><p>Kiedy zabójczo przystojny Ray (Skarsgård) zostawia nieśmiałemu Colinowi (Melling) swój numer telefonu, ten bez wahania pozwala zakuć się w miłosne kajdany. Od tej pory zjawia się na każde wezwanie najatrakcyjniejszego członka klubu bikersów. Nagła przemiana Colina to szok dla jego miłych rodziców, a dla niego samego oszałamiająca nauka jazdy na tylnym siedzeniu. Utrata kontroli i całkowite oddanie – kto by pomyślał, że to takie przyjemne?</p><p>„Pillion” brawurowo eksploruje świat relacji BDSM, a przede wszystkim odważnie pokonuje wyboistą drogę wiodącą do seksualnego i emocjonalnego przebudzenia. Ta prowokacyjna, przezabawna i bezwstydnie romantyczna historia miłosna przekonuje też, że nie ma to jak randka w kinie. Nie opieraj się, ty też mu ulegniesz.</p>												<p><a href="https://kinoamondo.pl/movies/pillion-queerowe-kino/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 19:30</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+107 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/wartosc-sentymentalna/" title="Wartość sentymentalna">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/05/plakat-2043299047-270x340.jpg" alt="Wartość sentymentalna" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Melodramat												</span>
+<h3 class="no-underline">Wartość sentymentalna</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=31907">KUP BILET</a></p><p>Oscars® – „Wartość sentymentalna” ze statuetką dla Najlepszego Filmu Międzynarodowego!</p><p>Najnowszy film Joachima Triera, reżysera „Najgorszego człowieka na świecie”, z nominowanymi do Oscara w kategoriach aktorskich Renate Reinsve, Stellanem Skarsgårdem, Ingą Ibsdotter Lilleaas i Elle Fanning w rolach głównych. Jeden z najczęściej nagradzanych i najważniejszych filmów tego roku, z muzyką skomponowaną przez polską kompozytorkę Hanię Rani.</p><p>Siostry Nora (Renate Reinsve) i Agnes (Inga Ibsdotter Lilleaas) spotykają się ze swoim dawno niewidzianym ojcem, charyzmatycznym, niegdyś wielkim reżyserem filmowym Gustavem (Stellan Skarsgård). Proponuje on Norze, aktorce teatralnej, rolę w swoim najnowszym filmie, który ma być jego powrotem do świata filmu. Gdy dziewczyna odrzuca propozycję, ten zatrudnia młodą gwiazdę Hollywood (Elle Fanning). Teraz siostry muszą poradzić sobie nie tylko ze swoją skomplikowaną sytuacją z ojcem, ale też z amerykańską gwiazdą, która zmienia ich rodzinną dynamikę.</p>												<p><a href="https://kinoamondo.pl/movies/wartosc-sentymentalna/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 20:00</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+135 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="schedule-2026-06-11">
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/mystery-train/" title="Mystery Train">
+<img decoding="async" src="//kinoamondo.pl/wp-content/uploads/2021/11/Mystery-train-scaled.jpeg" alt="Mystery Train" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dramat, Komedia												</span>
+<h3 class="no-underline">Mystery Train</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=29795">KUP BILET</a></p><p>„Mystery Train” ma strukturę puzzli, jest rozsypaną układanką, której pełen obraz tworzy się w głowie widza. Akcja zbudowanego z pozornie niezależnych epizodów filmu rozgrywa się w podupadłym hotelu Arkada w Memphis w stanie Tennessee; rodzinnym mieście Elvisa Presleya. To tu zatrzymują się na chwilę bohaterowie opowieści: dwójka japońskich turystów, podróżująca śladami swoich muzycznych idoli; Włoszka, która w Stanach straciła męża, a także Amerykanka, która rozstała się właśnie ze swoim angielskim chłopakiem. Ich ścieżki przetną się na chwilę, a w tle rozlegnie się dźwięk wystrzału. Wszystkich nawiedzi też duch Elvisa. Zamiast unieśmiertelniającego kultu i miłości do idola widzimy jednak tylko jego rozpaczliwe pragnienie zmartwychwstania.<br />Jak zwykle u Jarmuscha nie chodzi o akcję, fabułę, konflikty. Przeciwnie - reżyser ostentacyjnie pokazuje brak konfliktów lub ich pozorność, nic-nie-dzianie-się lub dzianie się pozbawione znaczenia i puenty. W przeciwieństwie jednak do wcześniejszych filmów, w których najważniejsze były ludzkie czyny i gesty, głównym bohaterem „Mystery Train” jest czas, bowiem Jarmuscha fascynuje możliwość pokazywania w kinie symultaniczności wydarzeń. Za to podobnie, jak inne jego dzieła, także to imponuje obsadą złożoną z aktorów i gwiazd undergroundu. Na ekranie przecięły się więc ścieżki aktora Steve’a Buscemiego, Joe Strummera (lider The Clash), nowojorskiej reżyserki Sary Driver, performera i muzyka Screamin Jay Hawkinsa, czy legendy bluesa Rufusa Thomasa.</p>												<p><a href="https://kinoamondo.pl/movies/mystery-train/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 17:45</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+110 minut <span class="certificate">13</span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/akta-bibiego/" title="Akta Bibiego">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/06/zrzut-ekranu-2025-06-5-o-18-34-11-270x340.webp" alt="Akta Bibiego" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Dokument												</span>
+<h3 class="no-underline">Akta Bibiego</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=32147">KUP BILET</a></p><p>Film odsłania niepublikowane wcześniej materiały, przedstawiające przesłuchanie Benjamina Netanjahu przez izraelską policję w związku z zarzutami o korupcję. Śledztwo doprowadziło do postawienia premiera Izraela w stan oskarżenia w 2019 roku. W archiwalnym materiale, który wyciekł do producenta filmu Alexa Gibneya pod koniec ubiegłego roku, widać, jak Benjamin Netanjahu kłóci się ze śledczymi, zaprzeczając, że przyjął drogie prezenty od zamożnych biznesmenów, w tym hollywoodzkiego producenta Arnona Milchana i magnata kasynowego z Las Vegas Sheldona Adelsona. Jednemu z nich – w ramach odwzajemnienia przysługi – obniżył podatki. Jego wysiłki, aby za swoje przewinienia uniknąć kary, zachwiały stabilnością Izraela i pokojem na świecie.</p><p>Film to ważne dziennikarskie exposé, oparte również na wywiadach z kluczowymi osobistościami Izraela, w tym z byłym premierem Ehudem Olmertem, byłym rzecznikiem Netanjahu Nirem Hefetzem, byłym przywódcą Shin Bet Ami Ayalonem i dziennikarzem śledczym Ravivem Druckerem. Wielu Izraelczyków uważa, że próby opóźnienia własnego procesu przez Natanjahu są kluczem do zrozumienia ostatnich wydarzeń w ich kraju i eskalacji konfliktów na Bliskim Wschodzie, w tym jego milczącej zgody na rozwój osiedli żydowskich na Zachodnim Brzegu, kontrowersyjnego sposobu negocjacji w sprawie zakładników porwanych przez Hamas oraz wojskowych decyzji skutkujących ludobójstwem w Gazie nazwanym przez Sekretarza Generalnego ONZ „moralną plamą na nas wszystkich”.</p>												<p><a href="https://kinoamondo.pl/movies/akta-bibiego/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 18:00</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+116 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/plomienie/" title="Płomienie">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2018/10/1can-270x340.jpeg" alt="Płomienie" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Thriller psychologiczny												</span>
+<h3 class="no-underline">Płomienie</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=29793">KUP BILET</a></p><p>Marzący o karierze pisarza Jong-so, został zmuszony do powrotu na rodzinną wieś. Chłopak przeżywa właśnie zauroczenie Haemi (Jeon Jong-seo), która twierdzi, że zna go ze szkoły. Pod jej nieobecność Jong-soo opiekuje się kotem, którego nigdy nie udaje mu się zobaczyć, choć znika zostawiane dla niego jedzenie. Z dalekiej podróży Haemi przywozi Bena, zamożnego, pewnego siebie światowca, i to z nim spędza teraz czas. Zrozpaczony Jong-soo krąży wokół szczęśliwej pary – aż do dnia, w którym dziewczyna znika. Z dnia na dzień chłopak nabiera coraz większej pewności, że to Ben jest za to odpowiedzialny.</p>												<p><a href="https://kinoamondo.pl/movies/plomienie/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 19:45</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+148 minut <span class="certificate">16</span>
+</div>
+</div>
+</div>
+</div>
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/glos-hind-rajab/" title="Głos Hind Rajab">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/01/glos_hind_rajab-1267055078-270x340.webp" alt="Głos Hind Rajab" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+</span>
+<h3 class="no-underline">Głos Hind Rajab</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=29722">KUP BILET</a></p><p>Laureat Srebrnego Lwa na festiwalu w Wenecji, niezliczonych nagród publiczności na festiwalach na całym świecie, teraz również z szansą na Złoty Glob i Oscara. Film prezentuje prawdziwe wydarzenia. 29 stycznia 2024 roku wolontariusze Palestyńskiego Czerwonego Półksiężyca odbierają telefon alarmowy. W Gazie, w samochodzie pod ostrzałem uwięziona jest sześcioletnia dziewczynka, która błaga o pomoc. Ratownicy, starając się utrzymać z nią kontakt, robią wszystko, by dotarła do niej karetka. Dziewczynka ma na imię Hind Rajab. Najnowsze dzieło dwukrotnie nominowanej do Oscara Kaouther Ben Hani to przejmująca, głęboko humanistyczna historia, ukazująca bohaterstwo zwykłych ludzi. Głos Hind Rajab został określony przez wielu widzów i krytyków najważniejszym filmem dekady, zaś wśród jego producentów znaleźli się między innymi: Brad Pitt, Joaquin Phoenix, Rooney Mara, Jonathan Glazer i Alfonso Cuarón. Film był nominowany do Złotego Globu dla najlepszej produkcji nieanglojęzycznej, a niedawno trafił też na oscarową shortlistę.</p>												<p><a href="https://kinoamondo.pl/movies/glos-hind-rajab/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 20:15</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+89 minut <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="schedule-2026-06-12">
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/sleepaway-camp/" title="Sleepaway Camp | AMONDO GRINDHOUSE">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/01/sleepaway-camp-270x340.jpg" alt="Sleepaway Camp | AMONDO GRINDHOUSE" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Horror												</span>
+<h3 class="no-underline">Sleepaway Camp | AMONDO GRINDHOUSE</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://kicket.com/embeddables/repertoire?organizerId=1772&amp;showId=30102">KUP BILET</a></p><p><b>SCREENING WITH ENGLISH SUBS</b></p><p>AMONDO GRINDHOUSE to filmowa podróż przez różne oblicza kina exploitation – od grindhouse’ów z lat 60. i 70., przez europejskie kino erotyczne, po gatunkowe hybrydy z Azji i Ameryki Południowej. Filmy pokazujemy w wersjach z napisami <b>w języku angielskim</b>.</p><p>​</p><p><b>Sleepaway Camp (USA 1983, dir. Robert Hiltzik)</b></p><p>“A film that’s not only stood the test of time, but has also slaughtered it with a glimmering blade in a cabin shower.” – Annie Choi, Bleeding Skull</p><p>From its grisly makeup effects to its fashionable short-shorts and truly shocking, unforgettable climax, SLEEPAWAY CAMP is no ordinary slasher film… it’s an all-timer cult classic. After a terrible boating accident killed her family, shy Angela (Felissa Rose) goes to live with her eccentric Aunt Martha and cousin Ricky. This summer, Martha sends them both to Camp Arawak, a place to enjoy the great outdoors. Shortly after their arrival, a series of bizarre, violent accidents claim the lives of various campers. Has a dark secret returned from the camp’s past… or will some other unspeakable horror end the summer season for all?!</p>												<p><a href="https://kinoamondo.pl/movies/sleepaway-camp/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala II, 20:30</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+88 minut <span class="certificate">15</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="schedule-2026-06-13">
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/plesn-nienarodzony-film-z-lektorem-na-zywo/" title="Pleśń: Nienarodzony | Film z lektorem na żywo">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2026/06/plesn-stories-1-270x340.png" alt="Pleśń: Nienarodzony | Film z lektorem na żywo" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+horror, komedia, surrealizm												</span>
+<h3 class="no-underline">Pleśń: Nienarodzony | Film z lektorem na żywo</h3>
+<p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=32151">KUP BILET</a></p><p>„Pleśń” to potwór Frankenstein, złożony z fragmentów kaset VHS, starych reklam i filmów Rogera Cormana, który przejął kontrolę i zniszczył swoich twórców. „Pleśń” redukuje swoich twórców i zmienia ich w żenujących lektorów. Okazało się, że film „Unborn”, będący główną osią fabuły, pochłonął całą zabawę i ironię, zmieniając to melancholijne doświadczenie powrotu do przeszłości w piekło, które wtapia widza w fotel.</p><p>Fabuła nieubłaganie zabierze nas w dziwne miejsce, gdzie wszyscy będziecie jak jeden superorganiczny komputer dzielić jedną myśl: „co ja tutaj k**** robię?</p>												<p><a href="https://kinoamondo.pl/movies/plesn-nienarodzony-film-z-lektorem-na-zywo/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 20:30</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="schedule-2026-06-19">
+<div class="row movie-tabs">
+<div class="col-md-2 col-sm-3">
+<a href="https://kinoamondo.pl/movies/santa-sangre/" title="Santa Sangre | AMONDO GRINDHOUSE">
+<img decoding="async" src="https://kinoamondo.pl/wp-content/uploads/2023/10/91BU0LYQOaL._AC_UF8941000_QL80_-270x340.jpg" alt="Santa Sangre | AMONDO GRINDHOUSE" />
+</a>
+</div>
+<div class="col-md-10 col-sm-9">
+<span class="title">
+Thriller, surrealistyczny												</span>
+<h3 class="no-underline">Santa Sangre | AMONDO GRINDHOUSE</h3>
+<div><p><a class="gooutButton" style="cursor: pointer" href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=30621">KUP BILET</a></p><p><b>SCREENING WITH ENGLISH SUBS</b></p><p>AMONDO GRINDHOUSE to filmowa podróż przez różne oblicza kina exploitation – od grindhouse’ów z lat 60. i 70., przez europejskie kino erotyczne, po gatunkowe hybrydy z Azji i Ameryki Południowej. Filmy pokazujemy w wersjach z napisami <b>w języku angielskim</b>.</p><p><b>Santa Sangre (Italy 1989, dir. Alejandro Jodorowsky)</b></p><p>“A movie like none other I have seen before . . . a film in which the inner chambers of the soul are laid bare.”<br />—Roger Ebert</p><p>Fifteen years after Alejandro Jodorowsky’s EL TOPO and THE HOLY MOUNTAIN unlocked our collective third eye, the legendary provocateur made his 1980s comeback with this staggering odyssey of ecstasy, anguish, belief, blasphemy, beauty, and madness. SANTA SANGRE continues to enrapture both Jodorowsky newbies and dedicated fans alike with its tale of a young circus performer, the crime of passion that shatters his soul, and a macabre journey back to the world of his armless mother.</p></div>												<p><a href="https://kinoamondo.pl/movies/santa-sangre/" class="arrow-button">
+Czytaj więcej</a></p>
+<div class="row">
+<div class="col-md-8 col-sm-9">
+<hr class="space-10" />
+<span class="viewing-times">
+<i class="fa fa-clock-o"></i>
+Godziny seansów														</span>
+<div class="time-wrap"><span class="time">Sala I, 20:00</span></div>
+</div>
+<div class="col-md-4 col-sm-3 running-time">
+<hr class="space-10" />
+123 minuty <span class="certificate"></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script type="text/javascript">
+jQuery(function ($) {
+$('.movies').tabs({
+active: 0
+});
+$('.movies #schedule-2026-06-05').find('.time-wrap').css('display', 'inline-block');
+$('.movies #schedule-2026-06-06').find('.time-wrap').css('display', 'inline-block');
+$('.movies #schedule-2026-06-07').find('.time-wrap').css('display', 'inline-block');
+$('.movies #schedule-2026-06-08').find('.time-wrap').css('display', 'inline-block');
+$('.movies #schedule-2026-06-09').find('.time-wrap').css('display', 'inline-block');
+$('.movies #schedule-2026-06-10').find('.time-wrap').css('display', 'inline-block');
+$('.movies #schedule-2026-06-11').find('.time-wrap').css('display', 'inline-block');
+$('.movies #schedule-2026-06-12').find('.time-wrap').css('display', 'inline-block');
+$('.movies #schedule-2026-06-13').find('.time-wrap').css('display', 'inline-block');
+$('.movies #schedule-2026-06-19').find('.time-wrap').css('display', 'inline-block');
+});
+</script></div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+</div>
+
+<footer>
+<div class="container">
+<div class="row">
+<div class="col-sm-6">
+<div class="textwidget"><p>Kino zostało dofinansowane w ramach Programu Operacyjnego III<br />
+Polskiego Instytutu Sztuki Filmowej – Priorytet III: Wsparcie promocji<br />
+polskiego filmu.</p>
+<p>Lokal jest wykorzystywany dzięki pomocy Miasta Stołecznego Warszawy – Dzielnicy Śródmieście.</p>
+<p>Kino należy do Sieci Kin Studyjnych.</p>
+<p>&nbsp;</p>
+</div>
+<img width="300" height="194" src="https://kinoamondo.pl/wp-content/uploads/2024/08/Zdjecie-WhatsApp-2024-08-01-o-16.36.57_ec75491b-300x194.jpg" class="image wp-image-5519  attachment-medium size-medium" alt="" style="max-width: 100%; height: auto;" decoding="async" loading="lazy" srcset="https://kinoamondo.pl/wp-content/uploads/2024/08/Zdjecie-WhatsApp-2024-08-01-o-16.36.57_ec75491b-300x194.jpg 300w, https://kinoamondo.pl/wp-content/uploads/2024/08/Zdjecie-WhatsApp-2024-08-01-o-16.36.57_ec75491b-768x497.jpg 768w, https://kinoamondo.pl/wp-content/uploads/2024/08/Zdjecie-WhatsApp-2024-08-01-o-16.36.57_ec75491b-18x12.jpg 18w, https://kinoamondo.pl/wp-content/uploads/2024/08/Zdjecie-WhatsApp-2024-08-01-o-16.36.57_ec75491b.jpg 948w" sizes="(max-width: 300px) 100vw, 300px" /><img width="300" height="83" src="https://kinoamondo.pl/wp-content/uploads/2023/08/amondo_logotypy_1-300x83.png" class="image wp-image-4643  attachment-medium size-medium" alt="" style="max-width: 100%; height: auto;" decoding="async" loading="lazy" srcset="https://kinoamondo.pl/wp-content/uploads/2023/08/amondo_logotypy_1-300x83.png 300w, https://kinoamondo.pl/wp-content/uploads/2023/08/amondo_logotypy_1-1024x284.png 1024w, https://kinoamondo.pl/wp-content/uploads/2023/08/amondo_logotypy_1-768x213.png 768w, https://kinoamondo.pl/wp-content/uploads/2023/08/amondo_logotypy_1-1536x426.png 1536w, https://kinoamondo.pl/wp-content/uploads/2023/08/amondo_logotypy_1-2048x568.png 2048w, https://kinoamondo.pl/wp-content/uploads/2023/08/amondo_logotypy_1-18x5.png 18w" sizes="(max-width: 300px) 100vw, 300px" />        </div>
+<div class="col-sm-6">
+<h6>Social media</h6>
+<ul>
+</ul>
+<div class="textwidget"><p>Wynajmy prywatne: eventy@kinoamondo.pl</p>
+<p>Rezerwacje miejsc na seanse: rezerwacje@kinoamondo.pl</p>
+<p>Współprace: amondo@kinoamondo.pl</p>
+<p>Telefon do kina: +48 604 073 771</p>
+<p>Telefony odbieramy codziennie na godzinę przed pierwszym seansem.</p>
+<p>Kino AMONDO prowadzone jest przez Fundację Amondo Films.</p>
+<p>&nbsp;</p>
+</div>
+</div>
+</div>
+<div class="copyright">
+<p>2024 © Fundacja Amondo Films</p>    </div>
+</div>
+</footer>
+<template id="tp-language" data-tp-language="pl_PL"></template><script src="https://partners.goout.net/pl-warsaw/kinoamondopl.js"></script><script type="text/javascript" id="wp-posts-view-script-js-extra">
+/* <![CDATA[ */
+var wp_post_views_ajax_object = {"ajaxurl":"https:\/\/kinoamondo.pl\/wp-admin\/admin-ajax.php","nonce":"9ab6f7e8d2","post_id":"191"};
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/plugins/wp-post-views/assets/js/ajax.js?ver=1.1" id="wp-posts-view-script-js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js?ver=1.11.4" id="jquery-ui-js"></script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/themes/movie-star/js/bootstrap.min.js?ver=3.3.6" id="bootstrap-js"></script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/themes/movie-star/js/headhesive.min.js?ver=1.2.4" id="movie_star_headhesive-js"></script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/themes/movie-star/js/matchHeight.min.js?ver=0.7.0" id="movie_star_matchHeight-js"></script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/themes/movie-star/js/slick.min.js?ver=1.6.0" id="movie_star_slick-slider-js"></script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/themes/movie-star/js/venobox.min.js?ver=1.6.0" id="movie_star_venobox-js"></script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/themes/movie-star/js/doubletaptogo.js?ver=3.0.2" id="double-tap-js-js"></script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/themes/movie-star/js/custom.js?ver=1.0" id="movie_star_custom-js-js"></script>
+<!--[if lt IE 9]>
+<script type="text/javascript" src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js?ver=1.0" id="html5-js"></script>
+<![endif]-->
+<!--[if lt IE 9]>
+<script type="text/javascript" src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js?ver=1.0" id="respond-js"></script>
+<![endif]-->
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/plugins/unyson/framework/extensions/shortcodes/shortcodes/section/static/js/core.js?ver=6.5.8" id="fw-shortcode-section-formstone-core-js"></script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/plugins/unyson/framework/extensions/shortcodes/shortcodes/section/static/js/transition.js?ver=6.5.8" id="fw-shortcode-section-formstone-transition-js"></script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/plugins/unyson/framework/extensions/shortcodes/shortcodes/section/static/js/background.js?ver=6.5.8" id="fw-shortcode-section-formstone-background-js"></script>
+<script type="text/javascript" src="https://kinoamondo.pl/wp-content/plugins/unyson/framework/extensions/shortcodes/shortcodes/section/static/js/background.init.js?ver=6.5.8" id="fw-shortcode-section-js"></script>
+</body>
+</html><!-- WP Fastest Cache file was created in 4.511 seconds, on 2026-06-05 @ 02:15 -->

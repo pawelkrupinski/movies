@@ -121,13 +121,13 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
         "https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/diabel-ubiera-sie-u-prady-2/diabelprada2_plakatoficial-cut.jpg?rev=6e854aefaa8e47c0b27446b60a57f68a"
       )
 
-      // Merged `MovieRecord.synopsis` picks the longest non-empty across
-      // sources. IMDb's English plot used to win the length contest on
-      // some rows; we no longer fetch / store it (Polish-audience cards
-      // shouldn't surface English copy as a fallback) so the longest is
-      // now TMDB's Polish overview.
-      regular.synopsis.map(_.length) shouldBe Some(581)
-      regular.synopsis.get          should startWith ("Dwadzieścia lat po stworzeniu kultowych ról")
+      // Merged `MovieRecord.synopsis` picks the longest non-empty across all
+      // cinemas that scrape this film. With the multi-city corpus that winner
+      // is now a Warszawa/Wrocław cinema's longer Polish synopsis rather than
+      // Poznań's — the exact text moves with the corpus, so assert it's a
+      // substantial Polish synopsis and let the whole-corpus snapshot below pin
+      // the exact value.
+      regular.synopsis.map(_.length).getOrElse(0) should be > 400
 
       // Cast accessor picks longest non-empty across sources. TMDB and
       // IMDb both ship the same four names in different orders — exact
@@ -138,10 +138,12 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       )
       regular.director shouldBe Seq("David Frankel")
 
-      // Every cinema that's scraping Prada exposes a deep-link to its own
-      // film page. Test the set rather than the order — `MovieRecord.cinemaShowings`
-      // is a `Map`, so insertion order is meaningless on the read side.
-      regular.cinemaFilmUrls.toSet shouldBe Set(
+      // Every cinema scraping Prada exposes a deep-link to its own film page.
+      // Across the multi-city corpus many cinemas now contribute, so assert the
+      // Poznań deep-links are all still present (the regression this guards)
+      // rather than enumerating every city's; the whole-corpus snapshot below
+      // pins the full cross-city set.
+      regular.cinemaFilmUrls.toSet should contain allElementsOf Set(
         Helios                -> "https://helios.pl/poznan/kino-helios/filmy/diabel-ubiera-sie-u-prady-2-4401",
         Multikino             -> "https://www.multikino.pl/filmy/diabel-ubiera-sie-u-prady-2",
         CharlieMonroe         -> "https://kinomalta.pl/movies/diabel-ubiera-sie-u-prady-2",
@@ -212,7 +214,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       // `TitleNormalizer.preferredDisplay` prefers the proper-cased Latin
       // variant — if it regressed to the all-lowercase form, the home-page
       // card would suddenly read "u prady".
-      enrichment.cinemaTitles shouldBe Set(
+      enrichment.cinemaTitles should contain allElementsOf Set(
         "Diabeł ubiera się u Prady 2",
         "Diabeł ubiera się u prady 2"
       )
@@ -223,7 +225,11 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       // in `cinemaData`. Year-divergence is intentional — Multikino +
       // CharlieMonroe drop the year, CC + Helios + Rialto carry it. The
       // redirect in `recordCinemaScrape` collapses all six onto one CacheKey.
-      enrichment.cinemaData.keySet shouldBe Set(
+      // Poznań cinemas all contribute a provenance slot (the regression this
+      // guards); other cities' cinemas also fold onto this CacheKey now, so
+      // assert containment rather than exact equality — the whole-corpus
+      // snapshot pins the full cross-city provenance.
+      enrichment.cinemaData.keySet should contain allElementsOf Set(
         CharlieMonroe, CinemaCityKinepolis, Multikino, Rialto, Helios, CinemaCityPoznanPlaza
       )
       enrichment.cinemaData(CharlieMonroe).title              shouldBe Some("Diabeł ubiera się u Prady 2")

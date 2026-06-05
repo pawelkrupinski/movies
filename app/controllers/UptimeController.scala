@@ -4,6 +4,7 @@ import org.apache.pekko.stream.{Materializer, OverflowStrategy}
 import org.apache.pekko.stream.scaladsl.Source
 import play.api.libs.json.{JsObject, JsValue, Json, Writes}
 import play.api.mvc._
+import models.Cinema
 import services.UptimeMonitor
 import services.UptimeMonitor._
 
@@ -13,11 +14,9 @@ import scala.concurrent.ExecutionContext
 
 class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using mat: Materializer) extends AbstractController(cc) {
 
-  private val cinemaNames = Seq(
-    "Multikino Stary Browar", "Kino Malta Charlie Monroe", "Kino Pałacowe",
-    "Helios Posnania", "Cinema City Kinepolis", "Cinema City Poznań Plaza",
-    "Kino Muza", "Kino Bułgarska 19", "Kino Apollo", "Kino Rialto"
-  )
+  // Derived from the cinema model so every wired scraper groups under the
+  // "Cinemas" header automatically — no edit needed when a cinema is added.
+  private val cinemaNames = Cinema.all.map(_.displayName)
 
   private val enrichmentNames = Seq(
     "TMDB", "IMDb", "Filmweb", "Metacritic", "Rotten Tomatoes"

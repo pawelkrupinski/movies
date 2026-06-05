@@ -68,6 +68,33 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       html should include ("""window._kinaPinned = "Kino Apollo";""")
     }
 
+  // Multi-city coverage: the same corpus now carries Wrocław + Warszawa
+  // cinemas, so each city's index renders its own scoped repertoire. Pins that
+  // city scoping produces a stable, city-specific page (not Poznań's).
+  "the Wrocław index" should "render the same HTML as the checked-in snapshot" in
+    new FixtureTestWiring("17-05-2026") {
+      bootStartup()
+      val html: String = views.html.repertoire(
+        movieControllerService.toSchedules(models.Wroclaw, now),
+        models.Wroclaw.cinemaDisplayNames,
+        models.Wroclaw.cinemaPillMap,
+        devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+      )(models.Wroclaw).body
+      assertSnapshot(snapshotDir.resolve("expected-wroclaw-index.html"), html)
+    }
+
+  "the Warszawa index" should "render the same HTML as the checked-in snapshot" in
+    new FixtureTestWiring("17-05-2026") {
+      bootStartup()
+      val html: String = views.html.repertoire(
+        movieControllerService.toSchedules(models.Warszawa, now),
+        models.Warszawa.cinemaDisplayNames,
+        models.Warszawa.cinemaPillMap,
+        devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+      )(models.Warszawa).body
+      assertSnapshot(snapshotDir.resolve("expected-warszawa-index.html"), html)
+    }
+
   "the /plan page" should "render the same HTML as the checked-in snapshot" in
     new FixtureTestWiring("17-05-2026") {
       bootStartup()

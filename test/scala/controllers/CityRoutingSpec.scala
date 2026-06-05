@@ -1,7 +1,7 @@
 package controllers
 
 import clients.TmdbClient
-import models.{Helios, MovieRecord, Source, SourceData}
+import models.{CinemaCityWroclavia, Helios, Kinoteka, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.Mode
@@ -22,17 +22,23 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
 
   private def buildController(): MovieController = {
     val now    = LocalDateTime.now()
-    val record = MovieRecord(
-      imdbId = Some("tt1"),
+    def filmIn(cinema: models.Cinema, title: String, imdb: String) = MovieRecord(
+      imdbId = Some(imdb),
       data = Map[Source, SourceData](
-        Helios -> SourceData(
-          title       = Some("Testowy Film"),
+        cinema -> SourceData(
+          title       = Some(title),
           releaseYear = Some(2024),
           showtimes   = Seq(models.Showtime(now.plusHours(2), None, None, Nil))
         )
       )
     )
-    val repo  = new InMemoryMovieRepo(Seq(("Testowy Film", Some(2024), record)))
+    // One film per city, each in a cinema scoped to that city, so the
+    // city-scoping of the read path can be asserted from every side.
+    val repo  = new InMemoryMovieRepo(Seq(
+      ("Testowy Film",    Some(2024), filmIn(Helios, "Testowy Film", "tt1")),
+      ("Wrocławski Film", Some(2024), filmIn(CinemaCityWroclavia, "Wrocławski Film", "tt2")),
+      ("Warszawski Film", Some(2024), filmIn(Kinoteka, "Warszawski Film", "tt3")),
+    ))
     val cache = new CaffeineMovieCache(repo)
     val svc   = new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
     new MovieController(
@@ -73,13 +79,39 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     contentAsString(res) should include("Testowy Film")
   }
 
-  // The read path is city-scoped: the fixture film plays only in Helios (a
-  // Poznań venue), so it must NOT surface under another city even though the
-  // global cache holds it. This is the core of the "city = cinema subset" model.
+  "The Wrocław index" should "render its own film + label + city-prefixed links and no other city's film" in {
+    val ctrl = buildController()
+    val res  = ctrl.index("wroclaw")(FakeRequest(GET, "/wroclaw/"))
+    status(res) shouldBe OK
+    val html = contentAsString(res)
+    html should include("Repertuar kinowy Wrocław")
+    html should include("""href="/wroclaw/kina"""")
+    html should include("Wrocławski Film")
+    html should not include "Testowy Film"   // Poznań
+    html should not include "Warszawski Film" // Warszawa
+  }
+
+  "The Warszawa index" should "render its own film + label + city-prefixed links and no other city's film" in {
+    val ctrl = buildController()
+    val res  = ctrl.index("warszawa")(FakeRequest(GET, "/warszawa/"))
+    status(res) shouldBe OK
+    val html = contentAsString(res)
+    html should include("Repertuar kinowy Warszawa")
+    html should include("""href="/warszawa/kina"""")
+    html should include("Warszawski Film")
+    html should not include "Testowy Film"    // Poznań
+    html should not include "Wrocławski Film"  // Wrocław
+  }
+
+  // The read path is city-scoped: a film plays only in its city's cinemas, so
+  // it must NOT surface under another city even though the global cache holds
+  // every city's films. This is the core of the "city = cinema subset" model.
   "A film playing only in a Poznań cinema" should "be absent from another city's repertoire" in {
     val ctrl = buildController()
     val res  = ctrl.apiRepertoire("warszawa")(FakeRequest(GET, "/warszawa/api/repertoire"))
     status(res) shouldBe OK
-    contentAsString(res) shouldBe "[]"
+    val body = contentAsString(res)
+    body should include("Warszawski Film")
+    body should not include "Testowy Film"
   }
 }

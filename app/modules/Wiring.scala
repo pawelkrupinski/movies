@@ -2,9 +2,7 @@ package modules
 
 import clients.TmdbClient
 import controllers.{AuthController, FacebookDataDeletionController, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, UptimeController, UserStateController}
-import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
-// Wrocław/Warszawa cinema objects are imported inside the commented-out
-// scraper block below; re-add them here when those scrapers go live.
+import models._
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
@@ -60,50 +58,46 @@ trait Wiring {
     new KinoBulgarskaClient(httoFetch),
     new KinoApolloClient(httoFetch),
     new RialtoClient(httoFetch),
-    // ── Wrocław + Warszawa (verified IDs; enable when the multi-city rollout
-    //    goes live — uncomment, then re-add the cinema imports up top) ───────
-    //   import models.{CinemaCityWroclavia, CinemaCityKorona, MultikinoPasazGrunwaldzki,
-    //     CinemaCityArkadia, CinemaCityBemowo, CinemaCityGaleriaPolnocna, CinemaCityJanki,
-    //     CinemaCityMokotow, CinemaCityPromenada, CinemaCitySadyba, MultikinoZloteTarasy,
-    //     MultikinoMlociny, MultikinoReduta, MultikinoTargowek, MultikinoWolaPark}
-    // new CinemaCityScraper(cinemaCityClient, "1097", CinemaCityWroclavia),
-    // new CinemaCityScraper(cinemaCityClient, "1067", CinemaCityKorona),
-    // new MultikinoClient(multikinoFetch, "0010", MultikinoPasazGrunwaldzki),
-    // new HeliosClient(httoFetch, HeliosNuxt.Magnolia),
-    // new HeliosClient(httoFetch, HeliosNuxt.AlejaBielany),
-    // new CinemaCityScraper(cinemaCityClient, "1074", CinemaCityArkadia),
-    // new CinemaCityScraper(cinemaCityClient, "1061", CinemaCityBemowo),
-    // new CinemaCityScraper(cinemaCityClient, "1096", CinemaCityGaleriaPolnocna),
-    // new CinemaCityScraper(cinemaCityClient, "1069", CinemaCityJanki),
-    // new CinemaCityScraper(cinemaCityClient, "1070", CinemaCityMokotow),
-    // new CinemaCityScraper(cinemaCityClient, "1068", CinemaCityPromenada),
-    // new CinemaCityScraper(cinemaCityClient, "1060", CinemaCitySadyba),
-    // new MultikinoClient(multikinoFetch, "0013", MultikinoZloteTarasy),
-    // new MultikinoClient(multikinoFetch, "0040", MultikinoMlociny),
-    // new MultikinoClient(multikinoFetch, "0052", MultikinoReduta),
-    // new MultikinoClient(multikinoFetch, "0024", MultikinoTargowek),
-    // new MultikinoClient(multikinoFetch, "0025", MultikinoWolaPark),
-    // new HeliosClient(httoFetch, HeliosNuxt.BlueCity),
-    // ── Independents (bespoke clients; enable with the rollout) ──────────────
-    // new NoweHoryzontyClient(httoFetch),  // Wrocław — Kino Nowe Horyzonty
-    // new DcfClient(httoFetch),            // Wrocław — Dolnośląskie Centrum Filmowe
-    // new MuranowClient(httoFetch),        // Warszawa — Kino Muranów
-    // new Bilety24Client(httoFetch, "https://kinoluna.bilety24.pl", KinoLuna),                 // Warszawa — Kino Luna
-    // new Bilety24Client(httoFetch, "https://kinoelektronik.pl", KinoElektronik, "/"),         // Warszawa — Kino Elektronik
-    // new IluzjonClient(httoFetch),        // Warszawa — Kino Iluzjon
-    // new KinoGramClient(httoFetch),       // Warszawa — KinoGram
-    // new KinoKulturaClient(httoFetch),    // Warszawa — Kino Kultura
-    // new AmondoClient(httoFetch),         // Warszawa — Kino Amondo
-    // new BokClient(httoFetch, "kino-na-boku", KinoNaBoku),          // Warszawa — Kino na Boku
-    // new BokClient(httoFetch, "kino-glebocka-66", KinoGlebocka66),  // Warszawa — Kino Głębocka 66
-    // new KinomuzeumClient(httoFetch),     // Warszawa — KINOMUZEUM
-    // new SwitClient(httoFetch),           // Warszawa — Kino Świt
-    // new PromKepaClient(httoFetch),       // Warszawa — Kino Kępa (PROM Saska Kępa)
-    // new FalenicaClient(httoFetch),       // Warszawa — KINOkawiarnia Stacja Falenica
-    // new SdkClient(httoFetch),            // Warszawa — Służewski Dom Kultury
-    // new NoveKinoClient(httoFetch, "atlantic", KinoAtlantic),  // Warszawa — Kino Atlantic (Nove Kino)
-    // new KinotekaClient(httoFetch),       // Warszawa — Kinoteka
-    // new UjazdowskiClient(httoFetch),     // Warszawa — Kino U-jazdowski
+    // ── Wrocław ───────────────────────────────────────────────────────────
+    new CinemaCityScraper(cinemaCityClient, "1097", CinemaCityWroclavia),
+    new CinemaCityScraper(cinemaCityClient, "1067", CinemaCityKorona),
+    new MultikinoClient(multikinoFetch, "0010", MultikinoPasazGrunwaldzki),
+    new HeliosClient(httoFetch, HeliosNuxt.Magnolia),
+    new HeliosClient(httoFetch, HeliosNuxt.AlejaBielany),
+    new NoweHoryzontyClient(httoFetch),
+    new DcfClient(httoFetch),
+    // ── Warszawa ──────────────────────────────────────────────────────────
+    new CinemaCityScraper(cinemaCityClient, "1074", CinemaCityArkadia),
+    new CinemaCityScraper(cinemaCityClient, "1061", CinemaCityBemowo),
+    new CinemaCityScraper(cinemaCityClient, "1096", CinemaCityGaleriaPolnocna),
+    new CinemaCityScraper(cinemaCityClient, "1069", CinemaCityJanki),
+    new CinemaCityScraper(cinemaCityClient, "1070", CinemaCityMokotow),
+    new CinemaCityScraper(cinemaCityClient, "1068", CinemaCityPromenada),
+    new CinemaCityScraper(cinemaCityClient, "1060", CinemaCitySadyba),
+    new MultikinoClient(multikinoFetch, "0013", MultikinoZloteTarasy),
+    new MultikinoClient(multikinoFetch, "0040", MultikinoMlociny),
+    new MultikinoClient(multikinoFetch, "0052", MultikinoReduta),
+    new MultikinoClient(multikinoFetch, "0024", MultikinoTargowek),
+    new MultikinoClient(multikinoFetch, "0025", MultikinoWolaPark),
+    new HeliosClient(httoFetch, HeliosNuxt.BlueCity),
+    new MuranowClient(httoFetch),
+    new Bilety24Client(httoFetch, "https://kinoluna.bilety24.pl", KinoLuna),
+    new Bilety24Client(httoFetch, "https://kinoelektronik.pl", KinoElektronik, "/"),
+    new IluzjonClient(httoFetch),
+    new KinoGramClient(httoFetch),
+    new KinoKulturaClient(httoFetch),
+    new AmondoClient(httoFetch),
+    new BokClient(httoFetch, "kino-na-boku", KinoNaBoku),
+    new BokClient(httoFetch, "kino-glebocka-66", KinoGlebocka66),
+    new KinomuzeumClient(httoFetch),
+    new SwitClient(httoFetch),
+    new PromKepaClient(httoFetch),
+    new FalenicaClient(httoFetch),
+    new SdkClient(httoFetch),
+    new NoveKinoClient(httoFetch, "atlantic", KinoAtlantic),
+    new KinotekaClient(httoFetch),
+    new UjazdowskiClient(httoFetch),
+    new CytadelaClient(httoFetch),
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Events ────────────────────────────────────────────────────────────────

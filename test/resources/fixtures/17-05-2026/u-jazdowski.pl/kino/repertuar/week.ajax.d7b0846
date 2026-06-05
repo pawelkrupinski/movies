@@ -1,0 +1,129 @@
+<div class="calendar-week">
+  <div class="container pt-30 pb-50">
+    <nav id="calendar-nav" class="calendar-week-nav ajax-swap">
+  <div class="row">
+    <div class="col-xs-8 col-md-9">
+      <div class="fs-54 mb-20">
+        25<i class="finterp">&#8212;</i>31<i class="finterp">/</i>05<i class="finterp">/</i>2026      </div>
+    </div>
+    <div class="col-xs-4 col-md-3 text-right">
+      <div class="calendar-week-nav-pewv-next">
+  <a href="/kino/repertuar?ut=1779055200" class="btn btn-link no-underline" data-ajax="/kino/repertuar/week.ajax?ut=1779055200" data-filters="false">
+    <span class="sr-only">Poprzedni tydzień</span>
+    <svg class="i-xl" style="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 39"><path d="M207.754 157.139 209.046 158.431 191.174 176.302 209.046 194.174 207.754 195.465 188.591 176.302z" transform="translate(-188 -157)"/></svg>  </a>
+  <a href="/kino/repertuar?ut=1780264800" class="btn btn-link no-underline" data-ajax="/kino/repertuar/week.ajax?ut=1780264800" data-filters="false">
+    <span class="sr-only">Następny tydzień</span>
+    <svg class="i-xl" style="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 39"><path d="M246.487 157.14 265.65 176.302 246.487 195.466 245.196 194.174 263.066 176.302 245.196 158.431z" transform="translate(-245 -157)"/></svg>  </a>
+</div>    </div>
+  </div>  <div class="sep-top pt-10 pb-30">
+    <ul class="calendar-week-nav-menu list-unstyled list-inline fs-15 mb-0">
+      <li>
+      <a href="/kino/repertuar?ut=1779660000" data-ajax="/kino/repertuar/week.ajax?ut=1779660000" class="cal-nav-day d-block no-underline active">
+        <span class="d-block">
+          25<i class="finterp">/</i>05        </span>
+        <span>
+          <i class="finterp">(</i>Poniedziałek<i class="finterp">)</i>        </span>
+      </a>
+    </li>
+      <li>
+      <a href="/kino/repertuar?ut=1779746400" data-ajax="/kino/repertuar/week.ajax?ut=1779746400" class="cal-nav-day d-block no-underline ">
+        <span class="d-block">
+          26<i class="finterp">/</i>05        </span>
+        <span>
+          <i class="finterp">(</i>Wtorek<i class="finterp">)</i>        </span>
+      </a>
+    </li>
+      <li>
+      <a href="/kino/repertuar?ut=1779832800" data-ajax="/kino/repertuar/week.ajax?ut=1779832800" class="cal-nav-day d-block no-underline ">
+        <span class="d-block">
+          27<i class="finterp">/</i>05        </span>
+        <span>
+          <i class="finterp">(</i>Środa<i class="finterp">)</i>        </span>
+      </a>
+    </li>
+      <li>
+      <a href="/kino/repertuar?ut=1779919200" data-ajax="/kino/repertuar/week.ajax?ut=1779919200" class="cal-nav-day d-block no-underline ">
+        <span class="d-block">
+          28<i class="finterp">/</i>05        </span>
+        <span>
+          <i class="finterp">(</i>Czwartek<i class="finterp">)</i>        </span>
+      </a>
+    </li>
+      <li>
+      <a href="/kino/repertuar?ut=1780005600" data-ajax="/kino/repertuar/week.ajax?ut=1780005600" class="cal-nav-day d-block no-underline ">
+        <span class="d-block">
+          29<i class="finterp">/</i>05        </span>
+        <span>
+          <i class="finterp">(</i>Piątek<i class="finterp">)</i>        </span>
+      </a>
+    </li>
+      <li>
+      <a href="/kino/repertuar?ut=1780092000" data-ajax="/kino/repertuar/week.ajax?ut=1780092000" class="cal-nav-day d-block no-underline ">
+        <span class="d-block">
+          30<i class="finterp">/</i>05        </span>
+        <span>
+          <i class="finterp">(</i>Sobota<i class="finterp">)</i>        </span>
+      </a>
+    </li>
+      <li>
+      <a href="/kino/repertuar?ut=1780178400" data-ajax="/kino/repertuar/week.ajax?ut=1780178400" class="cal-nav-day d-block no-underline ">
+        <span class="d-block">
+          31<i class="finterp">/</i>05        </span>
+        <span>
+          <i class="finterp">(</i>Niedziela<i class="finterp">)</i>        </span>
+      </a>
+    </li>
+  </ul>  </div>
+</nav>    <div id="calendar-items" class="calendar-week-children ajax-swap as-animate">
+  <div class="items-grid items-num-2">
+  <div class="row ">    <div class="col-md-4 col-sm-4 nth-in-row-1">
+      <a href="/kino/repertuar/mlode-matki" class="event-list-day-box d-block h-img-scale mb-50">
+  <div class="img-wrapper r-image-8-5 mb-10">
+    <div class="item-image-thumb item-image-md">
+  <picture>
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/04/young-mothers-still-2_auto_1400x900.jpg"  data-min-width="1200" />
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/04/young-mothers-still-2_auto_1200x800.jpg"  data-min-width="992" />
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/04/young-mothers-still-2_auto_1000x700.jpg"  data-min-width="768" />
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/04/young-mothers-still-2_auto_800x800.jpg"  data-min-width="576" />
+  <img src="/upload/thumb/2026/04/young-mothers-still-2_auto_600x900.jpg" srcset="/upload/thumb/2026/04/young-mothers-still-2_auto_600x900.jpg" alt="" title="" style="" />
+</picture></div>  </div>
+      <div class="hours fs-16">
+      18<i class="finterp">:</i>15    </div>
+      <div class="category fs-16 mb--3">
+    film  </div>
+    <div class="fs-16 pl-1">
+    <div class="title fs-30 mb--3 max-w">
+      <em>Młode matki</em>    </div>
+          <div class="fs-30 pl-1">
+        <div class="fs-20 max-w">
+          <i class="finterp">[</i><em>Jeunes mères</em><i class="finterp">]</i><i class="finterp">,</i> reż<i class="finterp">.</i> Jean<i class="finterp">-</i>Pierre &amp; Luc Dardenne<i class="finterp">,</i> Belgia<i class="finterp">/</i> Francja 2025<i class="finterp">,</i> 105'        </div>
+      </div>
+      </div>
+</a>    </div>
+        <div class="col-md-4 col-sm-4 nth-in-row-2">
+      <a href="/kino/repertuar/erupcja" class="event-list-day-box d-block h-img-scale mb-50">
+  <div class="img-wrapper r-image-8-5 mb-10">
+    <div class="item-image-thumb item-image-md">
+  <picture>
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1400x900.png"  data-min-width="1200" />
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1200x800.png"  data-min-width="992" />
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_1000x700.png"  data-min-width="768" />
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_800x800.png"  data-min-width="576" />
+  <img src="/upload/thumb/2026/04/erupcja_feb09_03_auto_600x900.png" srcset="/upload/thumb/2026/04/erupcja_feb09_03_auto_600x900.png" alt="" title="" style="" />
+</picture></div>  </div>
+      <div class="hours fs-16">
+      20<i class="finterp">:</i>30    </div>
+      <div class="category fs-16 mb--3">
+    film  </div>
+    <div class="fs-16 pl-1">
+    <div class="title fs-30 mb--3 max-w">
+      <em>Erupcja</em>    </div>
+          <div class="fs-30 pl-1">
+        <div class="fs-20 max-w">
+          reż<i class="finterp">.</i> Pete Ohs<i class="finterp">,</i> Polska<i class="finterp">/</i> USA 2025<i class="finterp">,</i> 71'        </div>
+      </div>
+      </div>
+</a>    </div>
+    </div></div>
+</div>  </div>
+</div>
