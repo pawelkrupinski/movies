@@ -101,6 +101,7 @@ trait Wiring {
     // new PromKepaClient(httoFetch),       // Warszawa — Kino Kępa (PROM Saska Kępa)
     // new FalenicaClient(httoFetch),       // Warszawa — KINOkawiarnia Stacja Falenica
     // new SdkClient(httoFetch),            // Warszawa — Służewski Dom Kultury
+    // new NoveKinoClient(httoFetch, "atlantic", KinoAtlantic),  // Warszawa — Kino Atlantic (Nove Kino)
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Events ────────────────────────────────────────────────────────────────
