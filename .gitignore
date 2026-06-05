@@ -47,3 +47,8 @@ project/plugins/project/
 # npm dependencies — the top-level `package.json` exists only to host
 # ESLint for `public/js/`; CI installs on demand from the lockfile.
 node_modules/
+
+# Local Claude Code state (machine-specific — settings, locks, agent worktrees)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
