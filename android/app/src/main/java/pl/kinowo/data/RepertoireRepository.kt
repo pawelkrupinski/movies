@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import pl.kinowo.filter.prunedPastShowings
 import pl.kinowo.model.Film
-import pl.kinowo.net.KinowoApi
+import pl.kinowo.net.RepertoireApi
 import java.time.Duration
 import java.time.Instant
 
@@ -15,7 +15,7 @@ import java.time.Instant
  * ViewModel layers the per-screen filter state on top of [films].
  */
 class RepertoireRepository(
-    private val api: KinowoApi,
+    private val api: RepertoireApi,
     private val cache: JsonListCache<Film>,
 ) {
     private val _films = MutableStateFlow<List<Film>>(emptyList())
@@ -41,7 +41,7 @@ class RepertoireRepository(
         _isLoading.value = true
         _error.value = null
         try {
-            val result = api.fetchRepertoire(citySlug, cache.loadLastModified())
+            val result = api.fetchRepertoire(citySlug, cache.lastModifiedFor(citySlug))
             if (result.notModified) {
                 lastReloadedAt = now
                 return
@@ -49,8 +49,7 @@ class RepertoireRepository(
             val films = result.items ?: return
             _films.value = films
             lastReloadedAt = now
-            result.lastModified?.let { cache.saveLastModified(it) }
-            cache.save(films)
+            cache.save(citySlug, films, result.lastModified)
         } catch (e: Exception) {
             _error.value = e.message ?: e.toString()
         } finally {

@@ -11,6 +11,16 @@ import pl.kinowo.model.FilmDetails
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
+/** The repertoire-listing half of the backend — all [RepertoireRepository] needs. */
+interface RepertoireApi {
+    suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?): KinowoApi.Fetched<Film>
+}
+
+/** The detail-payload half of the backend — all [pl.kinowo.data.DetailsRepository] needs. */
+interface DetailsApi {
+    suspend fun fetchDetails(citySlug: String, ifModifiedSince: String?): KinowoApi.Fetched<FilmDetails>
+}
+
 /**
  * Talks to the kinowo backend. The grid + detail screen read one endpoint —
  * `GET /{city}/api/repertoire` — which carries every field both need (incl.
@@ -21,7 +31,7 @@ import java.util.concurrent.TimeUnit
 class KinowoApi(
     private val baseUrl: String = "https://kinowo.fly.dev",
     private val client: OkHttpClient = defaultClient,
-) {
+) : RepertoireApi, DetailsApi {
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Result of a conditional GET: [items] is null on a 304 (use the cache). */
@@ -31,10 +41,10 @@ class KinowoApi(
         val notModified: Boolean,
     )
 
-    suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?): Fetched<Film> =
+    override suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?): Fetched<Film> =
         fetchList("$baseUrl/$citySlug/api/repertoire", ifModifiedSince)
 
-    suspend fun fetchDetails(citySlug: String, ifModifiedSince: String?): Fetched<FilmDetails> =
+    override suspend fun fetchDetails(citySlug: String, ifModifiedSince: String?): Fetched<FilmDetails> =
         fetchList("$baseUrl/$citySlug/api/details", ifModifiedSince)
 
     private suspend inline fun <reified T> fetchList(

@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import pl.kinowo.model.FilmDetails
-import pl.kinowo.net.KinowoApi
+import pl.kinowo.net.DetailsApi
 import java.time.Duration
 import java.time.Instant
 
@@ -16,7 +16,7 @@ import java.time.Instant
  * cache + conditional-GET shape.
  */
 class DetailsRepository(
-    private val api: KinowoApi,
+    private val api: DetailsApi,
     private val cache: JsonListCache<FilmDetails>,
 ) {
     private val _byTitle = MutableStateFlow<Map<String, FilmDetails>>(emptyMap())
@@ -33,7 +33,7 @@ class DetailsRepository(
 
     suspend fun reload(citySlug: String, now: Instant = Instant.now()) {
         try {
-            val result = api.fetchDetails(citySlug, cache.loadLastModified())
+            val result = api.fetchDetails(citySlug, cache.lastModifiedFor(citySlug))
             if (result.notModified) {
                 lastReloadedAt = now
                 return
@@ -41,8 +41,7 @@ class DetailsRepository(
             val details = result.items ?: return
             _byTitle.value = details.associateBy(FilmDetails::title)
             lastReloadedAt = now
-            result.lastModified?.let { cache.saveLastModified(it) }
-            cache.save(details)
+            cache.save(citySlug, details, result.lastModified)
         } catch (_: Exception) {
             // Details are non-critical; the detail screen falls back to the
             // listing-derived fields (poster, ratings, showings, cinema links).
