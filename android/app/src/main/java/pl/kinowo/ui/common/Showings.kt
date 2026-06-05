@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -113,11 +112,12 @@ fun Showings(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    // Chips (and the showings-internal gaps) scale with viewport width off the
-    // 360 dp baseline; two-per-row stays safe because the card column grows
-    // faster than the scaled chips (see ShowtimeChipMetrics). scale == 1f at the
-    // 360 dp floor, so the dialled values render exactly there.
-    val s = ShowtimeChipMetrics.scale(LocalConfiguration.current.screenWidthDp)
+    // Chips (and the showings-internal gaps) scale with the device's PORTRAIT
+    // width off the 360 dp baseline (layoutWidthDp, not the live width — so a
+    // chip is the same size in landscape as in portrait); two-per-row stays safe
+    // because the card column grows faster than the scaled chips (see
+    // ShowtimeChipMetrics). scale == 1f at the 360 dp floor.
+    val s = ShowtimeChipMetrics.scale(layoutWidthDp())
     val chipStyle = LocalShowtimeChipStyle.current.scaledBy(s)
     val cardSpacing = LocalCardSpacingStyle.current
     val showingsBlock = cardSpacing.showingsBlock * s

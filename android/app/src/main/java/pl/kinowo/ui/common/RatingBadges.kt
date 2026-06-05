@@ -14,7 +14,6 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -82,10 +81,12 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
     if (ratings.isEmpty) return
     val context = LocalContext.current
     val style = LocalRatingPillStyle.current
-    // Pills scale with viewport width, anchored at the Pixel 9a's ~411dp where
-    // the base sizes were tuned (scale 1.0). See RatingBadgeMetrics. The style
-    // holds the pre-scale base values; we multiply the dimensional ones here.
-    val scale = RatingBadgeMetrics.scale(LocalConfiguration.current.screenWidthDp)
+    // Pills scale with the device's portrait width, anchored at the Pixel 9a's
+    // ~411dp where the base sizes were tuned (scale 1.0). Keyed off layoutWidthDp
+    // (not the live width) so pills are the same size in landscape as in
+    // portrait. See RatingBadgeMetrics. The style holds the pre-scale base
+    // values; we multiply the dimensional ones here.
+    val scale = RatingBadgeMetrics.scale(layoutWidthDp())
     val fontSize = (style.baseFontSize.value * scale).sp
     val hPad = (style.hPad.value * scale).dp
     // No extra vertical padding by default: the trimmed font box already carries

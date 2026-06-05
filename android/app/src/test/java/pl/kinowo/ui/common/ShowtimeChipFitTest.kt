@@ -65,19 +65,21 @@ class ShowtimeChipFitTest {
     )
 
     /** Render [content] as if the device's portrait width were [screen] dp, so
-     *  [ShowtimeChipMetrics.scale] picks up that width. */
+     *  the chip sizing (keyed off `smallestScreenWidthDp` via `layoutWidthDp`)
+     *  picks up that width. In portrait `screenWidthDp == smallestScreenWidthDp`,
+     *  so both are pinned to [screen]. */
     @Composable
     private fun AtWidth(screen: Int, content: @Composable () -> Unit) {
-        val cfg = Configuration(LocalConfiguration.current).apply { screenWidthDp = screen }
+        val cfg = Configuration(LocalConfiguration.current).apply {
+            screenWidthDp = screen
+            smallestScreenWidthDp = screen
+        }
         CompositionLocalProvider(LocalConfiguration provides cfg, content = content)
     }
 
-    /** Showings-column width inside one card on the portrait two-column grid:
-     *  `ListScreen`'s grid is `GridCells.Fixed(2)` with 12 dp content padding
-     *  each side + 12 dp between the columns (36 dp total), and `FilmCard`'s
-     *  inner `Column` padding takes 24 dp off. Mirrors iOS
-     *  `ShowtimePillMetrics.cardShowingsWidth`. */
-    private fun cardContentDp(screenDp: Int) = (screenDp - 36) / 2 - 24
+    /** Showings-column width inside one card on the portrait two-column grid —
+     *  the shared `PosterGridMetrics` geometry. */
+    private fun cardContentDp(screenDp: Int) = PosterGridMetrics.cardContentDp(screenDp)
 
     private fun twoShowtimeFilm(t1: String, t2: String) = Film(
         title = "T",

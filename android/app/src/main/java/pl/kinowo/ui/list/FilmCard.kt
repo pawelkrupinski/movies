@@ -21,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +33,7 @@ import pl.kinowo.ui.common.RatingBadges
 import pl.kinowo.ui.common.Showings
 import pl.kinowo.ui.common.ShowtimeChipMetrics
 import pl.kinowo.ui.common.copyFilmLink
+import pl.kinowo.ui.common.layoutWidthDp
 import pl.kinowo.ui.theme.CardSurface
 
 /**
@@ -53,9 +53,10 @@ fun FilmCard(
 ) {
     val context = LocalContext.current
     val spacing = LocalCardSpacingStyle.current
-    // Card gaps scale with viewport width off the 360 dp baseline, in lockstep
-    // with the chips (see ShowtimeChipMetrics). scale == 1f at the 360 dp floor.
-    val s = ShowtimeChipMetrics.scale(LocalConfiguration.current.screenWidthDp)
+    // Card gaps scale with the device's portrait width off the 360 dp baseline,
+    // in lockstep with the chips (layoutWidthDp, so landscape matches portrait —
+    // see ShowtimeChipMetrics). scale == 1f at the 360 dp floor.
+    val s = ShowtimeChipMetrics.scale(layoutWidthDp())
     Surface(
         color = CardSurface,
         shape = RoundedCornerShape(12.dp),

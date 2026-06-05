@@ -116,7 +116,12 @@ class RatingPillPaddingTest {
 
     @androidx.compose.runtime.Composable
     private fun ReferenceWidth(content: @androidx.compose.runtime.Composable () -> Unit) {
-        val config = Configuration(LocalConfiguration.current).apply { screenWidthDp = 411 }
+        // RatingBadges sizes off the portrait width (smallestScreenWidthDp); pin
+        // both to the 411 dp reference so the viewport scale is exactly 1.0.
+        val config = Configuration(LocalConfiguration.current).apply {
+            screenWidthDp = 411
+            smallestScreenWidthDp = 411
+        }
         CompositionLocalProvider(LocalConfiguration provides config, content = content)
     }
 

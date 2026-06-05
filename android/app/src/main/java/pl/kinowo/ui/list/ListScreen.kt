@@ -80,7 +80,9 @@ import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.TopBarLayout
 import pl.kinowo.ui.common.LocalCinemaHeaderStyle
+import pl.kinowo.ui.common.PosterGridMetrics
 import pl.kinowo.ui.common.PosterPrefetch
+import pl.kinowo.ui.common.layoutWidthDp
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -102,10 +104,12 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     val hidden by vm.hiddenFilms.collectAsState()
     val disabled by vm.disabledCinemas.collectAsState()
 
-    // Wide screens (tablets, landscape phones) host search inline on the top
-    // bar; narrow ones keep it as the floating bottom pill. screenWidthDp
-    // recomposes on rotation / resize, so the placement follows. See TopBarLayout.
-    val wide = TopBarLayout.searchInline(LocalConfiguration.current.screenWidthDp)
+    // Wide screens (tablets) host search inline on the top bar; narrow ones
+    // (phones) keep it as the floating bottom pill. Keyed off the device's
+    // portrait width (layoutWidthDp), not the live width, so a phone keeps the
+    // floating pill in landscape too — search placement, the date-pill layout
+    // and the compact field stay exactly as in portrait. See TopBarLayout.
+    val wide = TopBarLayout.searchInline(layoutWidthDp())
 
     // Pull-to-refresh indicator state. Driven ONLY by a user pull — NOT by the
     // background `isLoading`. Binding the indicator to `isLoading` left it stuck:
@@ -525,12 +529,20 @@ private fun FilterPill(title: String, selected: Boolean, onClick: () -> Unit) {
 private val SearchBarBottomInset = 84.dp
 
 // Poster grid columns. Portrait always shows exactly two columns regardless of
-// device width; landscape stays adaptive so wider screens fill with more.
+// device width; landscape fits as many as the live width allows, each no
+// narrower than a portrait card — that floor is the width the two-chips-per-row
+// rule is proven against, and chips are locked to portrait scale (layoutWidthDp),
+// so every landscape column is wide enough to keep two chips on a row.
 @Composable
 private fun posterGridCells(): GridCells {
-    val portrait = LocalConfiguration.current.orientation != Configuration.ORIENTATION_LANDSCAPE
-    return if (portrait) GridCells.Fixed(2) else GridCells.Adaptive(minSize = 170.dp)
+    val cfg = LocalConfiguration.current
+    val landscape = cfg.orientation == Configuration.ORIENTATION_LANDSCAPE
+    return posterGridColumns(landscape, cfg.smallestScreenWidthDp)
 }
+
+internal fun posterGridColumns(landscape: Boolean, layoutWidthDp: Int): GridCells =
+    if (!landscape) GridCells.Fixed(2)
+    else GridCells.Adaptive(minSize = PosterGridMetrics.cardColumnDp(layoutWidthDp).dp)
 
 @Composable
 private fun FilmsGrid(films: List<Film>, bottomInset: Dp, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
