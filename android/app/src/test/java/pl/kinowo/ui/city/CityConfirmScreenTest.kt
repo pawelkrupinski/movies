@@ -3,6 +3,7 @@ package pl.kinowo.ui.city
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -52,5 +53,26 @@ class CityConfirmScreenTest {
         compose.onNodeWithText("Wybierz inne miasto").performClick()
         assertTrue("tapping 'choose other' should route to the manual picker", choseOther)
         assertFalse(confirmed)
+    }
+
+    /**
+     * Big native controls: both choices are tall touch targets, not Material's
+     * compact 40dp default. The secondary used to be a thin `TextButton` link;
+     * it's now a tall `OutlinedButton`. Fails if either control shrinks back.
+     */
+    @Test
+    fun confirmScreenUsesTallNativeControls() {
+        compose.setContent {
+            CityConfirmScreen(poznan, onConfirm = {}, onChooseOther = {})
+        }
+        val minPx = with(compose.density) { 52.dp.toPx() }
+
+        fun height(text: String) =
+            compose.onNodeWithText(text, substring = true).fetchSemanticsNode().boundsInRoot.height
+
+        val primary = height("Pokaż repertuar")
+        val secondary = height("Wybierz inne miasto")
+        assertTrue("primary control should be a tall (~56dp) button, was ${primary}px", primary >= minPx)
+        assertTrue("secondary control should be a tall (~56dp) button, was ${secondary}px", secondary >= minPx)
     }
 }
