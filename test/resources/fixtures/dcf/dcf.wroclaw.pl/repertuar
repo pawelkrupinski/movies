@@ -984,57 +984,6 @@ img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
   </div>
 </div>
                     </div>
-                                        <div class="col-xl-8 col-md-12 mb-4 film__item film-156522">
-                      <div class="row">
-      <div class="col-12 film__poster">
-        <div class="thumbnail-link relative">
-          <div class="thumbnail-cover thumbnail-rectangle-vertical" style="background-image:url(https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/werdykt-plakat-data.jpg);">
-                          <a href="https://dcf.bilety24.pl/wydarzenie/?id=156522" class="link-absolute" target="_blank" aria-label="Werdykt"></a>
-                      </div>
-        </div>
-    </div>
-    <div class="col-sm-12 film__info">
-    <div class="film__info-content">
-      <h3 class="film__title">
-                  Werdykt              </h3>
-      <div class="repertoir__item mb-3 relative">
-      <a href="" data-toggle="modal" data-target="#repertoir938260" class="link-absolute" aria-label="Werdykt; Miejsce: Sala Lalka; Data: 05.06.2026 13:30"></a>
-  <i class="fas fa-clock"></i> 13:30  <div class="repertoir__tooltip">
-    <p>Sala Lalka</p>
-    <p>05.06.2026 13:30</p>
-      </div>
-</div>
-
-<div class="modal modal__film fade" id="repertoir938260" tabindex="-1" role="dialog" aria-labelledby="repertoirLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-      </button>
-      <div class="modal-body">
-        <h3 class="film__title modal-title" id="repertoir156522Label">Werdykt</h3>
-        <p class="modal__info">Data: <strong>piątek, 5 czerwca</strong></p>
-        <p class="modal__info">Godzina: <strong>13:30</strong></p>
-        <p class="modal__info">Sala Lalka, Piłsudskiego 64a, Wrocław</p>
-        <p>
-                    <a href="https://dcf.bilety24.pl/kup-bilety/?id=938260" target="_blank" class="btn btn-primary">Kup bilet</a>
-                  </p>
-                  <div class="repertoir__buy-text">
-            <hr>
-            <p>Zapoznaj się z <a href="https://dcf.wroclaw.pl/biuletyn-informacji-publicznej/regulaminy/" target="_blank" rel="noopener">regulaminem kina</a> i <a href="https://dcf.wroclaw.pl/biuletyn-informacji-publicznej/regulaminy/" target="_blank" rel="noopener">regulaminem sprzedaży online</a></p>
-<hr />
-<p>Bilety zakupione online nie podlegają zwrotowi, ani wymianie!</p>
-<hr />
-<p>Informacja o przetwarzaniu danych osobowych dostępna jest w <a href="https://dcf.wroclaw.pl/biuletyn-informacji-publicznej/regulaminy/" target="_blank" rel="noopener">Polityce prywatności.</a></p>
-          </div>
-              </div>
-    </div>
-  </div>
-</div>
-    </div>
-  </div>
-</div>
-                    </div>
                                         <div class="col-xl-8 col-md-12 mb-4 film__item film-157049">
                       <div class="row">
       <div class="col-12 film__poster">
@@ -1049,40 +998,6 @@ img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
       <h3 class="film__title">
                   Zawodowcy              </h3>
       <div class="repertoir__item mb-3 relative">
-      <a href="" data-toggle="modal" data-target="#repertoir938253" class="link-absolute" aria-label="Zawodowcy; Miejsce: Sala Warszawa; Data: 05.06.2026 13:30"></a>
-  <i class="fas fa-clock"></i> 13:30  <div class="repertoir__tooltip">
-    <p>Sala Warszawa</p>
-    <p>05.06.2026 13:30</p>
-      </div>
-</div>
-
-<div class="modal modal__film fade" id="repertoir938253" tabindex="-1" role="dialog" aria-labelledby="repertoirLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-      </button>
-      <div class="modal-body">
-        <h3 class="film__title modal-title" id="repertoir157049Label">Zawodowcy</h3>
-        <p class="modal__info">Data: <strong>piątek, 5 czerwca</strong></p>
-        <p class="modal__info">Godzina: <strong>13:30</strong></p>
-        <p class="modal__info">Sala Warszawa, Piłsudskiego 64a, Wrocław</p>
-        <p>
-                    <a href="https://dcf.bilety24.pl/kup-bilety/?id=938253" target="_blank" class="btn btn-primary">Kup bilet</a>
-                  </p>
-                  <div class="repertoir__buy-text">
-            <hr>
-            <p>Zapoznaj się z <a href="https://dcf.wroclaw.pl/biuletyn-informacji-publicznej/regulaminy/" target="_blank" rel="noopener">regulaminem kina</a> i <a href="https://dcf.wroclaw.pl/biuletyn-informacji-publicznej/regulaminy/" target="_blank" rel="noopener">regulaminem sprzedaży online</a></p>
-<hr />
-<p>Bilety zakupione online nie podlegają zwrotowi, ani wymianie!</p>
-<hr />
-<p>Informacja o przetwarzaniu danych osobowych dostępna jest w <a href="https://dcf.wroclaw.pl/biuletyn-informacji-publicznej/regulaminy/" target="_blank" rel="noopener">Polityce prywatności.</a></p>
-          </div>
-              </div>
-    </div>
-  </div>
-</div>
-<div class="repertoir__item mb-3 relative">
       <a href="" data-toggle="modal" data-target="#repertoir938255" class="link-absolute" aria-label="Zawodowcy; Miejsce: Sala Warszawa; Data: 05.06.2026 18:00"></a>
   <i class="fas fa-clock"></i> 18:00  <div class="repertoir__tooltip">
     <p>Sala Warszawa</p>

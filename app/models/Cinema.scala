@@ -36,6 +36,8 @@ case object HeliosMagnolia extends Cinema("Helios Magnolia Park", "Magnolia")
 
 case object HeliosAlejaBielany extends Cinema("Helios Aleja Bielany", "Aleja Bielany")
 
+case object DolnoslaskieCentrumFilmowe extends Cinema("Dolnośląskie Centrum Filmowe", "DCF")
+
 // ── Warszawa ─────────────────────────────────────────────────────────────────
 
 case object CinemaCityArkadia extends Cinema("Cinema City Arkadia", "Arkadia")
@@ -64,6 +66,8 @@ case object MultikinoWolaPark extends Cinema("Multikino Wola Park", "Wola Park")
 
 case object HeliosBlueCity extends Cinema("Helios Blue City", "Blue City")
 
+case object KinoMuranow extends Cinema("Kino Muranów", "Muranów")
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -87,6 +91,7 @@ object Cinema {
     MultikinoPasazGrunwaldzki,
     HeliosMagnolia,
     HeliosAlejaBielany,
+    DolnoslaskieCentrumFilmowe,
   )
 
   val warszawa: Seq[Cinema] = Seq(
@@ -103,6 +108,7 @@ object Cinema {
     MultikinoTargowek,
     MultikinoWolaPark,
     HeliosBlueCity,
+    KinoMuranow,
   )
 
   val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa
