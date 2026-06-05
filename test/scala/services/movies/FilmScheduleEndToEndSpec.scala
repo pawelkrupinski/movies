@@ -55,15 +55,24 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   private val PradaTmdbId = 1314481
   private val PradaImdbId = "tt33612209"
 
+  private val now  = LocalDateTime.of(2026, 5, 17, 0, 0)
+  private val seen = mutable.ListBuffer.empty[DomainEvent]
+
+  // Boot the full pipeline ONCE and share it across both tests — the scrape
+  // tick is this spec's dominant cost, so booting per test was redundant. The
+  // boot is the production shape (tick + cascade drain + cleanup); the second
+  // test runs one further tick on this same wiring, which is the "across
+  // multiple scrape ticks" invariant it needs.
+  private lazy val wiring: FixtureTestWiring = {
+    val w = new FixtureTestWiring("17-05-2026")
+    w.eventBus.subscribe { case e => seen.append(e) }
+    w.bootStartup()
+    w
+  }
+  private lazy val schedules: Seq[FilmSchedule] = wiring.movieControllerService.toSchedules(Poznan, now)
+
   "the full enrichment pipeline" should
-    "keep Diabeł u Prady 2 visible after a startup scrape + event drain + cleanup tick" in new FixtureTestWiring("17-05-2026") {
-
-    val seen = mutable.ListBuffer.empty[DomainEvent]
-    eventBus.subscribe { case e => seen.append(e) }
-
-    // Scrape tick + cascade drain + cleanup pass — same shape production
-    // boots into ~20s after startup. See `FixtureTestWiring.bootStartup`.
-    bootStartup()
+    "keep Diabeł u Prady 2 visible after a startup scrape + event drain + cleanup tick" in {
 
     // 6. ASSERT: Prada is renderable on the home page. `toSchedules`
     //    drives the `/` view in production — it filters the cache snapshot
@@ -73,13 +82,9 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     //    real disappearance mode: a row that's in the cache but invisible
     //    to users.
     //
-    //    Pin `now` to the fixture's capture date so the recorded showtimes
-    //    are "in the future" relative to the test clock. Without pinning,
-    //    every test run after the fixture's last showtime would see an
-    //    empty list and the test would fail for a stale-clock reason that
-    //    has nothing to do with the code under test.
-    val now             = LocalDateTime.of(2026, 5, 17, 0, 0)
-    val schedules       = movieControllerService.toSchedules(Poznan, now)
+    //    `now` is pinned (class field) to the fixture's capture date so the
+    //    recorded showtimes are "in the future" relative to the test clock;
+    //    `schedules` is the shared, once-booted result.
     val pradaSchedules  = schedules.filter(s =>
       s.enrichment.exists(e => e.tmdbId.contains(PradaTmdbId) || e.imdbId.contains(PradaImdbId))
     )
@@ -408,28 +413,17 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   //
   // If this assertion ever fails, the bug is in current code; otherwise
   // the user's production data is purely legacy folded state.
-  it should "keep the Cyrillic Prada row's cinema slots clean across multiple scrape ticks" in new FixtureTestWiring("17-05-2026") {
-    // Two scrape ticks, both followed by an event drain so each tick's
-    // TMDB / *Ratings cascade fully settles before the next one starts.
-    //
-    // First tick is the canonical end-to-end pass. Second tick re-runs
-    // every scraper against the same fixtures — every (cinema, title,
-    // year) tuple is unchanged, so `recordCinemaScrape`'s `isNew` check
-    // should suppress every bus event. If a regression makes the redirect
-    // cross cleanTitles, or the identity-gate fold misbehave on already-
-    // resolved rows, the Cyrillic row's cinema slots pick up Latin
-    // entries here.
-    runOneScrapeTick()
-    drainServices()
-    // drainServices stops the worker pools — runOneScrapeTick on the
-    // second pass still works (it doesn't depend on the cascade, just
-    // publishes events). Bus listeners that try to dispatch to the
-    // already-shut-down pools will fail loudly via
-    // RejectedExecutionException → caught by `EventBus.publish` and
-    // logged; the cache state stays internally consistent regardless.
-    runOneScrapeTick()
+  it should "keep the Cyrillic Prada row's cinema slots clean across multiple scrape ticks" in {
+    // The shared `wiring` boot already ran the canonical first tick (+ drain +
+    // cleanup). One more tick here re-runs every scraper against the same
+    // fixtures — every (cinema, title, year) tuple is unchanged, so
+    // `recordCinemaScrape`'s `isNew` check should suppress every bus event. If
+    // a regression makes the redirect cross cleanTitles, or the identity-gate
+    // fold misbehave on already-resolved rows, the Cyrillic row's cinema slots
+    // pick up Latin entries here.
+    wiring.runOneScrapeTick()
 
-    val cyrillicRow = movieCache.snapshot()
+    val cyrillicRow = wiring.movieCache.snapshot()
       .find(_.title == "ДИЯВОЛ НОСИТЬ ПРАДА 2")
       .getOrElse(fail("Cyrillic Prada row missing from cache after two scrape ticks"))
 
@@ -443,7 +437,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
 
     // Conversely, the regular Polish row mustn't pick up the Cyrillic
     // scrape either — same invariant from the other side.
-    val regularRow = movieCache.snapshot()
+    val regularRow = wiring.movieCache.snapshot()
       .find(_.title == PradaTitle)
       .getOrElse(fail("regular Polish Prada row missing from cache after two scrape ticks"))
     withClue(s"Polish row picked up Cyrillic title: ${regularRow.record.cinemaData}\n") {
