@@ -96,6 +96,7 @@ trait Wiring {
     // new AmondoClient(httoFetch),         // Warszawa — Kino Amondo
     // new BokClient(httoFetch, "kino-na-boku", KinoNaBoku),          // Warszawa — Kino na Boku
     // new BokClient(httoFetch, "kino-glebocka-66", KinoGlebocka66),  // Warszawa — Kino Głębocka 66
+    // new KinomuzeumClient(httoFetch),     // Warszawa — KINOMUZEUM
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Events ────────────────────────────────────────────────────────────────

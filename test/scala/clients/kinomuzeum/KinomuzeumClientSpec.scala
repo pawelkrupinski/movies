@@ -1,0 +1,49 @@
+package clients.kinomuzeum
+
+import clients.tools.FakeHttpFetch
+import models.{Kinomuzeum, Showtime}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import services.cinemas.KinomuzeumClient
+
+import java.time.{LocalDate, LocalDateTime}
+
+class KinomuzeumClientSpec extends AnyFlatSpec with Matchers {
+
+  private val today   = LocalDate.of(2026, 6, 5)
+  private val client  = new KinomuzeumClient(new FakeHttpFetch("kinomuzeum"), today)
+  private val results = client.fetch()
+  private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
+
+  "KinomuzeumClient.fetch" should "return 16 films and 38 showtimes" in {
+    results.size shouldBe 16
+    results.flatMap(_.showtimes).size shouldBe 38
+  }
+
+  it should "assign KINOMUZEUM to every entry" in {
+    results.map(_.cinema).toSet shouldBe Set(Kinomuzeum)
+  }
+
+  it should "merge a film listed under several slugs into one title" in {
+    byTitle("Ojczyzna").showtimes.size shouldBe 7
+  }
+
+  it should "enrich runtime / year / countries / director from the detail page" in {
+    val m = byTitle("Milcząca przyjaciółka")
+    m.movie.runtimeMinutes shouldBe Some(147)
+    m.movie.releaseYear    shouldBe Some(2025)
+    m.movie.countries      shouldBe Seq("Niemcy", "Francja", "Węgry")
+    m.director             shouldBe Seq("Ildiko Enyedi")
+    m.filmUrl              shouldBe Some("https://artmuseum.pl/wydarzenia/milczaca-przyjaciolka-1")
+    m.posterUrl.getOrElse("") should startWith ("https://api-sf.artmuseum.pl")
+  }
+
+  it should "resolve section-header dates and build sklep booking URLs" in {
+    byTitle("Milcząca przyjaciółka").showtimes.head shouldBe
+      Showtime(
+        LocalDateTime.of(2026, 6, 6, 14, 30),
+        Some("https://sklep.artmuseum.pl/rezerwacja/rezerwacja/nienumerowane.html?id=21960&idt=fa5a8b1d69b04693cb728ad042e24275"),
+        None, Nil
+      )
+  }
+}
