@@ -3,9 +3,10 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -50,16 +51,16 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
     }
 
     val byFilm = slots.groupBy(_.filmId)
-    val pages: Map[String, String] = {
-      val pending = byFilm.keys.toSeq.map(id => id -> http.getAsync(s"$BaseUrl/op.s?id=$id"))
-      pending.flatMap { case (id, f) => Try(f.join()).toOption.map(id -> _) }.toMap
-    }
+    val details: Map[String, NoweHoryzontyClient.Detail] =
+      ParallelDetailFetch.keyed("nowe-horyzonty-details", byFilm.keys.toSeq, 1.minute)(id => s"$BaseUrl/op.s?id=$id") { url =>
+        Try(http.get(url)).toOption.map(NoweHoryzontyClient.parseDetail).getOrElse(NoweHoryzontyClient.Detail.empty)
+      }
 
     byFilm.toSeq.flatMap { case (filmId, group) =>
       val primary    = group.head
       val showtimes  = group.distinctBy(_.eventId).sortBy(_.dateTime)
                          .map(s => Showtime(s.dateTime, Some(s.bookingUrl), None, Nil))
-      val d = pages.get(filmId).map(NoweHoryzontyClient.parseDetail).getOrElse(NoweHoryzontyClient.Detail.empty)
+      val d = details.getOrElse(filmId, NoweHoryzontyClient.Detail.empty)
       if (showtimes.isEmpty) None
       else Some(CinemaMovie(
         movie     = Movie(

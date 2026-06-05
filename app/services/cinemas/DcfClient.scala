@@ -3,10 +3,11 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -52,13 +53,10 @@ class DcfClient(http: HttpFetch) extends CinemaScraper {
     // (first seen) supplies the poster and the detail page to enrich from.
     val byTitle = blocks.groupBy(b => DcfClient.normalizeTitle(b.title))
 
-    val details: Map[String, DcfClient.Detail] = {
-      val pending = byTitle.values.map(_.head.filmId).toSeq.distinct
-        .map(id => id -> http.getAsync(EventBase + id))
-      pending.map { case (id, f) =>
-        id -> Try(f.join()).toOption.map(DcfClient.parseDetail).getOrElse(DcfClient.Detail.empty)
-      }.toMap
-    }
+    val details: Map[String, DcfClient.Detail] =
+      ParallelDetailFetch.keyed("dcf-details", byTitle.values.map(_.head.filmId).toSeq.distinct, 1.minute)(id => EventBase + id) { url =>
+        Try(http.get(url)).toOption.map(DcfClient.parseDetail).getOrElse(DcfClient.Detail.empty)
+      }
 
     byTitle.toSeq.flatMap { case (title, group) =>
       val primary = group.head

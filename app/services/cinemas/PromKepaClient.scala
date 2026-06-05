@@ -2,11 +2,11 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -27,8 +27,10 @@ class PromKepaClient(http: HttpFetch) extends CinemaScraper {
     val listing = http.get(ListingUrl)
     val slugs   = EventPat.findAllMatchIn(listing).map(_.group(1)).toSeq.distinct
 
-    val events = slugs.map(s => s -> http.getAsync(s"$BaseUrl/wydarzenie/$s"))
-      .flatMap { case (s, f) => Try(f.join()).toOption.flatMap(html => PromKepaClient.parseEvent(html, s)) }
+    val pages = ParallelDetailFetch.keyed("prom-kepa-events", slugs, 1.minute)(s => s"$BaseUrl/wydarzenie/$s") { url =>
+      Try(http.get(url)).toOption
+    }
+    val events = slugs.flatMap(s => pages.getOrElse(s, None).flatMap(html => PromKepaClient.parseEvent(html, s)))
 
     // The source formats the same film inconsistently (quoted vs ALL-CAPS), so
     // group case-insensitively and display the best-cased variant.

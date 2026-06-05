@@ -3,9 +3,10 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -55,9 +56,8 @@ class MuranowClient(http: HttpFetch) extends CinemaScraper {
     }
 
     val bySlug  = slots.groupBy(_.slug)
-    val details = {
-      val pending = bySlug.keys.toSeq.filter(_.startsWith("/")).map(slug => slug -> http.getAsync(BaseUrl + slug))
-      pending.map { case (slug, f) => slug -> Try(f.join()).toOption.map(MuranowClient.parseDetail).getOrElse(MuranowClient.Detail.empty) }.toMap
+    val details = ParallelDetailFetch.keyed("muranow-details", bySlug.keys.toSeq.filter(_.startsWith("/")), 1.minute)(slug => BaseUrl + slug) { url =>
+      Try(http.get(url)).toOption.map(MuranowClient.parseDetail).getOrElse(MuranowClient.Detail.empty)
     }
 
     bySlug.toSeq.flatMap { case (slug, group) =>

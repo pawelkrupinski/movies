@@ -2,9 +2,10 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -56,21 +57,17 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
   def fetch(): Seq[CinemaMovie] = {
     val filmEntries = parseRepertoire(http.get(RepertoireUrl))
 
-    val pendingPages = filmEntries.map { entry =>
-      entry -> http.getAsync(entry.eventUrl)
-    }
-    val eventDataByUrl: Map[String, EventData] = pendingPages.flatMap { case (entry, future) =>
-      Try(future.join()).toOption.map { html =>
-        entry.eventUrl -> EventData(parseEventPage(html), parseGenres(html))
+    val eventDataByUrl: Map[String, Option[EventData]] =
+      ParallelDetailFetch("rialto-events", filmEntries.map(_.eventUrl).distinct, 1.minute) { url =>
+        Try(http.get(url)).toOption.map(html => EventData(parseEventPage(html), parseGenres(html)))
       }
-    }.toMap
 
     filmEntries
       .groupBy(_.title.toUpperCase)
       .values
       .flatMap { group =>
         val primary      = group.head
-        val eventData    = group.flatMap(e => eventDataByUrl.get(e.eventUrl))
+        val eventData    = group.flatMap(e => eventDataByUrl.get(e.eventUrl).flatten)
         val allShowtimes = eventData.flatMap(_.showtimes).sortBy(_.dateTime)
         val genres       = eventData.flatMap(_.genres).distinct
         if (allShowtimes.isEmpty) None

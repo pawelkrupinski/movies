@@ -56,4 +56,37 @@ class ParallelDetailFetchSpec extends AnyFlatSpec with Matchers {
     result.size  shouldBe 8
     maxActive.get should be <= 2
   }
+
+  // `keyed` is the shape every cinema client uses: keep the caller's domain key
+  // (film id / slug / date) while fetching a derived URL under the same cap.
+  "ParallelDetailFetch.keyed" should "key results by the domain key, not the URL" in {
+    val result = ParallelDetailFetch.keyed("test-keyed", Seq("aftersun", "tar"), 5.seconds)(slug => s"https://x/movies/$slug") { url =>
+      url.length
+    }
+    result shouldBe Map("aftersun" -> 25, "tar" -> 20)
+  }
+
+  it should "fetch each distinct key only once" in {
+    val fetched = new AtomicInteger(0)
+    val result = ParallelDetailFetch.keyed("test-keyed-dedup", Seq("a", "a", "b"), 5.seconds)(k => k) { _ =>
+      fetched.incrementAndGet()
+      "ok"
+    }
+    result shouldBe Map("a" -> "ok", "b" -> "ok")
+    fetched.get shouldBe 2
+  }
+
+  it should "cap concurrent fetches at maxConcurrent regardless of key count" in {
+    val active    = new AtomicInteger(0)
+    val maxActive = new AtomicInteger(0)
+    val keys      = (1 to 30).map(i => s"film-$i")
+    val result = ParallelDetailFetch.keyed("test-keyed-cap", keys, 10.seconds, maxConcurrent = 6)(k => s"https://x/$k") { _ =>
+      val cur = active.incrementAndGet()
+      maxActive.updateAndGet(m => math.max(m, cur))
+      try Thread.sleep(20) finally active.decrementAndGet()
+      "ok"
+    }
+    result.size shouldBe 30
+    maxActive.get should be <= 6
+  }
 }

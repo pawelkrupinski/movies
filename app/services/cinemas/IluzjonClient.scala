@@ -3,9 +3,10 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -41,10 +42,10 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
     }
 
     val byFilm = slots.groupBy(_.filmId)
-    val details: Map[String, IluzjonClient.Detail] = {
-      val pending = byFilm.toSeq.map { case (id, rows) => id -> http.getAsync(rows.head.detailPath) }
-      pending.map { case (id, f) => id -> Try(f.join()).toOption.map(IluzjonClient.parseDetail).getOrElse(IluzjonClient.Detail.empty) }.toMap
-    }
+    val details: Map[String, IluzjonClient.Detail] =
+      ParallelDetailFetch.keyed("iluzjon-details", byFilm.keys.toSeq, 1.minute)(id => byFilm(id).head.detailPath) { url =>
+        Try(http.get(url)).toOption.map(IluzjonClient.parseDetail).getOrElse(IluzjonClient.Detail.empty)
+      }
 
     byFilm.toSeq.flatMap { case (filmId, group) =>
       val primary    = group.head

@@ -2,9 +2,10 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -39,8 +40,10 @@ class KinoKulturaClient(http: HttpFetch) extends CinemaScraper {
     val dates = DatePat.findAllMatchIn(main).map(_.group(1)).toSeq.distinct
     if (nonce.isEmpty || dates.isEmpty) return Seq.empty
 
-    val pages = dates.map(d => d -> http.getAsync(s"$PostersUrl?ajax=1&u_time=$nonce&rep_date=$d"))
-    val slots = pages.flatMap { case (_, f) => Try(f.join()).toOption.toSeq.flatMap(parseDay) }
+    val pages = ParallelDetailFetch.keyed("kino-kultura-days", dates, 1.minute)(d => s"$PostersUrl?ajax=1&u_time=$nonce&rep_date=$d") { url =>
+      Try(http.get(url)).toOption
+    }
+    val slots = dates.flatMap(d => pages.getOrElse(d, None).toSeq.flatMap(parseDay))
 
     slots.groupBy(_.filmId).toSeq.flatMap { case (_, group) =>
       val primary    = group.head

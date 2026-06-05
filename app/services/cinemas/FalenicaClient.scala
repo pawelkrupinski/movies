@@ -3,10 +3,11 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -31,11 +32,12 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper {
     val films = Jsoup.parse(http.get(ListingUrl)).select("article.filmy").asScala.toSeq.flatMap(parseListItem)
       .filterNot(_.slug.contains("__trashed")).distinctBy(_.slug)
 
-    val pages = films.map(f => f.slug -> http.getAsync(s"$BaseUrl/filmy/${f.slug}/"))
-      .map { case (s, fut) => s -> Try(fut.join()).toOption }.toMap
+    val pages = ParallelDetailFetch.keyed("falenica-details", films.map(_.slug), 1.minute)(s => s"$BaseUrl/filmy/$s/") { url =>
+      Try(http.get(url)).toOption.map(Jsoup.parse)
+    }
 
     films.flatMap { f =>
-      val detail    = pages.getOrElse(f.slug, None).map(Jsoup.parse)
+      val detail    = pages.getOrElse(f.slug, None)
       val showtimes = detail.toSeq.flatMap(parseShowtimes).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
       if (showtimes.isEmpty) None
       else Some(CinemaMovie(

@@ -3,9 +3,10 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -39,10 +40,8 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
     // A film can recur under several slugs (a plain screening + a "+ spotkanie"
     // event), all with the same title — group by title so each is one row.
     val byTitle = slots.groupBy(_.title)
-    val details = {
-      val pending = byTitle.values.map(_.head.slug).toSeq.distinct.filter(_.nonEmpty)
-        .map(s => s -> http.getAsync(s"$BaseUrl/wydarzenia/$s"))
-      pending.map { case (s, f) => s -> Try(f.join()).toOption.map(KinomuzeumClient.parseDetail).getOrElse(KinomuzeumClient.Detail.empty) }.toMap
+    val details = ParallelDetailFetch.keyed("kinomuzeum-details", byTitle.values.map(_.head.slug).toSeq.distinct.filter(_.nonEmpty), 1.minute)(s => s"$BaseUrl/wydarzenia/$s") { url =>
+      Try(http.get(url)).toOption.map(KinomuzeumClient.parseDetail).getOrElse(KinomuzeumClient.Detail.empty)
     }
 
     byTitle.toSeq.flatMap { case (title, group) =>

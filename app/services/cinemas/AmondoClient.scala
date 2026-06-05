@@ -3,9 +3,10 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -35,9 +36,8 @@ class AmondoClient(http: HttpFetch) extends CinemaScraper {
     }
 
     val bySlug  = slots.groupBy(_.slug)
-    val details = {
-      val pending = bySlug.keys.toSeq.filter(_.nonEmpty).map(s => s -> http.getAsync(s"$BaseUrl/movies/$s/"))
-      pending.map { case (s, f) => s -> Try(f.join()).toOption.map(AmondoClient.parseDetail).getOrElse(AmondoClient.Detail.empty) }.toMap
+    val details = ParallelDetailFetch.keyed("amondo-details", bySlug.keys.toSeq.filter(_.nonEmpty), 1.minute)(s => s"$BaseUrl/movies/$s/") { url =>
+      Try(http.get(url)).toOption.map(AmondoClient.parseDetail).getOrElse(AmondoClient.Detail.empty)
     }
 
     bySlug.toSeq.flatMap { case (slug, group) =>

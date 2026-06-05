@@ -2,10 +2,10 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -31,8 +31,10 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
   def fetch(): Seq[CinemaMovie] = {
     val today = http.get(s"$CinemaUrl/repertuar.php")
     val dates = DatePat.findAllMatchIn(today).map(_.group(1)).toSeq.distinct
-    val otherPages = dates.map(d => http.getAsync(s"$CinemaUrl/repertuar.php?data=$d"))
-    val htmls = today +: otherPages.flatMap(f => Try(f.join()).toOption)
+    val dayPages = ParallelDetailFetch.keyed("nove-kino-days", dates, 1.minute)(d => s"$CinemaUrl/repertuar.php?data=$d") { url =>
+      Try(http.get(url)).toOption
+    }
+    val htmls = today +: dates.flatMap(d => dayPages.getOrElse(d, None))
 
     val slots = htmls.flatMap(parsePage)
     // The same film is listed once per presentation variant ("- napisy" /
@@ -40,9 +42,8 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
     // captured as the showtime format.
     val byTitle = slots.groupBy(_.title)
 
-    val details = {
-      val pending = byTitle.values.map(_.head.filmId).toSeq.distinct.map(id => id -> http.getAsync(s"$CinemaUrl/film.php?id=$id"))
-      pending.map { case (id, f) => id -> Try(f.join()).toOption.map(NoveKinoClient.parseDetail).getOrElse(NoveKinoClient.Detail.empty) }.toMap
+    val details = ParallelDetailFetch.keyed("nove-kino-details", byTitle.values.map(_.head.filmId).toSeq.distinct, 1.minute)(id => s"$CinemaUrl/film.php?id=$id") { url =>
+      Try(http.get(url)).toOption.map(NoveKinoClient.parseDetail).getOrElse(NoveKinoClient.Detail.empty)
     }
 
     byTitle.toSeq.flatMap { case (_, group) =>

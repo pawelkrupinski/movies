@@ -2,10 +2,10 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -32,13 +32,14 @@ class KinotekaClient(http: HttpFetch) extends CinemaScraper {
   def fetch(): Seq[CinemaMovie] = {
     val base  = http.get(ListingUrl)
     val dates = DatePat.findAllMatchIn(base).map(_.group(1)).toSeq.distinct
-    val pages = dates.map(d => http.getAsync(s"$ListingUrl?date=$d"))
-    val slots = pages.flatMap(f => Try(f.join()).toOption.toSeq).flatMap(parsePage)
+    val dayPages = ParallelDetailFetch.keyed("kinoteka-days", dates, 1.minute)(d => s"$ListingUrl?date=$d") { url =>
+      Try(http.get(url)).toOption
+    }
+    val slots = dates.flatMap(d => dayPages.getOrElse(d, None).toSeq.flatMap(parsePage))
 
     val bySlug  = slots.groupBy(_.slug)
-    val details = {
-      val pending = bySlug.keys.toSeq.filter(_.nonEmpty).map(s => s -> http.getAsync(s"$BaseUrl/film/$s/"))
-      pending.map { case (s, f) => s -> Try(f.join()).toOption.map(KinotekaClient.parseDetail).getOrElse(KinotekaClient.Detail.empty) }.toMap
+    val details = ParallelDetailFetch.keyed("kinoteka-details", bySlug.keys.toSeq.filter(_.nonEmpty), 1.minute)(s => s"$BaseUrl/film/$s/") { url =>
+      Try(http.get(url)).toOption.map(KinotekaClient.parseDetail).getOrElse(KinotekaClient.Detail.empty)
     }
 
     bySlug.toSeq.flatMap { case (slug, group) =>

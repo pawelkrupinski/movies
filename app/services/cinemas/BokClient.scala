@@ -3,9 +3,10 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, ZoneId}
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -28,10 +29,10 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
     val listing = http.get(s"$BaseUrl/$prefix")
     val slugs   = SlugPat.findAllMatchIn(listing).map(_.group(1)).toSeq.distinct
 
-    val pages = slugs.map(s => s -> http.getAsync(s"$BaseUrl/$prefix/$s"))
-    pages.flatMap { case (slug, f) =>
-      Try(f.join()).toOption.flatMap(html => parseFilm(html, slug))
+    val pages = ParallelDetailFetch.keyed("bok-films", slugs, 1.minute)(s => s"$BaseUrl/$prefix/$s") { url =>
+      Try(http.get(url)).toOption
     }
+    slugs.flatMap(slug => pages.getOrElse(slug, None).flatMap(html => parseFilm(html, slug)))
   }
 
   private def parseFilm(html: String, slug: String): Option[CinemaMovie] = {

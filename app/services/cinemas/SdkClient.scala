@@ -2,10 +2,10 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDateTime
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -29,8 +29,9 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
   def fetch(): Seq[CinemaMovie] = {
     val items = listingPages().flatMap(parseListPage)
 
-    val details = items.map(_.detailUrl).distinct
-      .map(u => u -> http.getAsync(u)).map { case (u, f) => u -> Try(f.join()).toOption.map(Jsoup.parse) }.toMap
+    val details = ParallelDetailFetch("sdk-details", items.map(_.detailUrl).distinct, 1.minute) { url =>
+      Try(http.get(url)).toOption.map(Jsoup.parse)
+    }
 
     items.groupBy(_.title).toSeq.flatMap { case (title, group) =>
       val primary = group.head

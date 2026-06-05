@@ -2,10 +2,11 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -34,10 +35,10 @@ class Bilety24Client(
     val listing  = http.get(baseUrl + listingPath)
     val eventIds = EventLinkPat.findAllMatchIn(listing).map(_.group(1)).toSeq.distinct
 
-    val pages = eventIds.map(id => id -> http.getAsync(s"$baseUrl/wydarzenie/?id=$id"))
-    pages.flatMap { case (id, f) =>
-      Try(f.join()).toOption.flatMap(html => Bilety24Client.parseEvent(html, cinema, baseUrl, id))
+    val pages = ParallelDetailFetch.keyed("bilety24-events", eventIds, 1.minute)(id => s"$baseUrl/wydarzenie/?id=$id") { url =>
+      Try(http.get(url)).toOption
     }
+    eventIds.flatMap(id => pages.getOrElse(id, None).flatMap(html => Bilety24Client.parseEvent(html, cinema, baseUrl, id)))
   }
 }
 
