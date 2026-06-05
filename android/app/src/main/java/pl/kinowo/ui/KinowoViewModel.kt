@@ -11,6 +11,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -73,6 +76,11 @@ class KinowoViewModel(
         // `KinowoApp.task { await authService.checkSession() }`).
         viewModelScope.launch { authRepo.checkSession() }
     }
+
+    /** Slug of the active city, or null until the first-launch gate resolves
+     *  one. The repertoire/details fetch is gated on this being non-null. */
+    val selectedCity: StateFlow<String?> =
+        prefs.selectedCity.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val hiddenFilms: StateFlow<Set<String>> =
         prefs.hiddenFilms.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
@@ -170,31 +178,37 @@ class KinowoViewModel(
         repo.loadCachedData()
         detailsRepo.loadCachedData()
         repo.pruneStaleShowings()
-        // Listing + details fetched concurrently — the grid paints as soon as
-        // the listing lands; details merge in for the detail screen when ready.
+        // The network fetch is gated on a city being chosen — until the
+        // first-launch gate resolves one, `selectedCity` is null and nothing
+        // hits the wire. Each distinct (non-null) slug triggers a fresh load,
+        // so switching cities in the filters re-fetches that city's repertoire.
         viewModelScope.launch {
-            coroutineScope {
-                val listing = async { repo.reload() }
-                val det = async { detailsRepo.reload() }
-                listing.await(); det.await()
-            }
+            selectedCity
+                .filterNotNull()
+                .distinctUntilChanged()
+                .collectLatest { slug -> fetchAll(slug) }
         }
     }
 
+    /** Listing + details fetched concurrently for [citySlug] — the grid paints
+     *  as soon as the listing lands; details merge in when ready. */
+    private suspend fun fetchAll(citySlug: String) = coroutineScope {
+        val listing = async { repo.reload(citySlug) }
+        val det = async { detailsRepo.reload(citySlug) }
+        listing.await(); det.await()
+    }
+
     fun reload() = viewModelScope.launch {
-        coroutineScope {
-            val listing = async { repo.reload() }
-            val det = async { detailsRepo.reload() }
-            listing.await(); det.await()
-        }
+        selectedCity.value?.let { fetchAll(it) }
     }
 
     fun onResume() {
         repo.pruneStaleShowings()
+        val slug = selectedCity.value ?: return
         viewModelScope.launch {
             coroutineScope {
-                async { repo.reloadIfStale() }
-                async { detailsRepo.reloadIfStale() }
+                async { repo.reloadIfStale(slug) }
+                async { detailsRepo.reloadIfStale(slug) }
             }
         }
     }
@@ -241,6 +255,10 @@ class KinowoViewModel(
 
     fun markSwiped() = viewModelScope.launch { prefs.markSwiped() }
     fun markSwipeHintShown(date: String) = viewModelScope.launch { prefs.markSwipeHintShown(date) }
+
+    /** Persist the chosen city. `start()`'s `selectedCity` collector picks up
+     *  the change and re-fetches that city's repertoire — no explicit reload. */
+    fun setCity(slug: String) = viewModelScope.launch { prefs.setCity(slug) }
 
     fun hide(title: String) = viewModelScope.launch { prefs.hide(title) }
     fun unhide(title: String) = viewModelScope.launch { prefs.unhide(title) }

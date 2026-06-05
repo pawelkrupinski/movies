@@ -12,9 +12,9 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
- * Talks to the kinowo backend. The whole app reads one endpoint —
- * `GET /api/repertoire` — which carries every field both the grid and the
- * detail screen need (incl. synopsis + trailer embed URLs). Mirrors iOS
+ * Talks to the kinowo backend. The grid + detail screen read one endpoint —
+ * `GET /{city}/api/repertoire` — which carries every field both need (incl.
+ * synopsis + trailer embed URLs); the city slug prefixes the path. Mirrors iOS
  * `RepertoireStore` transport: a `KinowoAndroid/1.0` User-Agent, a
  * conditional GET via `If-Modified-Since`, and no on-disk URLCache.
  */
@@ -31,11 +31,11 @@ class KinowoApi(
         val notModified: Boolean,
     )
 
-    suspend fun fetchRepertoire(ifModifiedSince: String?): Fetched<Film> =
-        fetchList("$baseUrl/api/repertoire", ifModifiedSince)
+    suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?): Fetched<Film> =
+        fetchList("$baseUrl/$citySlug/api/repertoire", ifModifiedSince)
 
-    suspend fun fetchDetails(ifModifiedSince: String?): Fetched<FilmDetails> =
-        fetchList("$baseUrl/api/details", ifModifiedSince)
+    suspend fun fetchDetails(citySlug: String, ifModifiedSince: String?): Fetched<FilmDetails> =
+        fetchList("$baseUrl/$citySlug/api/details", ifModifiedSince)
 
     private suspend inline fun <reified T> fetchList(
         url: String,

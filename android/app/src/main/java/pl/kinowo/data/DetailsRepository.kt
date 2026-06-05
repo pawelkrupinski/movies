@@ -31,9 +31,9 @@ class DetailsRepository(
         }
     }
 
-    suspend fun reload(now: Instant = Instant.now()) {
+    suspend fun reload(citySlug: String, now: Instant = Instant.now()) {
         try {
-            val result = api.fetchDetails(cache.loadLastModified())
+            val result = api.fetchDetails(citySlug, cache.loadLastModified())
             if (result.notModified) {
                 lastReloadedAt = now
                 return
@@ -49,9 +49,9 @@ class DetailsRepository(
         }
     }
 
-    suspend fun reloadIfStale(now: Instant = Instant.now()) {
+    suspend fun reloadIfStale(citySlug: String, now: Instant = Instant.now()) {
         val last = lastReloadedAt
         if (last != null && Duration.between(last, now) < staleAfter) return
-        reload(now)
+        reload(citySlug, now)
     }
 }

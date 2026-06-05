@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.FormatFilter
+import pl.kinowo.model.Cities
 import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
@@ -76,6 +77,10 @@ fun FiltersSheet(
                     TextButton(onClick = { vm.clearFilters() }) { Text("Wyczyść") }
                 }
             }
+
+            // Miasto — the city the repertoire is served for. Usable before
+            // login (it's just a city switch); switching re-fetches.
+            item(key = "sec_city") { CitySection(vm) }
 
             // Sortuj — view-ordering axis above the content filters, mirroring
             // the web "Sortuj" dropdown.
@@ -277,6 +282,21 @@ private fun CollapsibleSection(
         }
         if (expanded) content()
     }
+}
+
+/**
+ * Miasto — the active city. Mirrors the other top-of-sheet axes: a label over a
+ * segmented choice of [Cities.all]. Tapping persists the pick (and re-fetches
+ * that city's repertoire). Independent of login — it's just a city switch.
+ */
+@Composable
+private fun CitySection(vm: KinowoViewModel) {
+    val selected by vm.selectedCity.collectAsState()
+    FilterSectionLabel("Miasto")
+    SegmentedChoice<String?>(
+        options = Cities.all.map { it.name to it.slug },
+        selected = selected,
+    ) { slug -> if (slug != null) vm.setCity(slug) }
 }
 
 @Composable

@@ -142,6 +142,10 @@ dependencies {
     // exchange code.
     implementation("androidx.browser:browser:1.8.0")
 
+    // One-shot coarse location for the first-launch city gate (nearest
+    // supported city; denial falls back to an explicit pick).
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     // Backdrop blur for the floating search pill — real frosted-glass that
@@ -158,6 +162,9 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    // Records the request path KinowoApi builds, so the city-slug prefix is
+    // asserted without a live server.
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 
     // JVM (off-device) Compose UI tests via Robolectric — renders the real
     // composables and measures layout bounds without an emulator, so the
@@ -167,6 +174,8 @@ dependencies {
     testImplementation(composeBom)
     testImplementation("org.robolectric:robolectric:4.13")
     testImplementation("androidx.compose.ui:ui-test-junit4")
+    // ApplicationProvider for the DataStore round-trip test (off-device).
+    testImplementation("androidx.test:core-ktx:1.6.1")
 
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")

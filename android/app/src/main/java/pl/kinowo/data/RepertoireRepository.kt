@@ -37,11 +37,11 @@ class RepertoireRepository(
         }
     }
 
-    suspend fun reload(now: Instant = Instant.now()) {
+    suspend fun reload(citySlug: String, now: Instant = Instant.now()) {
         _isLoading.value = true
         _error.value = null
         try {
-            val result = api.fetchRepertoire(cache.loadLastModified())
+            val result = api.fetchRepertoire(citySlug, cache.loadLastModified())
             if (result.notModified) {
                 lastReloadedAt = now
                 return
@@ -58,10 +58,10 @@ class RepertoireRepository(
         }
     }
 
-    suspend fun reloadIfStale(now: Instant = Instant.now()) {
+    suspend fun reloadIfStale(citySlug: String, now: Instant = Instant.now()) {
         val last = lastReloadedAt
         if (last != null && Duration.between(last, now) < staleAfter) return
-        reload(now)
+        reload(citySlug, now)
     }
 
     /** Local-only: drop screenings now in the past and re-sort cinemas by

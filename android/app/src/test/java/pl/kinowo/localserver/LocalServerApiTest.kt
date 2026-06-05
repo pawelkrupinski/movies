@@ -45,7 +45,7 @@ class LocalServerApiTest {
 
     @Test
     fun `repertoire decodes into Films with a full showings tree`() = runBlocking {
-        val fetched = api.fetchRepertoire(ifModifiedSince = null)
+        val fetched = api.fetchRepertoire(citySlug = "poznan", ifModifiedSince = null)
         assertFalse("304 not expected on a fresh fetch", fetched.notModified)
         assertNotNull("the JSON API should stamp a Last-Modified", fetched.lastModified)
 
@@ -69,7 +69,7 @@ class LocalServerApiTest {
 
     @Test
     fun `cinema links derive from the live showings, deduped and sorted`() = runBlocking {
-        val films = api.fetchRepertoire(ifModifiedSince = null).items!!
+        val films = api.fetchRepertoire(citySlug = "poznan", ifModifiedSince = null).items!!
         val withLinks = films.firstOrNull { it.cinemaLinks.isNotEmpty() }
         assertNotNull("expected a film with derivable cinema links", withLinks)
 
@@ -81,7 +81,7 @@ class LocalServerApiTest {
 
     @Test
     fun `details decode synopsis and ready-to-embed trailers`() = runBlocking {
-        val details = api.fetchDetails(ifModifiedSince = null).items!!
+        val details = api.fetchDetails(citySlug = "poznan", ifModifiedSince = null).items!!
         assertTrue("expected a non-empty details payload", details.isNotEmpty())
         // The server only emits rows with content; nothing empty slips through.
         assertTrue(
@@ -98,8 +98,8 @@ class LocalServerApiTest {
 
     @Test
     fun `every details row matches a listed film by title`() = runBlocking {
-        val films = api.fetchRepertoire(ifModifiedSince = null).items!!.associateBy(Film::title)
-        val details = api.fetchDetails(ifModifiedSince = null).items!!
+        val films = api.fetchRepertoire(citySlug = "poznan", ifModifiedSince = null).items!!.associateBy(Film::title)
+        val details = api.fetchDetails(citySlug = "poznan", ifModifiedSince = null).items!!
         // The app merges the two endpoints by title (DetailsRepository.associateBy);
         // an orphan details row would silently never reach the UI.
         val orphans = details.map(FilmDetails::title).filterNot(films::containsKey)

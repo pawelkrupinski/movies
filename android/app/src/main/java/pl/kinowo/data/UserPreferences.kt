@@ -38,6 +38,15 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     override val disabledCinemas: Flow<Set<String>> =
         context.dataStore.data.map { it[KEY_DISABLED] ?: emptySet() }
 
+    /** Slug of the city the user picked (or was located into), or null until
+     *  the first-launch city gate resolves one. Gates the repertoire fetch. */
+    val selectedCity: Flow<String?> =
+        context.dataStore.data.map { it[KEY_CITY] }
+
+    suspend fun setCity(slug: String) = context.dataStore.edit { prefs ->
+        prefs[KEY_CITY] = slug
+    }
+
     /** True once the user has swiped between Filmy / Kina at least once. */
     val hasSwipedScreens: Flow<Boolean> =
         context.dataStore.data.map { it[KEY_SWIPED] ?: false }
@@ -100,6 +109,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     private companion object {
         val KEY_HIDDEN = stringSetPreferencesKey("hiddenFilms")
         val KEY_DISABLED = stringSetPreferencesKey("disabledCinemas")
+        val KEY_CITY = stringPreferencesKey("selectedCity")
         val KEY_SWIPED = booleanPreferencesKey("swipedScreens")
         val KEY_HINT_DATE = stringPreferencesKey("swipeHintShownDate")
         val KEY_POSTER_URLS = stringSetPreferencesKey("seenPosterUrls")
