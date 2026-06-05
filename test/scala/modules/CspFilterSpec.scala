@@ -61,6 +61,17 @@ class CspFilterSpec extends AnyFlatSpec with Matchers {
     h("Permissions-Policy") should include("interest-cohort=()")
   }
 
+  it should "allow geolocation for same-origin so the landing page can auto-detect the city" in {
+    // The `/` landing page calls navigator.geolocation to redirect to the
+    // nearest supported city (landing.scala.html). A blanket `geolocation=()`
+    // blocks that same-origin call outright, silently breaking the feature
+    // and logging a permissions-policy violation to the console. `(self)`
+    // permits the origin's own scripts while still denying every third party.
+    val pp = run().header.headers("Permissions-Policy")
+    pp should include("geolocation=(self)")
+    pp should not include "geolocation=()"
+  }
+
   it should "not overwrite a CSP set by the upstream controller" in {
     // A controller serving an embed/iframe page might set its own
     // looser CSP. The filter must defer rather than clobber.

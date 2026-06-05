@@ -69,10 +69,14 @@ class CspFilter @Inject() (implicit
         "X-Content-Type-Options" -> "nosniff",
         "Referrer-Policy"        -> "strict-origin-when-cross-origin",
         // `interest-cohort=()` opts the site out of FLoC / Topics
-        // ad-tracking experiments; the rest are unused features the
-        // site doesn't need, blocked so a future leaked dependency
-        // can't quietly turn them on.
-        "Permissions-Policy"     -> "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+        // ad-tracking experiments; camera/microphone are unused
+        // features blocked so a future leaked dependency can't quietly
+        // turn them on. `geolocation=(self)` allows *only* same-origin
+        // scripts to request a fix — the `/` landing page uses it to
+        // auto-detect the nearest supported city (see landing.scala.html);
+        // a blanket `geolocation=()` would silently break that feature
+        // and log a permissions-policy violation to the console.
+        "Permissions-Policy"     -> "camera=(), microphone=(), geolocation=(self), interest-cohort=()",
       )
     }(using ec)
 }
