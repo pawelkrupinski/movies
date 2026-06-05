@@ -54,10 +54,10 @@ enum A11y {
 
     /// First-launch city gate.
     enum CityGate {
-        /// Each city button on the manual picker carries this id, so a UITest
-        /// can measure that the choice buttons render at the tall (≥56pt)
-        /// Android-parity size rather than compact system controls.
-        static let choiceButton = "citygate.choice.button"
+        /// The primary "show repertoire" button on the location-confirm screen,
+        /// so a UITest can measure it renders at the enlarged (`.controlSize`
+        /// `.large`) size rather than the compact system default.
+        static let confirmButton = "citygate.confirm.button"
     }
 
     enum EmptyState {

@@ -1,44 +1,5 @@
 import SwiftUI
 
-/// Height floor for the first-launch city-gate buttons — mirrors Android's
-/// `ControlMinHeight` (56dp): a comfortable native touch target, well above the
-/// ~44pt system-button default, so the gate's actions read as primary choices
-/// rather than compact system controls.
-private let cityControlMinHeight: CGFloat = 56
-
-/// Full-width, tall (≥`cityControlMinHeight`) filled button — the primary city
-/// action. Mirrors Android's `TallFilledButton` (17sp, SemiBold).
-private struct TallFilledButton: View {
-    let title: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 17, weight: .semibold))
-                .frame(maxWidth: .infinity, minHeight: cityControlMinHeight)
-        }
-        .buttonStyle(.borderedProminent)
-    }
-}
-
-/// Full-width, tall (≥`cityControlMinHeight`) outlined button — a real
-/// secondary control rather than a thin text link. Mirrors Android's
-/// `TallOutlinedButton` (17sp).
-private struct TallOutlinedButton: View {
-    let title: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 17))
-                .frame(maxWidth: .infinity, minHeight: cityControlMinHeight)
-        }
-        .buttonStyle(.bordered)
-    }
-}
-
 /// First-launch city gate. Until `prefs.selectedCity` is set, the user can't
 /// see a repertoire — there's no sensible default beyond "nearest". Once a
 /// city is chosen (by location or manual pick), the stores are pointed at its
@@ -104,10 +65,12 @@ struct CityResolverView: View {
         }
         .task {
             #if DEBUG
-            // UI tests skip CoreLocation so the manual picker shows
-            // deterministically (no permission dialog, no 8s timeout wait).
-            if ProcessInfo.processInfo.environment["KINOWO_SKIP_LOCATION"] != nil {
-                showChoice = true
+            // UI tests reach the confirm screen deterministically — no
+            // CoreLocation permission dialog, no 8s resolve timeout — by
+            // injecting the "detected" city directly.
+            if let slug = ProcessInfo.processInfo.environment["KINOWO_FORCE_DETECTED_CITY"],
+               let city = City.all.first(where: { $0.slug == slug }) {
+                detected = city
                 return
             }
             #endif
@@ -142,8 +105,19 @@ struct CityConfirmView: View {
             Text(city.name)
                 .font(.title).bold()
             Spacer()
-            TallFilledButton(title: "Pokaż repertuar — \(city.name)", action: onConfirm)
-            TallOutlinedButton(title: "Wybierz inne miasto", action: onChooseOther)
+            Button(action: onConfirm) {
+                Text("Pokaż repertuar — \(city.name)")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .accessibilityIdentifier(A11y.CityGate.confirmButton)
+            Button(action: onChooseOther) {
+                Text("Wybierz inne miasto")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -151,9 +125,9 @@ struct CityConfirmView: View {
 }
 
 /// Manual city picker — the fallback when location is unavailable or the user
-/// is outside every served city. One tall button per `City.all`; with a single
-/// city it's a one-tap screen, but it scales as cities are added. Mirrors
-/// Android's `CityChoiceScreen` (centred title + full-width tall buttons).
+/// is outside every served city. A native grouped `List`, one row per
+/// `City.all`; with a single city it's a one-tap screen, but it scales as
+/// cities are added.
 struct CityChoiceView: View {
     @EnvironmentObject var prefs: UserPreferences
     /// The location-detected nearest city, when one was found — used only to
@@ -162,23 +136,30 @@ struct CityChoiceView: View {
     var nearest: City?
 
     var body: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Text("Wybierz miasto")
-                .font(.system(size: 22, weight: .bold))
-            Text("Repertuar pokazujemy dla wybranego miasta.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.bottom, 8)
-            ForEach(City.all, id: \.slug) { city in
-                TallFilledButton(title: city.name) { choose(city) }
-                    .accessibilityIdentifier(A11y.CityGate.choiceButton)
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(City.all, id: \.slug) { city in
+                        Button {
+                            choose(city)
+                        } label: {
+                            HStack {
+                                Text(city.name)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.footnote)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .foregroundStyle(.primary)
+                    }
+                } header: {
+                    Text("Wybierz miasto")
+                }
             }
-            Spacer()
+            .navigationTitle("Miasto")
+            .navigationBarTitleDisplayMode(.inline)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// Adopt the picked city. When it differs from the location-detected

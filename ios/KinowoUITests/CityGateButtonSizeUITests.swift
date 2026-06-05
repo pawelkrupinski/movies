@@ -1,19 +1,18 @@
 import XCTest
 
-/// The first-launch city-gate choice buttons must render as tall, full-width
-/// primary actions matching the Android picker (`CityChoiceScreen` uses a
-/// 56dp `ControlMinHeight`), not the compact ~44pt system controls / List rows
-/// iOS shipped before.
+/// The first-launch city-gate's primary action ("Pokaż repertuar — …" on the
+/// location-confirm screen) must render as a comfortably large iOS button
+/// (`.controlSize(.large)`), not the compact system default that read as a
+/// small link.
 ///
-/// Reaches the manual picker deterministically via two DEBUG launch hooks:
+/// Reaches the confirm screen deterministically via two DEBUG launch hooks:
 /// `KINOWO_CLEAR_CITY` drops any persisted city so the gate shows, and
-/// `KINOWO_SKIP_LOCATION` bypasses CoreLocation so `CityChoiceView` appears
-/// without a permission dialog or the 8s resolve timeout.
+/// `KINOWO_FORCE_DETECTED_CITY` injects a detected city so `CityConfirmView`
+/// appears without a CoreLocation permission dialog or the 8s resolve timeout.
 ///
-/// Measures the rendered button height: the tall buttons clear the
-/// `cityControlMinHeight` (56pt) floor, comfortably above the compact-control
-/// height the screen had before — so the assertion fails before the size
-/// change and passes after.
+/// Measures the rendered button height: a `.large` bordered button clears ~48pt,
+/// comfortably above the ~34pt compact default the screen had before — so the
+/// assertion fails before the size change and passes after.
 final class CityGateButtonSizeUITests: XCTestCase {
     var app: XCUIApplication!
 
@@ -22,31 +21,26 @@ final class CityGateButtonSizeUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments += ["-UITests", "1"]
         app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
-        app.launchEnvironment["KINOWO_SKIP_LOCATION"] = "1"
+        app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "warszawa"
         app.launch()
     }
 
     override func tearDownWithError() throws { app = nil }
 
-    func testChoiceButtonsAreTall() throws {
-        let buttons = app.buttons.matching(identifier: A11y.CityGate.choiceButton)
-        let firstButton = buttons.element(boundBy: 0)
+    func testConfirmButtonIsLarge() throws {
+        let button = app.buttons[A11y.CityGate.confirmButton]
         XCTAssertTrue(
-            firstButton.waitForExistence(timeout: 10),
-            "City-choice screen never showed a tall choice button"
+            button.waitForExistence(timeout: 10),
+            "City-confirm screen never showed its primary button"
         )
 
-        // One button per served city (Poznań, Wrocław, Warszawa).
-        XCTAssertEqual(buttons.count, 3, "Expected one tall button per served city")
-
-        // `cityControlMinHeight` is 56pt; `.borderedProminent` adds its own
-        // vertical padding on top, so a correctly-sized button clears ~56pt.
-        // The old compact List rows were ~44pt — 52 cleanly separates them.
-        let height = firstButton.frame.height
+        // `.controlSize(.large)` renders the bordered button at ~48–50pt; the
+        // compact system default is ~34pt — 44 cleanly separates them.
+        let height = button.frame.height
         XCTAssertGreaterThanOrEqual(
-            height, 52,
-            "City-choice button is only \(height)pt tall — it isn't rendering at "
-            + "the Android-parity tall (≥56pt) size."
+            height, 44,
+            "Confirm button is only \(height)pt tall — it isn't rendering at the "
+            + "enlarged .controlSize(.large) size."
         )
     }
 }
