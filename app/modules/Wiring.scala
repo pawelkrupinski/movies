@@ -12,7 +12,7 @@ import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
 import services.movies._
 import services.users.{AccountDeletion, CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
-import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, SharedExecutionBudget}
+import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
 trait Wiring {
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database)
@@ -46,8 +46,7 @@ trait Wiring {
   // refresh cycle. Multikino retains its own internal retry layers (Zyte
   // → direct + homepage warm-up); the outer wrapper only adds extra
   // coverage when every inner layer is exhausted.
-  lazy val cinemaScrapers: Seq[CinemaScraper] = Seq(
-    // ── Poznań ────────────────────────────────────────────────────────────
+  private lazy val poznanScrapers: Seq[CinemaScraper] = Seq(
     new MultikinoClient(multikinoFetch),
     new CharlieMonroeClient(httoFetch),
     new KinoPalacoweClient(httoFetch),
@@ -58,7 +57,9 @@ trait Wiring {
     new KinoBulgarskaClient(httoFetch),
     new KinoApolloClient(httoFetch),
     new RialtoClient(httoFetch),
-    // ── Wrocław ───────────────────────────────────────────────────────────
+  )
+
+  private lazy val wroclawScrapers: Seq[CinemaScraper] = Seq(
     new CinemaCityScraper(cinemaCityClient, "1097", CinemaCityWroclavia),
     new CinemaCityScraper(cinemaCityClient, "1067", CinemaCityKorona),
     new MultikinoClient(multikinoFetch, "0010", MultikinoPasazGrunwaldzki),
@@ -66,7 +67,9 @@ trait Wiring {
     new HeliosClient(httoFetch, HeliosNuxt.AlejaBielany),
     new NoweHoryzontyClient(httoFetch),
     new DcfClient(httoFetch),
-    // ── Warszawa ──────────────────────────────────────────────────────────
+  )
+
+  private lazy val warszawaScrapers: Seq[CinemaScraper] = Seq(
     new CinemaCityScraper(cinemaCityClient, "1074", CinemaCityArkadia),
     new CinemaCityScraper(cinemaCityClient, "1061", CinemaCityBemowo),
     new CinemaCityScraper(cinemaCityClient, "1096", CinemaCityGaleriaPolnocna),
@@ -98,6 +101,23 @@ trait Wiring {
     new KinotekaClient(httoFetch),
     new UjazdowskiClient(httoFetch),
     new CytadelaClient(httoFetch),
+  )
+
+  // TEMP (2026-06-05, per-city load investigation): scrape only the cities in
+  // KINOWO_SCRAPE_CITIES (comma-separated slugs), defaulting to Poznań alone.
+  // Adding Wrocław + Warszawa (~11 → ~48 cinemas) overwhelmed the 1-vCPU box
+  // (30s cache rehydrate + scrapes + first-time enrichment pegged CPU; heavy
+  // pages stalled for minutes). Bring cities back one at a time and watch the
+  // load: `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` (restart), then
+  // add `warszawa`. Once the box sustains all three, set that as the value (or
+  // restore an all-cities default here) and drop this gate.
+  private lazy val scrapeCities: Set[String] =
+    ScrapeCities.enabled(Env.get("KINOWO_SCRAPE_CITIES"), default = Set("poznan"))
+
+  lazy val cinemaScrapers: Seq[CinemaScraper] = (
+    (if (scrapeCities("poznan"))  poznanScrapers  else Nil) ++
+    (if (scrapeCities("wroclaw")) wroclawScrapers else Nil) ++
+    (if (scrapeCities("warszawa")) warszawaScrapers else Nil)
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Background concurrency budget ───────────────────────────────────────────
