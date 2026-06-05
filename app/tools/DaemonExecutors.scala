@@ -1,6 +1,6 @@
 package tools
 
-import java.util.concurrent.{AbstractExecutorService, ExecutorService, Executors, ScheduledExecutorService, Semaphore, TimeUnit}
+import java.util.concurrent.{AbstractExecutorService, ExecutorService, Executors, RejectedExecutionException, ScheduledExecutorService, Semaphore, TimeUnit}
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 
 /**
@@ -25,7 +25,25 @@ object DaemonExecutors {
    *  (so daemon by definition — virtual threads never keep the JVM alive)
    *  and named `${name}-N`. */
   def virtualThreadEC(name: String): ExecutionContextExecutorService =
-    ExecutionContext.fromExecutorService(virtualThreadExecutor(name))
+    ExecutionContext.fromExecutorService(dropRejectedAfterShutdown(virtualThreadExecutor(name)))
+
+  /** Wrap `es` so a submission rejected *because it has already been shut
+   *  down* is silently dropped instead of thrown. In `Wiring.stop` the ordered
+   *  cascade-drain races against still-completing background `Future` chains:
+   *  a stage finishing on a drained pool synchronously schedules its
+   *  continuation back onto that same (now shut-down) pool. The resulting
+   *  `RejectedExecutionException` has nowhere to go — a terminal callback has no
+   *  downstream promise to absorb it, so it reaches the EC's failure reporter
+   *  (logback in prod) — and floods the logs with one stack trace per dangling
+   *  continuation. For a thread-per-task executor a rejection can only mean
+   *  "already shut down" (there's no bounded queue to overflow), so dropping it
+   *  once `isShutdown` holds is benign; any other rejection is re-thrown. */
+  private[tools] def dropRejectedAfterShutdown(es: ExecutorService): ExecutorService =
+    new DelegatingExecutorService(es) {
+      override def execute(command: Runnable): Unit =
+        try es.execute(command)
+        catch { case _: RejectedExecutionException if es.isShutdown => () }
+    }
 
   /** Virtual-thread EC capped at `maxConcurrent` tasks running at once. Use
    *  when the upstream rate-limits or load-tests poorly past a small number
@@ -42,21 +60,14 @@ object DaemonExecutors {
 
   /** Wrap `underlying` so every submitted task acquires a permit from
    *  `permits` before running and releases it after — capping how many run at
-   *  once to the semaphore's size. Lifecycle (`shutdown`/`awaitTermination`/…)
-   *  delegates straight to `underlying`. Shared by [[boundedEC]] and
+   *  once to the semaphore's size. Shared by [[boundedEC]] and
    *  [[SharedExecutionBudget]] so the gating logic lives in one place. */
   private[tools] def semaphoreGated(underlying: ExecutorService, permits: Semaphore): ExecutorService =
-    new AbstractExecutorService {
+    new DelegatingExecutorService(underlying) {
       override def execute(command: Runnable): Unit = underlying.execute { () =>
         permits.acquire()
         try command.run() finally permits.release()
       }
-      override def shutdown(): Unit                        = underlying.shutdown()
-      override def shutdownNow(): java.util.List[Runnable] = underlying.shutdownNow()
-      override def isShutdown: Boolean                     = underlying.isShutdown
-      override def isTerminated: Boolean                   = underlying.isTerminated
-      override def awaitTermination(timeout: Long, unit: TimeUnit): Boolean =
-        underlying.awaitTermination(timeout, unit)
     }
 
   private[tools] def virtualThreadExecutor(name: String): ExecutorService =
@@ -75,6 +86,21 @@ object DaemonExecutors {
       t.setDaemon(true)
       t
     }
+}
+
+/** An `AbstractExecutorService` whose lifecycle (`shutdown` / `shutdownNow` /
+ *  `isShutdown` / `isTerminated` / `awaitTermination`) delegates straight to
+ *  `delegate`; subclasses override only `execute`. Shared by the
+ *  semaphore-gating and shutdown-tolerant wrappers so the lifecycle plumbing
+ *  isn't spelled out twice. */
+private[tools] abstract class DelegatingExecutorService(delegate: ExecutorService)
+    extends AbstractExecutorService {
+  override def shutdown(): Unit                        = delegate.shutdown()
+  override def shutdownNow(): java.util.List[Runnable] = delegate.shutdownNow()
+  override def isShutdown: Boolean                     = delegate.isShutdown
+  override def isTerminated: Boolean                   = delegate.isTerminated
+  override def awaitTermination(timeout: Long, unit: TimeUnit): Boolean =
+    delegate.awaitTermination(timeout, unit)
 }
 
 /**
@@ -113,6 +139,6 @@ final class SharedExecutionBudget(maxConcurrent: Int) {
   def ec(name: String): ExecutionContextExecutorService = {
     val underlying = DaemonExecutors.virtualThreadExecutor(name)
     val gated      = permits.fold(underlying)(p => DaemonExecutors.semaphoreGated(underlying, p))
-    ExecutionContext.fromExecutorService(gated)
+    ExecutionContext.fromExecutorService(DaemonExecutors.dropRejectedAfterShutdown(gated))
   }
 }
