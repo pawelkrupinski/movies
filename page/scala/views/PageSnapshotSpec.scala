@@ -25,90 +25,69 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
 
   private val snapshotDir = Paths.get("test/resources/fixtures/17-05-2026")
 
-  "the / page (repertoire view)" should "render the same HTML as the checked-in snapshot" in
-    new FixtureTestWiring("17-05-2026") {
-      bootStartup()
-      val html: String = views.html.repertoire(
-        movieControllerService.toSchedules(city, now),
-        city.cinemaDisplayNames,
-        city.cinemaPillMap,
-        devMode = false,
-        currentUser = anonymousUser,
-        oauthProviders = noOauthProviders
-      ).body
-      assertSnapshot(snapshotDir.resolve("expected-index.html"), html)
-    }
+  // Boot the whole pipeline ONCE and render every page from the shared cache.
+  // The scrape tick is the spec's dominant cost (~3s warm, ~15s cold-JIT) and
+  // is identical for every page, so re-booting per test was pure waste — the
+  // cache state after bootStartup is the same for all renders. (Sharing is safe
+  // because the boot is deterministic; the tick stays sequential.)
+  private lazy val wiring: FixtureTestWiring = {
+    val w = new FixtureTestWiring("17-05-2026")
+    w.bootStartup()
+    w
+  }
+  private def svc = wiring.movieControllerService
 
-  "the /kina page" should "render the same HTML as the checked-in snapshot" in
-    new FixtureTestWiring("17-05-2026") {
-      bootStartup()
-      val html: String = views.html.kina(
-        movieControllerService.toCinemaSchedules(city, now),
-        city.cinemaDisplayNames,
-        city.cinemaPillMap,
-        devMode = false,
-        currentUser = anonymousUser,
-        oauthProviders = noOauthProviders
-      ).body
-      assertSnapshot(snapshotDir.resolve("expected-kina.html"), html)
-    }
+  "the / page (repertoire view)" should "render the same HTML as the checked-in snapshot" in {
+    val html = views.html.repertoire(
+      svc.toSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
+      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+    ).body
+    assertSnapshot(snapshotDir.resolve("expected-index.html"), html)
+  }
 
-  "the /kina/:cinema page" should "seed _kinaPinned from the URL-path cinema label" in
-    new FixtureTestWiring("17-05-2026") {
-      bootStartup()
-      val html: String = views.html.kina(
-        movieControllerService.toCinemaSchedules(city, now),
-        city.cinemaDisplayNames,
-        city.cinemaPillMap,
-        devMode = false,
-        currentUser = anonymousUser,
-        oauthProviders = noOauthProviders,
-        pinnedCinema = Some("Kino Apollo")
-      ).body
-      html should include ("""window._kinaPinned = "Kino Apollo";""")
-    }
+  "the /kina page" should "render the same HTML as the checked-in snapshot" in {
+    val html = views.html.kina(
+      svc.toCinemaSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
+      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+    ).body
+    assertSnapshot(snapshotDir.resolve("expected-kina.html"), html)
+  }
+
+  "the /kina/:cinema page" should "seed _kinaPinned from the URL-path cinema label" in {
+    val html = views.html.kina(
+      svc.toCinemaSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
+      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders,
+      pinnedCinema = Some("Kino Apollo")
+    ).body
+    html should include ("""window._kinaPinned = "Kino Apollo";""")
+  }
 
   // Multi-city coverage: the same corpus now carries Wrocław + Warszawa
-  // cinemas, so each city's index renders its own scoped repertoire. Pins that
-  // city scoping produces a stable, city-specific page (not Poznań's).
-  "the Wrocław index" should "render the same HTML as the checked-in snapshot" in
-    new FixtureTestWiring("17-05-2026") {
-      bootStartup()
-      val html: String = views.html.repertoire(
-        movieControllerService.toSchedules(models.Wroclaw, now),
-        models.Wroclaw.cinemaDisplayNames,
-        models.Wroclaw.cinemaPillMap,
-        devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
-      )(models.Wroclaw).body
-      assertSnapshot(snapshotDir.resolve("expected-wroclaw-index.html"), html)
-    }
+  // cinemas, so each city's index renders its own scoped repertoire.
+  "the Wrocław index" should "render the same HTML as the checked-in snapshot" in {
+    val html = views.html.repertoire(
+      svc.toSchedules(models.Wroclaw, now), models.Wroclaw.cinemaDisplayNames, models.Wroclaw.cinemaPillMap,
+      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+    )(models.Wroclaw).body
+    assertSnapshot(snapshotDir.resolve("expected-wroclaw-index.html"), html)
+  }
 
-  "the Warszawa index" should "render the same HTML as the checked-in snapshot" in
-    new FixtureTestWiring("17-05-2026") {
-      bootStartup()
-      val html: String = views.html.repertoire(
-        movieControllerService.toSchedules(models.Warszawa, now),
-        models.Warszawa.cinemaDisplayNames,
-        models.Warszawa.cinemaPillMap,
-        devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
-      )(models.Warszawa).body
-      assertSnapshot(snapshotDir.resolve("expected-warszawa-index.html"), html)
-    }
+  "the Warszawa index" should "render the same HTML as the checked-in snapshot" in {
+    val html = views.html.repertoire(
+      svc.toSchedules(models.Warszawa, now), models.Warszawa.cinemaDisplayNames, models.Warszawa.cinemaPillMap,
+      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+    )(models.Warszawa).body
+    assertSnapshot(snapshotDir.resolve("expected-warszawa-index.html"), html)
+  }
 
-  "the /plan page" should "render the same HTML as the checked-in snapshot" in
-    new FixtureTestWiring("17-05-2026") {
-      bootStartup()
-      val data = controllers.PlanController.viewData(city, movieControllerService.toSchedules(city, now))
-      val html: String = views.html.plan(
-        data,
-        city.cinemaDisplayNames,
-        city.cinemaPillMap,
-        devMode = false,
-        currentUser = anonymousUser,
-        oauthProviders = noOauthProviders
-      ).body
-      assertSnapshot(snapshotDir.resolve("expected-plan.html"), html)
-    }
+  "the /plan page" should "render the same HTML as the checked-in snapshot" in {
+    val data = controllers.PlanController.viewData(city, svc.toSchedules(city, now))
+    val html = views.html.plan(
+      data, city.cinemaDisplayNames, city.cinemaPillMap,
+      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+    ).body
+    assertSnapshot(snapshotDir.resolve("expected-plan.html"), html)
+  }
 
   private def assertSnapshot(expectedPath: Path, actual: String): Unit = {
     if (!Files.exists(expectedPath)) {
