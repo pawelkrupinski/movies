@@ -34,6 +34,14 @@ final class UserPreferences: ObservableObject {
         swipeHintShownDate  = store.string(forKey: kHintDate)              ?? ""
         selectedCity        = store.string(forKey: kCity)
         citySwitchPromptKey = store.string(forKey: kSwitchPrompt)
+
+        #if DEBUG
+        // UI tests force the first-launch city gate by ignoring any persisted
+        // city, so the gate's buttons can be measured on a deterministic screen.
+        if ProcessInfo.processInfo.environment["KINOWO_CLEAR_CITY"] != nil {
+            selectedCity = nil
+        }
+        #endif
     }
 
     func hide(_ title: String) {
