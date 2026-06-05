@@ -35,19 +35,22 @@ import scala.util.{Failure, Success, Try}
 class MovieService(
   cache: MovieCache,
   bus:   EventBus,
-  tmdb:  TmdbClient
+  tmdb:  TmdbClient,
+  // Drains both enrichment stages. Defaults to a dedicated unbounded pool so
+  // tests/scripts construct it as before; `Wiring` injects a shared-budget EC
+  // so enrichment shares one concurrency cap with the scrape + rating
+  // refreshers and can't peg the box on the hourly walk. See
+  // `SharedExecutionBudget`.
+  ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("enrichment-worker")
 ) extends Stoppable with Logging {
 
   // Active or queued TMDB-stage lookups, so we don't dispatch the same key
   // twice. (The IMDb stage doesn't dedup — it's idempotent and cheap.)
   private val pending = ConcurrentHashMap.newKeySet[CacheKey]()
 
-  // Virtual-thread EC drains both stages — TMDB-search/external_ids/Filmweb/
-  // MC/RT for the TMDB stage, plus IMDb GraphQL for the IMDb stage. Each
-  // lookup is mostly network wait; virtual threads make per-task concurrency
-  // free, and TMDB's published rate limit (~50 req/s) is enforced at the
-  // HTTP layer (back off on 429/503) rather than at the thread count.
-  private val ec: ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("enrichment-worker")
+  // EC notes: each lookup is mostly network wait; virtual threads make per-task
+  // concurrency free, and TMDB's published rate limit (~50 req/s) is enforced
+  // at the HTTP layer (back off on 429/503) rather than at the thread count.
 
   // Separate scheduler for delayed retries — it just hands a Runnable back to
   // the worker pool when the timer fires, so we don't tie up a worker thread

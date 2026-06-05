@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 
 class ParallelDetailFetchSpec extends AnyFlatSpec with Matchers {
@@ -38,5 +39,21 @@ class ParallelDetailFetchSpec extends AnyFlatSpec with Matchers {
         url
       }
     }
+  }
+
+  it should "cap concurrent fetches at maxConcurrent" in {
+    // Without the cap a cinema with many films spins up one parsing thread per
+    // film at once, spiking the (single) vCPU on a cold-start scrape.
+    val active    = new AtomicInteger(0)
+    val maxActive = new AtomicInteger(0)
+    val urls      = (1 to 8).map(_.toString)
+    val result = ParallelDetailFetch("test-cap", urls, 10.seconds, maxConcurrent = 2) { url =>
+      val cur = active.incrementAndGet()
+      maxActive.updateAndGet(m => math.max(m, cur))
+      try Thread.sleep(40) finally active.decrementAndGet()
+      url
+    }
+    result.size  shouldBe 8
+    maxActive.get should be <= 2
   }
 }

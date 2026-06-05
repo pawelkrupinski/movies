@@ -35,11 +35,17 @@ abstract class PeriodicCacheRefresher(
   name:                String,
   startupDelaySeconds: Long,
   refreshHours:        Long,
-  protected val cache: MovieCache
+  protected val cache: MovieCache,
+  // Drains the event-driven per-row refreshes. Subclasses default it to their
+  // own dedicated unbounded pool (so their tests construct as before); `Wiring`
+  // injects a shared-budget EC so all four rating refreshers + scrape +
+  // enrichment share one concurrency cap and the hourly `refreshAll` walk can't
+  // peg the box. See `SharedExecutionBudget`. Required here (no default) because
+  // a same-list default can't reference `name` in Scala 3.
+  ec:                  ExecutionContextExecutorService
 ) extends Stoppable with Logging {
 
-  private val ec: ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC(s"$name-stage")
-  private val refreshScheduler                    = DaemonExecutors.scheduler(s"$name-refresh")
+  private val refreshScheduler = DaemonExecutors.scheduler(s"$name-refresh")
 
   // ── Per-row refresh ────────────────────────────────────────────────────────
 

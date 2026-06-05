@@ -3,7 +3,9 @@ package services.enrichment
 import clients.TmdbClient
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 import services.movies.{CacheKey, MovieCache, MovieService}
+import tools.DaemonExecutors
 
+import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -22,7 +24,8 @@ import scala.util.{Failure, Success, Try}
 class MetascoreRatings(
   cache:      MovieCache,
   tmdb:       TmdbClient,
-  metacritic: MetacriticClient
+  metacritic: MetacriticClient,
+  ec:         ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("Metascore-stage")
 ) extends PeriodicCacheRefresher(
   name                = "Metascore",
   // Stagger the startup tick so we don't race the IMDb / RT refreshes —
@@ -30,7 +33,8 @@ class MetascoreRatings(
   // fan-in.
   startupDelaySeconds = 30L,
   refreshHours        = 1L,
-  cache               = cache
+  cache               = cache,
+  ec                  = ec
 ) {
 
   // ── Event listeners ────────────────────────────────────────────────────────

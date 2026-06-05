@@ -4,7 +4,9 @@ import clients.TmdbClient
 import models.{Filmweb, Source, SourceData}
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 import services.movies.{CacheKey, MovieCache, MovieService}
+import tools.DaemonExecutors
 
+import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -30,14 +32,19 @@ import scala.util.{Failure, Success, Try}
  * "5 workers comfortable, more risks soft-blocks"); we stay at 3 here since
  * the per-row work is heavier (potentially search + info + preview + rating).
  */
-class FilmwebRatings(cache: MovieCache, tmdb: TmdbClient, filmweb: FilmwebClient)
-    extends PeriodicCacheRefresher(
+class FilmwebRatings(
+  cache:   MovieCache,
+  tmdb:    TmdbClient,
+  filmweb: FilmwebClient,
+  ec:      ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("Filmweb-stage")
+) extends PeriodicCacheRefresher(
       name                = "Filmweb",
       // Stagger startup against the other rating services (IMDb @10s, RT
       // @15s, Metascore @30s) so the first-tick bursts don't pile up.
       startupDelaySeconds = 45L,
       refreshHours        = 1L,
-      cache               = cache
+      cache               = cache,
+      ec                  = ec
     ) {
 
   // ── Event listeners ────────────────────────────────────────────────────────

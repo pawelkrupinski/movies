@@ -12,7 +12,7 @@ import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
 import services.movies._
 import services.users.{AccountDeletion, CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
-import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
+import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, SharedExecutionBudget}
 
 trait Wiring {
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database)
@@ -100,6 +100,20 @@ trait Wiring {
     new CytadelaClient(httoFetch),
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
+  // ── Background concurrency budget ───────────────────────────────────────────
+  // Cinema scrape (ShowtimeCache), movie enrichment (MovieService), the IMDb-id
+  // resolver, and the four rating refreshers all draw their run permits from
+  // ONE shared budget. Without it, a cold start fans out across ~48 cinemas at
+  // once (each then triggering enrichment + rating stages), and the hourly
+  // rating walk fans out across hundreds of rows — together pegging the single
+  // shared vCPU for minutes, during which every outbound HTTP call times out
+  // and the box stops answering. Each service keeps its OWN pool (so the
+  // ordered cascade-drain in `stop()` still works); the budget only caps how
+  // many tasks run at once across all of them. Tune via KINOWO_BG_CONCURRENCY.
+  lazy val backgroundBudget = new SharedExecutionBudget(
+    Env.get("KINOWO_BG_CONCURRENCY").flatMap(_.toIntOption).getOrElse(8)
+  )
+
   // ── Events ────────────────────────────────────────────────────────────────
   lazy val eventBus: EventBus = new InProcessEventBus()
 
@@ -142,15 +156,15 @@ trait Wiring {
   // per-row event listener for their respective services. Pulled out of
   // MovieService so each external service has its own tempo and the TMDB
   // stage doesn't block on IMDb's GraphQL CDN or RT's HTML render.
-  lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient)
+  lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, backgroundBudget.ec("IMDb-stage"))
   // Split out of ImdbRatings: handles `ImdbIdMissing` events by hitting IMDb's
   // suggestion endpoint, writes the resolved id back, then publishes
   // `ImdbIdResolved` so the rating fetchers chain on.
-  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus)
-  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient)
-  lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient)
-  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient)
-  lazy val movieService = new MovieService(movieCache, eventBus, tmdbClient)
+  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus, backgroundBudget.ec("imdb-id-resolver"))
+  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, backgroundBudget.ec("RT-stage"))
+  lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, backgroundBudget.ec("Metascore-stage"))
+  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, backgroundBudget.ec("Filmweb-stage"))
+  lazy val movieService = new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"))
   lazy val movieControllerService = new MovieControllerService(movieService)
   // Daily tick that drops rows whose `cinemaData` is empty — i.e. films
   // that no cinema is currently showing. Without it the cache + Mongo grow
@@ -169,7 +183,7 @@ trait Wiring {
   lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────
-  lazy val showtimeCache = new ShowtimeCache(cinemaScrapers, eventBus, movieCache)
+  lazy val showtimeCache = new ShowtimeCache(cinemaScrapers, eventBus, movieCache, backgroundBudget.ec("showtime-fetch"))
 
   def controllerComponents: ControllerComponents
   def environmentMode: Mode

@@ -4,7 +4,9 @@ import models.{Imdb, Source, SourceData}
 import services.cinemas.CountryNames
 import services.movies.{CacheKey, MovieCache}
 import services.events.{DomainEvent, ImdbIdResolved, TmdbResolved}
+import tools.DaemonExecutors
 
+import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Try}
 
 /**
@@ -19,14 +21,18 @@ import scala.util.{Failure, Try}
  *
  * Shared lifecycle + worker plumbing lives in [[PeriodicCacheRefresher]].
  */
-class ImdbRatings(cache: MovieCache, imdb: ImdbClient)
-    extends PeriodicCacheRefresher(
+class ImdbRatings(
+  cache: MovieCache,
+  imdb:  ImdbClient,
+  ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("IMDb-stage")
+) extends PeriodicCacheRefresher(
       name                = "IMDb",
       // First run fires shortly after startup so Mongo hydration has time
       // to populate the cache before the walk reads from it.
       startupDelaySeconds = 10L,
       refreshHours        = 1L,
-      cache               = cache
+      cache               = cache,
+      ec                  = ec
     ) {
 
   // ── Event listeners ────────────────────────────────────────────────────────

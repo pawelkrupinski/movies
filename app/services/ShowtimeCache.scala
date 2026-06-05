@@ -21,11 +21,14 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 class ShowtimeCache(
   scrapers:   Seq[CinemaScraper],
   bus:        EventBus,
-  movieCache: MovieCache
+  movieCache: MovieCache,
+  // Defaults to a dedicated unbounded pool so tests/scripts construct it as
+  // before; `Wiring` injects a shared-budget EC so the cold-start scrape of
+  // ~48 cinemas can't peg the box. See `SharedExecutionBudget`.
+  ec:         ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("showtime-fetch")
 ) extends Stoppable with Logging {
 
-  private val ec: ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("showtime-fetch")
-  private val scheduler                            = DaemonExecutors.scheduler("showtime-cache-refresh")
+  private val scheduler = DaemonExecutors.scheduler("showtime-cache-refresh")
 
   /** Schedule the periodic refresh. Fires immediately on the first tick so
    *  the cache starts warming as soon as the app is up; then every 5

@@ -22,13 +22,18 @@ import scala.util.Try
  * Async — runs on its own worker pool so the publisher (the TMDB stage
  * worker) isn't blocked on IMDb. Lifecycle owned by `AppLoader`.
  */
-class ImdbIdResolver(cache: MovieCache, imdb: ImdbClient, bus: EventBus) extends Stoppable with Logging {
-
+class ImdbIdResolver(
+  cache: MovieCache,
+  imdb:  ImdbClient,
+  bus:   EventBus,
   // IMDb's suggestion endpoint is fast and the event-driven path is sparse
-  // (TmdbResolved fans out hundreds of events at startup but very few carry
-  // an `ImdbIdMissing`). Virtual threads keep per-task overhead trivial; the
-  // rate cap, if any, sits at the HTTP layer.
-  private val ec: ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("imdb-id-resolver")
+  // (TmdbResolved fans out hundreds of events at startup but very few carry an
+  // `ImdbIdMissing`). Virtual threads keep per-task overhead trivial; the rate
+  // cap, if any, sits at the HTTP layer. Defaults to a dedicated unbounded
+  // pool (tests/scripts unchanged); `Wiring` injects a shared-budget EC. See
+  // `SharedExecutionBudget`.
+  ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("imdb-id-resolver")
+) extends Stoppable with Logging {
 
   /** Bus listener: when the TMDB stage resolved a film but TMDB has no IMDb
    *  cross-reference for it, recover the id via IMDb's suggestion endpoint

@@ -23,14 +23,21 @@ import scala.concurrent.{Await, Future}
  *    - DEBUG log on success with elapsed time */
 object ParallelDetailFetch extends Logging {
 
+  /** `maxConcurrent` caps how many detail pages fetch at once within this one
+   *  call (default 6). Each call still gets its OWN pool — it must not share
+   *  the scrape/enrichment budget, since the caller `Await`s on these futures
+   *  while itself holding a scrape permit (sharing would self-deadlock). The
+   *  cap stops a single cinema with 30+ films from spinning up 30+ parsing
+   *  threads at once and spiking the (single) vCPU on a cold-start scrape. */
   def apply[T](
-    label:   String,
-    urls:    Seq[String],
-    timeout: FiniteDuration
+    label:         String,
+    urls:          Seq[String],
+    timeout:       FiniteDuration,
+    maxConcurrent: Int = 6
   )(fetch: String => T): Map[String, T] = {
     if (urls.isEmpty) return Map.empty
-    logger.debug(s"$label: fetching ${urls.size} detail pages (timeout ${timeout.toSeconds}s)")
-    val ec = DaemonExecutors.virtualThreadEC(label)
+    logger.debug(s"$label: fetching ${urls.size} detail pages (timeout ${timeout.toSeconds}s, ≤$maxConcurrent at once)")
+    val ec = DaemonExecutors.boundedEC(label, maxConcurrent)
     val t0 = System.currentTimeMillis()
     val completed = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
     try {

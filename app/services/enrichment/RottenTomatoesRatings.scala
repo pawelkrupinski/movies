@@ -3,7 +3,9 @@ package services.enrichment
 import clients.TmdbClient
 import services.events.{DomainEvent, ImdbIdMissing, TmdbResolved}
 import services.movies.{CacheKey, MovieCache, MovieService}
+import tools.DaemonExecutors
 
+import scala.concurrent.ExecutionContextExecutorService
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -21,13 +23,15 @@ import scala.util.{Failure, Success, Try}
 class RottenTomatoesRatings(
   cache: MovieCache,
   tmdb:  TmdbClient,
-  rt:    RottenTomatoesClient
+  rt:    RottenTomatoesClient,
+  ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("RT-stage")
 ) extends PeriodicCacheRefresher(
   name                = "RT",
   // Stagger startup against IMDb (10s) so first-tick bursts don't pile up.
   startupDelaySeconds = 15L,
   refreshHours        = 1L,
-  cache               = cache
+  cache               = cache,
+  ec                  = ec
 ) {
 
   // ── Event listeners ────────────────────────────────────────────────────────
