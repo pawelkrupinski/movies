@@ -111,7 +111,10 @@ trait Wiring {
   // load: `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` (restart), then
   // add `warszawa`. Once the box sustains all three, set that as the value (or
   // restore an all-cities default here) and drop this gate.
-  private lazy val scrapeCities: Set[String] =
+  // `protected def` so test wirings can override to scrape every city — the
+  // recorded fixtures + snapshots cover all of them regardless of this
+  // production gate.
+  protected def scrapeCities: Set[String] =
     ScrapeCities.enabled(Env.get("KINOWO_SCRAPE_CITIES"), default = Set("poznan"))
 
   lazy val cinemaScrapers: Seq[CinemaScraper] = (

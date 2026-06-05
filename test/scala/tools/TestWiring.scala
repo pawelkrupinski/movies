@@ -12,6 +12,12 @@ trait TestWiring extends Wiring {
 
   override def environmentMode: Mode = Mode.Test
 
+  // Scrape every city in tests. The recorded fixtures, page snapshots, and the
+  // coverage spec all cover the full catalogue, so the production
+  // KINOWO_SCRAPE_CITIES gate (default Poznań-only) must not narrow what tests
+  // see — otherwise the snapshots/coverage fail for the gated-out cinemas.
+  override def scrapeCities: Set[String] = Set("poznan", "wroclaw", "warszawa")
+
   // Pin a DISABLED Mongo connection. Tests get their movie data from
   // `InMemoryMovieRepo` / fixtures and don't exercise the user repos, so a real
   // Mongo is never needed — but the production `fromEnv` would still CONNECT to
