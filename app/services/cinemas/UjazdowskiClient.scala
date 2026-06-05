@@ -54,9 +54,12 @@ class UjazdowskiClient(http: HttpFetch) extends CinemaScraper {
       if (showtimes.isEmpty) None
       else {
         val meta = UjazdowskiClient.parseMeta(primary.meta.getOrElse(""))
-        val synopsis = details.getOrElse(slug, None).flatMap(d => Option(d.selectFirst("div.body.max-w"))).map(_.text.trim).filter(_.length > 20)
+        val detail   = details.getOrElse(slug, None)
+        val synopsis = detail.flatMap(d => Option(d.selectFirst("div.body.max-w"))).map(_.text.trim).filter(_.length > 20)
+        val origTitle = detail.flatMap(UjazdowskiClient.originalTitleOf)
         Some(CinemaMovie(
-          movie     = Movie(title = primary.title, runtimeMinutes = meta.runtime, releaseYear = meta.year, countries = meta.countries),
+          movie     = Movie(title = primary.title, runtimeMinutes = meta.runtime, releaseYear = meta.year,
+                            countries = meta.countries, originalTitle = origTitle),
           cinema    = cinema,
           posterUrl = group.flatMap(_.poster).headOption,
           filmUrl   = Some(detailUrl),
@@ -88,6 +91,16 @@ object UjazdowskiClient {
 
   // "[Original Title], reż. Director, Country1/ Country2 YEAR, RUNTIME'"
   private val MetaPat = """reż\.\s*(.+?),\s*(.+?)\s+((?:19|20)\d{2}),\s*(\d+)['’]""".r
+  // The film page's header renders that meta with the original title bracketed
+  // (`<i class="finterp">[</i><em>…</em>…`), so jsoup's text reads "[Orig], …".
+  // Polish films omit the bracket, so this is `None` for them.
+  private val OrigTitlePat = """^\s*\[(.+?)\]""".r
+
+  /** The bracketed original title from the film-page header meta, e.g.
+   *  "[Da hong deng long gao gao gua], reż. …" → "Da hong deng long gao gao gua". */
+  def originalTitleOf(doc: org.jsoup.nodes.Document): Option[String] =
+    Option(doc.selectFirst("div.event-content-header div.fs-20.max-w")).map(_.text.trim)
+      .flatMap(s => OrigTitlePat.findFirstMatchIn(s).map(_.group(1).trim)).filter(_.nonEmpty)
 
   final case class Meta(director: Seq[String], countries: Seq[String], year: Option[Int], runtime: Option[Int])
 

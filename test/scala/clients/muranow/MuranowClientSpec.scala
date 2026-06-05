@@ -44,6 +44,14 @@ class MuranowClientSpec extends AnyFlatSpec with Matchers {
     m.synopsis.getOrElse("").length should be > 50
   }
 
+  it should "read cast, original title and the YouTube trailer off the detail page" in {
+    val m = byTitle("Milcząca przyjaciółka")
+    m.cast shouldBe Seq("Tony Leung", "Luna Wedler", "Enzo Brumm", "Sylvester Groth",
+                        "Martin Wuttke", "Johannes Hegemann", "Rainer Bock", "Léa Seydoux")
+    m.movie.originalTitle shouldBe Some("Stille Freundin")
+    m.trailerUrl          shouldBe Some("https://www.youtube.com/watch?v=H1jQ_5vNGYk")
+  }
+
   it should "build /tickets/<id>/buy booking URLs" in {
     results.flatMap(_.showtimes).flatMap(_.bookingUrl).foreach { u =>
       u should startWith ("https://kinomuranow.pl/tickets/")

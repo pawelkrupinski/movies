@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.AmondoClient
 
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime}
 
 class AmondoClientSpec extends AnyFlatSpec with Matchers {
 
@@ -31,6 +31,10 @@ class AmondoClientSpec extends AnyFlatSpec with Matchers {
     m.movie.countries      shouldBe Seq("Wielka Brytania", "USA")
     m.posterUrl.getOrElse("") should startWith ("https://kinoamondo.pl")
     m.synopsis.getOrElse("").length should be > 20
+  }
+
+  it should "parse the Polish cinema-premiere date off the detail page" in {
+    byTitle("Aftersun").movie.premierePl shouldBe Some(LocalDate.of(2023, 5, 5))
   }
 
   it should "carry the room and booking URL on each showtime" in {

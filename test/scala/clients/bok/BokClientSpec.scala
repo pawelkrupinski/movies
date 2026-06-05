@@ -35,6 +35,11 @@ class BokClientSpec extends AnyFlatSpec with Matchers {
       Showtime(LocalDateTime.of(2026, 6, 5, 15, 30), Some("https://iframe17.biletyna.pl/event/view/id/665160"), None, Nil)
   }
 
+  it should "read the cast list off the detail page" in {
+    naBokuByT("Drzewo magii").cast shouldBe
+      Seq("Andrew Garfield", "Claire Foy", "Rebecca Ferguson", "Nicola Coughlan", "Jessica Gunning")
+  }
+
   // ── Kino Głębocka 66 (same client, different slug prefix) ─────────────────
   private val gleb    = new BokClient(new FakeHttpFetch("kino-glebocka-66"), "kino-glebocka-66", KinoGlebocka66, today)
   private val glebRes = gleb.fetch()

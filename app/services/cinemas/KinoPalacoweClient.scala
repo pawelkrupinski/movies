@@ -106,12 +106,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
    *  URL parses as a YouTube video; vimeo URLs (a few pages use them) are
    *  passed through unchanged for the view layer's TrailerEmbed to handle. */
   def parseTrailer(html: String): Option[String] =
-    TrailerPat.findFirstMatchIn(html).map(_.group(1))
-      .flatMap { url =>
-        services.movies.TrailerEmbed.youTubeId(url)
-          .map(id => s"https://www.youtube.com/watch?v=$id")
-          .orElse(services.movies.TrailerEmbed.vimeoId(url).map(_ => url))
-      }
+    TrailerPat.findFirstMatchIn(html).map(_.group(1)).flatMap(ScraperParse.canonicalTrailer)
 
   def fetch(): Seq[CinemaMovie] = {
     val entries = fetchAllEntries()

@@ -73,15 +73,17 @@ class MuranowClient(http: HttpFetch) extends CinemaScraper {
             runtimeMinutes = d.runtimeMinutes,
             releaseYear    = d.year,
             countries      = d.countries,
-            genres         = d.genres
+            genres         = d.genres,
+            originalTitle  = d.originalTitle
           ),
           cinema    = cinema,
           posterUrl = group.flatMap(_.poster).headOption,
           filmUrl   = if (slug.startsWith("/")) Some(BaseUrl + slug) else None,
           synopsis  = d.synopsis,
-          cast      = Seq.empty,
+          cast      = d.cast,
           director  = d.director,
-          showtimes = showtimes
+          showtimes = showtimes,
+          trailerUrl = d.trailer
         ))
       }
     }
@@ -92,11 +94,6 @@ class MuranowClient(http: HttpFetch) extends CinemaScraper {
 
 object MuranowClient {
 
-  // Polish genitive month names as they appear in the calendar day cells.
-  private val Months = Map(
-    "stycznia" -> 1, "lutego" -> 2, "marca" -> 3, "kwietnia" -> 4, "maja" -> 5, "czerwca" -> 6,
-    "lipca" -> 7, "sierpnia" -> 8, "września" -> 9, "października" -> 10, "listopada" -> 11, "grudnia" -> 12
-  )
   private val YearPat = """\b(20\d{2})\b""".r
 
   def yearFromLabel(label: String): Int =
@@ -113,7 +110,7 @@ object MuranowClient {
       dStr  <- Option(day.selectFirst("span.cell-date-header__day-num")).map(_.text.trim)
       mName <- Option(day.selectFirst("span.cell-date-header__day-month")).map(_.text.trim.toLowerCase)
       d     <- Try(dStr.toInt).toOption
-      m     <- Months.get(mName)
+      m     <- ScraperParse.PolishMonths.get(mName)
     } yield java.time.LocalDate.of(headerYear, m, d)
 
   def parseTime(date: java.time.LocalDate, time: String): Option[LocalDateTime] =
@@ -127,9 +124,12 @@ object MuranowClient {
     countries:      Seq[String],
     genres:         Seq[String],
     director:       Seq[String],
-    synopsis:       Option[String]
+    cast:           Seq[String],
+    originalTitle:  Option[String],
+    synopsis:       Option[String],
+    trailer:        Option[String]
   )
-  object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, Seq.empty, None) }
+  object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, Seq.empty, Seq.empty, None, None, None) }
 
   private def field(doc: org.jsoup.nodes.Document, name: String): Option[String] =
     Option(doc.selectFirst(s"div.field--name-$name .field__item")).map(_.text.trim).filter(_.nonEmpty)
@@ -147,7 +147,14 @@ object MuranowClient {
       genres         = field(doc, "field-movie-category").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
                          .map(tools.TextNormalization.titleCaseIfAllLower),
       director       = field(doc, "field-movie-director").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis       = Option(doc.selectFirst("div.field--name-body p")).map(_.text.trim).filter(_.length > 20)
+      cast           = field(doc, "field-movie-cast").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      originalTitle  = field(doc, "field-movie-original-title"),
+      synopsis       = Option(doc.selectFirst("div.field--name-body p")).map(_.text.trim).filter(_.length > 20),
+      // The Drupal remote-video paragraph renders the trailer as
+      // `<div class="youtube-player" data-vid="<id>">`; build the canonical
+      // watch URL from the id.
+      trailer        = Option(doc.selectFirst("div.youtube-player[data-vid]")).map(_.attr("data-vid")).filter(_.nonEmpty)
+                         .flatMap(id => ScraperParse.canonicalTrailer(s"https://www.youtube.com/watch?v=$id"))
     )
   }
 }

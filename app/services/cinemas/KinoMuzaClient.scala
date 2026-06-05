@@ -77,12 +77,9 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
    *  view layer reshapes back to `/embed/` at render time via
    *  `TrailerEmbed.embedUrlFor`. Public so the refresher can drive the
    *  per-row fetch through the same parser. */
-  def parseTrailer(document: Document): Option[String] = {
-    val src = Option(document.selectFirst("iframe.embed-responsive-item")).map(_.attr("src")).filter(_.nonEmpty)
-    src.flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
-      .map(id => s"https://www.youtube.com/watch?v=$id")
-      .orElse(services.movies.TrailerEmbed.vimeoId(u).map(_ => u)))
-  }
+  def parseTrailer(document: Document): Option[String] =
+    Option(document.selectFirst("iframe.embed-responsive-item")).map(_.attr("src")).filter(_.nonEmpty)
+      .flatMap(ScraperParse.canonicalTrailer)
 
   private val RuntimePat = """(\d+)’""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r

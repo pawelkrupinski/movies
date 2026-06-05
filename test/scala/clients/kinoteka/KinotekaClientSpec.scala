@@ -35,6 +35,12 @@ class KinotekaClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Diabeł ubiera się u Prady 2").showtimes.size shouldBe 21
   }
 
+  it should "read the cast list and the YouTube trailer off the detail page" in {
+    val m = byTitle("Zawodowcy")
+    m.cast       shouldBe Seq("Henry Cavill", "Rosamund Pike", "Jake Gyllenhaal")
+    m.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=AYq1ljpbNfA")
+  }
+
   it should "carry the screening booking URL with absolute date" in {
     byTitle("Zawodowcy").showtimes.head shouldBe
       Showtime(

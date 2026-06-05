@@ -46,6 +46,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
     title.filter(_ => showtimes.nonEmpty).map { t =>
       val director = metaRow(doc, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
       val countries = metaRow(doc, "produkcja").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      val cast     = metaRow(doc, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
       val runtime  = metaRow(doc, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt))
       CinemaMovie(
         movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = None, countries = countries),
@@ -54,7 +55,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
                       .orElse(Option(doc.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)),
         filmUrl   = Some(s"$BaseUrl/$prefix/$slug"),
         synopsis  = Option(doc.selectFirst("meta[name=description]")).map(_.attr("content").trim).filter(_.length > 20),
-        cast      = Seq.empty,
+        cast      = cast,
         director  = director,
         showtimes = showtimes
       )

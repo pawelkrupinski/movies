@@ -44,9 +44,13 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
       val year     = YearPat.findFirstMatchIn(infoLine).map(_.group(1).toInt)
       val director = """(?i)reżyseria:\s*([^•|<]+)""".r.findFirstMatchIn(infoLine).map(_.group(1).trim)
                        .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      // The genre badge is the purple-tinted pill on the card; the blue one is
+      // the "Napisy PL" subtitle tag, so scope to the purple class.
+      val genres   = card.select("span[class*=text-purple]").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
+                       .map(tools.TextNormalization.titleCaseIfAllLower)
       val detailUrl = Option(card.attr("onclick")).flatMap(o => """window\.location='([^']+)'""".r.findFirstMatchIn(o).map(_.group(1)))
       CinemaMovie(
-        movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = year),
+        movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = year, genres = genres),
         cinema    = cinema,
         posterUrl = Option(card.selectFirst("img[src]")).map(_.attr("src")).filter(_.nonEmpty),
         filmUrl   = detailUrl,

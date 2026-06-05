@@ -22,19 +22,13 @@ class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
   private val TrailerIframePat =
     """<iframe[^>]+src="(https?://(?:www\.)?(?:youtube\.com|youtu\.be|player\.vimeo\.com|vimeo\.com)/[^"]+)"""".r
 
-  private val PolishMonths = Map(
-    "stycznia" -> 1, "lutego" -> 2, "marca" -> 3, "kwietnia" -> 4,
-    "maja" -> 5, "czerwca" -> 6, "lipca" -> 7, "sierpnia" -> 8,
-    "września" -> 9, "października" -> 10, "listopada" -> 11, "grudnia" -> 12
-  )
-
   private val DatePat = """(\d+)\s+(\w+)""".r
 
   private def normalizeTitle(raw: String): String = KinoBulgarskaClient.normalizeTitle(raw)
 
   private def parsePolishDate(text: String): Option[LocalDate] =
     DatePat.findFirstMatchIn(text).flatMap { m =>
-      PolishMonths.get(m.group(2)).map { month =>
+      ScraperParse.PolishMonths.get(m.group(2)).map { month =>
         val day       = m.group(1).toInt
         val today     = LocalDate.now()
         val candidate = LocalDate.of(today.getYear, month, day)
@@ -92,12 +86,7 @@ class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
    *  vimeo URLs are passed through unchanged for the view layer's
    *  TrailerEmbed to reshape. Public for unit tests. */
   def parseTrailer(html: String): Option[String] =
-    TrailerIframePat.findFirstMatchIn(html).map(_.group(1))
-      .flatMap { url =>
-        services.movies.TrailerEmbed.youTubeId(url)
-          .map(id => s"https://www.youtube.com/watch?v=$id")
-          .orElse(services.movies.TrailerEmbed.vimeoId(url).map(_ => url))
-      }
+    TrailerIframePat.findFirstMatchIn(html).map(_.group(1)).flatMap(ScraperParse.canonicalTrailer)
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val doc            = Jsoup.parse(html)

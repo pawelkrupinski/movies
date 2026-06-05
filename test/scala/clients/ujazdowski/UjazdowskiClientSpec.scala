@@ -32,4 +32,9 @@ class UjazdowskiClientSpec extends AnyFlatSpec with Matchers {
     m.showtimes.head shouldBe
       Showtime(LocalDateTime.of(2026, 5, 25, 20, 30), Some("https://u-jazdowski.pl/kino/repertuar/erupcja"), None, Nil)
   }
+
+  it should "read the bracketed original title off a foreign film, and none off a Polish one" in {
+    byTitle("Zawieście czerwone latarnie").movie.originalTitle shouldBe Some("Da hong deng long gao gao gua")
+    byTitle("Erupcja").movie.originalTitle                    shouldBe None
+  }
 }

@@ -29,4 +29,8 @@ class FalenicaClientSpec extends AnyFlatSpec with Matchers {
     m.showtimes.head shouldBe
       Showtime(LocalDateTime.of(2026, 6, 10, 19, 45), Some("https://ksf.systembiletowy.pl/index.php/repertoire.html?id=33335"), None, Nil)
   }
+
+  it should "read the YouTube trailer off the detail page's WordPress video block" in {
+    byTitle("Łowca jeleni").trailerUrl shouldBe Some("https://www.youtube.com/watch?v=_08Qy34w2T4")
+  }
 }

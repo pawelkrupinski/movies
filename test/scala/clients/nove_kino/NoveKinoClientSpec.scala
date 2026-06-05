@@ -36,6 +36,12 @@ class NoveKinoClientSpec extends AnyFlatSpec with Matchers {
       )
   }
 
+  it should "read the cast list and the YouTube trailer off the film detail page" in {
+    val m = byTitle("Diabeł ubiera się u Prady 2")
+    m.cast       shouldBe Seq("Meryl Streep", "Emily Blunt", "Anne Hathaway", "Stanley Tucci")
+    m.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=CdoTYdt4GQE")
+  }
+
   "NoveKinoClient.parseTitle" should "split format suffixes but leave dash-bearing titles intact" in {
     NoveKinoClient.parseTitle("Zawodowcy - napisy")     shouldBe ("Zawodowcy", List("NAP"))
     NoveKinoClient.parseTitle("Coco - dubbing 3D")      shouldBe ("Coco", List("DUB", "3D"))

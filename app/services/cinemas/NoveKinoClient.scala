@@ -66,9 +66,10 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
           posterUrl = group.flatMap(_.poster).headOption,
           filmUrl   = Some(s"$CinemaUrl/film.php?id=$filmId"),
           synopsis  = d.synopsis,
-          cast      = Seq.empty,
+          cast      = d.cast,
           director  = d.director,
-          showtimes = showtimes
+          showtimes = showtimes,
+          trailerUrl = d.trailer
         ))
       }
     }
@@ -129,8 +130,8 @@ object NoveKinoClient {
     s"(?i)$label:\\s*([^\\n]+?)(?:\\s{2,}|gatunek:|produkcja:|$$)".r.findFirstMatchIn(desc).map(_.group(1).trim).filter(_.nonEmpty)
 
   final case class Detail(year: Option[Int], countries: Seq[String], genres: Seq[String],
-                          director: Seq[String], synopsis: Option[String])
-  object Detail { val empty: Detail = Detail(None, Seq.empty, Seq.empty, Seq.empty, None) }
+                          director: Seq[String], cast: Seq[String], synopsis: Option[String], trailer: Option[String])
+  object Detail { val empty: Detail = Detail(None, Seq.empty, Seq.empty, Seq.empty, Seq.empty, None, None) }
 
   private def dd(doc: org.jsoup.nodes.Document, label: String): Option[String] =
     ScraperParse.ddField(doc, label)
@@ -142,7 +143,11 @@ object NoveKinoClient {
       countries = dd(doc, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       genres    = dd(doc, "gatunek").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)).map(tools.TextNormalization.titleCaseIfAllLower),
       director  = dd(doc, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis  = Option(doc.selectFirst("section.text_panel p")).map(_.text.trim).filter(_.length > 20)
+      cast      = dd(doc, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      synopsis  = Option(doc.selectFirst("section.text_panel p")).map(_.text.trim).filter(_.length > 20),
+      // The film page embeds a single YouTube `/embed/` iframe in its slider.
+      trailer   = doc.select("iframe[src]").asScala.iterator.map(_.attr("src")).filter(_.nonEmpty)
+                    .flatMap(ScraperParse.canonicalTrailer).nextOption()
     )
   }
 }

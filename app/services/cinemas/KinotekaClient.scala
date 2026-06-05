@@ -62,9 +62,10 @@ class KinotekaClient(http: HttpFetch) extends CinemaScraper {
           posterUrl = group.flatMap(_.poster).headOption.orElse(d.poster),
           filmUrl   = if (slug.nonEmpty) Some(s"$BaseUrl/film/$slug/") else None,
           synopsis  = d.synopsis,
-          cast      = Seq.empty,
+          cast      = d.cast,
           director  = d.director,
-          showtimes = showtimes
+          showtimes = showtimes,
+          trailerUrl = d.trailer
         ))
       }
     }
@@ -101,8 +102,9 @@ object KinotekaClient {
   private def pad(s: String): String = if (s.length == 1) s"0$s" else s
 
   final case class Detail(runtime: Option[Int], year: Option[Int], originalTitle: Option[String],
-                          countries: Seq[String], director: Seq[String], synopsis: Option[String], poster: Option[String])
-  object Detail { val empty: Detail = Detail(None, None, None, Seq.empty, Seq.empty, None, None) }
+                          countries: Seq[String], director: Seq[String], cast: Seq[String],
+                          synopsis: Option[String], poster: Option[String], trailer: Option[String])
+  object Detail { val empty: Detail = Detail(None, None, None, Seq.empty, Seq.empty, Seq.empty, None, None, None) }
 
   private def dd(doc: org.jsoup.nodes.Document, label: String): Option[String] =
     ScraperParse.ddField(doc, label, "dl.p-movie-details__general-info dt")
@@ -115,10 +117,15 @@ object KinotekaClient {
       originalTitle = dd(doc, "oryginalny tytuł").filter(_.nonEmpty),
       countries     = dd(doc, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       director      = dd(doc, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      cast          = dd(doc, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       synopsis      = Option(doc.selectFirst("div.mce-content-body")).map(_.text.trim)
                         .orElse(Option(doc.selectFirst("meta[property=og:description]")).map(_.attr("content").trim)).filter(_.length > 20),
       poster        = Option(doc.selectFirst("div.p-movie-details__hero-poster img[src]")).map(_.attr("src")).filter(_.nonEmpty)
-                        .orElse(Option(doc.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty))
+                        .orElse(Option(doc.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)),
+      // The trailer is a YouTube `/embed/` iframe in the content figure; skip
+      // the GTM/analytics iframes by taking the first src that canonicalises.
+      trailer       = doc.select("iframe[src]").asScala.iterator.map(_.attr("src")).filter(_.nonEmpty)
+                        .flatMap(ScraperParse.canonicalTrailer).nextOption()
     )
   }
 }

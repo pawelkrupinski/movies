@@ -59,13 +59,14 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
           runtimeMinutes = d.runtimeMinutes,
           releaseYear    = d.year,
           countries      = d.countries,
-          genres         = Seq.empty
+          genres         = Seq.empty,
+          originalTitle  = d.originalTitle
         ),
         cinema    = cinema,
         posterUrl = primary.poster.orElse(d.poster),
         filmUrl   = Some(primary.detailPath),
         synopsis  = d.synopsis,
-        cast      = Seq.empty,
+        cast      = d.cast,
         director  = d.director,
         showtimes = showtimes
       ))
@@ -94,10 +95,9 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
 
 object IluzjonClient {
 
-  private val Months = Map(
-    "stycznia" -> 1, "lutego" -> 2, "marca" -> 3, "kwietnia" -> 4, "maja" -> 5, "czerwca" -> 6,
-    "lipca" -> 7, "sierpnia" -> 8, "września" -> 9, "października" -> 10, "listopada" -> 11, "grudnia" -> 12,
-    // The h3 uses the bare month name capitalised ("5 Czerwca") rather than genitive-only.
+  // Genitive forms shared via ScraperParse; the h3 also uses the bare
+  // nominative ("5 Czerwiec"), so extend the shared map with those.
+  private val Months = ScraperParse.PolishMonths ++ Map(
     "styczeń" -> 1, "luty" -> 2, "marzec" -> 3, "kwiecień" -> 4, "maj" -> 5, "czerwiec" -> 6,
     "lipiec" -> 7, "sierpień" -> 8, "wrzesień" -> 9, "październik" -> 10, "listopad" -> 11, "grudzień" -> 12
   )
@@ -118,10 +118,12 @@ object IluzjonClient {
     year:           Option[Int],
     countries:      Seq[String],
     director:       Seq[String],
+    cast:           Seq[String],
+    originalTitle:  Option[String],
     synopsis:       Option[String],
     poster:         Option[String]
   )
-  object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, None, None) }
+  object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, Seq.empty, None, None, None) }
 
   private def dd(doc: org.jsoup.nodes.Document, label: String): Option[String] =
     ScraperParse.ddField(doc, label)
@@ -133,6 +135,8 @@ object IluzjonClient {
       year           = dd(doc, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
       countries      = dd(doc, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       director       = dd(doc, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      cast           = dd(doc, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      originalTitle  = dd(doc, "tytuł oryg"),
       synopsis       = Option(doc.selectFirst("h4:contains(Opis filmu) + div.content")).map(_.text.trim)
                          .orElse(Option(doc.selectFirst("div.content p")).map(_.text.trim)).filter(_.length > 20),
       poster         = Option(doc.selectFirst("div.plakat img[src]")).map(_.attr("src")).filter(_.nonEmpty)

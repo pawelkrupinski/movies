@@ -48,7 +48,11 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper {
         synopsis  = detail.flatMap(d => Option(d.selectFirst("div.section.tresc"))).map(_.text.trim).filter(_.length > 20),
         cast      = Seq.empty,
         director  = f.director,
-        showtimes = showtimes
+        showtimes = showtimes,
+        // The detail page's WordPress `[video]` block holds the YouTube
+        // trailer as `<source type="video/youtube" src="…watch?v=…">`.
+        trailerUrl = detail.toSeq.flatMap(d => d.select("video source[src], iframe[src]").asScala)
+                       .map(_.attr("src")).filter(_.nonEmpty).flatMap(ScraperParse.canonicalTrailer).headOption
       ))
     }
   }

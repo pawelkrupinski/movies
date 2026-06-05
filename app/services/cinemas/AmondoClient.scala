@@ -52,6 +52,7 @@ class AmondoClient(http: HttpFetch) extends CinemaScraper {
             title          = primary.title,
             runtimeMinutes = d.runtimeMinutes,
             releaseYear    = d.year,
+            premierePl     = d.premierePl,
             countries      = d.countries,
             genres         = primary.genres
           ),
@@ -103,8 +104,8 @@ object AmondoClient {
   private def pad(s: String): String = if (s.length == 1) s"0$s" else s
 
   final case class Detail(runtimeMinutes: Option[Int], year: Option[Int], countries: Seq[String],
-                          director: Seq[String], synopsis: Option[String])
-  object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, None) }
+                          director: Seq[String], synopsis: Option[String], premierePl: Option[java.time.LocalDate])
+  object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, None, None) }
 
   private def infoLi(doc: org.jsoup.nodes.Document, label: String): Option[String] =
     doc.select("ul.movie-info li").asScala.find(_.text.toLowerCase.contains(label))
@@ -121,7 +122,10 @@ object AmondoClient {
       year           = year,
       countries      = countries,
       director       = infoLi(doc, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis       = Option(doc.selectFirst("div.filmPosterSection__plot")).map(_.text.trim).filter(_.length > 20)
+      synopsis       = Option(doc.selectFirst("div.filmPosterSection__plot")).map(_.text.trim).filter(_.length > 20),
+      // "Premiera kinowa 5 maja 2023 r." — the Polish cinema-release date (not
+      // the world premiere). Carries a full year, so parse it straight.
+      premierePl     = infoLi(doc, "premiera kinowa").flatMap(ScraperParse.parsePolishDate)
     )
   }
 }

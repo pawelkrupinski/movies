@@ -55,6 +55,7 @@ class DcfClientSpec extends AnyFlatSpec with Matchers {
     m.posterUrl            shouldBe Some("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/obsesja-plakat-net.jpg")
     m.filmUrl              shouldBe Some("https://dcf.bilety24.pl/wydarzenie/?id=157574")
     m.synopsis.getOrElse("").length should be > 50
+    m.trailerUrl           shouldBe Some("https://www.youtube.com/watch?v=C-h48bml6k0")
   }
 
   it should "return the first Obsesja showtime fully specified" in {

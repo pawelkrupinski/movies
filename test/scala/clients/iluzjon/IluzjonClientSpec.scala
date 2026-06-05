@@ -40,6 +40,12 @@ class IluzjonClientSpec extends AnyFlatSpec with Matchers {
     m.synopsis.getOrElse("").length should be > 20
   }
 
+  it should "read cast and original title from the detail page" in {
+    val m = byTitle("Zawieście czerwone latarnie")
+    m.cast                shouldBe Seq("Gong Li", "Saifei He", "Jingwu Ma", "Cuifen Cao")
+    m.movie.originalTitle shouldBe Some("Da hong deng long gao gao gua")
+  }
+
   it should "carry the auditorium and a Filmoteka booking URL on each showtime" in {
     byTitle("Zawieście czerwone latarnie").showtimes.head shouldBe
       Showtime(

@@ -36,4 +36,9 @@ class SwitClientSpec extends AnyFlatSpec with Matchers {
         None, Nil
       )
   }
+
+  it should "read the genre badge off the card (and leave it empty when absent)" in {
+    byTitle("Diabeł ubiera się u Prady 2").movie.genres shouldBe Seq("Komediodramat")
+    byTitle("Zawodowcy").movie.genres                   shouldBe Seq.empty
+  }
 }

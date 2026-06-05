@@ -78,7 +78,8 @@ class DcfClient(http: HttpFetch) extends CinemaScraper {
           synopsis  = d.synopsis,
           cast      = Seq.empty,
           director  = d.director,
-          showtimes = slots.map(s => Showtime(s.dateTime, s.bookingUrl, s.room, Nil))
+          showtimes = slots.map(s => Showtime(s.dateTime, s.bookingUrl, s.room, Nil)),
+          trailerUrl = d.trailer
         ))
       }
     }
@@ -121,9 +122,10 @@ object DcfClient {
     countries:      Seq[String],
     genres:         Seq[String],
     director:       Seq[String],
-    synopsis:       Option[String]
+    synopsis:       Option[String],
+    trailer:        Option[String]
   )
-  object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, Seq.empty, None) }
+  object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, Seq.empty, None, None) }
 
   private val RuntimePat = """(\d+)\s*min""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
@@ -140,8 +142,13 @@ object DcfClient {
     val genres  = segs.filterNot(s => RuntimePat.findFirstMatchIn(s).isDefined)
                       .map(tools.TextNormalization.titleCaseIfAllLower)
 
+    // The trailer is the `youtube`-classed buy-style anchor; its href is already
+    // a `watch?v=` URL. Other YouTube links on the page are footer share buttons.
+    val trailer = Option(doc.selectFirst("a.youtube[href*=youtube]")).map(_.attr("href"))
+                    .filter(_.nonEmpty).flatMap(ScraperParse.canonicalTrailer)
+
     Option(doc.selectFirst("div.title-description-content")) match {
-      case None => Detail(runtime, None, Seq.empty, genres, Seq.empty, None)
+      case None => Detail(runtime, None, Seq.empty, genres, Seq.empty, None, trailer)
       case Some(desc) =>
         val lines    = desc.html.split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).text.trim).filter(_.nonEmpty)
         val infoLine = lines.headOption.getOrElse("")
@@ -152,7 +159,7 @@ object DcfClient {
         val country  = parts.find(p => !p.toLowerCase.startsWith("reż") && YearPat.findFirstMatchIn(p).isEmpty)
                           .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
         val synopsis = Option(lines.drop(1).mkString(" ").trim).filter(_.length > 20)
-        Detail(runtime, year, country, genres, director, synopsis)
+        Detail(runtime, year, country, genres, director, synopsis, trailer)
     }
   }
 }
