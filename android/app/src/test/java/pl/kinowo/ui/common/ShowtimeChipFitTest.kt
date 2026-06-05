@@ -1,10 +1,14 @@
 package pl.kinowo.ui.common
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
@@ -29,11 +33,15 @@ import pl.kinowo.model.Showtime
  * row across every common phone width.
  *
  * Two chips per row is a HARD, inviolable constraint — fonts are sized up to the
- * largest that keeps it (11sp time / 7sp format), never past it. If this test
- * fails, a font/padding/gap change broke two-per-row: shrink it back or reclaim
- * width (trim the chip inset or inter-chip gap), don't relax the assertion.
- * Runs on the JVM via `./gradlew testDebugUnitTest`, so no emulator is needed
- * and it guards CI.
+ * largest that keeps it, never past it. If this test fails, a font/padding/gap
+ * change broke two-per-row: shrink it back or reclaim width (trim the chip inset
+ * or inter-chip gap), don't relax the assertion.
+ *
+ * Each width is rendered under its OWN `LocalConfiguration.screenWidthDp` (via
+ * [AtWidth]) so [ShowtimeChipMetrics] applies that width's scale — this verifies
+ * that the width-scaled chips STILL fit two-per-row at every width, including the
+ * wide tablet-portrait widths past the 1.4 clamp. Runs on the JVM via
+ * `./gradlew testDebugUnitTest`, so no emulator is needed and it guards CI.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -43,14 +51,26 @@ class ShowtimeChipFitTest {
     @get:Rule
     val compose = createComposeRule()
 
-    /** Logical dp widths of common Android phones, narrowest first. 360 dp
-     *  (Galaxy S, many budget devices) is the binding case; Pixels are 393/411. */
+    /** Logical dp widths, narrowest first. 360 dp (Galaxy S, many budget devices)
+     *  is the binding case and the chip scale's reference. The 504 dp case is the
+     *  exact width where the 1.4 scale clamp kicks in; 600 dp is a portrait tablet
+     *  (still `GridCells.Fixed(2)`) past the clamp — both must still fit two-up. */
     private val phoneWidths = listOf(
         "Galaxy S (360dp)" to 360,
         "Pixel 8 (393dp)" to 393,
         "Pixel 5 (411dp)" to 411,
         "large (430dp)" to 430,
+        "scale-clamp (504dp)" to 504,
+        "tablet portrait (600dp)" to 600,
     )
+
+    /** Render [content] as if the device's portrait width were [screen] dp, so
+     *  [ShowtimeChipMetrics.scale] picks up that width. */
+    @Composable
+    private fun AtWidth(screen: Int, content: @Composable () -> Unit) {
+        val cfg = Configuration(LocalConfiguration.current).apply { screenWidthDp = screen }
+        CompositionLocalProvider(LocalConfiguration provides cfg, content = content)
+    }
 
     /** Showings-column width inside one card on the portrait two-column grid:
      *  `ListScreen`'s grid is `GridCells.Fixed(2)` with 12 dp content padding
@@ -84,11 +104,13 @@ class ShowtimeChipFitTest {
             MaterialTheme {
                 Column {
                     phoneWidths.forEachIndexed { i, (_, screen) ->
-                        Box(Modifier.width(cardContentDp(screen).dp)) {
-                            Showings(
-                                film = twoShowtimeFilm("10:0$i", "22:0$i"),
-                                showCinemaHeaders = false,
-                            )
+                        AtWidth(screen) {
+                            Box(Modifier.width(cardContentDp(screen).dp)) {
+                                Showings(
+                                    film = twoShowtimeFilm("10:0$i", "22:0$i"),
+                                    showCinemaHeaders = false,
+                                )
+                            }
                         }
                     }
                 }
@@ -120,11 +142,13 @@ class ShowtimeChipFitTest {
         // vacuously on phantom measurements.
         compose.setContent {
             MaterialTheme {
-                Box(Modifier.width(50.dp)) {
-                    Showings(
-                        film = twoShowtimeFilm("10:00", "22:00"),
-                        showCinemaHeaders = false,
-                    )
+                AtWidth(360) {
+                    Box(Modifier.width(50.dp)) {
+                        Showings(
+                            film = twoShowtimeFilm("10:00", "22:00"),
+                            showCinemaHeaders = false,
+                        )
+                    }
                 }
             }
         }

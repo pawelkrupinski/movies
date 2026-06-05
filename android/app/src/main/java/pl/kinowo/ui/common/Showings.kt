@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -79,6 +81,20 @@ data class ShowtimeChipStyle(
  *  it through `CompositionLocalProvider`. */
 val LocalShowtimeChipStyle = compositionLocalOf { ShowtimeChipStyle() }
 
+/** A copy with every dimension multiplied by [s] — the viewport-width factor
+ *  from [ShowtimeChipMetrics]. Weights are untouched. `s == 1f` (the 360 dp
+ *  baseline) returns this unchanged, so a chip at the floor renders the dialled
+ *  values exactly. */
+fun ShowtimeChipStyle.scaledBy(s: Float): ShowtimeChipStyle =
+    if (s == 1f) this else copy(
+        timeFontSize = timeFontSize * s,
+        formatFontSize = formatFontSize * s,
+        horizontalInset = horizontalInset * s,
+        verticalInset = verticalInset * s,
+        internalGap = internalGap * s,
+        interPillGap = interPillGap * s,
+    )
+
 /**
  * The day-by-day showtimes tree for a film: day label → (optional cinema
  * label) → a wrapping row of showtime chips. Mirrors iOS `ShowingsView`.
@@ -97,13 +113,22 @@ fun Showings(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val chipStyle = LocalShowtimeChipStyle.current
+    // Chips (and the showings-internal gaps) scale with viewport width off the
+    // 360 dp baseline; two-per-row stays safe because the card column grows
+    // faster than the scaled chips (see ShowtimeChipMetrics). scale == 1f at the
+    // 360 dp floor, so the dialled values render exactly there.
+    val s = ShowtimeChipMetrics.scale(LocalConfiguration.current.screenWidthDp)
+    val chipStyle = LocalShowtimeChipStyle.current.scaledBy(s)
     val cardSpacing = LocalCardSpacingStyle.current
+    val showingsBlock = cardSpacing.showingsBlock * s
+    val dayToCinema = cardSpacing.dayToCinema * s
     val total = film.showings.sumOf { d -> d.cinemas.sumOf { it.showtimes.size } }
     var budget = maxChips ?: Int.MAX_VALUE
     var shown = 0
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(cardSpacing.showingsBlock)) {
+    // Provide the scaled chip style so the leaf ShowtimeChip reads it directly.
+    CompositionLocalProvider(LocalShowtimeChipStyle provides chipStyle) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(showingsBlock)) {
         for (day in film.showings) {
             if (budget <= 0) break
             // Each day is its own block so the gap below the day label
@@ -117,8 +142,8 @@ fun Showings(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Column(
-                    modifier = Modifier.padding(top = cardSpacing.dayToCinema),
-                    verticalArrangement = Arrangement.spacedBy(cardSpacing.showingsBlock),
+                    modifier = Modifier.padding(top = dayToCinema),
+                    verticalArrangement = Arrangement.spacedBy(showingsBlock),
                 ) {
                     for (cg in day.cinemas) {
                         if (budget <= 0) break
@@ -163,6 +188,7 @@ fun Showings(
                 fontWeight = FontWeight.Medium,
             )
         }
+    }
     }
 }
 

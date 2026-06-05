@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,7 @@ import pl.kinowo.ui.common.MetaPills
 import pl.kinowo.ui.common.PosterImage
 import pl.kinowo.ui.common.RatingBadges
 import pl.kinowo.ui.common.Showings
+import pl.kinowo.ui.common.ShowtimeChipMetrics
 import pl.kinowo.ui.common.copyFilmLink
 import pl.kinowo.ui.theme.CardSurface
 
@@ -51,6 +53,9 @@ fun FilmCard(
 ) {
     val context = LocalContext.current
     val spacing = LocalCardSpacingStyle.current
+    // Card gaps scale with viewport width off the 360 dp baseline, in lockstep
+    // with the chips (see ShowtimeChipMetrics). scale == 1f at the 360 dp floor.
+    val s = ShowtimeChipMetrics.scale(LocalConfiguration.current.screenWidthDp)
     Surface(
         color = CardSurface,
         shape = RoundedCornerShape(12.dp),
@@ -102,16 +107,16 @@ fun FilmCard(
                 MetaPills(
                     runtimeMinutes = film.runtimeMinutes,
                     releaseYear = film.releaseYear,
-                    modifier = Modifier.padding(top = spacing.titleToMeta),
+                    modifier = Modifier.padding(top = spacing.titleToMeta * s),
                 )
                 if (!film.ratings.isEmpty) {
-                    RatingBadges(film.ratings, Modifier.padding(top = spacing.metaToRatings))
+                    RatingBadges(film.ratings, Modifier.padding(top = spacing.metaToRatings * s))
                 }
                 Showings(
                     film = film,
                     showCinemaHeaders = showCinemaHeaders,
                     maxChips = 14,
-                    modifier = Modifier.padding(top = spacing.ratingsToShowings),
+                    modifier = Modifier.padding(top = spacing.ratingsToShowings * s),
                 )
             }
         }

@@ -138,7 +138,9 @@ class CardSpacingStyleTest {
      * at the same `showingsBlock`, bumping only `dayToCinema` to 40 dp must widen
      * the day-label → cinema-name gap while leaving everything else alone. Before
      * the lever existed that gap was driven by `showingsBlock`, so a `dayToCinema`
-     * override would do nothing → fail.
+     * override would do nothing → fail. Both cards use an explicit `dayToCinema`
+     * (the shipping default is now 0, which would measure no gap for the
+     * baseline), so the difference is purely the lever.
      */
     @Test
     fun dayToCinemaGapIsTunableIndependentlyOfShowingsBlock() {
@@ -146,19 +148,19 @@ class CardSpacingStyleTest {
             KinowoTheme {
                 Row {
                     card(oneCinemaFilm("WIDE", "WIDEPON", "WideKino"), CardSpacingStyle(dayToCinema = 40.dp), showCinemaHeaders = true)
-                    card(oneCinemaFilm("DEF", "DEFPON", "DefKino"), CardSpacingStyle(), showCinemaHeaders = true)
+                    card(oneCinemaFilm("DEF", "DEFPON", "DefKino"), CardSpacingStyle(dayToCinema = 8.dp), showCinemaHeaders = true)
                 }
             }
         }
 
         val wide = dayToCinemaGap("WIDEPON", "WideKino")
-        val default = dayToCinemaGap("DEFPON", "DefKino")
+        val narrow = dayToCinemaGap("DEFPON", "DefKino")
 
-        assertTrue("day→cinema gap measured no height — metrics are stubbed", default > 0f)
+        assertTrue("day→cinema gap measured no height — metrics are stubbed", narrow > 0f)
         assertTrue(
-            "dayToCinema=40dp must widen the day→cinema gap vs default (both share showingsBlock): " +
-                "wide=$wide default=$default",
-            wide - default > 20f,
+            "dayToCinema=40dp must widen the day→cinema gap vs 8dp (both share showingsBlock): " +
+                "wide=$wide narrow=$narrow",
+            wide - narrow > 20f,
         )
     }
 }
