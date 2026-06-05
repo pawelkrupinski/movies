@@ -29,17 +29,26 @@ struct CityGate: View {
 }
 
 /// Shown while we attempt to resolve the user's city from their location.
-/// On a usable fix it persists the nearest city and the gate flips to
-/// `ContentView`; otherwise it falls through to the manual `CityChoiceView`.
+/// On a usable fix we ASK the user to confirm the detected city (rather than
+/// silently adopting it); confirming persists it and the gate flips to
+/// `ContentView`, "choose another" drops to the manual list. No fix → the
+/// manual `CityChoiceView` directly.
 struct CityResolverView: View {
     @EnvironmentObject var prefs: UserPreferences
     @StateObject private var resolver = LocationCityResolver()
+    @State private var detected: City?
     @State private var showChoice = false
 
     var body: some View {
         Group {
             if showChoice {
                 CityChoiceView()
+            } else if let city = detected {
+                CityConfirmView(
+                    city: city,
+                    onConfirm: { prefs.setCity(city.slug) },
+                    onChooseOther: { showChoice = true }
+                )
             } else {
                 VStack(spacing: 16) {
                     ProgressView()
@@ -53,11 +62,48 @@ struct CityResolverView: View {
         .task {
             switch await resolver.resolve() {
             case .city(let city):
-                prefs.setCity(city.slug)
+                detected = city
             case .unavailable:
                 showChoice = true
             }
         }
+    }
+}
+
+/// Confirmation shown when location detected a nearby city on first launch:
+/// adopt it, or fall through to the manual picker. We confirm rather than
+/// auto-adopt so a user near a city border (or who simply wants another
+/// city's repertoire) isn't silently committed to the detected one.
+struct CityConfirmView: View {
+    let city: City
+    let onConfirm: () -> Void
+    let onChooseOther: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "location.fill")
+                .font(.largeTitle)
+                .foregroundStyle(.tint)
+            Text("Wygląda na to, że jesteś w pobliżu miasta")
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Text(city.name)
+                .font(.title).bold()
+            Spacer()
+            Button(action: onConfirm) {
+                Text("Pokaż repertuar — \(city.name)")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            Button(action: onChooseOther) {
+                Text("Wybierz inne miasto")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

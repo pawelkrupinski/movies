@@ -27,7 +27,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import kotlinx.coroutines.launch
 import pl.kinowo.location.LocationCityResolver
+import pl.kinowo.model.City
 import pl.kinowo.ui.city.CityChoiceScreen
+import pl.kinowo.ui.city.CityConfirmScreen
 import pl.kinowo.ui.detail.DetailScreen
 import pl.kinowo.ui.list.ListScreen
 
@@ -82,8 +84,9 @@ private fun NearerCityPrompt(vm: KinowoViewModel) {
 
 /**
  * First-launch city resolution. Requests coarse location; on grant + a fix
- * within 100 km of a supported city, sets that city. On denial, no fix, or
- * out-of-range, falls back to [CityChoiceScreen] for an explicit pick.
+ * within 100 km of a supported city, ASKS the user to confirm that city
+ * ([CityConfirmScreen]) rather than adopting it silently. On denial, no fix,
+ * out-of-range, or "choose other", falls back to [CityChoiceScreen].
  */
 @Composable
 private fun CityGate(vm: KinowoViewModel) {
@@ -92,11 +95,14 @@ private fun CityGate(vm: KinowoViewModel) {
     // Show the chooser once the location attempt is done without a hit — until
     // then we keep it hidden so the chooser doesn't flash before the fix lands.
     var showChooser by remember { mutableStateOf(false) }
+    // The detected city awaiting the user's confirmation (null until a fix
+    // lands on a supported city).
+    var detected by remember { mutableStateOf<City?>(null) }
 
     val resolver = remember { LocationCityResolver(context) }
     fun resolveFromLocation() = scope.launch {
         val city = resolver.resolveNearestCity()
-        if (city != null) vm.setCity(city.slug) else showChooser = true
+        if (city != null) detected = city else showChooser = true
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -110,8 +116,16 @@ private fun CityGate(vm: KinowoViewModel) {
         if (alreadyGranted) resolveFromLocation() else permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
     }
 
-    if (showChooser) {
-        CityChoiceScreen(onPick = { vm.setCity(it.slug) })
+    val city = detected
+    when {
+        showChooser     -> CityChoiceScreen(onPick = { vm.setCity(it.slug) })
+        city != null    -> CityConfirmScreen(
+            city = city,
+            onConfirm = { vm.setCity(city.slug) },
+            onChooseOther = { detected = null; showChooser = true },
+        )
+        // else: still resolving — keep the screen blank (no flash) until the
+        // fix lands or the chooser/confirm takes over.
     }
 }
 
