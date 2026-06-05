@@ -1,0 +1,54 @@
+<div class="content_rep_posters_b_1" id="poster_button_left"></div>	<div class="content_rep_posters_0" id="poster_set_1">
+									
+											<div class="content_rep_posters_1a hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780661146', '20601','15','0','2026-06-05','0','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">15</font>:00</div><img class="poster_photo" src="foto,20601,9caed1c38f6ae816ead5b30eaa004ec8,jpg.html" title="Kosmiczny mecz. 30 rocznica" alt="Kosmiczny mecz. 30 rocznica"/><div class="content_rep_posters_1_1a f_5" id="poster_cell_a_1">Kultura</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780661146', '20600','15','15','2026-06-05','1','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">15</font>:15</div><img class="poster_photo" src="foto,20600,810b7149443646df14d7bbdf31d6c1a3,jpg.html" title="Orły republiki" alt="Orły republiki"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_2">Rejs</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780661146', '20550','17','0','2026-06-05','0','0','26','20'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">17</font>:00</div><img class="poster_photo" src="foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html" title="Zawieście czerwone latarnie" alt="Zawieście czerwone latarnie"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_3">Kultura</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780661146', '20557','18','0','2026-06-05','1','0','26','20'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_4').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_4').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">18</font>:00</div><img class="poster_photo" src="foto,20557,131a305436bf4ff9c74fa7deb48c37af,jpg.html" title="Zawodowcy" alt="Zawodowcy"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_4">Rejs</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780661146', '20602','19','45','2026-06-05','0','0','26','20'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_5').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_5').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">19</font>:45</div><img class="poster_photo" src="foto,20602,7cd459c6625fa47a412c040a4deafe8a,jpg.html" title="Podziemny krąg" alt="Podziemny krąg"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_5">Kultura</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780661146', '20568','20','15','2026-06-05','1','0','26','20'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_6').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_6').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_pp"></div><div class="content_rep_posters_1_2 f_6"><font class="f_7">20</font>:15</div><img class="poster_photo" src="foto,20568,533da2d52dbb93274d3c6ad0c33d5ed9,jpg.html" title="Drugie życie" alt="Drugie życie"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_6">Rejs</div></div>
+											
+											
+											<div class="content_rep_posters_1c hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780661146', '20601','15','0','2026-06-05','0','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">15</font>:00</div><img class="poster_photo" src="foto,20601,9caed1c38f6ae816ead5b30eaa004ec8,jpg.html" title="Kosmiczny mecz. 30 rocznica" alt="Kosmiczny mecz. 30 rocznica"/><div class="content_rep_posters_1_1a f_5" id="poster_cell_b_1">Kultura</div></div>
+											<div class="content_rep_posters_1d hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780661146', '20600','15','15','2026-06-05','1','0','22','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">15</font>:15</div><img class="poster_photo" src="foto,20600,810b7149443646df14d7bbdf31d6c1a3,jpg.html" title="Orły republiki" alt="Orły republiki"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_2">Rejs</div></div>
+											<div class="content_rep_posters_1d hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780661146', '20550','17','0','2026-06-05','0','0','26','20'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">17</font>:00</div><img class="poster_photo" src="foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html" title="Zawieście czerwone latarnie" alt="Zawieście czerwone latarnie"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_3">Kultura</div></div>
+											<div class="content_rep_posters_1c hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780661146', '20557','18','0','2026-06-05','1','0','26','20'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_4').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_4').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">18</font>:00</div><img class="poster_photo" src="foto,20557,131a305436bf4ff9c74fa7deb48c37af,jpg.html" title="Zawodowcy" alt="Zawodowcy"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_4">Rejs</div></div>
+											<div class="content_rep_posters_1d hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780661146', '20602','19','45','2026-06-05','0','0','26','20'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_5').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_5').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">19</font>:45</div><img class="poster_photo" src="foto,20602,7cd459c6625fa47a412c040a4deafe8a,jpg.html" title="Podziemny krąg" alt="Podziemny krąg"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_5">Kultura</div></div>
+											<div class="content_rep_posters_1d hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780661146', '20568','20','15','2026-06-05','1','0','26','20'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_6').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_6').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_pp"></div><div class="content_rep_posters_1_2 f_6"><font class="f_7">20</font>:15</div><img class="poster_photo" src="foto,20568,533da2d52dbb93274d3c6ad0c33d5ed9,jpg.html" title="Drugie życie" alt="Drugie życie"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_6">Rejs</div></div>						
+											
+									</div><div class="content_rep_posters_b_2" id="poster_button_right"></div>		

@@ -1,0 +1,36 @@
+<div class="content_rep_posters_b_1" id="poster_button_left"></div>	<div class="content_rep_posters_0" id="poster_set_1">
+									
+											<div class="content_rep_posters_1a hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780661146', '20563','16','0','2026-06-17','1','0','0','0'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">16</font>:00</div><img class="poster_photo" src="foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html" title="Dzień objawienia" alt="Dzień objawienia"/><div class="content_rep_posters_1_1a f_5" id="poster_cell_a_1">Rejs</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780661146', '20611','19','0','2026-06-17','1','1','18','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_eng"></div><div class="content_rep_posters_1_2 f_6"><font class="f_7">19</font>:00</div><img class="poster_photo" src="foto,20611,a5f11a325709b03262b9f12a223d561f,jpg.html" title="Wieczory z Kinem Polskim: Chłopaki nie płaczą" alt="Wieczory z Kinem Polskim: Chłopaki nie płaczą"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_2">Rejs</div></div>
+											<div class="content_rep_posters_1b hand" onclick=" $('#navi_repertuar').trigger('click');  rep_movie('1780661146', '20577','20','30','2026-06-17','0','0','0','0'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">20</font>:30</div><img class="poster_photo" src="foto,20577,ffe784cf71171f1a51144da77739b374,jpg.html" title="Following - pokaz specjalny z prelekcją Błażeja Hrapkowicza" alt="Following - pokaz specjalny z prelekcją Błażeja Hrapkowicza"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_a_3">Kultura</div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1b " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											
+											
+											<div class="content_rep_posters_1c hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780661146', '20563','16','0','2026-06-17','1','0','0','0'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_1').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">16</font>:00</div><img class="poster_photo" src="foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html" title="Dzień objawienia" alt="Dzień objawienia"/><div class="content_rep_posters_1_1a f_5" id="poster_cell_b_1">Rejs</div></div>
+											<div class="content_rep_posters_1d hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780661146', '20611','19','0','2026-06-17','1','1','18','18'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_2').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_eng"></div><div class="content_rep_posters_1_2 f_6"><font class="f_7">19</font>:00</div><img class="poster_photo" src="foto,20611,a5f11a325709b03262b9f12a223d561f,jpg.html" title="Wieczory z Kinem Polskim: Chłopaki nie płaczą" alt="Wieczory z Kinem Polskim: Chłopaki nie płaczą"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_2">Rejs</div></div>
+											<div class="content_rep_posters_1d hand" onclick=" $('#navi_movie_desc').trigger('click');  rep_movie('1780661146', '20577','20','30','2026-06-17','0','0','0','0'); 
+													  $('.content_rep_posters_1_1a').addClass('content_rep_posters_1_1').removeClass('content_rep_posters_1_1a'); 
+													  $('#poster_cell_a_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1');
+													  $('#poster_cell_b_3').addClass('content_rep_posters_1_1a').removeClass('content_rep_posters_1_1'); "><div class="content_rep_posters_1_2 f_6"><font class="f_7">20</font>:30</div><img class="poster_photo" src="foto,20577,ffe784cf71171f1a51144da77739b374,jpg.html" title="Following - pokaz specjalny z prelekcją Błażeja Hrapkowicza" alt="Following - pokaz specjalny z prelekcją Błażeja Hrapkowicza"/><div class="content_rep_posters_1_1 f_5" id="poster_cell_b_3">Kultura</div></div>
+											<div class="content_rep_posters_1c " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1d " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>
+											<div class="content_rep_posters_1d " ><div class="content_rep_posters_1_2 f_6">&nbsp;</div><img class="poster_photo" src="foto,0,1,png.html" alt=""/><div class="content_rep_posters_1_1"></div></div>						
+											
+									</div><div class="content_rep_posters_b_2" id="poster_button_right"></div>		
