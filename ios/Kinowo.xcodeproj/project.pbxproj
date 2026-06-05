@@ -63,6 +63,9 @@
 		DD00000000000000000036 /* FormatTokenFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000036 /* FormatTokenFilter.swift */; };
 		DD00000000000000000050 /* PosterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000050 /* PosterStore.swift */; };
 		DD00000000000000000051 /* CachedAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000051 /* CachedAsyncImage.swift */; };
+		DD00000000000000000300 /* City.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000300 /* City.swift */; };
+		DD00000000000000000301 /* CityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000301 /* CityGate.swift */; };
+		DD00000000000000000302 /* LocationCityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000302 /* LocationCityResolver.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -133,6 +136,9 @@
 		CC00000000000000000036 /* FormatTokenFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatTokenFilter.swift; sourceTree = "<group>"; };
 		CC00000000000000000050 /* PosterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterStore.swift; sourceTree = "<group>"; };
 		CC00000000000000000051 /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedAsyncImage.swift; sourceTree = "<group>"; };
+		CC00000000000000000300 /* City.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = City.swift; sourceTree = "<group>"; };
+		CC00000000000000000301 /* CityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityGate.swift; sourceTree = "<group>"; };
+		CC00000000000000000302 /* LocationCityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationCityResolver.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -173,6 +179,7 @@
 				BB00000000000000000004 /* Models */,
 				BB00000000000000000005 /* Networking */,
 				BB00000000000000000006 /* Storage */,
+				BB0000000000000000000A /* Location */,
 				BB00000000000000000007 /* Views */,
 				CC00000000000000000004 /* Assets.xcassets */,
 			);
@@ -205,6 +212,7 @@
 				CC00000000000000000005 /* Film.swift */,
 				CC00000000000000000040 /* FilmDetails.swift */,
 				CC00000000000000000041 /* CinemaLink.swift */,
+				CC00000000000000000300 /* City.swift */,
 				CC00000000000000000006 /* Filters.swift */,
 				CC00000000000000000022 /* RetryBackoff.swift */,
 				CC00000000000000000044 /* SwipeHint.swift */,
@@ -239,9 +247,18 @@
 			path = Storage;
 			sourceTree = "<group>";
 		};
+		BB0000000000000000000A /* Location */ = {
+			isa = PBXGroup;
+			children = (
+				CC00000000000000000302 /* LocationCityResolver.swift */,
+			);
+			path = Location;
+			sourceTree = "<group>";
+		};
 		BB00000000000000000007 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				CC00000000000000000301 /* CityGate.swift */,
 				CC0000000000000000000B /* FilmGridView.swift */,
 				CC0000000000000000000C /* FilmCardView.swift */,
 				CC00000000000000000018 /* FilmDetailView.swift */,
@@ -415,6 +432,9 @@
 				DD00000000000000000036 /* FormatTokenFilter.swift in Sources */,
 				DD00000000000000000050 /* PosterStore.swift in Sources */,
 				DD00000000000000000051 /* CachedAsyncImage.swift in Sources */,
+				DD00000000000000000300 /* City.swift in Sources */,
+				DD00000000000000000301 /* CityGate.swift in Sources */,
+				DD00000000000000000302 /* LocationCityResolver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

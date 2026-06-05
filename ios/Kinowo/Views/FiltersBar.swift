@@ -460,6 +460,8 @@ struct FiltersSheet: View {
     let allCast: [(name: String, count: Int)]
     var showCinemaSection: Bool = true
     @EnvironmentObject var authService: AuthService
+    @EnvironmentObject var store: RepertoireStore
+    @EnvironmentObject var details: DetailsStore
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -567,6 +569,26 @@ struct FiltersSheet: View {
                     } label: {
                         Text("Wyczyść")
                             .frame(maxWidth: .infinity)
+                    }
+                }
+
+                // ── Miasto ───────────────────────────────────────
+                // Always available (signed in or out): picks which city's
+                // repertoire the app shows. Changing it re-points both
+                // stores at the new `/{slug}/api/…` path and persists the
+                // choice. One city today; the picker scales with `City.all`.
+                Section("Miasto") {
+                    Picker("Miasto", selection: Binding(
+                        get: { prefs.selectedCity ?? City.default.slug },
+                        set: { slug in
+                            prefs.setCity(slug)
+                            store.use(citySlug: slug)
+                            details.use(citySlug: slug)
+                        }
+                    )) {
+                        ForEach(City.all, id: \.slug) { city in
+                            Text(city.name).tag(city.slug)
+                        }
                     }
                 }
 

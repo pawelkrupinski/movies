@@ -10,12 +10,16 @@ final class UserPreferences: ObservableObject {
     @Published private(set) var hasSwipedScreens: Bool = false
     /// `yyyy-MM-dd` of the last day the swipe hint was shown, or "" if never.
     @Published private(set) var swipeHintShownDate: String = ""
+    /// Slug of the city the user is browsing, or `nil` until the
+    /// first-launch gate resolves one (by location or explicit pick).
+    @Published private(set) var selectedCity: String?
 
     private let store: UserDefaults
     private let kHidden        = "hiddenFilms"
     private let kDisabled      = "disabledCinemas"
     private let kSwiped        = "swipedScreens"
     private let kHintDate      = "swipeHintShownDate"
+    private let kCity          = "selectedCity"
 
     init(store: UserDefaults = .standard) {
         self.store = store
@@ -23,6 +27,7 @@ final class UserPreferences: ObservableObject {
         disabledCinemas     = Set(store.stringArray(forKey: kDisabled)      ?? [])
         hasSwipedScreens    = store.bool(forKey: kSwiped)
         swipeHintShownDate  = store.string(forKey: kHintDate)              ?? ""
+        selectedCity        = store.string(forKey: kCity)
     }
 
     func hide(_ title: String) {
@@ -60,5 +65,11 @@ final class UserPreferences: ObservableObject {
     func markSwipeHintShown(_ day: String) {
         swipeHintShownDate = day
         store.set(day, forKey: kHintDate)
+    }
+
+    func setCity(_ slug: String) {
+        guard selectedCity != slug else { return }
+        selectedCity = slug
+        store.set(slug, forKey: kCity)
     }
 }

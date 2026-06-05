@@ -67,6 +67,7 @@ let package = Package(
                 "Views/CachedAsyncImage.swift",
                 "Views/CardSpacingStyle.swift",
                 "Views/CinemaHeaderStyle.swift",
+                "Views/CityGate.swift",
                 "Views/FilmCardView.swift",
                 "Views/FilmDetailStyle.swift",
                 "Views/FilmDetailView.swift",
@@ -81,6 +82,9 @@ let package = Package(
                 "ContentView.swift",
                 "KinowoApp.swift",
                 "Auth",
+                // CoreLocation — not on Linux. The pure nearest-city pick
+                // lives in `City.swift` (KinowoCore) and is tested there.
+                "Location",
                 // Combine (`ObservableObject` / `@Published`) — not on
                 // Linux. Logic in these files is a thin URLSession +
                 // parser-delegation shim; the parser layer below is

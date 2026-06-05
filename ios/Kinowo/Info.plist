@@ -7,5 +7,7 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Używamy lokalizacji, aby wybrać najbliższe miasto z repertuarem.</string>
 </dict>
 </plist>

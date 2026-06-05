@@ -9,7 +9,9 @@ import XCTest
 final class LocalServerHomeTests: LocalServerTestCase {
 
     private func parseHome() throws -> [Film] {
-        let html = try fetchHTML(path: "/")
+        // The server now hosts every page under a city-slug prefix; the
+        // home render lives at `/{city}/`. Fetch the Poznań home.
+        let html = try fetchHTML(path: "/poznan/")
         return HTMLParser.parse(html: html)
     }
 

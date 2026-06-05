@@ -44,10 +44,10 @@ struct KinowoApp: App {
         if ProcessInfo.processInfo.environment["KINOWO_TUNING"] != nil {
             ShowtimeTuningScreen()
         } else {
-            ContentView()
+            CityGate()
         }
         #else
-        ContentView()
+        CityGate()
         #endif
     }
 }

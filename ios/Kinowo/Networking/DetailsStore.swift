@@ -1,8 +1,6 @@
 import Foundation
 
-let kinowoDetailsURL = URL(string: "https://kinowo.fly.dev/api/details")!
-
-/// Fetches `/api/details` and exposes a title → details lookup the
+/// Fetches `/{city}/api/details` and exposes a title → details lookup the
 /// detail screen reads synopsis + trailers from. Analogous to
 /// `RepertoireStore`: same User-Agent, cache policy, and Last-Modified
 /// conditional-GET + on-disk caching pattern, but keyed into a map so
@@ -17,15 +15,28 @@ final class DetailsStore: ObservableObject {
     /// a synopsis or a trailer, so a missing key is the common case.
     @Published private(set) var byTitle: [String: FilmDetails] = [:]
 
-    private let url: URL
+    private let base: URL
+    private var url: URL
     private let session: URLSession
     private var lastReloadedAt: Date?
 
     private let staleAfter: TimeInterval = 60
 
-    init(url: URL = kinowoDetailsURL, session: URLSession = .shared) {
-        self.url = url
+    /// `base` is the bare host; the fetch URL is `…/{citySlug}/api/details`.
+    /// Same city-qualification contract as `RepertoireStore`.
+    init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared) {
+        self.base = base
+        self.url = City.apiURL(base: base, slug: citySlug, endpoint: "details")
         self.session = session
+    }
+
+    /// Re-point at a different city (see `RepertoireStore.use`).
+    func use(citySlug: String) {
+        let next = City.apiURL(base: base, slug: citySlug, endpoint: "details")
+        guard next != url else { return }
+        url = next
+        lastReloadedAt = nil
+        Task { await reload() }
     }
 
     /// Synopsis + trailers for a listing title, or `nil` when the

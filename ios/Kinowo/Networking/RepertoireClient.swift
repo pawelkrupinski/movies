@@ -1,22 +1,38 @@
 import Foundation
 
-let kinowoProductionURL = URL(string: "https://kinowo.fly.dev/api/repertoire")!
-
 @MainActor
 final class RepertoireStore: ObservableObject {
     @Published var films: [Film] = []
     @Published var isLoading: Bool = false
     @Published var error: Error? = nil
 
-    private let url: URL
+    private let base: URL
+    private var url: URL
     private let session: URLSession
     private var lastReloadedAt: Date?
 
     private let staleAfter: TimeInterval = 60
 
-    init(url: URL = kinowoProductionURL, session: URLSession = .shared) {
-        self.url = url
+    /// `base` is the bare host (`https://kinowo.fly.dev`); the fetch URL is
+    /// `…/{citySlug}/api/repertoire`. `citySlug` defaults to the fallback
+    /// city so the existing default-init call sites (UI-test fixture, tuning
+    /// screen) keep working; the app points it at the resolved city via
+    /// `use(citySlug:)` once the first-launch gate lands.
+    init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared) {
+        self.base = base
+        self.url = City.apiURL(base: base, slug: citySlug, endpoint: "repertoire")
         self.session = session
+    }
+
+    /// Re-point at a different city: rebuild the URL, drop the freshness
+    /// stamp so the next `reload`/`reloadIfStale` actually fetches, and
+    /// kick a reload so the grid swaps to the new city's repertoire.
+    func use(citySlug: String) {
+        let next = City.apiURL(base: base, slug: citySlug, endpoint: "repertoire")
+        guard next != url else { return }
+        url = next
+        lastReloadedAt = nil
+        Task { await reload() }
     }
 
     func loadCachedData(now: Date = Date()) {
