@@ -1,13 +1,9 @@
 package models
 
-import java.time.LocalDate
-
 case class Movie(
   title:          String,
   runtimeMinutes: Option[Int]       = None,
   releaseYear:    Option[Int]       = None,
-  premierePl:     Option[LocalDate] = None,
-  premiereWorld:  Option[LocalDate] = None,
   // Production countries — one entry per country, in the order the source
   // listed them. Each cinema spells names in its own way ("USA" vs "Stany
   // Zjednoczone", "Wielka Brytania" vs "UK") so this stays verbatim per

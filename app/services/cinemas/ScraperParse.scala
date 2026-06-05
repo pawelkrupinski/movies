@@ -2,7 +2,7 @@ package services.cinemas
 
 import org.jsoup.nodes.Document
 
-import java.time.{LocalDate, LocalTime}
+import java.time.LocalTime
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -13,11 +13,10 @@ import scala.util.Try
 private[cinemas] object ScraperParse {
   private val HourMinute = """(\d{1,2}):(\d{2})""".r
   private val CssUrl     = """url\((?:'|"|&quot;)?(.+?)(?:'|"|&quot;)?\)""".r
-  private val DayMonthYear = """(\d{1,2})\s+([a-ząćęłńóśźż]+)\s+((?:19|20)\d{2})""".r
 
-  /** Polish genitive month names as the cinema pages spell dates ("5 maja
-    * 2023", "12 grudnia"). Shared so the hand-rolled scrapers don't each carry
-    * their own copy of the same 12-entry map. */
+  /** Polish genitive month names as the cinema pages spell dates ("5 maja",
+    * "12 grudnia"). Shared so the hand-rolled scrapers don't each carry their
+    * own copy of the same 12-entry map. */
   val PolishMonths: Map[String, Int] = Map(
     "stycznia" -> 1, "lutego" -> 2, "marca" -> 3, "kwietnia" -> 4, "maja" -> 5, "czerwca" -> 6,
     "lipca" -> 7, "sierpnia" -> 8, "września" -> 9, "października" -> 10, "listopada" -> 11, "grudnia" -> 12
@@ -54,14 +53,4 @@ private[cinemas] object ScraperParse {
   def canonicalTrailer(url: String): Option[String] =
     services.movies.TrailerEmbed.youTubeId(url).map(id => s"https://www.youtube.com/watch?v=$id")
       .orElse(services.movies.TrailerEmbed.vimeoId(url).map(_ => url))
-
-  /** The first "DD <month> YYYY" Polish date in `text` (e.g. a "Premiera
-    * kinowa 5 maja 2023 r." line) as a `LocalDate`. For pages that print the
-    * full date with an explicit year; the year-less listing variants keep their
-    * own roll-forward logic. */
-  def parsePolishDate(text: String): Option[LocalDate] =
-    DayMonthYear.findFirstMatchIn(text.toLowerCase).flatMap { m =>
-      PolishMonths.get(m.group(2)).flatMap(mon =>
-        Try(LocalDate.of(m.group(3).toInt, mon, m.group(1).toInt)).toOption)
-    }
 }

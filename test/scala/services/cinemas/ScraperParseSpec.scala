@@ -4,7 +4,7 @@ import org.jsoup.Jsoup
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.time.{LocalDate, LocalTime}
+import java.time.LocalTime
 
 /** Direct coverage for the parsing snippets shared across the cinema scrapers.
   * Each `*Client` spec exercises these via a real fixture, but the shared helper
@@ -76,15 +76,5 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.canonicalTrailer("https://player.vimeo.com/video/12345") shouldBe
       Some("https://player.vimeo.com/video/12345")
     ScraperParse.canonicalTrailer("https://example.com/not-a-trailer") shouldBe None
-  }
-
-  "parsePolishDate" should "parse a 'DD <month> YYYY' Polish date with an explicit year" in {
-    ScraperParse.parsePolishDate("Premiera kinowa 5 maja 2023 r.")  shouldBe Some(LocalDate.of(2023, 5, 5))
-    ScraperParse.parsePolishDate("31 sierpnia 2011 r.")             shouldBe Some(LocalDate.of(2011, 8, 31))
-  }
-
-  it should "return None when there is no full date or the month is unknown" in {
-    ScraperParse.parsePolishDate("Premiera: 11 kwietnia") shouldBe None // year-less
-    ScraperParse.parsePolishDate("5 blursday 2023")       shouldBe None // bad month
   }
 }

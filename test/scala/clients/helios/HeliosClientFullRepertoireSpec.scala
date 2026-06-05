@@ -156,28 +156,6 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     byTitle("Za duży na bajki 3").movie.releaseYear                             shouldBe Some(2026)
   }
 
-  it should "return correct Polish premiere dates for REST-enriched movies" in {
-    import java.time.LocalDate
-    byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour").movie.premierePl  shouldBe Some(LocalDate.of(2026, 5, 8))
-    byTitle("Diabeł ubiera się u Prady 2").movie.premierePl                     shouldBe Some(LocalDate.of(2026, 5, 1))
-    byTitle("Dyyavol Nosyt' Prada 2 - UA ").movie.premierePl                   shouldBe Some(LocalDate.of(2026, 5, 1))
-    byTitle("Kurozając i Świątynia Świstaka").movie.premierePl                  shouldBe Some(LocalDate.of(2026, 5, 15))
-    byTitle("Mortal Kombat II").movie.premierePl                                shouldBe Some(LocalDate.of(2026, 5, 8))
-    byTitle("Mortal Kombat II - UA").movie.premierePl                           shouldBe Some(LocalDate.of(2026, 5, 8))
-    byTitle("Mumia: Film Lee Cronina").movie.premierePl                         shouldBe Some(LocalDate.of(2026, 4, 17))
-    byTitle("Nawet myszy idą do nieba").movie.premierePl                        shouldBe Some(LocalDate.of(2022, 4, 29))
-    byTitle("O psie, który jeździł koleją ").movie.premierePl                   shouldBe Some(LocalDate.of(2023, 8, 25))
-    byTitle("Obsesja").movie.premierePl                                         shouldBe Some(LocalDate.of(2026, 5, 15))
-    byTitle("Projekt Hail Mary").movie.premierePl                               shouldBe Some(LocalDate.of(2026, 3, 20))
-    byTitle("Pucio").movie.premierePl                                           shouldBe Some(LocalDate.of(2026, 4, 17))
-    byTitle("Sprawiedliwość owiec").movie.premierePl                            shouldBe Some(LocalDate.of(2026, 5, 8))
-    byTitle("Super Mario Galaxy Film").movie.premierePl                         shouldBe Some(LocalDate.of(2026, 4, 10))
-    byTitle("Za duży na bajki 3").movie.premierePl                              shouldBe Some(LocalDate.of(2026, 3, 6))
-    byTitle("Drama").movie.premierePl                                           shouldBe Some(LocalDate.of(2026, 4, 10))
-    byTitle("Drzewo magii").movie.premierePl                                    shouldBe Some(LocalDate.of(2026, 5, 29))
-    byTitle("Michael").movie.premierePl                                         shouldBe Some(LocalDate.of(2026, 4, 22))
-  }
-
   it should "return correct production countries for REST-enriched movies" in {
     byTitle("Billie Eilish - Hit Me Hard and Soft: The Tour").movie.countries shouldBe Seq("USA")
     byTitle("Diabeł ubiera się u Prady 2").movie.countries                    shouldBe Seq("USA")

@@ -58,8 +58,7 @@ object HeliosNuxt {
         // prefer the /filmy/ URL — it points to the canonical movie page rather than a specific event.
         val urls   = movies.flatMap(_.filmUrl)
         CinemaMovie(
-          movie = Movie(title = title, runtimeMinutes = movie.runtimeMinutes,
-                        releaseYear = None, premierePl = None, premiereWorld = None),
+          movie = Movie(title = title, runtimeMinutes = movie.runtimeMinutes, releaseYear = None),
           cinema    = cfg.cinema,
           posterUrl = movies.flatMap(_.posterUrl).headOption,
           filmUrl   = urls.find(_.contains("/filmy/")).orElse(urls.headOption),

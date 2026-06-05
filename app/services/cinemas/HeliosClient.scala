@@ -115,8 +115,6 @@ class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt
     cast:          Seq[String],
     director:      Seq[String],
     year:          Option[Int],
-    premierePl:    Option[java.time.LocalDate],
-    premiereWorld: Option[java.time.LocalDate],
     posterUrl:     Option[String],
     slug:          Option[String],
     countries:     Seq[String],
@@ -134,10 +132,6 @@ class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt
           cast          = (js \ "filmCast").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
           director      = (js \ "director").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
           year          = (js \ "yearOfProduction").asOpt[String].flatMap(s => Try(s.take(4).toInt).toOption),
-          premierePl    = (js \ "premiereDate").asOpt[String]
-                            .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption),
-          premiereWorld = (js \ "worldPremiereDate").asOpt[String]
-                            .flatMap(s => Try(ZonedDateTime.parse(s, OffsetDtf).toLocalDate).toOption),
           posterUrl     = (js \ "posters").asOpt[JsArray]
                             .flatMap(_.value.headOption)
                             .flatMap(_.asOpt[String])
@@ -196,8 +190,6 @@ class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt
         movie     = cm.movie.copy(
           runtimeMinutes = cm.movie.runtimeMinutes.orElse(restInfo.flatMap(_.duration)),
           releaseYear    = restInfo.flatMap(_.year),
-          premierePl     = restInfo.flatMap(_.premierePl),
-          premiereWorld  = restInfo.flatMap(_.premiereWorld),
           countries      = restInfo.map(_.countries).getOrElse(cm.movie.countries),
           genres         = restInfo.map(_.genres).getOrElse(cm.movie.genres)
         ),
@@ -226,8 +218,6 @@ class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt
               title          = cleanTitle(info.title.getOrElse(movieId)),
               runtimeMinutes = info.duration,
               releaseYear    = info.year,
-              premierePl     = info.premierePl,
-              premiereWorld  = info.premiereWorld,
               countries      = info.countries,
               genres         = info.genres
             ),
