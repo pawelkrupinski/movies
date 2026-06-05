@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		DD00000000000000000002 /* KinowoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000002 /* KinowoApp.swift */; };
 		DD00000000000000000003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000003 /* ContentView.swift */; };
+		DD00000000000000000220 /* DisplayInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000220 /* DisplayInfo.swift */; };
 		DD00000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000004 /* Assets.xcassets */; };
 		DD00000000000000000005 /* Film.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000005 /* Film.swift */; };
 		DD00000000000000000006 /* Filters.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000006 /* Filters.swift */; };
@@ -78,6 +79,7 @@
 		CC00000000000000000001 /* Kinowo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kinowo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC00000000000000000002 /* KinowoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KinowoApp.swift; sourceTree = "<group>"; };
 		CC00000000000000000003 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		CC00000000000000000220 /* DisplayInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayInfo.swift; sourceTree = "<group>"; };
 		CC00000000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CC00000000000000000005 /* Film.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Film.swift; sourceTree = "<group>"; };
 		CC00000000000000000006 /* Filters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Filters.swift; sourceTree = "<group>"; };
@@ -165,6 +167,7 @@
 			children = (
 				CC00000000000000000002 /* KinowoApp.swift */,
 				CC00000000000000000003 /* ContentView.swift */,
+				CC00000000000000000220 /* DisplayInfo.swift */,
 				CC0000000000000000001B /* AccessibilityIdentifiers.swift */,
 				BB00000000000000000009 /* Auth */,
 				BB00000000000000000004 /* Models */,
@@ -369,6 +372,7 @@
 			files = (
 				DD00000000000000000002 /* KinowoApp.swift in Sources */,
 				DD00000000000000000003 /* ContentView.swift in Sources */,
+				DD00000000000000000220 /* DisplayInfo.swift in Sources */,
 				DD00000000000000000005 /* Film.swift in Sources */,
 				DD00000000000000000006 /* Filters.swift in Sources */,
 				DD00000000000000000007 /* RepertoireClient.swift in Sources */,

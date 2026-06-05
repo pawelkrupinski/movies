@@ -318,7 +318,8 @@ private fun SheetHeader(
 ) {
     val clipboard = LocalClipboardManager.current
     val density = LocalDensity.current
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val configuration = LocalConfiguration.current
+    val screenWidthDp = configuration.screenWidthDp
     Row(
         Modifier
             .fillMaxWidth()
@@ -328,6 +329,14 @@ private fun SheetHeader(
     ) {
         Column(Modifier.weight(1f)) {
             Text("${page.title} tuning", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            // Live readout of the area the layout actually gets (dp), plus the
+            // density and the pixels it works out to — the available size
+            // matters more here than the raw panel resolution.
+            Text(
+                DisplayInfo.tuningReadout(screenWidthDp, configuration.screenHeightDp, density.density),
+                color = Color.White.copy(alpha = 0.55f),
+                fontSize = 10.sp,
+            )
             // The two-per-row fit readout only makes sense for the card page.
             if (page == TuningPage.Card) {
                 val fit = ChipFit.evaluate(style, density)

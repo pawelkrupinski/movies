@@ -41,7 +41,7 @@ struct ShowtimeTuningScreen: View {
             let height = min(maxH, max(minH, sheetHeight - dragTranslation))
             ZStack(alignment: .bottom) {
                 previews(bottomInset: minH + 16)
-                sheet(height: height, maxH: maxH, minH: minH)
+                sheet(height: height, maxH: maxH, minH: minH, avail: geo.size)
             }
         }
         .background(Color(red: 0.07, green: 0.07, blue: 0.10).ignoresSafeArea())
@@ -93,11 +93,11 @@ struct ShowtimeTuningScreen: View {
 
     // MARK: – draggable sheet
 
-    private func sheet(height: CGFloat, maxH: CGFloat, minH: CGFloat) -> some View {
+    private func sheet(height: CGFloat, maxH: CGFloat, minH: CGFloat, avail: CGSize) -> some View {
         VStack(spacing: 0) {
             handle(maxH: maxH, minH: minH)
             pageBar
-            header
+            header(avail: avail)
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     switch page {
@@ -165,10 +165,18 @@ struct ShowtimeTuningScreen: View {
         .padding(.bottom, 8)
     }
 
-    private var header: some View {
+    private func header(avail: CGSize) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(page.title) tuning").font(.system(size: 13, weight: .semibold))
+                // Live readout of the area the layout actually gets (points),
+                // plus the scale and the pixels it works out to — the available
+                // size matters more here than the raw panel resolution.
+                Text(DisplayInfo.tuningReadout(
+                    pointWidth: avail.width, pointHeight: avail.height, scale: UIScreen.main.scale
+                ))
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
                 // The two-per-row fit readout only makes sense for the card
                 // page (the showtime pills) — hide it elsewhere.
                 if page == .card {

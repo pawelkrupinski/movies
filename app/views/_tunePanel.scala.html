@@ -14,6 +14,9 @@
   The panel markup + builder below are then fully generic.
 *@
 <div class="panel" id="panel">
+  <!-- Live display-geometry readout: available viewport first, then the
+       device-pixel ratio and the physical pixels it works out to. -->
+  <div class="viewport-info" id="viewportInfo" style="font:11px/1.4 ui-monospace,monospace;color:#8a8aa0;margin-bottom:.6rem">viewport …</div>
   <!-- groups + sliders are generated below from TUNE_CONTROLS -->
   <div class="actions">
     <button type="button" class="copy" id="copyBtn">Kopiuj</button>
@@ -21,6 +24,26 @@
   </div>
   <textarea id="dump" readonly></textarea>
 </div>
+
+<script src="@routes.Assets.versioned("js/viewportInfo.js")"></script>
+<script>
+  // Keep the display-geometry readout live — it changes as the window is
+  // resized to dial in different viewports.
+  (function () {
+    const el = document.getElementById('viewportInfo');
+    const render = () => {
+      el.textContent = ViewportInfo.formatViewportInfo({
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
+        dpr: window.devicePixelRatio,
+        screenW: window.screen.width,
+        screenH: window.screen.height,
+      });
+    };
+    render();
+    window.addEventListener('resize', render);
+  })();
+</script>
 
 <script>
   // Each control: the CSS var, its production fallback (string), the CSS
