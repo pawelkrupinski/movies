@@ -5,12 +5,24 @@ import modules.Wiring
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import play.api.test.Helpers.stubControllerComponents
-import services.Stoppable
+import services.{MongoConnection, Stoppable}
 
 trait TestWiring extends Wiring {
   override val controllerComponents: ControllerComponents = stubControllerComponents()
 
   override def environmentMode: Mode = Mode.Test
+
+  // Pin a DISABLED Mongo connection. Tests get their movie data from
+  // `InMemoryMovieRepo` / fixtures and don't exercise the user repos, so a real
+  // Mongo is never needed — but the production `fromEnv` would still CONNECT to
+  // whatever `MONGODB_URI` (`.env.local`) is reachable. With a developer's
+  // `flyctl proxy 27017` tunnel up, that hydrated real PRODUCTION enrichment
+  // into otherwise-hermetic snapshot / end-to-end specs, so a row's ratings
+  // differed depending on whether the tunnel happened to be open — a flake that
+  // never reproduced on CI (no tunnel there). Disabling it here makes every
+  // test wiring deterministic regardless of the local environment.
+  override lazy val mongoConnection: MongoConnection =
+    new MongoConnection(uri = None, dbName = "kinowo", required = false)
 
   override implicit def materializer: org.apache.pekko.stream.Materializer = null
 
