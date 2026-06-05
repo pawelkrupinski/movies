@@ -97,9 +97,10 @@ struct ShowtimeTuningScreen: View {
         VStack(spacing: 0) {
             handle(maxH: maxH, minH: minH)
             pageBar
-            header(avail: avail)
+            header
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    resolutionReadout(avail: avail)
                     switch page {
                     case .card: cardControls
                     case .kina: kinaControls
@@ -165,18 +166,24 @@ struct ShowtimeTuningScreen: View {
         .padding(.bottom, 8)
     }
 
-    private func header(avail: CGSize) -> some View {
+    /// Live readout of the area the layout actually gets (points), plus the
+    /// scale and the pixels it works out to. Parked at the top of the scrolling
+    /// controls (rather than the pinned header) so it scrolls away once you've
+    /// read it instead of permanently eating header height.
+    private func resolutionReadout(avail: CGSize) -> some View {
+        Text(DisplayInfo.tuningReadout(
+            pointWidth: avail.width, pointHeight: avail.height, scale: UIScreen.main.scale
+        ))
+        .font(.system(size: 10))
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityIdentifier(A11y.Tuning.resolutionReadout)
+    }
+
+    private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(page.title) tuning").font(.system(size: 13, weight: .semibold))
-                // Live readout of the area the layout actually gets (points),
-                // plus the scale and the pixels it works out to — the available
-                // size matters more here than the raw panel resolution.
-                Text(DisplayInfo.tuningReadout(
-                    pointWidth: avail.width, pointHeight: avail.height, scale: UIScreen.main.scale
-                ))
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
                 // The two-per-row fit readout only makes sense for the card
                 // page (the showtime pills) — hide it elsewhere.
                 if page == .card {

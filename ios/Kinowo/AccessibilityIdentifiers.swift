@@ -68,6 +68,9 @@ enum A11y {
         /// The controls scroll-view, so the test swipes inside the sheet to
         /// reveal a slider rather than scrolling the cards behind it.
         static let controlsScroll      = "tuning.controls"
+        /// The viewport/resolution readout, parked at the top of the scroll so
+        /// it scrolls away instead of permanently eating header space.
+        static let resolutionReadout   = "tuning.resolution"
         /// Kina page: cinema section-header font-size slider + the page itself.
         static let cinemaHeaderFontSlider = "tuning.slider.cinemaHeaderFont"
         /// Film page: detail title font-size slider + the rendered title.

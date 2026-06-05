@@ -140,6 +140,25 @@ final class CardSpacingTuningUITests: XCTestCase {
         )
     }
 
+    /// The viewport/resolution readout lives INSIDE the controls scroll-view
+    /// (its first row), not in the pinned header — that's what lets it scroll
+    /// away once read instead of permanently occupying header space. Assert it
+    /// resolves as a descendant of the controls scroll-view; when it was pinned
+    /// in the header it was a sibling of the scroll-view, so this query found
+    /// nothing — fail before, pass after.
+    func testResolutionReadoutLivesInTheScrollAwayControls() throws {
+        let card = firstCard()
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "Tuning screen never showed its first card")
+
+        let scrolledReadout = app.scrollViews[A11y.Tuning.controlsScroll]
+            .staticTexts[A11y.Tuning.resolutionReadout]
+        XCTAssertTrue(
+            scrolledReadout.waitForExistence(timeout: 5),
+            "Resolution readout isn't inside the controls scroll-view — it's pinned "
+            + "in the header instead of sitting in the area that scrolls away."
+        )
+    }
+
     /// Jump the pager to a page by tapping its label in the page bar (more
     /// robust than a swipe, which depends on a distance threshold). `index`
     /// is the `TuningPage` raw value (0 = card, 1 = kina, 2 = film) — kept as
