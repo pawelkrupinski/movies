@@ -445,7 +445,7 @@ releaseYear:       2025
 countries:         Korea Południowa
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/Bez-wyjscia_plakat_B1_HQ-po-zmniejszeniu-200x288.jpg
 synopsis.length:   408
-cast:              —
+cast:              Lee Byung-hun, Son Ye-jin, Park Hee-soon, Lee Sung-min, Yeom Hye-ran, Cha Seung-won
 director:          Park Chan-wook
 tmdbId:            639988
 imdbId:            tt1527793
@@ -947,7 +947,7 @@ releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/diabel-ubiera-sie-u-prady-2/diabelprada2_plakatoficial-cut.jpg?rev=6e854aefaa8e47c0b27446b60a57f68a
 synopsis.length:   1002
-cast:              Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci
+cast:              Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci, Kenneth Branagh, Simone Ashley, Justin Theroux, Lucy Liu, Patrick Brammall, Caleb Hearon, Helen J. Shen, Pauline Chalamet, B.J. Novak, Conrad Ricamora, Tracie Thoms, Tibor Feldman
 director:          David Frankel
 tmdbId:            1314481
 imdbId:            tt33612209
@@ -1138,7 +1138,7 @@ releaseYear:       2025
 countries:         Niemcy, Francja, Hiszpania, Belgia, Maroko
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/drugiezycie_plakat.jpg?rev=b3e62875d7b248b78e1a7d07fdf010d2
 synopsis.length:   1370
-cast:              Carmen Maura, Marta Etura, Ahmed Boulane, María Alfonsa Rosso
+cast:              Carmen Maura, Marta Etura, Ahmed Boulane, María Alfonsa Rosso, Miguel Garcés
 director:          Maryam Touzani
 tmdbId:            1399462
 imdbId:            tt32429174
@@ -1192,7 +1192,7 @@ releaseYear:       2026
 countries:         Francja, USA, Wielka Brytania
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/drzewo-magii/drzewo-magii_plakat-glowny_plakat.jpg?rev=78ae4df57ddb40d98d5535803ff32357
 synopsis.length:   1271
-cast:              Andrew Garfield, Claire Foy, Nicola Coughlan, Rebecca Ferguson
+cast:              Andrew Garfield, Claire Foy, Rebecca Ferguson, Nicola Coughlan, Jessica Gunning
 director:          Ben Gregor
 tmdbId:            1140521
 imdbId:            tt7734244
@@ -1465,7 +1465,7 @@ releaseYear:       2025
 countries:         USA, Francja, Irlandia
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2025/12/FMSB-plakat-PL_HQ.jpg
 synopsis.length:   381
-cast:              —
+cast:              Tom Waits, Adam Driver, Mayim Bialik, Charlotte Rampling, Cate Blanchett, Vicky Krieps, Sarah Greene, Indya Moore, Luka Sabbat, Françoise Lebrun
 director:          Jim Jarmusch
 tmdbId:            1159206
 imdbId:            tt31189315
@@ -1498,7 +1498,7 @@ releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/l-affaire-bojarski.jpg?itok=A5L57jY1
 synopsis.length:   389
-cast:              —
+cast:              Reda Kateb, Sara Giraudeau, Bastien Bouillon
 director:          Jean-Paul Salomé
 tmdbId:            —
 imdbId:            —
@@ -1747,7 +1747,7 @@ releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/gourou.jpg?itok=YaZivJOK
 synopsis.length:   514
-cast:              —
+cast:              Pierre Niney, Marion Barbeau, Anthony Bajon
 director:          Yann Gozlan
 tmdbId:            1315702
 imdbId:            tt32792395
@@ -1805,7 +1805,7 @@ releaseYear:       2025
 countries:         Francja, Polska
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/01/Glos_Hind_Rajab-polski-plakat1-po-zmniejszeniu-200x288.jpg
 synopsis.length:   1026
-cast:              —
+cast:              Saja Kilani, Motaz Malhees, Clara Khoury, Amer Hlehel
 director:          Kaouther Ben Hania
 tmdbId:            1480382
 imdbId:            tt36943034
@@ -2700,7 +2700,7 @@ releaseYear:       2026
 countries:         Polska
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/klatwa-doliny-wezy_plakat.jpg?rev=c58ea807e26643fb8bc1425578f746b0
 synopsis.length:   756
-cast:              Roman Wilhelmi, Krzysztof Kolberger, Henryk Bista, Leon Niemczyk
+cast:              Krzysztof Kolberger, Ewa Sałacka, Roman Wilhelmi, Lan Bich, Zygmunt Bielawski, Henryk Bista, Zbigniew Lesień
 director:          Marek Piestrak
 tmdbId:            —
 imdbId:            —
@@ -3020,7 +3020,7 @@ releaseYear:       2025
 countries:         Włochy
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/01/la-grazia-plakat-b1-lq_1.jpg
 synopsis.length:   399
-cast:              —
+cast:              Toni Servillo, Anna Ferzetti, Orlando Cinque, Massimo Venturiello, Milvia Marigliano, Giuseppe Gaiani
 director:          Paolo Sorrentino
 tmdbId:            1397364
 imdbId:            tt34886821
@@ -3407,7 +3407,7 @@ releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/mi-amor.jpg?itok=Scka69gd
 synopsis.length:   564
-cast:              —
+cast:              Pom Klementieff, Benoît Magimel, Freya Mavor
 director:          Guillaume Nicloux
 tmdbId:            —
 imdbId:            —
@@ -3436,7 +3436,7 @@ releaseYear:       2026
 countries:         USA, Wielka Brytania
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/michael/michael-plakat-net-fin-cut.jpg?rev=50ffa68228ab41d0a9633db28bbd2b6e
 synopsis.length:   825
-cast:              Jaafar Jackson, Juliano Valdi, Colman Domingo
+cast:              Jaafar Jackson, Nia Long, Colman Domingo, Miles Teller, Juliano Valdi
 director:          Antoine Fuqua
 tmdbId:            936075
 imdbId:            tt11378946
@@ -3533,7 +3533,7 @@ releaseYear:       1991
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/milczenie-owiec-cut.jpg?rev=e42068650341416bb3c39e499ad5bc5b
 synopsis.length:   931
-cast:              Anthony Hopkins, Jodie Foster, Ted Levine, Kasi Lemmons
+cast:              Anthony Hopkins, Jodie Foster, Ted Levine, Kasi Lemmons, Scott Glenn, Anthony Heald
 director:          Jonathan Demme
 tmdbId:            274
 imdbId:            tt0102926
@@ -3576,7 +3576,7 @@ releaseYear:       2025
 countries:         Niemcy, Francja, Węgry
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/offowe-czwartki/milczacaprzyjaciolka_plakat.jpg?rev=766542d25ae0462f97c32308cb1b7970
 synopsis.length:   1589
-cast:              Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth, Martin W
+cast:              Tony Leung, Luna Wedler, Enzo Brumm, Sylvester Groth, Martin Wuttke, Johannes Hegemann, Rainer Bock, Léa Seydoux
 director:          Ildikó Enyedi
 tmdbId:            1168719
 imdbId:            tt27811632
@@ -3907,7 +3907,7 @@ releaseYear:       2025
 countries:         Francja, Niemcy
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/la-petite-derniere.jpg?itok=41yLbxKx
 synopsis.length:   468
-cast:              —
+cast:              Nadia Melliti, Ji-Min Park, Amina Ben Mohamed
 director:          Hafsia Herzi
 tmdbId:            961077
 imdbId:            tt28326501
@@ -4479,7 +4479,7 @@ releaseYear:       2025
 countries:         Francja, USA
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/nouvelle-vague.jpg?itok=E-qpOmj9
 synopsis.length:   542
-cast:              —
+cast:              Guillaume Marbeck, Zoey Deutch, Aubry Dullin
 director:          Richard Linklater
 tmdbId:            1254808
 imdbId:            tt31688586
@@ -4690,7 +4690,7 @@ releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/25_09_12_1757674263_0_l-etranger-f-ozon-photo-01-_photo_carole_bethuel_c_foz_-_gaumont_-_france_2_cinema.jpg?itok=SsVM-tHk
 synopsis.length:   620
-cast:              —
+cast:              Benjamin Voisin, Rebecca Marder, Pierre Lottin
 director:          François Ozon
 tmdbId:            1429348
 imdbId:            tt36243564
@@ -4883,7 +4883,7 @@ releaseYear:       1981
 countries:         Francja, Niemcy
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2025/04/plw5syL13CNWIxGaqhuSOlLPUM2-200x288.jpg
 synopsis.length:   278
-cast:              —
+cast:              Isabelle Adjani
 director:          Andrzej Żuławski
 tmdbId:            21484
 imdbId:            tt0082933
@@ -4970,7 +4970,7 @@ releaseYear:       2025
 countries:         Francja
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/03/ostatnia-sesja-w-paryzu-plakat-z-data-11.jpg
 synopsis.length:   337
-cast:              —
+cast:              Jodie Foster, Daniel Auteuil, Virginie Efira, Mathieu Almaric
 director:          Rebecca Zlotowski
 tmdbId:            1290432
 imdbId:            tt33852162
@@ -5038,7 +5038,7 @@ releaseYear:       2023
 countries:         Japonia, Niemcy
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2024/04/Perfect_Days_plakatPL_680x980_3mm_LQ-200x288.jpg
 synopsis.length:   474
-cast:              —
+cast:              Kōji Yakusho, Min Tanaka, Arisa Nakano
 director:          Wim Wenders
 tmdbId:            976893
 imdbId:            tt27503384
@@ -5153,7 +5153,7 @@ releaseYear:       2024
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/le-repondeur.jpg?itok=HOpB6Ayz
 synopsis.length:   469
-cast:              —
+cast:              Salif Cissé, Denis Podalydès, Aure Atika
 director:          Fabienne Godet
 tmdbId:            —
 imdbId:            —
@@ -5544,7 +5544,7 @@ releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/juste-une-illusion.jpg?itok=vtl2Be5J
 synopsis.length:   460
-cast:              —
+cast:              Louis Garrel, Camille Cottin, Pierre Lottin
 director:          Olivier Nakache, Eric Toledano
 tmdbId:            —
 imdbId:            —
@@ -5678,7 +5678,7 @@ releaseYear:       2025
 countries:         Hiszpania
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Romeria-B1.jpg
 synopsis.length:   1175
-cast:              Tristán Ulloa, Sara Casasnovas, Miryam Gallego
+cast:              Llúcia Garcia, Alberto Gracia, José Ángel Egido, Tristán Ulloa, Janet Novás, Marina Troncoso, Miryam Gallego, Mitch
 director:          Carla Simón
 tmdbId:            1182861
 imdbId:            tt32538648
@@ -5739,7 +5739,7 @@ releaseYear:       1974
 countries:         USA
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Reset-Rozmowa-1080x1080_zS7Plnr.png
 synopsis.length:   1651
-cast:              —
+cast:              Gene Hackman, John Cazale, Allen Garfield, Frederic Forrest, Cindy Williams, Michael Higgins, Elizabeth MacRae, Teri Garr, Harrison Ford, Mark Wheeler, Robert Duvall
 director:          Francis Ford Coppola
 tmdbId:            592
 imdbId:            tt0071360
@@ -6203,7 +6203,7 @@ releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Takie-jest-zycie_B1-1-scaled.jpg
 synopsis.length:   832
-cast:              —
+cast:              Virginia Raffaele, Diego Abatantuono, Aldo Baglio, Ignazio Giuseppe Loi, Geppi Cucciari, David Budroni Language Italian
 director:          Riccardo Milani
 tmdbId:            106199
 imdbId:            tt0218822
@@ -6743,7 +6743,7 @@ releaseYear:       1958
 countries:         Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/29720.png
 synopsis.length:   396
-cast:              —
+cast:              Jeanne Moreau, Maurice Ronet, Georges Poujouly
 director:          Louis Malle
 tmdbId:            —
 imdbId:            —
@@ -6774,7 +6774,7 @@ releaseYear:       2025
 countries:         Francja, Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/WOLNOSC_PO_WLOSKU_plakat_PL_LQ_MRg2Jxu.jpg
 synopsis.length:   616
-cast:              —
+cast:              Valeria Golino, Matilda De Angelis, Elodie, Corrado Fortuna, Stefano Dionisi, Antonio Gerardi, Francesco Gheghi
 director:          Mario Martone
 tmdbId:            1310830
 imdbId:            tt34768402
@@ -6813,7 +6813,7 @@ releaseYear:       2025
 countries:         Niemcy
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2025/12/1766741798010.jpg
 synopsis.length:   1190
-cast:              Luise Heyer, Lena Urzendowsky, Claudia Geisler-Bading, Lea Drinda
+cast:              Luise Heyer, Lena Urzendowsky, Claudia Geisler-Bading, Lea Drinda, Hanna Heckt, Laeni Geiseler, Florian Geißelmann, Andreas Anke, Susanne Wuest, Gode Benedix
 director:          Mascha Schilinski
 tmdbId:            1221061
 imdbId:            tt28690468
@@ -6915,7 +6915,7 @@ releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/l-accident-de-piano1.jpg?itok=CrZu2bBf
 synopsis.length:   533
-cast:              —
+cast:              Adèle Exarchopoulos, Jérôme Commandeur, Sandrine Kiberlain
 director:          Quentin Dupieux
 tmdbId:            1313144
 imdbId:            tt35431236
@@ -7197,7 +7197,7 @@ releaseYear:       1991
 countries:         Chiny, Hongkong, Tajwan
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/zawiecie_czerwone_laternie_plakat.jpg?rev=300dbab82eef4904a6bb9c1888bbea70
 synopsis.length:   1908
-cast:              —
+cast:              Gong Li, Saifei He, Jingwu Ma, Cuifen Cao
 director:          Yimou Zhang
 tmdbId:            10404
 imdbId:            tt0101640

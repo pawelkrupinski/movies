@@ -134,11 +134,13 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       // the exact value.
       regular.synopsis.map(_.length).getOrElse(0) should be > 400
 
-      // Cast accessor picks longest non-empty across sources. TMDB and
-      // IMDb both ship the same four names in different orders — exact
-      // string varies tick-to-tick depending on Map iteration, so assert
-      // on the set rather than the comma-separated order.
-      regular.cast.toSet shouldBe Set(
+      // Cast accessor picks the longest non-empty list across sources. Which
+      // list that is depends on how richly TMDB resolved: a cinema now supplies
+      // the English `originalTitle` as a TMDB-search hint, which can match the
+      // fully-credited record (16+ names) rather than just the four leads. So
+      // assert the four leads are always present rather than pinning an exact
+      // set whose size moves with the TMDB match.
+      regular.cast.toSet should contain allElementsOf Set(
         "Anne Hathaway", "Meryl Streep", "Stanley Tucci", "Emily Blunt"
       )
       regular.director shouldBe Seq("David Frankel")
