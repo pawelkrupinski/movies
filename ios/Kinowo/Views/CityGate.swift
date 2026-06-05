@@ -42,7 +42,11 @@ struct CityResolverView: View {
     var body: some View {
         Group {
             if showChoice {
-                CityChoiceView()
+                // Carry the detected nearest (if any) into the manual picker so a
+                // deliberate pick of a *different* city can pre-suppress the
+                // "you're nearer …" prompt that would otherwise fire the instant
+                // the gate flips to the repertoire.
+                CityChoiceView(nearest: detected)
             } else if let city = detected {
                 CityConfirmView(
                     city: city,
@@ -112,6 +116,10 @@ struct CityConfirmView: View {
 /// it's a one-tap screen, but the list scales as cities are added.
 struct CityChoiceView: View {
     @EnvironmentObject var prefs: UserPreferences
+    /// The location-detected nearest city, when one was found — used only to
+    /// pre-suppress the switch prompt for a deliberate pick of another city.
+    /// `nil` when location was unavailable (then there's nothing to suppress).
+    var nearest: City?
 
     var body: some View {
         NavigationStack {
@@ -119,7 +127,7 @@ struct CityChoiceView: View {
                 Section {
                     ForEach(City.all, id: \.slug) { city in
                         Button {
-                            prefs.setCity(city.slug)
+                            choose(city)
                         } label: {
                             HStack {
                                 Text(city.name)
@@ -138,5 +146,16 @@ struct CityChoiceView: View {
             .navigationTitle("Miasto")
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+
+    /// Adopt the picked city. When it differs from the location-detected
+    /// nearest, record that pair so the "you're nearer …" prompt doesn't fire
+    /// the moment the repertoire appears — the user just chose this city on
+    /// purpose. Order matters: seed the key before `setCity` flips the gate.
+    private func choose(_ city: City) {
+        if let key = City.initialChoiceSuppressKey(chosenSlug: city.slug, nearestSlug: nearest?.slug) {
+            prefs.setCitySwitchPromptKey(key)
+        }
+        prefs.setCity(city.slug)
     }
 }

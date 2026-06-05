@@ -65,9 +65,29 @@ struct City: Codable, Hashable {
     ) -> CitySwitchSuggestion? {
         guard let nearest = nearestWithin100km(lat: lat, lon: lon),
               nearest.slug != chosenSlug else { return nil }
-        let key = chosenSlug + "→" + nearest.slug
+        let key = switchPromptKey(chosenSlug: chosenSlug, nearestSlug: nearest.slug)
         guard key != lastPromptKey else { return nil }
         return CitySwitchSuggestion(target: nearest, key: key)
+    }
+
+    /// The stable de-dupe key for a `chosen → nearest` pair. Built in one place
+    /// so the value `switchSuggestion` compares against is the same one the
+    /// first-launch gate pre-records via `initialChoiceSuppressKey`.
+    static func switchPromptKey(chosenSlug: String, nearestSlug: String) -> String {
+        chosenSlug + "→" + nearestSlug
+    }
+
+    /// The prompt key to pre-record when the user *deliberately* picks
+    /// `chosenSlug` at the first-launch gate while location placed them nearest
+    /// `nearestSlug`. Seeding it means `switchSuggestion` won't immediately turn
+    /// around and offer to switch back to the city they just chose against —
+    /// the choice was intentional. Returns `nil` when there's nothing to
+    /// suppress: no location fix (`nearestSlug == nil`), or the chosen city *is*
+    /// the nearest. Only this one pair is suppressed, so travelling to a
+    /// different city later still re-arms the prompt.
+    static func initialChoiceSuppressKey(chosenSlug: String, nearestSlug: String?) -> String? {
+        guard let nearestSlug, nearestSlug != chosenSlug else { return nil }
+        return switchPromptKey(chosenSlug: chosenSlug, nearestSlug: nearestSlug)
     }
 
     /// The city-prefixed API URL for `endpoint` (`"repertoire"` /

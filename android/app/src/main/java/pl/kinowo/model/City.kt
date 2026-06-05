@@ -58,10 +58,28 @@ object Cities {
     ): CitySwitchSuggestion? {
         val nearest = nearestWithin100km(lat, lon) ?: return null
         if (nearest.slug == chosenSlug) return null
-        val key = "$chosenSlug→${nearest.slug}"
+        val key = switchPromptKey(chosenSlug, nearest.slug)
         if (key == lastPromptKey) return null
         return CitySwitchSuggestion(nearest, key)
     }
+
+    /** The stable de-dupe key for a `chosen→nearest` pair. One source of truth so
+     *  the value [switchSuggestion] compares against is the same one the gate
+     *  pre-records via [initialChoiceSuppressKey]. */
+    fun switchPromptKey(chosenSlug: String, nearestSlug: String): String =
+        "$chosenSlug→$nearestSlug"
+
+    /**
+     * The prompt key to pre-record when the user *deliberately* picks
+     * [chosenSlug] at the first-launch gate while location placed them nearest
+     * [nearestSlug]. Seeding it stops [switchSuggestion] from immediately
+     * offering to switch back to the city they just chose against — the choice
+     * was intentional. Returns null when there's nothing to suppress: no
+     * location fix ([nearestSlug] is null), or the chosen city *is* the nearest.
+     * Only this one pair is suppressed, so travelling elsewhere re-arms the prompt.
+     */
+    fun initialChoiceSuppressKey(chosenSlug: String, nearestSlug: String?): String? =
+        nearestSlug?.takeIf { it != chosenSlug }?.let { switchPromptKey(chosenSlug, it) }
 
     /** Great-circle distance in kilometres between two lat/lon points. */
     private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {

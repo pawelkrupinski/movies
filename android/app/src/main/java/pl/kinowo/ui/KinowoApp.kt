@@ -98,11 +98,15 @@ private fun CityGate(vm: KinowoViewModel) {
     // The detected city awaiting the user's confirmation (null until a fix
     // lands on a supported city).
     var detected by remember { mutableStateOf<City?>(null) }
+    // The detected nearest city, retained even after "choose other" clears
+    // `detected`, so a deliberate pick of a different city can pre-suppress the
+    // "you're nearer …" prompt that would otherwise fire on the next screen.
+    var nearest by remember { mutableStateOf<City?>(null) }
 
     val resolver = remember { LocationCityResolver(context) }
     fun resolveFromLocation() = scope.launch {
         val city = resolver.resolveNearestCity()
-        if (city != null) detected = city else showChooser = true
+        if (city != null) { detected = city; nearest = city } else showChooser = true
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -118,7 +122,7 @@ private fun CityGate(vm: KinowoViewModel) {
 
     val city = detected
     when {
-        showChooser     -> CityChoiceScreen(onPick = { vm.setCity(it.slug) })
+        showChooser     -> CityChoiceScreen(onPick = { vm.chooseCityAtGate(it.slug, nearest?.slug) })
         city != null    -> CityConfirmScreen(
             city = city,
             onConfirm = { vm.setCity(city.slug) },

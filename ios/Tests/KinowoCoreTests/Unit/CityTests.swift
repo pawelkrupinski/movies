@@ -78,6 +78,36 @@ final class CityTests: XCTestCase {
         XCTAssertNil(s)
     }
 
+    // ── initialChoiceSuppressKey (deliberate first-launch pick) ───
+
+    func testInitialChoiceSuppressKeyForADifferentCityMatchesTheSwitchKey() {
+        // User picks Warszawa at the gate while location placed them near
+        // Poznań — the pair must match what `switchSuggestion` would produce,
+        // so seeding it suppresses the immediate "you're nearer Poznań" prompt.
+        let key = City.initialChoiceSuppressKey(chosenSlug: "warszawa", nearestSlug: "poznan")
+        XCTAssertEqual(key, "warszawa→poznan")
+
+        // End-to-end: feeding that key back as `lastPromptKey` suppresses the
+        // suggestion the gate would otherwise raise from Poznań coordinates.
+        let suppressed = City.switchSuggestion(
+            chosenSlug: "warszawa",
+            lat: 52.4064, lon: 16.9252,
+            lastPromptKey: key
+        )
+        XCTAssertNil(suppressed)
+    }
+
+    func testInitialChoiceSuppressKeyIsNilWhenChosenCityIsTheNearest() {
+        // Confirming the detected city — nothing to suppress.
+        XCTAssertNil(City.initialChoiceSuppressKey(chosenSlug: "poznan", nearestSlug: "poznan"))
+    }
+
+    func testInitialChoiceSuppressKeyIsNilWithoutALocationFix() {
+        // Location unavailable at the gate — no nearest, so a later legitimate
+        // "you're nearer …" prompt must stay armed.
+        XCTAssertNil(City.initialChoiceSuppressKey(chosenSlug: "warszawa", nearestSlug: nil))
+    }
+
     // ── apiURL (city-prefixed endpoints) ──────────────────────────
 
     func testRepertoireURLIsCityPrefixed() {

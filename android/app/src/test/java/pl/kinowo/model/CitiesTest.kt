@@ -65,4 +65,29 @@ class CitiesTest {
         // Kraków is out of range of every supported city → no offer.
         assertNull(Cities.switchSuggestion("poznan", 50.0647, 19.9450, lastPromptKey = null))
     }
+
+    @Test
+    fun initialChoiceSuppressKeyMatchesTheSwitchKeyForADifferentCity() {
+        // Picking Warszawa at the gate while location placed the user near
+        // Poznań must seed exactly the pair switchSuggestion would produce, so
+        // the immediate "you're nearer Poznań" prompt is suppressed.
+        val key = Cities.initialChoiceSuppressKey("warszawa", "poznan")
+        assertEquals("warszawa→poznan", key)
+
+        // End-to-end: feeding that key back suppresses the offer the gate would
+        // otherwise raise from Poznań coordinates.
+        assertNull(Cities.switchSuggestion("warszawa", 52.4064, 16.9252, lastPromptKey = key))
+    }
+
+    @Test
+    fun initialChoiceSuppressKeyIsNullWhenChosenCityIsTheNearest() {
+        // Confirming the detected city — nothing to suppress.
+        assertNull(Cities.initialChoiceSuppressKey("poznan", "poznan"))
+    }
+
+    @Test
+    fun initialChoiceSuppressKeyIsNullWithoutALocationFix() {
+        // Location unavailable at the gate — a later legitimate prompt stays armed.
+        assertNull(Cities.initialChoiceSuppressKey("warszawa", null))
+    }
 }

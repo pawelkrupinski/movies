@@ -274,6 +274,17 @@ class KinowoViewModel(
         prefs.setCity(slug)
     }
 
+    /** Adopt a city the user deliberately picked at the first-launch gate. When
+     *  it differs from the location-detected [nearestSlug], pre-record that pair
+     *  so [checkCitySwitch] doesn't fire the "you're nearer …" prompt the moment
+     *  the repertoire appears — the pick was intentional. Seeds the key before
+     *  persisting the city so the prompt check sees it. */
+    fun chooseCityAtGate(slug: String, nearestSlug: String?) = viewModelScope.launch {
+        Cities.initialChoiceSuppressKey(slug, nearestSlug)?.let { prefs.setCitySwitchPromptKey(it) }
+        citySwitchSuggestion = null
+        prefs.setCity(slug)
+    }
+
     /**
      * Offer to switch to a nearer supported city when the device — with location
      * already granted — is closer to a different city than the chosen one. Reads
