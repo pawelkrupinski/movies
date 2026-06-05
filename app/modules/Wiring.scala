@@ -93,6 +93,7 @@ trait Wiring {
     // new IluzjonClient(httoFetch),        // Warszawa — Kino Iluzjon
     // new KinoGramClient(httoFetch),       // Warszawa — KinoGram
     // new KinoKulturaClient(httoFetch),    // Warszawa — Kino Kultura
+    // new AmondoClient(httoFetch),         // Warszawa — Kino Amondo
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Events ────────────────────────────────────────────────────────────────

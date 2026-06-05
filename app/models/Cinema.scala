@@ -80,6 +80,8 @@ case object KinoGram extends Cinema("KinoGram", "KinoGram")
 
 case object KinoKultura extends Cinema("Kino Kultura", "Kultura")
 
+case object KinoAmondo extends Cinema("Kino Amondo", "Amondo")
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -127,6 +129,7 @@ object Cinema {
     KinoIluzjon,
     KinoGram,
     KinoKultura,
+    KinoAmondo,
   )
 
   val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa
