@@ -7,7 +7,10 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import services.movies.CaffeineMovieCache
 
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
+import java.util.zip.GZIPInputStream
 
 class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
@@ -110,5 +113,59 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
     val second = ctrl.apiRepertoire("poznan")(FakeRequest().withHeaders("If-Modified-Since" -> lastMod))
     status(second) shouldBe OK
+  }
+
+  // ── Gzip response cache ────────────────────────────────────────────────────
+
+  private def gzipReq(path: String) =
+    FakeRequest("GET", path).withHeaders("Accept-Encoding" -> "gzip, deflate, br")
+
+  private def gunzip(bytes: org.apache.pekko.util.ByteString): String =
+    new String(new GZIPInputStream(new ByteArrayInputStream(bytes.toArray)).readAllBytes(), StandardCharsets.UTF_8)
+
+  "apiRepertoire" should "serve gzip-precompressed JSON to a gzip-accepting client, with Last-Modified" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))
+
+    status(result) shouldBe OK
+    header("Content-Encoding", result) shouldBe Some("gzip")
+    header("Last-Modified", result) shouldBe defined
+    val film = play.api.libs.json.Json.parse(gunzip(contentAsBytes(result)))
+      .as[Seq[play.api.libs.json.JsValue]].head
+    (film \ "title").as[String] shouldBe "Test Film"
+  }
+
+  it should "still 304 a current client even when it accepts gzip (cache must not shadow the 304)" in {
+    val (ctrl, _) = buildController()
+    val lastMod = header("Last-Modified", ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))).get
+
+    val revalidated = ctrl.apiRepertoire("poznan")(
+      gzipReq("/poznan/api/repertoire").withHeaders("If-Modified-Since" -> lastMod)
+    )
+    status(revalidated) shouldBe NOT_MODIFIED
+    header("Content-Encoding", revalidated) shouldBe None
+    contentAsString(revalidated) shouldBe empty
+  }
+
+  it should "re-serve fresh gzipped JSON after the cache version advances" in {
+    val (ctrl, cache) = buildController()
+    ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))
+
+    Thread.sleep(1100)
+    cache.rehydrate()
+
+    val after = ctrl.apiRepertoire("poznan")(gzipReq("/poznan/api/repertoire"))
+    status(after) shouldBe OK
+    header("Content-Encoding", after) shouldBe Some("gzip")
+    gunzip(contentAsBytes(after)) should include ("Test Film")
+  }
+
+  "apiDetails" should "serve gzip-precompressed JSON to a gzip-accepting client" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.apiDetails("poznan")(gzipReq("/poznan/api/details"))
+
+    status(result) shouldBe OK
+    header("Content-Encoding", result) shouldBe Some("gzip")
+    gunzip(contentAsBytes(result)) should include ("A test synopsis.")
   }
 }

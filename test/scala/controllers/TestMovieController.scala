@@ -27,7 +27,7 @@ object TestMovieController {
       userRepo               = new services.users.InMemoryUserRepo,
       oauthProviders         = Set.empty,
       environment            = mode,
-      pageCache              = new PageResponseCache,
+      responseCache          = new GzippedResponseCache,
     )
     (ctrl, cache)
   }

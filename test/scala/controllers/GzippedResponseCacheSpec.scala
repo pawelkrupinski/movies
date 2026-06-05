@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.zip.GZIPInputStream
 
-class PageResponseCacheSpec extends AnyFlatSpec with Matchers {
+class GzippedResponseCacheSpec extends AnyFlatSpec with Matchers {
 
   private def gunzip(bytes: org.apache.pekko.util.ByteString): String = {
     val in = new GZIPInputStream(new ByteArrayInputStream(bytes.toArray))
@@ -19,7 +19,7 @@ class PageResponseCacheSpec extends AnyFlatSpec with Matchers {
   private val v2 = Instant.parse("2026-06-05T10:05:00Z")
 
   "gzippedBody" should "render once and serve the cached bytes on a second same-version read" in {
-    val cache = new PageResponseCache
+    val cache = new GzippedResponseCache
     var renders = 0
     def render(): String = { renders += 1; "<html>hello</html>" }
 
@@ -32,7 +32,7 @@ class PageResponseCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "re-render when the version advances (stale entry invalidated)" in {
-    val cache = new PageResponseCache
+    val cache = new GzippedResponseCache
     var renders = 0
     def render(): String = { renders += 1; s"<html>v$renders</html>" }
 
@@ -44,7 +44,7 @@ class PageResponseCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "key independently per path" in {
-    val cache = new PageResponseCache
+    val cache = new GzippedResponseCache
     val a = cache.gzippedBody("/poznan/kina", v1)("<html>kina</html>")
     val b = cache.gzippedBody("/poznan/", v1)("<html>index</html>")
 

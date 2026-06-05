@@ -1,7 +1,7 @@
 package modules
 
 import clients.TmdbClient
-import controllers.{AuthController, FacebookDataDeletionController, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PageResponseCache, PlanController, UptimeController, UserStateController}
+import controllers.{AuthController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, UptimeController, UserStateController}
 import models._
 import play.api.Mode
 import play.api.mvc.ControllerComponents
@@ -243,8 +243,8 @@ trait Wiring {
 
   // ── Controllers ───────────────────────────────────────────────────────────
   lazy val landingController = new LandingController(controllerComponents)
-  lazy val pageResponseCache = new PageResponseCache
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, movieCache, userRepo, oauthProviders.keySet, environmentMode, pageResponseCache)
+  lazy val gzippedResponseCache = new GzippedResponseCache
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, movieCache, userRepo, oauthProviders.keySet, environmentMode, gzippedResponseCache)
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   lazy val uptimeController = new UptimeController(controllerComponents, uptimeMonitor)(using materializer)

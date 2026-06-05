@@ -255,7 +255,7 @@ class MovieController( cc: ControllerComponents,
                        userRepo: services.users.UserRepo,
                        oauthProviders: Set[String],
                        environment: Mode,
-                       pageCache: PageResponseCache,
+                       responseCache: GzippedResponseCache,
                      ) extends AbstractController(cc) with Logging {
 
   // Read the session's `userId` (set by `AuthController.callback`) and
@@ -322,7 +322,7 @@ class MovieController( cc: ControllerComponents,
     val user = currentUser(request)
     if (cacheablePlainPage(request, user)) {
       // On a cache hit `renderIndexHtml` (and its data-prep) never runs.
-      val bytes = pageCache.gzippedBody(request.path, movieCache.lastModified)(renderIndexHtml(city, request, user).body)
+      val bytes = responseCache.gzippedBody(request.path, movieCache.lastModified)(renderIndexHtml(city, request, user).body)
       gzippedOk(bytes).withCookies(cityCookie(city))
     } else if (isViewSwap(request)) {
       Ok(views.html._repertoireView(movieControllerService.toSchedules(city), devMode)).withHeaders(varyOnSwap)
@@ -400,7 +400,7 @@ class MovieController( cc: ControllerComponents,
     val user = currentUser(request)
     if (cacheablePlainPage(request, user)) {
       // On a cache hit `renderKinaHtml` (and its data-prep) never runs.
-      val bytes = pageCache.gzippedBody(request.path, movieCache.lastModified)(renderKinaHtml(city, pinnedCinema, request, user).body)
+      val bytes = responseCache.gzippedBody(request.path, movieCache.lastModified)(renderKinaHtml(city, pinnedCinema, request, user).body)
       gzippedOk(bytes).withCookies(cityCookie(city))
     } else if (isViewSwap(request)) {
       val pinned = pinnedCinema.filter(city.cinemaDisplayNames.contains)
@@ -427,11 +427,16 @@ class MovieController( cc: ControllerComponents,
     )
   }
 
-  /** Conditional-GET wrapper shared by the JSON API endpoints: returns 304 if
-   *  the client's `If-Modified-Since` is at/after the cache's last-modified,
-   *  else runs `body` and stamps the `Last-Modified` header. Both the listing
-   *  and the details payload track the same cache mtime, so a 304 on one is a
-   *  304 on the other. */
+  /** Conditional-GET wrapper shared by the JSON API endpoints. A client with a
+   *  current `If-Modified-Since` gets a bodiless 304 (the cheapest path, and
+   *  what warm mobile clients hit). Otherwise the payload is served — and since
+   *  it's identical for every client at a given cache version, a gzip-accepting
+   *  request is answered from the shared [[GzippedResponseCache]] (keyed on
+   *  path, versioned by the same mtime), skipping the serialize + gzip that
+   *  `body` would otherwise cost on this latency-sensitive path. Non-gzip
+   *  clients fall back to an uncompressed render. Both the listing and the
+   *  details payload track the same cache mtime, so a 304 on one is a 304 on
+   *  the other. */
   private def conditionalJson(request: Request[AnyContent])(body: => play.api.libs.json.JsValue): Result = {
     val lastMod = movieCache.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
@@ -445,7 +450,12 @@ class MovieController( cc: ControllerComponents,
     }
 
     if (notModified) NotModified
-    else Ok(body).withHeaders("Last-Modified" -> httpDate)
+    else if (acceptsGzip(request)) {
+      val bytes = responseCache.gzippedBody(request.path, lastMod)(play.api.libs.json.Json.stringify(body))
+      Ok(bytes)
+        .as("application/json")
+        .withHeaders("Content-Encoding" -> "gzip", "Last-Modified" -> httpDate, "Vary" -> "Accept-Encoding")
+    } else Ok(body).withHeaders("Last-Modified" -> httpDate)
   }
 
   /** Lean listing — everything the grid + filters need, no heavy detail text.
