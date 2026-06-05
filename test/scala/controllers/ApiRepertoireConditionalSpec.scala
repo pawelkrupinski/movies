@@ -48,7 +48,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   it should "keep the lean listing free of detail-only fields" in {
     val (ctrl, _) = buildController()
-    val result = ctrl.apiRepertoire()(FakeRequest())
+    val result = ctrl.apiRepertoire("poznan")(FakeRequest())
     status(result) shouldBe OK
     val film = play.api.libs.json.Json.parse(contentAsString(result))
       .as[Seq[play.api.libs.json.JsValue]].head
@@ -59,7 +59,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   it should "carry releaseYear and genres on the lean listing (mobile card parity)" in {
     val (ctrl, _) = buildController()
-    val result = ctrl.apiRepertoire()(FakeRequest())
+    val result = ctrl.apiRepertoire("poznan")(FakeRequest())
     status(result) shouldBe OK
     val film = play.api.libs.json.Json.parse(contentAsString(result))
       .as[Seq[play.api.libs.json.JsValue]].head
@@ -69,7 +69,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   "apiDetails" should "return synopsis + embed-transformed trailerURLs keyed by title" in {
     val (ctrl, _) = buildController()
-    val result = ctrl.apiDetails()(FakeRequest())
+    val result = ctrl.apiDetails("poznan")(FakeRequest())
     status(result) shouldBe OK
     val entry = play.api.libs.json.Json.parse(contentAsString(result))
       .as[Seq[play.api.libs.json.JsValue]]
@@ -85,7 +85,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   it should "keep the original title off the lean listing (detail-only field)" in {
     val (ctrl, _) = buildController()
-    val film = play.api.libs.json.Json.parse(contentAsString(ctrl.apiRepertoire()(FakeRequest())))
+    val film = play.api.libs.json.Json.parse(contentAsString(ctrl.apiRepertoire("poznan")(FakeRequest())))
       .as[Seq[play.api.libs.json.JsValue]].head
     (film \ "originalTitle").toOption shouldBe None
   }
@@ -94,37 +94,37 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     val (ctrl, _) = buildController()
     // The single fixture film has both, so it is present; a film with neither
     // would be filtered out by ApiFilmDetails.hasContent.
-    val details = play.api.libs.json.Json.parse(contentAsString(ctrl.apiDetails()(FakeRequest())))
+    val details = play.api.libs.json.Json.parse(contentAsString(ctrl.apiDetails("poznan")(FakeRequest())))
       .as[Seq[play.api.libs.json.JsValue]]
     details.forall(d => (d \ "synopsis").toOption.isDefined || (d \ "trailerURLs").as[Seq[String]].nonEmpty) shouldBe true
   }
 
   "apiRepertoire" should "return 200 with Last-Modified header when no If-Modified-Since" in {
     val (ctrl, _) = buildController()
-    val result = ctrl.apiRepertoire()(FakeRequest())
+    val result = ctrl.apiRepertoire("poznan")(FakeRequest())
     status(result) shouldBe OK
     header("Last-Modified", result) shouldBe defined
   }
 
   it should "return 304 when If-Modified-Since matches" in {
     val (ctrl, _) = buildController()
-    val first = ctrl.apiRepertoire()(FakeRequest())
+    val first = ctrl.apiRepertoire("poznan")(FakeRequest())
     val lastMod = header("Last-Modified", first).get
 
-    val second = ctrl.apiRepertoire()(FakeRequest().withHeaders("If-Modified-Since" -> lastMod))
+    val second = ctrl.apiRepertoire("poznan")(FakeRequest().withHeaders("If-Modified-Since" -> lastMod))
     status(second) shouldBe NOT_MODIFIED
     contentAsString(second) shouldBe empty
   }
 
   it should "return 200 after a cache mutation even with the old If-Modified-Since" in {
     val (ctrl, cache) = buildController()
-    val first = ctrl.apiRepertoire()(FakeRequest())
+    val first = ctrl.apiRepertoire("poznan")(FakeRequest())
     val lastMod = header("Last-Modified", first).get
 
     Thread.sleep(1100)
     cache.rehydrate()
 
-    val second = ctrl.apiRepertoire()(FakeRequest().withHeaders("If-Modified-Since" -> lastMod))
+    val second = ctrl.apiRepertoire("poznan")(FakeRequest().withHeaders("If-Modified-Since" -> lastMod))
     status(second) shouldBe OK
   }
 }

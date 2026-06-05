@@ -1,14 +1,14 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None)
+@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@heading – Repertuar kinowy Poznań</title>
+  <title>@heading – Repertuar kinowy @city.labels.nominative</title>
   @_ogTagsApp(
-    pageTitle       = s"$heading — Repertuar kinowy Poznań",
-    pageDescription = s"Filmy z poznańskich kin: $heading. Z aktualnymi seansami, ocenami i opisami.",
+    pageTitle       = s"$heading — Repertuar kinowy ${city.labels.nominative}",
+    pageDescription = s"Filmy z ${city.labels.genitivePlural} kin: $heading. Z aktualnymi seansami, ocenami i opisami.",
     pageUrl         = pageUrl,
     fbAppId         = fbAppId,
   )
@@ -31,7 +31,7 @@
 
 <nav class="navbar px-4 py-3 d-flex align-items-center" style="flex-wrap:wrap">
   <div class="d-flex align-items-center gap-3" style="flex-shrink:0">
-    <a href="/" class="back-link" style="font-size:.9rem; color:#aad4ff; text-decoration:none; display:inline-flex; align-items:center; gap:.3em;"><svg style="width:.7em; height:.7em; flex-shrink:0;" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg>Repertuar</a>
+    <a href="/@city.slug/" class="back-link" style="font-size:.9rem; color:#aad4ff; text-decoration:none; display:inline-flex; align-items:center; gap:.3em;"><svg style="width:.7em; height:.7em; flex-shrink:0;" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg>Repertuar</a>
   </div>
   <div class="navbar-auth">
     @currentUser match {

@@ -7,7 +7,7 @@ import play.api.mvc._
 import play.api.Mode
 import services.movies.{MovieCache, MovieService, StoredMovieRecord, TitleNormalizer, TrailerEmbed}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
 
 case class CinemaShowtimes(cinema: Cinema, showtimes: Seq[Showtime])
@@ -151,20 +151,27 @@ class MovieControllerService(movieService: MovieService) {
     )
   }
 
-  def toSchedules(): Seq[FilmSchedule] =
-    toSchedules(LocalDateTime.now(ZoneId.of("Europe/Warsaw")))
+  def toSchedules(city: City): Seq[FilmSchedule] =
+    toSchedules(city, LocalDateTime.now(city.zoneId))
 
   /** Overload with an injectable `now` so tests can pin the clock to a
    * fixture's capture date and assert what the / page would render at that
-   * moment. Production callers should always use the no-arg variant. */
-  def toSchedules(now: LocalDateTime): Seq[FilmSchedule] = {
+   * moment. Production callers should always use the city-only variant.
+   *
+   * Scoped to `city`: only this city's cinemas' showtimes count, so a film
+   * playing only in another city's cinemas drops out of this city's listing.
+   * The cache itself is global (one enriched row per film across all cities). */
+  def toSchedules(city: City, now: LocalDateTime): Seq[FilmSchedule] = {
+    val cityCinemas = city.cinemaSet
     movieService.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
-      // Flatten every cinema's future showtimes for this film. Records with
-      // no future showings (film stopped playing everywhere) drop out of the
-      // list view — they stay in storage per the "keep forever" policy.
-      val allShowtimes = e.cinemaData.toSeq.flatMap { case (cinema, slot) =>
-        slot.showtimes.iterator.filter(_.dateTime.isAfter(now.minusMinutes(30))).map(st => (cinema, st))
-      }
+      // Flatten this city's cinemas' future showtimes for this film. Records
+      // with no future showings in this city drop out of its list view — they
+      // stay in storage per the "keep forever" policy.
+      val allShowtimes = e.cinemaData.toSeq
+        .filter { case (cinema, _) => cityCinemas.contains(cinema) }
+        .flatMap { case (cinema, slot) =>
+          slot.showtimes.iterator.filter(_.dateTime.isAfter(now.minusMinutes(30))).map(st => (cinema, st))
+        }
       if (allShowtimes.isEmpty) None
       else {
         val earliest = allShowtimes.map(_._2.dateTime).min
@@ -180,7 +187,9 @@ class MovieControllerService(movieService: MovieService) {
               (date, perCinema)
             }
         val cinemaFilmUrls: Seq[(Cinema, String)] =
-          e.cinemaData.toSeq.flatMap { case (cinema, slot) => slot.filmUrl.map(cinema -> _) }
+          e.cinemaData.toSeq
+            .filter { case (cinema, _) => cityCinemas.contains(cinema) }
+            .flatMap { case (cinema, slot) => slot.filmUrl.map(cinema -> _) }
         Some((earliest, FilmSchedule(
           movie = Movie(e.displayTitle(cleanTitle), e.runtimeMinutes, e.releaseYear, countries = e.countries, genres = e.genres),
           posterUrl = e.posterUrl,
@@ -195,13 +204,14 @@ class MovieControllerService(movieService: MovieService) {
     }.sortBy(_._1).map(_._2)
   }
 
-  def toCinemaSchedules(): Seq[CinemaSchedule] =
-    toCinemaSchedules(LocalDateTime.now(ZoneId.of("Europe/Warsaw")))
+  def toCinemaSchedules(city: City): Seq[CinemaSchedule] =
+    toCinemaSchedules(city, LocalDateTime.now(city.zoneId))
 
-  /** Overload with an injectable `now` — see `toSchedules(now)` for the same
-   *  pattern. Production callers should always use the no-arg variant. */
-  def toCinemaSchedules(now: LocalDateTime): Seq[CinemaSchedule] = {
-    Cinema.all.flatMap { cinema =>
+  /** Overload with an injectable `now` — see `toSchedules(city, now)` for the
+   *  same pattern. Production callers should always use the city-only variant.
+   *  Sections are this city's cinemas only. */
+  def toCinemaSchedules(city: City, now: LocalDateTime): Seq[CinemaSchedule] = {
+    city.cinemas.flatMap { cinema =>
       val moviesForCinema = movieService.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
         e.cinemaData.get(cinema).flatMap { slot =>
           val future = slot.showtimes.filter(_.dateTime.isAfter(now.minusMinutes(30)))
@@ -229,9 +239,9 @@ class MovieControllerService(movieService: MovieService) {
     }
   }
 
-  def film(title: String): Option[FilmSchedule] = {
+  def film(city: City, title: String): Option[FilmSchedule] = {
     val needle = normalizeTitle(title)
-    toSchedules().find(s => normalizeTitle(s.movie.title) == needle)
+    toSchedules(city).find(s => normalizeTitle(s.movie.title) == needle)
   }
 
   private def normalizeTitle(title: String): String = TitleNormalizer.normalize(title)
@@ -265,56 +275,75 @@ class MovieController( cc: ControllerComponents,
   // Caches must not serve a fragment to a normal navigation (or vice versa).
   private val varyOnSwap = "Vary" -> "X-Requested-With"
 
+  // Resolve the `/{city}/…` slug; 404 on an unknown city. Every city-scoped
+  // handler wraps its body in this so resolution + not-found behaviour lives
+  // in one place.
+  private def withCity(slug: String)(f: City => Result): Result =
+    City.bySlug(slug) match {
+      case Some(c) => f(c)
+      case None    => NotFound(s"Nieznane miasto: $slug")
+    }
+
+  // Persist the viewed city so the bare `/` landing can bounce a returning
+  // visitor straight to it. Readable by JS (httpOnly = false) so the client
+  // can also honour it; long-lived; path "/" so it rides every request.
+  private def cityCookie(city: City): Cookie =
+    Cookie("city", city.slug, maxAge = Some(60 * 60 * 24 * 365), path = "/", httpOnly = false)
+
   // Render the main "Filmy" listing — repertoire view, full corpus,
   // OG meta derived from `?…` filter params. Shared between `/` and
   // `/filmy` (no params) so both URLs are interchangeable; `/filmy`
   // with one of the browse-axis params still routes through `browse`
   // below to the per-director / per-cast / per-country page.
-  private def renderIndex(request: RequestHeader): Result = {
+  private def renderIndex(city: City, request: RequestHeader): Result = {
+    implicit val c: City = city
     val user      = currentUser(request)
-    val schedules = movieControllerService.toSchedules()
+    val schedules = movieControllerService.toSchedules(city)
     if (isViewSwap(request))
       Ok(views.html._repertoireView(schedules, devMode)).withHeaders(varyOnSwap)
     else {
-      val meta = FilterDescription.forIndex(request.queryString, schedules)
+      val meta = FilterDescription.forIndex(city, request.queryString, schedules)
       // Embed the Kina sibling fragment so the first swipe tracks instantly with
       // no network fetch — shared.js seeds its prefetch cache from this at boot.
-      val sibling = views.html._kinaView(movieControllerService.toCinemaSchedules(), None, devMode).body
+      val sibling = views.html._kinaView(movieControllerService.toCinemaSchedules(city), None, devMode).body
       Ok(views.html.repertoire(
-        schedules, Cinema.all.map(_.displayName), Cinema.pillMap,
+        schedules, city.cinemaDisplayNames, city.cinemaPillMap,
         devMode, user, oauthProviders,
         pageTitle       = meta.title,
         pageDescription = meta.description,
         pageUrl         = PageMeta.canonicalUrl(request),
         fbAppId         = PageMeta.fbAppId,
-        siblingPath     = "/kina",
+        siblingPath     = s"/${city.slug}/kina",
         siblingHtml     = sibling,
-      )).withHeaders(varyOnSwap)
+      )).withHeaders(varyOnSwap).withCookies(cityCookie(city))
     }
   }
 
-  def index(): Action[AnyContent] = Action(renderIndex)
+  def index(city: String): Action[AnyContent] = Action { request => withCity(city)(c => renderIndex(c, request)) }
 
-  private def renderBrowse(heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
+  private def renderBrowse(city: City, heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
+    implicit val c: City = city
     val user = currentUser(request)
     Ok(views.html.browse(
       films, heading, devMode, user, oauthProviders,
       pageUrl = PageMeta.canonicalUrl(request),
       fbAppId = PageMeta.fbAppId,
-    ))
+    )).withCookies(cityCookie(city))
   }
 
-  def browse(kraj: Option[String], rezyser: Option[String], aktor: Option[String], gatunek: Option[String]): Action[AnyContent] = Action { request =>
-    val all = movieControllerService.toSchedules()
-    (kraj, rezyser, aktor, gatunek) match {
-      case (Some(name), _, _, _) => renderBrowse(name, all.filter(_.movie.countries.contains(name)), request)
-      case (_, Some(name), _, _) => renderBrowse(name, all.filter(_.director.contains(name)),        request)
-      case (_, _, Some(name), _) => renderBrowse(name, all.filter(_.cast.contains(name)),            request)
-      case (_, _, _, Some(name)) => renderBrowse(name, all.filter(_.movie.genres.contains(name)),    request)
-      // `/filmy` with no filter axis is the main listing — same view as
-      // `/`. The browse view only kicks in for the per-axis pages reached
-      // from the meta-link rows on /film.
-      case _                     => renderIndex(request)
+  def browse(city: String, kraj: Option[String], rezyser: Option[String], aktor: Option[String], gatunek: Option[String]): Action[AnyContent] = Action { request =>
+    withCity(city) { c =>
+      val all = movieControllerService.toSchedules(c)
+      (kraj, rezyser, aktor, gatunek) match {
+        case (Some(name), _, _, _) => renderBrowse(c, name, all.filter(_.movie.countries.contains(name)), request)
+        case (_, Some(name), _, _) => renderBrowse(c, name, all.filter(_.director.contains(name)),        request)
+        case (_, _, Some(name), _) => renderBrowse(c, name, all.filter(_.cast.contains(name)),            request)
+        case (_, _, _, Some(name)) => renderBrowse(c, name, all.filter(_.movie.genres.contains(name)),    request)
+        // `/{city}/filmy` with no filter axis is the main listing — same view
+        // as `/{city}/`. The browse view only kicks in for the per-axis pages
+        // reached from the meta-link rows on /film.
+        case _                     => renderIndex(c, request)
+      }
     }
   }
 
@@ -327,34 +356,35 @@ class MovieController( cc: ControllerComponents,
     Ok("User-agent: *\nAllow: /\n").as("text/plain; charset=utf-8")
   }
 
-  def kina(): Action[AnyContent] = renderKina(None)
+  def kina(city: String): Action[AnyContent] = Action { request => withCity(city)(c => renderKina(c, None, request)) }
 
-  // `/kina/:cinema` — pin the grid to a single cinema by display name. The
-  // pinned cinema persists across refreshes because it lives in the URL;
+  // `/{city}/kina/:cinema` — pin the grid to a single cinema by display name.
+  // The pinned cinema persists across refreshes because it lives in the URL;
   // clicking a pill on the page rewrites the path so the URL and the pin
   // never drift apart. Unknown labels are ignored (the page renders as
   // unpinned) — see `renderKina`.
-  def kinaPinned(cinema: String): Action[AnyContent] = renderKina(Some(cinema))
+  def kinaPinned(city: String, cinema: String): Action[AnyContent] = Action { request => withCity(city)(c => renderKina(c, Some(cinema), request)) }
 
-  private def renderKina(pinnedCinema: Option[String]): Action[AnyContent] = Action { request =>
+  private def renderKina(city: City, pinnedCinema: Option[String], request: RequestHeader): Result = {
+    implicit val c: City = city
     val user = currentUser(request)
-    val allCinemas = Cinema.all.map(_.displayName)
+    val allCinemas = city.cinemaDisplayNames
     val pinned = pinnedCinema.filter(allCinemas.contains)
-    val cinemas = movieControllerService.toCinemaSchedules()
+    val cinemas = movieControllerService.toCinemaSchedules(city)
     if (isViewSwap(request))
       Ok(views.html._kinaView(cinemas, pinned, devMode)).withHeaders(varyOnSwap)
     else {
       // Embed the Filmy sibling fragment so the first swipe tracks instantly with
       // no network fetch — shared.js seeds its prefetch cache from this at boot.
-      val sibling = views.html._repertoireView(movieControllerService.toSchedules(), devMode).body
+      val sibling = views.html._repertoireView(movieControllerService.toSchedules(city), devMode).body
       Ok(views.html.kina(
-        cinemas, allCinemas, Cinema.pillMap,
+        cinemas, allCinemas, city.cinemaPillMap,
         devMode, user, oauthProviders, pinned,
         pageUrl = PageMeta.canonicalUrl(request),
         fbAppId = PageMeta.fbAppId,
-        siblingPath = "/",
+        siblingPath = s"/${city.slug}/",
         siblingHtml = sibling,
-      )).withHeaders(varyOnSwap)
+      )).withHeaders(varyOnSwap).withCookies(cityCookie(city))
     }
   }
 
@@ -381,26 +411,29 @@ class MovieController( cc: ControllerComponents,
 
   /** Lean listing — everything the grid + filters need, no heavy detail text.
    *  Latency-sensitive; clients hit this on the critical path. */
-  def apiRepertoire(): Action[AnyContent] = Action { request =>
-    conditionalJson(request)(Json.toJson(movieControllerService.toSchedules().map(ApiFilm.from)))
+  def apiRepertoire(city: String): Action[AnyContent] = Action { request =>
+    withCity(city)(c => conditionalJson(request)(Json.toJson(movieControllerService.toSchedules(c).map(ApiFilm.from))))
   }
 
   /** Detail-only payload (synopsis + trailers), keyed by title. Clients fetch
    *  this in parallel with the listing and merge; keeping it off
-   *  `/api/repertoire` halves the listing's gzip size. */
-  def apiDetails(): Action[AnyContent] = Action { request =>
-    conditionalJson(request) {
-      val details = movieControllerService.toSchedules()
-        .map(ApiFilmDetails.from)
-        .filter(ApiFilmDetails.hasContent)
-      Json.toJson(details)
+   *  `/{city}/api/repertoire` halves the listing's gzip size. */
+  def apiDetails(city: String): Action[AnyContent] = Action { request =>
+    withCity(city) { c =>
+      conditionalJson(request) {
+        val details = movieControllerService.toSchedules(c)
+          .map(ApiFilmDetails.from)
+          .filter(ApiFilmDetails.hasContent)
+        Json.toJson(details)
+      }
     }
   }
 
-  def debug(): Action[AnyContent] = Action {
-    devOnly {
-
-      Ok(views.html.debug(movieControllerService.debugData()))
+  def debug(city: String): Action[AnyContent] = Action {
+    withCity(city) { implicit c =>
+      devOnly {
+        Ok(views.html.debug(movieControllerService.debugData()))
+      }
     }
   }
 
@@ -409,40 +442,49 @@ class MovieController( cc: ControllerComponents,
    *  custom properties the production card styles read. Self-contained: the
    *  sample films are built in-process so the page works regardless of cache
    *  state. */
-  def tune(): Action[AnyContent] = Action {
-    devOnly {
-      Ok(views.html.tune(MovieController.tuneSampleFilms))
+  def tune(city: String): Action[AnyContent] = Action {
+    withCity(city) { implicit c =>
+      devOnly {
+        Ok(views.html.tune(MovieController.tuneSampleFilms))
+      }
     }
   }
 
   /** Dev-only tuning page for the Kina (cinema-sectioned) view — live sliders
    *  over the real `_cinemaCards` for the cinema-header font / spacing. */
-  def tuneKina(): Action[AnyContent] = Action {
-    devOnly {
-      Ok(views.html.tuneKina(MovieController.tuneSampleCinemas))
+  def tuneKina(city: String): Action[AnyContent] = Action {
+    withCity(city) { implicit c =>
+      devOnly {
+        Ok(views.html.tuneKina(MovieController.tuneSampleCinemas))
+      }
     }
   }
 
   /** Dev-only tuning page for the film-detail view — live sliders over the real
    *  `_filmDetailContent` for the title / meta / Seanse typography. */
-  def tuneFilm(): Action[AnyContent] = Action {
-    devOnly {
-      Ok(views.html.tuneFilm(MovieController.tuneSampleFilm))
+  def tuneFilm(city: String): Action[AnyContent] = Action {
+    withCity(city) { implicit c =>
+      devOnly {
+        Ok(views.html.tuneFilm(MovieController.tuneSampleFilm))
+      }
     }
   }
 
-  def film(title: String): Action[AnyContent] = Action { request =>
-    movieControllerService.film(title) match {
-      case Some(schedule) =>
-        // `request.uri` would carry the raw inbound title-encoding; use the
-        // canonical FilmHref form instead so the og:url matches the link the
-        // page exposes elsewhere. Scheme/host come from PageMeta so the
-        // X-Forwarded-* workaround (Play 3.0's `request.secure` ignores the
-        // `trustedProxies` knob on this Fly setup) is in one place.
-        val canonicalUrl = PageMeta.origin(request) + FilmHref(schedule.movie.title)
-        val user = currentUser(request)
-        Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule), devMode, user, oauthProviders))
-      case None => NotFound(s"Film not found: $title")
+  def film(city: String, title: String): Action[AnyContent] = Action { request =>
+    withCity(city) { implicit c =>
+      movieControllerService.film(c, title) match {
+        case Some(schedule) =>
+          // `request.uri` would carry the raw inbound title-encoding; use the
+          // canonical FilmHref form instead so the og:url matches the link the
+          // page exposes elsewhere. Scheme/host come from PageMeta so the
+          // X-Forwarded-* workaround (Play 3.0's `request.secure` ignores the
+          // `trustedProxies` knob on this Fly setup) is in one place.
+          val canonicalUrl = PageMeta.origin(request) + FilmHref(schedule.movie.title)
+          val user = currentUser(request)
+          Ok(views.html.film(schedule, canonicalUrl, MovieController.previewDescription(schedule), devMode, user, oauthProviders))
+            .withCookies(cityCookie(c))
+        case None => NotFound(s"Film not found: $title")
+      }
     }
   }
 
@@ -457,10 +499,12 @@ class MovieController( cc: ControllerComponents,
    * corrections (e.g. Rialto's "On drive" resolving back to the LEGO F1
    * doc instead of the Ukrainian war drama whose director the cinema does
    * report). */
-  def reEnrich(title: String, year: Option[Int]): Action[AnyContent] = Action {
-    devOnly {
-      movieControllerService.reenrich(title, year)
-      NoContent
+  def reEnrich(city: String, title: String, year: Option[Int]): Action[AnyContent] = Action {
+    withCity(city) { _ =>
+      devOnly {
+        movieControllerService.reenrich(title, year)
+        NoContent
+      }
     }
   }
 
@@ -468,9 +512,11 @@ class MovieController( cc: ControllerComponents,
    * every mode (unlike the rest of the debug endpoints) so a fly.io instance
    * whose cache drifted from Mongo can be reconciled without a redeploy.
    * The negative cache (24h TTL TMDB-miss markers) is left alone. */
-  def rehydrate(): Action[AnyContent] = Action {
-    val count = movieControllerService.rehydrate()
-    Ok(s"rehydrated $count rows\n").as("text/plain; charset=utf-8")
+  def rehydrate(city: String): Action[AnyContent] = Action {
+    withCity(city) { _ =>
+      val count = movieControllerService.rehydrate()
+      Ok(s"rehydrated $count rows\n").as("text/plain; charset=utf-8")
+    }
   }
 
 

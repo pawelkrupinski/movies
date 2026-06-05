@@ -149,7 +149,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
           .min
       val pinnedNow = firstShowtime.minusDays(1)
 
-      val rendered = ctrl.toSchedules(pinnedNow)
+      val rendered = ctrl.toSchedules(Poznan, pinnedNow)
       val pradaSchedules = rendered.filter(_.enrichment.exists(isPrada))
 
       pradaSchedules.size shouldBe 1

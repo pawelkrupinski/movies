@@ -1,40 +1,47 @@
-# ── Repertoire ────────────────────────────────────────────────────────────────
-GET     /                           controllers.MovieController.index()
-GET     /film                       controllers.MovieController.film(title: String)
-GET     /kina                       controllers.MovieController.kina()
-GET     /kina/:cinema               controllers.MovieController.kinaPinned(cinema: String)
-GET     /filmy                      controllers.MovieController.browse(kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None, gatunek: Option[String] ?= None)
-GET     /plan                       controllers.PlanController.plan()
+# ── Landing / city selection ──────────────────────────────────────────────────
+# Bare `/` is NOT a repertoire page anymore — every page lives under a city
+# slug (`/poznan/…`). The landing bounces a returning visitor (city cookie) to
+# their city, else renders the city-selection screen (which also tries browser
+# geolocation). Hard cut: the old unprefixed URLs are gone.
+GET     /                           controllers.LandingController.index()
+
+# ── Repertoire (city-scoped: /:city/…) ─────────────────────────────────────────
+GET     /:city/                     controllers.MovieController.index(city: String)
+GET     /:city/film                 controllers.MovieController.film(city: String, title: String)
+GET     /:city/kina                 controllers.MovieController.kina(city: String)
+GET     /:city/kina/:cinema         controllers.MovieController.kinaPinned(city: String, cinema: String)
+GET     /:city/filmy                controllers.MovieController.browse(city: String, kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None, gatunek: Option[String] ?= None)
+GET     /:city/plan                 controllers.PlanController.plan(city: String)
 
 # ── API (JSON) ────────────────────────────────────────────────────────────────
-GET     /api/repertoire              controllers.MovieController.apiRepertoire()
+GET     /:city/api/repertoire       controllers.MovieController.apiRepertoire(city: String)
 # Detail-only payload (synopsis + trailers), fetched in parallel with the
 # listing and merged client-side by title. Kept off the listing so the latency-
-# sensitive /api/repertoire stays lean.
-GET     /api/details                 controllers.MovieController.apiDetails()
+# sensitive /:city/api/repertoire stays lean.
+GET     /:city/api/details          controllers.MovieController.apiDetails(city: String)
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
-GET     /debug                      controllers.MovieController.debug()
+GET     /:city/debug                controllers.MovieController.debug(city: String)
 # Dev-only visual-tuning page: live sliders over the real movie card that drive
 # the CSS custom properties the production card styles read (vertical gaps,
 # showtime-pill + rating-pill font/padding/corner). Lets us eyeball spacing
 # without redeploying; never exposed in prod.
-GET     /debug/tune                 controllers.MovieController.tune()
+GET     /:city/debug/tune           controllers.MovieController.tune(city: String)
 # Sibling tuning pages for the Kina (cinema-sectioned) view and the film-detail
-# view, linked by a sub-nav inside the three /debug/tune* pages. Same live-CSS-
-# variable approach as /debug/tune; dev-only.
-GET     /debug/tune/kina            controllers.MovieController.tuneKina()
-GET     /debug/tune/film            controllers.MovieController.tuneFilm()
+# view, linked by a sub-nav inside the three /:city/debug/tune* pages. Same
+# live-CSS-variable approach as /:city/debug/tune; dev-only.
+GET     /:city/debug/tune/kina      controllers.MovieController.tuneKina(city: String)
+GET     /:city/debug/tune/film      controllers.MovieController.tuneFilm(city: String)
 # Drop one row from cache+Mongo and re-fetch all upstream sources. Writes
 # incrementally as each stage completes so a debug-page reload shows the row
 # repopulating field-by-field.
 + nocsrf
-POST    /debug/reenrich             controllers.MovieController.reEnrich(title: String, year: Option[Int] ?= None)
+POST    /:city/debug/reenrich       controllers.MovieController.reEnrich(city: String, title: String, year: Option[Int] ?= None)
 # Drop the in-memory positive cache and reload it from Mongo. Not gated by
 # devOnly — usable on a deployed instance to reconcile after out-of-band
 # Mongo edits.
 + nocsrf
-POST    /debug/rehydrate            controllers.MovieController.rehydrate()
+POST    /:city/debug/rehydrate      controllers.MovieController.rehydrate(city: String)
 
 # ── Auth (OAuth2 — Google / Facebook) ────────────────────────────────────────
 # `/auth/<provider>/start` issues a CSRF state, stashes it in the signed

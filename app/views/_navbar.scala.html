@@ -1,4 +1,4 @@
-@(activePage: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])
+@(activePage: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])(implicit city: models.City)
 @*
    Navbar layout:
      - Logo + tab links (Filmy / Kina / Debug)                  — left
@@ -14,12 +14,12 @@
 *@
 <nav class="navbar px-4 py-3 d-flex align-items-center">
   <div class="d-flex align-items-center gap-3 navbar-logo">
-    <span class="fw-bold fs-5">🎬<span class="navbar-title"> Repertuar kinowy Poznań</span></span>
+    <span class="fw-bold fs-5">🎬<span class="navbar-title"> Repertuar kinowy @city.labels.nominative</span></span>
     <div class="d-flex gap-1 align-items-center">
-      <a href="/" class="nav-tab@if(activePage == "films"){ active}">Filmy</a>
-      <a href="/kina" class="nav-tab@if(activePage == "kina"){ active}">Kina</a>
+      <a href="/@city.slug/" class="nav-tab@if(activePage == "films"){ active}">Filmy</a>
+      <a href="/@city.slug/kina" class="nav-tab@if(activePage == "kina"){ active}">Kina</a>
       @if(devMode) {
-        <a href="/debug" class="nav-tab nav-tab-debug">Debug</a>
+        <a href="/@city.slug/debug" class="nav-tab nav-tab-debug">Debug</a>
       }
     </div>
   </div>

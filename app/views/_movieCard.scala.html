@@ -1,6 +1,6 @@
 @import models.{MovieRecord, Movie}
 @import controllers.{FilmHref, BrowseHref}
-@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord] = None)(showingsContent: Html)
+@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord] = None)(showingsContent: Html)(implicit city: models.City)
 <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>

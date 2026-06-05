@@ -1,6 +1,6 @@
 @import models.{Movie, MovieRecord}
 @import controllers.FilmHref
-@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord], director: Seq[String], cast: Seq[String])
+@(movie: Movie, posterUrl: Option[String], enrichment: Option[MovieRecord], director: Seq[String], cast: Seq[String])(implicit city: models.City)
 @*
    Picker card on /plan. Same visual top as `_movieCard` (poster +
    title link + runtime/year pills + rating badges) but:

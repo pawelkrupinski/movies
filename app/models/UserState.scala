@@ -2,6 +2,12 @@ package models
 
 import java.time.Instant
 
+// Multi-city note: `disabledCinemas` and `favouriteRooms` key on globally-
+// unique cinema display names ("Helios Posnania", "Cinema City Kinepolis"|room),
+// so they never collide across cities — a future "Helios Wrocław" is a distinct
+// Cinema with a distinct displayName. Cross-city keys are inert: a page only
+// surfaces cinemas in its own city, so out-of-city entries are simply ignored.
+// Hence user state needs no city dimension.
 case class UserState(
   userId:          String,
   hiddenFilms:     Set[String],

@@ -58,14 +58,14 @@ class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
     val title = "Diabeł ubiera się u Prady 2"
     val ctrl  = buildController(title, Some(2025))
 
-    val result = ctrl.film(title).apply(FakeRequest(GET, s"/film?title=$title"))
+    val result = ctrl.film("poznan", title).apply(FakeRequest(GET, s"/poznan/film?title=$title"))
 
     status(result) shouldBe OK
   }
 
   it should "still 404 a title that doesn't match any schedule" in {
     val ctrl = buildController("Something Else", Some(2025))
-    val result = ctrl.film("No Such Film").apply(FakeRequest(GET, "/film?title=No+Such+Film"))
+    val result = ctrl.film("poznan", "No Such Film").apply(FakeRequest(GET, "/poznan/film?title=No+Such+Film"))
     status(result) shouldBe NOT_FOUND
   }
 }

@@ -47,20 +47,21 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   // ── Default (no filter) ─────────────────────────────────────────────────────
 
   "FilterDescription.forIndex with an empty query" should "produce the default Kinowo title" in {
-    val meta = FilterDescription.forIndex(Map.empty, schedules)
+    val meta = FilterDescription.forIndex(Poznan,Map.empty, schedules)
     meta.title       shouldBe FilterDescription.DefaultTitle
-    meta.description shouldBe FilterDescription.DefaultDescription
+    meta.description shouldBe FilterDescription.defaultDescription(Poznan)
+    meta.description should include("poznańskich")
   }
 
   it should "ignore unrecognised params and date=today (the default)" in {
-    val meta = FilterDescription.forIndex(Map("date" -> Seq("today"), "junk" -> Seq("noise")), schedules)
+    val meta = FilterDescription.forIndex(Poznan,Map("date" -> Seq("today"), "junk" -> Seq("noise")), schedules)
     meta.title shouldBe "Kinowo"
   }
 
   // ── Single-filter phrasing ──────────────────────────────────────────────────
 
   "date=tomorrow" should "surface as 'jutro'" in {
-    val meta = FilterDescription.forIndex(Map("date" -> Seq("tomorrow")), schedules)
+    val meta = FilterDescription.forIndex(Poznan,Map("date" -> Seq("tomorrow")), schedules)
     meta.title shouldBe "Kinowo — filmy jutro"
   }
 
@@ -69,30 +70,30 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     // already "every film" — no extra word in the OG belongs there. Only date
     // values that actually narrow (today is silent too; tomorrow / week /
     // specific ISO surface as their phrase) deserve a phrase.
-    val meta = FilterDescription.forIndex(Map("date" -> Seq("anytime")), schedules)
+    val meta = FilterDescription.forIndex(Poznan,Map("date" -> Seq("anytime")), schedules)
     meta.title shouldBe "Kinowo"
   }
 
   "date=2026-05-30" should "surface as the ISO date verbatim" in {
-    val meta = FilterDescription.forIndex(Map("date" -> Seq("2026-05-30")), schedules)
+    val meta = FilterDescription.forIndex(Poznan,Map("date" -> Seq("2026-05-30")), schedules)
     meta.title shouldBe "Kinowo — filmy 2026-05-30"
   }
 
   "imax=1" should "surface as 'IMAX'" in {
-    FilterDescription.forIndex(Map("imax" -> Seq("1")), schedules).title shouldBe "Kinowo — filmy IMAX"
+    FilterDescription.forIndex(Poznan,Map("imax" -> Seq("1")), schedules).title shouldBe "Kinowo — filmy IMAX"
   }
 
   "dim=3D and lang=NAP" should "combine in order" in {
-    val meta = FilterDescription.forIndex(Map("dim" -> Seq("3D"), "lang" -> Seq("NAP")), schedules)
+    val meta = FilterDescription.forIndex(Poznan,Map("dim" -> Seq("3D"), "lang" -> Seq("NAP")), schedules)
     meta.title shouldBe "Kinowo — filmy 3D, z napisami"
   }
 
   "from=18:30" should "surface as 'od 18:30'" in {
-    FilterDescription.forIndex(Map("from" -> Seq("18:30")), schedules).title shouldBe "Kinowo — filmy od 18:30"
+    FilterDescription.forIndex(Poznan,Map("from" -> Seq("18:30")), schedules).title shouldBe "Kinowo — filmy od 18:30"
   }
 
   "q=Diabeł" should "surface inside Polish quotation marks" in {
-    FilterDescription.forIndex(Map("q" -> Seq("Diabeł")), schedules).title shouldBe "Kinowo — filmy „Diabeł”"
+    FilterDescription.forIndex(Poznan,Map("q" -> Seq("Diabeł")), schedules).title shouldBe "Kinowo — filmy „Diabeł”"
   }
 
   // ── Room inclusion (URL items = INCLUDED rooms) ────────────────────────────
@@ -101,7 +102,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     // JS writes `?room=A&room=B` (one entry per included item) — Play
     // surfaces that as `Map("room" -> Seq("A", "B"))`. The helper treats the
     // list as the inclusion set; with 1 in / 4 out, "w sali" wins.
-    val meta = FilterDescription.forIndex(
+    val meta = FilterDescription.forIndex(Poznan,
       Map("room" -> Seq("Multikino Stary Browar|Sala 5")),
       schedules,
     )
@@ -117,14 +118,14 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
       "Multikino Stary Browar|Sala 10",
       "Helios Posnania|Sala 3",
     )
-    val meta = FilterDescription.forIndex(Map("room" -> included), schedules)
+    val meta = FilterDescription.forIndex(Poznan,Map("room" -> included), schedules)
     meta.title shouldBe "Kinowo — filmy bez sal Sala 7"
   }
 
   "room=<legacy comma-list>" should "still narrow correctly for old shared URLs" in {
     // Pre-flip URLs encoded the list as one comma-joined value. Stay
     // compatible so a bookmarked `?room=A,B` doesn't break.
-    val meta = FilterDescription.forIndex(
+    val meta = FilterDescription.forIndex(Poznan,
       Map("room" -> Seq("Multikino Stary Browar|Sala 5,Multikino Stary Browar|Sala 7")),
       schedules,
     )
@@ -136,7 +137,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
       film("A", Multikino, Seq("Sala 1", "Sala 2", "Sala 3", "Sala 4", "Sala 5", "Sala 6", "Sala 7", "Sala 8"))
     )
     val included = (1 to 4).map(i => s"Multikino Stary Browar|Sala $i")
-    val meta = FilterDescription.forIndex(Map("room" -> included), schedulesBig)
+    val meta = FilterDescription.forIndex(Poznan,Map("room" -> included), schedulesBig)
     // 4 included, 4 excluded — pickIncluded wins (≤ excluded.size), 4 > 3 → count.
     meta.title shouldBe "Kinowo — filmy 4 sal"
   }
@@ -144,7 +145,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   // ── Cinema inclusion (URL items = ENABLED cinemas) ─────────────────────────
 
   "cinema=<just two>" should "describe the two included via pill names" in {
-    val meta = FilterDescription.forIndex(
+    val meta = FilterDescription.forIndex(Poznan,
       Map("cinema" -> Seq(Multikino.displayName, Helios.displayName)),
       schedules,
     )
@@ -153,7 +154,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
 
   "cinema=<all but one>" should "describe as 'bez <pill name>'" in {
     val included = Cinema.all.map(_.displayName).filterNot(_ == Multikino.displayName)
-    FilterDescription.forIndex(
+    FilterDescription.forIndex(Poznan,
       Map("cinema" -> included),
       schedules,
     ).title shouldBe "Kinowo — filmy bez Multikino"
@@ -163,14 +164,14 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
 
   "genre=<single genre>" should "describe the included genre with the 'gatunku' preposition" in {
     // 1 of 3 genres included → included side is smaller → singular 'gatunku'.
-    FilterDescription.forIndex(
+    FilterDescription.forIndex(Poznan,
       Map("genre" -> Seq("Komedia")),
       schedules,
     ).title shouldBe "Kinowo — filmy gatunku Komedia"
   }
 
   "genre=<all but one>" should "describe via 'bez gatunków' (smaller excluded side wins)" in {
-    FilterDescription.forIndex(
+    FilterDescription.forIndex(Poznan,
       Map("genre" -> Seq("Animacja", "Komedia")),
       schedules,
     ).title shouldBe "Kinowo — filmy bez gatunków Dramat"
@@ -179,7 +180,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   // ── Multi-filter combinations and truncation ───────────────────────────────
 
   "multiple filters" should "join with comma in URL order" in {
-    val meta = FilterDescription.forIndex(
+    val meta = FilterDescription.forIndex(Poznan,
       Map("date" -> Seq("tomorrow"), "dim" -> Seq("3D"), "imax" -> Seq("1")),
       schedules,
     )
@@ -188,7 +189,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
 
   "a long filter combination" should "truncate the title at MaxTitle with an ellipsis" in {
     val excluded = (1 to 8).map(i => s"X|Room $i").mkString(",")  // unknown cinemas, so room phrase is summary
-    val meta = FilterDescription.forIndex(
+    val meta = FilterDescription.forIndex(Poznan,
       Map(
         "q"   -> Seq("Mandalorian i Grogu w wielkim galaktycznym konflikcie"),
         "dim" -> Seq("3D"),

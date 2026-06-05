@@ -1,5 +1,5 @@
 @import controllers.{FilmSchedule, DateFormatter, FilmHref}
-@(film: FilmSchedule, showCinemaHeaders: Boolean = true)
+@(film: FilmSchedule, showCinemaHeaders: Boolean = true)(implicit city: models.City)
 @*
    One film's showings, grouped by date → cinema → time slots.
 

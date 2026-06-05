@@ -1,4 +1,4 @@
-@(allCinemas: Seq[String], cinemaPills: Map[String, String], currentUser: Option[models.User], oauthProviders: Set[String])
+@(allCinemas: Seq[String], cinemaPills: Map[String, String], currentUser: Option[models.User], oauthProviders: Set[String])(implicit city: models.City)
 @*
    Inline-`<script>` block that emits the page-bound JS constants
    the externalized `shared.js` reads at top level: IS_LOGGED_IN,
@@ -18,4 +18,6 @@
   const HAS_OAUTH_PROVIDERS = @oauthProviders.nonEmpty;
   const ALL_CINEMAS         = @Html(play.api.libs.json.Json.toJson(allCinemas).toString);
   const CINEMA_PILLS        = @Html(play.api.libs.json.Json.toJson(cinemaPills).toString);
+  const CURRENT_CITY        = "@city.slug";
+  const ALL_CITIES          = @Html(models.City.allJson);
 </script>

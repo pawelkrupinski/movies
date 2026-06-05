@@ -7,6 +7,7 @@ import play.twirl.api.Html
 
 class MovieCardSpec extends AnyFlatSpec with Matchers {
 
+  private implicit val city: models.City = models.Poznan
   private val movie = Movie("Karuppu", Some(120))
 
   "_movieCard" should "render a 'Brak plakatu' placeholder when the poster URL is missing" in {

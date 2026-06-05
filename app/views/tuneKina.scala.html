@@ -1,5 +1,5 @@
 @import controllers.CinemaSchedule
-@(cinemas: Seq[CinemaSchedule])
+@(cinemas: Seq[CinemaSchedule])(implicit city: models.City)
 @*
   Dev-only visual-tuning page for the KINA (cinema-sectioned) view. Renders the
   REAL `_cinemaCards` partial inside `.tune-scope` and drives the cinema

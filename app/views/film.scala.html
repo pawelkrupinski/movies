@@ -1,13 +1,13 @@
 @import controllers.FilmSchedule
 @import controllers.BrowseHref
 @import services.movies.TrailerEmbed
-@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, devMode: Boolean = false, currentUser: Option[models.User] = None, oauthProviders: Set[String] = Set.empty)
+@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, devMode: Boolean = false, currentUser: Option[models.User] = None, oauthProviders: Set[String] = Set.empty)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@film.movie.title – Repertuar kinowy Poznań</title>
+  <title>@film.movie.title – Repertuar kinowy @city.labels.nominative</title>
   @_errorTracking()
   @_analytics()
 
@@ -19,7 +19,7 @@
   <meta property="og:title"       content="@film.movie.title">
   <meta property="og:type"        content="video.movie">
   <meta property="og:url"         content="@canonicalUrl">
-  <meta property="og:site_name"   content="Repertuar kinowy Poznań">
+  <meta property="og:site_name"   content="Repertuar kinowy @city.labels.nominative">
   @* Route the poster through PosterProxy so HTTP-only origins (Kino
      Bułgarska 19) become HTTPS — Facebook silently drops mixed-content
      og:images, leaving the share preview imageless. The proxy also caps
@@ -62,7 +62,7 @@
      another page on this app — same-origin referrers carry the back
      URL verbatim so query-string filter state (`?date=2026-05-30`,
      `?cinema=Multikino`, etc.) survives the round-trip. *@
-  <a id="back-link" href="/" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg><span id="back-link-label">Filmy</span></a>
+  <a id="back-link" href="/@city.slug/" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg><span id="back-link-label">Filmy</span></a>
   <div>
     @currentUser match {
       case Some(user) => {
@@ -112,9 +112,15 @@
     var url;
     try { url = new URL(ref); } catch (e) { return; }
     if (url.origin !== window.location.origin) return;
+    // Strip the leading `/{city}/` prefix so the label map (which keys on the
+    // in-city path) matches regardless of which city the referrer was on.
+    var cityPrefix = '/@city.slug';
+    var p = url.pathname;
+    if (p === cityPrefix || p === cityPrefix + '/') p = '/';
+    else if (p.indexOf(cityPrefix + '/') === 0)     p = p.slice(cityPrefix.length);
     // Skip /film → /film bounces but NOT /filmy — `/filmy` is the main
-    // listing (aliases `/`), not the per-film detail page.
-    if (url.pathname === '/film') return;
+    // listing (aliases `/{city}/`), not the per-film detail page.
+    if (p === '/film') return;
 
     // Map known internal paths to their navbar labels. When adding a new
     // section that links into /film, add it here so the back arrow reads
@@ -122,10 +128,10 @@
     // `/` and `/filmy` are aliases for the main listing, so both label
     // as "Filmy" (matches the navbar tab).
     var LABELS = { '/': 'Filmy', '/filmy': 'Filmy', '/kina': 'Kina', '/plan': 'Plan' };
-    var label = LABELS[url.pathname];
+    var label = LABELS[p];
     if (!label) {
-      if (url.pathname.indexOf('/kina/')  === 0) label = 'Kina';
-      else if (url.pathname.indexOf('/filmy/') === 0) label = 'Filmy';
+      if (p.indexOf('/kina/')  === 0) label = 'Kina';
+      else if (p.indexOf('/filmy/') === 0) label = 'Filmy';
       else label = 'Wstecz';
     }
 

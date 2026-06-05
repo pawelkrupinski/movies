@@ -1,7 +1,7 @@
 package tools
 
 import controllers.{ApiFilm, ApiFilmDetails}
-import models.Cinema
+import models.{City, Poznan}
 import play.api.libs.json.Json
 
 import java.net.URLDecoder
@@ -55,11 +55,14 @@ object FixtureServerMain {
     // tests get the production-shaped DOM directly so flows like the
     // anonymous-nag toast lifecycle can be tested end-to-end.
     val noOauth = Set("google")
-    val cinemas = Cinema.all.map(_.displayName)
-    val schedules       = wiring.movieControllerService.toSchedules(now)
-    val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(now)
+    // Single supported city today; every page is rendered city-scoped and
+    // served under `/poznan/…`, mirroring production's hard-cut routing.
+    implicit val city: City = Poznan
+    val cinemas = city.cinemaDisplayNames
+    val schedules       = wiring.movieControllerService.toSchedules(city, now)
+    val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(city, now)
 
-    val pills = Cinema.pillMap
+    val pills = city.cinemaPillMap
 
     // `#view-root`-only fragments served for `X-Requested-With: view-swap`
     // requests — mirrors the production controller so the in-place swap (and
@@ -74,13 +77,13 @@ object FixtureServerMain {
       cinemaSchedules, cinemas, pills, devMode = false,
       currentUser = anon, oauthProviders = noOauth,
       pinnedCinema = pinned,
-      siblingPath = "/", siblingHtml = indexFragment
+      siblingPath = s"/${city.slug}/", siblingHtml = indexFragment
     ).body
 
     val indexHtml: String = views.html.repertoire(
       schedules, cinemas, pills, devMode = false,
       currentUser = anon, oauthProviders = noOauth,
-      siblingPath = "/kina", siblingHtml = renderKinaFragment(None)
+      siblingPath = s"/${city.slug}/kina", siblingHtml = renderKinaFragment(None)
     ).body
 
     val filmyHtml: String = views.html.browse(
@@ -89,58 +92,71 @@ object FixtureServerMain {
     ).body
 
     val planHtml: String = {
-      val data = controllers.PlanController.viewData(schedules)
+      val data = controllers.PlanController.viewData(city, schedules)
       views.html.plan(data, cinemas, pills, devMode = false,
         currentUser = anon, oauthProviders = noOauth).body
     }
+
+    // The bare `/` landing (city-selection screen), same as production.
+    val landingHtml: String = views.html.landing(City.all).body
 
     def renderFilm(title: String): String = {
       val target = URLDecoder.decode(title, "UTF-8")
       schedules.find(_.movie.title == target) match {
         case Some(s) =>
-          views.html.film(s, s"http://test.local/film?title=$title",
+          views.html.film(s, s"http://test.local/${city.slug}/film?title=$title",
             ogDescription = "", devMode = false).body
         case None    => "<html><body>Film not found</body></html>"
       }
     }
 
+    // Strip the `/{city}` prefix so the in-city arms below match the same
+    // sub-paths production serves under `/poznan/…`. A bare `/` (or `/?…`) is
+    // the landing screen, not a repertoire page — hard-cut, mirroring prod.
+    val cityPrefix = s"/${city.slug}"
+    def inCity(p: String): Option[String] =
+      if (p == cityPrefix) Some("/")
+      else if (p.startsWith(cityPrefix + "/") || p.startsWith(cityPrefix + "?")) Some(p.stripPrefix(cityPrefix))
+      else None
+
     val routes: PartialFunction[String, String] = {
-      // Each top-level route accepts an arbitrary `?…` suffix — the real Play
-      // routes ignore unknown query params on these paths, and the
-      // day-selector ↔ URL Playwright tests boot directly with `?date=` in the
-      // request URL. Without the query-tolerant match the JDK HttpServer
-      // would 404 those requests, which Firefox surfaces as
-      // `NS_ERROR_NET_EMPTY_RESPONSE` rather than a clean status code.
-      case p if p == "/"      || p.startsWith("/?")       => indexHtml
-      // `/filmy` and `/` are aliases for the main listing — both render
-      // the repertoire view. `/filmy?kraj=X` / `/filmy?rezyser=Y` /
-      // `/filmy?aktor=Z` still hit the per-axis browse view; everything
-      // else under `/filmy?` is the main listing with filter state in
-      // the query string.
-      case p if p == "/filmy"                              => indexHtml
-      case p if p.startsWith("/filmy?") &&
-                 (p.contains("kraj=") || p.contains("rezyser=") || p.contains("aktor=")) => filmyHtml
-      case p if p.startsWith("/filmy?")                    => indexHtml
-      case p if p == "/kina"  || p.startsWith("/kina?")   => renderKina(None)
-      case p if p == "/plan"  || p.startsWith("/plan?")   => planHtml
-      case p if p.startsWith("/kina/") =>
-        val rawWithQuery = p.stripPrefix("/kina/")
-        val raw          = URLDecoder.decode(rawWithQuery.takeWhile(_ != '?'), "UTF-8")
-        val pinned       = cinemas.find(_ == raw)
-        renderKina(pinned)
-      case p if p.startsWith("/film?title=") =>
-        renderFilm(p.stripPrefix("/film?title="))
+      // Bare `/` → the city-selection landing.
+      case p if p == "/" || p.startsWith("/?") => landingHtml
+      // Everything else must be under `/{city}/…`; strip and match. Each route
+      // tolerates an arbitrary `?…` suffix (real Play ignores unknown query
+      // params; Playwright boots directly with `?date=` etc.).
+      case p if inCity(p).isDefined =>
+        val sub = inCity(p).get
+        sub match {
+          case s if s == "/"     || s.startsWith("/?")     => indexHtml
+          case "/filmy"                                    => indexHtml
+          case s if s.startsWith("/filmy?") &&
+                     (s.contains("kraj=") || s.contains("rezyser=") || s.contains("aktor=")) => filmyHtml
+          case s if s.startsWith("/filmy?")                => indexHtml
+          case s if s == "/kina" || s.startsWith("/kina?") => renderKina(None)
+          case s if s == "/plan" || s.startsWith("/plan?") => planHtml
+          case s if s.startsWith("/kina/") =>
+            val raw = URLDecoder.decode(s.stripPrefix("/kina/").takeWhile(_ != '?'), "UTF-8")
+            renderKina(cinemas.find(_ == raw))
+          case s if s.startsWith("/film?title=") =>
+            renderFilm(s.stripPrefix("/film?title="))
+        }
     }
 
     // `#view-root`-only responses for view-swap requests — the swap-managed
-    // routes (`/`, `/filmy`, `/kina`, `/kina/<cinema>`) only.
+    // routes (`/{city}/`, `/{city}/filmy`, `/{city}/kina`, `/{city}/kina/<cinema>`).
     val swapRoutes: PartialFunction[String, String] = {
-      case p if p == "/"      || p.startsWith("/?")     => indexFragment
-      case p if p == "/filmy" || p.startsWith("/filmy?")=> indexFragment
-      case p if p == "/kina"  || p.startsWith("/kina?") => renderKinaFragment(None)
-      case p if p.startsWith("/kina/") =>
-        val raw    = URLDecoder.decode(p.stripPrefix("/kina/").takeWhile(_ != '?'), "UTF-8")
-        renderKinaFragment(cinemas.find(_ == raw))
+      case p if inCity(p).isDefined && {
+        val s = inCity(p).get
+        s == "/" || s.startsWith("/?") || s == "/filmy" || s.startsWith("/filmy?") ||
+          s == "/kina" || s.startsWith("/kina?") || s.startsWith("/kina/")
+      } =>
+        val s = inCity(p).get
+        if (s.startsWith("/kina/")) {
+          val raw = URLDecoder.decode(s.stripPrefix("/kina/").takeWhile(_ != '?'), "UTF-8")
+          renderKinaFragment(cinemas.find(_ == raw))
+        } else if (s == "/kina" || s.startsWith("/kina?")) renderKinaFragment(None)
+        else indexFragment
     }
 
     // The two JSON endpoints the mobile apps consume — the Android `KinowoApi`
@@ -154,8 +170,8 @@ object FixtureServerMain {
     ).toString
 
     val jsonRoutes: PartialFunction[String, String] = {
-      case "/api/repertoire" => repertoireJson
-      case "/api/details"    => detailsJson
+      case p if inCity(p).contains("/api/repertoire") => repertoireJson
+      case p if inCity(p).contains("/api/details")    => detailsJson
     }
 
     val server = new TestHttpServer(routes, swapRoutes, jsonRoutes)

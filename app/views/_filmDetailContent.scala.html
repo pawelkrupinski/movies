@@ -1,7 +1,7 @@
 @import controllers.FilmSchedule
 @import controllers.BrowseHref
 @import services.movies.TrailerEmbed
-@(film: FilmSchedule)
+@(film: FilmSchedule)(implicit city: models.City)
 @*
   Per-film detail content — poster + title + meta blocks + trailers + the
   full showings tree. Extracted from `film.scala.html` so the dev-only

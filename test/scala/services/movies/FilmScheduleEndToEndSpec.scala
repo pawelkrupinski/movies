@@ -79,7 +79,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     //    empty list and the test would fail for a stale-clock reason that
     //    has nothing to do with the code under test.
     val now             = LocalDateTime.of(2026, 5, 17, 0, 0)
-    val schedules       = movieControllerService.toSchedules(now)
+    val schedules       = movieControllerService.toSchedules(Poznan, now)
     val pradaSchedules  = schedules.filter(s =>
       s.enrichment.exists(e => e.tmdbId.contains(PradaTmdbId) || e.imdbId.contains(PradaImdbId))
     )

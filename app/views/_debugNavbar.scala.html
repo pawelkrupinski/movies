@@ -1,7 +1,7 @@
-@()
+@()(implicit city: models.City)
 <nav class="debug-nav">
-  <a href="/"     class="debug-nav-out">Filmy ↗</a>
-  <a href="/kina" class="debug-nav-out">Kina ↗</a>
+  <a href="/@city.slug/"     class="debug-nav-out">Filmy ↗</a>
+  <a href="/@city.slug/kina" class="debug-nav-out">Kina ↗</a>
 </nav>
 <style>
   .debug-nav { display: flex; gap: .3rem; margin-bottom: .6rem; font: 12px monospace; align-items: center; }

@@ -39,7 +39,7 @@ class PlanControllerSpec extends AnyFlatSpec with Matchers {
       format = List("2D", "NAP")
     )
 
-    val data = PlanController.viewData(Seq(fs))
+    val data = PlanController.viewData(Poznan,Seq(fs))
     data.showings shouldBe Seq(
       PlanShowing("Tytuł", "Multikino Stary Browar", Some("Sala 5"), "2026-05-28", "18:30", Seq("2D", "NAP")),
       PlanShowing("Tytuł", "Multikino Stary Browar", Some("Sala 5"), "2026-05-28", "21:00", Seq("2D", "NAP"))
@@ -50,7 +50,7 @@ class PlanControllerSpec extends AnyFlatSpec with Matchers {
     val today = LocalDate.of(2026, 5, 28)
     val a     = schedule("Bravo", Multikino, today, Seq(("18:00", None)))
     val b     = schedule("alfa",  Helios,    today, Seq(("19:00", None)))
-    val data  = PlanController.viewData(Seq(a, b))
+    val data  = PlanController.viewData(Poznan,Seq(a, b))
     data.films.map(_.movie.title) shouldBe Seq("alfa", "Bravo")
   }
 
@@ -59,7 +59,7 @@ class PlanControllerSpec extends AnyFlatSpec with Matchers {
     val withRoom = schedule("X", Multikino, today, Seq(("18:00", Some("Sala 7")), ("20:00", Some("Sala 5"))))
     val noRoom   = schedule("Y", KinoApollo, today, Seq(("19:00", None)))
 
-    val data = PlanController.viewData(Seq(withRoom, noRoom))
+    val data = PlanController.viewData(Poznan,Seq(withRoom, noRoom))
     data.cinemaRooms.map(_.cinema) shouldBe Seq("Multikino Stary Browar")
     data.cinemaRooms.head.rooms    shouldBe Seq("Sala 5", "Sala 7")  // sorted
   }
@@ -71,7 +71,7 @@ class PlanControllerSpec extends AnyFlatSpec with Matchers {
       LocalDate.of(2026, 5, 28),
       Seq(("18:00", Some("   ")), ("19:00", Some("Sala 1")))
     )
-    val data = PlanController.viewData(Seq(fs))
+    val data = PlanController.viewData(Poznan,Seq(fs))
     data.showings.map(_.room) shouldBe Seq(None, Some("Sala 1"))
     data.cinemaRooms.head.rooms shouldBe Seq("Sala 1")
   }

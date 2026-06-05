@@ -2,7 +2,7 @@
 @import services.movies.StoredMovieRecord
 @import controllers.FilmHref
 @import java.time.format.DateTimeFormatter
-@(rows: Seq[StoredMovieRecord])
+@(rows: Seq[StoredMovieRecord])(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>

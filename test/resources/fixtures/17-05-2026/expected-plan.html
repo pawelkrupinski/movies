@@ -47,8 +47,8 @@
   <div class="d-flex align-items-center gap-3 navbar-logo">
     <span class="fw-bold fs-5">🎬<span class="navbar-title"> Repertuar kinowy Poznań</span></span>
     <div class="d-flex gap-1 align-items-center">
-      <a href="/" class="nav-tab">Filmy</a>
-      <a href="/kina" class="nav-tab">Kina</a>
+      <a href="/poznan/" class="nav-tab">Filmy</a>
+      <a href="/poznan/kina" class="nav-tab">Kina</a>
       
     </div>
   </div>
@@ -202,6 +202,8 @@
   const HAS_OAUTH_PROVIDERS = false;
   const ALL_CINEMAS         = ["Kino Apollo","Kino Bułgarska 19","Kino Malta Charlie Monroe","Helios Posnania","Cinema City Kinepolis","Kino Muza","Multikino Stary Browar","Kino Pałacowe","Cinema City Poznań Plaza","Kino Rialto"];
   const CINEMA_PILLS        = {"Kino Bułgarska 19":"Bułgarska 19","Helios Posnania":"Helios","Kino Pałacowe":"Pałacowe","Multikino Stary Browar":"Multikino","Cinema City Kinepolis":"Kinepolis","Kino Apollo":"Apollo","Kino Rialto":"Rialto","Cinema City Poznań Plaza":"Poznań Plaza","Kino Malta Charlie Monroe":"Malta Charlie Monroe","Kino Muza":"Muza"};
+  const CURRENT_CITY        = "poznan";
+  const ALL_CITIES          = [{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252},{"slug":"wroclaw","name":"Wrocław","lat":51.1079,"lon":17.0385},{"slug":"warszawa","name":"Warszawa","lat":52.2297,"lon":21.0122}];
 </script>
 
 <script src="/assets/js/shared.js"></script>
@@ -242,7 +244,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=2026%20TXT%20MOA%20CON%20IN%20JAPAN%3A%20LIVE%20VIEWING">2026 TXT MOA CON IN JAPAN: LIVE VIEWING</a>
+        <a href="/poznan/film?title=2026%20TXT%20MOA%20CON%20IN%20JAPAN%3A%20LIVE%20VIEWING">2026 TXT MOA CON IN JAPAN: LIVE VIEWING</a>
   <span class="pill runtime">3h 45min</span>
 
   <span class="pill year">2026</span>
@@ -280,7 +282,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=90.%20urodziny%20Pavarottiego">90. urodziny Pavarottiego</a>
+        <a href="/poznan/film?title=90.%20urodziny%20Pavarottiego">90. urodziny Pavarottiego</a>
   <span class="pill runtime">1h 35min</span>
 
       </div>
@@ -316,7 +318,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=90.%20urodziny%20Pavarottiego%20-%20Koncert%20gwiazd%20z%20Arena%20di%20Verona">90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona</a>
+        <a href="/poznan/film?title=90.%20urodziny%20Pavarottiego%20-%20Koncert%20gwiazd%20z%20Arena%20di%20Verona">90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona</a>
   <span class="pill runtime">1h 32min</span>
 
   <span class="pill year">2025</span>
@@ -354,7 +356,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Ale%20mam%20%7C%20%D0%BD%D1%83%20%D0%BC%D0%B0%D0%BC%20%7C%20wersja%20ukrai%C5%84ska%20z%20ang.%20napisami">Ale mam | ну мам | wersja ukraińska z ang. napisami</a>
+        <a href="/poznan/film?title=Ale%20mam%20%7C%20%D0%BD%D1%83%20%D0%BC%D0%B0%D0%BC%20%7C%20wersja%20ukrai%C5%84ska%20z%20ang.%20napisami">Ale mam | ну мам | wersja ukraińska z ang. napisami</a>
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2026</span>
@@ -394,7 +396,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=All%20You%20Need%20Is%20Kill">All You Need Is Kill</a>
+        <a href="/poznan/film?title=All%20You%20Need%20Is%20Kill">All You Need Is Kill</a>
   <span class="pill runtime">1h 23min</span>
 
   <span class="pill year">2025</span>
@@ -442,7 +444,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Arco">Arco</a>
+        <a href="/poznan/film?title=Arco">Arco</a>
   <span class="pill runtime">1h 28min</span>
 
   <span class="pill year">2025</span>
@@ -480,7 +482,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Arcybiskup%20Lefebvre%20%E2%80%93%20dlaczego%3F">Arcybiskup Lefebvre – dlaczego?</a>
+        <a href="/poznan/film?title=Arcybiskup%20Lefebvre%20%E2%80%93%20dlaczego%3F">Arcybiskup Lefebvre – dlaczego?</a>
   <span class="pill runtime">2h 8min</span>
 
   <span class="pill year">2025</span>
@@ -524,7 +526,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Art%20Beats%3A%20Lotto%20i%20Berenson%20-%20splecione%20losy.%20%C5%9Aladami%20renesansowego%20mistrza">Art Beats: Lotto i Berenson - splecione losy. Śladami renesansowego mistrza</a>
+        <a href="/poznan/film?title=Art%20Beats%3A%20Lotto%20i%20Berenson%20-%20splecione%20losy.%20%C5%9Aladami%20renesansowego%20mistrza">Art Beats: Lotto i Berenson - splecione losy. Śladami renesansowego mistrza</a>
   <span class="pill runtime">1h 20min</span>
 
       </div>
@@ -560,7 +562,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Art%20Beats%3A%20Nenufary%20Moneta%20-%20cuda%20z%20wody%20i%20%C5%9Bwiat%C5%82a">Art Beats: Nenufary Moneta - cuda z wody i światła</a>
+        <a href="/poznan/film?title=Art%20Beats%3A%20Nenufary%20Moneta%20-%20cuda%20z%20wody%20i%20%C5%9Bwiat%C5%82a">Art Beats: Nenufary Moneta - cuda z wody i światła</a>
   <span class="pill runtime">1h 35min</span>
 
       </div>
@@ -596,7 +598,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Art%20Beats%3A%20Rafael.%20M%C5%82ody%20geniusz">Art Beats: Rafael. Młody geniusz</a>
+        <a href="/poznan/film?title=Art%20Beats%3A%20Rafael.%20M%C5%82ody%20geniusz">Art Beats: Rafael. Młody geniusz</a>
   <span class="pill runtime">1h 20min</span>
 
       </div>
@@ -632,7 +634,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Athiradi">Athiradi</a>
+        <a href="/poznan/film?title=Athiradi">Athiradi</a>
   <span class="pill runtime">2h 37min</span>
 
   <span class="pill year">2026</span>
@@ -676,7 +678,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Audiencja%20-%20National%20Theatre%20Live%202026">Audiencja - National Theatre Live 2026</a>
+        <a href="/poznan/film?title=Audiencja%20-%20National%20Theatre%20Live%202026">Audiencja - National Theatre Live 2026</a>
   <span class="pill runtime">2h 45min</span>
 
   <span class="pill year">2026</span>
@@ -716,7 +718,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Ba%C5%82tyk">Bałtyk</a>
+        <a href="/poznan/film?title=Ba%C5%82tyk">Bałtyk</a>
   <span class="pill runtime">1h 6min</span>
 
   <span class="pill year">2025</span>
@@ -764,7 +766,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Belle">Belle</a>
+        <a href="/poznan/film?title=Belle">Belle</a>
   <span class="pill runtime">2h 1min</span>
 
   <span class="pill year">2021</span>
@@ -820,7 +822,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Bez%20wyj%C5%9Bcia">Bez wyjścia</a>
+        <a href="/poznan/film?title=Bez%20wyj%C5%9Bcia">Bez wyjścia</a>
   <span class="pill runtime">2h 19min</span>
 
   <span class="pill year">2025</span>
@@ -867,7 +869,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Bez%20znieczulenia">Bez znieczulenia</a>
+        <a href="/poznan/film?title=Bez%20znieczulenia">Bez znieczulenia</a>
   <span class="pill runtime">2h 5min</span>
 
   <span class="pill year">1978</span>
@@ -921,7 +923,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Billie%20Eilish%20-%20Hit%20Me%20Hard%20and%20Soft%3A%20The%20Tour">Billie Eilish - Hit Me Hard and Soft: The Tour</a>
+        <a href="/poznan/film?title=Billie%20Eilish%20-%20Hit%20Me%20Hard%20and%20Soft%3A%20The%20Tour">Billie Eilish - Hit Me Hard and Soft: The Tour</a>
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2026</span>
@@ -977,7 +979,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Bluey%20w%20kinie%3A%20Kolekcja%20Zabawy%20z%20przyjaci%C3%B3%C5%82mi">Bluey w kinie: Kolekcja Zabawy z przyjaciółmi</a>
+        <a href="/poznan/film?title=Bluey%20w%20kinie%3A%20Kolekcja%20Zabawy%20z%20przyjaci%C3%B3%C5%82mi">Bluey w kinie: Kolekcja Zabawy z przyjaciółmi</a>
   <span class="pill runtime">0h 55min</span>
 
       </div>
@@ -1008,7 +1010,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Broken%20English">Broken English</a>
+        <a href="/poznan/film?title=Broken%20English">Broken English</a>
   <span class="pill runtime">1h 36min</span>
 
   <span class="pill year">2025</span>
@@ -1057,7 +1059,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Brzezina">Brzezina</a>
+        <a href="/poznan/film?title=Brzezina">Brzezina</a>
   <span class="pill runtime">1h 39min</span>
 
   <span class="pill year">1970</span>
@@ -1111,7 +1113,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=By%C4%87%20kochan%C4%85">Być kochaną</a>
+        <a href="/poznan/film?title=By%C4%87%20kochan%C4%85">Być kochaną</a>
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2024</span>
@@ -1158,7 +1160,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=By%C5%82%20sobie%20%C5%9Bnieg">Był sobie śnieg</a>
+        <a href="/poznan/film?title=By%C5%82%20sobie%20%C5%9Bnieg">Był sobie śnieg</a>
   <span class="pill runtime">2h 8min</span>
 
   <span class="pill year">2025</span>
@@ -1206,7 +1208,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Camper">Camper</a>
+        <a href="/poznan/film?title=Camper">Camper</a>
   <span class="pill runtime">1h 17min</span>
 
   <span class="pill year">2025</span>
@@ -1256,7 +1258,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Caravaggio.%20Arcydzie%C5%82a%20niepokornego%20geniusza">Caravaggio. Arcydzieła niepokornego geniusza</a>
+        <a href="/poznan/film?title=Caravaggio.%20Arcydzie%C5%82a%20niepokornego%20geniusza">Caravaggio. Arcydzieła niepokornego geniusza</a>
   <span class="pill runtime">1h 40min</span>
 
   <span class="pill year">2025</span>
@@ -1294,7 +1296,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Chronologia%20wody">Chronologia wody</a>
+        <a href="/poznan/film?title=Chronologia%20wody">Chronologia wody</a>
   <span class="pill runtime">2h 8min</span>
 
   <span class="pill year">2025</span>
@@ -1348,7 +1350,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Ch%C5%82opiec%20na%20kra%C5%84cach%20%C5%9Bwiata">Chłopiec na krańcach świata</a>
+        <a href="/poznan/film?title=Ch%C5%82opiec%20na%20kra%C5%84cach%20%C5%9Bwiata">Chłopiec na krańcach świata</a>
   <span class="pill runtime">1h 28min</span>
 
   <span class="pill year">2025</span>
@@ -1394,7 +1396,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Cirque%20du%20Soleil%3A%20Kooza">Cirque du Soleil: Kooza</a>
+        <a href="/poznan/film?title=Cirque%20du%20Soleil%3A%20Kooza">Cirque du Soleil: Kooza</a>
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2008</span>
@@ -1436,7 +1438,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Cirque%20du%20Soleil%3A%20Kurios%20-%20Gabinet%20osobliwo%C5%9Bci">Cirque du Soleil: Kurios - Gabinet osobliwości</a>
+        <a href="/poznan/film?title=Cirque%20du%20Soleil%3A%20Kurios%20-%20Gabinet%20osobliwo%C5%9Bci">Cirque du Soleil: Kurios - Gabinet osobliwości</a>
   <span class="pill runtime">1h 29min</span>
 
       </div>
@@ -1472,7 +1474,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Cz%C5%82owiek%20z%20marmuru">Człowiek z marmuru</a>
+        <a href="/poznan/film?title=Cz%C5%82owiek%20z%20marmuru">Człowiek z marmuru</a>
   <span class="pill runtime">2h 33min</span>
 
   <span class="pill year">1977</span>
@@ -1526,7 +1528,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Diabe%C5%82%20ubiera%20si%C4%99%20u%20Prady%202">Diabeł ubiera się u Prady 2</a>
+        <a href="/poznan/film?title=Diabe%C5%82%20ubiera%20si%C4%99%20u%20Prady%202">Diabeł ubiera się u Prady 2</a>
   <span class="pill runtime">2h</span>
 
   <span class="pill year">2026</span>
@@ -1582,7 +1584,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Diabe%C5%82%20ubiera%20si%C4%99%20u%20Prady%202%20ukrai%C5%84ski%20dubbing">Diabeł ubiera się u Prady 2 ukraiński dubbing</a>
+        <a href="/poznan/film?title=Diabe%C5%82%20ubiera%20si%C4%99%20u%20Prady%202%20ukrai%C5%84ski%20dubbing">Diabeł ubiera się u Prady 2 ukraiński dubbing</a>
   <span class="pill runtime">1h 59min</span>
 
   <span class="pill year">2026</span>
@@ -1624,7 +1626,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Drama">Drama</a>
+        <a href="/poznan/film?title=Drama">Drama</a>
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">2026</span>
@@ -1682,7 +1684,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Drugie%20%C5%BCycie">Drugie życie</a>
+        <a href="/poznan/film?title=Drugie%20%C5%BCycie">Drugie życie</a>
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2025</span>
@@ -1736,7 +1738,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Drzewo%20Magii">Drzewo Magii</a>
+        <a href="/poznan/film?title=Drzewo%20Magii">Drzewo Magii</a>
   <span class="pill runtime">1h 50min</span>
 
   <span class="pill year">2026</span>
@@ -1787,7 +1789,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Dziecko%20z%20py%C5%82u">Dziecko z pyłu</a>
+        <a href="/poznan/film?title=Dziecko%20z%20py%C5%82u">Dziecko z pyłu</a>
   <span class="pill runtime">1h 33min</span>
 
   <span class="pill year">2025</span>
@@ -1835,7 +1837,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Erupcja">Erupcja</a>
+        <a href="/poznan/film?title=Erupcja">Erupcja</a>
   <span class="pill runtime">1h 11min</span>
 
   <span class="pill year">2026</span>
@@ -1891,7 +1893,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Ex%20Machina">Ex Machina</a>
+        <a href="/poznan/film?title=Ex%20Machina">Ex Machina</a>
   <span class="pill runtime">1h 48min</span>
 
   <span class="pill year">2014</span>
@@ -1947,7 +1949,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Fantastyczne%20zwierz%C4%99ta%20i%20jak%20je%20znale%C5%BA%C4%87">Fantastyczne zwierzęta i jak je znaleźć</a>
+        <a href="/poznan/film?title=Fantastyczne%20zwierz%C4%99ta%20i%20jak%20je%20znale%C5%BA%C4%87">Fantastyczne zwierzęta i jak je znaleźć</a>
   <span class="pill year">2016</span>
 
   <span class="pill genre">Fantasy</span>
@@ -2003,7 +2005,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Fantastyczne%20zwierz%C4%99ta%3A%20Tajemnice%20Dumbledorea">Fantastyczne zwierzęta: Tajemnice Dumbledorea</a>
+        <a href="/poznan/film?title=Fantastyczne%20zwierz%C4%99ta%3A%20Tajemnice%20Dumbledorea">Fantastyczne zwierzęta: Tajemnice Dumbledorea</a>
   <span class="pill runtime">2h 22min</span>
 
   <span class="pill year">2022</span>
@@ -2061,7 +2063,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Fantastyczne%20zwierz%C4%99ta%3A%20zbrodnie%20grindelwalda">Fantastyczne zwierzęta: zbrodnie grindelwalda</a>
+        <a href="/poznan/film?title=Fantastyczne%20zwierz%C4%99ta%3A%20zbrodnie%20grindelwalda">Fantastyczne zwierzęta: zbrodnie grindelwalda</a>
   <span class="pill year">2018</span>
 
   <span class="pill genre">Familijny</span>
@@ -2117,7 +2119,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Father%20Mother%20Sister%20Brother">Father Mother Sister Brother</a>
+        <a href="/poznan/film?title=Father%20Mother%20Sister%20Brother">Father Mother Sister Brother</a>
   <span class="pill runtime">1h 50min</span>
 
   <span class="pill year">2025</span>
@@ -2168,7 +2170,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Fa%C5%82szerz%20stulecia">Fałszerz stulecia</a>
+        <a href="/poznan/film?title=Fa%C5%82szerz%20stulecia">Fałszerz stulecia</a>
   <span class="pill runtime">2h 8min</span>
 
   <span class="pill year">2025</span>
@@ -2201,7 +2203,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=FILMOCZULE%20DLA%20EDUKACJI%20z%20ODN%20i%20WZiSS%20UMP%20%E2%80%93%20Babystar">FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar</a>
+        <a href="/poznan/film?title=FILMOCZULE%20DLA%20EDUKACJI%20z%20ODN%20i%20WZiSS%20UMP%20%E2%80%93%20Babystar">FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Babystar</a>
   <span class="pill runtime">1h 38min</span>
 
   <span class="pill year">2025</span>
@@ -2239,7 +2241,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Filmowe%20Poranki%3A%20%C5%9Awinka%20Peppa%2C%20cz.%202">Filmowe Poranki: Świnka Peppa, cz. 2</a>
+        <a href="/poznan/film?title=Filmowe%20Poranki%3A%20%C5%9Awinka%20Peppa%2C%20cz.%202">Filmowe Poranki: Świnka Peppa, cz. 2</a>
   <span class="pill runtime">0h 54min</span>
 
       </div>
@@ -2275,7 +2277,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Filmowe%20spotkania%20z%20psychoanaliz%C4%85%3A%20Dobry%20ch%C5%82opiec">Filmowe spotkania z psychoanalizą: Dobry chłopiec</a>
+        <a href="/poznan/film?title=Filmowe%20spotkania%20z%20psychoanaliz%C4%85%3A%20Dobry%20ch%C5%82opiec">Filmowe spotkania z psychoanalizą: Dobry chłopiec</a>
   <span class="pill runtime">1h 50min</span>
 
   <span class="pill year">2025</span>
@@ -2315,7 +2317,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Filmowy%20klub%20seniora%3A%20Diabe%C5%82%20ubiera%20si%C4%99%20u%20prady%202">Filmowy klub seniora: Diabeł ubiera się u prady 2</a>
+        <a href="/poznan/film?title=Filmowy%20klub%20seniora%3A%20Diabe%C5%82%20ubiera%20si%C4%99%20u%20prady%202">Filmowy klub seniora: Diabeł ubiera się u prady 2</a>
   <span class="pill runtime">2h</span>
 
   <span class="pill year">2026</span>
@@ -2357,7 +2359,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Filmowy%20klub%20seniora%3A%20M%C3%B3w%20mi%20jimpa">Filmowy klub seniora: Mów mi jimpa</a>
+        <a href="/poznan/film?title=Filmowy%20klub%20seniora%3A%20M%C3%B3w%20mi%20jimpa">Filmowy klub seniora: Mów mi jimpa</a>
   <span class="pill runtime">1h 53min</span>
 
   <span class="pill year">2025</span>
@@ -2413,7 +2415,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Filmowy%20klub%20seniora%3A%20M%C5%82ode%20matki">Filmowy klub seniora: Młode matki</a>
+        <a href="/poznan/film?title=Filmowy%20klub%20seniora%3A%20M%C5%82ode%20matki">Filmowy klub seniora: Młode matki</a>
   <span class="pill runtime">1h 44min</span>
 
   <span class="pill year">2025</span>
@@ -2467,7 +2469,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Follemente.%20W%20tym%20szale%C5%84stwie%20jest%20metoda">Follemente. W tym szaleństwie jest metoda</a>
+        <a href="/poznan/film?title=Follemente.%20W%20tym%20szale%C5%84stwie%20jest%20metoda">Follemente. W tym szaleństwie jest metoda</a>
   <span class="pill runtime">1h 37min</span>
 
   <span class="pill year">2025</span>
@@ -2519,7 +2521,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Giulietta%20i%20duchy">Giulietta i duchy</a>
+        <a href="/poznan/film?title=Giulietta%20i%20duchy">Giulietta i duchy</a>
   <span class="pill runtime">2h 19min</span>
 
   <span class="pill year">1965</span>
@@ -2568,7 +2570,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Guru">Guru</a>
+        <a href="/poznan/film?title=Guru">Guru</a>
   <span class="pill runtime">2h 6min</span>
 
   <span class="pill year">2025</span>
@@ -2618,7 +2620,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Gwiezdne%20Wojny%3A%20Mandalorian%20i%20Grogu%20-%20ukrai%C5%84ski%20dubbing">Gwiezdne Wojny: Mandalorian i Grogu - ukraiński dubbing</a>
+        <a href="/poznan/film?title=Gwiezdne%20Wojny%3A%20Mandalorian%20i%20Grogu%20-%20ukrai%C5%84ski%20dubbing">Gwiezdne Wojny: Mandalorian i Grogu - ukraiński dubbing</a>
   <span class="pill runtime">2h 12min</span>
 
   <span class="pill year">2026</span>
@@ -2662,7 +2664,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=G%C5%82os%20Hind%20Rajab">Głos Hind Rajab</a>
+        <a href="/poznan/film?title=G%C5%82os%20Hind%20Rajab">Głos Hind Rajab</a>
   <span class="pill runtime">1h 29min</span>
 
   <span class="pill year">2025</span>
@@ -2716,7 +2718,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=G%C5%82os%20z%20ksi%C4%99%C5%BCyca">Głos z księżyca</a>
+        <a href="/poznan/film?title=G%C5%82os%20z%20ksi%C4%99%C5%BCyca">Głos z księżyca</a>
   <span class="pill runtime">2h 1min</span>
 
   <span class="pill year">1990</span>
@@ -2765,7 +2767,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Hamnet">Hamnet</a>
+        <a href="/poznan/film?title=Hamnet">Hamnet</a>
   <span class="pill runtime">2h 5min</span>
 
   <span class="pill year">2025</span>
@@ -2821,7 +2823,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Harry%20Angel">Harry Angel</a>
+        <a href="/poznan/film?title=Harry%20Angel">Harry Angel</a>
   <span class="pill runtime">1h 54min</span>
 
   <span class="pill year">1987</span>
@@ -2875,7 +2877,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Harry%20Potter%20i%20Czara%20ognia">Harry Potter i Czara ognia</a>
+        <a href="/poznan/film?title=Harry%20Potter%20i%20Czara%20ognia">Harry Potter i Czara ognia</a>
   <span class="pill year">2005</span>
 
   <span class="pill genre">Familijny</span>
@@ -2931,7 +2933,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Harry%20Potter%20i%20Insygnia%20%C5%9Amierci%20cz.%201">Harry Potter i Insygnia Śmierci cz. 1</a>
+        <a href="/poznan/film?title=Harry%20Potter%20i%20Insygnia%20%C5%9Amierci%20cz.%201">Harry Potter i Insygnia Śmierci cz. 1</a>
       </div>
       
 
@@ -2965,7 +2967,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Harry%20Potter%20i%20Insygnia%20%C5%9Amierci%20cz.%202">Harry Potter i Insygnia Śmierci cz. 2</a>
+        <a href="/poznan/film?title=Harry%20Potter%20i%20Insygnia%20%C5%9Amierci%20cz.%202">Harry Potter i Insygnia Śmierci cz. 2</a>
   <span class="pill year">2011</span>
 
   <span class="pill genre">Fantasy</span>
@@ -3021,7 +3023,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Harry%20Potter%20i%20Kamie%C5%84%20filozoficzny">Harry Potter i Kamień filozoficzny</a>
+        <a href="/poznan/film?title=Harry%20Potter%20i%20Kamie%C5%84%20filozoficzny">Harry Potter i Kamień filozoficzny</a>
   <span class="pill year">2001</span>
 
   <span class="pill genre">Familijny</span>
@@ -3077,7 +3079,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Harry%20Potter%20i%20Komnata%20Tajemnic">Harry Potter i Komnata Tajemnic</a>
+        <a href="/poznan/film?title=Harry%20Potter%20i%20Komnata%20Tajemnic">Harry Potter i Komnata Tajemnic</a>
   <span class="pill year">2002</span>
 
   <span class="pill genre">Familijny</span>
@@ -3133,7 +3135,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Harry%20Potter%20i%20Ksi%C4%85%C5%BC%C4%99%20P%C3%B3%C5%82krwi">Harry Potter i Książę Półkrwi</a>
+        <a href="/poznan/film?title=Harry%20Potter%20i%20Ksi%C4%85%C5%BC%C4%99%20P%C3%B3%C5%82krwi">Harry Potter i Książę Półkrwi</a>
   <span class="pill year">2009</span>
 
   <span class="pill genre">Familijny</span>
@@ -3189,7 +3191,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Harry%20Potter%20i%20Wi%C4%99zie%C5%84%20Azkabanu">Harry Potter i Więzień Azkabanu</a>
+        <a href="/poznan/film?title=Harry%20Potter%20i%20Wi%C4%99zie%C5%84%20Azkabanu">Harry Potter i Więzień Azkabanu</a>
       </div>
       
 
@@ -3223,7 +3225,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Harry%20Potter%20i%20Zakon%20Feniksa">Harry Potter i Zakon Feniksa</a>
+        <a href="/poznan/film?title=Harry%20Potter%20i%20Zakon%20Feniksa">Harry Potter i Zakon Feniksa</a>
   <span class="pill year">2007</span>
 
   <span class="pill genre">Familijny</span>
@@ -3279,7 +3281,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Hopni%C4%99ci">Hopnięci</a>
+        <a href="/poznan/film?title=Hopni%C4%99ci">Hopnięci</a>
   <span class="pill runtime">1h 44min</span>
 
   <span class="pill year">2026</span>
@@ -3332,7 +3334,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Id%C5%BA%20z%20dusz%C4%85%20na%20d%C5%82oni">Idź z duszą na dłoni</a>
+        <a href="/poznan/film?title=Id%C5%BA%20z%20dusz%C4%85%20na%20d%C5%82oni">Idź z duszą na dłoni</a>
   <span class="pill runtime">1h 53min</span>
 
   <span class="pill year">2025</span>
@@ -3386,7 +3388,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Iron%20Maiden%3A%20Burning%20Ambition">Iron Maiden: Burning Ambition</a>
+        <a href="/poznan/film?title=Iron%20Maiden%3A%20Burning%20Ambition">Iron Maiden: Burning Ambition</a>
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">2026</span>
@@ -3442,7 +3444,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=John%20Williams%20-%20A%20Tribute">John Williams - A Tribute</a>
+        <a href="/poznan/film?title=John%20Williams%20-%20A%20Tribute">John Williams - A Tribute</a>
   <span class="pill runtime">1h 23min</span>
 
       </div>
@@ -3478,7 +3480,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Karuppu">Karuppu</a>
+        <a href="/poznan/film?title=Karuppu">Karuppu</a>
   <span class="pill runtime">2h 30min</span>
 
   <span class="pill year">2026</span>
@@ -3522,7 +3524,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kicia%20Kocia%20ma%20braciszka">Kicia Kocia ma braciszka</a>
+        <a href="/poznan/film?title=Kicia%20Kocia%20ma%20braciszka">Kicia Kocia ma braciszka</a>
   <span class="pill runtime">0h 45min</span>
 
   <span class="pill year">2025</span>
@@ -3562,7 +3564,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kicia%20Kocia%20w%20podr%C3%B3%C5%BCy">Kicia Kocia w podróży</a>
+        <a href="/poznan/film?title=Kicia%20Kocia%20w%20podr%C3%B3%C5%BCy">Kicia Kocia w podróży</a>
   <span class="pill runtime">0h 45min</span>
 
   <span class="pill year">2026</span>
@@ -3604,7 +3606,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kino%20bez%20barier%3A%20Arco%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Arco (AD + CC + PJM)</a>
+        <a href="/poznan/film?title=Kino%20bez%20barier%3A%20Arco%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Arco (AD + CC + PJM)</a>
   <span class="pill runtime">1h 28min</span>
 
   <span class="pill year">2025</span>
@@ -3644,7 +3646,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kino%20bez%20barier%3A%20Arco%20%28AD%20%2B%20CC%29">Kino bez barier: Arco (AD + CC)</a>
+        <a href="/poznan/film?title=Kino%20bez%20barier%3A%20Arco%20%28AD%20%2B%20CC%29">Kino bez barier: Arco (AD + CC)</a>
   <span class="pill runtime">1h 28min</span>
 
   <span class="pill year">2025</span>
@@ -3684,7 +3686,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kino%20bez%20barier%3A%20B%C5%82%C4%99kitny%20szlak%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Błękitny szlak (AD + CC + PJM)</a>
+        <a href="/poznan/film?title=Kino%20bez%20barier%3A%20B%C5%82%C4%99kitny%20szlak%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Błękitny szlak (AD + CC + PJM)</a>
   <span class="pill runtime">1h 25min</span>
 
   <span class="pill year">2025</span>
@@ -3722,7 +3724,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kino%20bez%20barier%3A%20Drugie%20%C5%BCycie%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Drugie życie (AD + CC + PJM)</a>
+        <a href="/poznan/film?title=Kino%20bez%20barier%3A%20Drugie%20%C5%BCycie%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Drugie życie (AD + CC + PJM)</a>
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2025</span>
@@ -3776,7 +3778,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kino%20bez%20barier%3A%20Drugie%20%C5%BCycie%20%28AD%20%2B%20CC%29">Kino bez barier: Drugie życie (AD + CC)</a>
+        <a href="/poznan/film?title=Kino%20bez%20barier%3A%20Drugie%20%C5%BCycie%20%28AD%20%2B%20CC%29">Kino bez barier: Drugie życie (AD + CC)</a>
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2025</span>
@@ -3830,7 +3832,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kino%20bez%20barier%3A%20Freak%20Show%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Freak Show (AD + CC + PJM)</a>
+        <a href="/poznan/film?title=Kino%20bez%20barier%3A%20Freak%20Show%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Freak Show (AD + CC + PJM)</a>
   <span class="pill runtime">1h 15min</span>
 
   <span class="pill year">2026</span>
@@ -3868,7 +3870,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kino%20bez%20barier%3A%20Freak%20Show%20%28AD%20%2B%20CC%29">Kino bez barier: Freak Show (AD + CC)</a>
+        <a href="/poznan/film?title=Kino%20bez%20barier%3A%20Freak%20Show%20%28AD%20%2B%20CC%29">Kino bez barier: Freak Show (AD + CC)</a>
   <span class="pill runtime">1h 15min</span>
 
   <span class="pill year">2026</span>
@@ -3906,7 +3908,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kino%20bez%20barier%3A%20Milcz%C4%85ca%20przyjaci%C3%B3%C5%82ka%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM)</a>
+        <a href="/poznan/film?title=Kino%20bez%20barier%3A%20Milcz%C4%85ca%20przyjaci%C3%B3%C5%82ka%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Milcząca przyjaciółka (AD + CC + PJM)</a>
   <span class="pill runtime">2h 27min</span>
 
   <span class="pill year">2025</span>
@@ -3960,7 +3962,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kino%20bez%20barier%3A%20Milcz%C4%85ca%20przyjaci%C3%B3%C5%82ka%20%28AD%20%2B%20CC%29">Kino bez barier: Milcząca przyjaciółka (AD + CC)</a>
+        <a href="/poznan/film?title=Kino%20bez%20barier%3A%20Milcz%C4%85ca%20przyjaci%C3%B3%C5%82ka%20%28AD%20%2B%20CC%29">Kino bez barier: Milcząca przyjaciółka (AD + CC)</a>
   <span class="pill runtime">2h 27min</span>
 
   <span class="pill year">2025</span>
@@ -4014,7 +4016,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kino%20bez%20barier%3A%20M%C5%82ode%20matki%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Młode matki (AD + CC + PJM)</a>
+        <a href="/poznan/film?title=Kino%20bez%20barier%3A%20M%C5%82ode%20matki%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Młode matki (AD + CC + PJM)</a>
   <span class="pill runtime">1h 35min</span>
 
   <span class="pill year">2025</span>
@@ -4068,7 +4070,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kino%20bez%20barier%3A%20Pie%C5%9Bni%20lasu%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Pieśni lasu (AD + CC + PJM)</a>
+        <a href="/poznan/film?title=Kino%20bez%20barier%3A%20Pie%C5%9Bni%20lasu%20%28AD%20%2B%20CC%20%2B%20PJM%29">Kino bez barier: Pieśni lasu (AD + CC + PJM)</a>
   <span class="pill runtime">1h 33min</span>
 
   <span class="pill year">2025</span>
@@ -4118,7 +4120,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kl%C4%85twa%20doliny%20w%C4%99%C5%BCy%20-%20%20z%20autorsk%C4%85%20narracj%C4%85%20%C5%81ony">Klątwa doliny węży -  z autorską narracją Łony</a>
+        <a href="/poznan/film?title=Kl%C4%85twa%20doliny%20w%C4%99%C5%BCy%20-%20%20z%20autorsk%C4%85%20narracj%C4%85%20%C5%81ony">Klątwa doliny węży -  z autorską narracją Łony</a>
       </div>
       
 
@@ -4152,7 +4154,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kl%C4%85twa%20doliny%20w%C4%99%C5%BCy%20%7C%20autorska%20audiodeskrypcja%20%C5%82ony%20%7Cprzed%20filmem%20wyk%C5%82ad%20prof.%20Marka%20hendrykowskiego">Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego</a>
+        <a href="/poznan/film?title=Kl%C4%85twa%20doliny%20w%C4%99%C5%BCy%20%7C%20autorska%20audiodeskrypcja%20%C5%82ony%20%7Cprzed%20filmem%20wyk%C5%82ad%20prof.%20Marka%20hendrykowskiego">Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego</a>
   <span class="pill runtime">1h 39min</span>
 
   <span class="pill year">1987</span>
@@ -4196,7 +4198,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kopn%C4%99%C5%82abym%20ci%C4%99%2C%20gdybym%20mog%C5%82a">Kopnęłabym cię, gdybym mogła</a>
+        <a href="/poznan/film?title=Kopn%C4%99%C5%82abym%20ci%C4%99%2C%20gdybym%20mog%C5%82a">Kopnęłabym cię, gdybym mogła</a>
   <span class="pill runtime">1h 53min</span>
 
   <span class="pill year">2025</span>
@@ -4250,7 +4252,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kosmiczny%20mecz">Kosmiczny mecz</a>
+        <a href="/poznan/film?title=Kosmiczny%20mecz">Kosmiczny mecz</a>
   <span class="pill runtime">1h 28min</span>
 
   <span class="pill year">1996</span>
@@ -4301,7 +4303,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Krajobraz%20po%20bitwie">Krajobraz po bitwie</a>
+        <a href="/poznan/film?title=Krajobraz%20po%20bitwie">Krajobraz po bitwie</a>
   <span class="pill runtime">1h 41min</span>
 
   <span class="pill year">1970</span>
@@ -4348,7 +4350,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kronika%20wypadk%C3%B3w%20mi%C5%82osnych">Kronika wypadków miłosnych</a>
+        <a href="/poznan/film?title=Kronika%20wypadk%C3%B3w%20mi%C5%82osnych">Kronika wypadków miłosnych</a>
   <span class="pill runtime">1h 54min</span>
 
   <span class="pill year">1985</span>
@@ -4400,7 +4402,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kumotry">Kumotry</a>
+        <a href="/poznan/film?title=Kumotry">Kumotry</a>
   <span class="pill runtime">1h 10min</span>
 
   <span class="pill year">2025</span>
@@ -4448,7 +4450,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Kurozaj%C4%85c%20i%20%C5%9Awi%C4%85tynia%20%C5%9Awistaka">Kurozając i Świątynia Świstaka</a>
+        <a href="/poznan/film?title=Kurozaj%C4%85c%20i%20%C5%9Awi%C4%85tynia%20%C5%9Awistaka">Kurozając i Świątynia Świstaka</a>
   <span class="pill runtime">1h 29min</span>
 
   <span class="pill year">2026</span>
@@ -4487,7 +4489,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=K%C5%82opotliwy%20nied%C5%BAwied%C5%BA">Kłopotliwy niedźwiedź</a>
+        <a href="/poznan/film?title=K%C5%82opotliwy%20nied%C5%BAwied%C5%BA">Kłopotliwy niedźwiedź</a>
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2026</span>
@@ -4541,7 +4543,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=La%20Grazia">La Grazia</a>
+        <a href="/poznan/film?title=La%20Grazia">La Grazia</a>
   <span class="pill runtime">2h 11min</span>
 
   <span class="pill year">2025</span>
@@ -4595,7 +4597,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=La%20Traviata%20Verdiego%20z%20Arena%20di%20Verona">La Traviata Verdiego z Arena di Verona</a>
+        <a href="/poznan/film?title=La%20Traviata%20Verdiego%20z%20Arena%20di%20Verona">La Traviata Verdiego z Arena di Verona</a>
   <span class="pill runtime">2h 40min</span>
 
   <span class="pill year">2021</span>
@@ -4630,7 +4632,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Layla">Layla</a>
+        <a href="/poznan/film?title=Layla">Layla</a>
   <span class="pill runtime">1h 40min</span>
 
   <span class="pill year">2024</span>
@@ -4688,7 +4690,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Left-Handed%20Girl.%20To%20by%C5%82a%20r%C4%99ka...%20diab%C5%82a%21">Left-Handed Girl. To była ręka... diabła!</a>
+        <a href="/poznan/film?title=Left-Handed%20Girl.%20To%20by%C5%82a%20r%C4%99ka...%20diab%C5%82a%21">Left-Handed Girl. To była ręka... diabła!</a>
   <span class="pill runtime">1h 49min</span>
 
   <span class="pill year">2025</span>
@@ -4738,7 +4740,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Liga%20Mistrz%C3%B3w%20UEFA%20-%20Fina%C5%82">Liga Mistrzów UEFA - Finał</a>
+        <a href="/poznan/film?title=Liga%20Mistrz%C3%B3w%20UEFA%20-%20Fina%C5%82">Liga Mistrzów UEFA - Finał</a>
   <span class="pill runtime">3h</span>
 
   <span class="pill year">2026</span>
@@ -4778,7 +4780,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=LIGA%20MISTRZ%C3%93W%20UEFA%20-%20FINA%C5%81%202026%3A%20Paris%20Saint-Germain%20-%20Arsenal%20FC">LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC</a>
+        <a href="/poznan/film?title=LIGA%20MISTRZ%C3%93W%20UEFA%20-%20FINA%C5%81%202026%3A%20Paris%20Saint-Germain%20-%20Arsenal%20FC">LIGA MISTRZÓW UEFA - FINAŁ 2026: Paris Saint-Germain - Arsenal FC</a>
       </div>
       
 
@@ -4812,7 +4814,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Mandalorian%20i%20Grogu">Mandalorian i Grogu</a>
+        <a href="/poznan/film?title=Mandalorian%20i%20Grogu">Mandalorian i Grogu</a>
   <span class="pill runtime">2h 12min</span>
 
   <span class="pill year">2026</span>
@@ -4856,7 +4858,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Maraton%3A%20Powr%C3%B3t%20do%20przysz%C5%82o%C5%9Bci">Maraton: Powrót do przyszłości</a>
+        <a href="/poznan/film?title=Maraton%3A%20Powr%C3%B3t%20do%20przysz%C5%82o%C5%9Bci">Maraton: Powrót do przyszłości</a>
       </div>
       
 
@@ -4890,7 +4892,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Maryja.%20Matka%20Papie%C5%BCa">Maryja. Matka Papieża</a>
+        <a href="/poznan/film?title=Maryja.%20Matka%20Papie%C5%BCa">Maryja. Matka Papieża</a>
   <span class="pill runtime">1h 20min</span>
 
   <span class="pill year">2026</span>
@@ -4936,7 +4938,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Matador">Matador</a>
+        <a href="/poznan/film?title=Matador">Matador</a>
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">1986</span>
@@ -4990,7 +4992,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Mawka.%20Prawdziwy%20mit">Mawka. Prawdziwy mit</a>
+        <a href="/poznan/film?title=Mawka.%20Prawdziwy%20mit">Mawka. Prawdziwy mit</a>
   <span class="pill runtime">1h 40min</span>
 
   <span class="pill year">2026</span>
@@ -5031,7 +5033,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Mi%20Amor">Mi Amor</a>
+        <a href="/poznan/film?title=Mi%20Amor">Mi Amor</a>
   <span class="pill runtime">1h 53min</span>
 
   <span class="pill year">2025</span>
@@ -5069,7 +5071,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Michael">Michael</a>
+        <a href="/poznan/film?title=Michael">Michael</a>
   <span class="pill runtime">2h 7min</span>
 
   <span class="pill year">2026</span>
@@ -5127,7 +5129,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Miejskie%20%C5%9Awi%C4%99to%20Rowerowe%3A%20Pokaz%20filmu%20Cycling%20Cities">Miejskie Święto Rowerowe: Pokaz filmu Cycling Cities</a>
+        <a href="/poznan/film?title=Miejskie%20%C5%9Awi%C4%99to%20Rowerowe%3A%20Pokaz%20filmu%20Cycling%20Cities">Miejskie Święto Rowerowe: Pokaz filmu Cycling Cities</a>
   <span class="pill runtime">1h 24min</span>
 
   <span class="pill year">2025</span>
@@ -5165,7 +5167,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Milczenie%20owiec">Milczenie owiec</a>
+        <a href="/poznan/film?title=Milczenie%20owiec">Milczenie owiec</a>
   <span class="pill year">1991</span>
 
   <span class="pill genre">Thriller</span>
@@ -5217,7 +5219,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Milcz%C4%85ca%20przyjaci%C3%B3%C5%82ka">Milcząca przyjaciółka</a>
+        <a href="/poznan/film?title=Milcz%C4%85ca%20przyjaci%C3%B3%C5%82ka">Milcząca przyjaciółka</a>
   <span class="pill runtime">2h 27min</span>
 
   <span class="pill year">2025</span>
@@ -5271,7 +5273,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Mi%C5%82o%C5%9B%C4%87%20w%20czasach%20apokalipsy">Miłość w czasach apokalipsy</a>
+        <a href="/poznan/film?title=Mi%C5%82o%C5%9B%C4%87%20w%20czasach%20apokalipsy">Miłość w czasach apokalipsy</a>
   <span class="pill runtime">1h 40min</span>
 
   <span class="pill year">2025</span>
@@ -5325,7 +5327,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Mi%C5%82o%C5%9B%C4%87%2C%20kt%C3%B3ra%20zostaje">Miłość, która zostaje</a>
+        <a href="/poznan/film?title=Mi%C5%82o%C5%9B%C4%87%2C%20kt%C3%B3ra%20zostaje">Miłość, która zostaje</a>
   <span class="pill runtime">1h 55min</span>
 
   <span class="pill year">2025</span>
@@ -5379,7 +5381,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Mortal%20Kombat%20II">Mortal Kombat II</a>
+        <a href="/poznan/film?title=Mortal%20Kombat%20II">Mortal Kombat II</a>
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2026</span>
@@ -5435,7 +5437,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Mortal%20Kombat%20II%20ukrai%C5%84ski%20dubbing">Mortal Kombat II ukraiński dubbing</a>
+        <a href="/poznan/film?title=Mortal%20Kombat%20II%20ukrai%C5%84ski%20dubbing">Mortal Kombat II ukraiński dubbing</a>
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2026</span>
@@ -5479,7 +5481,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Moulin%20Rouge%21">Moulin Rouge!</a>
+        <a href="/poznan/film?title=Moulin%20Rouge%21">Moulin Rouge!</a>
   <span class="pill year">2001</span>
 
   <span class="pill genre">Melodramat</span>
@@ -5533,7 +5535,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Mumia%3A%20Film%20Lee%20Cronina">Mumia: Film Lee Cronina</a>
+        <a href="/poznan/film?title=Mumia%3A%20Film%20Lee%20Cronina">Mumia: Film Lee Cronina</a>
   <span class="pill year">2026</span>
 
   <span class="pill genre">Horror</span>
@@ -5585,7 +5587,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Munch%3A%20mi%C5%82o%C5%9B%C4%87%2C%20duchy%20i%20wampirzyce">Munch: miłość, duchy i wampirzyce</a>
+        <a href="/poznan/film?title=Munch%3A%20mi%C5%82o%C5%9B%C4%87%2C%20duchy%20i%20wampirzyce">Munch: miłość, duchy i wampirzyce</a>
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2022</span>
@@ -5629,7 +5631,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=M%C5%82ode%20matki">Młode matki</a>
+        <a href="/poznan/film?title=M%C5%82ode%20matki">Młode matki</a>
   <span class="pill runtime">1h 44min</span>
 
   <span class="pill year">2025</span>
@@ -5678,7 +5680,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=M%C5%82odsza%20siostra">Młodsza siostra</a>
+        <a href="/poznan/film?title=M%C5%82odsza%20siostra">Młodsza siostra</a>
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">2025</span>
@@ -5732,7 +5734,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Najbogatsza%20kobieta%20%C5%9Bwiata">Najbogatsza kobieta świata</a>
+        <a href="/poznan/film?title=Najbogatsza%20kobieta%20%C5%9Bwiata">Najbogatsza kobieta świata</a>
   <span class="pill runtime">2h 2min</span>
 
   <span class="pill genre">Dramat</span>
@@ -5767,7 +5769,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Najstarsza%20osoba%20na%20%C5%9Bwiecie">Najstarsza osoba na świecie</a>
+        <a href="/poznan/film?title=Najstarsza%20osoba%20na%20%C5%9Bwiecie">Najstarsza osoba na świecie</a>
   <span class="pill runtime">1h 27min</span>
 
   <span class="pill year">2025</span>
@@ -5805,7 +5807,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Naj%C5%9Bwi%C4%99tsze%20serce">Najświętsze serce</a>
+        <a href="/poznan/film?title=Naj%C5%9Bwi%C4%99tsze%20serce">Najświętsze serce</a>
   <span class="pill runtime">1h 32min</span>
 
       </div>
@@ -5841,7 +5843,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Narodziny%20gwiazdy">Narodziny gwiazdy</a>
+        <a href="/poznan/film?title=Narodziny%20gwiazdy">Narodziny gwiazdy</a>
   <span class="pill runtime">2h 15min</span>
 
   <span class="pill year">2018</span>
@@ -5897,7 +5899,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Nie%20ma%20duch%C3%B3w%20w%20mieszkaniu%20na%20Dobrej">Nie ma duchów w mieszkaniu na Dobrej</a>
+        <a href="/poznan/film?title=Nie%20ma%20duch%C3%B3w%20w%20mieszkaniu%20na%20Dobrej">Nie ma duchów w mieszkaniu na Dobrej</a>
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2026</span>
@@ -5940,7 +5942,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Nie%20ogl%C4%85daj%20si%C4%99%20teraz">Nie oglądaj się teraz</a>
+        <a href="/poznan/film?title=Nie%20ogl%C4%85daj%20si%C4%99%20teraz">Nie oglądaj się teraz</a>
   <span class="pill runtime">1h 50min</span>
 
   <span class="pill year">1973</span>
@@ -5992,7 +5994,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Niebezpieczne%20zwi%C4%85zki%20-%20National%20Theatre%20Live%202026">Niebezpieczne związki - National Theatre Live 2026</a>
+        <a href="/poznan/film?title=Niebezpieczne%20zwi%C4%85zki%20-%20National%20Theatre%20Live%202026">Niebezpieczne związki - National Theatre Live 2026</a>
   <span class="pill runtime">2h 30min</span>
 
   <span class="pill year">2026</span>
@@ -6027,7 +6029,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Nied%C5%BAwiedzica">Niedźwiedzica</a>
+        <a href="/poznan/film?title=Nied%C5%BAwiedzica">Niedźwiedzica</a>
   <span class="pill runtime">1h 36min</span>
 
   <span class="pill year">2026</span>
@@ -6073,7 +6075,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Niesamowite%20przygody%20skarpetek%202.%20Skarpetki%20g%C3%B3r%C4%85%21">Niesamowite przygody skarpetek 2. Skarpetki górą!</a>
+        <a href="/poznan/film?title=Niesamowite%20przygody%20skarpetek%202.%20Skarpetki%20g%C3%B3r%C4%85%21">Niesamowite przygody skarpetek 2. Skarpetki górą!</a>
   <span class="pill runtime">0h 55min</span>
 
   <span class="pill year">2025</span>
@@ -6111,7 +6113,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Niesamowite%20przygody%20skarpetek%203.%20Ale%20ko">Niesamowite przygody skarpetek 3. Ale ko</a>
+        <a href="/poznan/film?title=Niesamowite%20przygody%20skarpetek%203.%20Ale%20ko">Niesamowite przygody skarpetek 3. Ale ko</a>
   <span class="pill runtime">0h 55min</span>
 
   <span class="pill year">2026</span>
@@ -6153,7 +6155,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Niesamowite%20przygody%20skarpetek%203.%20Ale%20kosmos%21">Niesamowite przygody skarpetek 3. Ale kosmos!</a>
+        <a href="/poznan/film?title=Niesamowite%20przygody%20skarpetek%203.%20Ale%20kosmos%21">Niesamowite przygody skarpetek 3. Ale kosmos!</a>
   <span class="pill runtime">0h 55min</span>
 
   <span class="pill year">2026</span>
@@ -6193,7 +6195,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Niewinni%20czarodzieje">Niewinni czarodzieje</a>
+        <a href="/poznan/film?title=Niewinni%20czarodzieje">Niewinni czarodzieje</a>
   <span class="pill runtime">1h 24min</span>
 
   <span class="pill year">1960</span>
@@ -6247,7 +6249,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=NMF%3A%20Maraton%20Horror%C3%B3w%2019%20czerwca%202026">NMF: Maraton Horrorów 19 czerwca 2026</a>
+        <a href="/poznan/film?title=NMF%3A%20Maraton%20Horror%C3%B3w%2019%20czerwca%202026">NMF: Maraton Horrorów 19 czerwca 2026</a>
   <span class="pill runtime">7h 24min</span>
 
       </div>
@@ -6283,7 +6285,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=NMF%3A%20Noc%20W%C5%82adcy%20Pier%C5%9Bcieni%20%28wersje%20rozszerzone%29">NMF: Noc Władcy Pierścieni (wersje rozszerzone)</a>
+        <a href="/poznan/film?title=NMF%3A%20Noc%20W%C5%82adcy%20Pier%C5%9Bcieni%20%28wersje%20rozszerzone%29">NMF: Noc Władcy Pierścieni (wersje rozszerzone)</a>
   <span class="pill runtime">12h</span>
 
       </div>
@@ -6319,7 +6321,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Noce%20Cabirii">Noce Cabirii</a>
+        <a href="/poznan/film?title=Noce%20Cabirii">Noce Cabirii</a>
   <span class="pill runtime">1h 50min</span>
 
   <span class="pill year">1957</span>
@@ -6366,7 +6368,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Nomadland">Nomadland</a>
+        <a href="/poznan/film?title=Nomadland">Nomadland</a>
   <span class="pill runtime">1h 48min</span>
 
   <span class="pill year">2020</span>
@@ -6420,7 +6422,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Normal">Normal</a>
+        <a href="/poznan/film?title=Normal">Normal</a>
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2025</span>
@@ -6459,7 +6461,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Nowa%20fala">Nowa fala</a>
+        <a href="/poznan/film?title=Nowa%20fala">Nowa fala</a>
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2025</span>
@@ -6513,7 +6515,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=NT%20Live%3A%20Audiencja">NT Live: Audiencja</a>
+        <a href="/poznan/film?title=NT%20Live%3A%20Audiencja">NT Live: Audiencja</a>
   <span class="pill runtime">3h</span>
 
       </div>
@@ -6549,7 +6551,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=NT%20Live%3A%20Niebezpieczne%20zwi%C4%85zki">NT Live: Niebezpieczne związki</a>
+        <a href="/poznan/film?title=NT%20Live%3A%20Niebezpieczne%20zwi%C4%85zki">NT Live: Niebezpieczne związki</a>
   <span class="pill runtime">2h 30min</span>
 
       </div>
@@ -6585,7 +6587,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=NT%20Live%3A%20Playboy%20zachodniego%20%C5%9Bwiata">NT Live: Playboy zachodniego świata</a>
+        <a href="/poznan/film?title=NT%20Live%3A%20Playboy%20zachodniego%20%C5%9Bwiata">NT Live: Playboy zachodniego świata</a>
   <span class="pill runtime">2h 30min</span>
 
       </div>
@@ -6621,7 +6623,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=NT%20Live%3A%20Wszyscy%20moi%20synowie">NT Live: Wszyscy moi synowie</a>
+        <a href="/poznan/film?title=NT%20Live%3A%20Wszyscy%20moi%20synowie">NT Live: Wszyscy moi synowie</a>
   <span class="pill runtime">2h 10min</span>
 
       </div>
@@ -6657,7 +6659,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=O%20dziewczynie%20skacz%C4%85cej%20przez%20czas">O dziewczynie skaczącej przez czas</a>
+        <a href="/poznan/film?title=O%20dziewczynie%20skacz%C4%85cej%20przez%20czas">O dziewczynie skaczącej przez czas</a>
   <span class="pill runtime">1h 38min</span>
 
   <span class="pill year">2006</span>
@@ -6706,7 +6708,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Obcy">Obcy</a>
+        <a href="/poznan/film?title=Obcy">Obcy</a>
   <span class="pill runtime">2h 2min</span>
 
   <span class="pill year">2025</span>
@@ -6762,7 +6764,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Obsesja">Obsesja</a>
+        <a href="/poznan/film?title=Obsesja">Obsesja</a>
   <span class="pill runtime">1h 49min</span>
 
   <span class="pill year">2025</span>
@@ -6810,7 +6812,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Odlot">Odlot</a>
+        <a href="/poznan/film?title=Odlot">Odlot</a>
   <span class="pill year">2009</span>
 
   <span class="pill genre">Familijny</span>
@@ -6866,7 +6868,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Odrodzony%20jako%20galareta.%20Film%3A%20%C5%81zy%20Morza%20Lazurowego">Odrodzony jako galareta. Film: Łzy Morza Lazurowego</a>
+        <a href="/poznan/film?title=Odrodzony%20jako%20galareta.%20Film%3A%20%C5%81zy%20Morza%20Lazurowego">Odrodzony jako galareta. Film: Łzy Morza Lazurowego</a>
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2026</span>
@@ -6922,7 +6924,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=On%20drive">On drive</a>
+        <a href="/poznan/film?title=On%20drive">On drive</a>
   <span class="pill runtime">1h 55min</span>
 
   <span class="pill year">2026</span>
@@ -6968,7 +6970,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Op%C4%99tanie">Opętanie</a>
+        <a href="/poznan/film?title=Op%C4%99tanie">Opętanie</a>
   <span class="pill runtime">2h 4min</span>
 
   <span class="pill year">1981</span>
@@ -7019,7 +7021,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Orwell%3A%202%20%2B%202%20%3D%205">Orwell: 2 + 2 = 5</a>
+        <a href="/poznan/film?title=Orwell%3A%202%20%2B%202%20%3D%205">Orwell: 2 + 2 = 5</a>
   <span class="pill runtime">1h 59min</span>
 
   <span class="pill year">2025</span>
@@ -7073,7 +7075,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Osiem%20i%20p%C3%B3%C5%82">Osiem i pół</a>
+        <a href="/poznan/film?title=Osiem%20i%20p%C3%B3%C5%82">Osiem i pół</a>
   <span class="pill runtime">2h 18min</span>
 
   <span class="pill year">1963</span>
@@ -7127,7 +7129,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Ostatnia%20sesja%20w%20Pary%C5%BCu">Ostatnia sesja w Paryżu</a>
+        <a href="/poznan/film?title=Ostatnia%20sesja%20w%20Pary%C5%BCu">Ostatnia sesja w Paryżu</a>
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2025</span>
@@ -7183,7 +7185,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Pan%20Nikt%20kontra%20Putin">Pan Nikt kontra Putin</a>
+        <a href="/poznan/film?title=Pan%20Nikt%20kontra%20Putin">Pan Nikt kontra Putin</a>
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2025</span>
@@ -7237,7 +7239,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Perfect%20Days">Perfect Days</a>
+        <a href="/poznan/film?title=Perfect%20Days">Perfect Days</a>
   <span class="pill runtime">2h 5min</span>
 
   <span class="pill year">2023</span>
@@ -7286,7 +7288,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Pieni%C4%85dze%20to%20wszystko">Pieniądze to wszystko</a>
+        <a href="/poznan/film?title=Pieni%C4%85dze%20to%20wszystko">Pieniądze to wszystko</a>
   <span class="pill runtime">1h 36min</span>
 
   <span class="pill year">2026</span>
@@ -7333,7 +7335,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Pie%C5%9Bni%20lasu">Pieśni lasu</a>
+        <a href="/poznan/film?title=Pie%C5%9Bni%20lasu">Pieśni lasu</a>
   <span class="pill runtime">1h 34min</span>
 
   <span class="pill year">2025</span>
@@ -7383,7 +7385,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Playboy%20zachodniego%20%C5%9Bwiata%20-%20National%20Theatre%20Live%202026">Playboy zachodniego świata - National Theatre Live 2026</a>
+        <a href="/poznan/film?title=Playboy%20zachodniego%20%C5%9Bwiata%20-%20National%20Theatre%20Live%202026">Playboy zachodniego świata - National Theatre Live 2026</a>
   <span class="pill runtime">2h 30min</span>
 
   <span class="pill year">2026</span>
@@ -7418,7 +7420,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Poczta%20g%C5%82osowa">Poczta głosowa</a>
+        <a href="/poznan/film?title=Poczta%20g%C5%82osowa">Poczta głosowa</a>
   <span class="pill runtime">1h 42min</span>
 
   <span class="pill year">2024</span>
@@ -7456,7 +7458,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Pod%20sk%C3%B3r%C4%85">Pod skórą</a>
+        <a href="/poznan/film?title=Pod%20sk%C3%B3r%C4%85">Pod skórą</a>
   <span class="pill runtime">1h 48min</span>
 
   <span class="pill year">2014</span>
@@ -7512,7 +7514,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Podziemny%20kr%C4%85g">Podziemny krąg</a>
+        <a href="/poznan/film?title=Podziemny%20kr%C4%85g">Podziemny krąg</a>
   <span class="pill runtime">2h 19min</span>
 
   <span class="pill year">1999</span>
@@ -7568,7 +7570,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Pokaz%20sensorycznie%20przyjazny%3A%20Delfinek%20i%20ja%202">Pokaz sensorycznie przyjazny: Delfinek i ja 2</a>
+        <a href="/poznan/film?title=Pokaz%20sensorycznie%20przyjazny%3A%20Delfinek%20i%20ja%202">Pokaz sensorycznie przyjazny: Delfinek i ja 2</a>
   <span class="pill runtime">1h 36min</span>
 
   <span class="pill year">2025</span>
@@ -7610,7 +7612,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Pos%C5%82ani">Posłani</a>
+        <a href="/poznan/film?title=Pos%C5%82ani">Posłani</a>
   <span class="pill runtime">1h 23min</span>
 
   <span class="pill year">2026</span>
@@ -7648,7 +7650,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Powr%C3%B3t%20do%20przysz%C5%82o%C5%9Bci">Powrót do przyszłości</a>
+        <a href="/poznan/film?title=Powr%C3%B3t%20do%20przysz%C5%82o%C5%9Bci">Powrót do przyszłości</a>
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">1985</span>
@@ -7706,7 +7708,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Powr%C3%B3t%20do%20przysz%C5%82o%C5%9Bci%20II">Powrót do przyszłości II</a>
+        <a href="/poznan/film?title=Powr%C3%B3t%20do%20przysz%C5%82o%C5%9Bci%20II">Powrót do przyszłości II</a>
   <span class="pill runtime">1h 48min</span>
 
   <span class="pill year">1989</span>
@@ -7764,7 +7766,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Powr%C3%B3t%20do%20przysz%C5%82o%C5%9Bci%20III">Powrót do przyszłości III</a>
+        <a href="/poznan/film?title=Powr%C3%B3t%20do%20przysz%C5%82o%C5%9Bci%20III">Powrót do przyszłości III</a>
   <span class="pill runtime">1h 58min</span>
 
   <span class="pill year">1990</span>
@@ -7822,7 +7824,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Projekt%20Hail%20Mary">Projekt Hail Mary</a>
+        <a href="/poznan/film?title=Projekt%20Hail%20Mary">Projekt Hail Mary</a>
   <span class="pill runtime">2h 37min</span>
 
   <span class="pill year">2026</span>
@@ -7876,7 +7878,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Przepis%20na%20morderstwo">Przepis na morderstwo</a>
+        <a href="/poznan/film?title=Przepis%20na%20morderstwo">Przepis na morderstwo</a>
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">2026</span>
@@ -7925,7 +7927,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Prze%C5%BCyj%20to%20sam">Przeżyj to sam</a>
+        <a href="/poznan/film?title=Prze%C5%BCyj%20to%20sam">Przeżyj to sam</a>
   <span class="pill runtime">1h 56min</span>
 
   <span class="pill year">2025</span>
@@ -7963,7 +7965,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Pucio">Pucio</a>
+        <a href="/poznan/film?title=Pucio">Pucio</a>
   <span class="pill runtime">0h 45min</span>
 
   <span class="pill year">2026</span>
@@ -8003,7 +8005,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Romeo%20i%20Julia">Romeo i Julia</a>
+        <a href="/poznan/film?title=Romeo%20i%20Julia">Romeo i Julia</a>
   <span class="pill year">1996</span>
 
   <span class="pill genre">Melodramat</span>
@@ -8053,7 +8055,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Romer%C3%ADa">Romería</a>
+        <a href="/poznan/film?title=Romer%C3%ADa">Romería</a>
   <span class="pill runtime">1h 55min</span>
 
   <span class="pill year">2025</span>
@@ -8107,7 +8109,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Rozmowa">Rozmowa</a>
+        <a href="/poznan/film?title=Rozmowa">Rozmowa</a>
   <span class="pill runtime">1h 53min</span>
 
   <span class="pill year">1974</span>
@@ -8163,7 +8165,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Sabota%C5%BCysta%205">Sabotażysta 5</a>
+        <a href="/poznan/film?title=Sabota%C5%BCysta%205">Sabotażysta 5</a>
   <span class="pill year">2026</span>
 
       </div>
@@ -8199,7 +8201,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Sir%C3%A2t">Sirât</a>
+        <a href="/poznan/film?title=Sir%C3%A2t">Sirât</a>
   <span class="pill runtime">2h</span>
 
   <span class="pill year">2025</span>
@@ -8250,7 +8252,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Sny%20o%20s%C5%82oniach">Sny o słoniach</a>
+        <a href="/poznan/film?title=Sny%20o%20s%C5%82oniach">Sny o słoniach</a>
   <span class="pill runtime">1h 39min</span>
 
   <span class="pill year">2025</span>
@@ -8306,7 +8308,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=SpoilerMaster%20Tour%3A%20Mikey%20i%20Nicky">SpoilerMaster Tour: Mikey i Nicky</a>
+        <a href="/poznan/film?title=SpoilerMaster%20Tour%3A%20Mikey%20i%20Nicky">SpoilerMaster Tour: Mikey i Nicky</a>
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">1976</span>
@@ -8360,7 +8362,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Sprawiedliwo%C5%9B%C4%87%20owiec">Sprawiedliwość owiec</a>
+        <a href="/poznan/film?title=Sprawiedliwo%C5%9B%C4%87%20owiec">Sprawiedliwość owiec</a>
   <span class="pill runtime">1h 49min</span>
 
   <span class="pill year">2026</span>
@@ -8414,7 +8416,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Straszny%20film">Straszny film</a>
+        <a href="/poznan/film?title=Straszny%20film">Straszny film</a>
   <span class="pill runtime">1h 34min</span>
 
   <span class="pill year">2026</span>
@@ -8468,7 +8470,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Summer%20Wars">Summer Wars</a>
+        <a href="/poznan/film?title=Summer%20Wars">Summer Wars</a>
   <span class="pill runtime">1h 54min</span>
 
   <span class="pill year">2009</span>
@@ -8526,7 +8528,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Super%20Mario%20Galaxy%20Film">Super Mario Galaxy Film</a>
+        <a href="/poznan/film?title=Super%20Mario%20Galaxy%20Film">Super Mario Galaxy Film</a>
   <span class="pill runtime">1h 40min</span>
 
   <span class="pill year">2026</span>
@@ -8584,7 +8586,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=S%C5%82odkie%20%C5%BCycie">Słodkie życie</a>
+        <a href="/poznan/film?title=S%C5%82odkie%20%C5%BCycie">Słodkie życie</a>
   <span class="pill runtime">2h 56min</span>
 
   <span class="pill year">1960</span>
@@ -8638,7 +8640,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=S%C5%82odkie%20%C5%BCycie%20%7C%20przed%20filmem%20wyk%C5%82ad%20prof.%20Marka%20hendrykowskiego">Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego</a>
+        <a href="/poznan/film?title=S%C5%82odkie%20%C5%BCycie%20%7C%20przed%20filmem%20wyk%C5%82ad%20prof.%20Marka%20hendrykowskiego">Słodkie życie | przed filmem wykład prof. Marka hendrykowskiego</a>
   <span class="pill runtime">2h 56min</span>
 
   <span class="pill year">1960</span>
@@ -8692,7 +8694,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Takie%20jest%20%C5%BCycie">Takie jest życie</a>
+        <a href="/poznan/film?title=Takie%20jest%20%C5%BCycie">Takie jest życie</a>
   <span class="pill year">2001</span>
 
   <span class="pill genre">Melodramat</span>
@@ -8738,7 +8740,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=The%20Amazing%20Digital%20Circus%3A%20Ostatni%20Akt">The Amazing Digital Circus: Ostatni Akt</a>
+        <a href="/poznan/film?title=The%20Amazing%20Digital%20Circus%3A%20Ostatni%20Akt">The Amazing Digital Circus: Ostatni Akt</a>
   <span class="pill runtime">1h 33min</span>
 
   <span class="pill year">2026</span>
@@ -8776,7 +8778,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=The%20Amazing%20Digital%20Circus%3A%20The%20Last%20Act">The Amazing Digital Circus: The Last Act</a>
+        <a href="/poznan/film?title=The%20Amazing%20Digital%20Circus%3A%20The%20Last%20Act">The Amazing Digital Circus: The Last Act</a>
   <span class="pill runtime">1h 33min</span>
 
   <span class="pill year">2026</span>
@@ -8820,7 +8822,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=The%20Amazing%20Digital%20Circus%3A%20The%20Last%20Act%20-%20dubbing%20-%20Event%20projekt">The Amazing Digital Circus: The Last Act - dubbing - Event projekt</a>
+        <a href="/poznan/film?title=The%20Amazing%20Digital%20Circus%3A%20The%20Last%20Act%20-%20dubbing%20-%20Event%20projekt">The Amazing Digital Circus: The Last Act - dubbing - Event projekt</a>
   <span class="pill runtime">1h 33min</span>
 
       </div>
@@ -8856,7 +8858,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=The%20Amazing%20Digital%20Circus%3A%20The%20Last%20Act%20-%20napisy%20-%20Event%20projekt">The Amazing Digital Circus: The Last Act - napisy - Event projekt</a>
+        <a href="/poznan/film?title=The%20Amazing%20Digital%20Circus%3A%20The%20Last%20Act%20-%20napisy%20-%20Event%20projekt">The Amazing Digital Circus: The Last Act - napisy - Event projekt</a>
   <span class="pill runtime">1h 33min</span>
 
       </div>
@@ -8892,7 +8894,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Tom%20i%20Jerry%3A%20Przygoda%20w%20muzeum">Tom i Jerry: Przygoda w muzeum</a>
+        <a href="/poznan/film?title=Tom%20i%20Jerry%3A%20Przygoda%20w%20muzeum">Tom i Jerry: Przygoda w muzeum</a>
   <span class="pill runtime">1h 40min</span>
 
   <span class="pill year">2025</span>
@@ -8944,7 +8946,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Top%20Gun">Top Gun</a>
+        <a href="/poznan/film?title=Top%20Gun">Top Gun</a>
   <span class="pill runtime">1h 50min</span>
 
   <span class="pill year">1986</span>
@@ -9000,7 +9002,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Top%20Gun%3A%20Maverick">Top Gun: Maverick</a>
+        <a href="/poznan/film?title=Top%20Gun%3A%20Maverick">Top Gun: Maverick</a>
   <span class="pill runtime">2h 10min</span>
 
   <span class="pill year">2020</span>
@@ -9054,7 +9056,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Van%20gogh.%20Pola%20zb%C3%B3%C5%BC%20i%20zachmurzone%20niebiosa">Van gogh. Pola zbóż i zachmurzone niebiosa</a>
+        <a href="/poznan/film?title=Van%20gogh.%20Pola%20zb%C3%B3%C5%BC%20i%20zachmurzone%20niebiosa">Van gogh. Pola zbóż i zachmurzone niebiosa</a>
   <span class="pill runtime">1h 25min</span>
 
   <span class="pill year">2018</span>
@@ -9102,7 +9104,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Warto%C5%9B%C4%87%20sentymentalna">Wartość sentymentalna</a>
+        <a href="/poznan/film?title=Warto%C5%9B%C4%87%20sentymentalna">Wartość sentymentalna</a>
   <span class="pill runtime">2h 13min</span>
 
   <span class="pill year">2025</span>
@@ -9158,7 +9160,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Wa%C5%82konie">Wałkonie</a>
+        <a href="/poznan/film?title=Wa%C5%82konie">Wałkonie</a>
   <span class="pill runtime">1h 43min</span>
 
   <span class="pill year">1953</span>
@@ -9212,7 +9214,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Werdykt">Werdykt</a>
+        <a href="/poznan/film?title=Werdykt">Werdykt</a>
   <span class="pill runtime">1h 29min</span>
 
       </div>
@@ -9248,7 +9250,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Widmo%20wolno%C5%9Bci">Widmo wolności</a>
+        <a href="/poznan/film?title=Widmo%20wolno%C5%9Bci">Widmo wolności</a>
   <span class="pill runtime">1h 45min</span>
 
   <span class="pill year">1974</span>
@@ -9297,7 +9299,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Wielki%20%C5%81uk">Wielki Łuk</a>
+        <a href="/poznan/film?title=Wielki%20%C5%81uk">Wielki Łuk</a>
   <span class="pill runtime">1h 46min</span>
 
   <span class="pill year">2025</span>
@@ -9349,7 +9351,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Wilcze%20dzieci">Wilcze dzieci</a>
+        <a href="/poznan/film?title=Wilcze%20dzieci">Wilcze dzieci</a>
   <span class="pill runtime">1h 57min</span>
 
   <span class="pill year">2012</span>
@@ -9405,7 +9407,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Wind%C4%85%20na%20szafot">Windą na szafot</a>
+        <a href="/poznan/film?title=Wind%C4%85%20na%20szafot">Windą na szafot</a>
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">1958</span>
@@ -9443,7 +9445,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Wolno%C5%9B%C4%87%20po%20w%C5%82osku">Wolność po włosku</a>
+        <a href="/poznan/film?title=Wolno%C5%9B%C4%87%20po%20w%C5%82osku">Wolność po włosku</a>
   <span class="pill runtime">1h 57min</span>
 
   <span class="pill year">2025</span>
@@ -9497,7 +9499,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Wpatruj%C4%85c%20si%C4%99%20w%20s%C5%82o%C5%84ce">Wpatrując się w słońce</a>
+        <a href="/poznan/film?title=Wpatruj%C4%85c%20si%C4%99%20w%20s%C5%82o%C5%84ce">Wpatrując się w słońce</a>
   <span class="pill runtime">2h 29min</span>
 
   <span class="pill year">2025</span>
@@ -9551,7 +9553,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Wszyscy%20moi%20synowie%20-%20National%20Theatre%20Live%202026">Wszyscy moi synowie - National Theatre Live 2026</a>
+        <a href="/poznan/film?title=Wszyscy%20moi%20synowie%20-%20National%20Theatre%20Live%202026">Wszyscy moi synowie - National Theatre Live 2026</a>
   <span class="pill runtime">2h 31min</span>
 
   <span class="pill year">2026</span>
@@ -9586,7 +9588,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Wszystko%20na%20sprzeda%C5%BC">Wszystko na sprzedaż</a>
+        <a href="/poznan/film?title=Wszystko%20na%20sprzeda%C5%BC">Wszystko na sprzedaż</a>
   <span class="pill runtime">1h 34min</span>
 
   <span class="pill year">1968</span>
@@ -9633,7 +9635,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Wypadek%20fortepianowy">Wypadek fortepianowy</a>
+        <a href="/poznan/film?title=Wypadek%20fortepianowy">Wypadek fortepianowy</a>
   <span class="pill runtime">1h 28min</span>
 
   <span class="pill year">2025</span>
@@ -9681,7 +9683,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Wysokie%20i%20niskie%20tony">Wysokie i niskie tony</a>
+        <a href="/poznan/film?title=Wysokie%20i%20niskie%20tony">Wysokie i niskie tony</a>
   <span class="pill runtime">1h 43min</span>
 
   <span class="pill year">2024</span>
@@ -9737,7 +9739,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=W%C5%82adcy%20wszech%C5%9Bwiata">Władcy wszechświata</a>
+        <a href="/poznan/film?title=W%C5%82adcy%20wszech%C5%9Bwiata">Władcy wszechświata</a>
   <span class="pill runtime">2h 21min</span>
 
   <span class="pill year">2026</span>
@@ -9785,7 +9787,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Yu-Gi-Oh%21%20The%20Dark%20Side%20of%20Dimensions">Yu-Gi-Oh! The Dark Side of Dimensions</a>
+        <a href="/poznan/film?title=Yu-Gi-Oh%21%20The%20Dark%20Side%20of%20Dimensions">Yu-Gi-Oh! The Dark Side of Dimensions</a>
   <span class="pill runtime">2h 10min</span>
 
   <span class="pill year">2016</span>
@@ -9831,7 +9833,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Za%20du%C5%BCy%20na%20bajki%203">Za duży na bajki 3</a>
+        <a href="/poznan/film?title=Za%20du%C5%BCy%20na%20bajki%203">Za duży na bajki 3</a>
   <span class="pill runtime">1h 30min</span>
 
   <span class="pill year">2026</span>
@@ -9875,7 +9877,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Zabawa%20w%20pochowanego%202">Zabawa w pochowanego 2</a>
+        <a href="/poznan/film?title=Zabawa%20w%20pochowanego%202">Zabawa w pochowanego 2</a>
   <span class="pill runtime">1h 44min</span>
 
   <span class="pill year">2026</span>
@@ -9929,7 +9931,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Zapl%C4%85tani">Zaplątani</a>
+        <a href="/poznan/film?title=Zapl%C4%85tani">Zaplątani</a>
   <span class="pill year">2010</span>
 
   <span class="pill genre">Animacja</span>
@@ -9985,7 +9987,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Zaproszenie">Zaproszenie</a>
+        <a href="/poznan/film?title=Zaproszenie">Zaproszenie</a>
   <span class="pill year">2022</span>
 
   <span class="pill genre">Horror</span>
@@ -10033,7 +10035,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Zawie%C5%9Bcie%20czerwone%20latarnie">Zawieście czerwone latarnie</a>
+        <a href="/poznan/film?title=Zawie%C5%9Bcie%20czerwone%20latarnie">Zawieście czerwone latarnie</a>
   <span class="pill runtime">2h 22min</span>
 
   <span class="pill year">1991</span>
@@ -10079,7 +10081,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Zawie%C5%9Bcie%20czerwone%20latarnie%20%7C%20przed%20filmem%20wst%C4%99p%20prof.%20Marek%20hendrykowski">Zawieście czerwone latarnie | przed filmem wstęp prof. Marek hendrykowski</a>
+        <a href="/poznan/film?title=Zawie%C5%9Bcie%20czerwone%20latarnie%20%7C%20przed%20filmem%20wst%C4%99p%20prof.%20Marek%20hendrykowski">Zawieście czerwone latarnie | przed filmem wstęp prof. Marek hendrykowski</a>
   <span class="pill runtime">2h 5min</span>
 
   <span class="pill year">1991</span>
@@ -10114,7 +10116,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Zemsta%20Embriona">Zemsta Embriona</a>
+        <a href="/poznan/film?title=Zemsta%20Embriona">Zemsta Embriona</a>
   <span class="pill runtime">1h 29min</span>
 
   <span class="pill year">1990</span>
@@ -10161,7 +10163,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Ziemia%20obiecana">Ziemia obiecana</a>
+        <a href="/poznan/film?title=Ziemia%20obiecana">Ziemia obiecana</a>
   <span class="pill runtime">2h 59min</span>
 
   <span class="pill year">1974</span>
@@ -10215,7 +10217,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=Znaki%20Pana%20%C5%9Aliwki">Znaki Pana Śliwki</a>
+        <a href="/poznan/film?title=Znaki%20Pana%20%C5%9Aliwki">Znaki Pana Śliwki</a>
   <span class="pill runtime">1h 12min</span>
 
   <span class="pill year">2025</span>
@@ -10265,7 +10267,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=%C5%9Acie%C5%BCki%20%C5%BCycia">Ścieżki życia</a>
+        <a href="/poznan/film?title=%C5%9Acie%C5%BCki%20%C5%BCycia">Ścieżki życia</a>
   <span class="pill runtime">1h 55min</span>
 
   <span class="pill year">2025</span>
@@ -10321,7 +10323,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=%C5%BBywot%20Briana">Żywot Briana</a>
+        <a href="/poznan/film?title=%C5%BBywot%20Briana">Żywot Briana</a>
   <span class="pill runtime">1h 34min</span>
 
   <span class="pill year">1979</span>
@@ -10375,7 +10377,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=%C5%BBywot%20Briana%20Grupy%20Monty%20Pythona">Żywot Briana Grupy Monty Pythona</a>
+        <a href="/poznan/film?title=%C5%BBywot%20Briana%20Grupy%20Monty%20Pythona">Żywot Briana Grupy Monty Pythona</a>
   <span class="pill runtime">1h 34min</span>
 
       </div>
@@ -10406,7 +10408,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=%C5%BB%C4%85d%C5%82o">Żądło</a>
+        <a href="/poznan/film?title=%C5%BB%C4%85d%C5%82o">Żądło</a>
   <span class="pill runtime">2h 9min</span>
 
   <span class="pill year">1973</span>
@@ -10460,7 +10462,7 @@
     </div>
     <div class="card-body">
       <div class="card-title">
-        <a href="/film?title=%D0%94%D0%98%D0%AF%D0%92%D0%9E%D0%9B%20%D0%9D%D0%9E%D0%A1%D0%98%D0%A2%D0%AC%20%D0%9F%D0%A0%D0%90%D0%94%D0%90%202">ДИЯВОЛ НОСИТЬ ПРАДА 2</a>
+        <a href="/poznan/film?title=%D0%94%D0%98%D0%AF%D0%92%D0%9E%D0%9B%20%D0%9D%D0%9E%D0%A1%D0%98%D0%A2%D0%AC%20%D0%9F%D0%A0%D0%90%D0%94%D0%90%202">ДИЯВОЛ НОСИТЬ ПРАДА 2</a>
   <span class="pill runtime">2h 5min</span>
 
   <span class="pill year">2026</span>

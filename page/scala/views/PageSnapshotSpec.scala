@@ -1,6 +1,6 @@
 package views
 
-import models.Cinema
+import models.Poznan
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.FixtureTestWiring
@@ -18,6 +18,8 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
 
   private val now = LocalDateTime.of(2026, 5, 17, 0, 0)
 
+  private implicit val city: models.City = Poznan
+
   private val anonymousUser    = Option.empty[models.User]
   private val noOauthProviders = Set.empty[String]
 
@@ -27,9 +29,9 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
     new FixtureTestWiring("17-05-2026") {
       bootStartup()
       val html: String = views.html.repertoire(
-        movieControllerService.toSchedules(now),
-        Cinema.all.map(_.displayName),
-        Cinema.pillMap,
+        movieControllerService.toSchedules(city, now),
+        city.cinemaDisplayNames,
+        city.cinemaPillMap,
         devMode = false,
         currentUser = anonymousUser,
         oauthProviders = noOauthProviders
@@ -41,9 +43,9 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
     new FixtureTestWiring("17-05-2026") {
       bootStartup()
       val html: String = views.html.kina(
-        movieControllerService.toCinemaSchedules(now),
-        Cinema.all.map(_.displayName),
-        Cinema.pillMap,
+        movieControllerService.toCinemaSchedules(city, now),
+        city.cinemaDisplayNames,
+        city.cinemaPillMap,
         devMode = false,
         currentUser = anonymousUser,
         oauthProviders = noOauthProviders
@@ -55,9 +57,9 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
     new FixtureTestWiring("17-05-2026") {
       bootStartup()
       val html: String = views.html.kina(
-        movieControllerService.toCinemaSchedules(now),
-        Cinema.all.map(_.displayName),
-        Cinema.pillMap,
+        movieControllerService.toCinemaSchedules(city, now),
+        city.cinemaDisplayNames,
+        city.cinemaPillMap,
         devMode = false,
         currentUser = anonymousUser,
         oauthProviders = noOauthProviders,
@@ -69,11 +71,11 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   "the /plan page" should "render the same HTML as the checked-in snapshot" in
     new FixtureTestWiring("17-05-2026") {
       bootStartup()
-      val data = controllers.PlanController.viewData(movieControllerService.toSchedules(now))
+      val data = controllers.PlanController.viewData(city, movieControllerService.toSchedules(city, now))
       val html: String = views.html.plan(
         data,
-        Cinema.all.map(_.displayName),
-        Cinema.pillMap,
+        city.cinemaDisplayNames,
+        city.cinemaPillMap,
         devMode = false,
         currentUser = anonymousUser,
         oauthProviders = noOauthProviders

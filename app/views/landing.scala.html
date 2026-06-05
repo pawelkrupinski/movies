@@ -1,0 +1,97 @@
+@(cities: Seq[models.City])
+@*
+   City-selection landing shown at `/` when no `city` cookie is present.
+   Lists every supported city, and on load tries browser geolocation: a fix
+   within 100 km of a supported city redirects straight there (and remembers
+   it via the `city` cookie); otherwise the visitor picks from the list.
+   Self-contained (no city-scoped partials) since there's no city yet.
+*@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Wybierz miasto — Kinowo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #e7e7f5; background: #0d0d22; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    main { width: 100%; max-width: 420px; text-align: center; }
+    h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: .25rem; }
+    .sub { color: #9a9ac0; margin-bottom: 1.5rem; }
+    .city-list { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    .city-list a {
+      display: block; text-decoration: none; color: #e7e7f5;
+      background: #1a1a3a; border: 1px solid #2a2a5e; border-radius: 10px;
+      padding: .9rem 1.1rem; font-size: 1.05rem; font-weight: 500;
+      transition: background .15s, border-color .15s;
+    }
+    .city-list a:hover { background: #25254e; border-color: #3a3a7e; }
+    .locating { color: #9a9ac0; font-size: .9rem; margin-top: 1.25rem; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>🎬 Kinowo</h1>
+    <p class="sub">Wybierz miasto</p>
+    <ul class="city-list">
+      @for(c <- cities) {
+        <li><a href="/@c.slug/">@c.labels.nominative</a></li>
+      }
+    </ul>
+    <p class="locating" id="locating"></p>
+  </main>
+  <script>
+    var CITIES = @Html(models.City.allJson);
+
+    // Haversine distance in km between two lat/lon points.
+    function distanceKm(lat1, lon1, lat2, lon2) {
+      var toRad = function (d) { return d * Math.PI / 180; };
+      var R = 6371;
+      var dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // Nearest supported city within 100 km, or null.
+    function nearestWithin100km(lat, lon) {
+      var best = null, bestD = Infinity;
+      CITIES.forEach(function (c) {
+        var d = distanceKm(lat, lon, c.lat, c.lon);
+        if (d < bestD) { bestD = d; best = c; }
+      });
+      return (best && bestD <= 100) ? best : null;
+    }
+
+    (function () {
+      if (!navigator.geolocation) return;
+      var note = document.getElementById('locating');
+      note.textContent = 'Ustalanie lokalizacji…';
+      var done = false;
+      var finish = function (msg) { if (!done) { done = true; note.textContent = msg || ''; } };
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          if (done) return;
+          var c = nearestWithin100km(pos.coords.latitude, pos.coords.longitude);
+          if (c) {
+            done = true;
+            // Remember the choice so the next visit skips this screen.
+            document.cookie = 'city=' + c.slug + ';path=/;max-age=' + (60 * 60 * 24 * 365);
+            window.location.replace('/' + c.slug + '/');
+          } else {
+            finish('Brak obsługiwanego miasta w pobliżu — wybierz z listy.');
+          }
+        },
+        function () { finish(''); },
+        { timeout: 5000, maximumAge: 600000 }
+      );
+    })();
+  </script>
+</body>
+</html>

@@ -58,18 +58,23 @@ class PlanController(
   private def currentUser(request: RequestHeader): Option[models.User] =
     request.session.get("userId").flatMap(userRepo.findById)
 
-  def plan(): Action[AnyContent] = Action { request =>
-    val user      = currentUser(request)
-    val schedules = movieControllerService.toSchedules()
-    val data      = PlanController.viewData(schedules)
-    Ok(views.html.plan(
-      data,
-      Cinema.all.map(_.displayName),
-      Cinema.pillMap,
-      devMode, user, oauthProviders,
-      pageUrl = PageMeta.canonicalUrl(request),
-      fbAppId = PageMeta.fbAppId,
-    ))
+  def plan(city: String): Action[AnyContent] = Action { request =>
+    City.bySlug(city) match {
+      case None => NotFound(s"Nieznane miasto: $city")
+      case Some(c) =>
+        implicit val ci: City = c
+        val user      = currentUser(request)
+        val schedules = movieControllerService.toSchedules(c)
+        val data      = PlanController.viewData(c, schedules)
+        Ok(views.html.plan(
+          data,
+          c.cinemaDisplayNames,
+          c.cinemaPillMap,
+          devMode, user, oauthProviders,
+          pageUrl = PageMeta.canonicalUrl(request),
+          fbAppId = PageMeta.fbAppId,
+        )).withCookies(Cookie("city", c.slug, maxAge = Some(60 * 60 * 24 * 365), path = "/", httpOnly = false))
+    }
   }
 
   private def devMode: Boolean = environment != Mode.Prod
@@ -82,7 +87,7 @@ object PlanController {
   // Pure view-model builder so the snapshot spec can call it with a
   // fixture-pinned `toSchedules(now)` and render the template directly,
   // bypassing the controller's wall-clock dependency.
-  def viewData(schedules: Seq[FilmSchedule]): PlanViewData = {
+  def viewData(city: City, schedules: Seq[FilmSchedule]): PlanViewData = {
     val films: Seq[FilmSchedule] = schedules.sortBy(_.movie.title.toLowerCase)
 
     val showings: Seq[PlanShowing] = schedules.flatMap { fs =>
@@ -102,7 +107,7 @@ object PlanController {
       }
     }
 
-    val cinemaRooms: Seq[PlanCinemaRooms] = Cinema.all.flatMap { c =>
+    val cinemaRooms: Seq[PlanCinemaRooms] = city.cinemas.flatMap { c =>
       val rooms = showings
         .filter(_.cinema == c.displayName)
         .flatMap(_.room).distinct.sorted

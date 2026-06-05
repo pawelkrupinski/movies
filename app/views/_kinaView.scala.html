@@ -1,5 +1,5 @@
 @import controllers.CinemaSchedule
-@(cinemas: Seq[CinemaSchedule], pinnedCinema: Option[String], devMode: Boolean)
+@(cinemas: Seq[CinemaSchedule], pinnedCinema: Option[String], devMode: Boolean)(implicit city: models.City)
 @* The swappable Kina view-root (cinema-pill strip + cinema-grouped grid).
    Rendered inside `#view-pager` on the full page, and returned on its own
    by the controller for a view-swap fetch (X-Requested-With: view-swap). *@
@@ -245,7 +245,7 @@
     // Preserve query string (e.g. `?date=tomorrow`) when rewriting the path —
     // the date selector also lives in the URL and shouldn't get dropped when
     // the user pins/unpins a cinema.
-    const path = window._kinaPinned ? '/kina/' + encodeURIComponent(window._kinaPinned) : '/kina';
+    const path = window._kinaPinned ? '/@city.slug/kina/' + encodeURIComponent(window._kinaPinned) : '/@city.slug/kina';
     history.replaceState(null, '', path + window.location.search + window.location.hash);
     buildCinemaPills();
     applyFilters();

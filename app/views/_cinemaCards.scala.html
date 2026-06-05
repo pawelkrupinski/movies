@@ -1,5 +1,5 @@
 @import controllers.{CinemaSchedule, CinemaShowtimes, FilmSchedule}
-@(cinemas: Seq[CinemaSchedule])
+@(cinemas: Seq[CinemaSchedule])(implicit city: models.City)
 @*
    /kina renders one section per cinema, with that cinema's films as cards.
    Each card's interior is "showings, grouped by date → slots". That's the

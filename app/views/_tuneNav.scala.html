@@ -1,4 +1,4 @@
-@(active: String)
+@(active: String)(implicit city: models.City)
 @*
   Dev-only sub-nav linking the three /debug/tune pages. NOT part of the main
   app navbar (`_navbar.scala.html`) — it lives only inside the tuning pages so
@@ -16,7 +16,7 @@
   .tune-nav a.active { background: #aad4ff; color: #0d0d0d; border-color: #aad4ff; font-weight: 600; }
 </style>
 <nav class="tune-nav">
-  <a href="/debug/tune"@if(active == "card"){ class="active"}>Karta</a>
-  <a href="/debug/tune/kina"@if(active == "kina"){ class="active"}>Kina</a>
-  <a href="/debug/tune/film"@if(active == "film"){ class="active"}>Film</a>
+  <a href="/@city.slug/debug/tune"@if(active == "card"){ class="active"}>Karta</a>
+  <a href="/@city.slug/debug/tune/kina"@if(active == "kina"){ class="active"}>Kina</a>
+  <a href="/@city.slug/debug/tune/film"@if(active == "film"){ class="active"}>Film</a>
 </nav>

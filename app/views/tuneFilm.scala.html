@@ -1,5 +1,5 @@
 @import controllers.FilmSchedule
-@(film: FilmSchedule)
+@(film: FilmSchedule)(implicit city: models.City)
 @*
   Dev-only visual-tuning page for the FILM-detail view. Renders the REAL
   `_filmDetailContent` (the same partial `/film` uses) with the REAL

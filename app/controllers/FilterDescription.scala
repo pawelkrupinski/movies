@@ -1,6 +1,6 @@
 package controllers
 
-import models.Cinema
+import models.City
 
 /** Translates the URL filter state on `/` into a Polish page title +
  *  Open Graph description. Filters are written into the URL by the
@@ -31,18 +31,21 @@ object FilterDescription {
   case class Meta(title: String, description: String)
 
   val DefaultTitle       = "Kinowo"
-  val DefaultDescription =
-    "Repertuar wszystkich poznańskich kin w jednym miejscu — z ocenami IMDb, RT i Filmweb."
+  /** Default OG description, parameterized by the city's genitive-plural label
+   *  ("…wszystkich poznańskich kin…"). */
+  def defaultDescription(city: City): String =
+    s"Repertuar wszystkich ${city.labels.genitivePlural} kin w jednym miejscu — z ocenami IMDb, RT i Filmweb."
 
   val MaxTitle       = 65
   val MaxDescription = 180
 
-  /** Build the meta for `/` (the repertoire page) given the active URL
+  /** Build the meta for `/{city}/` (the repertoire page) given the active URL
    *  filters and the rendered `schedules`. `schedules` supplies the
-   *  universe of options for include/exclude inversion. */
-  def forIndex(query: Map[String, Seq[String]], schedules: Seq[FilmSchedule]): Meta = {
-    val phrases = buildPhrases(query, schedules)
-    if (phrases.isEmpty) Meta(DefaultTitle, DefaultDescription)
+   *  universe of options for include/exclude inversion; `city` scopes the
+   *  cinema universe and the default description. */
+  def forIndex(city: City, query: Map[String, Seq[String]], schedules: Seq[FilmSchedule]): Meta = {
+    val phrases = buildPhrases(city, query, schedules)
+    if (phrases.isEmpty) Meta(DefaultTitle, defaultDescription(city))
     else {
       val body  = phrases.mkString(", ")
       val joined = s"$DefaultTitle — filmy $body"
@@ -62,7 +65,7 @@ object FilterDescription {
     head.stripSuffix(",").stripSuffix(" ") + "…"
   }
 
-  private def buildPhrases(query: Map[String, Seq[String]], schedules: Seq[FilmSchedule]): Seq[String] = {
+  private def buildPhrases(city: City, query: Map[String, Seq[String]], schedules: Seq[FilmSchedule]): Seq[String] = {
     val out = scala.collection.mutable.ArrayBuffer.empty[String]
 
     // Search query first — it's the most specific filter and the user-typed
@@ -98,14 +101,15 @@ object FilterDescription {
       countNoun = "sal",
     )
 
-    val allCinemas: Set[String] = Cinema.all.map(_.displayName).toSet
+    val allCinemas: Set[String] = city.cinemaDisplayNames.toSet
+    val cityPills               = city.cinemaPillMap
     out ++= inclusionPhrase(
       included = maybeListOf(query, "cinema"),
       universe = allCinemas,
       includedSingularPreposition = "w ",
       includedPluralPreposition   = "w ",
       excludedPreposition         = "bez ",
-      display   = c => Cinema.pillMap.getOrElse(c, c),
+      display   = c => cityPills.getOrElse(c, c),
       countNoun = "kin",
     )
 

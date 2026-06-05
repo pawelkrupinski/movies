@@ -1,6 +1,6 @@
 package tools
 
-import models.Cinema
+import models.Poznan
 
 import java.nio.file.{Files, Path, Paths, StandardOpenOption}
 import java.time.LocalDateTime
@@ -51,13 +51,14 @@ object MobileScreenshots {
     try {
       val wiring = new FixtureTestWiring("17-05-2026")
       wiring.bootStartup()
-      val cinemas  = Cinema.all.map(_.displayName)
-      val schedules       = wiring.movieControllerService.toSchedules(now)
-      val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(now)
+      implicit val city: models.City = Poznan
+      val cinemas  = city.cinemaDisplayNames
+      val schedules       = wiring.movieControllerService.toSchedules(city, now)
+      val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(city, now)
       val anon    = Option.empty[models.User]
       val noOauth = Set.empty[String]
 
-      val pills = Cinema.pillMap
+      val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
         currentUser    = anon, oauthProviders = noOauth

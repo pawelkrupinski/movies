@@ -35,7 +35,7 @@ class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
 
   "GET /debug/tune" should "render the tuning page in dev mode" in {
     val ctrl   = buildController(Mode.Dev)
-    val result = ctrl.tune().apply(FakeRequest(GET, "/debug/tune"))
+    val result = ctrl.tune("poznan").apply(FakeRequest(GET, "/debug/tune"))
 
     status(result) shouldBe OK
     contentAsString(result) should include("tune-scope")
@@ -45,7 +45,7 @@ class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
 
   it should "render the pill / rating edge cases the page exists to tune" in {
     val ctrl = buildController(Mode.Dev)
-    val html = contentAsString(ctrl.tune().apply(FakeRequest(GET, "/debug/tune")))
+    val html = contentAsString(ctrl.tune("poznan").apply(FakeRequest(GET, "/debug/tune")))
 
     // RT below 60 → the `.rotten` red variant (Morbius, RT 15).
     html should include("rating-rt rotten")
@@ -79,14 +79,14 @@ class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
 
   it should "404 in production" in {
     val ctrl   = buildController(Mode.Prod)
-    val result = ctrl.tune().apply(FakeRequest(GET, "/debug/tune"))
+    val result = ctrl.tune("poznan").apply(FakeRequest(GET, "/debug/tune"))
 
     status(result) shouldBe NOT_FOUND
   }
 
   "GET /debug/tune/kina" should "render the kina tuning page in dev mode" in {
     val ctrl   = buildController(Mode.Dev)
-    val result = ctrl.tuneKina().apply(FakeRequest(GET, "/debug/tune/kina"))
+    val result = ctrl.tuneKina("poznan").apply(FakeRequest(GET, "/debug/tune/kina"))
 
     status(result) shouldBe OK
     val html = contentAsString(result)
@@ -99,13 +99,13 @@ class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "404 in production" in {
-    val result = buildController(Mode.Prod).tuneKina().apply(FakeRequest(GET, "/debug/tune/kina"))
+    val result = buildController(Mode.Prod).tuneKina("poznan").apply(FakeRequest(GET, "/debug/tune/kina"))
     status(result) shouldBe NOT_FOUND
   }
 
   "GET /debug/tune/film" should "render the film tuning page in dev mode" in {
     val ctrl   = buildController(Mode.Dev)
-    val result = ctrl.tuneFilm().apply(FakeRequest(GET, "/debug/tune/film"))
+    val result = ctrl.tuneFilm("poznan").apply(FakeRequest(GET, "/debug/tune/film"))
 
     status(result) shouldBe OK
     val html = contentAsString(result)
@@ -119,7 +119,7 @@ class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "404 in production" in {
-    val result = buildController(Mode.Prod).tuneFilm().apply(FakeRequest(GET, "/debug/tune/film"))
+    val result = buildController(Mode.Prod).tuneFilm("poznan").apply(FakeRequest(GET, "/debug/tune/film"))
     status(result) shouldBe NOT_FOUND
   }
 

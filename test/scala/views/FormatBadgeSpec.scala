@@ -7,10 +7,14 @@ import org.scalatest.matchers.should.Matchers
 
 import java.time.{LocalDate, LocalDateTime}
 
+import models.Poznan
+
 // Confirms that Showtime.format (a List[String]) is rendered as a single
 // space-separated badge — never with a slash. The previous renderer used
 // .mkString("/") which leaked "2D/NAP/ATMOS" into the DOM.
 class FormatBadgeSpec extends AnyFlatSpec with Matchers {
+
+  private implicit val city: models.City = Poznan
 
   private def schedule(showtimes: Seq[Showtime]): FilmSchedule =
     FilmSchedule(

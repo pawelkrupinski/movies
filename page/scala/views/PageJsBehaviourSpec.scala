@@ -1,6 +1,6 @@
 package views
 
-import models.Cinema
+import models.Poznan
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -38,6 +38,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   private val now = LocalDateTime.of(2026, 5, 17, 0, 0)
 
+  private implicit val city: models.City = Poznan
+  private val cityPrefix = s"/${city.slug}"
+
   // One Chrome + one TestHttpServer for the whole spec. Each individual
   // test still gets a fresh tab (clean localStorage, fresh module state)
   // via `openPage`, but pays the cost of wiring + rendering + Chrome
@@ -52,11 +55,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       wiring.bootStartup()
       val anon    = Option.empty[models.User]
       val noOauth = Set.empty[String]
-      val cinemas = Cinema.all.map(_.displayName)
-      val schedules       = wiring.movieControllerService.toSchedules(now)
-      val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(now)
+      val cinemas = city.cinemaDisplayNames
+      val schedules       = wiring.movieControllerService.toSchedules(city, now)
+      val cinemaSchedules = wiring.movieControllerService.toCinemaSchedules(city, now)
 
-      val pills = Cinema.pillMap
+      val pills = city.cinemaPillMap
       def renderKina(pinned: Option[String]): String = views.html.kina(
         cinemaSchedules, cinemas, pills, devMode = false,
         currentUser = anon, oauthProviders = noOauth,
@@ -90,28 +93,32 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // (collapse on header click, expand on a click anywhere while
       // folded) wired by the inline <script> in plan.scala.html.
       val planHtml: String = views.html.plan(
-        controllers.PlanController.viewData(schedules),
+        controllers.PlanController.viewData(city, schedules),
         cinemas, pills, devMode = false,
         currentUser = anon, oauthProviders = noOauth
       ).body
+      // Pages are served under `/{city}/…` (production hard-cut). `onPath`
+      // prepends the prefix, so strip it here, then match the in-city sub-path.
+      def sub(p: String): String = p.stripPrefix(cityPrefix)
       server = new TestHttpServer({
-        // `/` and `/kina` accept arbitrary query strings (e.g. `?date=tomorrow`)
-        // — the real Play routes do too, and the day-selector ↔ URL tests need
-        // to boot the page with the param already in `location.search`.
-        case p if p == "/"     || p.startsWith("/?")     => indexHtml
-        case p if p == "/kina" || p.startsWith("/kina?") => renderKina(None)
-        case p if p.startsWith("/kina/") =>
+        // `/{city}/` and `/{city}/kina` accept arbitrary query strings (e.g.
+        // `?date=tomorrow`) — the real Play routes do too, and the day-selector
+        // ↔ URL tests need to boot the page with the param already in
+        // `location.search`.
+        case p if { val s = sub(p); s == "/" || s.startsWith("/?") }     => indexHtml
+        case p if { val s = sub(p); s == "/kina" || s.startsWith("/kina?") } => renderKina(None)
+        case p if sub(p).startsWith("/kina/") =>
           // Strip optional query string before resolving the pinned cinema.
-          val rawWithQuery = p.stripPrefix("/kina/")
+          val rawWithQuery = sub(p).stripPrefix("/kina/")
           val raw          = URLDecoder.decode(rawWithQuery.takeWhile(_ != '?'), "UTF-8")
           val pinned       = cinemas.find(_ == raw)
           renderKina(pinned)
-        case p if p.startsWith("/film?title=") =>
-          renderFilm(p.stripPrefix("/film?title="))
-        case p if p == "/plan" || p.startsWith("/plan?") => planHtml
+        case p if sub(p).startsWith("/film?title=") =>
+          renderFilm(sub(p).stripPrefix("/film?title="))
+        case p if { val s = sub(p); s == "/plan" || s.startsWith("/plan?") } => planHtml
         // The dev-only visual-tuning page — rendered with real fixture films
         // so its slider panel (and the ± step buttons) can be driven over CDP.
-        case "/debug/tune" => views.html.tune(schedules.take(3)).body
+        case p if sub(p) == "/debug/tune" => views.html.tune(schedules.take(3)).body
       })
     }
   }
@@ -125,7 +132,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  the test cleanly when Chrome wasn't located in beforeAll. */
   private def onPath(path: String)(body: CdpPage => Any): Unit =
     chrome match {
-      case Some(c) => c.openPage(server.baseUrl + path)(body(_))
+      // `path` is an in-city sub-path ("/", "/kina", "/film?title=…"); pages
+      // live under `/{city}/…`, so prepend the city prefix.
+      case Some(c) => c.openPage(server.baseUrl + cityPrefix + path)(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
@@ -185,10 +194,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // `URLEncoder.encode` (Java, form-encoded, `+`) mismatch — the
       // assertion is "the URL means /kina/<this cinema>", not "the
       // bytes are exactly this encoding".
-      java.net.URLDecoder.decode(page.evalString("location.pathname"), "UTF-8") shouldBe ("/kina/" + pinTarget)
+      java.net.URLDecoder.decode(page.evalString("location.pathname"), "UTF-8") shouldBe (cityPrefix + "/kina/" + pinTarget)
 
       clickPill(page, pinTarget)
-      page.evalString("location.pathname") shouldBe "/kina"
+      page.evalString("location.pathname") shouldBe (cityPrefix + "/kina")
     }
   }
 
@@ -236,7 +245,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Force a navigation back to plain /kina (the test server, like
       // the real controller, serves the no-pin variant for the bare
       // path). The URL pin is the source of truth — bare /kina = no pin.
-      page.eval(s"location.assign(${jsString(server.baseUrl + "/kina")})")
+      page.eval(s"location.assign(${jsString(server.baseUrl + cityPrefix + "/kina")})")
       page.waitFor("document.readyState === 'complete'", timeoutMs = 5000)
       page.evalBool("_kinaPinned === null") shouldBe true
     }
@@ -1041,7 +1050,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         s"$firstCardPosterLink.closest('[data-title]').dataset.title"
       )
       page.eval(s"$firstCardPosterLink.click()")
-      page.waitFor("location.pathname === '/film'", timeoutMs = 5000)
+      page.waitFor(s"location.pathname === '$cityPrefix/film'", timeoutMs = 5000)
       java.net.URLDecoder.decode(page.evalString("location.search"), "UTF-8") shouldBe
         ("?title=" + title)
     }
@@ -1242,7 +1251,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "  return e.defaultPrevented; })()"
       )
       defaultPrevented shouldBe true
-      page.evalString("location.pathname") shouldBe "/"
+      page.evalString("location.pathname") shouldBe (cityPrefix + "/")
       page.evalString("document.getElementById('format-panel').style.display") shouldBe "none"
     }
   }
@@ -1397,7 +1406,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString("document.getElementById('date-filter').value") shouldBe "week"
       page.eval("document.getElementById('date-filter').value = 'tomorrow'; onDateChange()")
       page.evalString("new URL(location.href).searchParams.get('date')") shouldBe "tomorrow"
-      page.evalString("location.pathname") shouldBe "/kina"
+      page.evalString("location.pathname") shouldBe (cityPrefix + "/kina")
     }
   }
 
@@ -1406,7 +1415,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
       clickPill(page, pinTarget)
       page.evalString("new URL(location.href).searchParams.get('date')") shouldBe "tomorrow"
-      java.net.URLDecoder.decode(page.evalString("location.pathname"), "UTF-8") shouldBe ("/kina/" + pinTarget)
+      java.net.URLDecoder.decode(page.evalString("location.pathname"), "UTF-8") shouldBe (cityPrefix + "/kina/" + pinTarget)
     }
   }
 
@@ -1593,13 +1602,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "a genre pill on a film card" should "link to the /filmy?gatunek= browse page for that genre" in {
+  "a genre pill on a film card" should "link to the /{city}/filmy?gatunek= browse page for that genre" in {
     onPath("/") { page =>
       val href = page.evalString(
         "(() => { const a = document.querySelector('.col[data-genres] a.pill.genre');" +
           "  return a ? a.getAttribute('href') : ''; })()"
       )
-      href should startWith("/filmy?gatunek=")
+      href should startWith(cityPrefix + "/filmy?gatunek=")
     }
   }
 

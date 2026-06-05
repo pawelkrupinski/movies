@@ -12,6 +12,8 @@ import org.scalatest.matchers.should.Matchers
  */
 class NavbarDebugLinkSpec extends AnyFlatSpec with Matchers {
 
+  private implicit val city: models.City = models.Poznan
+
   private def render(devMode: Boolean): String =
     views.html._navbar(activePage = "films", devMode = devMode,
       currentUser = None, oauthProviders = Set.empty).body
@@ -24,7 +26,7 @@ class NavbarDebugLinkSpec extends AnyFlatSpec with Matchers {
 
   it should "render the Debug link with the `nav-tab-debug` class when devMode is true" in {
     val html = render(devMode = true)
-    html should include ("""href="/debug"""")
+    html should include ("""href="/poznan/debug"""")
     // The class lets the (max-width: 575px) / landscape CSS rules in
     // `_sharedStyles` hide the link on mobile viewports.
     html should include ("nav-tab-debug")
