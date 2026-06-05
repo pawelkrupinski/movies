@@ -27,9 +27,10 @@ class RottenTomatoesRatings(
   ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("RT-stage")
 ) extends PeriodicCacheRefresher(
   name                = "RT",
-  // Stagger startup against IMDb (10s) so first-tick bursts don't pile up.
-  startupDelaySeconds = 15L,
-  refreshHours        = 1L,
+  // Second of the four rating walks. Runs every 4h, offset 1h past IMDb so
+  // each refresher gets its own hour of the 4h cycle (see ImdbRatings).
+  startupDelaySeconds = 3600L,
+  refreshHours        = 4L,
   cache               = cache,
   ec                  = ec
 ) {

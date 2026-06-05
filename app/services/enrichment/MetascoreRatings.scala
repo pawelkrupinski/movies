@@ -28,11 +28,10 @@ class MetascoreRatings(
   ec:         ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("Metascore-stage")
 ) extends PeriodicCacheRefresher(
   name                = "Metascore",
-  // Stagger the startup tick so we don't race the IMDb / RT refreshes —
-  // they all walk the same cache and serialising the bursts avoids Mongo
-  // fan-in.
-  startupDelaySeconds = 30L,
-  refreshHours        = 1L,
+  // Third of the four rating walks. Runs every 4h, offset 2h past IMDb so
+  // each refresher gets its own hour of the 4h cycle (see ImdbRatings).
+  startupDelaySeconds = 7200L,
+  refreshHours        = 4L,
   cache               = cache,
   ec                  = ec
 ) {

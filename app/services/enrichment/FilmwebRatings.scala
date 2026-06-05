@@ -39,10 +39,10 @@ class FilmwebRatings(
   ec:      ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("Filmweb-stage")
 ) extends PeriodicCacheRefresher(
       name                = "Filmweb",
-      // Stagger startup against the other rating services (IMDb @10s, RT
-      // @15s, Metascore @30s) so the first-tick bursts don't pile up.
-      startupDelaySeconds = 45L,
-      refreshHours        = 1L,
+      // Last of the four rating walks. Runs every 4h, offset 3h past IMDb so
+      // each refresher gets its own hour of the 4h cycle (see ImdbRatings).
+      startupDelaySeconds = 10800L,
+      refreshHours        = 4L,
       cache               = cache,
       ec                  = ec
     ) {

@@ -32,10 +32,10 @@ import scala.util.Try
  * self-subscribes or self-schedules.
  */
 abstract class PeriodicCacheRefresher(
-  name:                String,
-  startupDelaySeconds: Long,
-  refreshHours:        Long,
-  protected val cache: MovieCache,
+  name:                    String,
+  val startupDelaySeconds: Long,
+  val refreshHours:        Long,
+  protected val cache:     MovieCache,
   // Drains the event-driven per-row refreshes. Subclasses default it to their
   // own dedicated unbounded pool (so their tests construct as before); `Wiring`
   // injects a shared-budget EC so all four rating refreshers + scrape +
