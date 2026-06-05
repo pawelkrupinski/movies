@@ -1,9 +1,23 @@
 package services
 
+import org.mongodb.scala.MongoClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
+
+  // A db handle whose MongoClient has been closed. Any write against it throws
+  // `IllegalStateException: state should be: open` synchronously at .subscribe
+  // — no network needed — exactly as happens to in-flight scrapers when Play
+  // hot-reloads (or prod shuts down) and closes the old client out from under
+  // them. The throw escapes the .subscribe(onError) guard, so it must be caught
+  // by the upsert itself, not delivered to the subscriber.
+  private def closedClientDb = {
+    val client = MongoClient("mongodb://localhost:27017")
+    val db     = client.getDatabase("uptime-test")
+    client.close()
+    db
+  }
 
   "UptimeMonitor" should "record successes and failures for a service" in {
     val monitor = new UptimeMonitor()
@@ -58,6 +72,21 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.recordSuccess("TMDB")
 
     monitor.history("TMDB").head.errors shouldBe empty
+  }
+
+  it should "not let a closed-client Mongo write break recording" in {
+    val monitor = new UptimeMonitor(Some(closedClientDb))
+
+    // Before the fix these throw IllegalStateException synchronously; the
+    // in-memory bucket must still update regardless of the Mongo write.
+    noException should be thrownBy {
+      monitor.recordSuccess("Kino Rialto")
+      monitor.recordFailure("Kino Rialto", "TimeoutException: boom")
+    }
+
+    val history = monitor.history("Kino Rialto").head
+    history.successes shouldBe 1
+    history.failures shouldBe 1
   }
 
   "BucketSnapshot.status" should "be green when all succeed" in {

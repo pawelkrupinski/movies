@@ -4,6 +4,7 @@ import com.mongodb.client.model.{IndexOptions => JIndexOptions, UpdateOptions}
 import java.util.concurrent.TimeUnit
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.model.{Filters, Indexes, Updates}
+import org.bson.conversions.Bson
 import play.api.Logging
 
 import java.util.concurrent.ConcurrentHashMap
@@ -79,36 +80,39 @@ class UptimeMonitor(db: Option[MongoDatabase] = None) extends Logging {
     bucket
   }
 
-  private def mongoUpsertSuccess(service: String): Unit = coll.foreach { c =>
-    val ts = bucketTimestamp(System.currentTimeMillis())
-    c.updateOne(
-      Filters.and(Filters.eq("service", service), Filters.eq("bucket", new java.util.Date(ts))),
-      Updates.combine(
-        Updates.inc("successes", 1),
-        Updates.setOnInsert("failures", 0),
-        Updates.setOnInsert("errors", java.util.Collections.emptyList[String]())
-      ),
-      new UpdateOptions().upsert(true)
-    ).subscribe(
-      (_: org.mongodb.scala.result.UpdateResult) => (),
-      (ex: Throwable) => logger.debug(s"Uptime Mongo write failed: ${ex.getMessage}")
-    )
-  }
+  private def mongoUpsertSuccess(service: String): Unit =
+    upsertBucket(service, Updates.combine(
+      Updates.inc("successes", 1),
+      Updates.setOnInsert("failures", 0),
+      Updates.setOnInsert("errors", java.util.Collections.emptyList[String]())
+    ))
 
-  private def mongoUpsertFailure(service: String, error: String): Unit = coll.foreach { c =>
-    val ts = bucketTimestamp(System.currentTimeMillis())
-    c.updateOne(
-      Filters.and(Filters.eq("service", service), Filters.eq("bucket", new java.util.Date(ts))),
-      Updates.combine(
-        Updates.inc("failures", 1),
-        Updates.push("errors", error),
-        Updates.setOnInsert("successes", 0)
-      ),
-      new UpdateOptions().upsert(true)
-    ).subscribe(
-      (_: org.mongodb.scala.result.UpdateResult) => (),
-      (ex: Throwable) => logger.debug(s"Uptime Mongo write failed: ${ex.getMessage}")
-    )
+  private def mongoUpsertFailure(service: String, error: String): Unit =
+    upsertBucket(service, Updates.combine(
+      Updates.inc("failures", 1),
+      Updates.push("errors", error),
+      Updates.setOnInsert("successes", 0)
+    ))
+
+  // Uptime recording is best-effort: a Mongo write failure must never break
+  // the caller (a scraper recording its own attempt). The `.subscribe(onError)`
+  // only catches async delivery errors — but the driver builds the operation
+  // synchronously at `.subscribe`, so a closed client (Play hot-reload, prod
+  // shutdown) throws `IllegalStateException: state should be: open` right here,
+  // before any subscription exists. The Try is what actually keeps that throw
+  // from escaping into the scrape's failure path.
+  private def upsertBucket(service: String, update: Bson): Unit = coll.foreach { c =>
+    Try {
+      val ts = bucketTimestamp(System.currentTimeMillis())
+      c.updateOne(
+        Filters.and(Filters.eq("service", service), Filters.eq("bucket", new java.util.Date(ts))),
+        update,
+        new UpdateOptions().upsert(true)
+      ).subscribe(
+        (_: org.mongodb.scala.result.UpdateResult) => (),
+        (ex: Throwable) => logger.debug(s"Uptime Mongo write failed: ${ex.getMessage}")
+      )
+    }.recover { case ex => logger.debug(s"Uptime Mongo write failed: ${ex.getMessage}") }
   }
 
   private def notifyListeners(service: String, bucket: Bucket): Unit =
