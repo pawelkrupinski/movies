@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -172,6 +173,17 @@ enum class TuningPage(val title: String) {
     Film("Film"),
 }
 
+/** Compose test tags on the tuning controls, so `ShowtimeTuningScreenTest` can
+ *  switch pages and drive specific sliders — the Android counterpart of iOS's
+ *  `A11y.Tuning` identifiers. */
+internal object TuningTags {
+    fun pageTab(page: TuningPage) = "tuning.tab.${page.name}"
+    const val TimeSizeSlider = "tuning.slider.timeSize"
+    const val CinemaHeaderFontSlider = "tuning.slider.cinemaHeaderFont"
+    const val DetailTitleFontSlider = "tuning.slider.detailTitleFont"
+    const val ResolutionReadout = "tuning.resolution"
+}
+
 /** Page 0 — the showtime card grid, the original tuning surface. */
 @Composable
 private fun CardPreview() {
@@ -264,6 +276,7 @@ private fun ControlsSheet(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
+                ResolutionReadout()
                 when (page) {
                     TuningPage.Card -> CardControls(style, onStyleChange, ratingStyle, onRatingStyleChange, cardSpacing, onCardSpacingChange)
                     TuningPage.Kina -> KinaControls(cinemaHeader, onCinemaHeaderChange)
@@ -289,6 +302,7 @@ private fun PageTabs(current: TuningPage, onSelect: (TuningPage) -> Unit) {
             Box(
                 Modifier
                     .weight(1f)
+                    .testTag(TuningTags.pageTab(p))
                     .clip(RoundedCornerShape(7.dp))
                     .background(if (selected) Brand.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.08f))
                     .clickable(
@@ -329,14 +343,6 @@ private fun SheetHeader(
     ) {
         Column(Modifier.weight(1f)) {
             Text("${page.title} tuning", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            // Live readout of the area the layout actually gets (dp), plus the
-            // density and the pixels it works out to — the available size
-            // matters more here than the raw panel resolution.
-            Text(
-                DisplayInfo.tuningReadout(screenWidthDp, configuration.screenHeightDp, density.density),
-                color = Color.White.copy(alpha = 0.55f),
-                fontSize = 10.sp,
-            )
             // The two-per-row fit readout only makes sense for the card page.
             if (page == TuningPage.Card) {
                 val fit = ChipFit.evaluate(style, density)
@@ -357,6 +363,22 @@ private fun SheetHeader(
     }
 }
 
+/** Live readout of the area the layout actually gets (dp), plus the density and
+ *  the pixels it works out to. Parked at the top of the scrolling controls
+ *  (not the pinned header) so it scrolls away once read instead of permanently
+ *  eating header height. */
+@Composable
+private fun ResolutionReadout() {
+    val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
+    Text(
+        DisplayInfo.tuningReadout(configuration.screenWidthDp, configuration.screenHeightDp, density.density),
+        color = Color.White.copy(alpha = 0.55f),
+        fontSize = 10.sp,
+        modifier = Modifier.testTag(TuningTags.ResolutionReadout),
+    )
+}
+
 // ── per-page controls ────────────────────────────────────────────────────────
 
 @Composable
@@ -370,7 +392,7 @@ private fun CardControls(
 ) {
     Group("Czas (time)") {
         WeightRow("Grubość", style.timeWeight) { onStyleChange(style.copy(timeWeight = it)) }
-        SpSlider("Rozmiar", style.timeFontSize.value, 7f..20f) { onStyleChange(style.copy(timeFontSize = it.sp)) }
+        SpSlider("Rozmiar", style.timeFontSize.value, 7f..20f, TuningTags.TimeSizeSlider) { onStyleChange(style.copy(timeFontSize = it.sp)) }
     }
     Group("Format") {
         WeightRow("Grubość", style.formatWeight) { onStyleChange(style.copy(formatWeight = it)) }
@@ -418,7 +440,7 @@ private fun CardControls(
 private fun KinaControls(cinemaHeader: CinemaHeaderStyle, onChange: (CinemaHeaderStyle) -> Unit) {
     Group("Nagłówek kina") {
         WeightRow("Grubość", cinemaHeader.fontWeight) { onChange(cinemaHeader.copy(fontWeight = it)) }
-        SpSlider("Rozmiar", cinemaHeader.fontSize.value, 10f..24f) { onChange(cinemaHeader.copy(fontSize = it.sp)) }
+        SpSlider("Rozmiar", cinemaHeader.fontSize.value, 10f..24f, TuningTags.CinemaHeaderFontSlider) { onChange(cinemaHeader.copy(fontSize = it.sp)) }
     }
     Group("Odstępy") {
         DpSlider("Nagłówek górny", cinemaHeader.headerTopGap, 0f..24f) { onChange(cinemaHeader.copy(headerTopGap = it)) }
@@ -435,7 +457,7 @@ private fun FilmControls(filmStyle: FilmDetailStyle, onChange: (FilmDetailStyle)
     }
     Group("Tytuł") {
         WeightRow("Grubość", filmStyle.titleWeight) { onChange(filmStyle.copy(titleWeight = it)) }
-        SpSlider("Rozmiar", filmStyle.titleFontSize.value, 14f..34f) { onChange(filmStyle.copy(titleFontSize = it.sp)) }
+        SpSlider("Rozmiar", filmStyle.titleFontSize.value, 14f..34f, TuningTags.DetailTitleFontSlider) { onChange(filmStyle.copy(titleFontSize = it.sp)) }
         SpSlider("Tytuł oryg.", filmStyle.originalTitleFontSize.value, 10f..22f) { onChange(filmStyle.copy(originalTitleFontSize = it.sp)) }
     }
     Group("Bloki meta") {
@@ -522,13 +544,13 @@ private fun WeightRow(label: String, weight: FontWeight, onSelect: (FontWeight) 
 }
 
 @Composable
-private fun SpSlider(label: String, value: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit) {
-    LabeledSlider(label, value, range) { onChange(it) }
+private fun SpSlider(label: String, value: Float, range: ClosedFloatingPointRange<Float>, tag: String? = null, onChange: (Float) -> Unit) {
+    LabeledSlider(label, value, range, tag) { onChange(it) }
 }
 
 @Composable
-private fun DpSlider(label: String, value: Dp, range: ClosedFloatingPointRange<Float>, onChange: (Dp) -> Unit) {
-    LabeledSlider(label, value.value, range) { onChange(it.dp) }
+private fun DpSlider(label: String, value: Dp, range: ClosedFloatingPointRange<Float>, tag: String? = null, onChange: (Dp) -> Unit) {
+    LabeledSlider(label, value.value, range, tag) { onChange(it.dp) }
 }
 
 @Composable
@@ -536,6 +558,7 @@ private fun LabeledSlider(
     label: String,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
+    tag: String? = null,
     onChange: (Float) -> Unit,
 ) {
     val step = 0.5f
@@ -549,7 +572,7 @@ private fun LabeledSlider(
             onValueChange = { onChange((Math.round(it * 2f) / 2f)) },
             valueRange = range,
             steps = steps.coerceAtLeast(0),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).then(if (tag != null) Modifier.testTag(tag) else Modifier),
         )
         StepButton("+") { onChange((value + step).coerceIn(range.start, range.endInclusive)) }
         Text(
