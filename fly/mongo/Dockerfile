@@ -4,9 +4,28 @@
 # volume at `/data/db` (configured in fly.toml).
 FROM mongo:7.0
 
-# Fly's `.internal` network is 6PN (IPv6 only). Mongo 7 binds IPv4 by
-# default; `--ipv6` (combined with the official entrypoint's
-# `--bind_ip_all`) makes it accept IPv6 too, so cross-app traffic from
-# kinowo lands here.
-CMD ["mongod", "--ipv6", "--bind_ip_all"]
+# Internal-auth keyfile. Mongo requires keyfile (or x509) internal auth as soon
+# as authentication AND replication are both enabled — even for a SINGLE-member
+# replica set, which has no peer to authenticate against. Generated at build
+# time: for a one-node set there's no other member that must share it, so a
+# fresh keyfile per build is fine. Must be mode 0400 and owned by the `mongodb`
+# user the entrypoint runs mongod as.
+RUN openssl rand -base64 756 > /etc/mongo-keyfile \
+ && chmod 400 /etc/mongo-keyfile \
+ && chown mongodb:mongodb /etc/mongo-keyfile
 
+# Run as a single-node replica set (`rs0`) so MongoDB exposes an oplog and
+# change streams — the kinowo app refreshes its cache incrementally off the
+# change stream instead of re-reading the whole `movies` collection on a timer
+# (a standalone mongod rejects `$changeStream` with error 40573).
+#
+# ONE-TIME init after the FIRST deploy with this CMD (or after recreating the
+# data volume) — the set config then lives on the volume and survives redeploys.
+# Tunnel in (`flyctl proxy 27017:27017 --app kinowo-mongo`) and, authenticated
+# as the root user, run with the *app-reachable* member host:
+#   rs.initiate({_id: "rs0",
+#                members: [{_id: 0, host: "kinowo-mongo.internal:27017"}]})
+#
+# `--ipv6 --bind_ip_all` keeps it reachable over Fly's 6PN `.internal` network;
+# `--keyFile` implies `--auth`.
+CMD ["mongod", "--ipv6", "--bind_ip_all", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile"]
