@@ -37,11 +37,11 @@ class RatingsRefreshScheduleSpec extends AnyFlatSpec with Matchers {
   it should "stagger their first runs ~1h apart across the 4h cycle" in {
     val delays = refreshers().map(_.startupDelaySeconds).sorted
 
-    // Four distinct offsets, each landing within the 4h window.
+    // Four distinct offsets — the first at 1h (nothing runs in the first
+    // hour), the last no later than the 4h cycle length.
     delays.distinct.size shouldBe 4
-    delays.foreach(d => d should (be >= 0L and be < 4L * 3600))
-    // Consecutive offsets at least ~1h apart (the first allows a small
-    // near-boot head start so a walk runs soon after Mongo hydration).
+    delays.foreach(d => d should (be >= 3600L and be <= 4L * 3600))
+    // Consecutive offsets ~1h apart.
     delays.sliding(2).foreach { case Seq(a, b) => (b - a) should be >= 3000L }
   }
 }

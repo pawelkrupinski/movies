@@ -29,7 +29,7 @@ class RottenTomatoesRatings(
   name                = "RT",
   // Second of the four rating walks. Runs every 4h, offset 1h past IMDb so
   // each refresher gets its own hour of the 4h cycle (see ImdbRatings).
-  startupDelaySeconds = 3600L,
+  startupDelaySeconds = 7200L,
   refreshHours        = 4L,
   cache               = cache,
   ec                  = ec

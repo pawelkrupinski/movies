@@ -41,7 +41,7 @@ class FilmwebRatings(
       name                = "Filmweb",
       // Last of the four rating walks. Runs every 4h, offset 3h past IMDb so
       // each refresher gets its own hour of the 4h cycle (see ImdbRatings).
-      startupDelaySeconds = 10800L,
+      startupDelaySeconds = 14400L,
       refreshHours        = 4L,
       cache               = cache,
       ec                  = ec

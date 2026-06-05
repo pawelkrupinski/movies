@@ -30,7 +30,7 @@ class MetascoreRatings(
   name                = "Metascore",
   // Third of the four rating walks. Runs every 4h, offset 2h past IMDb so
   // each refresher gets its own hour of the 4h cycle (see ImdbRatings).
-  startupDelaySeconds = 7200L,
+  startupDelaySeconds = 10800L,
   refreshHours        = 4L,
   cache               = cache,
   ec                  = ec

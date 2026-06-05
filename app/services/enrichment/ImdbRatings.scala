@@ -27,13 +27,13 @@ class ImdbRatings(
   ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("IMDb-stage")
 ) extends PeriodicCacheRefresher(
       name                = "IMDb",
-      // First of the four rating walks. Fires shortly after startup so Mongo
-      // hydration has time to populate the cache before the walk reads from
-      // it. The four refreshers each run every 4h, staggered ~1h apart
-      // (IMDb @~0h, RT @1h, Metascore @2h, Filmweb @3h) so only one walks the
-      // cache per hour — ratings barely move hour-to-hour, so spreading the
-      // load is free and keeps any single tick from pegging the shared budget.
-      startupDelaySeconds = 10L,
+      // First of the four rating walks. The four refreshers each run every 4h,
+      // staggered 1h apart (IMDb @1h, RT @2h, Metascore @3h, Filmweb @4h) so
+      // only one walks the cache per hour — ratings barely move hour-to-hour,
+      // so spreading the load is free and keeps any single tick from pegging
+      // the shared budget. Nothing runs in the first hour, by which point Mongo
+      // hydration has long since populated the cache.
+      startupDelaySeconds = 3600L,
       refreshHours        = 4L,
       cache               = cache,
       ec                  = ec
