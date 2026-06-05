@@ -91,6 +91,7 @@ trait Wiring {
     // new Bilety24Client(httoFetch, "https://kinoluna.bilety24.pl", KinoLuna),                 // Warszawa — Kino Luna
     // new Bilety24Client(httoFetch, "https://kinoelektronik.pl", KinoElektronik, "/"),         // Warszawa — Kino Elektronik
     // new IluzjonClient(httoFetch),        // Warszawa — Kino Iluzjon
+    // new KinoGramClient(httoFetch),       // Warszawa — KinoGram
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Events ────────────────────────────────────────────────────────────────
