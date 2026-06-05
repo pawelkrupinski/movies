@@ -24,11 +24,12 @@ data class CardSpacingStyle(
     val ratingsToShowings: Dp = 5.dp,
     /** Gap below a day label, above its first cinema name (or showtimes when the
      *  cinema header is hidden). Independent of [showingsBlock] so the day↔cinema
-     *  distance can be dialled separately. */
-    val dayToCinema: Dp = 4.5.dp,
+     *  distance can be dialled separately. 0 = cinema name sits directly under
+     *  the day label. */
+    val dayToCinema: Dp = 0.dp,
     /** Spacing for the rest of the showings block (cinema↔pills, pills↔next
      *  cinema, day-block↔day-block). The day↔cinema gap is [dayToCinema]. */
-    val showingsBlock: Dp = 4.5.dp,
+    val showingsBlock: Dp = 3.dp,
 )
 
 /** Spacing driving every film card. The default equals today's shipping gaps, so
