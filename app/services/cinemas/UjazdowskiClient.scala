@@ -1,0 +1,103 @@
+package services.cinemas
+
+import models._
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
+import tools.HttpFetch
+
+import java.time.{Instant, LocalDateTime, ZoneId}
+import scala.jdk.CollectionConverters._
+import scala.util.Try
+
+/**
+ * Kino U-jazdowski (CSW Zamek Ujazdowski, Warszawa). The repertoire page lists
+ * the day timestamps (`ut`, midnight epoch seconds) in its nav; each day's
+ * `week.ajax?ut=N` returns that day's screening cards (title, time, a
+ * director/country/year/runtime meta line, poster) linking to the film page.
+ * The per-film page adds the synopsis. The date comes from the `ut`, so the
+ * replay is deterministic. Booking is the film page (no stable deep-link).
+ */
+class UjazdowskiClient(http: HttpFetch) extends CinemaScraper {
+
+  val cinema: Cinema = Ujazdowski
+
+  private val BaseUrl    = "https://u-jazdowski.pl"
+  private val ListingUrl = s"$BaseUrl/kino/repertuar"
+  private val UtPat      = """ut=(\d+)""".r
+  private val SlugPat    = """/kino/repertuar/([a-z0-9-]+)""".r
+  private val WarsawZone = ZoneId.of("Europe/Warsaw")
+
+  private case class RawSlot(slug: String, title: String, dateTime: LocalDateTime, meta: Option[String], poster: Option[String])
+
+  def fetch(): Seq[CinemaMovie] = {
+    val main = http.get(ListingUrl)
+    val uts  = UtPat.findAllMatchIn(main).map(_.group(1)).toSeq.distinct
+
+    val slots = uts.map(ut => ut -> http.getAsync(s"$ListingUrl/week.ajax?ut=$ut"))
+      .flatMap { case (ut, f) =>
+        val date = Try(Instant.ofEpochSecond(ut.toLong).atZone(WarsawZone).toLocalDate).toOption
+        date.toSeq.flatMap(d => Try(f.join()).toOption.toSeq.flatMap(html => parseDay(html, d)))
+      }
+
+    val bySlug  = slots.groupBy(_.slug)
+    val details = {
+      val pending = bySlug.keys.toSeq.filter(_.nonEmpty).map(s => s -> http.getAsync(s"$BaseUrl/kino/repertuar/$s"))
+      pending.map { case (s, f) => s -> Try(f.join()).toOption.map(Jsoup.parse) }.toMap
+    }
+
+    bySlug.toSeq.flatMap { case (slug, group) =>
+      val primary    = group.head
+      val detailUrl  = s"$BaseUrl/kino/repertuar/$slug"
+      val showtimes  = group.map(s => Showtime(s.dateTime, Some(detailUrl), None, Nil))
+                         .distinctBy(_.dateTime).sortBy(_.dateTime)
+      if (showtimes.isEmpty) None
+      else {
+        val meta = UjazdowskiClient.parseMeta(primary.meta.getOrElse(""))
+        val synopsis = details.getOrElse(slug, None).flatMap(d => Option(d.selectFirst("div.body.max-w"))).map(_.text.trim).filter(_.length > 20)
+        Some(CinemaMovie(
+          movie     = Movie(title = primary.title, runtimeMinutes = meta.runtime, releaseYear = meta.year, countries = meta.countries),
+          cinema    = cinema,
+          posterUrl = group.flatMap(_.poster).headOption,
+          filmUrl   = Some(detailUrl),
+          synopsis  = synopsis,
+          cast      = Seq.empty,
+          director  = meta.director,
+          showtimes = showtimes
+        ))
+      }
+    }
+  }
+
+  private def parseDay(html: String, date: java.time.LocalDate): Seq[RawSlot] =
+    Jsoup.parse(html).select("a.event-list-day-box").asScala.toSeq.flatMap { a =>
+      val slug  = SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1))
+      val title = Option(a.selectFirst(".title em")).orElse(Option(a.selectFirst(".title"))).map(_.text.trim).filter(_.nonEmpty)
+      val time  = Option(a.selectFirst(".hours")).map(_.text.trim)
+                    .flatMap(t => """(\d{1,2}):(\d{2})""".r.findFirstMatchIn(t).flatMap(m => Try(java.time.LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption))
+      for { s <- slug; t <- title; tm <- time } yield {
+        val meta   = Option(a.selectFirst(".fs-20.max-w")).map(_.text.trim).filter(_.nonEmpty)
+        val poster = Option(a.selectFirst("img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+                       .map(u => if (u.startsWith("http")) u else BaseUrl + u)
+        RawSlot(s, t, date.atTime(tm), meta, poster)
+      }
+    }
+}
+
+object UjazdowskiClient {
+
+  // "[Original Title], reż. Director, Country1/ Country2 YEAR, RUNTIME'"
+  private val MetaPat = """reż\.\s*(.+?),\s*(.+?)\s+((?:19|20)\d{2}),\s*(\d+)['’]""".r
+
+  final case class Meta(director: Seq[String], countries: Seq[String], year: Option[Int], runtime: Option[Int])
+
+  def parseMeta(s: String): Meta =
+    MetaPat.findFirstMatchIn(s) match {
+      case Some(m) => Meta(
+        director  = m.group(1).split(",").map(_.trim).filter(_.nonEmpty).toSeq,
+        countries = m.group(2).split("[,/]").map(_.trim).filter(_.nonEmpty).toSeq,
+        year      = Some(m.group(3).toInt),
+        runtime   = Some(m.group(4).toInt)
+      )
+      case None => Meta(Seq.empty, Seq.empty, None, None)
+    }
+}
