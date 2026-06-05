@@ -8,6 +8,7 @@ final class RepertoireStore: ObservableObject {
 
     private let base: URL
     private var url: URL
+    private var citySlug: String
     private let session: URLSession
     private var lastReloadedAt: Date?
 
@@ -20,6 +21,7 @@ final class RepertoireStore: ObservableObject {
     /// `use(citySlug:)` once the first-launch gate lands.
     init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared) {
         self.base = base
+        self.citySlug = citySlug
         self.url = City.apiURL(base: base, slug: citySlug, endpoint: "repertoire")
         self.session = session
     }
@@ -31,6 +33,7 @@ final class RepertoireStore: ObservableObject {
         let next = City.apiURL(base: base, slug: citySlug, endpoint: "repertoire")
         guard next != url else { return }
         url = next
+        self.citySlug = citySlug
         lastReloadedAt = nil
         Task { await reload() }
     }
@@ -60,7 +63,7 @@ final class RepertoireStore: ObservableObject {
             var request = URLRequest(url: url)
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalCacheData
-            if let lm = RepertoireCache.loadLastModified() {
+            if let lm = RepertoireCache.lastModified(forCity: citySlug) {
                 request.setValue(lm, forHTTPHeaderField: "If-Modified-Since")
             }
             let (data, response) = try await session.data(for: request)
@@ -77,11 +80,10 @@ final class RepertoireStore: ObservableObject {
             let decoded = try JSONDecoder().decode([Film].self, from: data)
             self.films = decoded
             self.lastReloadedAt = now
-            if let lm = http.value(forHTTPHeaderField: "Last-Modified") {
-                Task.detached { RepertoireCache.saveLastModified(lm) }
-            }
+            let lm = http.value(forHTTPHeaderField: "Last-Modified")
             let filmsCopy = decoded
-            Task.detached { RepertoireCache.save(filmsCopy) }
+            let city = citySlug
+            Task.detached { RepertoireCache.save(filmsCopy, city: city, lastModified: lm) }
         } catch {
             self.error = error
         }

@@ -17,6 +17,7 @@ final class DetailsStore: ObservableObject {
 
     private let base: URL
     private var url: URL
+    private var citySlug: String
     private let session: URLSession
     private var lastReloadedAt: Date?
 
@@ -26,6 +27,7 @@ final class DetailsStore: ObservableObject {
     /// Same city-qualification contract as `RepertoireStore`.
     init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared) {
         self.base = base
+        self.citySlug = citySlug
         self.url = City.apiURL(base: base, slug: citySlug, endpoint: "details")
         self.session = session
     }
@@ -35,6 +37,7 @@ final class DetailsStore: ObservableObject {
         let next = City.apiURL(base: base, slug: citySlug, endpoint: "details")
         guard next != url else { return }
         url = next
+        self.citySlug = citySlug
         lastReloadedAt = nil
         Task { await reload() }
     }
@@ -54,7 +57,7 @@ final class DetailsStore: ObservableObject {
             var request = URLRequest(url: url)
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalCacheData
-            if let lm = DetailsCache.loadLastModified() {
+            if let lm = DetailsCache.lastModified(forCity: citySlug) {
                 request.setValue(lm, forHTTPHeaderField: "If-Modified-Since")
             }
             let (data, response) = try await session.data(for: request)
@@ -71,11 +74,10 @@ final class DetailsStore: ObservableObject {
             let decoded = try JSONDecoder().decode([FilmDetails].self, from: data)
             self.byTitle = decoded.keyedByTitle()
             self.lastReloadedAt = now
-            if let lm = http.value(forHTTPHeaderField: "Last-Modified") {
-                Task.detached { DetailsCache.saveLastModified(lm) }
-            }
+            let lm = http.value(forHTTPHeaderField: "Last-Modified")
             let copy = decoded
-            Task.detached { DetailsCache.save(copy) }
+            let city = citySlug
+            Task.detached { DetailsCache.save(copy, city: city, lastModified: lm) }
         } catch {
             // Details are non-essential — the listing still renders the
             // film without synopsis/trailers. Swallow the error rather

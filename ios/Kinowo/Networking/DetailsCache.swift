@@ -1,17 +1,26 @@
 import Foundation
 
-/// On-disk cache for `/api/details`, parallel to `RepertoireCache`.
-/// Separate files (`details.json` / `details-lastmodified.txt`) so the
-/// two endpoints' conditional-GET state never collides.
+/// On-disk cache for `/api/details`, parallel to `RepertoireCache` — same
+/// city-bound `Last-Modified` rule (see `RepertoireCache` for why the global
+/// server timestamp must not be replayed across a city switch). Separate files
+/// (`details.json` / `details-meta.txt`) so the two endpoints' conditional-GET
+/// state never collides.
 enum DetailsCache {
-    private static var cacheURL: URL {
+    private static var cacheDir: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("details.json")
     }
+    private static var cacheURL: URL { cacheDir.appendingPathComponent("details.json") }
+    // line 1: city slug the body was fetched for; line 2: its Last-Modified.
+    private static var metaURL: URL { cacheDir.appendingPathComponent("details-meta.txt") }
 
-    static func save(_ details: [FilmDetails]) {
-        guard let data = try? JSONEncoder().encode(details) else { return }
-        try? data.write(to: cacheURL, options: .atomic)
+    /// Persist the freshly-fetched `details` for `city` together with its
+    /// `lastModified` header, so a later same-city reload can revalidate.
+    static func save(_ details: [FilmDetails], city: String, lastModified: String?) {
+        if let data = try? JSONEncoder().encode(details) {
+            try? data.write(to: cacheURL, options: .atomic)
+        }
+        let meta = city + "\n" + (lastModified ?? "")
+        try? meta.write(to: metaURL, atomically: true, encoding: .utf8)
     }
 
     static func load() -> [FilmDetails]? {
@@ -19,16 +28,13 @@ enum DetailsCache {
         return try? JSONDecoder().decode([FilmDetails].self, from: data)
     }
 
-    private static var lastModifiedURL: URL {
-        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("details-lastmodified.txt")
-    }
-
-    static func saveLastModified(_ value: String) {
-        try? value.write(to: lastModifiedURL, atomically: true, encoding: .utf8)
-    }
-
-    static func loadLastModified() -> String? {
-        try? String(contentsOf: lastModifiedURL, encoding: .utf8)
+    /// The `Last-Modified` to replay as `If-Modified-Since`, but only when the
+    /// cached body belongs to `city`; nil for any other city.
+    static func lastModified(forCity city: String) -> String? {
+        guard let meta = try? String(contentsOf: metaURL, encoding: .utf8) else { return nil }
+        let lines = meta.components(separatedBy: "\n")
+        guard let cachedCity = lines.first, cachedCity == city else { return nil }
+        let value = lines.count > 1 ? lines[1] : ""
+        return value.isEmpty ? nil : value
     }
 }

@@ -4,20 +4,30 @@ import XCTest
 final class RepertoireCacheLastModifiedTests: XCTestCase {
 
     override func tearDown() {
-        RepertoireCache.saveLastModified("")
+        // Reset the city-bound meta so cases don't leak into one another.
+        RepertoireCache.save([], city: "", lastModified: nil)
         super.tearDown()
     }
 
-    func testSaveAndLoadLastModified() {
+    func testSaveAndLoadLastModifiedForSameCity() {
         let value = "Sun, 25 May 2026 10:00:00 GMT"
-        RepertoireCache.saveLastModified(value)
-        XCTAssertEqual(RepertoireCache.loadLastModified(), value)
+        RepertoireCache.save([], city: "poznan", lastModified: value)
+        XCTAssertEqual(RepertoireCache.lastModified(forCity: "poznan"), value)
     }
 
-    func testLoadLastModifiedReturnsNilWhenNotSaved() {
+    /// The server's `Last-Modified` is a single global value, so replaying
+    /// poznań's timestamp while fetching warszawa would draw a 304 and strand
+    /// the grid on the old city. A different city must therefore get no
+    /// conditional header (nil).
+    func testLastModifiedIsNilForADifferentCity() {
+        RepertoireCache.save([], city: "poznan", lastModified: "Sun, 25 May 2026 10:00:00 GMT")
+        XCTAssertNil(RepertoireCache.lastModified(forCity: "warszawa"))
+    }
+
+    func testLastModifiedReturnsNilWhenNotSaved() {
         let url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("repertoire-lastmodified.txt")
+            .appendingPathComponent("repertoire-meta.txt")
         try? FileManager.default.removeItem(at: url)
-        XCTAssertNil(RepertoireCache.loadLastModified())
+        XCTAssertNil(RepertoireCache.lastModified(forCity: "poznan"))
     }
 }
