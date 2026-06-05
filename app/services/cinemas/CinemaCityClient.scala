@@ -2,9 +2,10 @@ package services.cinemas
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
-import tools.HttpFetch
+import tools.{HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime}
+import scala.concurrent.duration._
 import scala.util.Try
 
 class CinemaCityClient(http: HttpFetch) {
@@ -20,9 +21,9 @@ class CinemaCityClient(http: HttpFetch) {
         .flatMap(d => Try(LocalDate.parse(d)).toOption)
     }.getOrElse(Seq.empty)
 
-    val pendingEvents = dates.map { date =>
-      val url = s"$BaseApiUrl/film-events/in-cinema/$cinemaId/at-date/$date?attr=&lang=pl_PL"
-      date -> http.getAsync(url)
+    val dayBodies = ParallelDetailFetch.keyed("cinema-city-days", dates, 1.minute)(date =>
+      s"$BaseApiUrl/film-events/in-cinema/$cinemaId/at-date/$date?attr=&lang=pl_PL") { url =>
+      Try(http.get(url)).toOption
     }
 
     case class FilmInfo(
@@ -37,9 +38,9 @@ class CinemaCityClient(http: HttpFetch) {
     val allFilms  = collection.mutable.Map[String, FilmInfo]()
     val allEvents = collection.mutable.ListBuffer[(String, LocalDateTime, Option[String], Option[String], List[String])]()
 
-    for ((_, future) <- pendingEvents) {
+    for (date <- dates; raw <- dayBodies.getOrElse(date, None)) {
       Try {
-        val body   = Json.parse(future.join()) \ "body"
+        val body   = Json.parse(raw) \ "body"
         val films  = (body \ "films").as[JsArray].value
         val events = (body \ "events").as[JsArray].value
 
@@ -92,14 +93,12 @@ class CinemaCityClient(http: HttpFetch) {
     // production-country line. Fetched in parallel; a failed fetch or
     // missing field leaves the row's content fields empty (the rest of
     // the row stays usable).
-    val detailsByFilmId: Map[String, CinemaCityClient.Details] = {
-      val pending = allFilms.toSeq.flatMap { case (id, info) =>
-        info.filmLink.map { link => id -> http.getAsync(link) }
+    val detailLinks = allFilms.toSeq.flatMap { case (id, info) => info.filmLink.map(link => id -> link) }
+    val linkById    = detailLinks.toMap
+    val detailsByFilmId: Map[String, CinemaCityClient.Details] =
+      ParallelDetailFetch.keyed("cinema-city-details", detailLinks.map(_._1), 1.minute)(id => linkById(id)) { url =>
+        Try(http.get(url)).toOption.map(CinemaCityClient.parseDetails).getOrElse(CinemaCityClient.Details.empty)
       }
-      pending.map { case (id, fut) =>
-        id -> Try(fut.join()).toOption.map(CinemaCityClient.parseDetails).getOrElse(CinemaCityClient.Details.empty)
-      }.toMap
-    }
     allFilms.foreach { case (id, info) =>
       detailsByFilmId.get(id).filter(_.countries.nonEmpty)
         .foreach(d => allFilms.update(id, info.copy(countries = d.countries)))

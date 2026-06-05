@@ -3,10 +3,11 @@ package services.cinemas
 import models._
 import play.api.libs.json._
 import services.cinemas.HeliosNuxt.{BookingBase, cleanTitle}
-import tools.{HeliosFetch, HttpFetch}
+import tools.{HeliosFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
+import scala.concurrent.duration._
 import scala.util.Try
 
 class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt.Poznan) extends CinemaScraper {
@@ -48,8 +49,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt
     val eventScreenings = parseEventScreenings(Try(http.getAsync(eventsUrl).join()).getOrElse("[]"))
     val screeningsById  = eventScreenings ++ regular
 
-    val movieBodies    = fetchBodies(screeningsById.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct)(id => s"$ApiBase/movie/$id")
-    val screenBodies   = fetchBodies(screeningsById.values.map(_.screenId).toSeq.distinct)(id =>
+    val movieBodies    = fetchBodies("helios-movies", screeningsById.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct)(id => s"$ApiBase/movie/$id")
+    val screenBodies   = fetchBodies("helios-screens", screeningsById.values.map(_.screenId).toSeq.distinct)(id =>
       s"$ApiBase/cinema/$sourceId/screen/$id")
 
     RestData(
@@ -164,11 +165,10 @@ class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt
       }
     }
 
-  private def fetchBodies(ids: Seq[String])(urlFor: String => String): Map[String, String] =
-    ids
-      .map(id => id -> http.getAsync(urlFor(id)))
-      .flatMap { case (id, f) => Try(id -> f.join()).toOption }
-      .toMap
+  private def fetchBodies(label: String, ids: Seq[String])(urlFor: String => String): Map[String, String] =
+    ParallelDetailFetch.keyed(label, ids, 1.minute)(urlFor) { url =>
+      Try(http.get(url)).toOption
+    }.collect { case (id, Some(body)) => id -> body }
 
   // ── REST enrichment of NUXT movies ────────────────────────────────────────
   //
