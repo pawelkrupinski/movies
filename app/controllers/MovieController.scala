@@ -289,13 +289,44 @@ class MovieController( cc: ControllerComponents,
   private def cacheablePlainPage(request: RequestHeader, user: Option[models.User]): Boolean =
     user.isEmpty && request.queryString.isEmpty && !isViewSwap(request) && acceptsGzip(request)
 
-  // Serve already-gzipped bytes. Declaring `Content-Encoding: gzip` makes the
-  // GzipFilter skip this response (it never double-compresses an encoded body),
-  // so the cached compression is the only compression that happens.
-  private def gzippedOk(bytes: org.apache.pekko.util.ByteString): Result =
-    Ok(bytes)
-      .as("text/html; charset=utf-8")
-      .withHeaders("Content-Encoding" -> "gzip", "Vary" -> "X-Requested-With, Accept-Encoding")
+  private def ifModifiedSinceCurrent(request: RequestHeader, lastMod: java.time.Instant): Boolean =
+    request.headers.get("If-Modified-Since").exists { ims =>
+      scala.util.Try(java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.parse(ims))
+        .map(java.time.Instant.from)
+        .toOption
+        .exists(!lastMod.isAfter(_))
+    }
+
+  /** Conditional-GET + gzip-cache for a response that is byte-identical for
+   *  every client at the current [[MovieCache]] version. A client whose
+   *  `If-Modified-Since` is still current gets a bodiless 304 — so a browser
+   *  refresh re-validates cheaply and re-uses its cached copy instead of
+   *  re-downloading the body. Otherwise the body is served, from the shared
+   *  versioned, path-keyed gzip cache when the client accepts gzip (declaring
+   *  `Content-Encoding: gzip` makes the GzipFilter pass it through rather than
+   *  double-compress). `revalidate` adds `Cache-Control: private, no-cache` so
+   *  the browser caches the page yet always re-validates before re-use — the
+   *  pages change when showtimes do, so we never want a stale copy served
+   *  without a check. */
+  private def conditionalGzipped(request: RequestHeader, contentType: String, vary: String, revalidate: Boolean)(body: => String): Result = {
+    val lastMod  = movieCache.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
+    val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
+      .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
+    val validators: Seq[(String, String)] =
+      ("Last-Modified" -> httpDate) +: (if (revalidate) Seq("Cache-Control" -> "private, no-cache") else Nil)
+
+    if (ifModifiedSinceCurrent(request, lastMod))
+      NotModified.withHeaders(validators: _*)
+    else if (acceptsGzip(request)) {
+      val bytes = responseCache.gzippedBody(request.path, lastMod)(body)
+      Ok(bytes).as(contentType)
+        .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> vary) ++ validators): _*)
+    } else
+      Ok(body).as(contentType).withHeaders((("Vary" -> vary) +: validators): _*)
+  }
+
+  private val HtmlContentType = "text/html; charset=utf-8"
+  private val HtmlVary        = "X-Requested-With, Accept-Encoding"
 
   // Resolve the `/{city}/…` slug; 404 on an unknown city. Every city-scoped
   // handler wraps its body in this so resolution + not-found behaviour lives
@@ -321,9 +352,10 @@ class MovieController( cc: ControllerComponents,
     implicit val c: City = city
     val user = currentUser(request)
     if (cacheablePlainPage(request, user)) {
-      // On a cache hit `renderIndexHtml` (and its data-prep) never runs.
-      val bytes = responseCache.gzippedBody(request.path, movieCache.lastModified)(renderIndexHtml(city, request, user).body)
-      gzippedOk(bytes).withCookies(cityCookie(city))
+      // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
+      // (and its data-prep) never runs either.
+      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true)(renderIndexHtml(city, request, user).body)
+        .withCookies(cityCookie(city))
     } else if (isViewSwap(request)) {
       Ok(views.html._repertoireView(movieControllerService.toSchedules(city), devMode)).withHeaders(varyOnSwap)
     } else {
@@ -399,9 +431,10 @@ class MovieController( cc: ControllerComponents,
     implicit val c: City = city
     val user = currentUser(request)
     if (cacheablePlainPage(request, user)) {
-      // On a cache hit `renderKinaHtml` (and its data-prep) never runs.
-      val bytes = responseCache.gzippedBody(request.path, movieCache.lastModified)(renderKinaHtml(city, pinnedCinema, request, user).body)
-      gzippedOk(bytes).withCookies(cityCookie(city))
+      // 304 short-circuits before any work; on a 200 cache hit `renderKinaHtml`
+      // (and its data-prep) never runs either.
+      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true)(renderKinaHtml(city, pinnedCinema, request, user).body)
+        .withCookies(cityCookie(city))
     } else if (isViewSwap(request)) {
       val pinned = pinnedCinema.filter(city.cinemaDisplayNames.contains)
       Ok(views.html._kinaView(movieControllerService.toCinemaSchedules(city), pinned, devMode)).withHeaders(varyOnSwap)
@@ -427,36 +460,17 @@ class MovieController( cc: ControllerComponents,
     )
   }
 
-  /** Conditional-GET wrapper shared by the JSON API endpoints. A client with a
-   *  current `If-Modified-Since` gets a bodiless 304 (the cheapest path, and
-   *  what warm mobile clients hit). Otherwise the payload is served — and since
-   *  it's identical for every client at a given cache version, a gzip-accepting
-   *  request is answered from the shared [[GzippedResponseCache]] (keyed on
-   *  path, versioned by the same mtime), skipping the serialize + gzip that
-   *  `body` would otherwise cost on this latency-sensitive path. Non-gzip
-   *  clients fall back to an uncompressed render. Both the listing and the
-   *  details payload track the same cache mtime, so a 304 on one is a 304 on
-   *  the other. */
-  private def conditionalJson(request: Request[AnyContent])(body: => play.api.libs.json.JsValue): Result = {
-    val lastMod = movieCache.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
-    val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
-      .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
-
-    val notModified = request.headers.get("If-Modified-Since").exists { ims =>
-      scala.util.Try(java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.parse(ims))
-        .map(java.time.Instant.from)
-        .toOption
-        .exists(!lastMod.isAfter(_))
-    }
-
-    if (notModified) NotModified
-    else if (acceptsGzip(request)) {
-      val bytes = responseCache.gzippedBody(request.path, lastMod)(play.api.libs.json.Json.stringify(body))
-      Ok(bytes)
-        .as("application/json")
-        .withHeaders("Content-Encoding" -> "gzip", "Last-Modified" -> httpDate, "Vary" -> "Accept-Encoding")
-    } else Ok(body).withHeaders("Last-Modified" -> httpDate)
-  }
+  /** Conditional-GET wrapper for the JSON API endpoints — the same mechanism as
+   *  the HTML pages (see [[conditionalGzipped]]): a current `If-Modified-Since`
+   *  yields a bodiless 304 (what warm mobile clients hit), otherwise the payload
+   *  is served from the shared gzip cache. The endpoints don't set
+   *  `Cache-Control` (mobile manages its own revalidation), so `revalidate` is
+   *  off. Both the listing and the details payload track the same cache mtime,
+   *  so a 304 on one is a 304 on the other. */
+  private def conditionalJson(request: Request[AnyContent])(body: => play.api.libs.json.JsValue): Result =
+    conditionalGzipped(request, "application/json", vary = "Accept-Encoding", revalidate = false)(
+      play.api.libs.json.Json.stringify(body)
+    )
 
   /** Lean listing — everything the grid + filters need, no heavy detail text.
    *  Latency-sensitive; clients hit this on the critical path. */

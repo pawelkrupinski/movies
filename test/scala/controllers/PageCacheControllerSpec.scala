@@ -102,4 +102,38 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     // The swap fragment is just the #view-root inner content — no document shell.
     body.toLowerCase should not include "<!doctype"
   }
+
+  // ── Browser conditional-GET (304 on refresh) ───────────────────────────────
+
+  "a cacheable page" should "carry Last-Modified + Cache-Control so the browser revalidates" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.kina("poznan")(gzipReq("/poznan/kina"))
+
+    header("Last-Modified", result) shouldBe defined
+    header("Cache-Control", result) shouldBe Some("private, no-cache")
+  }
+
+  it should "304 a refresh whose If-Modified-Since is current, with no body" in {
+    val (ctrl, _) = buildController()
+    val first   = ctrl.kina("poznan")(gzipReq("/poznan/kina"))
+    val lastMod = header("Last-Modified", first).get
+
+    val refresh = ctrl.kina("poznan")(gzipReq("/poznan/kina").withHeaders("If-Modified-Since" -> lastMod))
+    status(refresh) shouldBe NOT_MODIFIED
+    header("Content-Encoding", refresh) shouldBe None
+    contentAsBytes(refresh).isEmpty shouldBe true
+  }
+
+  it should "200 with a fresh body after the cache version advances despite an old If-Modified-Since" in {
+    val (ctrl, cache) = buildController()
+    val lastMod = header("Last-Modified", ctrl.kina("poznan")(gzipReq("/poznan/kina"))).get
+
+    Thread.sleep(1100)
+    cache.rehydrate()
+
+    val after = ctrl.kina("poznan")(gzipReq("/poznan/kina").withHeaders("If-Modified-Since" -> lastMod))
+    status(after) shouldBe OK
+    header("Content-Encoding", after) shouldBe Some("gzip")
+    gunzip(contentAsBytes(after)) should include ("Cache Test Film")
+  }
 }
