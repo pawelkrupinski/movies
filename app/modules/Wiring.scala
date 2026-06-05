@@ -88,6 +88,8 @@ trait Wiring {
     // new NoweHoryzontyClient(httoFetch),  // Wrocław — Kino Nowe Horyzonty
     // new DcfClient(httoFetch),            // Wrocław — Dolnośląskie Centrum Filmowe
     // new MuranowClient(httoFetch),        // Warszawa — Kino Muranów
+    // new Bilety24Client(httoFetch, "https://kinoluna.bilety24.pl", KinoLuna),                 // Warszawa — Kino Luna
+    // new Bilety24Client(httoFetch, "https://kinoelektronik.pl", KinoElektronik, "/"),         // Warszawa — Kino Elektronik
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Events ────────────────────────────────────────────────────────────────
