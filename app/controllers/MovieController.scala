@@ -254,7 +254,8 @@ class MovieController( cc: ControllerComponents,
                        movieCache: MovieCache,
                        userRepo: services.users.UserRepo,
                        oauthProviders: Set[String],
-                       environment: Mode
+                       environment: Mode,
+                       pageCache: PageResponseCache,
                      ) extends AbstractController(cc) with Logging {
 
   // Read the session's `userId` (set by `AuthController.callback`) and
@@ -274,6 +275,27 @@ class MovieController( cc: ControllerComponents,
 
   // Caches must not serve a fragment to a normal navigation (or vice versa).
   private val varyOnSwap = "Vary" -> "X-Requested-With"
+
+  private def acceptsGzip(request: RequestHeader): Boolean =
+    request.headers.get("Accept-Encoding").exists(_.toLowerCase.contains("gzip"))
+
+  // The plain HTML pages (`/{city}/`, `/{city}/filmy`, `/{city}/kina[/:cinema]`)
+  // are byte-identical for every anonymous visitor at a given cache version, so
+  // we serve a pre-rendered, pre-gzipped blob keyed on the request path (which
+  // fully determines the output: city, page type, and pinned cinema all live in
+  // the path). Logged-in users (personalised navbar), filter queries (OG meta),
+  // and view-swap fragments must NOT hit the shared blob — they render fresh.
+  // Non-gzip clients also bypass it, since the cache stores compressed bytes.
+  private def cacheablePlainPage(request: RequestHeader, user: Option[models.User]): Boolean =
+    user.isEmpty && request.queryString.isEmpty && !isViewSwap(request) && acceptsGzip(request)
+
+  // Serve already-gzipped bytes. Declaring `Content-Encoding: gzip` makes the
+  // GzipFilter skip this response (it never double-compresses an encoded body),
+  // so the cached compression is the only compression that happens.
+  private def gzippedOk(bytes: org.apache.pekko.util.ByteString): Result =
+    Ok(bytes)
+      .as("text/html; charset=utf-8")
+      .withHeaders("Content-Encoding" -> "gzip", "Vary" -> "X-Requested-With, Accept-Encoding")
 
   // Resolve the `/{city}/…` slug; 404 on an unknown city. Every city-scoped
   // handler wraps its body in this so resolution + not-found behaviour lives
@@ -297,26 +319,34 @@ class MovieController( cc: ControllerComponents,
   // below to the per-director / per-cast / per-country page.
   private def renderIndex(city: City, request: RequestHeader): Result = {
     implicit val c: City = city
-    val user      = currentUser(request)
-    val schedules = movieControllerService.toSchedules(city)
-    if (isViewSwap(request))
-      Ok(views.html._repertoireView(schedules, devMode)).withHeaders(varyOnSwap)
-    else {
-      val meta = FilterDescription.forIndex(city, request.queryString, schedules)
-      // Embed the Kina sibling fragment so the first swipe tracks instantly with
-      // no network fetch — shared.js seeds its prefetch cache from this at boot.
-      val sibling = views.html._kinaView(movieControllerService.toCinemaSchedules(city), None, devMode).body
-      Ok(views.html.repertoire(
-        schedules, city.cinemaDisplayNames, city.cinemaPillMap,
-        devMode, user, oauthProviders,
-        pageTitle       = meta.title,
-        pageDescription = meta.description,
-        pageUrl         = PageMeta.canonicalUrl(request),
-        fbAppId         = PageMeta.fbAppId,
-        siblingPath     = s"/${city.slug}/kina",
-        siblingHtml     = sibling,
-      )).withHeaders(varyOnSwap).withCookies(cityCookie(city))
+    val user = currentUser(request)
+    if (cacheablePlainPage(request, user)) {
+      // On a cache hit `renderIndexHtml` (and its data-prep) never runs.
+      val bytes = pageCache.gzippedBody(request.path, movieCache.lastModified)(renderIndexHtml(city, request, user).body)
+      gzippedOk(bytes).withCookies(cityCookie(city))
+    } else if (isViewSwap(request)) {
+      Ok(views.html._repertoireView(movieControllerService.toSchedules(city), devMode)).withHeaders(varyOnSwap)
+    } else {
+      Ok(renderIndexHtml(city, request, user)).withHeaders(varyOnSwap).withCookies(cityCookie(city))
     }
+  }
+
+  private def renderIndexHtml(city: City, request: RequestHeader, user: Option[models.User])(implicit c: City): play.twirl.api.Html = {
+    val schedules = movieControllerService.toSchedules(city)
+    val meta = FilterDescription.forIndex(city, request.queryString, schedules)
+    // Embed the Kina sibling fragment so the first swipe tracks instantly with
+    // no network fetch — shared.js seeds its prefetch cache from this at boot.
+    val sibling = views.html._kinaView(movieControllerService.toCinemaSchedules(city), None, devMode).body
+    views.html.repertoire(
+      schedules, city.cinemaDisplayNames, city.cinemaPillMap,
+      devMode, user, oauthProviders,
+      pageTitle       = meta.title,
+      pageDescription = meta.description,
+      pageUrl         = PageMeta.canonicalUrl(request),
+      fbAppId         = PageMeta.fbAppId,
+      siblingPath     = s"/${city.slug}/kina",
+      siblingHtml     = sibling,
+    )
   }
 
   def index(city: String): Action[AnyContent] = Action { request => withCity(city)(c => renderIndex(c, request)) }
@@ -368,24 +398,33 @@ class MovieController( cc: ControllerComponents,
   private def renderKina(city: City, pinnedCinema: Option[String], request: RequestHeader): Result = {
     implicit val c: City = city
     val user = currentUser(request)
+    if (cacheablePlainPage(request, user)) {
+      // On a cache hit `renderKinaHtml` (and its data-prep) never runs.
+      val bytes = pageCache.gzippedBody(request.path, movieCache.lastModified)(renderKinaHtml(city, pinnedCinema, request, user).body)
+      gzippedOk(bytes).withCookies(cityCookie(city))
+    } else if (isViewSwap(request)) {
+      val pinned = pinnedCinema.filter(city.cinemaDisplayNames.contains)
+      Ok(views.html._kinaView(movieControllerService.toCinemaSchedules(city), pinned, devMode)).withHeaders(varyOnSwap)
+    } else {
+      Ok(renderKinaHtml(city, pinnedCinema, request, user)).withHeaders(varyOnSwap).withCookies(cityCookie(city))
+    }
+  }
+
+  private def renderKinaHtml(city: City, pinnedCinema: Option[String], request: RequestHeader, user: Option[models.User])(implicit c: City): play.twirl.api.Html = {
     val allCinemas = city.cinemaDisplayNames
     val pinned = pinnedCinema.filter(allCinemas.contains)
     val cinemas = movieControllerService.toCinemaSchedules(city)
-    if (isViewSwap(request))
-      Ok(views.html._kinaView(cinemas, pinned, devMode)).withHeaders(varyOnSwap)
-    else {
-      // Embed the Filmy sibling fragment so the first swipe tracks instantly with
-      // no network fetch — shared.js seeds its prefetch cache from this at boot.
-      val sibling = views.html._repertoireView(movieControllerService.toSchedules(city), devMode).body
-      Ok(views.html.kina(
-        cinemas, allCinemas, city.cinemaPillMap,
-        devMode, user, oauthProviders, pinned,
-        pageUrl = PageMeta.canonicalUrl(request),
-        fbAppId = PageMeta.fbAppId,
-        siblingPath = s"/${city.slug}/",
-        siblingHtml = sibling,
-      )).withHeaders(varyOnSwap).withCookies(cityCookie(city))
-    }
+    // Embed the Filmy sibling fragment so the first swipe tracks instantly with
+    // no network fetch — shared.js seeds its prefetch cache from this at boot.
+    val sibling = views.html._repertoireView(movieControllerService.toSchedules(city), devMode).body
+    views.html.kina(
+      cinemas, allCinemas, city.cinemaPillMap,
+      devMode, user, oauthProviders, pinned,
+      pageUrl = PageMeta.canonicalUrl(request),
+      fbAppId = PageMeta.fbAppId,
+      siblingPath = s"/${city.slug}/",
+      siblingHtml = sibling,
+    )
   }
 
   /** Conditional-GET wrapper shared by the JSON API endpoints: returns 304 if

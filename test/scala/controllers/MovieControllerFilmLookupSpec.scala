@@ -1,15 +1,10 @@
 package controllers
 
-import clients.TmdbClient
 import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.Mode
+import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import play.api.test.{FakeRequest, Helpers}
-import services.events.InProcessEventBus
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo, MovieService}
-import tools.RealHttpFetch
 
 import java.time.LocalDateTime
 
@@ -36,18 +31,7 @@ class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
         Tmdb -> SourceData(originalTitle = Some("The Devil Wears Prada 2"))
       )
     )
-    val repo  = new InMemoryMovieRepo(Seq((title, year, record)))
-    val cache = new CaffeineMovieCache(repo)
-    val svc   = new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
-    val movieControllerService   = new MovieControllerService(svc)
-    new MovieController(
-      cc                     = Helpers.stubControllerComponents(),
-      movieControllerService = movieControllerService,
-      movieCache             = cache,
-      userRepo               = new services.users.InMemoryUserRepo,
-      oauthProviders         = Set.empty,
-      environment            = Mode.Test
-    )
+    TestMovieController.build(Seq((title, year, record)))._1
   }
 
   "GET /film?title=…" should "resolve a displayed title that contains a single-digit Arabic numeral" in {

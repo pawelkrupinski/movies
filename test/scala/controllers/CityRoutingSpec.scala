@@ -1,15 +1,10 @@
 package controllers
 
-import clients.TmdbClient
 import models.{CinemaCityWroclavia, Helios, Kinoteka, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.Mode
+import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import play.api.test.{FakeRequest, Helpers}
-import services.events.InProcessEventBus
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo, MovieService}
-import tools.RealHttpFetch
 
 import java.time.LocalDateTime
 
@@ -34,21 +29,11 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     )
     // One film per city, each in a cinema scoped to that city, so the
     // city-scoping of the read path can be asserted from every side.
-    val repo  = new InMemoryMovieRepo(Seq(
+    TestMovieController.build(Seq(
       ("Testowy Film",    Some(2024), filmIn(Helios, "Testowy Film", "tt1")),
       ("Wrocławski Film", Some(2024), filmIn(CinemaCityWroclavia, "Wrocławski Film", "tt2")),
       ("Warszawski Film", Some(2024), filmIn(Kinoteka, "Warszawski Film", "tt3")),
-    ))
-    val cache = new CaffeineMovieCache(repo)
-    val svc   = new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
-    new MovieController(
-      cc                     = Helpers.stubControllerComponents(),
-      movieControllerService = new MovieControllerService(svc),
-      movieCache             = cache,
-      userRepo               = new services.users.InMemoryUserRepo,
-      oauthProviders         = Set.empty,
-      environment            = Mode.Test
-    )
+    ))._1
   }
 
   "An unknown city slug" should "404 on every city-scoped route" in {

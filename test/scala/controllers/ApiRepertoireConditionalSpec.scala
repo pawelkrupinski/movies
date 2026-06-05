@@ -1,15 +1,11 @@
 package controllers
 
-import clients.TmdbClient
 import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.Mode
+import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import play.api.test.{FakeRequest, Helpers}
-import services.events.InProcessEventBus
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo, MovieService}
-import tools.RealHttpFetch
+import services.movies.CaffeineMovieCache
 
 import java.time.LocalDateTime
 
@@ -31,19 +27,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
         Tmdb -> SourceData(originalTitle = Some("The Test Movie"))
       )
     )
-    val repo  = new InMemoryMovieRepo(Seq(("Test Film", Some(2024), record)))
-    val cache = new CaffeineMovieCache(repo)
-    val svc   = new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
-    val movieControllerService = new MovieControllerService(svc)
-    val ctrl = new MovieController(
-      cc                     = Helpers.stubControllerComponents(),
-      movieControllerService = movieControllerService,
-      movieCache             = cache,
-      userRepo               = new services.users.InMemoryUserRepo,
-      oauthProviders         = Set.empty,
-      environment            = Mode.Test
-    )
-    (ctrl, cache)
+    TestMovieController.build(Seq(("Test Film", Some(2024), record)))
   }
 
   it should "keep the lean listing free of detail-only fields" in {
