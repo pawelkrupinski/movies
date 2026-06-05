@@ -2,19 +2,19 @@ package services.cinemas
 
 import models._
 import play.api.libs.json._
-import services.cinemas.HeliosNuxt.{BaseUrl, BookingBase, CinemaSourceId, cleanTitle}
+import services.cinemas.HeliosNuxt.{BookingBase, cleanTitle}
 import tools.{HeliosFetch, HttpFetch}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
 import scala.util.Try
 
-class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
+class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt.Poznan) extends CinemaScraper {
 
-  val cinema: Cinema = Helios
+  override val cinema: Cinema = cfg.cinema
 
-
-  private val PageUrl    = "https://helios.pl/poznan/kino-helios/repertuar"
+  private val sourceId   = cfg.sourceId
+  private val PageUrl     = cfg.pageUrl
   private val ApiBase    = "https://restapi.helios.pl/api"
   private val WarsawZone = ZoneId.of("Europe/Warsaw")
   private val OffsetDtf  = DateTimeFormatter.ISO_OFFSET_DATE_TIME
@@ -23,7 +23,7 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
 
   def fetch(): Seq[CinemaMovie] = {
     val rest     = fetchRestData()
-    val enriched = enrichFromRest(HeliosNuxt.buildMovies(http.get(PageUrl)), rest)
+    val enriched = enrichFromRest(HeliosNuxt.buildMovies(http.get(PageUrl), cfg), rest)
     removeLessSpecificOverlaps(enriched ++ restOnlyMovies(enriched, rest)).sortBy(_.movie.title)
   }
 
@@ -37,8 +37,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
     val today = LocalDate.now(WarsawZone)
     val in6   = today.plusDays(6)
     val screeningsUrl =
-      s"$ApiBase/cinema/$CinemaSourceId/screening?dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
-    val eventsUrl = s"$ApiBase/cinema/$CinemaSourceId/event"
+      s"$ApiBase/cinema/$sourceId/screening?dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
+    val eventsUrl = s"$ApiBase/cinema/$sourceId/event"
 
     // `/screening` lists regular film screenings; event screenings (anime, concerts,
     // sports broadcasts) are excluded from it but carry the same id→screenId mapping
@@ -50,7 +50,7 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
 
     val movieBodies    = fetchBodies(screeningsById.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct)(id => s"$ApiBase/movie/$id")
     val screenBodies   = fetchBodies(screeningsById.values.map(_.screenId).toSeq.distinct)(id =>
-      s"$ApiBase/cinema/$CinemaSourceId/screen/$id")
+      s"$ApiBase/cinema/$sourceId/screen/$id")
 
     RestData(
       screeningsById = screeningsById,
@@ -231,9 +231,9 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
               countries      = info.countries,
               genres         = info.genres
             ),
-            cinema    = Helios,
+            cinema    = cfg.cinema,
             posterUrl = info.posterUrl,
-            filmUrl   = info.slug.map(s => s"$BaseUrl/filmy/$s"),
+            filmUrl   = info.slug.map(s => s"${cfg.baseUrl}/filmy/$s"),
             synopsis   = info.description,
             cast       = info.cast,
             director   = info.director,
@@ -247,7 +247,7 @@ class HeliosClient(http: HttpFetch = HeliosFetch) extends CinemaScraper {
   private def restShowtime(s: ApiScreening, rest: RestData): Option[Showtime] =
     s.dateTime.map(dt => Showtime(
       dateTime   = dt,
-      bookingUrl = Some(s"$BookingBase/${s.id}?cinemaId=$CinemaSourceId"),
+      bookingUrl = Some(s"$BookingBase/${s.id}?cinemaId=$sourceId"),
       room       = rest.screenNames.get(s.screenId),
       format     = s.release.split("/").toList.filter(_.nonEmpty)
     ))

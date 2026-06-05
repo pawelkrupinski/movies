@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{CinemaMovie, Movie, Multikino, Showtime}
+import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
 import play.api.libs.json._
 import services.movies.TrailerEmbed
 
@@ -15,8 +15,11 @@ import java.time.LocalDateTime
 object MultikinoParser {
   private val BaseUrl = "https://www.multikino.pl"
 
-  def parse(json: String): Seq[CinemaMovie] =
-    (Json.parse(json) \ "result").as[JsArray].value.map(parseFilm).toSeq
+  /** `cinema` defaults to Poznań's Multikino (Stary Browar) so the existing
+   *  parser specs and fixture stay byte-identical; the multi-city clients pass
+   *  their own Multikino venue. */
+  def parse(json: String, cinema: Cinema = Multikino): Seq[CinemaMovie] =
+    (Json.parse(json) \ "result").as[JsArray].value.map(parseFilm(_, cinema)).toSeq
 
   /** Strip cycle decoration so a decorated screening merges onto the same row
    *  — and enriches off the same clean title — as the regular run: "Kino na
@@ -29,7 +32,7 @@ object MultikinoParser {
       .replaceFirst("^Kino na obcasach:\\s*", "")
       .replaceFirst("^Kolekcja\\s+Mamoru\\s+Hosody:\\s*", "")
 
-  private def parseFilm(film: JsValue): CinemaMovie = {
+  private def parseFilm(film: JsValue, cinema: Cinema): CinemaMovie = {
     val title       = normaliseCase(cleanTitle((film \ "filmTitle").as[String]))
     val multikinoId = (film \ "filmId").asOpt[String].filter(_.nonEmpty)
     val mxcId       = (film \ "movieXchangeCode").asOpt[String].filter(_.nonEmpty)
@@ -64,7 +67,7 @@ object MultikinoParser {
                            .flatMap(g => (g \ "name").asOpt[String].orElse(g.asOpt[String]))
                            .filter(_.nonEmpty)
       ),
-      cinema      = Multikino,
+      cinema      = cinema,
       posterUrl   = (film \ "posterImageSrc").asOpt[String].filter(_.nonEmpty),
       filmUrl     = absoluteUrl((film \ "filmUrl").asOpt[String]),
       synopsis    = (film \ "synopsisShort").asOpt[String].filter(_.nonEmpty).map(tools.TextNormalization.stripHtml),

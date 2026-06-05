@@ -1,10 +1,19 @@
 package services.cinemas
 
-import models.{CinemaMovie, Helios, Movie, Showtime}
+import models.{Cinema, CinemaMovie, Helios, HeliosAlejaBielany, HeliosBlueCity, HeliosMagnolia, Movie, Showtime}
 import play.api.libs.json._
 
 import java.time.LocalDateTime
 import scala.util.Try
+
+/** Per-cinema Helios configuration: which `Cinema` the scrape feeds, the page
+ *  URL slug (`<citySlug>/<cinemaSlug>`) whose `/repertuar` carries the NUXT
+ *  blob, and the REST `cinemaId` UUID. `baseUrl` is shared by the film /
+ *  event page links and the NUXT parse; the booking host is chain-global. */
+final case class HeliosCinema(cinema: Cinema, citySlug: String, cinemaSlug: String, sourceId: String) {
+  val baseUrl: String = s"https://helios.pl/$citySlug/$cinemaSlug"
+  val pageUrl: String = s"$baseUrl/repertuar"
+}
 
 // Helios renders its repertoire page as Nuxt 2 hydration: the entire payload is
 // an IIFE assigned to `window.__NUXT__`, with shared string/number values
@@ -15,9 +24,14 @@ import scala.util.Try
 // reconciliation, and the post-processing pipeline.
 object HeliosNuxt {
 
-  val BaseUrl        = "https://helios.pl/poznan/kino-helios"
-  val BookingBase    = "https://bilety.helios.pl/screen"
-  val CinemaSourceId = "815face9-2a1d-4c62-9b2f-a361574b79a2"
+  val BookingBase = "https://bilety.helios.pl/screen"
+
+  // The Helios venues this app scrapes, each keyed by its REST source UUID
+  // (verified live against restapi.helios.pl) and page slug.
+  val Poznan       = HeliosCinema(Helios,             "poznan",   "kino-helios",                "815face9-2a1d-4c62-9b2f-a361574b79a2")
+  val Magnolia     = HeliosCinema(HeliosMagnolia,     "wroclaw",  "kino-helios-magnolia",       "c21c6e3b-874c-4432-b44e-a155ec9102cd")
+  val AlejaBielany = HeliosCinema(HeliosAlejaBielany, "wroclaw",  "kino-helios-aleja-bielany",  "7582cee7-2815-4897-8715-e90a5b99d2e4")
+  val BlueCity     = HeliosCinema(HeliosBlueCity,     "warszawa", "kino-helios-blue-city",      "4ca060df-c4f2-4157-8905-bf46527aae58")
 
   // Strip event/promo suffixes so that "Diabeł ubiera się u Prady 2 - KNT"
   // collapses to the canonical "Diabeł ubiera się u Prady 2".
@@ -27,8 +41,8 @@ object HeliosNuxt {
         " - Kino Konesera", " - seanse z konkursami HDD")
       .foldLeft(title)((t, suffix) => t.stripSuffix(suffix))
 
-  def buildMovies(html: String): Seq[CinemaMovie] = {
-    val parsed   = parseNuxtPage(html)
+  def buildMovies(html: String, cfg: HeliosCinema = Poznan): Seq[CinemaMovie] = {
+    val parsed   = parseNuxtPage(html, cfg.baseUrl)
     val nuxtRows = parsed.showtimesByMovie.toSeq.flatMap { case (movieId, slots) =>
       parsed.movies.get(movieId).map(movie => movie -> slots)
     }
@@ -46,7 +60,7 @@ object HeliosNuxt {
         CinemaMovie(
           movie = Movie(title = title, runtimeMinutes = movie.runtimeMinutes,
                         releaseYear = None, premierePl = None, premiereWorld = None),
-          cinema    = Helios,
+          cinema    = cfg.cinema,
           posterUrl = movies.flatMap(_.posterUrl).headOption,
           filmUrl   = urls.find(_.contains("/filmy/")).orElse(urls.headOption),
           synopsis  = None,
@@ -55,7 +69,7 @@ object HeliosNuxt {
           showtimes = slots.map { case (dateTime, screeningId, format) =>
             Showtime(
               dateTime   = dateTime,
-              bookingUrl = Some(s"$BookingBase/$screeningId?cinemaId=$CinemaSourceId").filter(_ => screeningId.nonEmpty),
+              bookingUrl = Some(s"$BookingBase/$screeningId?cinemaId=${cfg.sourceId}").filter(_ => screeningId.nonEmpty),
               room       = None,
               format     = format
             )
@@ -86,7 +100,8 @@ object HeliosNuxt {
   private case class NuxtCtx(
     movieBody:      String,
     screeningsBody: String,
-    resolve:        String => Option[String]
+    resolve:        String => Option[String],
+    baseUrl:        String
   )
 
   // Reused patterns. Hoisted so the structural anchors live in one place.
@@ -100,11 +115,11 @@ object HeliosNuxt {
   // Top-level film: ,id:N,sourceId:X,title:Y,titleOriginal:Z,slug:W in order.
   private val TopLevelMovie     = """,id:(\d{3,}|[\w$]+),sourceId:(?:"[^"]+"|[\w$]+),title:(?:"([^"]+)"|([\w$]+)),titleOriginal:(?:"[^"]*"|[\w$]+),slug:(?:"([^"]+)"|([\w$]+))""".r
 
-  private def parseNuxtPage(html: String): NuxtPage = {
+  private def parseNuxtPage(html: String, baseUrl: String): NuxtPage = {
     val empty = NuxtPage(Map.empty, Map.empty)
     (for {
       iife <- extractIifeBody(html)
-      ctx  <- splitBody(iife._2, makeResolver(iife._1))
+      ctx  <- splitBody(iife._2, makeResolver(iife._1), baseUrl)
     } yield NuxtPage(
       movies           = parseNuxtMovies(ctx),
       showtimesByMovie = parseNuxtShowtimes(ctx).groupMap(_._1)(_._2)
@@ -151,11 +166,12 @@ object HeliosNuxt {
 
   // The IIFE body has two regions back-to-back: film metadata first, then a
   // per-day screenings map. The screenings region starts at `screenings:{"YYYY-…`.
-  private def splitBody(body: String, resolve: String => Option[String]): Option[NuxtCtx] =
+  private def splitBody(body: String, resolve: String => Option[String], baseUrl: String): Option[NuxtCtx] =
     ScreeningsStart.findFirstMatchIn(body).map(m => NuxtCtx(
       movieBody      = body.substring(0, m.start),
       screeningsBody = body.substring(m.start + "screenings:".length),
-      resolve        = resolve
+      resolve        = resolve,
+      baseUrl        = baseUrl
     ))
 
   private def parseNuxtMovies(ctx: NuxtCtx): Map[String, NuxtMovie] = {
@@ -180,10 +196,10 @@ object HeliosNuxt {
       val movieId = gm.group(1)
       val arr     = bracketedArrayContent(ctx.screeningsBody, gm.end)
       EmbeddedMovieBlk.findFirstMatchIn(arr)
-        .flatMap(m => parseNuxtEmbeddedMovieBlock(m.group(1), ctx.resolve).map(movieId -> _))
+        .flatMap(m => parseNuxtEmbeddedMovieBlock(m.group(1), ctx.resolve, ctx.baseUrl).map(movieId -> _))
     }.toMap
 
-  private def parseNuxtEmbeddedMovieBlock(block: String, resolve: String => Option[String]): Option[NuxtMovie] =
+  private def parseNuxtEmbeddedMovieBlock(block: String, resolve: String => Option[String], baseUrl: String): Option[NuxtMovie] =
     for {
       title <- nuxtField(block, "title", resolve)
       slug  <- nuxtField(block, "slug", resolve)
@@ -191,8 +207,8 @@ object HeliosNuxt {
       title          = title,
       slug           = slug,
       posterUrl      = nuxtPoster(block, resolve),
-      filmUrl        = nuxtDigits(block, "id", resolve).map(id => s"$BaseUrl/filmy/$slug-$id")
-                         .orElse(Some(s"$BaseUrl/filmy/$slug")),
+      filmUrl        = nuxtDigits(block, "id", resolve).map(id => s"$baseUrl/filmy/$slug-$id")
+                         .orElse(Some(s"$baseUrl/filmy/$slug")),
       runtimeMinutes = nuxtRuntime(block, resolve)
     )
 
@@ -208,7 +224,7 @@ object HeliosNuxt {
         s   <- slug
       } yield {
         val nearby = ctx.movieBody.substring(m.start, math.min(m.start + 1500, ctx.movieBody.length))
-        s"m$nid" -> NuxtMovie(t, s, nuxtPoster(nearby, ctx.resolve), Some(s"$BaseUrl/filmy/$s-$nid"), nuxtRuntime(nearby, ctx.resolve))
+        s"m$nid" -> NuxtMovie(t, s, nuxtPoster(nearby, ctx.resolve), Some(s"${ctx.baseUrl}/filmy/$s-$nid"), nuxtRuntime(nearby, ctx.resolve))
       }
     }.toMap
 
@@ -218,7 +234,7 @@ object HeliosNuxt {
     eventIds.flatMap { eventId =>
       val numericId = eventId.stripPrefix("e")
       findEventMetaInMovieBody(eventId, ctx)
-        .map(movie => eventId -> movie.copy(filmUrl = Some(s"$BaseUrl/wydarzenie/${movie.slug}-$numericId")))
+        .map(movie => eventId -> movie.copy(filmUrl = Some(s"${ctx.baseUrl}/wydarzenie/${movie.slug}-$numericId")))
     }.toMap
   }
 

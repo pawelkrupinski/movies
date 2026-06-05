@@ -1,8 +1,10 @@
 package modules
 
 import clients.TmdbClient
-import controllers.{AuthController, FacebookDataDeletionController, HealthController, LegalController, MovieController, MovieControllerService, PlanController, UptimeController, UserStateController}
+import controllers.{AuthController, FacebookDataDeletionController, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, UptimeController, UserStateController}
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
+// Wrocław/Warszawa cinema objects are imported inside the commented-out
+// scraper block below; re-add them here when those scrapers go live.
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
@@ -47,6 +49,7 @@ trait Wiring {
   // → direct + homepage warm-up); the outer wrapper only adds extra
   // coverage when every inner layer is exhausted.
   lazy val cinemaScrapers: Seq[CinemaScraper] = Seq(
+    // ── Poznań ────────────────────────────────────────────────────────────
     new MultikinoClient(multikinoFetch),
     new CharlieMonroeClient(httoFetch),
     new KinoPalacoweClient(httoFetch),
@@ -56,7 +59,31 @@ trait Wiring {
     kinoMuzaClient,
     new KinoBulgarskaClient(httoFetch),
     new KinoApolloClient(httoFetch),
-    new RialtoClient(httoFetch)
+    new RialtoClient(httoFetch),
+    // ── Wrocław + Warszawa (verified IDs; enable when the multi-city rollout
+    //    goes live — uncomment, then re-add the cinema imports up top) ───────
+    //   import models.{CinemaCityWroclavia, CinemaCityKorona, MultikinoPasazGrunwaldzki,
+    //     CinemaCityArkadia, CinemaCityBemowo, CinemaCityGaleriaPolnocna, CinemaCityJanki,
+    //     CinemaCityMokotow, CinemaCityPromenada, CinemaCitySadyba, MultikinoZloteTarasy,
+    //     MultikinoMlociny, MultikinoReduta, MultikinoTargowek, MultikinoWolaPark}
+    // new CinemaCityScraper(cinemaCityClient, "1097", CinemaCityWroclavia),
+    // new CinemaCityScraper(cinemaCityClient, "1067", CinemaCityKorona),
+    // new MultikinoClient(multikinoFetch, "0010", MultikinoPasazGrunwaldzki),
+    // new HeliosClient(httoFetch, HeliosNuxt.Magnolia),
+    // new HeliosClient(httoFetch, HeliosNuxt.AlejaBielany),
+    // new CinemaCityScraper(cinemaCityClient, "1074", CinemaCityArkadia),
+    // new CinemaCityScraper(cinemaCityClient, "1061", CinemaCityBemowo),
+    // new CinemaCityScraper(cinemaCityClient, "1096", CinemaCityGaleriaPolnocna),
+    // new CinemaCityScraper(cinemaCityClient, "1069", CinemaCityJanki),
+    // new CinemaCityScraper(cinemaCityClient, "1070", CinemaCityMokotow),
+    // new CinemaCityScraper(cinemaCityClient, "1068", CinemaCityPromenada),
+    // new CinemaCityScraper(cinemaCityClient, "1060", CinemaCitySadyba),
+    // new MultikinoClient(multikinoFetch, "0013", MultikinoZloteTarasy),
+    // new MultikinoClient(multikinoFetch, "0040", MultikinoMlociny),
+    // new MultikinoClient(multikinoFetch, "0052", MultikinoReduta),
+    // new MultikinoClient(multikinoFetch, "0024", MultikinoTargowek),
+    // new MultikinoClient(multikinoFetch, "0025", MultikinoWolaPark),
+    // new HeliosClient(httoFetch, HeliosNuxt.BlueCity),
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Events ────────────────────────────────────────────────────────────────
@@ -166,6 +193,7 @@ trait Wiring {
       .map(bundleId => new AppleTokenValidator(httoFetch, bundleId))
 
   // ── Controllers ───────────────────────────────────────────────────────────
+  lazy val landingController = new LandingController(controllerComponents)
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, movieCache, userRepo, oauthProviders.keySet, environmentMode)
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
