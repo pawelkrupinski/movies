@@ -579,37 +579,60 @@ class CaffeineMovieCache(
     rows.size
   }
 
-  // ── Periodic Mongo → cache sync ───────────────────────────────────────────
+  // ── Mongo → cache sync ─────────────────────────────────────────────────────
   //
-  // Out-of-band Mongo edits — `FilmwebUrlAudit` clearing a stale URL, a
-  // manual `db.movies.update(...)` to fix one row — bypass the cache. The
-  // running app would carry the stale value forever without an explicit
-  // `/debug/rehydrate`. This tick walks `repo.findAll()` and reconciles, so
-  // the in-memory state lags Mongo by at most one interval. The `$set`-based
-  // `updateIfPresent` (see `MovieRepo`) makes those out-of-band writes
-  // durable; this tick makes them visible.
+  // Out-of-band Mongo edits — `FilmwebUrlAudit` clearing a stale URL, a manual
+  // `db.movies.update(...)` to fix one row — bypass the in-memory cache. Two
+  // mechanisms keep the cache current:
   //
-  // Cost scales with the corpus: `findAll()` is a full collection read, and
-  // Atlas serialises a single cursor at ~tens of ms per doc. At ~200 rows the
-  // tick was ~150 ms (hence the original 30-s cadence felt free); at 500+ rows
-  // it climbed to 6–9 s, so a twice-a-minute tick burned 20–30% of a (shared,
-  // single) vCPU continuously and starved page renders. The edits this exists
-  // to surface are rare (audit scripts, manual fixes), so a multi-minute lag is
-  // fine — default to 5 minutes, tunable via KINOWO_CACHE_REHYDRATE_SECONDS.
-  // The scheduler only fires when `start()` is called (Wiring does, tests
-  // don't), so unit tests still get a single one-shot hydrate at construction.
-  private val refreshScheduler       = DaemonExecutors.scheduler("movie-cache-refresh")
-  private val RefreshIntervalSeconds = Env.positiveLong("KINOWO_CACHE_REHYDRATE_SECONDS", 300L)
+  //  1. INCREMENTAL (primary): a change stream (`repo.watchUpserts`) applies
+  //     each inserted/updated/replaced row to the cache the moment it lands in
+  //     Mongo — O(changes), near-instant, and costs nothing when nothing
+  //     changes. This replaced a periodic full `findAll()` that re-read the
+  //     ENTIRE collection on a timer: at ~200 rows that was ~150 ms (so the old
+  //     30-s cadence felt free), but at 500+ rows it climbed to 6–9 s and, run
+  //     twice a minute, burned 20–30% of the single shared vCPU continuously and
+  //     starved page renders. The change stream makes the cost proportional to
+  //     real edits instead of corpus size.
+  //
+  //  2. BACKSTOP (safety net): an INFREQUENT full `rehydrate()` still runs to
+  //     catch out-of-band DELETES (change-stream delete events aren't applied)
+  //     and to close any gap if the stream dropped, or to be the only mechanism
+  //     on a standalone Mongo that can't stream. The expensive findAll now fires
+  //     every `BackstopIntervalSeconds` (default 30 min) instead of every 30 s.
+  //     Tunable via KINOWO_CACHE_REHYDRATE_SECONDS.
+  //
+  // The scheduler + watch only start when `start()` is called (Wiring does,
+  // tests don't), so unit tests still get a single one-shot hydrate at
+  // construction unless they opt into the live sync.
+  private val refreshScheduler        = DaemonExecutors.scheduler("movie-cache-refresh")
+  private val BackstopIntervalSeconds = Env.positiveLong("KINOWO_CACHE_REHYDRATE_SECONDS", 1800L)
+  @volatile private var watchHandle: Option[AutoCloseable] = None
+
+  /** Apply one out-of-band upsert from the change stream to the in-memory cache.
+   *  Mirrors a single row of `rehydrate` — a direct `positive.put`, bypassing
+   *  the identity-gate `put` (Mongo is already the source of truth here, no
+   *  re-folding needed). Deletes are not streamed; the backstop reconciles them. */
+  private def applyUpsert(r: StoredMovieRecord): Unit = {
+    positive.put(CacheKey(r.title, r.year), r.record)
+    touch()
+  }
 
   def start(): Unit = {
-    logger.info(s"MovieCache periodic rehydrate scheduled every ${RefreshIntervalSeconds}s.")
+    watchHandle = repo.watchUpserts(applyUpsert)
+    logger.info(
+      s"MovieCache incremental change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — backstop only"}; " +
+      s"backstop rehydrate every ${BackstopIntervalSeconds}s.")
     refreshScheduler.scheduleAtFixedRate(
       () => Try(rehydrate()).recover {
         case ex => logger.warn(s"MovieCache rehydrate tick failed: ${ex.getMessage}")
       },
-      RefreshIntervalSeconds, RefreshIntervalSeconds, TimeUnit.SECONDS
+      BackstopIntervalSeconds, BackstopIntervalSeconds, TimeUnit.SECONDS
     )
   }
 
-  def stop(): Unit = refreshScheduler.shutdown()
+  def stop(): Unit = {
+    watchHandle.foreach(h => Try(h.close()))
+    refreshScheduler.shutdown()
+  }
 }

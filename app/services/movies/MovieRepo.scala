@@ -2,15 +2,17 @@ package services.movies
 
 import com.mongodb.MongoException
 import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
+import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.MovieRecord
 import org.mongodb.scala.bson.{BsonDateTime, BsonNull}
 import org.mongodb.scala.model.{Filters, Updates}
-import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import org.bson.conversions.Bson
 import play.api.Logging
 import tools.Env
 
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
@@ -57,6 +59,16 @@ trait MovieRepo {
    *  bumps `filmwebRating`) is therefore preserved instead of being
    *  clobbered by a full-doc replace. */
   def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean
+
+  /** Stream out-of-band changes to persisted rows as they happen, so the cache
+   *  can apply each change incrementally instead of periodically reloading the
+   *  whole collection. `onUpsert` fires once per inserted / updated / replaced
+   *  row, already decoded. Best-effort: out-of-band *deletes* and any gap while
+   *  the stream reconnects are left to the periodic backstop rehydrate, so a
+   *  store that can't stream (disabled, or a standalone Mongo with no change
+   *  streams) may return `None` and the caller simply relies on that backstop.
+   *  The returned handle stops watching. Default: not supported. */
+  def watchUpserts(onUpsert: StoredMovieRecord => Unit): Option[AutoCloseable] = None
 
   /** Release any underlying resources. No-op when nothing to release. */
   def close(): Unit
@@ -319,6 +331,32 @@ class MongoMovieRepo(
     }
     atoms += Updates.set("updatedAt", BsonDateTime(Instant.now().toEpochMilli))
     Updates.combine(atoms.toSeq*)
+  }
+
+  /** Open a MongoDB change stream and route each inserted / updated / replaced
+   *  doc to `onUpsert`. `UPDATE_LOOKUP` makes update events carry the full
+   *  post-image (not just the delta), so we always hand the cache a complete
+   *  row. Delete events have no `fullDocument` and are skipped — the periodic
+   *  backstop rehydrate reconciles those. The mongo driver auto-resumes the
+   *  stream across transient blips; a terminal error just logs and leaves the
+   *  backstop in charge. Requires a replica set (a single-node RS counts); on a
+   *  standalone Mongo the stream errors out and we fall back to the backstop. */
+  override def watchUpserts(onUpsert: StoredMovieRecord => Unit): Option[AutoCloseable] = coll.map { c =>
+    val subRef = new AtomicReference[Subscription]()
+    c.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
+      .subscribe(new Observer[ChangeStreamDocument[StoredMovieDto]] {
+        override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
+        override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit =
+          Option(change.getFullDocument).foreach { dto =>
+            try onUpsert(StoredMovieDto.toDomain(dto))
+            catch { case ex: Throwable => logger.warn(s"MovieRepo change-stream apply failed: ${ex.getMessage}") }
+          }
+        override def onError(e: Throwable): Unit =
+          logger.warn(s"MovieRepo change stream ended (${e.getMessage}) — relying on the periodic backstop rehydrate.")
+        override def onComplete(): Unit = ()
+      })
+    logger.info("MongoMovieRepo: watching change stream for incremental cache updates.")
+    new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
   }
 
   def close(): Unit = clientOpt.foreach(_.close())

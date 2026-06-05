@@ -23,6 +23,18 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
   val upserts         = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
   val deletes         = mutable.ListBuffer.empty[(String, Option[Int])]
 
+  // Stand-in for Mongo's change stream: any write (in-process or simulated
+  // out-of-band) notifies the registered watcher, just like a real change
+  // stream fires for every persisted edit.
+  @volatile private var watcher: Option[StoredMovieRecord => Unit] = None
+  private def notifyWatcher(t: String, y: Option[Int], e: MovieRecord): Unit =
+    watcher.foreach(_(StoredMovieRecord(t, y, e)))
+
+  override def watchUpserts(onUpsert: StoredMovieRecord => Unit): Option[AutoCloseable] = {
+    watcher = Some(onUpsert)
+    Some(new AutoCloseable { override def close(): Unit = watcher = None })
+  }
+
   seed.foreach { case (t, y, e) => store.put(idOf(t, y), StoredMovieRecord(t, y, e)) }
 
   def enabled: Boolean = true
@@ -32,6 +44,7 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
   def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = {
     store.put(idOf(t, y), StoredMovieRecord(t, y, e))
     upserts.append((t, y, e))
+    notifyWatcher(t, y, e)
   }
 
   def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = {
@@ -47,6 +60,7 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
         val merged = patch.applyTo(stored.record)
         store.put(id, StoredMovieRecord(t, y, merged))
         upserts.append((t, y, merged))
+        notifyWatcher(t, y, merged)
         true
     }
   }
@@ -64,7 +78,9 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
   def dropFilmwebUrl(t: String, y: Option[Int]): Unit = {
     val id = idOf(t, y)
     store.get(id).foreach { s =>
-      store.put(id, s.copy(record = s.record.copy(filmwebUrl = None, filmwebRating = None)))
+      val updated = s.record.copy(filmwebUrl = None, filmwebRating = None)
+      store.put(id, s.copy(record = updated))
+      notifyWatcher(t, y, updated)
     }
   }
 

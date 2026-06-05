@@ -91,6 +91,47 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.isNegative(key) shouldBe true
   }
 
+  // ── incremental change-stream sync (start()) ───────────────────────────────
+  // Once started, the cache applies out-of-band Mongo writes the moment they
+  // land via `repo.watchUpserts` — no full `findAll()` rehydrate. The
+  // InMemoryMovieRepo emulates Mongo's change stream by notifying the watcher
+  // on every write.
+  "a started MovieCache" should "apply an out-of-band upsert via the change-stream watch, without a rehydrate" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val key   = cache.keyOf("Erupcja", Some(2024))
+    cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
+    cache.start()   // establishes the watch (the backstop interval won't fire in-test)
+    try {
+      // Another process edits Mongo directly. Crucially: no rehydrate() call.
+      repo.upsert(key.cleanTitle, key.year, mkEnrichment("tt1", rating = Some(9.5)))
+      cache.get(key).flatMap(_.imdbRating) shouldBe Some(9.5)
+    } finally cache.stop()
+  }
+
+  it should "stop applying changes once the watch is closed by stop()" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val key   = cache.keyOf("Erupcja", Some(2024))
+    cache.put(key, mkEnrichment("tt1", rating = Some(7.0)))
+    cache.start()
+    cache.stop()    // closes the watch handle
+    repo.upsert(key.cleanTitle, key.year, mkEnrichment("tt1", rating = Some(9.5)))
+    cache.get(key).flatMap(_.imdbRating) shouldBe Some(7.0)  // change not applied — watch is closed
+  }
+
+  "InMemoryMovieRepo.watchUpserts" should "notify the watcher on every write until the handle is closed" in {
+    val repo   = new InMemoryMovieRepo()
+    val seen   = scala.collection.mutable.ListBuffer.empty[(String, Option[Int], Option[Double])]
+    val handle = repo.watchUpserts(r => seen.append((r.title, r.year, r.record.imdbRating)))
+    handle shouldBe defined
+    repo.upsert("A", Some(2024), mkEnrichment("tt-a"))
+    repo.updateIfPresent("A", Some(2024), mkEnrichment("tt-a"), mkEnrichment("tt-a", rating = Some(8.0)))
+    handle.get.close()
+    repo.upsert("B", Some(2025), mkEnrichment("tt-b"))  // after close → not observed
+    seen.toList shouldBe List(("A", Some(2024), None), ("A", Some(2024), Some(8.0)))
+  }
+
   it should "treat case + diacritics + whitespace differences as the same key" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.put(cache.keyOf("Drzewo Magii", Some(2024)), mkEnrichment("tt9"))
