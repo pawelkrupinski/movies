@@ -36,6 +36,8 @@ module.exports = [
         HAS_OAUTH_PROVIDERS: 'readonly',
         ALL_CINEMAS: 'readonly',
         CINEMA_PILLS: 'readonly',
+        CURRENT_CITY: 'readonly',
+        ALL_CITIES: 'readonly',
 
         // From the per-page inline `<script>` block.
         IS_FAVOURITES_PAGE: 'readonly',
