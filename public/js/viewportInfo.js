@@ -5,7 +5,10 @@
 // the screen size.
 //
 // Pure: the browser panel and the Playwright/node test require the SAME
-// function, so the rendered readout can't drift from what's tested.
+// function, so the rendered readout can't drift from what's tested. The
+// CommonJS export below is for that node test — `module` is guarded behind a
+// `typeof` check so it's inert in the browser (hence the eslint global).
+/* global module */
 (function (root) {
   // `2` → `2`, `2.5` → `2.5` — drop a trailing `.0`, keep real fractions.
   function ratioText(dpr) {
