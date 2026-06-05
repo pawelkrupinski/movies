@@ -89,7 +89,7 @@ class DcfClient(http: HttpFetch) extends CinemaScraper {
   private def posterOf(block: Element): Option[String] =
     Option(block.selectFirst("div.film__poster .thumbnail-cover"))
       .map(_.attr("style"))
-      .flatMap(s => """url\((?:'|"|&quot;)?(.+?)(?:'|"|&quot;)?\)""".r.findFirstMatchIn(s).map(_.group(1)))
+      .flatMap(ScraperParse.cssUrl)
       .filter(_.nonEmpty)
 
   private def slotsOf(block: Element): Seq[RawSlot] =

@@ -104,8 +104,7 @@ object KinotekaClient {
   object Detail { val empty: Detail = Detail(None, None, None, Seq.empty, Seq.empty, None, None) }
 
   private def dd(doc: org.jsoup.nodes.Document, label: String): Option[String] =
-    doc.select("dl.p-movie-details__general-info dt").asScala.find(_.text.toLowerCase.contains(label))
-      .flatMap(d => Option(d.nextElementSibling)).filter(_.tagName == "dd").map(_.text.trim).filter(_.nonEmpty)
+    ScraperParse.ddField(doc, label, "dl.p-movie-details__general-info dt")
 
   def parseDetail(html: String): Detail = {
     val doc = Jsoup.parse(html)

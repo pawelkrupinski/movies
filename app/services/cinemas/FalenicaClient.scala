@@ -60,7 +60,7 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper {
         val director = """(?i)reż\.\s*(.+)$""".r.findFirstMatchIn(czas).map(_.group(1).trim)
                          .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
         val poster   = Option(art.selectFirst("div.repe_outer")).map(_.attr("style"))
-                         .flatMap(s => """url\((?:'|"|&quot;)?(.+?)(?:'|"|&quot;)?\)""".r.findFirstMatchIn(s).map(_.group(1)))
+                         .flatMap(ScraperParse.cssUrl)
                          .map(u => if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}")
         Film(slug, title, runtime, director, poster)
       }
@@ -70,8 +70,7 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper {
     doc.select("div.terminy_list > div.row").asScala.toSeq.flatMap { row =>
       val dets = row.select("div.term_det").asScala.toSeq.map(_.text.trim)
       val date = dets.flatMap(t => Try(java.time.LocalDate.parse(t, DateFmt)).toOption).headOption
-      val time = dets.flatMap(t => """(\d{1,2}):(\d{2})""".r.findFirstMatchIn(t)
-                   .flatMap(m => Try(java.time.LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption)).headOption
+      val time = dets.flatMap(ScraperParse.parseHHmm).headOption
       val booking = Option(row.selectFirst("a.green_but[href]")).map(_.attr("href")).filter(_.nonEmpty)
       for { d <- date; t <- time } yield Showtime(d.atTime(t), booking, None, Nil)
     }

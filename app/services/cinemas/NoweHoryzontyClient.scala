@@ -44,7 +44,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
         filmId  <- FilmIdPat.findFirstMatchIn(link.attr("href")).map(_.group(1))
         title    = link.text.trim if title.nonEmpty
         date    <- NoweHoryzontyClient.parseDate(Option(a.selectFirst("span.d")).map(_.text.trim).getOrElse(""), today)
-        time    <- NoweHoryzontyClient.parseTime(Option(a.selectFirst("span.cz")).map(_.text.trim).getOrElse(""))
+        time    <- ScraperParse.parseHHmm(Option(a.selectFirst("span.cz")).map(_.text.trim).getOrElse(""))
       } yield RawSlot(filmId, title, posterOf(card), eventId, date.atTime(time),
                       if (href.startsWith("http")) href else s"$BaseUrl/$href")
     }
@@ -83,7 +83,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
 
   private def posterOf(block: Element): Option[String] =
     Option(block.selectFirst("span.ilustr")).map(_.attr("style"))
-      .flatMap(s => """url\((?:'|"|&quot;)?(.+?)(?:'|"|&quot;)?\)""".r.findFirstMatchIn(s).map(_.group(1)))
+      .flatMap(ScraperParse.cssUrl)
       .map(u => if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}")
 }
 
@@ -95,7 +95,6 @@ object NoweHoryzontyClient {
     "lip" -> 7, "sie" -> 8, "wrz" -> 9, "paź" -> 10, "lis" -> 11, "gru" -> 12
   )
   private val DayMonthPat = """(\d{1,2})\s+([a-ząćęłńóśźż]{3})""".r
-  private val TimePat     = """(\d{1,2}):(\d{2})""".r
 
   /** "dzisiaj"/"jutro"/"DD mmm" → an absolute date, resolved against `today`.
    *  Bare DD-mmm carry no year; take `today`'s year, rolling to next year when
@@ -111,9 +110,6 @@ object NoweHoryzontyClient {
       }
     }
   }
-
-  def parseTime(raw: String): Option[java.time.LocalTime] =
-    TimePat.findFirstMatchIn(raw).flatMap(m => Try(java.time.LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption)
 
   final case class Detail(
     runtimeMinutes: Option[Int],

@@ -132,8 +132,7 @@ object NoveKinoClient {
   object Detail { val empty: Detail = Detail(None, Seq.empty, Seq.empty, Seq.empty, None) }
 
   private def dd(doc: org.jsoup.nodes.Document, label: String): Option[String] =
-    doc.select("dt").asScala.find(_.text.toLowerCase.contains(label))
-      .flatMap(d => Option(d.nextElementSibling)).filter(_.tagName == "dd").map(_.text.trim).filter(_.nonEmpty)
+    ScraperParse.ddField(doc, label)
 
   def parseDetail(html: String): Detail = {
     val doc = Jsoup.parse(html)

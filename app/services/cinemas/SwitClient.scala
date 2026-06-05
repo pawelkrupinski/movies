@@ -32,7 +32,7 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
     val showtimes = card.select("a.cks-showtime-item").asScala.toSeq.flatMap { a =>
       val date = Option(a.attr("data-showtime-date")).filter(_.nonEmpty).flatMap(d => Try(LocalDate.parse(d, DateFmt)).toOption)
       val time = Option(a.selectFirst("span.cks-st-time")).map(_.text.trim)
-        .flatMap(t => """(\d{1,2}):(\d{2})""".r.findFirstMatchIn(t).flatMap(m => Try(java.time.LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption))
+        .flatMap(ScraperParse.parseHHmm)
       val booking = Option(a.attr("href")).filter(_.nonEmpty)
       for { d <- date; t <- time } yield Showtime(d.atTime(t), booking, None, Nil)
     }.distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)

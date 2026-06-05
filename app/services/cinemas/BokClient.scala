@@ -65,7 +65,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
     val time = Option(block.selectFirst("div.fs-16.fw-black")).map(_.text.trim)
     for {
       d  <- date.flatMap(BokClient.parseDate(_, today))
-      t  <- time.flatMap(BokClient.parseTime)
+      t  <- time.flatMap(ScraperParse.parseHHmm)
     } yield {
       val booking = Option(block.selectFirst("a[href*=biletyna]")).map(_.attr("href")).filter(_.nonEmpty)
       Showtime(d.atTime(t), booking, None, Nil)
@@ -79,7 +79,6 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
 
 object BokClient {
   private val DatePat = """(\d{1,2})\.(\d{1,2})""".r
-  private val TimePat = """(\d{1,2}):(\d{2})""".r
 
   /** "05.06" (DD.MM, no year) → a date; year from `today`, rolling forward when
    *  the month is already behind us. */
@@ -89,7 +88,4 @@ object BokClient {
       val year = if (mon < today.getMonthValue) today.getYear + 1 else today.getYear
       Try(LocalDate.of(year, mon, m.group(1).toInt)).toOption
     }
-
-  def parseTime(raw: String): Option[java.time.LocalTime] =
-    TimePat.findFirstMatchIn(raw).flatMap(m => Try(java.time.LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption)
 }

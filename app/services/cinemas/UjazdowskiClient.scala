@@ -73,7 +73,7 @@ class UjazdowskiClient(http: HttpFetch) extends CinemaScraper {
       val slug  = SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1))
       val title = Option(a.selectFirst(".title em")).orElse(Option(a.selectFirst(".title"))).map(_.text.trim).filter(_.nonEmpty)
       val time  = Option(a.selectFirst(".hours")).map(_.text.trim)
-                    .flatMap(t => """(\d{1,2}):(\d{2})""".r.findFirstMatchIn(t).flatMap(m => Try(java.time.LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption))
+                    .flatMap(ScraperParse.parseHHmm)
       for { s <- slug; t <- title; tm <- time } yield {
         val meta   = Option(a.selectFirst(".fs-20.max-w")).map(_.text.trim).filter(_.nonEmpty)
         val poster = Option(a.selectFirst("img[src]")).map(_.attr("src")).filter(_.nonEmpty)

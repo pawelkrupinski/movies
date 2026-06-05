@@ -70,7 +70,7 @@ class CytadelaClient(http: HttpFetch) extends CinemaScraper {
     val slug = link.flatMap(a => SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
     val title = link.map(_.text.trim).filter(_.nonEmpty)
     val time = Option(item.selectFirst("time.repertoire-item__time")).map(t => Option(t.attr("datetime")).filter(_.nonEmpty).getOrElse(t.text).trim)
-                 .flatMap(t => """(\d{1,2}):(\d{2})""".r.findFirstMatchIn(t).flatMap(m => Try(java.time.LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption))
+                 .flatMap(ScraperParse.parseHHmm)
     for { s <- slug; t <- title; tm <- time } yield {
       val genres = item.select("li.repertoire-item__categories__category").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
                      .map(tools.TextNormalization.titleCaseIfAllLower)
