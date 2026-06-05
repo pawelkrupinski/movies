@@ -85,8 +85,9 @@ trait Wiring {
     // new MultikinoClient(multikinoFetch, "0025", MultikinoWolaPark),
     // new HeliosClient(httoFetch, HeliosNuxt.BlueCity),
     // ── Independents (bespoke clients; enable with the rollout) ──────────────
-    // new DcfClient(httoFetch),       // Wrocław — Dolnośląskie Centrum Filmowe
-    // new MuranowClient(httoFetch),   // Warszawa — Kino Muranów
+    // new NoweHoryzontyClient(httoFetch),  // Wrocław — Kino Nowe Horyzonty
+    // new DcfClient(httoFetch),            // Wrocław — Dolnośląskie Centrum Filmowe
+    // new MuranowClient(httoFetch),        // Warszawa — Kino Muranów
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Events ────────────────────────────────────────────────────────────────

@@ -36,6 +36,8 @@ case object HeliosMagnolia extends Cinema("Helios Magnolia Park", "Magnolia")
 
 case object HeliosAlejaBielany extends Cinema("Helios Aleja Bielany", "Aleja Bielany")
 
+case object KinoNoweHoryzonty extends Cinema("Kino Nowe Horyzonty", "Nowe Horyzonty")
+
 case object DolnoslaskieCentrumFilmowe extends Cinema("Dolnośląskie Centrum Filmowe", "DCF")
 
 // ── Warszawa ─────────────────────────────────────────────────────────────────
@@ -91,6 +93,7 @@ object Cinema {
     MultikinoPasazGrunwaldzki,
     HeliosMagnolia,
     HeliosAlejaBielany,
+    KinoNoweHoryzonty,
     DolnoslaskieCentrumFilmowe,
   )
 

@@ -206,13 +206,13 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="logowaniecont"  style="display: none;">
 <div class="logowaniepopup formularz lpop form">
 
-  <form name="loginForm" method="post" action="https://www.kinonh.pl/loguj.do;jsessionid=BC754B1ECEF3A1681566706657787B10"><input type="hidden" name="location" value="" id="logujloc"><div class="komunik"></div>
+  <form name="loginForm" method="post" action="https://www.kinonh.pl/loguj.do;jsessionid=A5C45A7E67DC2E384B8FFE23AC45DB03"><input type="hidden" name="location" value="" id="logujloc"><div class="komunik"></div>
   
   <input type="text" name="login" value="" class="in log"><br>
   <input type="password" name="passwd" value="" class="in pas"><div class="zapres"><input type="checkbox" name="zapamietaj" value="on" id="zapamietajlog" class=""><label for="zapamietajlog" >Zapamiętaj </label>
-  <a href="https://www.kinonh.pl/resetujpass.do;jsessionid=BC754B1ECEF3A1681566706657787B10" class="f6 underline-hover">Nie pamiętasz hasła?</a></div>
+  <a href="https://www.kinonh.pl/resetujpass.do;jsessionid=A5C45A7E67DC2E384B8FFE23AC45DB03" class="f6 underline-hover">Nie pamiętasz hasła?</a></div>
   <input type="submit" value="Zaloguj" style="width: 100%; margin-right:0; margin-top: 1.5em" class="przycisk"><div style="" class="niemasz f6">
-     Nie masz konta? <a href="https://www.kinonh.pl/profil.do;jsessionid=BC754B1ECEF3A1681566706657787B10?method=create" class="underline-anim">zarejestruj się</a></div>
+     Nie masz konta? <a href="https://www.kinonh.pl/profil.do;jsessionid=A5C45A7E67DC2E384B8FFE23AC45DB03?method=create" class="underline-anim">zarejestruj się</a></div>
   
  </form></div></div>
 <script> 
@@ -528,6 +528,12 @@ initRepertuar();
        
        <h4>Milcząca przyjaciółka</h4>
        <h6>Ildikó Enyedi</h6>
+     </a>
+   <a href="op.s?id=22627" class="plakat-box swiper-slide">
+       <span class="plakat-cont-ov"><span class="plakat-cont" style="background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MILCZENIE_OWIEC/plak1at_8022081_1.8.jpg_x_standa.jpg)"></span></span>
+       
+       <span class="labe nowosc"></span><h4>Milczenie owiec</h4>
+       <h6>Jonathan Demme</h6>
      </a>
    <a href="op.s?id=22586" class="plakat-box swiper-slide">
        <span class="plakat-cont-ov"><span class="plakat-cont" style="background-image: url(pliki/wgrane/image/fotosy/2023/ZAPOWIEDZI/MOW_DO_MNIE/plak1at_MOW-DO-MNIE.jpeg_x_standa.jpg)"></span></span>
@@ -1860,15 +1866,28 @@ initRepertuar();
 </div>
 </div>
 <div class="boks " style="" data-aos="fade-left"  >
-  <a href="op.s?id=22399"><span class="ilustr"><style>#pic_74,html.webp #pic_74 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/glw_MV5BZjFhN2M0ZGMtZmI3MC00NWZkLTk3Y2ItYTZkNDZkODhmYThiXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_74,html.webp #pic_74 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/glw_MV5BZjFhN2M0ZGMtZmI3MC00NWZkLTk3Y2ItYTZkNDZkODhmYThiXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
+  <a href="op.s?id=22187"><span class="ilustr"><style>#pic_74,html.webp #pic_74 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PROJEKT_HAIL_MARY/glw_zdjecie_2.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_74,html.webp #pic_74 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PROJEKT_HAIL_MARY/glw_zdjecie_2.jpg_standa.jpg?v=3);} }
 </style><span class='ilustrimg' style='' id='pic_74'></span></span></a>
+  <div class="opis">    
+    <h6><a href="cykl.s?id=404">Filmy w repertuarze</a></h6><h3><a href="op.s?id=22187">Projekt Hail Mary</a></h3>
+<h6>Najbliższy seans:</h6>
+    <div class="margin-over-events"></div>
+    <a class="seansapla mala " style="" href="bilet.s?eventId=194211&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fprogram.s%3F" title="kup / rezerwuj bilet" data-number="0" data-last="true">
+ <span class="data f4"><span class="d">jutro</span><span class="cz">14:20</span></span>
+ <span class="buyticket"><span class="f6">kup bilet</span></span>
+</a>
+</div>
+</div>
+<div class="boks " style="" data-aos="fade-left"  >
+  <a href="op.s?id=22399"><span class="ilustr"><style>#pic_75,html.webp #pic_75 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/glw_MV5BZjFhN2M0ZGMtZmI3MC00NWZkLTk3Y2ItYTZkNDZkODhmYThiXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_75,html.webp #pic_75 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/glw_MV5BZjFhN2M0ZGMtZmI3MC00NWZkLTk3Y2ItYTZkNDZkODhmYThiXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
+</style><span class='ilustrimg' style='' id='pic_75'></span></span></a>
   <div class="opis">    
     <h6><a href="cykl.s?id=922">Pokazy dla szkół</a></h6><h3><a href="op.s?id=22399">Mandalorian i Grogu</a></h3>
 <h6>Brak nadchodzących seansów</h6></div>
 </div>
 <div class="boks " style="" data-aos="fade-left"  >
-  <a href="op.s?id=22440"><span class="ilustr"><style>#pic_75,html.webp #pic_75 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/glw_409356_4.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_75,html.webp #pic_75 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/glw_409356_4.13.jpg_standa.jpg?v=3);} }
-</style><span class='ilustrimg' style='' id='pic_75'></span></span></a>
+  <a href="op.s?id=22440"><span class="ilustr"><style>#pic_76,html.webp #pic_76 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/glw_409356_4.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_76,html.webp #pic_76 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/glw_409356_4.13.jpg_standa.jpg?v=3);} }
+</style><span class='ilustrimg' style='' id='pic_76'></span></span></a>
   <div class="opis">    
     <h6><a href="cykl.s?id=404">Filmy w repertuarze</a></h6><h3><a href="op.s?id=22440">Podziemny krąg</a></h3>
 <h6>Najbliższy seans:</h6>
@@ -1880,21 +1899,21 @@ initRepertuar();
 </div>
 </div>
 <div class="boks " style="" data-aos="fade-left"  >
-  <a href="op.s?id=22316"><span class="ilustr"><style>#pic_76,html.webp #pic_76 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/glw_DIABEL_UBIERA_SIE_U_PRADY_2_6.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_76,html.webp #pic_76 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/glw_DIABEL_UBIERA_SIE_U_PRADY_2_6.jpg_standa.jpg?v=3);} }
-</style><span class='ilustrimg' style='' id='pic_76'></span></span></a>
+  <a href="op.s?id=22316"><span class="ilustr"><style>#pic_77,html.webp #pic_77 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/glw_DIABEL_UBIERA_SIE_U_PRADY_2_6.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_77,html.webp #pic_77 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/glw_DIABEL_UBIERA_SIE_U_PRADY_2_6.jpg_standa.jpg?v=3);} }
+</style><span class='ilustrimg' style='' id='pic_77'></span></span></a>
   <div class="opis">    
     <h6><a href="cykl.s?id=404">Filmy w repertuarze</a></h6><h3><a href="op.s?id=22316">Diabeł ubiera się u Prady 2</a></h3>
 <h6>Najbliższy seans:</h6>
     <div class="margin-over-events"></div>
-    <a class="seansapla mala " style="" href="bilet.s?eventId=194187&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fprogram.s%3F" title="kup / rezerwuj bilet" data-number="0" data-last="true">
- <span class="data f4"><span class="d">dzisiaj</span><span class="cz">13:00</span></span>
+    <a class="seansapla mala " style="" href="bilet.s?eventId=194188&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fprogram.s%3F" title="kup / rezerwuj bilet" data-number="0" data-last="true">
+ <span class="data f4"><span class="d">dzisiaj</span><span class="cz">15:30</span></span>
  <span class="buyticket"><span class="f6">kup bilet</span></span>
 </a>
 </div>
 </div>
 <div class="boks " style="" data-aos="fade-left"  >
-  <a href="op.s?id=22524"><span class="ilustr"><style>#pic_77,html.webp #pic_77 {background-image: url(pliki/wgrane/image/fotosy/2021/7X_JARMUSCH/TRUPOSZ/glw_TRUPOSZ_8_TIFF9.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_77,html.webp #pic_77 {background-image: url(pliki/wgrane/image/fotosy/2021/7X_JARMUSCH/TRUPOSZ/glw_TRUPOSZ_8_TIFF9.jpg_standa.jpg?v=3);} }
-</style><span class='ilustrimg' style='' id='pic_77'></span></span></a>
+  <a href="op.s?id=22524"><span class="ilustr"><style>#pic_78,html.webp #pic_78 {background-image: url(pliki/wgrane/image/fotosy/2021/7X_JARMUSCH/TRUPOSZ/glw_TRUPOSZ_8_TIFF9.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_78,html.webp #pic_78 {background-image: url(pliki/wgrane/image/fotosy/2021/7X_JARMUSCH/TRUPOSZ/glw_TRUPOSZ_8_TIFF9.jpg_standa.jpg?v=3);} }
+</style><span class='ilustrimg' style='' id='pic_78'></span></span></a>
   <div class="opis">    
     <h6><a href="cykl.s?id=1088">Echo</a></h6><h3><a href="op.s?id=22524">Truposz</a></h3>
 <h6>Najbliższy seans:</h6>
@@ -1906,8 +1925,8 @@ initRepertuar();
 </div>
 </div>
 <div class="boks " style="" data-aos="fade-left"  >
-  <a href="op.s?id=22561"><span class="ilustr"><style>#pic_78,html.webp #pic_78 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/glw_Bjork_3.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_78,html.webp #pic_78 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/glw_Bjork_3.jpg_standa.jpg?v=3);} }
-</style><span class='ilustrimg' style='' id='pic_78'></span></span></a>
+  <a href="op.s?id=22561"><span class="ilustr"><style>#pic_79,html.webp #pic_79 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/glw_Bjork_3.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_79,html.webp #pic_79 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/glw_Bjork_3.jpg_standa.jpg?v=3);} }
+</style><span class='ilustrimg' style='' id='pic_79'></span></span></a>
   <div class="opis">    
     <h6><a href="cykl.s?id=785">Muzyka na ekranie</a></h6><h3><a href="op.s?id=22561">Björk: Cornucopia</a></h3>
 <h6>Najbliższy seans:</h6>
@@ -1919,27 +1938,14 @@ initRepertuar();
 </div>
 </div>
 <div class="boks " style="" data-aos="fade-left"  >
-  <a href="op.s?id=22562"><span class="ilustr"><style>#pic_79,html.webp #pic_79 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/THE_CURE_ANNIVERSARY_19782018_LIVE_IN_HYDE_PARK/glw_THE_CURE_BST_ANNIVERSARY_UHD_Images__0022_192879_copy.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_79,html.webp #pic_79 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/THE_CURE_ANNIVERSARY_19782018_LIVE_IN_HYDE_PARK/glw_THE_CURE_BST_ANNIVERSARY_UHD_Images__0022_192879_copy.jpg_standa.jpg?v=3);} }
-</style><span class='ilustrimg' style='' id='pic_79'></span></span></a>
+  <a href="op.s?id=22562"><span class="ilustr"><style>#pic_80,html.webp #pic_80 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/THE_CURE_ANNIVERSARY_19782018_LIVE_IN_HYDE_PARK/glw_THE_CURE_BST_ANNIVERSARY_UHD_Images__0022_192879_copy.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_80,html.webp #pic_80 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/THE_CURE_ANNIVERSARY_19782018_LIVE_IN_HYDE_PARK/glw_THE_CURE_BST_ANNIVERSARY_UHD_Images__0022_192879_copy.jpg_standa.jpg?v=3);} }
+</style><span class='ilustrimg' style='' id='pic_80'></span></span></a>
   <div class="opis">    
     <h6><a href="cykl.s?id=785">Muzyka na ekranie</a></h6><h3><a href="op.s?id=22562">The Cure: Anniversary 1978–2018 Live in Hyde Park</a></h3>
 <h6>Najbliższy seans:</h6>
     <div class="margin-over-events"></div>
     <a class="seansapla mala " style="" href="bilet.s?eventId=193523&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fprogram.s%3F" title="kup / rezerwuj bilet" data-number="0" data-last="true">
  <span class="data f4"><span class="d">4 lip / so</span><span class="cz">20:30</span></span>
- <span class="buyticket"><span class="f6">kup bilet</span></span>
-</a>
-</div>
-</div>
-<div class="boks " style="" data-aos="fade-left"  >
-  <a href="op.s?id=22572"><span class="ilustr"><style>#pic_80,html.webp #pic_80 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/glw_John.2.00_01_02_14.Still010.jpg_mini.jpg?v=3);} @media  (min-width:420px) {#pic_80,html.webp #pic_80 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/glw_John.2.00_01_02_14.Still010.jpg_standa.jpg?v=3);} }
-</style><span class='ilustrimg' style='' id='pic_80'></span></span></a>
-  <div class="opis">    
-    <h6><a href="cykl.s?id=442">Wózkownia</a></h6><h3><a href="op.s?id=22572">Werdykt</a></h3>
-<h6>Najbliższy seans:</h6>
-    <div class="margin-over-events"></div>
-    <a class="seansapla mala " style="" href="bilet.s?eventId=193538&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fprogram.s%3F" title="kup / rezerwuj bilet" data-number="0" data-last="true">
- <span class="data f4"><span class="d">11 cze / cz</span><span class="cz">12:00</span></span>
  <span class="buyticket"><span class="f6">kup bilet</span></span>
 </a>
 </div>
