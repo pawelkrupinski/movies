@@ -58,6 +58,22 @@ fun FiltersSheet(
     sheetState: SheetState,
     onDismiss: () -> Unit,
 ) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        FiltersSheetContent(vm, films, showCinemaFilter)
+    }
+}
+
+/**
+ * The Filtry sheet body — extracted from the [ModalBottomSheet] wrapper so a
+ * Robolectric Compose test can render the section list directly and assert
+ * its order (see FiltersSheetOrderTest).
+ */
+@Composable
+internal fun FiltersSheetContent(
+    vm: KinowoViewModel,
+    films: List<Film>,
+    showCinemaFilter: Boolean,
+) {
     val hidden by vm.hiddenFilms.collectAsState()
     val disabled by vm.disabledCinemas.collectAsState()
     val allCinemas = remember(films) { vm.allCinemas(films) }
@@ -66,21 +82,16 @@ fun FiltersSheet(
     val allDirectors = remember(films) { vm.allDirectors(films) }
     val allCast = remember(films) { vm.allCast(films) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        LazyColumn(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+    LazyColumn(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("Filtry", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     TextButton(onClick = { vm.clearFilters() }) { Text("Wyczyść") }
                 }
             }
-
-            // Miasto — the city the repertoire is served for. Usable before
-            // login (it's just a city switch); switching re-fetches.
-            item(key = "sec_city") { CitySection(vm) }
 
             // Sortuj — view-ordering axis above the content filters, mirroring
             // the web "Sortuj" dropdown.
@@ -174,11 +185,16 @@ fun FiltersSheet(
                 FromHourRow(vm.formatFilter) { vm.formatFilter = it }
             }
 
+            // Miasto — the city the repertoire is served for. Last filter,
+            // right above the account section, mirroring iOS FiltersBar.
+            // Usable before login (it's just a city switch); switching
+            // re-fetches.
+            item(key = "sec_city") { CitySection(vm) }
+
             item { AccountSection(vm) }
 
             item { Column(Modifier.padding(bottom = 24.dp)) {} }
         }
-    }
 }
 
 /**
