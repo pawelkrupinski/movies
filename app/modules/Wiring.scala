@@ -204,7 +204,13 @@ trait Wiring {
   lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────
-  lazy val showtimeCache = new ShowtimeCache(cinemaScrapers, eventBus, movieCache, backgroundBudget.ec("showtime-fetch"))
+  // The scrape gets at most KINOWO_SCRAPE_CONCURRENCY (default 2) of the shared
+  // budget's 8 permits, so a burst of slow cinema scrapes can't peg the single
+  // vCPU or crowd enrichment out of the budget — page renders stay responsive.
+  lazy val showtimeCache = new ShowtimeCache(
+    cinemaScrapers, eventBus, movieCache,
+    backgroundBudget.ec("showtime-fetch", Env.positiveInt("KINOWO_SCRAPE_CONCURRENCY", 2))
+  )
 
   def controllerComponents: ControllerComponents
   def environmentMode: Mode

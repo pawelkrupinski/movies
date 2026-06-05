@@ -49,6 +49,22 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     peak should be <= 3
   }
 
+  "a sub-limited EC from a budget" should "cap its own tasks at the sub-limit even with budget to spare" in {
+    val budget = new SharedExecutionBudget(8)
+    // subLimit=2: this EC alone never runs more than 2 at once, though the
+    // budget would allow up to 8.
+    val peak = peakConcurrency(10, IndexedSeq(budget.ec("scrape", subLimit = 2)))
+    peak should be <= 2
+  }
+
+  it should "still draw from — and stay within — the shared budget" in {
+    val budget = new SharedExecutionBudget(3)
+    // scrape capped at 2, plus a normal sibling EC; combined they can't exceed
+    // the budget of 3 (and scrape's own share never exceeds 2).
+    val peak = peakConcurrency(12, IndexedSeq(budget.ec("scrape", subLimit = 2), budget.ec("other")))
+    peak should be <= 3
+  }
+
   // The shutdown race in `Wiring.stop`: a `Future` stage is mid-run on the pool
   // when the pool is shut down; as that stage completes it notifies a terminal
   // callback whose submit lands on the now-shut-down pool. A terminal callback

@@ -141,4 +141,21 @@ final class SharedExecutionBudget(maxConcurrent: Int) {
     val gated      = permits.fold(underlying)(p => DaemonExecutors.semaphoreGated(underlying, p))
     ExecutionContext.fromExecutorService(DaemonExecutors.dropRejectedAfterShutdown(gated))
   }
+
+  /** Like [[ec]], but this EC additionally caps ITS OWN tasks at `subLimit`
+   *  running at once — so it shares the budget with its siblings yet never uses
+   *  more than `subLimit` of the budget's permits simultaneously. Use for a
+   *  lower-priority consumer (e.g. the cinema scrape) that should get only a
+   *  slice of the shared budget and never crowd out the rest.
+   *
+   *  The EC-private sub-permit is acquired BEFORE the shared budget permit, so a
+   *  task waiting for a sub-slot doesn't sit holding a budget permit (which would
+   *  let `subLimit` parked tasks starve the other consumers). The sub-semaphore
+   *  is private to this EC, so there's no cross-consumer deadlock. */
+  def ec(name: String, subLimit: Int): ExecutionContextExecutorService = {
+    val underlying  = DaemonExecutors.virtualThreadExecutor(name)
+    val subGated    = DaemonExecutors.semaphoreGated(underlying, new Semaphore(subLimit.max(1)))
+    val budgetGated = permits.fold(subGated)(p => DaemonExecutors.semaphoreGated(subGated, p))
+    ExecutionContext.fromExecutorService(DaemonExecutors.dropRejectedAfterShutdown(budgetGated))
+  }
 }
