@@ -72,4 +72,19 @@ class ShowtimeCacheSpec extends AnyFlatSpec with Matchers {
     cache.isTransientHttpError(new RuntimeException("something went wrong")) shouldBe false
     cache.isTransientHttpError(new RuntimeException(null: String)) shouldBe false
   }
+
+  // The continuous-loop invariant: `runPass` is driven by scheduleWithFixedDelay,
+  // which CANCELS the recurring task if the run throws. So a pass must never
+  // propagate — not even when it overruns its timeout — or scraping silently
+  // stops. A scraper slower than the (here tiny) pass timeout must leave runPass
+  // returning cleanly.
+  "runPass" should "not propagate when a pass exceeds its timeout (so the loop keeps running)" in {
+    import scala.concurrent.duration._
+    val slow = new services.cinemas.CinemaScraper {
+      val cinema = models.KinoApollo
+      def fetch() = { Thread.sleep(500); throw new java.io.IOException("slow upstream") }
+    }
+    val sc = new ShowtimeCache(Seq(slow), null, null, passTimeout = 100.millis)
+    noException should be thrownBy sc.runPass()
+  }
 }

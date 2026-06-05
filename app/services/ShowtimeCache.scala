@@ -23,30 +23,56 @@ class ShowtimeCache(
   bus:        EventBus,
   movieCache: MovieCache,
   // Defaults to a dedicated unbounded pool so tests/scripts construct it as
-  // before; `Wiring` injects a shared-budget EC so the cold-start scrape of
-  // ~48 cinemas can't peg the box. See `SharedExecutionBudget`.
-  ec:         ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("showtime-fetch")
+  // before; `Wiring` injects a shared-budget EC (sub-capped at 2) so a burst of
+  // slow scrapes can't peg the box. See `SharedExecutionBudget`.
+  ec:          ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("showtime-fetch"),
+  // Safety net so one pathologically-stuck pass can't stall the continuous loop
+  // forever. Generous — a normal pass (even ~48 cinemas at 2-at-a-time) finishes
+  // well within this. Injectable so tests can exercise the timeout path.
+  passTimeout: FiniteDuration = 30.minutes
 ) extends Stoppable with Logging {
 
   private val scheduler = DaemonExecutors.scheduler("showtime-cache-refresh")
+  // Brief breather between back-to-back passes — essentially "start the next one
+  // as soon as this finishes" without a hot loop.
+  private val InterPassDelay: FiniteDuration = 5.seconds
 
-  /** Schedule the periodic refresh. Fires immediately on the first tick so
-   *  the cache starts warming as soon as the app is up; then every 5
-   *  minutes. Each cinema fetch publishes its own `MovieRecordCreated`
-   *  events as soon as it completes, so enrichment starts work without
-   *  waiting for the N-cinema barrier.
+  /** Run scrape passes back-to-back: one full pass over every cinema, and the
+   *  next pass starts only once the previous one finishes — there is no fixed
+   *  clock. `scheduleWithFixedDelay` measures its gap from completion (not from
+   *  start), and `runPass` BLOCKS until the whole pass settles, so passes can
+   *  never overlap and a slow pass can't be lapped by the next tick (the old
+   *  every-5-min `scheduleAtFixedRate` re-submitted all N on top of an unfinished
+   *  pass, which on a busy box pegged the vCPU indefinitely). The effective
+   *  refresh interval self-adjusts to how long a pass actually takes.
    *
-   *  Production is fire-and-forget — the scheduler doesn't block on the
-   *  fetch EC between ticks. Tests use `runOnce()` instead, which shares
-   *  the per-scraper code path but JOINS on the submitted futures so the
-   *  assertion sees a fully-settled cache. */
+   *  Each cinema fetch publishes its own `MovieRecordCreated` events as it
+   *  completes, so enrichment starts without waiting for the N-cinema barrier. */
   def start(): Unit = {
     logger.info(s"Starting — commit ${Option(System.getenv("COMMIT_SHA")).getOrElse("unknown")}")
-    scheduler.scheduleAtFixedRate(
-      () => { submitAllScrapers(); () },
-      0L, 5L, TimeUnit.MINUTES
+    if (scrapers.isEmpty) return
+    logger.info(s"Scrape: continuous passes over ${scrapers.size} cinemas, " +
+                s"${InterPassDelay.toSeconds}s between passes (next starts when the last finishes).")
+    scheduler.scheduleWithFixedDelay(
+      () => runPass(),
+      0L, InterPassDelay.toMillis, TimeUnit.MILLISECONDS
     )
   }
+
+  /** One full pass: submit every scraper onto the fetch EC and block until they
+   *  have all settled. Never throws — a per-scraper failure is already caught in
+   *  `refreshOne`, and a whole-pass timeout is caught here — so the
+   *  `scheduleWithFixedDelay` loop keeps running. */
+  private[services] def runPass(): Unit =
+    try {
+      Await.ready(Future.sequence(submitAllScrapers())(using implicitly, ec), passTimeout)
+      ()
+    } catch {
+      case _: TimeoutException =>
+        logger.warn(s"Scrape pass exceeded ${passTimeout.toMinutes}min — starting a fresh pass.")
+      case e: Throwable =>
+        logger.warn(s"Scrape pass aborted: ${e.getMessage}")
+    }
 
   /** Run every scraper once on the fetch EC and block until they've all
    *  completed. After this returns, every cinema's `MovieRecordCreated`
