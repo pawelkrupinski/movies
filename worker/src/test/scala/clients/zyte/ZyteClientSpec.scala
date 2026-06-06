@@ -43,6 +43,26 @@ class ZyteClientSpec extends AnyFlatSpec with Matchers {
     ZyteClient.extractBody("""{"statusCode":200,"browserHtml":"<html></html>"}""") shouldBe empty
   }
 
+  "bodyOrThrow" should "return the decoded upstream body on a 2xx status" in {
+    val payload = """{"hello":"świat"}"""
+    val b64     = Base64.getEncoder.encodeToString(payload.getBytes(StandardCharsets.UTF_8))
+    val json    = s"""{"statusCode":200,"httpResponseBody":"$b64"}"""
+    ZyteClient.bodyOrThrow(json, "https://example.com") shouldBe payload
+  }
+
+  it should "throw naming the non-2xx upstream status (the biletyna 403 case)" in {
+    val json = """{"statusCode":403,"httpResponseBody":""}"""
+    val ex   = the[RuntimeException] thrownBy ZyteClient.bodyOrThrow(json, "https://biletyna.pl/x")
+    ex.getMessage should include("403")
+    ex.getMessage should include("https://biletyna.pl/x")
+  }
+
+  it should "throw when the body is missing even on a 2xx status" in {
+    val json = """{"statusCode":200,"browserHtml":"<html></html>"}"""
+    the[RuntimeException] thrownBy ZyteClient.bodyOrThrow(json, "x") should have message
+      "Zyte response missing httpResponseBody for x"
+  }
+
   "basicAuth" should "format Authorization as 'Basic <b64(key:)>' per Zyte's auth spec" in {
     // Zyte uses Basic auth with the API key as username and an empty
     // password — verify the encoding shape so a refactor can't quietly
