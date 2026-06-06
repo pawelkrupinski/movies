@@ -38,20 +38,6 @@
       </div>
       <div id="hidden-row-divider" class="panel-divider" style="display:none"></div>
 
-      @* City picker — switches the whole app to another city's repertoire.
-         Available signed-out; `onCityChange` remembers the pick (cookie) and
-         navigates to the chosen city's root. Only rendered when more than one
-         city is supported, so a single-city deployment shows no dead control. *@
-      @if(models.City.all.sizeIs > 1) {
-        <div class="panel-section-label">Miasto</div>
-        <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
-          @for(c <- models.City.all) {
-            <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
-          }
-        </select>
-        <div class="panel-divider"></div>
-      }
-
       @* Sort axis — orders the visible film grid. "Najbliższy seans" is the
          default (earliest upcoming screening first); "Ocena" sorts by the
          equal-weight average of every rating a film has (highest first).
@@ -166,6 +152,22 @@
         </select>
       </div>
       <div class="panel-divider"></div>
+
+      @* City picker — switches the whole app to another city's repertoire.
+         Last filter in the panel so it sits below the per-screening axes.
+         Available signed-out; `onCityChange` remembers the pick (cookie) and
+         navigates to the chosen city's root. Only rendered when more than one
+         city is supported, so a single-city deployment shows no dead control. *@
+      @if(models.City.all.sizeIs > 1) {
+        <div class="panel-section-label">Miasto</div>
+        <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
+          @for(c <- models.City.all) {
+            <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
+          }
+        </select>
+        <div class="panel-divider"></div>
+      }
+
       <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100">Wyczyść</button>
       <button onclick="copyFilterLinkToClipboard(this)" class="btn refresh-btn btn-sm w-100" style="margin-top:.4rem">Skopiuj link do schowka</button>
     </div>
