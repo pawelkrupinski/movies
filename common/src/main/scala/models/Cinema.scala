@@ -150,6 +150,16 @@ case object KinoZak extends Cinema("Kino Żak", "Żak")
 
 case object KinoPort extends Cinema("KinoPort", "KinoPort")
 
+// ── Lublin ───────────────────────────────────────────────────────────────────
+
+case object CinemaCityLublinFelicity extends Cinema("Cinema City Felicity", "Felicity")
+
+case object CinemaCityLublinPlaza extends Cinema("Cinema City Lublin Plaza", "Lublin Plaza")
+
+case object MultikinoLublin extends Cinema("Multikino Lublin", "Multikino")
+
+case object KinoBajka extends Cinema("Kino Bajka", "Bajka")
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -253,7 +263,18 @@ object Cinema {
     KinoPort,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ szczecin ++ trojmiasto
+  /** Lublin venues. Two Cinema City multiplexes (Felicity, Lublin Plaza) and
+   *  Multikino in Galeria Olimp; no Helios in Lublin. Kino Bajka — the Centrum
+   *  Kultury art-house on Radziszewskiego — is the local studyjne screen, wired
+   *  separately as a bespoke scraper. */
+  val lublin: Seq[Cinema] = Seq(
+    CinemaCityLublinFelicity,
+    CinemaCityLublinPlaza,
+    MultikinoLublin,
+    KinoBajka,
+  )
+
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ szczecin ++ trojmiasto ++ lublin
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }
