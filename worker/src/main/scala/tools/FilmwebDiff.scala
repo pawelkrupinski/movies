@@ -1,7 +1,8 @@
 package tools
 
 import models._
-import services.cinemas.{CinemaScraperCatalog, CinemaScraper, FilmwebShowtimesClient}
+import services.cinemas.FilmwebCinemaIdResolver.{Fuzzy, Override, OverrideSuppressed, Resolution, Unmatched}
+import services.cinemas.{CinemaScraperCatalog, CinemaScraper, FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 
 import java.io.PrintWriter
 import java.time.{LocalDate, LocalDateTime, ZoneId}
@@ -10,18 +11,26 @@ import scala.util.{Failure, Success, Try}
 /**
  * Diagnostic: compare OUR scrapers' screenings against Filmweb's, per cinema.
  *
- * For every modelled cinema that Filmweb also lists (`filmwebCinemaIds`), fetch
- * both sides — our real `CinemaScraper`, and a `FilmwebShowtimesClient` pointed
- * at Filmweb's JSON seances API — restrict both to the `[today, today+daysAhead]`
- * window, and report per cinema: total showtimes each side, the shared /
- * ours-only / fw-only `LocalDateTime` multisets (all films), and a per-film
- * (normalised title) breakdown. The point is to surface where our scrape is
- * thin (Filmweb has screenings we miss) or stale (we list screenings Filmweb
- * dropped), so the gaps can be chased one cinema at a time.
+ * Filmweb ids are resolved at RUNTIME via [[FilmwebCinemaIdResolver]] (fetch the
+ * per-city showtimes listing, fuzzy-match each `Cinema.displayName` to a Filmweb
+ * cinema → its id; a small override map wins first). So a cinema added to the
+ * model/catalog auto-joins the diff with no hand-edited id table; a cinema with
+ * no Filmweb listing is reported `NO_FILMWEB_ID`, not an error.
  *
- * NOT a test or a scheduled job — a one-shot, run by hand:
- *   sbt "worker/runMain tools.FilmwebDiff 3"
- * args: [daysAhead] [city-slug …]   (output also written to a /tmp file)
+ * For every resolved cinema, fetch both sides — our real `CinemaScraper`, and a
+ * `FilmwebShowtimesClient` pointed at Filmweb's JSON seances API — restrict both
+ * to the `[today, today+daysAhead]` window, and report per cinema: total
+ * showtimes each side, the shared / ours-only / fw-only `LocalDateTime` multisets
+ * (all films), and a per-film (normalised title) breakdown. The point is to
+ * surface where our scrape is thin (Filmweb has screenings we miss) or stale (we
+ * list screenings Filmweb dropped), so the gaps can be chased one cinema at a time.
+ *
+ * Run by hand or daily in CI (`.github/workflows/filmweb-diff.yml`):
+ *   sbt "worker/runMain tools.FilmwebDiff 3 out.txt out.csv [city-slug …]"
+ * args: [daysAhead] [out.txt] [out.csv] [city-slug …] — order-independent for the
+ * paths (a `*.txt` is the text report, a `*.csv` the summary); bare city slugs
+ * restrict to those cities. Always exits 0 (per-cinema network errors are
+ * Try-wrapped and reported, never fatal) so a scheduled job's artifact uploads.
  *
  * `def main`, not `extends App`: App-body static-init throws (and pages Sentry
  * through the Play logback appender) on the network timeouts this tool provokes.
@@ -32,104 +41,6 @@ import scala.util.{Failure, Success, Try}
  * Filmweb failures backs off harder.
  */
 object FilmwebDiff {
-
-  /**
-   * Our modelled cinema → Filmweb's internal cinema id (the `/showtimes/<City>/
-   * <Name>-<id>` URL id, verified to equal the `/api/v1/cinema/<id>/seances`
-   * id). Built from Filmweb's per-city showtimes listings (2026-06, bounded:
-   * one page per city); ids spot-checked against the seances API.
-   *
-   * Cinemas Filmweb does NOT list — excluded from the diff:
-   *   - Warszawa: Cinema City Galeria Północna, KINOMUZEUM, Kino Kępa,
-   *     Służewski Dom Kultury (none appear on /showtimes/Warszawa).
-   *   - Trójmiasto: Kino IKM (no IKM/Instytut entry on /showtimes/Gdańsk).
-   * Fuzzy name matches (id verified, display name differs):
-   *   - KinoApollo ← "Kino Teatr Apollo" (3025); the only Apollo in Poznań.
-   *   - MultikinoReduta ← "Multikino Atrium Reduta" (2119)
-   *   - MultikinoWolaPark ← "Multikino Wola" (1380)
-   *   - KinoAmondo ← "Amondo Kino" (2077)
-   *   - HeliosRiviera ← Gdynia "Helios" (1775)
-   */
-  val filmwebCinemaIds: Map[Cinema, Int] = Map(
-    // ── Poznań ──
-    Multikino             -> 633,
-    CinemaCityKinepolis   -> 624,
-    CinemaCityPoznanPlaza -> 568,
-    KinoBulgarska         -> 1618,
-    CharlieMonroe         -> 1499,
-    Helios                -> 1943,
-    KinoPalacowe          -> 1854,
-    KinoMuza              -> 75,
-    Rialto                -> 78,
-    KinoApollo            -> 3025, // "Kino Teatr Apollo"
-    // ── Wrocław ──
-    CinemaCityWroclavia   -> 2019,
-    CinemaCityKorona      -> 169,
-    MultikinoPasazGrunwaldzki -> 638,
-    HeliosMagnolia        -> 1133,
-    HeliosAlejaBielany    -> 1911,
-    KinoNoweHoryzonty     -> 1737,
-    DolnoslaskieCentrumFilmowe -> 1475,
-    // ── Warszawa ──  (Galeria Północna, KINOMUZEUM, Kino Kępa, SDK absent)
-    CinemaCityArkadia     -> 556,
-    CinemaCityBemowo      -> 199,
-    CinemaCityJanki       -> 175,
-    CinemaCityMokotow     -> 196,
-    CinemaCityPromenada   -> 144,
-    CinemaCitySadyba      -> 172,
-    MultikinoZloteTarasy  -> 656,
-    MultikinoMlociny      -> 2139,
-    MultikinoReduta       -> 2119, // "Multikino Atrium Reduta"
-    MultikinoTargowek     -> 1378,
-    MultikinoWolaPark     -> 1380, // "Multikino Wola"
-    HeliosBlueCity        -> 2126,
-    KinoMuranow           -> 41,
-    KinoLuna              -> 40,
-    KinoElektronik        -> 1881,
-    KinoIluzjon           -> 35,
-    KinoGram              -> 2400,
-    KinoKultura           -> 38,
-    KinoAmondo            -> 2077, // "Amondo Kino"
-    KinoNaBoku            -> 1846,
-    KinoGlebocka66        -> 2401,
-    KinoSwit              -> 52,
-    StacjaFalenica        -> 1443,
-    KinoAtlantic          -> 29,
-    Kinoteka              -> 55,
-    Ujazdowski            -> 151,
-    KinoCytadela          -> 3247,
-    // ── Kraków ──
-    CinemaCityBonarka     -> 1432,
-    CinemaCityKazimierz   -> 564,
-    CinemaCityZakopianka  -> 395,
-    MultikinoKrakow       -> 281,
-    KinoMikro             -> 24,
-    MikroBronowice        -> 1785,
-    KinoSfinks            -> 88,
-    // ── Trójmiasto ──
-    MultikinoGdansk       -> 218,
-    HeliosMetropolia      -> 1942,
-    HeliosForum           -> 2097,
-    HeliosRiviera         -> 1775, // Gdynia "Helios"
-    KinoSpektrum          -> 3051,
-    KinoKameralne         -> 2122,
-    KinoMuzeumGdansk      -> 2042, // "Kino Muzeum"
-    KinoZak               -> 60,
-    KinoPort              -> 1735,
-  )
-
-  private val ArabicToRoman: Map[String, String] = Map(
-    "1" -> "I", "2" -> "II", "3" -> "III", "4" -> "IV", "5" -> "V",
-    "6" -> "VI", "7" -> "VII", "8" -> "VIII", "9" -> "IX", "10" -> "X",
-    "11" -> "XI", "12" -> "XII", "13" -> "XIII", "14" -> "XIV", "15" -> "XV",
-    "16" -> "XVI", "17" -> "XVII", "18" -> "XVIII", "19" -> "XIX", "20" -> "XX"
-  )
-
-  /** Loose title key for cross-source film matching: trim, Arabic→Roman for
-   *  sequel numerals (Filmweb writes "Avatar 3", we write "Avatar III" etc.),
-   *  lowercase. Same idea as the old `app/scripts/FilmwebDiff`. */
-  private def normalize(title: String): String =
-    title.trim.split("\\s+").map(w => ArabicToRoman.getOrElse(w, w)).mkString(" ").toLowerCase
 
   sealed trait Verdict
   case object SAME             extends Verdict
@@ -157,29 +68,41 @@ object FilmwebDiff {
     val today     = LocalDate.now(ZoneId.of("Europe/Warsaw"))
     val windowEnd = today.plusDays(daysAhead.toLong)
 
-    // Remaining args: city slugs to restrict to (default: all cities).
-    val knownSlugs = City.all.map(_.slug).toSet
-    val cityFilter: Set[String] = args.drop(1).filter(knownSlugs).toSet
-    val outPath = args.find(a => a.startsWith("/") || a.endsWith(".txt"))
-      .getOrElse("/tmp/filmweb-diff-output.txt")
+    // Path args: a `*.txt` → text report, a `*.csv` → summary CSV. Bare slugs
+    // (matching a known city) restrict the diff to those cities.
+    val knownSlugs  = City.all.map(_.slug).toSet
+    val pathArgs    = args.tail.filter(a => a.endsWith(".txt") || a.endsWith(".csv") || a.startsWith("/"))
+    val cityFilter  = args.tail.filter(knownSlugs).toSet
+    val txtPath     = pathArgs.find(_.endsWith(".txt")).getOrElse("/tmp/filmweb-diff-output.txt")
+    val csvPath     = pathArgs.find(_.endsWith(".csv")).getOrElse("/tmp/filmweb-diff-summary.csv")
 
-    val http    = new RealHttpFetch()
-    val catalog = new CinemaScraperCatalog(http, today = today)
-
-    // Our scrapers for the cinemas Filmweb lists, scoped to the requested
-    // cities, in city order — one scraper per cinema (the catalog wires exactly
-    // one), so a simple by-cinema lookup is enough.
-    val ourScrapers: Seq[CinemaScraper] = catalog.all.filter { s =>
-      filmwebCinemaIds.contains(s.cinema) &&
-        (cityFilter.isEmpty || cityOf(s.cinema).exists(c => cityFilter(c.slug)))
-    }
+    val http     = new RealHttpFetch()
+    val catalog  = new CinemaScraperCatalog(http, today = today)
+    val resolver = new FilmwebCinemaIdResolver(http)
 
     val out = new StringBuilder
     def emit(line: String): Unit = { println(line); out.append(line).append('\n'); () }
 
     emit(s"FilmwebDiff — window [$today .. $windowEnd] ($daysAhead days ahead)")
-    emit(s"Cinemas compared: ${ourScrapers.size}" +
-      (if (cityFilter.nonEmpty) s"  (cities: ${cityFilter.toSeq.sorted.mkString(", ")})" else ""))
+    if (cityFilter.nonEmpty) emit(s"Cities: ${cityFilter.toSeq.sorted.mkString(", ")}")
+    emit("")
+
+    // ── RESOLUTION ───────────────────────────────────────────────────────────
+    // Resolve every (in-scope) cinema's Filmweb id live, then report how each
+    // resolved. Unmatched cinemas are listed, not errors.
+    val resolutions = resolver.resolveAll(cityFilter)
+    emit("══════════════════════════════ RESOLUTION ═══════════════════════════")
+    emit(resolutionReport(resolutions))
+    emit("")
+
+    val fwIdByCinema: Map[Cinema, Int] =
+      resolutions.collect { case Resolution(c, Some(id), _) => c -> id }.toMap
+
+    // Our scrapers for the cinemas with a resolved Filmweb id, in city order.
+    val ourScrapers: Seq[CinemaScraper] =
+      catalog.all.filter(s => fwIdByCinema.contains(s.cinema))
+
+    emit(s"Cinemas compared: ${ourScrapers.size}")
     emit("")
 
     var consecutiveFwFailures = 0
@@ -189,7 +112,7 @@ object FilmwebDiff {
       emit(s"… ${cinema.displayName}")
 
       val oursTry = Try(scraper.fetch())
-      val fwTry   = Try(new FilmwebShowtimesClient(http, filmwebCinemaIds(cinema), cinema, daysAhead, today).fetch())
+      val fwTry   = Try(new FilmwebShowtimesClient(http, fwIdByCinema(cinema), cinema, daysAhead, today).fetch())
 
       fwTry match {
         case Failure(_) => consecutiveFwFailures += 1
@@ -210,14 +133,65 @@ object FilmwebDiff {
       emit(d.detail)
     }
 
-    Try {
-      val pw = new PrintWriter(outPath)
-      try pw.write(out.toString) finally pw.close()
-    } match {
-      case Success(_) => emit(s"\nFull output written to $outPath")
-      case Failure(e) => emit(s"\nCould not write $outPath: ${e.getMessage}")
+    writeFile(txtPath, out.toString) match {
+      case Success(_) => emit(s"\nText report written to $txtPath")
+      case Failure(e) => emit(s"\nCould not write $txtPath: ${e.getMessage}")
+    }
+    writeFile(csvPath, csvReport(today, diffs)) match {
+      case Success(_) => emit(s"CSV summary written to $csvPath")
+      case Failure(e) => emit(s"Could not write $csvPath: ${e.getMessage}")
     }
   }
+
+  private def writeFile(path: String, content: String): Try[Unit] = Try {
+    val pw = new PrintWriter(path)
+    try pw.write(content) finally pw.close()
+  }
+
+  /** The RESOLUTION section: each cinema → its resolved id and how (override /
+   *  fuzzy), then a clear list of cinemas with NO Filmweb id. */
+  private def resolutionReport(resolutions: Seq[Resolution]): String = {
+    val (resolved, unresolved) = resolutions.partition(_.resolved)
+    val nameW = resolutions.map(_.cinema.displayName.length).maxOption.getOrElse(20)
+    val sb = new StringBuilder
+    resolved.foreach { r =>
+      val how = r.source match {
+        case Override               => "override"
+        case Fuzzy(name, score)     => f"fuzzy  ($score%.2f ← “$name”)"
+        case _                      => ""
+      }
+      sb.append(f"  ${r.cinema.displayName.padTo(nameW, ' ')}  -> ${r.filmwebId.get}%5d  $how%n")
+    }
+    if (unresolved.nonEmpty) {
+      sb.append(s"\n  NO_FILMWEB_ID (${unresolved.size}) — no Filmweb listing / data, excluded from diff:\n")
+      unresolved.foreach { r =>
+        val why = r.source match {
+          case OverrideSuppressed => "override: no usable Filmweb data"
+          case Unmatched          => "no fuzzy match in city listing"
+          case _                  => ""
+        }
+        sb.append(s"    - ${r.cinema.displayName}  ($why)\n")
+      }
+    }
+    sb.toString.stripLineEnd
+  }
+
+  /** Machine-readable per-cinema summary: one row per compared cinema. */
+  private def csvReport(today: LocalDate, diffs: Seq[CinemaDiff]): String = {
+    val header = "date,city,cinema,ours,fw,shared,ours_only,fw_only,verdict"
+    val rows = diffs.map { d =>
+      val city = cityOf(d.cinema).map(_.slug).getOrElse("")
+      List(today.toString, city, csvField(d.cinema.displayName),
+        d.oursCount, d.fwCount, d.shared, d.oursOnly, d.fwOnly, verdictLabel(d.verdict))
+        .mkString(",")
+    }
+    (header +: rows).mkString("\n") + "\n"
+  }
+
+  /** RFC-4180-ish quoting: wrap in quotes and double internal quotes when the
+   *  field carries a comma/quote/newline. Cinema names can contain commas. */
+  private def csvField(s: String): String =
+    if (s.exists(c => c == ',' || c == '"' || c == '\n')) "\"" + s.replace("\"", "\"\"") + "\"" else s
 
   private def cityOf(cinema: Cinema): Option[City] =
     City.all.find(_.cinemas.contains(cinema))
@@ -229,7 +203,7 @@ object FilmwebDiff {
     val startOfDay = today.atStartOfDay()
     val endOfDay   = windowEnd.plusDays(1).atStartOfDay() // exclusive: whole windowEnd day
     movies
-      .map(m => normalize(m.movie.title) -> m.showtimes.map(_.dateTime)
+      .map(m => FilmwebDiffTitleNormalizer.normalize(m.movie.title) -> m.showtimes.map(_.dateTime)
         .filter(dt => !dt.isBefore(startOfDay) && dt.isBefore(endOfDay)))
       .filter(_._2.nonEmpty)
       .groupMapReduce(_._1)(_._2)(_ ++ _)

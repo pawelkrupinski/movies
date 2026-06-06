@@ -1,0 +1,62 @@
+name: Filmweb diff
+
+# Daily diagnostic: compare our scrapers' showtimes against Filmweb's, per
+# cinema, and publish the text report + CSV summary as a dated artifact for
+# trend-watching. This is observability, NOT a gate — it never deploys and its
+# per-cinema network errors don't fail the job (the tool Try-wraps every fetch
+# and always exits 0).
+on:
+    # 04:00 UTC ≈ 06:00 Europe/Warsaw in summer (CEST, UTC+2); ≈ 05:00 in winter
+    # (CET, UTC+1). GitHub cron is UTC-only and has no DST awareness, so the
+    # local wall-clock time drifts by an hour across the DST boundary — fine for
+    # a once-a-day diagnostic.
+    schedule:
+        - cron: '0 4 * * *'
+    # Manual trigger for an on-demand run.
+    workflow_dispatch:
+
+jobs:
+    filmweb-diff:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            # Mirror the repo's Scala CI toolchain (see ci.yml): Temurin JDK 25
+            # with sbt dependency caching.
+            - uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            - name: Date stamp
+              id: stamp
+              run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+            # Compare 3 days ahead. ZYTE_API_KEY is the existing repo secret the
+            # deploy job already uses — Multikino's scrape chains through Zyte and
+            # needs it from datacenter IPs. `continue-on-error` is a belt-and-
+            # braces guard on top of the tool's own always-exit-0 behaviour, so a
+            # transient network wobble still lets the artifact upload below run.
+            - name: Run FilmwebDiff
+              continue-on-error: true
+              env:
+                  ZYTE_API_KEY: ${{ secrets.ZYTE_API_KEY }}
+              run: sbt "worker/runMain tools.FilmwebDiff 3 filmweb-diff.txt filmweb-diff.csv"
+
+            # Upload BOTH the human-readable report and the CSV summary under a
+            # date-stamped name. 90 days is GitHub's artifact-retention ceiling;
+            # for history beyond that the CSV would need committing to the repo
+            # (out of scope unless asked).
+            - name: Upload diff artifacts
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: filmweb-diff-${{ steps.stamp.outputs.date }}
+                  path: |
+                      filmweb-diff.txt
+                      filmweb-diff.csv
+                  retention-days: 90
+                  if-no-files-found: warn
