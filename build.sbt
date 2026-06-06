@@ -120,6 +120,13 @@ lazy val worker = (project in file("worker"))
       // jsoup + mongo + caffeine arrive transitively via `common`; Sentry is the
       // worker's own error-reporting sink.
       "io.sentry"              %  "sentry-logback"     % "8.42.0",
+      // The SLF4J binding. The web app gets logback-classic via Play's
+      // play-logback; this plain `def main` worker does NOT, so without it
+      // SLF4J finds no provider, falls back to a NOP logger, and silently drops
+      // EVERY log line — WorkerMain lifecycle, scrape ticks, and Sentry error
+      // reporting all vanish. Pinned to the version Play uses (1.5.22) so
+      // logback.xml + the sentry-logback appender stay compatible.
+      "ch.qos.logback"         %  "logback-classic"    % "1.5.22",
       "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test,
     )
   )
