@@ -546,6 +546,28 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     corrected.head._2 shouldBe cache.keyOf("Bez wyjścia", None)  // canonical key unchanged
   }
 
+  // Helios sources `releaseYear` only from a best-effort REST lookup with no
+  // fallback (HeliosClient enriches the NUXT listing, whose year is always
+  // None). That lookup is flaky — when the screening's REST body is briefly
+  // absent the year comes back None, then reappears next pass. A naive isNew
+  // would treat each Some(year)↔None flip as a fresh tuple and refire
+  // MovieRecordCreated every single pass (the recurring "(N new)" on Helios).
+  // A tick that DROPS a previously-known year is data loss, not a correction:
+  // keep the year and stay quiet. The within-pass dedup (mergeDuplicateFilms)
+  // is orthogonal — it can't see a year that flakes only on a later pass.
+  it should "not refire as new when a flaky year-source drops the year on a later tick" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    cache.recordCinemaScrape(Helios, Seq(cinemaMovie("Wicked", Helios, Some(2024))))
+    // Next pass: REST enrichment flaked, so the scrape carries no year.
+    val dropped = cache.recordCinemaScrape(Helios, Seq(cinemaMovie("Wicked", Helios, None)))
+    dropped.head._3 shouldBe false
+    // The slot keeps the previously-known year for the merged view.
+    cache.get(cache.keyOf("Wicked", Some(2024))).get.cinemaData(Helios).releaseYear shouldBe Some(2024)
+    // And when the year reappears next pass it's still the same tuple — quiet.
+    val back = cache.recordCinemaScrape(Helios, Seq(cinemaMovie("Wicked", Helios, Some(2024))))
+    back.head._3 shouldBe false
+  }
+
   it should "create a new record when no matching row exists yet" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.recordCinemaScrape(Multikino, Seq(
