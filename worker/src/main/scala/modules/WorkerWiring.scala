@@ -112,6 +112,7 @@ class WorkerWiring {
     new KinoIkmClient(httoFetch, KinoIkm),
     new KinoMuzeumGdanskClient(httoFetch, KinoMuzeumGdansk),
     new KinoZakClient(httoFetch, KinoZak),
+    new KinoPortClient(httoFetch, KinoPort),
   )
 
   // Scrape only the cities in KINOWO_SCRAPE_CITIES (comma-separated slugs),
