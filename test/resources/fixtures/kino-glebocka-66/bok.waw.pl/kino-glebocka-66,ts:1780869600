@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" itemscope itemtype="http://schema.org/WebPage" lang="pl" class="item-type-movie">
+<html xmlns="http://www.w3.org/1999/xhtml" itemscope itemtype="http://schema.org/WebPage" lang="pl" class="item-type-movies">
   <head>
     <meta charset="utf-8"/>
 <!--
@@ -27,11 +27,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital@0;1&family=Mulish:wght@200;300;400;700;800&display=swap" rel="stylesheet">
-    	<title>Tom i Jerry: Przygoda w muzeum  - Białołęcki Ośrodek Kultury</title>
-	<meta name="description" content="Tom i Jerry przenoszą się w czasie do starożytnego Złotego Miasta, gdzie trafią w sam środek szczurzego spisku."/>
-	<link rel="alternate" hreflang="pl" href="https://bok.waw.pl/kino-glebocka-66/tom-i-jerry-przygoda-w-muzeum-60422792"/>
-	<link rel="alternate" hreflang="en" href="https://bok.waw.pl/en/kino-glebocka-66/tom-i-jerry-przygoda-w-muzeum-60422792"/>
- 
+    	<title>Kino Głębocka 66  - Białołęcki Ośrodek Kultury</title>
+	<link rel="alternate" hreflang="pl" href="https://bok.waw.pl/kino-glebocka-66"/>
+	<link rel="alternate" hreflang="en" href="https://bok.waw.pl/en/kino-glebocka-66"/>
+  <link rel="canonical" href="/kino-glebocka-66"/> 
 	<link type="text/plain" rel="author" href="/humans.txt"/>
 	<meta name="robots" content="index, follow"/>
 <link href='/local/dist/style.css?v=1.1.9' rel='stylesheet' type='text/css' title=''/>
@@ -59,28 +58,28 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/local/images/favicons/favicon-32x32.png?v=1.1.9">
 <link rel="icon" type="image/png" sizes="16x16" href="/local/images/favicons/favicon-16x16.png?v=1.1.9">
 <link rel="manifest" href="/local/images/favicons/site.webmanifest?v=1.1.9">	<!-- Schema.org markup for Google+ -->
-	<meta itemprop="name" content="Tom i Jerry: Przygoda w muzeum  - Białołęcki Ośrodek Kultury">
-	<meta itemprop="description" content="Tom i Jerry przenoszą się w czasie do starożytnego Złotego Miasta, gdzie trafią w sam środek szczurzego spisku.">
-	 <meta itemprop="image" content="https://bok.waw.pl/upload/thumb/2026/05/4_auto_640x640.jpg">
+	<meta itemprop="name" content="Kino Głębocka 66  - Białołęcki Ośrodek Kultury">
+	<meta itemprop="description" content="">
+	 <meta itemprop="image" content="https://bok.waw.pl/upload/thumb/2022/01/logo-bok_auto_640x640.jpg">
 	<!-- Twitter Card data -->
 	<meta name="twitter:card" content="summary_large_image">
-	<meta name="twitter:title" content="Tom i Jerry: Przygoda w muzeum  - Białołęcki Ośrodek Kultury">
-	<meta name="twitter:description" content="Tom i Jerry przenoszą się w czasie do starożytnego Złotego Miasta, gdzie trafią w sam środek szczurzego spisku.">
+	<meta name="twitter:title" content="Kino Głębocka 66  - Białołęcki Ośrodek Kultury">
+	<meta name="twitter:description" content="">
 	<!-- Twitter Summary card images must be at least 120x120px -->
-	<meta name="twitter:image" content="https://bok.waw.pl/upload/thumb/2026/05/4_auto_640x640.jpg">	<!-- Open Graph data -->
-	<meta property="og:title" content="Tom i Jerry: Przygoda w muzeum  - Białołęcki Ośrodek Kultury"/>
+	<meta name="twitter:image" content="https://bok.waw.pl/upload/thumb/2022/01/logo-bok_auto_640x640.jpg">	<!-- Open Graph data -->
+	<meta property="og:title" content="Kino Głębocka 66  - Białołęcki Ośrodek Kultury"/>
 	<meta property="og:type" content="article"/>
-	<meta property="og:url" content="https://bok.waw.pl/kino-glebocka-66/tom-i-jerry-przygoda-w-muzeum-60422792"/>
-	<meta property="og:image" content="https://bok.waw.pl/upload/thumb/2026/05/4_auto_640x640.jpg"/>	<meta property="og:description" content="Tom i Jerry przenoszą się w czasie do starożytnego Złotego Miasta, gdzie trafią w sam środek szczurzego spisku."/> 
+	<meta property="og:url" content="https://bok.waw.pl/kino-glebocka-66"/>
+	<meta property="og:image" content="https://bok.waw.pl/upload/thumb/2022/01/logo-bok_auto_640x640.jpg"/>	<meta property="og:description" content=""/> 
 	<meta property="og:site_name" content=" - Białołęcki Ośrodek Kultury"/>
   </head>
-  <body data-html-classes="item-type-movie">
+  <body data-html-classes="item-type-movies">
     <div id="stage">
       <div id="stage-inner">
         <div id="box-loading"></div>        <header>
           <div class="header-full bg-black">
   <h1 class="visually-hidden as-focus-to" tabindex="-1">
-  Tom i Jerry: Przygoda w muzeum  - Białołęcki Ośrodek Kultury</h1>
+  Kino Głębocka 66  - Białołęcki Ośrodek Kultury</h1>
 <a href="#c-start" class="page-f1 no-as" data-focus-to="#c-start">
   Przejdź do treści</a>  <div class="header-inner" data-affix-top="1">
     <div class="header-top bg-gray-300">
@@ -241,33 +240,136 @@
   </div>
 </div></div>        </header>
         <main id="c-start" class="main">
-          <div class="item-full movie-full">
+          <div class="item-full movies-full">
   <div class="container-fluid">
-    <div class="item-full-header bg-black container-negative">
+    <div class="bokdir-full-header item-full-header bg-black container-negative">
   <div class="container-padding pt-10 pb-15">
-    <div class="row flex-sm-row-reverse">
-      <div class="col-sm-5 mb-30 mb-sm-0">
-        <div class="activity-full-header-right text-end pt-sm-15">
-  <a href="/kino-glebocka-66" class="item-back d-inline-block">
-  <div class="d-flex" data-webflow="o:0,t:.4,d:0;o:0,t:.4,d:.1">
-    <span>Powrót</span>
-    <svg class="i-md ms-3" style="" viewBox="0 0 21 17" xmlns="http://www.w3.org/2000/svg"><path d="M6.07991192,9.95161065 C6.40381269,10.2982755 6.36581077,10.8247056 5.99491846,11.1274845 C5.82583615,11.2655536 5.61695885,11.3333333 5.40893769,11.3333333 C5.16053192,11.3333333 4.91357192,11.2366415 4.73706692,11.0483155 L4.73706692,11.0483155 L0.536404615,6.55520654 C0.221856923,6.43229816 0,6.13462492 0,5.78688426 C0,5.76590787 0.000807692308,5.74511364 0.00239076923,5.72452906 C-0.0138357692,5.5101704 0.0588403846,5.29091735 0.220209231,5.11840783 L0.220209231,5.11840783 L4.73702654,0.284965394 C5.06122615,-0.0614209391 5.62407462,-0.0969833202 5.99491846,0.205517108 C6.36577038,0.508296823 6.40351385,1.03472611 6.07991192,1.38139173 L6.07991192,1.38139173 L2.73726923,4.95752387 L14.7627577,4.9583334 C18.1345177,4.9583334 20.8900246,7.55453292 20.9967854,10.7846171 L21,10.9791667 C21,14.2989138 18.2016692,17 14.7627577,17 L14.7627577,17 L2.00271346,17 C1.52865462,17 1.14441923,16.6290803 1.14441923,16.1714492 C1.14441923,15.7138173 1.52865462,15.3428984 2.00271346,15.3428984 L2.00271346,15.3428984 L14.7627577,15.3428984 C17.2555223,15.3428984 19.2834115,13.3853144 19.2834115,10.9791667 C19.2834115,8.57301913 17.2555223,6.61543511 14.7627577,6.61543511 L14.7627577,6.61543511 L2.96261538,6.61542864 L6.07991192,9.95161065 Z"/></svg>  </div>
+    <div class="row">
+      <div class="col-md-5 col-sm-6 mb-30 mb-sm-0">
+        <h2 class="item-full-title fs-50 mb-0" data-as-view="basic" data-as-id="i-f-t-7738">
+  Kino Głębocka 66</h2>      </div>
+      <div class="col-md-7 col-sm-6">
+        <div class="movies-full-header-right text-end fs-18 fw-black pt-15">
+  <a href="http://maps.google.com/maps?q=52.3113174,21.0676784" class="venue-list d-inline-block" target="_blank">
+  <div class="d-flex align-items-center">
+    <svg class="i-xxs me-2" style="" viewBox="0 0 17 20" xmlns="http://www.w3.org/2000/svg"><path d="M101.500247,710 C104.328367,710 106.870682,711.267617 108.47482,713.477383 C110.071077,715.675977 110.439659,718.459453 109.460769,720.923086 C109.201641,721.589258 108.786807,722.241016 108.229399,722.855937 L108.229399,722.855937 L102.059584,729.753828 C101.920006,729.910039 101.715503,730 101.500247,730 C101.284992,730 101.080488,729.91 100.940911,729.753828 L100.940911,729.753828 L94.7693716,722.854063 C94.2144264,722.242656 93.7990588,721.590195 93.537756,720.918633 C92.5608357,718.459453 92.9294175,715.675977 94.5256751,713.477383 C96.1298123,711.267617 98.6721279,710 101.500247,710 Z M101.500247,711.398594 C99.1619013,711.398594 97.060152,712.446172 95.7342671,714.272734 C94.4125273,716.093477 94.1059162,718.394883 94.913833,720.428672 C95.1156276,720.947578 95.4418559,721.455703 95.8846383,721.944062 L95.8846383,721.944062 L101.500247,728.222148 L107.112409,721.948008 C107.113394,721.946602 107.114625,721.94543 107.115856,721.944258 C107.558885,721.455469 107.885113,720.947305 108.084938,720.43332 C108.894825,718.394883 108.587967,716.093477 107.265981,714.272734 C105.940055,712.446133 103.838552,711.398594 101.500247,711.398594 Z M101.500247,714.14918 C103.768784,714.14918 105.614607,715.906055 105.614607,718.065273 C105.614607,720.224727 103.76903,721.981367 101.500247,721.981367 C99.2314644,721.981367 97.3858879,720.224727 97.3858879,718.065273 C97.3858879,715.90582 99.2317107,714.14918 101.500247,714.14918 Z M101.500247,715.547734 C100.041844,715.547734 98.8552902,716.677109 98.8552902,718.065234 C98.8552902,719.453359 100.041844,720.582734 101.500247,720.582734 C102.958651,720.582734 104.145204,719.453359 104.145204,718.065234 C104.145204,716.677109 102.958651,715.547734 101.500247,715.547734 Z" transform="translate(-93 -710)"/></svg>    <span>Głębocka 66</span>
+  </div>
 </a></div>      </div>
-      <div class="col-sm-7">
-        <a href="/kino-glebocka-66" class="activity-full-title fs-50 fw-black">
-  <div data-as-view="basic" data-as-id="i-f-t-7738">
-    Kino Głębocka 66  </div>
-</a>      </div>
     </div>  </div>
-</div>        <div class="movie-main item-main">
-  <div class="opening-image bok-thumb bok-thumb-wide container-negative bg-dark">
-    <div data-webflow="o:0,t:.8,d:0;o:0,t:.4,d:.1">
-      <div class="item-image-lg">
+</div>        <div class="movies-main">
+  <div data-as-view="basic" data-as-id="mm-o-7738">
+        <div class="movies-submenu calendar-submenu bg-gray-200 container-negative">
+  <div class="container-padding">
+    <div class="row align-items-stretch">
+      <div class="col-md-3">
+        <div class="container-negative-left bg-white h-100">
+          <div class="container-padding-left">
+            <div class="fs-34 fw-black py-2">
+              Repertuar            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 col-sm-6">
+        <div class="calendar-submenu-week d-flex h-100">
+      <a href="/kino-glebocka-66" class="day btn flex-center h-100 ">
+      <div class="fs-24 fw-black">
+        Dziś      </div>
+    </a>
+      <a href="/kino-glebocka-66,ts:1780783200" class="day btn flex-center h-100 ">
+      <div class="fs-24 fw-black">
+        Nd.      </div>
+    </a>
+      <a href="/kino-glebocka-66,ts:1780869600" class="day btn flex-center h-100 active btn-dark">
+      <div class="fs-24 fw-black">
+        Pon.      </div>
+    </a>
+      <a href="/kino-glebocka-66,ts:1780956000" class="day btn flex-center h-100 ">
+      <div class="fs-24 fw-black">
+        Wt.      </div>
+    </a>
+      <a href="/kino-glebocka-66,ts:1781042400" class="day btn flex-center h-100 ">
+      <div class="fs-24 fw-black">
+        Śr.      </div>
+    </a>
+      <a href="/kino-glebocka-66,ts:1781128800" class="day btn flex-center h-100 ">
+      <div class="fs-24 fw-black">
+        Czw.      </div>
+    </a>
+      <a href="/kino-glebocka-66,ts:1781215200" class="day btn flex-center h-100 ">
+      <div class="fs-24 fw-black">
+        Pt.      </div>
+    </a>
+  </div>      </div>
+      <div class="col-md-3 col-sm-6 text-sm-end">
+        <div class="calendar-date-picker calendar-date-picker dropdown">
+  <a href="" class="btn btn-lg btn-primary d-block d-sm-inline-block py-3 no-as" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+    <div class="d-flex align-items-center">
+      <svg class="i-md me-3" style="" viewBox="0 0 32 30" xmlns="http://www.w3.org/2000/svg"><g><path d="M30.75,2.55273305 L24.5944375,2.55273305 L24.5944375,1.27118644 C24.5944375,0.569110169 24.0348125,0 23.3444375,0 C22.6540625,0 22.0944375,0.569110169 22.0944375,1.27118644 L22.0944375,2.55273305 L9.9055625,2.55273305 L9.9055625,1.27118644 C9.9055625,0.569110169 9.3459375,0 8.6555625,0 C7.9651875,0 7.4055625,0.569110169 7.4055625,1.27118644 L7.4055625,2.55273305 L1.25,2.55273305 C0.559625,2.55273305 0,3.12190678 0,3.82391949 L0,28.7288136 C0,29.4308263 0.559625,30 1.25,30 L30.75,30 C31.440375,30 32,29.4308263 32,28.7288136 L32,3.82391949 C32,3.12190678 31.440375,2.55273305 30.75,2.55273305 Z M29.5,27.4576271 L2.5,27.4576271 L2.5,5.09510593 L7.4055625,5.09510593 L7.4055625,6.3767161 C7.4055625,7.07879237 7.9651875,7.64790254 8.6555625,7.64790254 C9.3459375,7.64790254 9.9055625,7.07879237 9.9055625,6.3767161 L9.9055625,5.09510593 L22.094375,5.09510593 L22.094375,6.3767161 C22.094375,7.07879237 22.654,7.64790254 23.344375,7.64790254 C24.03475,7.64790254 24.594375,7.07879237 24.594375,6.3767161 L24.594375,5.09510593 L29.5,5.09510593 L29.5,27.4576271 Z"/><ellipse cx="16" cy="13.662" rx="1.688" ry="1.716"/><ellipse cx="16" cy="21.131" rx="1.688" ry="1.716"/><ellipse cx="8.656" cy="13.662" rx="1.688" ry="1.716"/><ellipse cx="23.344" cy="13.662" rx="1.688" ry="1.716"/><ellipse cx="8.656" cy="21.131" rx="1.688" ry="1.716"/><ellipse cx="23.344" cy="21.131" rx="1.688" ry="1.716"/></g></svg>      <span>Kalendarz</span>
+    </div>
+  </a>
+  <div class="dropdown-menu dropdown-menu-sm-end" aria-labelledby="cdp-7738">
+    <div class="calendar-chocolate-wrapper" data-as-view="date_picker" data-as-id="cdp-it-7738_ts%5B0%5D=1780869600">
+      <div class="box-calendar-chocolate">
+  <nav class="months-nav d-flex align-items-center justify-content-between border-bottom border-dark pb-1">
+    <a href="/kino-glebocka-66,ts:1777586400" class="prev no-as">
+      <svg class="i-xxs" style="" viewBox="0 0 12 18" xmlns="http://www.w3.org/2000/svg"><path transform="rotate(90 5.831 8.998)" d="M5.585 14.085-2.915 4.311-2.915 2.915-1.701 2.915 5.585 11.292 12.871 2.915 14.085 2.915 14.085 4.311z"/></svg>      <span class="sr-only">poprzedni miesiąc</span>
+    </a>
+    <span class="current-month fs-16 fw-bold mx-2">
+      Czerwiec 2026    </span>
+    <a href="/kino-glebocka-66,ts:1782856800" class="next no-as">
+      <svg class="i-xxs" style="" viewBox="0 0 12 18" xmlns="http://www.w3.org/2000/svg"><path transform="rotate(-90 161.913 164.254)" d="M317.415 14.085 308.915 4.311 308.915 2.915 310.129 2.915 317.415 11.292 324.701 2.915 325.915 2.915 325.915 4.311z"/></svg>      <span class="sr-only">następny miesiąc</span>
+    </a>
+  </nav>
+  <div class="month-body fs-14 fw-bold text-center">
+    <div class="headline d-flex py-1 border-bottom">
+      <div class="day">
+        <div class="day-label">Pon.</div>
+      </div>
+      <div class="day">
+        <div class="day-label">Wt.</div>
+      </div>
+      <div class="day">
+        <div class="day-label">Śr.</div>
+      </div>
+      <div class="day">
+        <div class="day-label">Czw.</div>
+      </div>
+      <div class="day">
+        <div class="day-label">Pt.</div>
+      </div>
+      <div class="day">
+        <div class="day-label">Sob.</div>
+      </div>
+      <div class="day">
+        <div class="day-label">Nd.</div>
+      </div>
+    </div>
+    <div class="week d-flex"><a href="/kino-glebocka-66,ts:1780264800" class="day"><span class="flex-center" style="">1</span></a><a href="/kino-glebocka-66,ts:1780351200" class="day"><span class="flex-center" style="">2</span></a><a href="/kino-glebocka-66,ts:1780437600" class="day"><span class="flex-center" style="">3</span></a><a href="/kino-glebocka-66,ts:1780524000" class="day"><span class="flex-center" style="">4</span></a><a href="/kino-glebocka-66,ts:1780610400" class="day"><span class="flex-center" style="">5</span></a><a href="/kino-glebocka-66,ts:1780696800" class="day today"><span class="flex-center" style="">6</span></a><a href="/kino-glebocka-66,ts:1780783200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">7</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1780869600" class="day requested-day"><span class="flex-center" style="">8</span></a><a href="/kino-glebocka-66,ts:1780956000" class="day"><span class="flex-center" style="">9</span></a><a href="/kino-glebocka-66,ts:1781042400" class="day"><span class="flex-center" style="">10</span></a><a href="/kino-glebocka-66,ts:1781128800" class="day"><span class="flex-center" style="">11</span></a><a href="/kino-glebocka-66,ts:1781215200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">12</span></a><a href="/kino-glebocka-66,ts:1781301600" class="day"><span class="flex-center" style="">13</span></a><a href="/kino-glebocka-66,ts:1781388000" class="day"><span class="flex-center" style="">14</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1781474400" class="day"><span class="flex-center" style="">15</span></a><a href="/kino-glebocka-66,ts:1781560800" class="day"><span class="flex-center" style="">16</span></a><a href="/kino-glebocka-66,ts:1781647200" class="day"><span class="flex-center" style="">17</span></a><a href="/kino-glebocka-66,ts:1781733600" class="day"><span class="flex-center" style="">18</span></a><a href="/kino-glebocka-66,ts:1781820000" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">19</span></a><a href="/kino-glebocka-66,ts:1781906400" class="day"><span class="flex-center" style="">20</span></a><a href="/kino-glebocka-66,ts:1781992800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">21</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1782079200" class="day"><span class="flex-center" style="">22</span></a><a href="/kino-glebocka-66,ts:1782165600" class="day"><span class="flex-center" style="">23</span></a><a href="/kino-glebocka-66,ts:1782252000" class="day"><span class="flex-center" style="">24</span></a><a href="/kino-glebocka-66,ts:1782338400" class="day"><span class="flex-center" style="">25</span></a><a href="/kino-glebocka-66,ts:1782424800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">26</span></a><a href="/kino-glebocka-66,ts:1782511200" class="day"><span class="flex-center" style="">27</span></a><a href="/kino-glebocka-66,ts:1782597600" class="day"><span class="flex-center" style="">28</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1782684000" class="day"><span class="flex-center" style="">29</span></a><a href="/kino-glebocka-66,ts:1782770400" class="day"><span class="flex-center" style="">30</span></a><a href="/kino-glebocka-66,ts:1782856800" class="day out-of-range"><span class="flex-center" style="">1</span></a><a href="/kino-glebocka-66,ts:1782943200" class="day out-of-range"><span class="flex-center" style="">2</span></a><a href="/kino-glebocka-66,ts:1783029600" class="day out-of-range"><span class="flex-center" style="">3</span></a><a href="/kino-glebocka-66,ts:1783116000" class="day out-of-range"><span class="flex-center" style="">4</span></a><a href="/kino-glebocka-66,ts:1783202400" class="day out-of-range"><span class="flex-center" style="">5</span></a></div>  </div></div>    </div>
+  </div>
+</div>      </div>
+    </div>  </div>
+</div>  </div>
+  <div class="py-60">
+    <div class="calendar-children mb-50" data-as-view="list" data-as-id="i-ch-it-7738_ts%5B0%5D=1780869600">
+      <div class="fw-light fs-34 mb-20">
+      <strong>8 czerwca 2026 </strong><span>Poniedziałek</span>    </div>
+    <div class="item-children-empty bg-gray-200 px-4 py-30 py-md-50 text-center text-muted mb-50">
+  <em>Brak elementów do&nbsp;wyświetlenia</em>
+</div></div>    <div class="movies-children-upcomming" data-as-view="list" data-as-id="mchupmm-7738">
+      <div class="fs-34 fw-black mb-30">
+      Zapowiedzi    </div>
+    <div class="list-wrapper mb-30">
+    <div class="basic-list-item">
+  <a href="/kino-glebocka-66/kinowy-poranek-wyspa-puffinow-nowi-przyjaciele-421758485" class="movie-list bg-white-hover d-block mb-30">
+    <div class="row align-items-stretch">
+      <div class="col-md-3 col-4">
+        <div class="col-thumb h-100">
+          <div class="item-image-thumb item-image-sm">
   <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/4_auto_1800x900.jpg" data-min-width="1200"/>
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/4_auto_1600x800.jpg" data-min-width="992"/>
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/4_auto_1400x700.jpg" data-min-width="768"/>
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/4_auto_900x800.jpg" data-min-width="576"/>
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/wyspa-puffinow_-nowi-przyjaciele_01_auto_900x600.jpg" data-min-width="1200"/>
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/wyspa-puffinow_-nowi-przyjaciele_01_auto_800x700.jpg" data-min-width="992"/>
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/wyspa-puffinow_-nowi-przyjaciele_01_auto_600x600.jpg" data-min-width="768"/>
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/wyspa-puffinow_-nowi-przyjaciele_01_auto_500x600.jpg" data-min-width="576"/>
   <script data-pagespeed-no-defer>//<![CDATA[
 (function(){for(var g="function"==typeof Object.defineProperties?Object.defineProperty:function(b,c,a){if(a.get||a.set)throw new TypeError("ES3 does not support getters and setters.");b!=Array.prototype&&b!=Object.prototype&&(b[c]=a.value)},h="undefined"!=typeof window&&window===this?this:"undefined"!=typeof global&&null!=global?global:this,k=["String","prototype","repeat"],l=0;l<k.length-1;l++){var m=k[l];m in h||(h[m]={});h=h[m]}
 var n=k[k.length-1],p=h[n],q=p?p:function(b){var c;if(null==this)throw new TypeError("The 'this' value for String.prototype.repeat must not be null or undefined");c=this+"";if(0>b||1342177279<b)throw new RangeError("Invalid count value");b|=0;for(var a="";b;)if(b&1&&(a+=c),b>>>=1)c+=c;return a};q!=p&&null!=q&&g(h,n,{configurable:!0,writable:!0,value:q});var t=this;
@@ -279,66 +381,223 @@ new XMLHttpRequest;else if(window.ActiveXObject)try{f=new ActiveXObject("Msxml2.
 function B(){var b={},c;c=document.getElementsByTagName("IMG");if(!c.length)return{};var a=c[0];if(!("naturalWidth"in a&&"naturalHeight"in a))return{};for(var d=0;a=c[d];++d){var e=a.getAttribute("data-pagespeed-url-hash");e&&(!(e in b)&&0<a.width&&0<a.height&&0<a.naturalWidth&&0<a.naturalHeight||e in b&&a.width>=b[e].o&&a.height>=b[e].m)&&(b[e]={rw:a.width,rh:a.height,ow:a.naturalWidth,oh:a.naturalHeight})}return b}var C="";u("pagespeed.CriticalImages.getBeaconData",function(){return C});
 u("pagespeed.CriticalImages.Run",function(b,c,a,d,e,f){var r=new y(b,c,a,e,f);x=r;d&&w(function(){window.setTimeout(function(){A(r)},0)})});})();
 
-pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-glebocka-66/tom-i-jerry-przygoda-w-muzeum-60422792','Tt5XTryosv',true,false,'5mI2LHaX0Wk');
-//]]></script><img src="/upload/thumb/2026/05/x4_auto_800x900.jpg.pagespeed.ic.L7POBX41ev.jpg" srcset="/upload/thumb/2026/05/x4_auto_800x900.jpg.pagespeed.ic.L7POBX41ev.jpg" alt="kot trzyma w łapie mysz: kadr z animacji &quot;Tom i Jerry&quot;" title="" style="object-position: 48.69354012819402% 36.80802689981525%; " data-pagespeed-url-hash="2387128560" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
-</picture></div>    </div>
-  </div>
-  <div class="bg-white container-negative py-40">
-    <div class="container-padding">
-      <div class="row flex-md-row-reverse justify-content-between">
-        <div class="col-lg-7 col-md-8">
-          <div class="movie-main-header mb-40" data-webflow="o:0,t:.4,d:.05;o:0,t:.4,d:.1">
-  <div class="row">
-    <div class="col-lg-9 col-md-8 mb-10 mb-md-0">
-              <h2 class="fs-44 fw-black mb-0">
-          Tom i&nbsp;Jerry: Przygoda w&nbsp;muzeum        </h2>
-                </div>
-    <div class="col-lg-3 col-md-4 text-md-end pt-md-1">
+pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-glebocka-66,ts:1780869600','Tt5XTryosv',true,false,'-C1SqwzYn3I');
+//]]></script><img src="/upload/thumb/2026/05/xwyspa-puffinow_-nowi-przyjaciele_01_auto_400x500.jpg.pagespeed.ic.H4HmUKxLkA.jpg" srcset="/upload/thumb/2026/05/xwyspa-puffinow_-nowi-przyjaciele_01_auto_400x500.jpg.pagespeed.ic.H4HmUKxLkA.jpg" alt="Kinowy Poranek | Wyspa Puffinów. Nowi przyjaciele" title="" style="" data-pagespeed-url-hash="2278744321" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+</picture></div>        </div>
+      </div>
+      <div class="col-md-9 col-8 py-20 py-md-0">
+        <div class="row">
+          <div class="col-md-5 py-md-20">
+            <div class="pe-lg-4 h-100">
+              <div class="movie-list-descr">
+  <div class="fs-30 fw-black mb-10">
+    Kinowy Poranek | Wyspa Puffinów. Nowi przyjaciele  </div>
+        <div class="meta-short fs-14">
+      <strong>7 czerwca</strong> | Wielka Brytania, Irlandia | 80 min<br/><strong>Reż. Jeremy Purcell</strong>    </div>
+    
+</div>            </div>
           </div>
-  </div>  
-</div>          <div class="movie-content">
-      <div class="info-attr body fw-bold" data-webflow="o:0,t:.4,d:.1;o:0,t:.4,d:.05">
-      <p class="Default">Tom i&nbsp;Jerry przenoszą się w&nbsp;czasie do&nbsp;starożytnego Złotego Miasta, gdzie trafią w&nbsp;sam środek szczurzego spisku.</p>     </div>
-        <div class="content-attr body" data-webflow="o:0,t:.4,d:.1;o:0,t:.4,d:.05">
-      <p class="tukiembed-wrapper tukiembed-youtube embed-responsive embed-responsive-16by9"><iframe src="https://www.youtube.com/embed/SYysA0ST5Qc?autoplay=1&amp;mute=1&amp;enablejsapi=1"></iframe></p> <p>Podczas pościgu w&nbsp;nowojorskim Metropolitan Museum Tom i&nbsp;Jerry przypadkowo uruchamiają mityczny Astralny Kompas, który przenosi ich do&nbsp;olśniewającego Złotego Miasta rodem ze&nbsp;starożytnych legend. Tom zostaje uznany za bóstwo i&nbsp;staje się ulubieńcem władcy oraz jego poddanych. Tymczasem niedoceniony i&nbsp;zazdrosny Jerry wpada w&nbsp;sidła charyzmatycznego, lecz niebezpiecznego szczurzego bossa.</p> <p>Wkrótce okaże, że władca miasta i&nbsp;szczurzy boss toczą między sobą odwieczną walkę o&nbsp;władanie nad Złotym Miastem, a&nbsp;Tom i&nbsp;Jerry mają być tylko pionkami w&nbsp;ich grze. Aby przetrwać i&nbsp;ocalić poddanych będą musieli zawiesić swoją odwieczną rywalizację i&nbsp;łapa w&nbsp;łapę staną w&nbsp;obronie dobra.</p>     </div>
-  </div>          <div class="activity-main-footer">
-  </div>        </div>
-        <div class="col-md-4">
-          <div class="movie-sidebar mb-20 bok-sticky" data-webflow="o:0,t:.3,d:.1;o:0,t:.3,d:0">
-      <div class="meta-row mb-10">
-            <div class="body">
-        <strong>od 12 czerwca</strong>      </div>
-    </div>
-      <div class="meta-row mb-10">
-              <div class="fw-bold">
-          Reżyseria:
-        </div>
-            <div class="body">
-        Gang Zhang      </div>
-    </div>
-      <div class="meta-row mb-10">
-              <div class="fw-bold">
-          Produkcja:
-        </div>
-            <div class="body">
-        Chiny, USA      </div>
-    </div>
-      <div class="meta-row mb-10">
-              <div class="fw-bold">
-          Czas trwania:
-        </div>
-            <div class="body">
-        99 min      </div>
-    </div>
-      <div class="meta-row mb-10">
-            <div class="body">
-        <strong>Ograniczenie wiekowe: </strong>6+<br/> <br/> <strong>Dubbing</strong>      </div>
-    </div>
-  </div>        </div>
-      </div>    </div>
-  </div>
-</div>    <div class="movie-full-footer">
+          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
+                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
+                „Wyspa Puffinów. Nowi przyjaciele” przedstawia przygody uroczej ptasiej rodziny maskonurów: Oony, jej braciszka Baby oraz ich towarzyszy zabaw, May i&nbsp;Mossy’ego. Przyroda, bliskość, odwaga i&nbsp;przyjaźń – o&nbsp;tym opowiada bajka dla najmłodszych widzów, oparta na&nbsp;uwielbianym przez dzieci i&nbsp;wielokrotnie nagradzanym serialu telewizyjnym.               </div>
+                      </div>
+        </div>      </div>
+    </div>  </a>
+</div><div class="basic-list-item">
+  <a href="/kino-glebocka-66/tom-i-jerry-przygoda-w-muzeum-60422792" class="movie-list bg-white-hover d-block mb-30">
+    <div class="row align-items-stretch">
+      <div class="col-md-3 col-4">
+        <div class="col-thumb h-100">
+          <div class="item-image-thumb item-image-sm">
+  <picture>
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/8jpg_auto_900x600.jpg" data-min-width="1200"/>
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/8jpg_auto_800x700.jpg" data-min-width="992"/>
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/8jpg_auto_600x600.jpg" data-min-width="768"/>
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/8jpg_auto_500x600.jpg" data-min-width="576"/>
+  <img src="/upload/thumb/2026/05/x8jpg_auto_400x500.jpg.pagespeed.ic._FLlJV-kcJ.jpg" srcset="/upload/thumb/2026/05/x8jpg_auto_400x500.jpg.pagespeed.ic._FLlJV-kcJ.jpg" alt="kot trzyma w łapie mysz: kadr z animacji &quot;Tom i Jerry&quot;" title="" style="" data-pagespeed-url-hash="2677420529" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+</picture></div>        </div>
+      </div>
+      <div class="col-md-9 col-8 py-20 py-md-0">
+        <div class="row">
+          <div class="col-md-5 py-md-20">
+            <div class="pe-lg-4 h-100">
+              <div class="movie-list-descr">
+  <div class="fs-30 fw-black mb-10">
+    Tom i&nbsp;Jerry: Przygoda w&nbsp;muzeum  </div>
+        <div class="meta-short fs-14">
+      <strong>od 12 czerwca</strong> | Chiny, USA | 99 min<br/><strong>Reż. Gang Zhang</strong>    </div>
+    
+</div>            </div>
+          </div>
+          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
+                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
+                Tom i&nbsp;Jerry przenoszą się w&nbsp;czasie do&nbsp;starożytnego Złotego Miasta, gdzie trafią w&nbsp;sam środek szczurzego spisku.               </div>
+                      </div>
+        </div>      </div>
+    </div>  </a>
+</div><div class="basic-list-item">
+  <a href="/kino-glebocka-66/zawodowcy-700733991" class="movie-list bg-white-hover d-block mb-30">
+    <div class="row align-items-stretch">
+      <div class="col-md-3 col-4">
+        <div class="col-thumb h-100">
+          <div class="item-image-thumb item-image-sm">
+  <picture>
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_900x600.jpg" data-min-width="1200"/>
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_800x700.jpg" data-min-width="992"/>
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_600x600.jpg" data-min-width="768"/>
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_500x600.jpg" data-min-width="576"/>
+  <img src="/upload/thumb/2026/05/xugr_06152-1-_auto_400x500.jpg.pagespeed.ic.DyiADTT0Hd.jpg" srcset="/upload/thumb/2026/05/xugr_06152-1-_auto_400x500.jpg.pagespeed.ic.DyiADTT0Hd.jpg" alt="dwóch mężczyzn w ciemnych okularach stoi w słońcu; w tle droga żwirowa" title="" style="" data-pagespeed-url-hash="3928906962" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+</picture></div>        </div>
+      </div>
+      <div class="col-md-9 col-8 py-20 py-md-0">
+        <div class="row">
+          <div class="col-md-5 py-md-20">
+            <div class="pe-lg-4 h-100">
+              <div class="movie-list-descr">
+  <div class="fs-30 fw-black mb-10">
+    Zawodowcy  </div>
+        <div class="meta-short fs-14">
+      <strong>od 12 czerwca</strong> | Wielka Brytania, USA | 98 min<br/><strong>Reż. Guy Ritchie</strong>    </div>
+    
+</div>            </div>
+          </div>
+          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
+                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
+                Specjalistka od&nbsp;ekstremalnie trudnych negocjacji, wraz z&nbsp;ekipą najemników, wciela w&nbsp;życie misterny plan odzyskania wielomilionowego długu.               </div>
+                      </div>
+        </div>      </div>
+    </div>  </a>
+</div><div class="basic-list-item">
+  <a href="/kino-glebocka-66/rozmowy-lukasza-maciejewskiego-przepiekne-790492731" class="movie-list bg-white-hover d-block mb-30">
+    <div class="row align-items-stretch">
+      <div class="col-md-3 col-4">
+        <div class="col-thumb h-100">
+          <div class="item-image-thumb item-image-sm">
+  <picture>
+  <source media="(min-width: 1200px)" srcset="/upload/2026/05/webp_landscape_1620.webp" data-min-width="1200"/>
+  <source media="(min-width: 992px)" srcset="/upload/2026/05/webp_landscape_1620.webp" data-min-width="992"/>
+  <source media="(min-width: 768px)" srcset="/upload/2026/05/webp_landscape_1620.webp" data-min-width="768"/>
+  <source media="(min-width: 576px)" srcset="/upload/2026/05/webp_landscape_1620.webp" data-min-width="576"/>
+  <img src="/upload/2026/05/webp_landscape_1620.webp" srcset="/upload/2026/05/webp_landscape_1620.webp" alt="Rozmowy Łukasza Maciejewskiego | Przepiękne!" title="" style="" data-pagespeed-url-hash="1923293564" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+</picture></div>        </div>
+      </div>
+      <div class="col-md-9 col-8 py-20 py-md-0">
+        <div class="row">
+          <div class="col-md-5 py-md-20">
+            <div class="pe-lg-4 h-100">
+              <div class="movie-list-descr">
+  <div class="fs-30 fw-black mb-10">
+    Rozmowy Łukasza Maciejewskiego | Przepiękne!  </div>
+        <div class="meta-short fs-14">
+      <strong>19 czerwca</strong> | Polska | 115 min<br/><strong>Reż. Katarzyna Priwieziencew</strong>    </div>
+    
+</div>            </div>
+          </div>
+          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
+                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
+                Wszystkich fanów kinematografii, którzy chcieliby obejrzeć dobry film z&nbsp;fachowym komentarzem, zapraszamy na&nbsp;kolejne spotkanie z&nbsp;cyklu Rozmowy Łukasza Maciejewskiego. Krytyk, filmoznawca, wykładowca i&nbsp;recenzent Łukasz Maciejewski poprowadzi rozmowę&nbsp;z gościem Olafem Lubaszenką. &nbsp; &nbsp;               </div>
+                      </div>
+        </div>      </div>
+    </div>  </a>
+</div><div class="basic-list-item">
+  <a href="/kino-glebocka-66/drugie-zycie" class="movie-list bg-white-hover d-block mb-30">
+    <div class="row align-items-stretch">
+      <div class="col-md-3 col-4">
+        <div class="col-thumb h-100">
+          <div class="item-image-thumb item-image-sm">
+  <picture>
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/04/drugie-zycie_01_auto_900x600.jpg" data-min-width="1200"/>
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/04/drugie-zycie_01_auto_800x700.jpg" data-min-width="992"/>
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/04/drugie-zycie_01_auto_600x600.jpg" data-min-width="768"/>
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/04/drugie-zycie_01_auto_500x600.jpg" data-min-width="576"/>
+  <img src="/upload/thumb/2026/04/xdrugie-zycie_01_auto_400x500.jpg.pagespeed.ic.moVTOvZguY.jpg" srcset="/upload/thumb/2026/04/xdrugie-zycie_01_auto_400x500.jpg.pagespeed.ic.moVTOvZguY.jpg" alt="dojrzała pani w kwiecistej bluzce siedzi na balkonie, w tle budynki miasta" title="" style="object-position: 59.551110803650054% 28.112059921477066%; " data-pagespeed-url-hash="940259804" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+</picture></div>        </div>
+      </div>
+      <div class="col-md-9 col-8 py-20 py-md-0">
+        <div class="row">
+          <div class="col-md-5 py-md-20">
+            <div class="pe-lg-4 h-100">
+              <div class="movie-list-descr">
+  <div class="fs-30 fw-black mb-10">
+    Drugie życie  </div>
+        <div class="meta-short fs-14">
+      <strong>od 22 czerwca</strong> | Niemcy, Francja, Hiszpania, Belgia, Maroko | 116 min<br/><strong>Reż. Maryam Touzani</strong>    </div>
+    
+</div>            </div>
+          </div>
+          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
+                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
+                „Drugie życie” – zdobywca nagrody publiczności na&nbsp;festiwalu filmowym w&nbsp;Wenecji – to emanujący optymizmem i&nbsp;pogodą ducha portret dojrzałej kobiety, w&nbsp;którą wciela się Carmen Maura („Kobiety na&nbsp;skraju załamania nerwowego”, „Volver”).               </div>
+                      </div>
+        </div>      </div>
+    </div>  </a>
+</div><div class="basic-list-item">
+  <a href="/kino-glebocka-66/spotkania-filmowe-ojczyzna-576046819" class="movie-list bg-white-hover d-block mb-30">
+    <div class="row align-items-stretch">
+      <div class="col-md-3 col-4">
+        <div class="col-thumb h-100">
+          <div class="item-image-thumb item-image-sm">
+  <picture>
+  <source media="(min-width: 1200px)" srcset="/upload/2026/05/miniaturka-1-_1.webp" data-min-width="1200"/>
+  <source media="(min-width: 992px)" srcset="/upload/2026/05/miniaturka-1-_1.webp" data-min-width="992"/>
+  <source media="(min-width: 768px)" srcset="/upload/2026/05/miniaturka-1-_1.webp" data-min-width="768"/>
+  <source media="(min-width: 576px)" srcset="/upload/2026/05/miniaturka-1-_1.webp" data-min-width="576"/>
+  <img src="/upload/2026/05/miniaturka-1-_1.webp" srcset="/upload/2026/05/miniaturka-1-_1.webp" alt="Spotkania Filmowe | Ojczyzna" title="" style="" data-pagespeed-url-hash="915375152" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+</picture></div>        </div>
+      </div>
+      <div class="col-md-9 col-8 py-20 py-md-0">
+        <div class="row">
+          <div class="col-md-5 py-md-20">
+            <div class="pe-lg-4 h-100">
+              <div class="movie-list-descr">
+  <div class="fs-30 fw-black mb-10">
+    Spotkania Filmowe | Ojczyzna  </div>
+        <div class="meta-short fs-14">
+      <strong>26 czerwca</strong> | Polska, Niemcy, Włochy, Francja | 82 min<br/><strong>Reż. Paweł Pawlikowski</strong>    </div>
+    
+</div>            </div>
+          </div>
+          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
+                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
+                Wszystkich fanów kinematografii, którzy chcieliby obejrzeć dobry film z&nbsp;fachowym komentarzem, zapraszamy na&nbsp;„Spotkania Filmowe” Łukasza Maciejewskiego. Ceniony krytyk, filmoznawca, wykładowca i&nbsp;recenzent po projekcji poprowadzi dyskusję z&nbsp;publicznością. Wszelkie filmowe pytania i&nbsp;wątpliwości – mile widziane!               </div>
+                      </div>
+        </div>      </div>
+    </div>  </a>
+</div><div class="basic-list-item">
+  <a href="/kino-glebocka-66/mloda-polska-kino-plenerowe-kamper-2016--616408034" class="movie-list bg-white-hover d-block mb-30">
+    <div class="row align-items-stretch">
+      <div class="col-md-3 col-4">
+        <div class="col-thumb h-100">
+          <div class="item-image-thumb item-image-sm">
+  <picture>
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/kamper_9_auto_900x600.jpg" data-min-width="1200"/>
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/kamper_9_auto_800x700.jpg" data-min-width="992"/>
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/kamper_9_auto_600x600.jpg" data-min-width="768"/>
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/kamper_9_auto_500x600.jpg" data-min-width="576"/>
+  <img src="/upload/thumb/2026/05/xkamper_9_auto_400x500.jpg.pagespeed.ic.oQntcKzUt8.jpg" srcset="/upload/thumb/2026/05/xkamper_9_auto_400x500.jpg.pagespeed.ic.oQntcKzUt8.jpg" alt="Młoda Polska | kino plenerowe | Kamper (2016)" title="" style="" data-pagespeed-url-hash="3389926078" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+</picture></div>        </div>
+      </div>
+      <div class="col-md-9 col-8 py-20 py-md-0">
+        <div class="row">
+          <div class="col-md-5 py-md-20">
+            <div class="pe-lg-4 h-100">
+              <div class="movie-list-descr">
+  <div class="fs-30 fw-black mb-10">
+    Młoda Polska | kino plenerowe | Kamper (2016)  </div>
+        <div class="meta-short fs-14">
+      <strong>21 czerwca</strong> | Polska | 89 min<br/><strong>Reż. Łukasz Grzegorzek</strong>    </div>
+    
+</div>            </div>
+          </div>
+          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
+                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
+                Zapraszamy na&nbsp;wyjątkowy cykl Kina Głębocka 66 pod chmurką, w&nbsp;którym oddajemy głos nowej fali rodzimych twórców! Zaprezentujemy najciekawsze produkcje powstałe po 2010 roku, stworzone przez reżyserów stojących u&nbsp;progu kariery.&nbsp;To zarówno debiuty fabularne, jak i&nbsp;pierwsze pełnometrażowe produkcje, które dzięki świeżemu spojrzeniu, odważnej narracji i&nbsp;autorskiemu stylowi zaznaczyły swoją obecność wśród krytyków, na&nbsp;festiwalach i&nbsp;w&nbsp;świadomości widzów.&nbsp;...              </div>
+                      </div>
+        </div>      </div>
+    </div>  </a>
+</div>  </div>
   </div>  </div>
+</div>      </div>
 </div>        </main>
         <footer>
           <div class="footer-full bg-white">

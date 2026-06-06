@@ -22,7 +22,12 @@ class KinoMikroClient(http: HttpFetch, venueName: String, override val cinema: C
 }
 
 object KinoMikroClient {
-  val ApiUrl = "https://kinomikro.pl/api.php/v1/repertoires"
+  // The feed paginates: with no `limit` it caps the response at ~20 records and
+  // silently drops the back half of the multi-week programme — one screening per
+  // film survives, the advance-date repeats are truncated. `limit` is honoured
+  // server-side, so ask for far more than the cinema could ever schedule to pull
+  // the whole window (06.06–30.06 at recording time) in one shot.
+  val ApiUrl = "https://kinomikro.pl/api.php/v1/repertoires?limit=1000"
 }
 
 object KinoMikroParser {

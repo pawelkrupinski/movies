@@ -279,7 +279,7 @@ new XMLHttpRequest;else if(window.ActiveXObject)try{f=new ActiveXObject("Msxml2.
 function B(){var b={},c;c=document.getElementsByTagName("IMG");if(!c.length)return{};var a=c[0];if(!("naturalWidth"in a&&"naturalHeight"in a))return{};for(var d=0;a=c[d];++d){var e=a.getAttribute("data-pagespeed-url-hash");e&&(!(e in b)&&0<a.width&&0<a.height&&0<a.naturalWidth&&0<a.naturalHeight||e in b&&a.width>=b[e].o&&a.height>=b[e].m)&&(b[e]={rw:a.width,rh:a.height,ow:a.naturalWidth,oh:a.naturalHeight})}return b}var C="";u("pagespeed.CriticalImages.getBeaconData",function(){return C});
 u("pagespeed.CriticalImages.Run",function(b,c,a,d,e,f){var r=new y(b,c,a,e,f);x=r;d&&w(function(){window.setTimeout(function(){A(r)},0)})});})();
 
-pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-na-boku/niesamowite-przygody-skarpetek-3','Tt5XTryosv',true,false,'9Zz6D-2irXo');
+pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-na-boku/niesamowite-przygody-skarpetek-3','Tt5XTryosv',true,false,'Tb_qo1R002Y');
 //]]></script><img src="/upload/thumb/2026/05/xniesamowite-przygody-skarpetek-3-9-_auto_800x900.png.pagespeed.ic.MnvEcXY2xT.png" srcset="/upload/thumb/2026/05/xniesamowite-przygody-skarpetek-3-9-_auto_800x900.png.pagespeed.ic.MnvEcXY2xT.png" alt="szara skarpetka na statku kosmicznym w kosmosie" title="" style="object-position: 58.88906381124419% 48.6092754839167%; " data-pagespeed-url-hash="921379634" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
 </picture></div>    </div>
   </div>
@@ -342,62 +342,6 @@ pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-na
     Seanse filmowe  </h3>
   <div class="list-wrapper mb-30">
     <div class="movieshow-list p-relative basic-list-item mb-30 mb-sm-20">
-  <a href="/kino-na-boku/niesamowite-przygody-skarpetek-3" class="parent-link d-block bg-white-hover mb-2">
-    <div class="row g-0 align-items-stretch">
-      <div class="col-xl-3 col-lg-4 col-md-5 col-date-time">
-        <div class="row g-0 align-items-stretch text-center">
-          <div class="col-4 bg-black">
-            <div class="fs-24 fw-black py-3">
-              06.06            </div>
-          </div>
-          <div class="col-4 border-end">
-            <div class="fs-24 fw-light py-3">
-              Sob.            </div>
-          </div>
-          <div class="col-4 col-time">
-            <div class="flex-center h-100">
-              <div class="fs-16 fw-black px-2 py-1 bg-black">
-                11:00              </div>
-            </div>
-          </div>
-        </div>      </div>
-      <div class="col-xl-7 col-lg-6 col-md-5">
-                  <div class="fs-24 fw-black py-3 px-3">
-            Niesamowite przygody skarpetek 3. Ale kosmos! | PREMIERA          </div>
-              </div>
-    </div>  </a>
-  
-    <a href="https://iframe17.biletyna.pl/event/view/id/665155" class="item-tickets-cfa btn btn-dark d-block d-md-inline-block" target="_blank">
-  Kup bilet  </a>
-</div><div class="movieshow-list p-relative basic-list-item mb-30 mb-sm-20">
-  <a href="/kino-na-boku/niesamowite-przygody-skarpetek-3" class="parent-link d-block bg-white-hover mb-2">
-    <div class="row g-0 align-items-stretch">
-      <div class="col-xl-3 col-lg-4 col-md-5 col-date-time">
-        <div class="row g-0 align-items-stretch text-center">
-          <div class="col-4 bg-black">
-            <div class="fs-24 fw-black py-3">
-              06.06            </div>
-          </div>
-          <div class="col-4 border-end">
-            <div class="fs-24 fw-light py-3">
-              Sob.            </div>
-          </div>
-          <div class="col-4 col-time">
-            <div class="flex-center h-100">
-              <div class="fs-16 fw-black px-2 py-1 bg-black">
-                12:15              </div>
-            </div>
-          </div>
-        </div>      </div>
-      <div class="col-xl-7 col-lg-6 col-md-5">
-                  <div class="fs-24 fw-black py-3 px-3">
-            Niesamowite przygody skarpetek 3. Ale kosmos! | PREMIERA          </div>
-              </div>
-    </div>  </a>
-  
-    <a href="https://iframe17.biletyna.pl/event/view/id/665156" class="item-tickets-cfa btn btn-dark d-block d-md-inline-block" target="_blank">
-  Kup bilet  </a>
-</div><div class="movieshow-list p-relative basic-list-item mb-30 mb-sm-20">
   <a href="/kino-na-boku/niesamowite-przygody-skarpetek-3" class="parent-link d-block bg-white-hover mb-2">
     <div class="row g-0 align-items-stretch">
       <div class="col-xl-3 col-lg-4 col-md-5 col-date-time">
