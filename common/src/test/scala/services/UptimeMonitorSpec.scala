@@ -100,19 +100,53 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.history("TMDB").head.errors shouldBe empty
   }
 
-  it should "not let a closed-client Mongo write break recording" in {
+  it should "not let a closed-client Mongo write break recording or flushing" in {
     val monitor = new UptimeMonitor(Some(closedClientDb))
 
-    // Before the fix these throw IllegalStateException synchronously; the
-    // in-memory bucket must still update regardless of the Mongo write.
+    // record* is now pure in-memory; the batched flush is the Mongo write. A
+    // closed client throws IllegalStateException synchronously at `.subscribe`
+    // inside the flush — that must be caught, and the in-memory bucket must
+    // update regardless.
     noException should be thrownBy {
       monitor.recordSuccess("Kino Rialto")
       monitor.recordFailure("Kino Rialto", "TimeoutException: boom")
+      monitor.flushNow()
     }
 
     val history = monitor.history("Kino Rialto").head
     history.successes shouldBe 1
     history.failures shouldBe 1
+  }
+
+  // Batched persistence (the fix for the /uptime change-stream overload): record*
+  // only touches memory + marks the bucket dirty; the flusher coalesces a
+  // bucket's many records into ONE write of its CUMULATIVE counts, so the serving
+  // app's change-stream load is bounded by the flush cadence, not the fetch rate.
+  "batched flushing" should "coalesce a bucket's records into one cumulative write and clear dirty" in {
+    val monitor = new UptimeMonitor()
+    monitor.recordSuccess("TMDB", 100L)
+    monitor.recordSuccess("TMDB", 300L)
+    monitor.recordFailure("TMDB", "boom")
+
+    val first = monitor.drainDirty()
+    first should have size 1
+    val w = first.head
+    w.service shouldBe "TMDB"
+    w.successes shouldBe 2
+    w.failures shouldBe 1
+    w.durationSumMs shouldBe 400L
+    w.durationCount shouldBe 2
+    w.errors shouldBe List("boom")
+
+    // Nothing new recorded → the drain cleared dirty → nothing to flush.
+    monitor.drainDirty() shouldBe empty
+
+    // A further record re-dirties the bucket; the next flush carries the
+    // CUMULATIVE total, not just the delta.
+    monitor.recordSuccess("TMDB")
+    val second = monitor.drainDirty()
+    second should have size 1
+    second.head.successes shouldBe 3
   }
 
   // Regression for the read/write split: the worker process now records all the

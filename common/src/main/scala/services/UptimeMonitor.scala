@@ -8,8 +8,8 @@ import org.mongodb.scala.model.{Filters, Indexes, Updates}
 import org.bson.conversions.Bson
 import play.api.Logging
 
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.{AtomicInteger, AtomicLong, AtomicReference}
+import java.util.concurrent.{ConcurrentHashMap, Executors, ScheduledExecutorService}
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -22,6 +22,17 @@ import scala.util.Try
  *        firing listeners so the live /uptime SSE stream reflects them. The web
  *        (serving) process sets this so it surfaces the worker's scraper +
  *        enrichment metrics; the worker leaves it off — nothing reads its map.
+ *
+ * Persistence is BATCHED: `recordSuccess`/`recordFailure` only mutate the
+ * in-memory bucket (cheap) and mark it dirty; a daemon flusher writes each dirty
+ * bucket's CUMULATIVE counts to Mongo every `FlushIntervalMs` via `$set` (upsert).
+ * The old per-call `$inc` write turned every scraper HTTP fetch into a Mongo
+ * write AND a change-stream event — at multi-city scrape volume (hundreds of
+ * fetches/pass) that pegged the serving app's change-stream consumer. Batching
+ * collapses a pass's hundreds of writes per service+bucket into one flush, so the
+ * change-stream volume the web app processes is bounded by the flush cadence, not
+ * the fetch rate. `$set` of the cumulative is idempotent — the change stream
+ * already applies post-images with SET semantics (see `applyExternalUpdate`).
  */
 class UptimeMonitor(db: Option[MongoDatabase] = None, watchExternalWrites: Boolean = false) extends Logging {
   import UptimeMonitor._
@@ -51,6 +62,10 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, watchExternalWrites: Boole
       // additive hydrate can't race the replacing change-stream applies on the
       // same bucket. Gated to the serving process — the worker reads nothing.
       if (watchExternalWrites) startChangeStream(c)
+      // Start the flusher AFTER hydrate too: flushing absolute cumulative state
+      // before the on-disk base is loaded would overwrite Mongo with just this
+      // process's fresh increments.
+      startFlusher(c)
     }, "uptime-monitor-hydrate")
     t.setDaemon(true)
     t.start()
@@ -59,6 +74,8 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, watchExternalWrites: Boole
   // Subscription for the external-write change stream (web process only), so
   // shutdown can cancel it. Null until startChangeStream runs.
   private val watchSub = new AtomicReference[Subscription]()
+  // Daemon flusher; null until startFlusher runs (or if Mongo is absent).
+  private val flusher = new AtomicReference[ScheduledExecutorService]()
 
   def addListener(f: BucketListener): Unit = { listeners.add(f); () }
   def removeListener(f: BucketListener): Unit = { listeners.remove(f); () }
@@ -76,7 +93,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, watchExternalWrites: Boole
       bucket.durationSumMs.addAndGet(ms)
       bucket.durationCount.incrementAndGet()
     }
-    mongoUpsertSuccess(service, durationMs)
+    bucket.dirty.set(true)
     notifyListeners(service, bucket)
   }
 
@@ -107,7 +124,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, watchExternalWrites: Boole
     val bucket = currentBucket(service)
     bucket.failures.incrementAndGet()
     if (bucket.errors.size() < MaxErrorsPerBucket) bucket.errors.add(error)
-    mongoUpsertFailure(service, error)
+    bucket.dirty.set(true)
     notifyListeners(service, bucket)
   }
 
@@ -130,42 +147,62 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, watchExternalWrites: Boole
     bucket
   }
 
-  private def mongoUpsertSuccess(service: String, durationMs: Option[Long]): Unit = {
-    val timing = durationMs.toList.flatMap(ms =>
-      List(Updates.inc("durationSumMs", ms), Updates.inc("durationCount", 1)))
-    upsertBucket(service, Updates.combine((
-      Updates.inc("successes", 1) ::
-      timing :::
-      List(Updates.setOnInsert("failures", 0),
-           Updates.setOnInsert("errors", java.util.Collections.emptyList[String]())))*))
+  // ── Batched persistence ─────────────────────────────────────────────────────
+
+  /** Collect every bucket marked dirty since the last call, clearing the flag as
+   *  we go, and snapshot its CUMULATIVE counts. `getAndSet(false)` BEFORE reading
+   *  the counts means a record that lands mid-drain re-marks the bucket dirty, so
+   *  it's caught next cycle rather than lost (worst case: written twice — `$set`
+   *  is idempotent). Package-private so the flush cadence can be unit-tested
+   *  without a Mongo round-trip. */
+  private[services] def drainDirty(): Seq[BucketWrite] = {
+    val out = Vector.newBuilder[BucketWrite]
+    data.forEach { (service, buckets) =>
+      buckets.values().forEach { b =>
+        if (b.dirty.getAndSet(false))
+          out += BucketWrite(service, b.timestamp,
+            b.successes.get(), b.failures.get(),
+            b.durationSumMs.get(), b.durationCount.get(),
+            b.errors.asScala.toList)
+      }
+    }
+    out.result()
   }
 
-  private def mongoUpsertFailure(service: String, error: String): Unit =
-    upsertBucket(service, Updates.combine(
-      Updates.inc("failures", 1),
-      Updates.push("errors", error),
-      Updates.setOnInsert("successes", 0)
-    ))
+  private def flush(c: MongoCollection[Document]): Unit = drainDirty().foreach(writeBucket(c, _))
 
-  // Uptime recording is best-effort: a Mongo write failure must never break
-  // the caller (a scraper recording its own attempt). The `.subscribe(onError)`
-  // only catches async delivery errors — but the driver builds the operation
-  // synchronously at `.subscribe`, so a closed client (Play hot-reload, prod
-  // shutdown) throws `IllegalStateException: state should be: open` right here,
-  // before any subscription exists. The Try is what actually keeps that throw
-  // from escaping into the scrape's failure path.
-  private def upsertBucket(service: String, update: Bson): Unit = coll.foreach { c =>
-    Try {
-      val ts = bucketTimestamp(System.currentTimeMillis())
-      c.updateOne(
-        Filters.and(Filters.eq("service", service), Filters.eq("bucket", new java.util.Date(ts))),
-        update,
-        new UpdateOptions().upsert(true)
-      ).subscribe(
-        (_: org.mongodb.scala.result.UpdateResult) => (),
-        (ex: Throwable) => logger.debug(s"Uptime Mongo write failed: ${ex.getMessage}")
-      )
-    }.recover { case ex => logger.debug(s"Uptime Mongo write failed: ${ex.getMessage}") }
+  /** Force a flush now (used on shutdown + in tests). No-op without Mongo. */
+  private[services] def flushNow(): Unit = coll.foreach(flush)
+
+  // Best-effort: a Mongo write failure must never break the flusher thread. The
+  // `.subscribe(onError)` only catches async delivery errors — but the driver
+  // builds the operation synchronously at `.subscribe`, so a closed client (Play
+  // hot-reload, prod shutdown) throws `IllegalStateException: state should be:
+  // open` right here, before any subscription exists. The Try is what keeps that
+  // throw from killing the scheduled flush.
+  private def writeBucket(c: MongoCollection[Document], bw: BucketWrite): Unit = Try {
+    c.updateOne(
+      Filters.and(Filters.eq("service", bw.service), Filters.eq("bucket", new java.util.Date(bw.bucketTs))),
+      Updates.combine(
+        Updates.set("successes", bw.successes),
+        Updates.set("failures", bw.failures),
+        Updates.set("durationSumMs", bw.durationSumMs),
+        Updates.set("durationCount", bw.durationCount),
+        Updates.set("errors", bw.errors.asJava)
+      ),
+      new UpdateOptions().upsert(true)
+    ).subscribe(
+      (_: org.mongodb.scala.result.UpdateResult) => (),
+      (ex: Throwable) => logger.debug(s"Uptime Mongo write failed: ${ex.getMessage}")
+    )
+  }.recover { case ex => logger.debug(s"Uptime Mongo write failed: ${ex.getMessage}") }.getOrElse(())
+
+  private def startFlusher(c: MongoCollection[Document]): Unit = {
+    val exec = Executors.newSingleThreadScheduledExecutor { r =>
+      val th = new Thread(r, "uptime-monitor-flush"); th.setDaemon(true); th
+    }
+    exec.scheduleWithFixedDelay(() => Try(flush(c)), FlushIntervalMs, FlushIntervalMs, TimeUnit.MILLISECONDS)
+    flusher.set(exec)
   }
 
   private def notifyListeners(service: String, bucket: Bucket): Unit =
@@ -220,6 +257,8 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, watchExternalWrites: Boole
     bucket.durationCount.set(durationCount)
     bucket.errors.clear()
     errors.take(MaxErrorsPerBucket).foreach(bucket.errors.add)
+    // A stream-applied bucket is NOT dirty — only locally-recorded ones flush, so
+    // the web app never echoes the worker's writes back to Mongo.
     val cutoff = ts - MaxBuckets * BucketDurationMs
     buckets.headMap(cutoff).clear()
     notifyListeners(service, bucket)
@@ -259,9 +298,13 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, watchExternalWrites: Boole
     logger.info("UptimeMonitor: watching uptimeBuckets change stream for cross-process updates.")
   }.recover { case ex => logger.warn(s"Uptime change-stream watch failed to start: ${ex.getMessage}") }
 
-  /** Cancel the change-stream subscription. Idempotent; safe when no stream was
-   *  opened (worker process, or standalone Mongo). */
-  def close(): Unit = Option(watchSub.get()).foreach(s => Try(s.unsubscribe()))
+  /** Flush anything pending and stop the background flusher + change-stream
+   *  subscription. Idempotent; safe when neither was started (no Mongo). */
+  def close(): Unit = {
+    flushNow()
+    Option(flusher.get()).foreach(e => Try(e.shutdown()))
+    Option(watchSub.get()).foreach(s => Try(s.unsubscribe()))
+  }
 }
 
 object UptimeMonitor {
@@ -270,6 +313,10 @@ object UptimeMonitor {
   val BucketDurationMs: Long = 5 * 60 * 1000L
   val MaxBuckets: Int = 288
   val MaxErrorsPerBucket: Int = 10
+  // How often dirty buckets are flushed to Mongo. The serving app's change-stream
+  // load is ~(distinct services touched per interval) / interval, so this caps it
+  // well below the raw scraper fetch rate while keeping /uptime within ~10s live.
+  val FlushIntervalMs: Long = 10000L
 
   def bucketTimestamp(epochMs: Long): Long = epochMs - (epochMs % BucketDurationMs)
 
@@ -282,7 +329,18 @@ object UptimeMonitor {
     // don't skew the average toward zero.
     val durationSumMs = new AtomicLong(0L)
     val durationCount = new AtomicInteger(0)
+    // Set by record*; cleared by the flusher. Coalesces a bucket's many records
+    // into one Mongo write per flush interval.
+    val dirty = new AtomicBoolean(false)
   }
+
+  /** A bucket's cumulative counts captured for one flush. */
+  case class BucketWrite(
+    service: String, bucketTs: Long,
+    successes: Int, failures: Int,
+    durationSumMs: Long, durationCount: Int,
+    errors: List[String]
+  )
 
   case class BucketSnapshot(timestamp: Long, successes: Int, failures: Int, errors: Seq[String]) {
     def status: String =
