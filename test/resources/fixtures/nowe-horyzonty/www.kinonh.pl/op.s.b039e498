@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -348,7 +348,7 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
             </div>
         </div>
         <div class="srow">
-          <div class="l f4">7 cze / nd</div>
+          <div class="l f4">jutro</div>
           <div class="wyd">
             <div class="seanserep">
             <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_192713' href='bilet.s?eventId=192713&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D21944'  title='kup / rezerwuj bilet' class='xseans'>12:30</a></div>
@@ -404,40 +404,40 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
+<a href="op.s?id=20932" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2022/SZTUKA_NA_EKRANIE_2022/EDWARD_HOPPER._AMERYKANSKA_LOVE_STORY/glw_Edward_Hopper_Night_in_the_Park_1921_NGA_Washigton_Open_access.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+      <div class="opis">
+        <h4>Edward Hopper. Amerykańska love story</h4>
+      </div>
+    </a>
+<a href="op.s?id=21684" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2022/SZTUKA_NA_EKRANIE_2022/TYCJAN__IMPERIUM_BARW/glw_Tiziano_Bacco_e_Arianna.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
+      <div class="opis">
+        <h4>Tycjan – imperium barw</h4>
+      </div>
+    </a>
+<a href="op.s?id=20933" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/glw_Frida_Kahlo._Photo_by_Nickolas_Murray_c_Nickolas_Muray_Photo_Archives_mniejzse.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+      <div class="opis">
+        <h4>Frida Kahlo. Ikoniczna artystka</h4>
+      </div>
+    </a>
 <a href="op.s?id=22318" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/SZTUKA_NA_EKRANIE_2025/TURNER__CONSTABLE._PRZELOMOWA_WYSTAWA/glw_JMW_Turner_Keelmen_Heaving_in_Coals_by_Moonlight_1835_National_Gallery_of_Art_Washington.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/SZTUKA_NA_EKRANIE_2025/TURNER__CONSTABLE._PRZELOMOWA_WYSTAWA/glw_JMW_Turner_Keelmen_Heaving_in_Coals_by_Moonlight_1835_National_Gallery_of_Art_Washington.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
       <div class="opis">
         <h4>Turner & Constable. Przełomowa wystawa</h4>
       </div>
     </a>
-<a href="op.s?id=21290" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2025/SZTUKA_NA_EKRANIE_2025/SWIT_IMPRESJONIZMU._PARYZ_1874/glw_claude_monet_impression_soleil_levant_1872_bridgeman_bal_3729.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
+<a href="op.s?id=22428" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2023/SZTUKA_NA_EKRANIE_2022/VERMEER._BLISKO_MISTRZA/glw_VERMEER_Still_03.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
       <div class="opis">
-        <h4>Świt impresjonizmu. Paryż, 1874</h4>
+        <h4>Vermeer. Blisko mistrza</h4>
       </div>
     </a>
-<a href="op.s?id=20935" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/ARCHIWUM/WYSTAWY_NA_EKRANIE_20162017/MICHAL_ANIOL._MILOSC_I_SMIERC/glw_Michelangelo_The_Creation_of_Adamc.1511.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+<a href="op.s?id=20938" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2025/NATIONAL_THEATRE_LIVE_2025/CIALO_I_BRAZ._TAJEMNICA_RZEZB_Z_RIACE/glw_SEMIDEI_FOTO_4.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
       <div class="opis">
-        <h4>Michał Anioł. Miłość i śmierć</h4>
-      </div>
-    </a>
-<a href="op.s?id=21282" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2021/SLONECZNIKI._TAJEMNICA_VAN_GOGHA/glw_Vincent_with_outstretch_brush_Te_Exhibition_on_Screen.jpeg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
-      <div class="opis">
-        <h4>Słoneczniki. Tajemnica Van Gogha</h4>
-      </div>
-    </a>
-<a href="op.s?id=21689" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2023/SZTUKA_NA_EKRANIE_2022/PERUGINO._WIECZNY_RENESANS/glw__MG_3689.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
-      <div class="opis">
-        <h4>Perugino. Wieczny renesans</h4>
-      </div>
-    </a>
-<a href="op.s?id=21285" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2022/SZTUKA_NA_EKRANIE_2022/POMPEJE__MIASTO_GRZECHU/glw_Still_Pompeii_Sin_City_000.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
-      <div class="opis">
-        <h4>Pompeje - miasto grzechu</h4>
+        <h4>Ciało i brąz. Tajemnica rzeźb z Riace</h4>
       </div>
     </a>
 </div>

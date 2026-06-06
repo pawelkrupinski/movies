@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -319,14 +319,14 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </script>
 <section class="fotosy-tyt opis">
 <style>
-.tytulfotos_87965,html.webp .tytulfotos_87965 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_4.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87965,html.webp .tytulfotos_87965 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_4.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_87965,html.webp .tytulfotos_87965 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_4.jpg_max.jpg?v=3);} }
 .tytulfotos_87967,html.webp .tytulfotos_87967 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/glw_DIABEL_UBIERA_SIE_U_PRADY_2_6.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87967,html.webp .tytulfotos_87967 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/glw_DIABEL_UBIERA_SIE_U_PRADY_2_6.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_87967,html.webp .tytulfotos_87967 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/glw_DIABEL_UBIERA_SIE_U_PRADY_2_6.jpg_max.jpg?v=3);} }
 .tytulfotos_87963,html.webp .tytulfotos_87963 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_5.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87963,html.webp .tytulfotos_87963 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_5.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_87963,html.webp .tytulfotos_87963 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_5.jpg_max.jpg?v=3);} }
 .tytulfotos_87961,html.webp .tytulfotos_87961 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87961,html.webp .tytulfotos_87961 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_1.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_87961,html.webp .tytulfotos_87961 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_1.jpg_max.jpg?v=3);} }
+.tytulfotos_87965,html.webp .tytulfotos_87965 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_4.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87965,html.webp .tytulfotos_87965 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_4.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_87965,html.webp .tytulfotos_87965 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_4.jpg_max.jpg?v=3);} }
 .tytulfotos_87964,html.webp .tytulfotos_87964 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_2.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87964,html.webp .tytulfotos_87964 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_2.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_87964,html.webp .tytulfotos_87964 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_2.jpg_max.jpg?v=3);} }
 .tytulfotos_87966,html.webp .tytulfotos_87966 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_3.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87966,html.webp .tytulfotos_87966 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/DIABEL_UBIERA_SIE_U_PRADY_2_3.jpg_standa.jpg?v=3);} }
@@ -334,7 +334,7 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </style>
 <div class="swiper-container fotosy vi" data-video-typ="youtube" data-video-link="nwKSdbspnVM">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_87965"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87967"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87963"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87961"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87964"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87966"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_87967"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87963"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87961"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87965"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87964"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87966"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -351,20 +351,12 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
           <div class="l f4">dzisiaj</div>
           <div class="wyd">
             <div class="seanserep">
-            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194187' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>13:00</a><a id='ev_194188' href='bilet.s?eventId=194188&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>15:30</a><a id='ev_194154' href='bilet.s?eventId=194154&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>18:45</a><a id='ev_194155' href='bilet.s?eventId=194155&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>21:15</a></div>
+            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194224' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>11:30</a><a id='ev_194190' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>13:30</a><a id='ev_194191' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>16:00</a><a id='ev_194192' href='bilet.s?eventId=194192&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>20:30</a></div>
             
             </div>
         </div>
         <div class="srow">
           <div class="l f4">jutro</div>
-          <div class="wyd">
-            <div class="seanserep">
-            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194224' href='bilet.s?eventId=194224&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>11:30</a><a id='ev_194190' href='bilet.s?eventId=194190&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>13:30</a><a id='ev_194191' href='bilet.s?eventId=194191&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>16:00</a><a id='ev_194192' href='bilet.s?eventId=194192&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>20:30</a></div>
-            
-            </div>
-        </div>
-        <div class="srow">
-          <div class="l f4">7 cze / nd</div>
           <div class="wyd">
             <div class="seanserep">
             <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194264' href='bilet.s?eventId=194264&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>11:30</a><a id='ev_194265' href='bilet.s?eventId=194265&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>14:00</a><a id='ev_194231' href='bilet.s?eventId=194231&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>15:45</a><a id='ev_194232' href='bilet.s?eventId=194232&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22316'  title='kup / rezerwuj bilet' class='xseans'>20:15</a></div>
@@ -455,34 +447,34 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
         <h4>Rozmowa</h4>
       </div>
     </a>
-<a href="op.s?id=22416" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MLODE_MATKI/glw_Young_Mothers_-_Still_3.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
-      <div class="opis">
-        <h4>Młode matki</h4>
-      </div>
-    </a>
-<a href="op.s?id=22423" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWODOWCY/glw_UGR_FG_00005511_TL.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
-      <div class="opis">
-        <h4>Zawodowcy</h4>
-      </div>
-    </a>
 <a href="op.s?id=22527" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ALL_YOU_NEED_IS_KILL/glw_AYNIK_still_29_2025-12-18.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ALL_YOU_NEED_IS_KILL/glw_AYNIK_still_29_2025-12-18.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
         <h4>All You Need Is Kill</h4>
       </div>
     </a>
 <a href="op.s?id=22411" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/TOM_I_JERRY_PRZYGODA_W_MUZEUM/glw_8jpg.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/TOM_I_JERRY_PRZYGODA_W_MUZEUM/glw_8jpg.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
       <div class="opis">
         <h4>Tom i Jerry: Przygoda w muzeum</h4>
       </div>
     </a>
-<a href="op.s?id=22422" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/glw_544024_5.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+<a href="op.s?id=22440" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/glw_409356_4.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
       <div class="opis">
-        <h4>Zawieście czerwone latarnie</h4>
+        <h4>Podziemny krąg</h4>
+      </div>
+    </a>
+<a href="op.s?id=22404" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/SPRAWIEDLIWOSC_OWIEC/glw_zdjecie_1.jpeg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+      <div class="opis">
+        <h4>Sprawiedliwość owiec</h4>
+      </div>
+    </a>
+<a href="op.s?id=22526" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/KLATWA_DOLINY_WEZY_Z_AUTORSKA_NARRACJA_LONY/glw_KLATWA_DOLINY_WEZY_2.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+      <div class="opis">
+        <h4>Klątwa Doliny Węży z autorską narracją Łony</h4>
       </div>
     </a>
 </div>

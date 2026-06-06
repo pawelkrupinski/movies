@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -321,22 +321,22 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 <style>
 .tytulfotos_89153,html.webp .tytulfotos_89153 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231038_1.1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89153,html.webp .tytulfotos_89153 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231038_1.1.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89153,html.webp .tytulfotos_89153 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231038_1.1.jpg_max.jpg?v=3);} }
-.tytulfotos_89156,html.webp .tytulfotos_89156 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/glw_1231041.1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89156,html.webp .tytulfotos_89156 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/glw_1231041.1.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89156,html.webp .tytulfotos_89156 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/glw_1231041.1.jpg_max.jpg?v=3);} }
-.tytulfotos_89157,html.webp .tytulfotos_89157 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231036_1.1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89157,html.webp .tytulfotos_89157 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231036_1.1.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89157,html.webp .tytulfotos_89157 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231036_1.1.jpg_max.jpg?v=3);} }
 .tytulfotos_89159,html.webp .tytulfotos_89159 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1216328_2.1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89159,html.webp .tytulfotos_89159 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1216328_2.1.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89159,html.webp .tytulfotos_89159 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1216328_2.1.jpg_max.jpg?v=3);} }
-.tytulfotos_89154,html.webp .tytulfotos_89154 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231039_1.1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89154,html.webp .tytulfotos_89154 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231039_1.1.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89154,html.webp .tytulfotos_89154 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231039_1.1.jpg_max.jpg?v=3);} }
+.tytulfotos_89156,html.webp .tytulfotos_89156 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/glw_1231041.1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89156,html.webp .tytulfotos_89156 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/glw_1231041.1.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89156,html.webp .tytulfotos_89156 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/glw_1231041.1.jpg_max.jpg?v=3);} }
 .tytulfotos_89158,html.webp .tytulfotos_89158 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231037.1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89158,html.webp .tytulfotos_89158 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231037.1.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89158,html.webp .tytulfotos_89158 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231037.1.jpg_max.jpg?v=3);} }
+.tytulfotos_89157,html.webp .tytulfotos_89157 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231036_1.1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89157,html.webp .tytulfotos_89157 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231036_1.1.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89157,html.webp .tytulfotos_89157 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231036_1.1.jpg_max.jpg?v=3);} }
+.tytulfotos_89154,html.webp .tytulfotos_89154 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231039_1.1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89154,html.webp .tytulfotos_89154 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231039_1.1.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89154,html.webp .tytulfotos_89154 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231039_1.1.jpg_max.jpg?v=3);} }
 .tytulfotos_89155,html.webp .tytulfotos_89155 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231035_1.1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89155,html.webp .tytulfotos_89155 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231035_1.1.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89155,html.webp .tytulfotos_89155 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/MEGALOPOLIS/1231035_1.1.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy vi" data-video-typ="youtube" data-video-link="FrOVcR37vL8">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_89153"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89156"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89157"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89159"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89154"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89158"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89155"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_89153"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89159"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89156"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89158"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89157"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89154"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89155"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -425,40 +425,40 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
-<a href="op.s?id=19494" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2020/ZAPOWIEDZI/NEDZNICY/glw_Nedznicy_1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+<a href="op.s?id=21691" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2022/ZAPOWIEDZI/APOKAWIXA/glw_DSCF3128-scaled.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
       <div class="opis">
-        <h4>Nędznicy</h4>
+        <h4>Apokawixa</h4>
       </div>
     </a>
-<a href="op.s?id=20693" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2025/DKF_POLITECHNIKA/FESTEN/glw_festen_Henning_Moritzen_Kopie.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
+<a href="op.s?id=22158" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/DKF_POLITECHNIKA/ROMERA/glw_Romera_2CQuimVives_ElasticaFilms_2.jpg_max.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
-        <h4>Festen</h4>
+        <h4>Romería</h4>
       </div>
     </a>
-<a href="op.s?id=19094" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/ARCHIWUM/ZAPOWIEDZI/SUSPIRIA/glw_SUSPIRIA_photo-credit_Courtesy_of_Amazon_Studios.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+<a href="op.s?id=18450" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2023/DKF_POLITECHNIKA/WINDA_NA_SZAFOT/glw_ascenseur-pour-l-echafaud-6.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
       <div class="opis">
-        <h4>Suspiria</h4>
+        <h4>Windą na szafot</h4>
       </div>
     </a>
-<a href="op.s?id=20615" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2025/SNY_O_KINIE__PRZEGLAD_FILMOW_MIGUELA_GOMESA/DZIENNIKI_EWOINPREIS/glw_Dzienniki_Ewoinpreis_3.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+<a href="op.s?id=18062" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2022/DKF_POLITECHNIKA/ABSOLWENT/glw_Laurat_Le_-_RESTORED_VERSION_4K_CAP001.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
       <div class="opis">
-        <h4>Dzienniki ewoinpreis</h4>
+        <h4>Absolwent</h4>
       </div>
     </a>
-<a href="op.s?id=18538" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/ARCHIWUM/NOWE_HORYZONTY_DLA_SENIORA/POL_ZARTEM_POL_SERIO/glw_SLIH11.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+<a href="op.s?id=19692" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2024/NOWE_HORYZONTY_TOURNE_2024/SAMSARA/glw_Samsara_1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
       <div class="opis">
-        <h4>Pół żartem, pół serio</h4>
+        <h4>Samsara</h4>
       </div>
     </a>
-<a href="op.s?id=19340" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2024/DKF_POLITECHNIKA/DIUNA/glw_Dune_1984_2000x3000.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+<a href="op.s?id=22031" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/DKF_POLITECHNIKA/NIE_MA_DUCHOW_W_MIESZKANIU_NA_DOBREJ/glw_3_fot._Studio_MunkaSFP.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
       <div class="opis">
-        <h4>Diuna</h4>
+        <h4>Nie ma duchów w mieszkaniu na Dobrej</h4>
       </div>
     </a>
 </div>

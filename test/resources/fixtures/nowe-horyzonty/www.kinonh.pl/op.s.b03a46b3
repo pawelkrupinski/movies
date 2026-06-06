@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -319,20 +319,20 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </script>
 <section class="fotosy-tyt opis">
 <style>
+.tytulfotos_88952,html.webp .tytulfotos_88952 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/glw_TADC_HoldingImage-1Sheet_WEB.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88952,html.webp .tytulfotos_88952 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/glw_TADC_HoldingImage-1Sheet_WEB.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_88952,html.webp .tytulfotos_88952 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/glw_TADC_HoldingImage-1Sheet_WEB.jpg_max.jpg?v=3);} }
 .tytulfotos_88954,html.webp .tytulfotos_88954 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BZjRjZTE2YmItM2YwZS00MjIzLTlhZGUtOWQ0ZWE2YTI0NmRhXkEyXkFqcGc._V1_FMjpg_UX1206_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88954,html.webp .tytulfotos_88954 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BZjRjZTE2YmItM2YwZS00MjIzLTlhZGUtOWQ0ZWE2YTI0NmRhXkEyXkFqcGc._V1_FMjpg_UX1206_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_88954,html.webp .tytulfotos_88954 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BZjRjZTE2YmItM2YwZS00MjIzLTlhZGUtOWQ0ZWE2YTI0NmRhXkEyXkFqcGc._V1_FMjpg_UX1206_.jpg_max.jpg?v=3);} }
-.tytulfotos_88955,html.webp .tytulfotos_88955 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BODNlNTdjZDYtYzg3MC00NGEwLThiMjUtYTYxN2RiMGE1YTdmXkEyXkFqcGc._V1_FMjpg_UX1116_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88955,html.webp .tytulfotos_88955 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BODNlNTdjZDYtYzg3MC00NGEwLThiMjUtYTYxN2RiMGE1YTdmXkEyXkFqcGc._V1_FMjpg_UX1116_.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_88955,html.webp .tytulfotos_88955 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BODNlNTdjZDYtYzg3MC00NGEwLThiMjUtYTYxN2RiMGE1YTdmXkEyXkFqcGc._V1_FMjpg_UX1116_.jpg_max.jpg?v=3);} }
 .tytulfotos_88953,html.webp .tytulfotos_88953 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BODNlNTdjZDYtYzg3MC00NGEwLThiMjUtYTYxN2RiMGE1YTdmXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88953,html.webp .tytulfotos_88953 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BODNlNTdjZDYtYzg3MC00NGEwLThiMjUtYTYxN2RiMGE1YTdmXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_88953,html.webp .tytulfotos_88953 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BODNlNTdjZDYtYzg3MC00NGEwLThiMjUtYTYxN2RiMGE1YTdmXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
 .tytulfotos_88950,html.webp .tytulfotos_88950 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BZjRjZTE2YmItM2YwZS00MjIzLTlhZGUtOWQ0ZWE2YTI0NmRhXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88950,html.webp .tytulfotos_88950 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BZjRjZTE2YmItM2YwZS00MjIzLTlhZGUtOWQ0ZWE2YTI0NmRhXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_88950,html.webp .tytulfotos_88950 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BZjRjZTE2YmItM2YwZS00MjIzLTlhZGUtOWQ0ZWE2YTI0NmRhXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
-.tytulfotos_88952,html.webp .tytulfotos_88952 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/glw_TADC_HoldingImage-1Sheet_WEB.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88952,html.webp .tytulfotos_88952 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/glw_TADC_HoldingImage-1Sheet_WEB.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_88952,html.webp .tytulfotos_88952 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/glw_TADC_HoldingImage-1Sheet_WEB.jpg_max.jpg?v=3);} }
+.tytulfotos_88955,html.webp .tytulfotos_88955 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BODNlNTdjZDYtYzg3MC00NGEwLThiMjUtYTYxN2RiMGE1YTdmXkEyXkFqcGc._V1_FMjpg_UX1116_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88955,html.webp .tytulfotos_88955 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BODNlNTdjZDYtYzg3MC00NGEwLThiMjUtYTYxN2RiMGE1YTdmXkEyXkFqcGc._V1_FMjpg_UX1116_.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_88955,html.webp .tytulfotos_88955 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/MV5BODNlNTdjZDYtYzg3MC00NGEwLThiMjUtYTYxN2RiMGE1YTdmXkEyXkFqcGc._V1_FMjpg_UX1116_.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy " data-video-typ="youtube" data-video-link="">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_88954"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88955"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88953"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88950"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88952"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_88952"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88954"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88953"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88950"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88955"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -349,26 +349,15 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
           <div class="l f4">dzisiaj</div>
           <div class="wyd">
             <span class='labe nowosc'></span><div class="seanserep">
-            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_192743' href='bilet.s?eventId=192743&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22489'  title='kup / rezerwuj bilet' class='xseans'>19:00</a></div>
+            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_192745' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>18:15</a></div>
             
             <div class="seanserep">
-            <span class='labe dubbing wersja' data-etykieta='dubbing'></span><a id='ev_192744' href='bilet.s?eventId=192744&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22489'  title='kup / rezerwuj bilet' class='xseans'>16:30</a></div>
+            <span class='labe dubbing wersja' data-etykieta='dubbing'></span><a id='ev_192746' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>16:10</a></div>
             
             </div>
         </div>
         <div class="srow">
           <div class="l f4">jutro</div>
-          <div class="wyd">
-            <span class='labe nowosc'></span><div class="seanserep">
-            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_192745' href='bilet.s?eventId=192745&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22489'  title='kup / rezerwuj bilet' class='xseans'>18:15</a></div>
-            
-            <div class="seanserep">
-            <span class='labe dubbing wersja' data-etykieta='dubbing'></span><a id='ev_192746' href='bilet.s?eventId=192746&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22489'  title='kup / rezerwuj bilet' class='xseans'>16:10</a></div>
-            
-            </div>
-        </div>
-        <div class="srow">
-          <div class="l f4">7 cze / nd</div>
           <div class="wyd">
             <span class='labe nowosc'></span><div class="seanserep">
             <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_192747' href='bilet.s?eventId=192747&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22489'  title='kup / rezerwuj bilet' class='xseans'>19:50</a></div>
@@ -423,28 +412,28 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
-<a href="op.s?id=20742" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/ZYWOT_BRIANA/glw_RS3629_LOB189.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+<a href="op.s?id=22490" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/glw_TADC_HoldingImage-1Sheet_WEB.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
       <div class="opis">
-        <h4>Żywot Briana</h4>
+        <h4>The Amazing Digital Circus: The Last Act</h4>
       </div>
     </a>
-<a href="op.s?id=22578" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/TAKIE_JEST_ZYCIE/glw_1332847_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
+<a href="op.s?id=22587" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_SPECJALNE/LETNIE_PRZESILENIE_PRZEKLENSTWA_NIEWINNOSCI/glw_Przeklenstwa_niewinnosci_kadry_odrestaurowane5_1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
-        <h4>Best Film On Tour: Takie jest życie</h4>
-      </div>
-    </a>
-<a href="op.s?id=22593" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_SPECJALNE/KROLOWIE_DOGTOWN/glw_krolowiedogtown2.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
-      <div class="opis">
-        <h4>Światowy Dzień Deskorolki w KNH: Królowie Dogtown</h4>
+        <h4>Letnie przesilenie: Przekleństwa niewinności</h4>
       </div>
     </a>
 <a href="op.s?id=22591" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_SPECJALNE/DZIEN_TATY_SWIETO_SWIADOMEGO_OJCOSTWA_WE_WROCLAWIU/glw_Wroclawskie_Forum_Ojcow-140.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_SPECJALNE/DZIEN_TATY_SWIETO_SWIADOMEGO_OJCOSTWA_WE_WROCLAWIU/glw_Wroclawskie_Forum_Ojcow-140.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
       <div class="opis">
         <h4>DZIEŃ TATY: święto świadomego ojcostwa we Wrocławiu</h4>
+      </div>
+    </a>
+<a href="op.s?id=22578" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/TAKIE_JEST_ZYCIE/glw_1332847_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+      <div class="opis">
+        <h4>Best Film On Tour: Takie jest życie</h4>
       </div>
     </a>
 <a href="op.s?id=22522" class="boks mala-ilustr ilustracja-left">
@@ -453,10 +442,10 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
         <h4>"Kumotry" i "All The Diamonds": wystawa i film w dialogu</h4>
       </div>
     </a>
-<a href="op.s?id=22490" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/THE_AMAZING_DIGITAL_CIRCUS_THE_LAST_ACT/glw_TADC_HoldingImage-1Sheet_WEB.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+<a href="op.s?id=22593" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_SPECJALNE/KROLOWIE_DOGTOWN/glw_krolowiedogtown2.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
       <div class="opis">
-        <h4>The Amazing Digital Circus: The Last Act</h4>
+        <h4>Światowy Dzień Deskorolki w KNH: Królowie Dogtown</h4>
       </div>
     </a>
 </div>

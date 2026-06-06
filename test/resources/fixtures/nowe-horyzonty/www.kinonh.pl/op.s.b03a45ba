@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -319,26 +319,26 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </script>
 <section class="fotosy-tyt opis">
 <style>
-.tytulfotos_88464,html.webp .tytulfotos_88464 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BMzNkZmFiZDMtNzVhOC00OGZkLTgyMmMtNWJhMGIzNDg2MjQzXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88464,html.webp .tytulfotos_88464 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BMzNkZmFiZDMtNzVhOC00OGZkLTgyMmMtNWJhMGIzNDg2MjQzXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_88464,html.webp .tytulfotos_88464 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BMzNkZmFiZDMtNzVhOC00OGZkLTgyMmMtNWJhMGIzNDg2MjQzXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
-.tytulfotos_88461,html.webp .tytulfotos_88461 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYjY2ODQ0MTgtMThiNy00ODE3LWEzNGItYjc5NjJhNzFmODBkXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88461,html.webp .tytulfotos_88461 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYjY2ODQ0MTgtMThiNy00ODE3LWEzNGItYjc5NjJhNzFmODBkXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_88461,html.webp .tytulfotos_88461 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYjY2ODQ0MTgtMThiNy00ODE3LWEzNGItYjc5NjJhNzFmODBkXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
-.tytulfotos_88463,html.webp .tytulfotos_88463 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYWZkYjkwMDctNWVjZi00NWZmLTkwY2YtNWFhMzY4YTFkYTViXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88463,html.webp .tytulfotos_88463 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYWZkYjkwMDctNWVjZi00NWZmLTkwY2YtNWFhMzY4YTFkYTViXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_88463,html.webp .tytulfotos_88463 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYWZkYjkwMDctNWVjZi00NWZmLTkwY2YtNWFhMzY4YTFkYTViXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
-.tytulfotos_88465,html.webp .tytulfotos_88465 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNGFmYWUzNDAtYWY2MC00YmU3LWFmMjQtMzVhYTE5ZTQ1OWZmXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88465,html.webp .tytulfotos_88465 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNGFmYWUzNDAtYWY2MC00YmU3LWFmMjQtMzVhYTE5ZTQ1OWZmXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_88465,html.webp .tytulfotos_88465 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNGFmYWUzNDAtYWY2MC00YmU3LWFmMjQtMzVhYTE5ZTQ1OWZmXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
 .tytulfotos_88460,html.webp .tytulfotos_88460 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYjllYmFmNWItMTg2NS00MzI3LWExYmItMTk4ZjE1YmZlZWIxXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88460,html.webp .tytulfotos_88460 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYjllYmFmNWItMTg2NS00MzI3LWExYmItMTk4ZjE1YmZlZWIxXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_88460,html.webp .tytulfotos_88460 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYjllYmFmNWItMTg2NS00MzI3LWExYmItMTk4ZjE1YmZlZWIxXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
-.tytulfotos_88458,html.webp .tytulfotos_88458 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNzM4N2QyZTAtMmZmMC00ZWJiLTlkZmEtMGViZTc2YmYzNGQ2XkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88458,html.webp .tytulfotos_88458 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNzM4N2QyZTAtMmZmMC00ZWJiLTlkZmEtMGViZTc2YmYzNGQ2XkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_88458,html.webp .tytulfotos_88458 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNzM4N2QyZTAtMmZmMC00ZWJiLTlkZmEtMGViZTc2YmYzNGQ2XkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
-.tytulfotos_88457,html.webp .tytulfotos_88457 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/glw_MV5BZjFhN2M0ZGMtZmI3MC00NWZkLTk3Y2ItYTZkNDZkODhmYThiXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88457,html.webp .tytulfotos_88457 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/glw_MV5BZjFhN2M0ZGMtZmI3MC00NWZkLTk3Y2ItYTZkNDZkODhmYThiXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_88457,html.webp .tytulfotos_88457 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/glw_MV5BZjFhN2M0ZGMtZmI3MC00NWZkLTk3Y2ItYTZkNDZkODhmYThiXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
+.tytulfotos_88463,html.webp .tytulfotos_88463 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYWZkYjkwMDctNWVjZi00NWZmLTkwY2YtNWFhMzY4YTFkYTViXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88463,html.webp .tytulfotos_88463 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYWZkYjkwMDctNWVjZi00NWZmLTkwY2YtNWFhMzY4YTFkYTViXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_88463,html.webp .tytulfotos_88463 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYWZkYjkwMDctNWVjZi00NWZmLTkwY2YtNWFhMzY4YTFkYTViXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
 .tytulfotos_88462,html.webp .tytulfotos_88462 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BMGE0NzNiYmQtZWU3ZS00ZTNmLTllODgtNzA4MGQxYjFkZjlhXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88462,html.webp .tytulfotos_88462 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BMGE0NzNiYmQtZWU3ZS00ZTNmLTllODgtNzA4MGQxYjFkZjlhXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_88462,html.webp .tytulfotos_88462 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BMGE0NzNiYmQtZWU3ZS00ZTNmLTllODgtNzA4MGQxYjFkZjlhXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
+.tytulfotos_88465,html.webp .tytulfotos_88465 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNGFmYWUzNDAtYWY2MC00YmU3LWFmMjQtMzVhYTE5ZTQ1OWZmXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88465,html.webp .tytulfotos_88465 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNGFmYWUzNDAtYWY2MC00YmU3LWFmMjQtMzVhYTE5ZTQ1OWZmXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_88465,html.webp .tytulfotos_88465 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNGFmYWUzNDAtYWY2MC00YmU3LWFmMjQtMzVhYTE5ZTQ1OWZmXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
+.tytulfotos_88461,html.webp .tytulfotos_88461 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYjY2ODQ0MTgtMThiNy00ODE3LWEzNGItYjc5NjJhNzFmODBkXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88461,html.webp .tytulfotos_88461 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYjY2ODQ0MTgtMThiNy00ODE3LWEzNGItYjc5NjJhNzFmODBkXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_88461,html.webp .tytulfotos_88461 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BYjY2ODQ0MTgtMThiNy00ODE3LWEzNGItYjc5NjJhNzFmODBkXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
+.tytulfotos_88457,html.webp .tytulfotos_88457 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/glw_MV5BZjFhN2M0ZGMtZmI3MC00NWZkLTk3Y2ItYTZkNDZkODhmYThiXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88457,html.webp .tytulfotos_88457 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/glw_MV5BZjFhN2M0ZGMtZmI3MC00NWZkLTk3Y2ItYTZkNDZkODhmYThiXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_88457,html.webp .tytulfotos_88457 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/glw_MV5BZjFhN2M0ZGMtZmI3MC00NWZkLTk3Y2ItYTZkNDZkODhmYThiXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
+.tytulfotos_88464,html.webp .tytulfotos_88464 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BMzNkZmFiZDMtNzVhOC00OGZkLTgyMmMtNWJhMGIzNDg2MjQzXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88464,html.webp .tytulfotos_88464 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BMzNkZmFiZDMtNzVhOC00OGZkLTgyMmMtNWJhMGIzNDg2MjQzXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_88464,html.webp .tytulfotos_88464 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BMzNkZmFiZDMtNzVhOC00OGZkLTgyMmMtNWJhMGIzNDg2MjQzXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
+.tytulfotos_88458,html.webp .tytulfotos_88458 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNzM4N2QyZTAtMmZmMC00ZWJiLTlkZmEtMGViZTc2YmYzNGQ2XkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88458,html.webp .tytulfotos_88458 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNzM4N2QyZTAtMmZmMC00ZWJiLTlkZmEtMGViZTc2YmYzNGQ2XkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_88458,html.webp .tytulfotos_88458 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/MANDALORIAN_I_GROGU/MV5BNzM4N2QyZTAtMmZmMC00ZWJiLTlkZmEtMGViZTc2YmYzNGQ2XkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy vi" data-video-typ="youtube" data-video-link="baFl9SViIys">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_88464"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88461"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88463"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88465"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88460"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88458"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88457"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88462"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_88460"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88463"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88462"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88465"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88461"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88457"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88464"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88458"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -355,20 +355,12 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
           <div class="l f4">dzisiaj</div>
           <div class="wyd">
             <div class="seanserep">
-            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194178' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>11:15</a><a id='ev_194179' href='bilet.s?eventId=194179&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>14:00</a><a id='ev_194181' href='bilet.s?eventId=194181&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>18:15</a><a id='ev_194182' href='bilet.s?eventId=194182&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>21:00</a></div>
+            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194220' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>10:45</a><a id='ev_194221' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>13:40</a><a id='ev_194223' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>17:50</a><a id='ev_194228' href='bilet.s?eventId=194228&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>21:00</a></div>
             
             </div>
         </div>
         <div class="srow">
           <div class="l f4">jutro</div>
-          <div class="wyd">
-            <div class="seanserep">
-            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194220' href='bilet.s?eventId=194220&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>10:45</a><a id='ev_194221' href='bilet.s?eventId=194221&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>13:40</a><a id='ev_194223' href='bilet.s?eventId=194223&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>17:50</a><a id='ev_194228' href='bilet.s?eventId=194228&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>21:00</a></div>
-            
-            </div>
-        </div>
-        <div class="srow">
-          <div class="l f4">7 cze / nd</div>
           <div class="wyd">
             <div class="seanserep">
             <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194244' href='bilet.s?eventId=194244&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>11:40</a><a id='ev_194260' href='bilet.s?eventId=194260&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>14:20</a><a id='ev_194262' href='bilet.s?eventId=194262&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>18:20</a><a id='ev_194263' href='bilet.s?eventId=194263&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22408'  title='kup / rezerwuj bilet' class='xseans'>21:00</a></div>
@@ -455,40 +447,40 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
-<a href="op.s?id=22411" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/TOM_I_JERRY_PRZYGODA_W_MUZEUM/glw_8jpg.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
-      <div class="opis">
-        <h4>Tom i Jerry: Przygoda w muzeum</h4>
-      </div>
-    </a>
-<a href="op.s?id=22538" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/glw_ORLY_REPUBLIKI_4.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
-      <div class="opis">
-        <h4>Orły Republiki</h4>
-      </div>
-    </a>
-<a href="op.s?id=22422" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/glw_544024_5.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
-      <div class="opis">
-        <h4>Zawieście czerwone latarnie</h4>
-      </div>
-    </a>
-<a href="op.s?id=19864" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/ROZMOWA/glw_Reset-Rozmowa-1080x1080.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
-      <div class="opis">
-        <h4>Rozmowa</h4>
-      </div>
-    </a>
 <a href="op.s?id=22410" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/NIESAMOWITE_PRZYGODY_SKARPETEK_3._ALE_KOSMOS/glw_Niesamowite_przygody_skarpetek_3_10.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/NIESAMOWITE_PRZYGODY_SKARPETEK_3._ALE_KOSMOS/glw_Niesamowite_przygody_skarpetek_3_10.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
       <div class="opis">
         <h4>Niesamowite przygody skarpetek 3. Ale kosmos!</h4>
       </div>
     </a>
-<a href="op.s?id=22416" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MLODE_MATKI/glw_Young_Mothers_-_Still_3.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+<a href="op.s?id=22526" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/KLATWA_DOLINY_WEZY_Z_AUTORSKA_NARRACJA_LONY/glw_KLATWA_DOLINY_WEZY_2.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
-        <h4>Młode matki</h4>
+        <h4>Klątwa Doliny Węży z autorską narracją Łony</h4>
+      </div>
+    </a>
+<a href="op.s?id=22187" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PROJEKT_HAIL_MARY/glw_zdjecie_2.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+      <div class="opis">
+        <h4>Projekt Hail Mary</h4>
+      </div>
+    </a>
+<a href="op.s?id=22538" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/glw_ORLY_REPUBLIKI_4.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+      <div class="opis">
+        <h4>Orły Republiki</h4>
+      </div>
+    </a>
+<a href="op.s?id=22335" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MICHAEL/glw_1307465_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+      <div class="opis">
+        <h4>Michael</h4>
+      </div>
+    </a>
+<a href="op.s?id=22404" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/SPRAWIEDLIWOSC_OWIEC/glw_zdjecie_1.jpeg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+      <div class="opis">
+        <h4>Sprawiedliwość owiec</h4>
       </div>
     </a>
 </div>

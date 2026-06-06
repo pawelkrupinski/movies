@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -340,7 +340,7 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
     <h3 class="kupblab">kup bilet <span> </span></h3>
       <div class="seanse">
         <div class="srow">
-          <div class="l f4">7 cze / nd</div>
+          <div class="l f4">jutro</div>
           <div class="wyd">
             <div class="seanserep">
             <span class='labe dubbing wersja' data-etykieta='dubbing'></span><a id='ev_193529' href='bilet.s?eventId=193529&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22563'  title='kup / rezerwuj bilet' class='xseans'>10:30</a></div>
@@ -398,28 +398,28 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
+<a href="op.s?id=22565" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/PORANKI_RODZINNE/PRZEDZIWNE_STWORZENIA/glw_TORU_SUPERLIS_ODC12_MUMIA_02.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+      <div class="opis">
+        <h4>Przedziwne stworzenia</h4>
+      </div>
+    </a>
+<a href="op.s?id=22564" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/PORANKI_RODZINNE/OWADY_CZY_MAJA_WADY/glw_A_i_motyl_1.tif_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
+      <div class="opis">
+        <h4>Owady, czy mają wady?</h4>
+      </div>
+    </a>
 <a href="op.s?id=22566" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/PORANKI_RODZINNE/POSZUKIWACZE_SKARBOW/glw_EP6_Ayayay_capitain_Cala_naprzod_3.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/PORANKI_RODZINNE/POSZUKIWACZE_SKARBOW/glw_EP6_Ayayay_capitain_Cala_naprzod_3.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
       <div class="opis">
         <h4>Poszukiwacze skarbów</h4>
       </div>
     </a>
 <a href="op.s?id=22570" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/PORANKI_RODZINNE/PRZEPIS_NA_SZCZESCIE/glw_bella-lekarz2__kopia.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/PORANKI_RODZINNE/PRZEPIS_NA_SZCZESCIE/glw_bella-lekarz2__kopia.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
       <div class="opis">
         <h4>Przepis na szczęście</h4>
-      </div>
-    </a>
-<a href="op.s?id=22564" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/PORANKI_RODZINNE/OWADY_CZY_MAJA_WADY/glw_A_i_motyl_1.tif_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
-      <div class="opis">
-        <h4>Owady, czy mają wady?</h4>
-      </div>
-    </a>
-<a href="op.s?id=22565" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/PORANKI_RODZINNE/PRZEDZIWNE_STWORZENIA/glw_TORU_SUPERLIS_ODC12_MUMIA_02.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
-      <div class="opis">
-        <h4>Przedziwne stworzenia</h4>
       </div>
     </a>
 </div>

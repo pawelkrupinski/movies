@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -319,18 +319,18 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </script>
 <section class="fotosy-tyt opis">
 <style>
-.tytulfotos_89077,html.webp .tytulfotos_89077 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088057_1.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89077,html.webp .tytulfotos_89077 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088057_1.13.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89077,html.webp .tytulfotos_89077 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088057_1.13.jpg_max.jpg?v=3);} }
-.tytulfotos_89075,html.webp .tytulfotos_89075 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088056_1.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89075,html.webp .tytulfotos_89075 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088056_1.13.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89075,html.webp .tytulfotos_89075 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088056_1.13.jpg_max.jpg?v=3);} }
 .tytulfotos_89076,html.webp .tytulfotos_89076 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/glw_1088059_1.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89076,html.webp .tytulfotos_89076 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/glw_1088059_1.13.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89076,html.webp .tytulfotos_89076 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/glw_1088059_1.13.jpg_max.jpg?v=3);} }
+.tytulfotos_89075,html.webp .tytulfotos_89075 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088056_1.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89075,html.webp .tytulfotos_89075 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088056_1.13.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89075,html.webp .tytulfotos_89075 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088056_1.13.jpg_max.jpg?v=3);} }
 .tytulfotos_89074,html.webp .tytulfotos_89074 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088058_1.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89074,html.webp .tytulfotos_89074 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088058_1.13.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89074,html.webp .tytulfotos_89074 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088058_1.13.jpg_max.jpg?v=3);} }
+.tytulfotos_89077,html.webp .tytulfotos_89077 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088057_1.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89077,html.webp .tytulfotos_89077 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088057_1.13.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89077,html.webp .tytulfotos_89077 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/WALKONIE/1088057_1.13.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy " data-video-typ="youtube" data-video-link="">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_89077"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89075"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89076"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89074"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_89076"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89075"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89074"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89077"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -408,28 +408,28 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
         <h4>Osiem i pół</h4>
       </div>
     </a>
-<a href="op.s?id=22506" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/NOCE_CABIRII/glw_1088008_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
-      <div class="opis">
-        <h4>Noce Cabirii</h4>
-      </div>
-    </a>
 <a href="op.s?id=22509" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/GLOS_Z_KSIEZYCA/glw_1070840_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/GLOS_Z_KSIEZYCA/glw_1070840_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
         <h4>Głos z księżyca</h4>
       </div>
     </a>
 <a href="op.s?id=22505" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/SLODKIE_ZYCIE/glw_still_4.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/SLODKIE_ZYCIE/glw_still_4.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
       <div class="opis">
         <h4>Słodkie życie</h4>
       </div>
     </a>
 <a href="op.s?id=22508" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/GIULIETTA_I_DUCHY/glw_741302_4.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/GIULIETTA_I_DUCHY/glw_741302_4.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
       <div class="opis">
         <h4>Giulietta i duchy</h4>
+      </div>
+    </a>
+<a href="op.s?id=22506" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/NOCE_CABIRII/glw_1088008_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+      <div class="opis">
+        <h4>Noce Cabirii</h4>
       </div>
     </a>
 </div>

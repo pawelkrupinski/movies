@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -321,22 +321,22 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 <style>
 .tytulfotos_89402,html.webp .tytulfotos_89402 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_31_09.Still014.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89402,html.webp .tytulfotos_89402 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_31_09.Still014.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89402,html.webp .tytulfotos_89402 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_31_09.Still014.jpg_max.jpg?v=3);} }
-.tytulfotos_89397,html.webp .tytulfotos_89397 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/glw_John.2.00_01_02_14.Still010.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89397,html.webp .tytulfotos_89397 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/glw_John.2.00_01_02_14.Still010.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89397,html.webp .tytulfotos_89397 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/glw_John.2.00_01_02_14.Still010.jpg_max.jpg?v=3);} }
-.tytulfotos_89400,html.webp .tytulfotos_89400 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_17_04.Still012.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89400,html.webp .tytulfotos_89400 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_17_04.Still012.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89400,html.webp .tytulfotos_89400 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_17_04.Still012.jpg_max.jpg?v=3);} }
+.tytulfotos_89396,html.webp .tytulfotos_89396 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_00_53_06.Still009.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89396,html.webp .tytulfotos_89396 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_00_53_06.Still009.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89396,html.webp .tytulfotos_89396 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_00_53_06.Still009.jpg_max.jpg?v=3);} }
 .tytulfotos_89398,html.webp .tytulfotos_89398 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_37_03.Still015.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89398,html.webp .tytulfotos_89398 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_37_03.Still015.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89398,html.webp .tytulfotos_89398 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_37_03.Still015.jpg_max.jpg?v=3);} }
 .tytulfotos_89403,html.webp .tytulfotos_89403 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_41_03.Still016.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89403,html.webp .tytulfotos_89403 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_41_03.Still016.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89403,html.webp .tytulfotos_89403 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_41_03.Still016.jpg_max.jpg?v=3);} }
-.tytulfotos_89396,html.webp .tytulfotos_89396 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_00_53_06.Still009.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89396,html.webp .tytulfotos_89396 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_00_53_06.Still009.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89396,html.webp .tytulfotos_89396 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_00_53_06.Still009.jpg_max.jpg?v=3);} }
+.tytulfotos_89397,html.webp .tytulfotos_89397 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/glw_John.2.00_01_02_14.Still010.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89397,html.webp .tytulfotos_89397 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/glw_John.2.00_01_02_14.Still010.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89397,html.webp .tytulfotos_89397 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/glw_John.2.00_01_02_14.Still010.jpg_max.jpg?v=3);} }
 .tytulfotos_89401,html.webp .tytulfotos_89401 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_22_01.Still013.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89401,html.webp .tytulfotos_89401 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_22_01.Still013.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89401,html.webp .tytulfotos_89401 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_22_01.Still013.jpg_max.jpg?v=3);} }
+.tytulfotos_89400,html.webp .tytulfotos_89400 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_17_04.Still012.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89400,html.webp .tytulfotos_89400 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_17_04.Still012.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89400,html.webp .tytulfotos_89400 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/John.2.00_01_17_04.Still012.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy vi" data-video-typ="youtube" data-video-link="_bRwAXj_ubQ">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_89402"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89397"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89400"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89398"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89403"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89396"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89401"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_89402"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89396"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89398"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89403"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89397"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89401"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89400"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -413,12 +413,6 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
       <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/24._TYDZIEN_KINA_HISZPANSKIEGO/DRUGIE_ZYCIE/glw_DRUGIE_ZYCIE.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
         <h4>Drugie życie</h4>
-      </div>
-    </a>
-<a href="op.s?id=22571" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MLODE_MATKI/glw_Young_Mothers_-_Still_3.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
-      <div class="opis">
-        <h4>Młode matki</h4>
       </div>
     </a>
 </div>

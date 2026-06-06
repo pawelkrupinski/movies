@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -321,20 +321,20 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 <style>
 .tytulfotos_88466,html.webp .tytulfotos_88466 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BOWU3ZTcyNGItZTg4Zi00ZTUyLWFkNDktNDJmN2U5NzQwMWNkXkEyXkFqcGc._V1_FMjpg_UX1280_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88466,html.webp .tytulfotos_88466 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BOWU3ZTcyNGItZTg4Zi00ZTUyLWFkNDktNDJmN2U5NzQwMWNkXkEyXkFqcGc._V1_FMjpg_UX1280_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_88466,html.webp .tytulfotos_88466 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BOWU3ZTcyNGItZTg4Zi00ZTUyLWFkNDktNDJmN2U5NzQwMWNkXkEyXkFqcGc._V1_FMjpg_UX1280_.jpg_max.jpg?v=3);} }
+.tytulfotos_88472,html.webp .tytulfotos_88472 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZTgxZWFmMTAtZTk2MC00YjQ1LTg5MjYtMzQ5ZWVkMjc2YTMwXkEyXkFqcGc._V1_FMjpg_UX1280_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88472,html.webp .tytulfotos_88472 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZTgxZWFmMTAtZTk2MC00YjQ1LTg5MjYtMzQ5ZWVkMjc2YTMwXkEyXkFqcGc._V1_FMjpg_UX1280_.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_88472,html.webp .tytulfotos_88472 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZTgxZWFmMTAtZTk2MC00YjQ1LTg5MjYtMzQ5ZWVkMjc2YTMwXkEyXkFqcGc._V1_FMjpg_UX1280_.jpg_max.jpg?v=3);} }
 .tytulfotos_88471,html.webp .tytulfotos_88471 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZjJkOTUzOGItZGRhNy00Y2NjLTk2ODQtNzFkOGY1YmMzOWI0XkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88471,html.webp .tytulfotos_88471 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZjJkOTUzOGItZGRhNy00Y2NjLTk2ODQtNzFkOGY1YmMzOWI0XkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_88471,html.webp .tytulfotos_88471 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZjJkOTUzOGItZGRhNy00Y2NjLTk2ODQtNzFkOGY1YmMzOWI0XkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
 .tytulfotos_88468,html.webp .tytulfotos_88468 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BODUzNGVlNjAtMDIyZC00MTA4LTgwMGQtZGM5Mzc2NjVlOTYxXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88468,html.webp .tytulfotos_88468 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BODUzNGVlNjAtMDIyZC00MTA4LTgwMGQtZGM5Mzc2NjVlOTYxXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_88468,html.webp .tytulfotos_88468 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BODUzNGVlNjAtMDIyZC00MTA4LTgwMGQtZGM5Mzc2NjVlOTYxXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
-.tytulfotos_88469,html.webp .tytulfotos_88469 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/glw_MV5BYjVhYTc1YzctYzFkNy00YTYxLTlmNWMtMzc4MzJlMTQxYWNlXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88469,html.webp .tytulfotos_88469 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/glw_MV5BYjVhYTc1YzctYzFkNy00YTYxLTlmNWMtMzc4MzJlMTQxYWNlXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_88469,html.webp .tytulfotos_88469 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/glw_MV5BYjVhYTc1YzctYzFkNy00YTYxLTlmNWMtMzc4MzJlMTQxYWNlXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
-.tytulfotos_88472,html.webp .tytulfotos_88472 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZTgxZWFmMTAtZTk2MC00YjQ1LTg5MjYtMzQ5ZWVkMjc2YTMwXkEyXkFqcGc._V1_FMjpg_UX1280_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88472,html.webp .tytulfotos_88472 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZTgxZWFmMTAtZTk2MC00YjQ1LTg5MjYtMzQ5ZWVkMjc2YTMwXkEyXkFqcGc._V1_FMjpg_UX1280_.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_88472,html.webp .tytulfotos_88472 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZTgxZWFmMTAtZTk2MC00YjQ1LTg5MjYtMzQ5ZWVkMjc2YTMwXkEyXkFqcGc._V1_FMjpg_UX1280_.jpg_max.jpg?v=3);} }
 .tytulfotos_88467,html.webp .tytulfotos_88467 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZWQ2YTM0OTUtMGIwOS00NmVlLThiNzQtODcyOTdmYjNiOTZmXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88467,html.webp .tytulfotos_88467 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZWQ2YTM0OTUtMGIwOS00NmVlLThiNzQtODcyOTdmYjNiOTZmXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_88467,html.webp .tytulfotos_88467 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/MV5BZWQ2YTM0OTUtMGIwOS00NmVlLThiNzQtODcyOTdmYjNiOTZmXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
+.tytulfotos_88469,html.webp .tytulfotos_88469 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/glw_MV5BYjVhYTc1YzctYzFkNy00YTYxLTlmNWMtMzc4MzJlMTQxYWNlXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88469,html.webp .tytulfotos_88469 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/glw_MV5BYjVhYTc1YzctYzFkNy00YTYxLTlmNWMtMzc4MzJlMTQxYWNlXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_88469,html.webp .tytulfotos_88469 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/DRZEWO_MAGII/glw_MV5BYjVhYTc1YzctYzFkNy00YTYxLTlmNWMtMzc4MzJlMTQxYWNlXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy vi" data-video-typ="youtube" data-video-link="PY_LoiN8B5I">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_88466"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88471"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88468"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88469"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88472"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88467"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_88466"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88472"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88471"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88468"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88467"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88469"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -351,20 +351,12 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
           <div class="l f4">dzisiaj</div>
           <div class="wyd">
             <div class="seanserep">
-            <span class='labe dubbing wersja' data-etykieta='dubbing'></span><a id='ev_194161' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>12:15</a><a id='ev_194163' href='bilet.s?eventId=194163&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22409'  title='kup / rezerwuj bilet' class='xseans'>17:00</a></div>
+            <span class='labe dubbing wersja' data-etykieta='dubbing'></span><a id='ev_194200' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>12:15</a><a id='ev_194202' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>16:50</a></div>
             
             </div>
         </div>
         <div class="srow">
           <div class="l f4">jutro</div>
-          <div class="wyd">
-            <div class="seanserep">
-            <span class='labe dubbing wersja' data-etykieta='dubbing'></span><a id='ev_194200' href='bilet.s?eventId=194200&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22409'  title='kup / rezerwuj bilet' class='xseans'>12:15</a><a id='ev_194202' href='bilet.s?eventId=194202&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22409'  title='kup / rezerwuj bilet' class='xseans'>16:50</a></div>
-            
-            </div>
-        </div>
-        <div class="srow">
-          <div class="l f4">7 cze / nd</div>
           <div class="wyd">
             <div class="seanserep">
             <span class='labe dubbing wersja' data-etykieta='dubbing'></span><a id='ev_194239' href='bilet.s?eventId=194239&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22409'  title='kup / rezerwuj bilet' class='xseans'>12:15</a><a id='ev_194241' href='bilet.s?eventId=194241&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22409'  title='kup / rezerwuj bilet' class='xseans'>16:50</a></div>
@@ -449,40 +441,40 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
-<a href="op.s?id=19864" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2024/ZAPOWIEDZI/ROZMOWA/glw_Reset-Rozmowa-1080x1080.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+<a href="op.s?id=22423" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWODOWCY/glw_UGR_FG_00005511_TL.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
       <div class="opis">
-        <h4>Rozmowa</h4>
+        <h4>Zawodowcy</h4>
       </div>
     </a>
-<a href="op.s?id=22590" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_SPECJALNE/MICKEY_I_NICKY__SPOTKANIE_Z_M._OLESZCZYKIEM/glw_Mikey_i_Nicky-fotosy1a.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
+<a href="op.s?id=22411" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/TOM_I_JERRY_PRZYGODA_W_MUZEUM/glw_8jpg.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
-        <h4>Mikey i Nicky</h4>
+        <h4>Tom i Jerry: Przygoda w muzeum</h4>
+      </div>
+    </a>
+<a href="op.s?id=22187" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PROJEKT_HAIL_MARY/glw_zdjecie_2.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+      <div class="opis">
+        <h4>Projekt Hail Mary</h4>
+      </div>
+    </a>
+<a href="op.s?id=22314" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DRAMA/glw_DRAMA_2.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+      <div class="opis">
+        <h4>Drama</h4>
       </div>
     </a>
 <a href="op.s?id=22422" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/glw_544024_5.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/glw_544024_5.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
       <div class="opis">
         <h4>Zawieście czerwone latarnie</h4>
       </div>
     </a>
-<a href="op.s?id=22404" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/SPRAWIEDLIWOSC_OWIEC/glw_zdjecie_1.jpeg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+<a href="op.s?id=22527" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ALL_YOU_NEED_IS_KILL/glw_AYNIK_still_29_2025-12-18.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
       <div class="opis">
-        <h4>Sprawiedliwość owiec</h4>
-      </div>
-    </a>
-<a href="op.s?id=22331" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PUCIO/glw_Pucio_1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
-      <div class="opis">
-        <h4>Pucio</h4>
-      </div>
-    </a>
-<a href="op.s?id=22526" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/KLATWA_DOLINY_WEZY_Z_AUTORSKA_NARRACJA_LONY/glw_KLATWA_DOLINY_WEZY_2.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
-      <div class="opis">
-        <h4>Klątwa Doliny Węży z autorską narracją Łony</h4>
+        <h4>All You Need Is Kill</h4>
       </div>
     </a>
 </div>

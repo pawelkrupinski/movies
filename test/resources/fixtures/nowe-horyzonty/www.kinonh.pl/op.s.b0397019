@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -319,20 +319,20 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </script>
 <section class="fotosy-tyt opis">
 <style>
+.tytulfotos_79264,html.webp .tytulfotos_79264 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlos_studio_inside_the_Blue_House_Mexico_City_e_EXHIBITION_ON_SCREEN.jpeg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_79264,html.webp .tytulfotos_79264 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlos_studio_inside_the_Blue_House_Mexico_City_e_EXHIBITION_ON_SCREEN.jpeg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_79264,html.webp .tytulfotos_79264 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlos_studio_inside_the_Blue_House_Mexico_City_e_EXHIBITION_ON_SCREEN.jpeg_max.jpg?v=3);} }
 .tytulfotos_79263,html.webp .tytulfotos_79263 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/The_Two_Fridas_1939_Frida_Kahlo_Museo_de_Arte_Moderno_De_Agostini_Picture_Library_G._Dagli_Orti_Bridgeman_Images.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_79263,html.webp .tytulfotos_79263 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/The_Two_Fridas_1939_Frida_Kahlo_Museo_de_Arte_Moderno_De_Agostini_Picture_Library_G._Dagli_Orti_Bridgeman_Images.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_79263,html.webp .tytulfotos_79263 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/The_Two_Fridas_1939_Frida_Kahlo_Museo_de_Arte_Moderno_De_Agostini_Picture_Library_G._Dagli_Orti_Bridgeman_Images.jpg_max.jpg?v=3);} }
 .tytulfotos_79262,html.webp .tytulfotos_79262 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/glw_Frida_Kahlo._Photo_by_Nickolas_Murray_c_Nickolas_Muray_Photo_Archives_mniejzse.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_79262,html.webp .tytulfotos_79262 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/glw_Frida_Kahlo._Photo_by_Nickolas_Murray_c_Nickolas_Muray_Photo_Archives_mniejzse.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_79262,html.webp .tytulfotos_79262 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/glw_Frida_Kahlo._Photo_by_Nickolas_Murray_c_Nickolas_Muray_Photo_Archives_mniejzse.jpg_max.jpg?v=3);} }
-.tytulfotos_79261,html.webp .tytulfotos_79261 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlo_Self_Portrait_with_Necklace_of_Thorn_Necklace_and_Hummingbird_1940_Bridgeman.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_79261,html.webp .tytulfotos_79261 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlo_Self_Portrait_with_Necklace_of_Thorn_Necklace_and_Hummingbird_1940_Bridgeman.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_79261,html.webp .tytulfotos_79261 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlo_Self_Portrait_with_Necklace_of_Thorn_Necklace_and_Hummingbird_1940_Bridgeman.jpg_max.jpg?v=3);} }
-.tytulfotos_79264,html.webp .tytulfotos_79264 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlos_studio_inside_the_Blue_House_Mexico_City_e_EXHIBITION_ON_SCREEN.jpeg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_79264,html.webp .tytulfotos_79264 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlos_studio_inside_the_Blue_House_Mexico_City_e_EXHIBITION_ON_SCREEN.jpeg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_79264,html.webp .tytulfotos_79264 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlos_studio_inside_the_Blue_House_Mexico_City_e_EXHIBITION_ON_SCREEN.jpeg_max.jpg?v=3);} }
 .tytulfotos_79260,html.webp .tytulfotos_79260 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Director_Ali_Ray__Christina_Kahlo_e_EXHIBITION_ON_SCREEN.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_79260,html.webp .tytulfotos_79260 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Director_Ali_Ray__Christina_Kahlo_e_EXHIBITION_ON_SCREEN.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_79260,html.webp .tytulfotos_79260 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Director_Ali_Ray__Christina_Kahlo_e_EXHIBITION_ON_SCREEN.jpg_max.jpg?v=3);} }
+.tytulfotos_79261,html.webp .tytulfotos_79261 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlo_Self_Portrait_with_Necklace_of_Thorn_Necklace_and_Hummingbird_1940_Bridgeman.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_79261,html.webp .tytulfotos_79261 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlo_Self_Portrait_with_Necklace_of_Thorn_Necklace_and_Hummingbird_1940_Bridgeman.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_79261,html.webp .tytulfotos_79261 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2022/FRIDA_KAHLO._IKONICZNA_ARTYSTKA/Frida_Kahlo_Self_Portrait_with_Necklace_of_Thorn_Necklace_and_Hummingbird_1940_Bridgeman.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy vi" data-video-typ="youtube" data-video-link="FBjk0Lo7BNk">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_79263"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_79262"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_79261"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_79264"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_79260"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_79264"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_79263"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_79262"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_79260"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_79261"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -406,10 +406,10 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
-<a href="op.s?id=20937" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2025/NATIONAL_THEATRE_LIVE_2025/LOTTO_I_BERENSON__SPLECIONE_LOSY._SLADAMI_RENESANSOWEGO_MISTRZA/glw_Lotto_Berenson_screenshot_2.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+<a href="op.s?id=22428" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2023/SZTUKA_NA_EKRANIE_2022/VERMEER._BLISKO_MISTRZA/glw_VERMEER_Still_03.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
       <div class="opis">
-        <h4>Lotto i Berenson – splecione losy. Śladami renesansowego mistrza</h4>
+        <h4>Vermeer. Blisko mistrza</h4>
       </div>
     </a>
 <a href="op.s?id=21944" class="boks mala-ilustr ilustracja-left">
@@ -418,28 +418,28 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
         <h4>Picasso. Buntownik w Paryżu</h4>
       </div>
     </a>
-<a href="op.s?id=20682" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2022/SZTUKA_NA_EKRANIE_2022/LEONARDO._DZIELA_WSZYSTKIE/glw_The_Lady_with_an_Ermine_c._1489-1490_Leonardo_da_Vinci_National_Museum_Krak-w_.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+<a href="op.s?id=20928" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2024/THE_MET_2022/DZIEN_W_LONDYNSKIEJ_NATIONAL_GALLERY/glw_Fotosy_2.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
       <div class="opis">
-        <h4>Leonardo. Dzieła wszystkie</h4>
+        <h4>Dzień w londyńskiej The National Gallery</h4>
       </div>
     </a>
-<a href="op.s?id=21280" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2022/SZTUKA_NA_EKRANIE_2022/WENECJA__AWANGARDA_BEZ_GRANIC/glw_Wenecja_B1__.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+<a href="op.s?id=20936" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2023/SZTUKA_NA_EKRANIE_2022/TOKIJSKIE_OPOWIESCI._SZTUKA_STOLICY_JAPONII/glw_EOS_Tokyo_stories_Mt_Fuji_Te_EXHIBITION_ON_SCREEN_David_Bickerstaff.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
       <div class="opis">
-        <h4>Wenecja. Awangarda bez granic z muzyką Hani Rani</h4>
+        <h4>Tokijskie opowieści. Sztuka stolicy Japonii</h4>
       </div>
     </a>
-<a href="op.s?id=22477" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2024/POKAZY_SPECJALNE/ANDY_WARHOL._AMERYKANSKI_SEN/glw_image005.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+<a href="op.s?id=21286" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2021/SZTUKA_NA_EKRANIE_2021/SWIETY_PIOTR_I_INNE_PAPIESKIE_BAZYLIKI_RZYMU/glw_St_Peter039s_backstage_4.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
       <div class="opis">
-        <h4>Andy Warhol. Amerykański sen</h4>
+        <h4>Święty Piotr i inne papieskie bazyliki Rzymu</h4>
       </div>
     </a>
-<a href="op.s?id=21687" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2022/SZTUKA_NA_EKRANIE_2022/BOTTICELLI_FLORENCJA_I_MEDYCEUSZE/glw_Botticelli_e_Firenze_00002_HQ.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+<a href="op.s?id=20683" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2023/SZTUKA_NA_EKRANIE_2022/NOWY_VERMEER._WYSTAWA_WSZECHCZASOW/glw_1200x1200_Vermeer.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
       <div class="opis">
-        <h4>Botticelli, Florencja i Medyceusze</h4>
+        <h4>Nowy Vermeer. Wystawa wszech czasów</h4>
       </div>
     </a>
 </div>

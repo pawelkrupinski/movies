@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -319,18 +319,18 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </script>
 <section class="fotosy-tyt opis">
 <style>
-.tytulfotos_87093,html.webp .tytulfotos_87093 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-36-1500x.width-800.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87093,html.webp .tytulfotos_87093 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-36-1500x.width-800.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_87093,html.webp .tytulfotos_87093 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-36-1500x.width-800.jpg_max.jpg?v=3);} }
-.tytulfotos_87092,html.webp .tytulfotos_87092 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-52-1500x.width-800.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87092,html.webp .tytulfotos_87092 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-52-1500x.width-800.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_87092,html.webp .tytulfotos_87092 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-52-1500x.width-800.jpg_max.jpg?v=3);} }
-.tytulfotos_87090,html.webp .tytulfotos_87090 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-28-1500x.width-800.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87090,html.webp .tytulfotos_87090 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-28-1500x.width-800.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_87090,html.webp .tytulfotos_87090 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-28-1500x.width-800.jpg_max.jpg?v=3);} }
 .tytulfotos_87091,html.webp .tytulfotos_87091 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/glw_1-F-1966-178-1500x.width-800.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87091,html.webp .tytulfotos_87091 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/glw_1-F-1966-178-1500x.width-800.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_87091,html.webp .tytulfotos_87091 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/glw_1-F-1966-178-1500x.width-800.jpg_max.jpg?v=3);} }
+.tytulfotos_87092,html.webp .tytulfotos_87092 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-52-1500x.width-800.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87092,html.webp .tytulfotos_87092 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-52-1500x.width-800.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_87092,html.webp .tytulfotos_87092 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-52-1500x.width-800.jpg_max.jpg?v=3);} }
+.tytulfotos_87093,html.webp .tytulfotos_87093 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-36-1500x.width-800.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87093,html.webp .tytulfotos_87093 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-36-1500x.width-800.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_87093,html.webp .tytulfotos_87093 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-36-1500x.width-800.jpg_max.jpg?v=3);} }
+.tytulfotos_87090,html.webp .tytulfotos_87090 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-28-1500x.width-800.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_87090,html.webp .tytulfotos_87090 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-28-1500x.width-800.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_87090,html.webp .tytulfotos_87090 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/1-F-1966-28-1500x.width-800.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy " data-video-typ="youtube" data-video-link="">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_87093"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87092"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87090"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87091"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_87091"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87092"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87093"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_87090"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -399,40 +399,40 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
-<a href="op.s?id=22163" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/JAK_BYC_KOCHANA/glw_jak-byc-kochana-2.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+<a href="op.s?id=22165" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/DOM_WARIATOW/glw_1133239_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
       <div class="opis">
-        <h4>Jak być kochaną</h4>
-      </div>
-    </a>
-<a href="op.s?id=22167" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/CMA/glw_1-F-153-10-800x800.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
-      <div class="opis">
-        <h4>Ćma</h4>
+        <h4>Dom wariatów</h4>
       </div>
     </a>
 <a href="op.s?id=22168" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/UCIECZKA_Z_KINA_WOLNOSC/glw_1225947.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/UCIECZKA_Z_KINA_WOLNOSC/glw_1225947.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
         <h4>Ucieczka z kina "Wolność"</h4>
       </div>
     </a>
 <a href="op.s?id=22170" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/KROTKI_FILM_O_MILOSCI/glw_1126423_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/KROTKI_FILM_O_MILOSCI/glw_1126423_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
       <div class="opis">
         <h4>Krótki film o miłości</h4>
       </div>
     </a>
-<a href="op.s?id=22160" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/CHLOPI/glw_1160921_2.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+<a href="op.s?id=22166" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/ZYCIE_RODZINNE/glw_fo_film_zycie_rodzinne_zanussi_05_53370.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
       <div class="opis">
-        <h4>Chłopi</h4>
+        <h4>Życie rodzinne</h4>
       </div>
     </a>
-<a href="op.s?id=22159" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/TANCZACY_JASTRZAB/glw_1024-738.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+<a href="op.s?id=22162" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/PASAZERKA/glw_1-F-483-153-1500x.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
       <div class="opis">
-        <h4>Tańczący jastrząb</h4>
+        <h4>Pasażerka</h4>
+      </div>
+    </a>
+<a href="op.s?id=22164" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/PRZESLUCHANIE/glw_1037201_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+      <div class="opis">
+        <h4>Przesłuchanie</h4>
       </div>
     </a>
 </div>

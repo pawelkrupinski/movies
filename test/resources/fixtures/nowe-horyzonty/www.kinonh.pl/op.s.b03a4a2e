@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -319,22 +319,22 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </script>
 <section class="fotosy-tyt opis">
 <style>
-.tytulfotos_89371,html.webp .tytulfotos_89371 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_4.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89371,html.webp .tytulfotos_89371 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_4.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89371,html.webp .tytulfotos_89371 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_4.jpg_max.jpg?v=3);} }
-.tytulfotos_89374,html.webp .tytulfotos_89374 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_2.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89374,html.webp .tytulfotos_89374 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_2.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89374,html.webp .tytulfotos_89374 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_2.jpg_max.jpg?v=3);} }
 .tytulfotos_89373,html.webp .tytulfotos_89373 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/glw_Bjork_3.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89373,html.webp .tytulfotos_89373 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/glw_Bjork_3.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89373,html.webp .tytulfotos_89373 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/glw_Bjork_3.jpg_max.jpg?v=3);} }
-.tytulfotos_89368,html.webp .tytulfotos_89368 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/CORNUCOPIA_SOCIAL_72_1920X1080_NO.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89368,html.webp .tytulfotos_89368 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/CORNUCOPIA_SOCIAL_72_1920X1080_NO.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89368,html.webp .tytulfotos_89368 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/CORNUCOPIA_SOCIAL_72_1920X1080_NO.jpg_max.jpg?v=3);} }
 .tytulfotos_89370,html.webp .tytulfotos_89370 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89370,html.webp .tytulfotos_89370 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_1.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89370,html.webp .tytulfotos_89370 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_1.jpg_max.jpg?v=3);} }
 .tytulfotos_89369,html.webp .tytulfotos_89369 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_Cornucopia_Film_Poster_Quad.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89369,html.webp .tytulfotos_89369 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_Cornucopia_Film_Poster_Quad.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89369,html.webp .tytulfotos_89369 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_Cornucopia_Film_Poster_Quad.jpg_max.jpg?v=3);} }
+.tytulfotos_89374,html.webp .tytulfotos_89374 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_2.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89374,html.webp .tytulfotos_89374 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_2.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89374,html.webp .tytulfotos_89374 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_2.jpg_max.jpg?v=3);} }
+.tytulfotos_89368,html.webp .tytulfotos_89368 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/CORNUCOPIA_SOCIAL_72_1920X1080_NO.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89368,html.webp .tytulfotos_89368 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/CORNUCOPIA_SOCIAL_72_1920X1080_NO.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89368,html.webp .tytulfotos_89368 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/CORNUCOPIA_SOCIAL_72_1920X1080_NO.jpg_max.jpg?v=3);} }
+.tytulfotos_89371,html.webp .tytulfotos_89371 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_4.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89371,html.webp .tytulfotos_89371 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_4.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89371,html.webp .tytulfotos_89371 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/BJRK_CORNUCOPIA/Bjork_4.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy vi" data-video-typ="youtube" data-video-link="NMyrRnTLUTg">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_89371"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89374"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89373"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89368"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89370"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89369"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_89373"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89370"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89369"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89374"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89368"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89371"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -348,7 +348,7 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
     <h3 class="kupblab">kup bilet <span> </span></h3>
       <div class="seanse">
         <div class="srow">
-          <div class="l f4">jutro</div>
+          <div class="l f4">dzisiaj</div>
           <div class="wyd">
             <div class="seanserep">
             <a id='ev_193521' href='bilet.s?eventId=193521&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22561'  title='kup / rezerwuj bilet' class='xseans'>20:30</a></div>
@@ -411,22 +411,22 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
-<a href="op.s?id=22480" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/90._URODZINY_PAVAROTTIEGO/glw_Koncert_90._URODZINY_PAVAROTTIEGO_z_Arena_di_Verona._Fot._Luca_Marenda_7.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
-      <div class="opis">
-        <h4>90. urodziny Pavarottiego</h4>
-      </div>
-    </a>
 <a href="op.s?id=22589" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/ANDR_RIEU._NIECH_ZYJE_MAASTRICHT/glw_Nowy_koncert_kinowy_Andre_Rieu_NIECH_ZYJE_MAASTRICHT_Fot._ARP_i_PoM_6.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/ANDR_RIEU._NIECH_ZYJE_MAASTRICHT/glw_Nowy_koncert_kinowy_Andre_Rieu_NIECH_ZYJE_MAASTRICHT_Fot._ARP_i_PoM_6.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
       <div class="opis">
         <h4>André Rieu. Niech żyje Maastricht!</h4>
       </div>
     </a>
 <a href="op.s?id=22562" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/THE_CURE_ANNIVERSARY_19782018_LIVE_IN_HYDE_PARK/glw_THE_CURE_BST_ANNIVERSARY_UHD_Images__0022_192879_copy.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/THE_CURE_ANNIVERSARY_19782018_LIVE_IN_HYDE_PARK/glw_THE_CURE_BST_ANNIVERSARY_UHD_Images__0022_192879_copy.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
         <h4>The Cure: Anniversary 1978–2018 Live in Hyde Park</h4>
+      </div>
+    </a>
+<a href="op.s?id=22480" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/MUZYKA_NA_EKRANIE/90._URODZINY_PAVAROTTIEGO/glw_Koncert_90._URODZINY_PAVAROTTIEGO_z_Arena_di_Verona._Fot._Luca_Marenda_7.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+      <div class="opis">
+        <h4>90. urodziny Pavarottiego</h4>
       </div>
     </a>
 <a href="op.s?id=22482" class="boks mala-ilustr ilustracja-left">

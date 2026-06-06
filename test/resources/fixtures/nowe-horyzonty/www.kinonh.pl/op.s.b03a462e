@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -325,14 +325,14 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 @media  (min-width:900px) {.tytulfotos_88676,html.webp .tytulfotos_88676 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/glw_409356_4.13.jpg_max.jpg?v=3);} }
 .tytulfotos_88677,html.webp .tytulfotos_88677 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409386_4.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88677,html.webp .tytulfotos_88677 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409386_4.13.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_88677,html.webp .tytulfotos_88677 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409386_4.13.jpg_max.jpg?v=3);} }
-.tytulfotos_88675,html.webp .tytulfotos_88675 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409353_4.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88675,html.webp .tytulfotos_88675 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409353_4.13.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_88675,html.webp .tytulfotos_88675 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409353_4.13.jpg_max.jpg?v=3);} }
 .tytulfotos_88679,html.webp .tytulfotos_88679 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409352_5.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88679,html.webp .tytulfotos_88679 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409352_5.13.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_88679,html.webp .tytulfotos_88679 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409352_5.13.jpg_max.jpg?v=3);} }
+.tytulfotos_88675,html.webp .tytulfotos_88675 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409353_4.13.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_88675,html.webp .tytulfotos_88675 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409353_4.13.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_88675,html.webp .tytulfotos_88675 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PODZIEMNY_KRAG/409353_4.13.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy " data-video-typ="youtube" data-video-link="">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_88680"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88676"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88677"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88675"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88679"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_88680"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88676"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88677"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88679"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_88675"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -349,20 +349,12 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
           <div class="l f4">dzisiaj</div>
           <div class="wyd">
             <span class='labe nowosc'></span><div class="seanserep">
-            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194158' href='bilet.s?eventId=194158&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22440'  title='kup / rezerwuj bilet' class='xseans'>14:40</a><a id='ev_192397' href='bilet.s?eventId=192397&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22440'  title='kup / rezerwuj bilet' class='xseans'>20:15</a></div>
+            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194230' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>13:20</a><a id='ev_192398' href='bilet.s?eventId=192398&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22440'  title='kup / rezerwuj bilet' class='xseans'>20:15</a></div>
             
             </div>
         </div>
         <div class="srow">
           <div class="l f4">jutro</div>
-          <div class="wyd">
-            <span class='labe nowosc'></span><div class="seanserep">
-            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194230' href='bilet.s?eventId=194230&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22440'  title='kup / rezerwuj bilet' class='xseans'>13:20</a><a id='ev_192398' href='bilet.s?eventId=192398&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22440'  title='kup / rezerwuj bilet' class='xseans'>20:15</a></div>
-            
-            </div>
-        </div>
-        <div class="srow">
-          <div class="l f4">7 cze / nd</div>
           <div class="wyd">
             <span class='labe nowosc'></span><div class="seanserep">
             <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194269' href='bilet.s?eventId=194269&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22440'  title='kup / rezerwuj bilet' class='xseans'>12:00</a><a id='ev_192399' href='bilet.s?eventId=192399&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22440'  title='kup / rezerwuj bilet' class='xseans'>17:00</a></div>
@@ -463,40 +455,40 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
-<a href="op.s?id=22416" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MLODE_MATKI/glw_Young_Mothers_-_Still_3.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
-      <div class="opis">
-        <h4>Młode matki</h4>
-      </div>
-    </a>
-<a href="op.s?id=22421" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MILCZACA_PRZYJACIOLKA/glw_MILCZACA_PRZYJACIOLKA_02.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
-      <div class="opis">
-        <h4>Milcząca przyjaciółka</h4>
-      </div>
-    </a>
 <a href="op.s?id=22588" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/OBSESJA/glw_zdjecie_1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/OBSESJA/glw_zdjecie_1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
       <div class="opis">
         <h4>Obsesja</h4>
       </div>
     </a>
-<a href="op.s?id=22419" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/glw_John.2.00_01_02_14.Still010.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+<a href="op.s?id=22423" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWODOWCY/glw_UGR_FG_00005511_TL.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
-        <h4>Werdykt</h4>
+        <h4>Zawodowcy</h4>
       </div>
     </a>
-<a href="op.s?id=22590" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_SPECJALNE/MICKEY_I_NICKY__SPOTKANIE_Z_M._OLESZCZYKIEM/glw_Mikey_i_Nicky-fotosy1a.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+<a href="op.s?id=22532" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/ARCHIWUM/DZIEN_DZIECKA/KOSMICZNY_MECZ/glw_kosmiczny-mecz-30-rocznica-galeria-88509.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
       <div class="opis">
-        <h4>Mikey i Nicky</h4>
+        <h4>Kosmiczny Mecz 30. Rocznica</h4>
       </div>
     </a>
-<a href="op.s?id=22538" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/glw_ORLY_REPUBLIKI_4.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+<a href="op.s?id=22527" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ALL_YOU_NEED_IS_KILL/glw_AYNIK_still_29_2025-12-18.png_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
       <div class="opis">
-        <h4>Orły Republiki</h4>
+        <h4>All You Need Is Kill</h4>
+      </div>
+    </a>
+<a href="op.s?id=22331" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PUCIO/glw_Pucio_1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+      <div class="opis">
+        <h4>Pucio</h4>
+      </div>
+    </a>
+<a href="op.s?id=22316" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DIABEL_UBIERA_SIE_U_PRADY_2/glw_DIABEL_UBIERA_SIE_U_PRADY_2_6.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+      <div class="opis">
+        <h4>Diabeł ubiera się u Prady 2</h4>
       </div>
     </a>
 </div>

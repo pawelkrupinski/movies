@@ -16,11 +16,11 @@
 <meta name="theme-color" content="#ffffff">
 
    <META NAME="robots" CONTENT="index,follow" >
-  <meta name="Description" content="Nowa ekranizacja jednej z najwybitniejszych francuskich powie&amp;#347;ci XX&amp;#160;wieku autorstwa Alberta Camusa. Fran&amp;#231;ois Ozon&amp;#160;opowiada histori&amp;#281; Meursaulta, skromnego, niepozornego urz&amp;#281;dnika, kt&amp;#243;rego codziennej rutyny nie przerywa nawet &amp;#347;mier&amp;#263; matki. Do czasu, gdy pewnego gor&amp;#261;cego dnia na pla&amp;#380;y dochodzi do tragicznego zdarzenia. Adaptacja Ozona, kt&amp;#243;ra mia&amp;#322;a premier&amp;#281; w Konkursie G&amp;#322;&amp;#243;wnym festiwalu w Wenecji, to niezwykle aktualna opowie&amp;#347;&amp;#263; o poszukiwaniu sensu w &amp;#347;wiecie, w kt&amp;#243;rym wszelki sens zosta&amp;#322; zagubiony. Oszcz&amp;#281;dne dialogi i pi&amp;#281;kne czarno-bia&amp;#322;e zdj&amp;#281;cia, stanowi&amp;#261;ce ho&amp;#322;d dla klasycznego kina, buduj&amp;#261; wyj&amp;#261;tkow&amp;#261; atmosfer&amp;#281; filmu.
+  <meta name="Description" content="George Fahmy (w tej roli Fares Fares) to najwi&amp;#281;ksza gwiazda egipskiego kina. Zwany jest &amp;#8220;faraonem ekranu&amp;#8221;. Zwraca na niego uwag&amp;#281; sam prezydent Egiptu Abd al-Fattah as Sisi, kt&amp;#243;ry &amp;#380;yczy sobie, aby gwiazdor zagra&amp;#322; g&amp;#322;&amp;#243;wn&amp;#261; rol&amp;#281; w filmie biograficznym, gloryfikuj&amp;#261;cym prezydenta. Okazuje si&amp;#281;, &amp;#380;e jest to propozycja nie do odrzucenia &amp;#8211; w&amp;#322;adza szanta&amp;#380;em wymusza na aktorze jej przyj&amp;#281;cie.
 ">
-  <meta property="og:title" content="Obcy - 17. Przegląd Nowego Kina Francuskiego | Kino Nowe Horyzonty"/>
+  <meta property="og:title" content="Orły Republiki - Filmy w repertuarze | Kino Nowe Horyzonty"/>
     <meta property="og:type" content="website"/>
-    <meta property="og:image" content="https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/OBCY/glw_25_09_12_1757674263_0_L-ETRANGER-F-OZON-Photo-01-_Photo_Carole_Bethuel_c_Foz_-_Gaumont_-_France_2_Cinema.JPG_standa.jpg"/>
+    <meta property="og:image" content="https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/glw_ORLY_REPUBLIKI_4.jpg_standa.jpg"/>
     <meta property="og:latitude" content="51.10938490431061" />
     <meta property="og:longitude" content="17.026717776066313" />
     <meta property="og:street-address" content="Kazimierza Wielkiego 19a-21" />
@@ -30,10 +30,10 @@
     <meta property="og:country-name" content="Poland" />
     <meta property="og:phone-number" content="717866566" />    
     
-  <title>Obcy - 17. Przegląd Nowego Kina Francuskiego | Kino Nowe Horyzonty</title>  
+  <title>Orły Republiki - Filmy w repertuarze | Kino Nowe Horyzonty</title>  
   <base href="https://www.kinonh.pl/">
   <script> var lang = "pl"; var ispl = true; var logged = false; </script>
-  <script> var forwardBack = "https:\/\/www.kinonh.pl\/op.s?id=22511"; </script>
+  <script> var forwardBack = "https:\/\/www.kinonh.pl\/op.s?id=22538"; </script>
   
 <meta name="HandheldFriendly" content="true" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -315,18 +315,24 @@ initRepertuar();
 
 <script type="text/plain" data-category="marketing">
 dataLayer.push({ ecommerce: null });
-dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"affiliation":"Kino Nowe Horyzonty","quantity":1,"index":0,"item_id":"t_22511","item_name":"FilmObcy","item_brand":"Kino Nowe Horyzonty"}]} });
+dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"affiliation":"Kino Nowe Horyzonty","quantity":1,"index":0,"item_id":"t_22538","item_name":"FilmOrły Republiki","item_brand":"Kino Nowe Horyzonty"}]} });
 </script>
 <section class="fotosy-tyt opis">
 <style>
-.tytulfotos_89089,html.webp .tytulfotos_89089 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/OBCY/glw_25_09_12_1757674263_0_L-ETRANGER-F-OZON-Photo-01-_Photo_Carole_Bethuel_c_Foz_-_Gaumont_-_France_2_Cinema.JPG_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89089,html.webp .tytulfotos_89089 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/OBCY/glw_25_09_12_1757674263_0_L-ETRANGER-F-OZON-Photo-01-_Photo_Carole_Bethuel_c_Foz_-_Gaumont_-_France_2_Cinema.JPG_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89089,html.webp .tytulfotos_89089 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/OBCY/glw_25_09_12_1757674263_0_L-ETRANGER-F-OZON-Photo-01-_Photo_Carole_Bethuel_c_Foz_-_Gaumont_-_France_2_Cinema.JPG_max.jpg?v=3);} }
-.tytulfotos_89088,html.webp .tytulfotos_89088 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/OBCY/25_09_12_1757674263_1_L-ETRANGER-F-OZON-Photo-01-_Photo_Carole_Bethuel_c_Foz_-_Gaumont_-_France_2_Cinema.JPG_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89088,html.webp .tytulfotos_89088 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/OBCY/25_09_12_1757674263_1_L-ETRANGER-F-OZON-Photo-01-_Photo_Carole_Bethuel_c_Foz_-_Gaumont_-_France_2_Cinema.JPG_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89088,html.webp .tytulfotos_89088 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/OBCY/25_09_12_1757674263_1_L-ETRANGER-F-OZON-Photo-01-_Photo_Carole_Bethuel_c_Foz_-_Gaumont_-_France_2_Cinema.JPG_max.jpg?v=3);} }
+.tytulfotos_89245,html.webp .tytulfotos_89245 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/glw_ORLY_REPUBLIKI_4.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89245,html.webp .tytulfotos_89245 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/glw_ORLY_REPUBLIKI_4.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89245,html.webp .tytulfotos_89245 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/glw_ORLY_REPUBLIKI_4.jpg_max.jpg?v=3);} }
+.tytulfotos_89247,html.webp .tytulfotos_89247 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_2.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89247,html.webp .tytulfotos_89247 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_2.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89247,html.webp .tytulfotos_89247 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_2.jpg_max.jpg?v=3);} }
+.tytulfotos_89249,html.webp .tytulfotos_89249 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_1.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89249,html.webp .tytulfotos_89249 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_1.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89249,html.webp .tytulfotos_89249 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_1.jpg_max.jpg?v=3);} }
+.tytulfotos_89246,html.webp .tytulfotos_89246 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_3.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89246,html.webp .tytulfotos_89246 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_3.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89246,html.webp .tytulfotos_89246 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_3.jpg_max.jpg?v=3);} }
+.tytulfotos_89248,html.webp .tytulfotos_89248 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_5.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89248,html.webp .tytulfotos_89248 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_5.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89248,html.webp .tytulfotos_89248 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/ORLY_REPUBLIKI_5.jpg_max.jpg?v=3);} }
 </style>
-<div class="swiper-container fotosy " data-video-typ="youtube" data-video-link="">
+<div class="swiper-container fotosy vi" data-video-typ="youtube" data-video-link="ERysio3sHjw">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_89089"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89088"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_89245"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89247"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89249"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89246"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89248"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -340,10 +346,50 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
     <h3 class="kupblab">kup bilet <span> </span></h3>
       <div class="seanse">
         <div class="srow">
-          <div class="l f4">12 cze / pt</div>
+          <div class="l f4">dzisiaj</div>
           <div class="wyd">
-            <div class="seanserep">
-            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_193249' href='bilet.s?eventId=193249&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22511'  title='kup / rezerwuj bilet' class='xseans'>20:15</a></div>
+            <span class='labe nowosc'></span><div class="seanserep">
+            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194209' href='javascript:void(0);'  title='brak biletów' class='passed nieaktywny'>20:00</a></div>
+            
+            </div>
+        </div>
+        <div class="srow">
+          <div class="l f4">jutro</div>
+          <div class="wyd">
+            <span class='labe nowosc'></span><div class="seanserep">
+            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194249' href='bilet.s?eventId=194249&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22538'  title='kup / rezerwuj bilet' class='xseans'>20:45</a></div>
+            
+            </div>
+        </div>
+        <div class="srow">
+          <div class="l f4">8 cze / pn</div>
+          <div class="wyd">
+            <span class="labe tani specday"></span><span class='labe nowosc'></span><div class="seanserep">
+            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194287' href='bilet.s?eventId=194287&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22538'  title='kup / rezerwuj bilet' class='xseans'>20:45</a></div>
+            
+            </div>
+        </div>
+        <div class="srow">
+          <div class="l f4">9 cze / wt</div>
+          <div class="wyd">
+            <span class='labe nowosc'></span><div class="seanserep">
+            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194327' href='bilet.s?eventId=194327&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22538'  title='kup / rezerwuj bilet' class='xseans'>20:45</a></div>
+            
+            </div>
+        </div>
+        <div class="srow">
+          <div class="l f4">10 cze / śr</div>
+          <div class="wyd">
+            <span class='labe nowosc'></span><div class="seanserep">
+            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194363' href='bilet.s?eventId=194363&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22538'  title='kup / rezerwuj bilet' class='xseans'>20:30</a></div>
+            
+            </div>
+        </div>
+        <div class="srow">
+          <div class="l f4">11 cze / cz</div>
+          <div class="wyd">
+            <span class='labe nowosc'></span><div class="seanserep">
+            <span class='labe napisy wersja' data-etykieta='napisy'></span><a id='ev_194401' href='bilet.s?eventId=194401&forwardback=https%3A%2F%2Fwww.kinonh.pl%2Fop.s%3Fid%3D22538'  title='kup / rezerwuj bilet' class='xseans'>18:00</a></div>
             
             </div>
         </div>
@@ -351,50 +397,49 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
       </div>
 </div>    
   <div class="prawa prawa-inne">
+    <div class="plakat">
+      <h6>plakat</h6>
+      <img src="pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/plak1at_ORLY_REPUBLIKI_6.jpg_x_standa.jpg">
+    </div>
     </div>
   
 <div class="lewa bread-cr">
   <div class="naw">
     <h6><a href="program.s">Program i bilety</a></h6>
     <h6><span class='lacznik'></span></h6>
-    <h6><a href="cykl.s?id=1196">17. Przegląd Nowego Kina Francuskiego</a></h6>
+    <h6><a href="cykl.s?id=404">Filmy w repertuarze</a></h6>
 </div>
 </div>
 <div class="lewa content" > 
    
     <div class="czol max-txt">
-    <h1>Obcy</h1>         
-<h4 class="tytulorg" >L’étranger</h4>
-<h4>reż. <a href="list.s?search=Fran%C3%A7ois+Ozon&archiwum=true">François Ozon</a></h4>
+    <h1>Orły Republiki</h1>         
+<h4 class="tytulorg" >Eagles of the Republic</h4>
+<h4>reż. <a href="list.s?search=Tarik+Saleh&archiwum=true">Tarik Saleh</a></h4>
     </div>
     
     <div class="credits max-txt">
-      <div class="f4 crrow">czas: 122’</div>
-      <div class="f4 crrow">produkcja: Francja 2025</div>
-      <div class="f4 crrow">obsada: Benjamin Voisin, Rebecca Marder, Pierre Lottin</div>
-      <div class="f4 crrow">język: francuski</div>
+      <div class="f4 crrow">czas: 129’</div>
+      <div class="f4 crrow">produkcja: Dania, Francja, Szwecja 2025</div>
+      <div class="f4 crrow">język: arabski</div>
       </div>
     <div class="txt wciecia opisf">
-    <h4>gatunek: dramat, kryminał<br />kategoria wiekowa: 16+</h4>
-<p>Nowa ekranizacja jednej z najwybitniejszych francuskich powieści XX&nbsp;wieku autorstwa Alberta Camusa. Fran&ccedil;ois Ozon&nbsp;opowiada historię Meursaulta, skromnego, niepozornego urzędnika, kt&oacute;rego codziennej rutyny nie przerywa nawet śmierć matki. Do czasu, gdy pewnego gorącego dnia na plaży dochodzi do tragicznego zdarzenia. Adaptacja Ozona, kt&oacute;ra miała premierę w Konkursie Gł&oacute;wnym festiwalu w Wenecji, to niezwykle aktualna opowieść o poszukiwaniu sensu w świecie, w kt&oacute;rym wszelki sens został zagubiony. Oszczędne dialogi i piękne czarno-białe zdjęcia, stanowiące hołd dla klasycznego kina, budują wyjątkową atmosferę filmu.</p>
-<h4>&nbsp;FR:</h4>
-<p><em>Alger, 1938. Meursault, un jeune homme d'une trentaine d'ann&eacute;es, modeste employ&eacute;, enterre sa m&egrave;re sans manifester la moindre &eacute;motion. Le lendemain, il entame une liaison avec Marie, une coll&egrave;gue de bureau. Puis il reprend sa vie de tous les jours. Mais son voisin, Raymond Sint&egrave;s vient perturber son quotidien en l'entra&icirc;nant dans des histoires louches jusqu'&agrave; un drame sur une plage, sous un soleil de plomb&hellip;</em></p>
+    <h4>gatunek: thriller, polityczny</h4>
+<p>George Fahmy (w tej roli Fares Fares) to największa gwiazda egipskiego kina. Zwany jest &ldquo;faraonem ekranu&rdquo;. Zwraca na niego uwagę sam prezydent Egiptu Abd al-Fattah as Sisi, kt&oacute;ry życzy sobie, aby gwiazdor zagrał gł&oacute;wną rolę w filmie biograficznym, gloryfikującym prezydenta. Okazuje się, że jest to propozycja nie do odrzucenia &ndash; władza szantażem wymusza na aktorze jej przyjęcie.</p>
+<p>Początkowo, jak przystało na gwiazdę, bohater liczy na to, że będzie miał sporo do powiedzenia, zar&oacute;wno w sprawie swojej roli, jak i kształtu całego filmu. Szybko jednak zostaje sprowadzony na ziemię. Gł&oacute;wnie za sprawą obecnego na planie tajemniczego doktora Manssoura, kt&oacute;ry sprawuje pieczę nad produkcją i jej odpowiednim, propagandowym tonem. Sytuację dodatkowo komplikuje romans, w jaki Fahmy wdaje się z żoną jednego z wysoko postawionych generał&oacute;w. To moment, w kt&oacute;rym fikcja i rzeczywistość zaczynają się niebezpiecznie przenikać.&nbsp; &nbsp; &nbsp;&nbsp;</p>
+<p><em>Orły republiki</em>&nbsp;są domknięciem głośnej trylogii kairskiej Tarika Saleha, na kt&oacute;rą składają się jeszcze <em>Morderstwo w hotelu Hilton</em> (2017) oraz <em>Chłopiec z niebios</em> (2022). Każdy z film&oacute;w to przedstawiona z innej perspektywy ostra krytyka autorytarnego reżimu. W przypadku ostatniej części, ujętej w formę widowiskowego politycznego thrillera, Saleh zastanawia się nad rolą sztuki w służbie propagandy.</p>
 </div>  
 </div> 
 <div class="lewa content rez-jest ">  
-    <h2 class="rezh podkreslenie dolewej max-txt">François Ozon</h2>
+    <h2 class="rezh podkreslenie dolewej max-txt">Tarik Saleh</h2>
     <div class="txt wciecia opisf">
-       <p><strong>Fran&ccedil;ois Ozon</strong></p>
-<p>Reżyser, scenarzysta, montażysta, urodzony w 1967 r. w Paryżu. Pierwsze filmy nakręcił jeszcze jako nastolatek. Ukończył znaną paryską szkołę filmową La F&eacute;mis, już w czasie studi&oacute;w nakręcił wiele film&oacute;w kr&oacute;tkometrażowych, kt&oacute;re zdobyły liczne nagrody i otworzyły drogę mu do dalszej kariery. Pełnometrażową fabułą zadebiutował dopiero w 1997 r. - film <em>Sitcom</em> był zjadliwą i przewrotną satyrą na instytucję rodziny i klasę średnią, kt&oacute;ra pod maską normalności skrywa swoje rozmaite, zwłaszcza seksualne, perwersje. Uznanie przyniosły mu kolejne filmy <em>Kryminalni kochankowie</em> i <em>Krople wody na rozpalonych kamieniach</em>, film, za kt&oacute;ry otrzymał nagrodę Teddy dla najlepszego filmu gejowskiego na festiwalu w Berlinie. Jego pozycję ugruntowały kolejne obrazy, m.in. <em>8 kobiet</em> oraz <em>5 x 2</em>.</p>
-<p><strong>Wybrana filmografia:</strong></p>
-<p>1998 Sitcom</p>
-<p>2000 Krople wody na rozpalonych kamieniach / Gouttes d'eau sur pierres brulantes / Water Drops on Burning Rocks</p>
-<p>2002 8 kobiet / 8 femmes / 8 Women</p>
-<p>2003 Basen / Swimming Pool</p>
-<p>2005 5 x 2</p>
-<p>2005 Czas, kt&oacute;ry pozostał / Le temps qui reste / Time to Leave</p>
-<p>2007 Angel</p>
-<p>2009 Ricky</p></div>
+       <p>Urodzony w Sztokholmie w 1972 roku.&nbsp;Wyreżyserował kilka nagrodzonych fabularyzowanych film&oacute;w dokumentalnych. Wsp&oacute;łpracował nad licznymi kr&oacute;tkimi filmami animowanymi i jest jednym z założycieli Atmo. Zaczynał jako artysta graffiti, będąc członkiem uznanej w świecie grupy <em>All In One</em>. W dzielnicach położonych na zach&oacute;d od Sztokholmu nadal można podziwiać jego malowidła. Pracując jako dyrektor artystyczny, założył czasopismo poświęcone filmom dokumentalnym &bdquo;Alive in Cairo, Egypt 1995&rdquo;. Kilka lat p&oacute;źniej wydawał legendarne szwedzkie czasopismo podziemne &bdquo;Atlas&rdquo;. W 2003 r. wyprodukował i napisał scenariusz do drugiego serialu telewizyjnego dla szwedzkiej telewizji &bdquo;Dream Team&rdquo;. &bdquo;Dream Team&rdquo; opowiada o życiu i intrygach toczących się wok&oacute;ł zapomnianej przez Boga i ludzi lokalnej stacji telewizyjnej. Opracował kilka projekt&oacute;w telewizyjnych dla szwedzkiej telewizji.</p><h6 class="filmogrh indent">Filmografia</h6>
+      <div class="filmogr indent">
+      <p>2001 Sacrificio: Who Betrayed Che Guevara</p>
+<p>2005 Gitmo</p>
+<p>2009 Metropia</p></div>
+
+    </div>
     </div>
   
 
@@ -405,44 +450,44 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
-<a href="op.s?id=22510" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/PRZEZYJ_TO_SAM/glw_juste-une-illusion1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+<a href="op.s?id=22588" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/OBSESJA/glw_zdjecie_1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
       <div class="opis">
-        <h4>Przeżyj to sam</h4>
+        <h4>Obsesja</h4>
       </div>
     </a>
-<a href="op.s?id=22514" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/POCZTA_GLOSOWA/glw_le-repondeur1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
+<a href="op.s?id=22314" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DRAMA/glw_DRAMA_2.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
-        <h4>Poczta głosowa</h4>
+        <h4>Drama</h4>
       </div>
     </a>
-<a href="op.s?id=22512" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/WIELKI_LUK/glw_l-inconnu-de-la-grande-arche.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+<a href="op.s?id=22187" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PROJEKT_HAIL_MARY/glw_zdjecie_2.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
       <div class="opis">
-        <h4>Wielki Łuk</h4>
+        <h4>Projekt Hail Mary</h4>
       </div>
     </a>
-<a href="op.s?id=22520" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/WINDA_NA_SZAFOT/glw_ascenseur-pour-l-echafaud1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+<a href="op.s?id=22532" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/ARCHIWUM/DZIEN_DZIECKA/KOSMICZNY_MECZ/glw_kosmiczny-mecz-30-rocznica-galeria-88509.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
       <div class="opis">
-        <h4>Windą na szafot</h4>
+        <h4>Kosmiczny Mecz 30. Rocznica</h4>
       </div>
     </a>
-<a href="op.s?id=22519" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/MI_AMOR/glw_mi-amor.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+<a href="op.s?id=22422" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/glw_544024_5.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
       <div class="opis">
-        <h4>Mi Amor</h4>
+        <h4>Zawieście czerwone latarnie</h4>
       </div>
     </a>
-<a href="op.s?id=22516" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/17._PRZEGLAD_NOWEGO_KINA_FRANCUSKIEGO/NOWA_FALA/glw_nouvelle-vague.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+<a href="op.s?id=22419" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/WERDYKT/glw_John.2.00_01_02_14.Still010.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
       <div class="opis">
-        <h4>Nowa Fala</h4>
+        <h4>Werdykt</h4>
       </div>
     </a>
 </div>
-<div class="morec bg-half to-right lgreen"><a href="cykl.s?id=1196" class="more">więcej</a></div>
+<div class="morec bg-half to-right lgreen"><a href="cykl.s?id=404" class="more">więcej</a></div>
 </section>
 <script src="https://www.kinonh.pl/packed/opis.js?v=1445358713"  ></script><section class="dwa kontakt" style="clear: both">
   <div class="polowa polub" >
@@ -520,7 +565,7 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div> <!--  koniec wrapper -->
 
 <script>
-let rq = '/op.s?id=22511';
+let rq = '/op.s?id=22538';
 
 
   </script>

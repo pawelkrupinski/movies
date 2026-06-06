@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -319,22 +319,22 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </script>
 <section class="fotosy-tyt opis">
 <style>
+.tytulfotos_85094,html.webp .tytulfotos_85094 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-20-40-01-Standbild010.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_85094,html.webp .tytulfotos_85094 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-20-40-01-Standbild010.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_85094,html.webp .tytulfotos_85094 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-20-40-01-Standbild010.jpg_max.jpg?v=3);} }
+.tytulfotos_85099,html.webp .tytulfotos_85099 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3996x2160-Mulhollanddrive-photogramme-JPEG-RGB-20210708.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_85099,html.webp .tytulfotos_85099 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3996x2160-Mulhollanddrive-photogramme-JPEG-RGB-20210708.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_85099,html.webp .tytulfotos_85099 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3996x2160-Mulhollanddrive-photogramme-JPEG-RGB-20210708.jpg_max.jpg?v=3);} }
+.tytulfotos_85093,html.webp .tytulfotos_85093 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/glw_Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-23-52-19-Standbild015.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_85093,html.webp .tytulfotos_85093 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/glw_Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-23-52-19-Standbild015.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_85093,html.webp .tytulfotos_85093 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/glw_Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-23-52-19-Standbild015.jpg_max.jpg?v=3);} }
 .tytulfotos_85095,html.webp .tytulfotos_85095 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-12-17-21-Standbild004.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_85095,html.webp .tytulfotos_85095 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-12-17-21-Standbild004.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_85095,html.webp .tytulfotos_85095 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-12-17-21-Standbild004.jpg_max.jpg?v=3);} }
 .tytulfotos_85096,html.webp .tytulfotos_85096 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-17-07-04-Standbild006.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_85096,html.webp .tytulfotos_85096 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-17-07-04-Standbild006.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_85096,html.webp .tytulfotos_85096 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-17-07-04-Standbild006.jpg_max.jpg?v=3);} }
-.tytulfotos_85093,html.webp .tytulfotos_85093 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/glw_Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-23-52-19-Standbild015.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_85093,html.webp .tytulfotos_85093 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/glw_Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-23-52-19-Standbild015.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_85093,html.webp .tytulfotos_85093 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/glw_Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-23-52-19-Standbild015.jpg_max.jpg?v=3);} }
-.tytulfotos_85094,html.webp .tytulfotos_85094 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-20-40-01-Standbild010.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_85094,html.webp .tytulfotos_85094 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-20-40-01-Standbild010.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_85094,html.webp .tytulfotos_85094 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-20-40-01-Standbild010.jpg_max.jpg?v=3);} }
 .tytulfotos_85097,html.webp .tytulfotos_85097 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-05-17-23-Standbild003.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_85097,html.webp .tytulfotos_85097 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-05-17-23-Standbild003.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_85097,html.webp .tytulfotos_85097 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3840x2160-MULHOLLANDDRIVE-C046137-UHDMASTER2-00-05-17-23-Standbild003.jpg_max.jpg?v=3);} }
-.tytulfotos_85099,html.webp .tytulfotos_85099 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3996x2160-Mulhollanddrive-photogramme-JPEG-RGB-20210708.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_85099,html.webp .tytulfotos_85099 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3996x2160-Mulhollanddrive-photogramme-JPEG-RGB-20210708.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_85099,html.webp .tytulfotos_85099 {background-image: url(pliki/wgrane/image/fotosy/2025/POKAZY_SPECJALNE/MULHOLLAND_DRIVE__POKAZ_SPECJALNY_Z_FINAL_GIRLS/Mulholland-Dr-Screen-Grab-4K-Screen-Grabs-2021-3996x2160-Mulhollanddrive-photogramme-JPEG-RGB-20210708.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy vi" data-video-typ="youtube" data-video-link="yKaUdPI2-_k">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_85095"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_85096"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_85093"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_85094"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_85097"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_85099"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_85094"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_85099"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_85093"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_85095"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_85096"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_85097"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -425,40 +425,40 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
-<a href="op.s?id=21344" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2025/PRZEGLAD_KINA_FRANCUSKIEGO/MIZERYKORDIA/glw_misericorde1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+<a href="op.s?id=21838" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2021/WONG_KAR_WAI/UPADLE_ANIOLY/glw_FA_Still6.tif_unorm.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
       <div class="opis">
-        <h4>Mizerykordia</h4>
+        <h4>Upadłe anioły</h4>
       </div>
     </a>
-<a href="op.s?id=20981" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2025/ECHO/THE_DOORS/glw_Doors_-_CAP001_RESTORATION_4K.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
+<a href="op.s?id=21842" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/4aff/katalog/HIGHLIGHTS/TYLKO_KOCHANKOWIE_PRZEZYJA/1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
-        <h4>The Doors</h4>
+        <h4>Tylko kochankowie przeżyją</h4>
       </div>
     </a>
-<a href="op.s?id=21268" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2025/ZAPOWIEDZI/OPERACJA_MALDOROR/glw_1262126.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+<a href="op.s?id=21837" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2019/ZAPOWIEDZI/KLAMSTEWKA/glw_THE_FAREWELL_3.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
       <div class="opis">
-        <h4>Operacja Maldoror</h4>
+        <h4>Kłamstewko</h4>
       </div>
     </a>
-<a href="op.s?id=21072" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2025/ECHO/MARATONCZYK/glw_503766_4.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+<a href="op.s?id=21906" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2025/ZAPOWIEDZI/LOWCA_JELENI/glw_5555x2362-CAP002-RESTORED-VERSION-2018.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
       <div class="opis">
-        <h4>Maratończyk</h4>
+        <h4>Łowca jeleni</h4>
       </div>
     </a>
-<a href="op.s?id=21269" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2021/TYDZIEN_FILMU_NIEMIECKIEGO_2021/BERLIN_ALEXANDERPLATZ/glw_Berlin_Alexanderplatz_-_1_copyright_Stephanie_Kulbach_Sommerhaus_Filmproduktion.JPG_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+<a href="op.s?id=21089" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2025/MISTRZOWIE_KINA_JOHN_WATERS/ROZOWE_FLAMINGI/glw_Rozowe_flamingi_1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
       <div class="opis">
-        <h4>Berlin Alexanderplatz</h4>
+        <h4>Różowe flamingi</h4>
       </div>
     </a>
-<a href="op.s?id=21723" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2024/AKADEMIA_KINA_SWIATOWEGO_2024/FUNNY_GAMES/glw_MichaelHaneke_FunnyGames_1.jpg_unorm.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+<a href="op.s?id=22176" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2024/POKAZY_SPECJALNE/STOP_MAKING_SENSE/glw_SMS_01.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
       <div class="opis">
-        <h4>Funny Games</h4>
+        <h4>Stop Making Sense</h4>
       </div>
     </a>
 </div>

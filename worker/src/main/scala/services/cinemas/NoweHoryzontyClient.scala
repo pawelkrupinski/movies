@@ -3,52 +3,56 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import play.api.libs.json.Json
 import tools.{HttpFetch, ParallelDetailFetch}
 
+import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * Kino Nowe Horyzonty (Wrocław) — the largest arthouse cinema in Poland. The
- * `program.s` page lists every film with its screenings inline (each slot is a
- * `bilet.s?eventId=` booking link carrying the date + time); the per-film
- * `op.s?id=` page carries runtime / year / countries / genres / director /
- * synopsis. Dates are partly relative ("dzisiaj"/"jutro"), so `today` is
- * injected to keep the fixture replay deterministic.
+ * Kino Nowe Horyzonty (Wrocław) — the largest arthouse cinema in Poland, with
+ * nine screens and ~40 screenings a day. The visible `program.s` page only
+ * shows the nearest advance-sale slot per film (a teaser list), so scraping it
+ * caught a small fraction of the schedule. The full daily repertoire is served
+ * by the `rep.json?dzien=DD-MM-YYYY` AJAX endpoint the day-picker calls
+ * (`wczytajRepertuarNaDzien` → `ajaxRepertuar` in the site's JS): one day per
+ * request, every screening of that day in a `lista` HTML blob. We fan out one
+ * request per day across a week and read the full schedule off those blobs.
+ *
+ * Each `div.boks` in `lista` is a film (`op.s?id=` link + `a.tyt` title +
+ * `span.ilustr` poster); its `div.seanserep a.xseans` anchors carry one slot
+ * each — `eventId=` booking link, `HH:mm` as the link text, the date taken from
+ * the day we requested. The per-film `op.s?id=` page adds runtime / year /
+ * countries / genres / director / synopsis. `today` is injected so the day
+ * window (and thus the fixture replay) is deterministic.
  */
 class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
 
   val cinema: Cinema = KinoNoweHoryzonty
 
-  private val BaseUrl       = "https://www.kinonh.pl"
-  private val RepertoireUrl = s"$BaseUrl/program.s"
-  private val FilmIdPat     = """op\.s\?id=(\d+)""".r
-  private val EventIdPat     = """eventId=(\d+)""".r
+  private val BaseUrl     = "https://www.kinonh.pl"
+  // A constant forwardback keeps the recorded fixture URL stable between
+  // recording and replay (FakeHttpFetch keys fixtures by the query string).
+  private val Forwardback = s"$BaseUrl/program.s"
+  private val DayFmt      = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+  private val WindowDays  = 7
+  private val FilmIdPat   = """op\.s\?id=(\d+)""".r
 
-  private case class RawSlot(filmId: String, title: String, poster: Option[String], eventId: String, dateTime: LocalDateTime, bookingUrl: String)
+  private case class RawSlot(filmId: String, title: String, poster: Option[String], eventId: String,
+                             dateTime: LocalDateTime, bookingUrl: String)
+
+  private def dayUrl(date: LocalDate): String =
+    s"$BaseUrl/rep.json?dzien=${date.format(DayFmt)}&forwardback=$Forwardback"
 
   def fetch(): Seq[CinemaMovie] = {
-    val doc = Jsoup.parse(http.get(RepertoireUrl))
-
-    // The listing holds every bookable slot as a `seansapla.mala` anchor
-    // (date in span.d, time in span.cz, booking in href). Walk up from each
-    // slot to the enclosing film card to recover the film id / title / poster,
-    // so both card and single-row layouts are captured uniformly.
-    val slots = doc.select("a.seansapla.mala").asScala.toSeq.flatMap { a =>
-      val href = a.attr("href")
-      for {
-        eventId <- EventIdPat.findFirstMatchIn(href).map(_.group(1))
-        card    <- a.parents().asScala.find(p => p.selectFirst("a[href^=\"op.s?id=\"]") != null)
-        link     = card.selectFirst("a[href^=\"op.s?id=\"]")
-        filmId  <- FilmIdPat.findFirstMatchIn(link.attr("href")).map(_.group(1))
-        title    = link.text.trim if title.nonEmpty
-        date    <- NoweHoryzontyClient.parseDate(Option(a.selectFirst("span.d")).map(_.text.trim).getOrElse(""), today)
-        time    <- ScraperParse.parseHHmm(Option(a.selectFirst("span.cz")).map(_.text.trim).getOrElse(""))
-      } yield RawSlot(filmId, title, posterOf(card), eventId, date.atTime(time),
-                      if (href.startsWith("http")) href else s"$BaseUrl/$href")
+    val days     = (0 until WindowDays).map(today.plusDays(_)).toList
+    val dayLists = ParallelDetailFetch.keyed("nowe-horyzonty-days", days, 1.minute)(dayUrl) { url =>
+      Try(http.get(url)).toOption.flatMap(listaHtml)
     }
+    val slots = days.flatMap(d => dayLists.getOrElse(d, None).toSeq.flatMap(parseDay(_, d)))
 
     val byFilm = slots.groupBy(_.filmId)
     val details: Map[String, NoweHoryzontyClient.Detail] =
@@ -82,35 +86,42 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
     }
   }
 
-  private def posterOf(block: Element): Option[String] =
-    Option(block.selectFirst("span.ilustr")).map(_.attr("style"))
+  /** Pull the `lista` HTML blob out of a `rep.json` response. */
+  private def listaHtml(body: String): Option[String] =
+    Try((Json.parse(body) \ "lista").asOpt[String]).toOption.flatten.filter(_.trim.nonEmpty)
+
+  /** Parse one day's `lista` blob: each `div.boks` is a film, its
+   *  `div.seanserep a.xseans` anchors are that day's slots. The date is the
+   *  `date` we requested — the blob carries only the `HH:mm` time per slot. */
+  private def parseDay(lista: String, date: LocalDate): Seq[RawSlot] =
+    Jsoup.parse(lista).select("div.boks").asScala.toSeq.flatMap { card =>
+      val link = Option(card.selectFirst("a.tyt[href^=\"op.s?id=\"]"))
+                   .orElse(Option(card.selectFirst("a[href^=\"op.s?id=\"]")))
+      (for {
+        a      <- link
+        filmId <- FilmIdPat.findFirstMatchIn(a.attr("href")).map(_.group(1))
+        title   = a.text.trim if title.nonEmpty
+      } yield card.select("div.seanserep a.xseans[href]").asScala.toSeq.flatMap { slot =>
+        val href = slot.attr("href")
+        for {
+          eventId <- NoweHoryzontyClient.EventIdPat.findFirstMatchIn(href).map(_.group(1))
+          time    <- ScraperParse.parseHHmm(slot.text.trim)
+        } yield RawSlot(filmId, title, posterOf(card), eventId, date.atTime(time),
+                        if (href.startsWith("http")) href else s"$BaseUrl/$href")
+      }).getOrElse(Seq.empty)
+    }
+
+  /** The poster lives in an inline `<style>` block inside `span.ilustr`
+   *  (`background-image: url(...)`), not a `style=` attribute. */
+  private def posterOf(card: Element): Option[String] =
+    Option(card.selectFirst("span.ilustr")).map(_.html)
       .flatMap(ScraperParse.cssUrl)
       .map(u => if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}")
 }
 
 object NoweHoryzontyClient {
 
-  // Polish month abbreviations as they appear in span.d ("12 cze").
-  private val Months = Map(
-    "sty" -> 1, "lut" -> 2, "mar" -> 3, "kwi" -> 4, "maj" -> 5, "cze" -> 6,
-    "lip" -> 7, "sie" -> 8, "wrz" -> 9, "paź" -> 10, "lis" -> 11, "gru" -> 12
-  )
-  private val DayMonthPat = """(\d{1,2})\s+([a-ząćęłńóśźż]{3})""".r
-
-  /** "dzisiaj"/"jutro"/"DD mmm" → an absolute date, resolved against `today`.
-   *  Bare DD-mmm carry no year; take `today`'s year, rolling to next year when
-   *  the month is already behind us (a December→January wrap). */
-  def parseDate(raw: String, today: LocalDate): Option[LocalDate] = {
-    val s = raw.toLowerCase
-    if (s.contains("dzisiaj") || s.contains("dziś")) Some(today)
-    else if (s.contains("jutro")) Some(today.plusDays(1))
-    else DayMonthPat.findFirstMatchIn(s).flatMap { m =>
-      Months.get(m.group(2)).flatMap { mon =>
-        val year = if (mon < today.getMonthValue) today.getYear + 1 else today.getYear
-        Try(LocalDate.of(year, mon, m.group(1).toInt)).toOption
-      }
-    }
-  }
+  private val EventIdPat = """eventId=(\d+)""".r
 
   final case class Detail(
     runtimeMinutes: Option[Int],

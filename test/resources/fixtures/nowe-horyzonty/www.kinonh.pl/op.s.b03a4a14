@@ -119,9 +119,9 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
 <div class="kalendarz-trick only-mob"><a href="javascript:void(0);" class="kalicon">&nbsp;</a><input type="date"  class="dzien-input" ></div> 
 <div class="swiper-container dzien-swiper only-mob">
     <div class="swiper-wrapper f4">
-    <div class="swiper-slide " data-dz="04-06-2026">wczoraj</div>
-        <div class="swiper-slide" data-dz="05-06-2026">dzisiaj</div>
-        <div class="swiper-slide" data-dz="06-06-2026">jutro</div>
+    <div class="swiper-slide " data-dz="05-06-2026">wczoraj</div>
+        <div class="swiper-slide" data-dz="06-06-2026">dzisiaj</div>
+        <div class="swiper-slide" data-dz="07-06-2026">jutro</div>
     </div>
     <div class="swiper-button-prev strz"></div>
     <div class="swiper-button-next strz"></div>
@@ -130,15 +130,15 @@ dataLayer.push({'user_id': 'guest', 'user_login': '', 'user_staff': false });
       
       <div class="dni hide-mob">
       
-          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="05-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
+          <a class="replink sel" href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026" id="dzisRepLink"><span class="f4">dzisiaj</span></a>
           <div class="kreska"></div>
-          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="06-06-2026"><span class="f4">jutro</span></a>
+          <a class="replink"  href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">jutro</span></a>
           
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="07-06-2026"><span class="f4">nd / 7 cze</span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
           <div class="hide-niska">
           <div class="kreska"></div>
-          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="08-06-2026"><span class="f4">pn / 8 cze</span><span class="labe tani specday"></span></a>
+          <a class="replink" href="javascript:void(0);"  onclick="wr(this)" data-dzien="09-06-2026"><span class="f4">wt / 9 cze</span></a>
           </div>
           </div>
       
@@ -319,26 +319,26 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </script>
 <section class="fotosy-tyt opis">
 <style>
-.tytulfotos_89334,html.webp .tytulfotos_89334 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BMzRiZTA4MGEtNDM5Ny00MDU1LTk1NjctNWE2MDYyOTcxMGJiXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89334,html.webp .tytulfotos_89334 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BMzRiZTA4MGEtNDM5Ny00MDU1LTk1NjctNWE2MDYyOTcxMGJiXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89334,html.webp .tytulfotos_89334 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BMzRiZTA4MGEtNDM5Ny00MDU1LTk1NjctNWE2MDYyOTcxMGJiXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
-.tytulfotos_89336,html.webp .tytulfotos_89336 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_uroda2.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89336,html.webp .tytulfotos_89336 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_uroda2.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89336,html.webp .tytulfotos_89336 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_uroda2.jpg_max.jpg?v=3);} }
-.tytulfotos_89337,html.webp .tytulfotos_89337 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_rodzina2.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89337,html.webp .tytulfotos_89337 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_rodzina2.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89337,html.webp .tytulfotos_89337 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_rodzina2.jpg_max.jpg?v=3);} }
 .tytulfotos_89341,html.webp .tytulfotos_89341 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_rodzina3.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89341,html.webp .tytulfotos_89341 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_rodzina3.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89341,html.webp .tytulfotos_89341 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_rodzina3.jpg_max.jpg?v=3);} }
 .tytulfotos_89340,html.webp .tytulfotos_89340 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BZWM4NThhMzUtM2Q1YS00ZjZjLWE0ODUtODc4YjVmZjE1YTQ3XkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89340,html.webp .tytulfotos_89340 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BZWM4NThhMzUtM2Q1YS00ZjZjLWE0ODUtODc4YjVmZjE1YTQ3XkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89340,html.webp .tytulfotos_89340 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BZWM4NThhMzUtM2Q1YS00ZjZjLWE0ODUtODc4YjVmZjE1YTQ3XkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
 .tytulfotos_89339,html.webp .tytulfotos_89339 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BZWVmZTI1YWMtNGJkMi00NTg4LWJlZTItYTFkZjI2YzE5Y2JmXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89339,html.webp .tytulfotos_89339 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BZWVmZTI1YWMtNGJkMi00NTg4LWJlZTItYTFkZjI2YzE5Y2JmXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89339,html.webp .tytulfotos_89339 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BZWVmZTI1YWMtNGJkMi00NTg4LWJlZTItYTFkZjI2YzE5Y2JmXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
-.tytulfotos_89338,html.webp .tytulfotos_89338 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/glw_ZnakiPanaSliwki_rodzina.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89338,html.webp .tytulfotos_89338 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/glw_ZnakiPanaSliwki_rodzina.jpg_standa.jpg?v=3);} }
-@media  (min-width:900px) {.tytulfotos_89338,html.webp .tytulfotos_89338 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/glw_ZnakiPanaSliwki_rodzina.jpg_max.jpg?v=3);} }
+.tytulfotos_89334,html.webp .tytulfotos_89334 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BMzRiZTA4MGEtNDM5Ny00MDU1LTk1NjctNWE2MDYyOTcxMGJiXkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89334,html.webp .tytulfotos_89334 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BMzRiZTA4MGEtNDM5Ny00MDU1LTk1NjctNWE2MDYyOTcxMGJiXkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89334,html.webp .tytulfotos_89334 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BMzRiZTA4MGEtNDM5Ny00MDU1LTk1NjctNWE2MDYyOTcxMGJiXkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
+.tytulfotos_89337,html.webp .tytulfotos_89337 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_rodzina2.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89337,html.webp .tytulfotos_89337 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_rodzina2.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89337,html.webp .tytulfotos_89337 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_rodzina2.jpg_max.jpg?v=3);} }
+.tytulfotos_89336,html.webp .tytulfotos_89336 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_uroda2.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89336,html.webp .tytulfotos_89336 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_uroda2.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89336,html.webp .tytulfotos_89336 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/ZnakiPanaSliwki_uroda2.jpg_max.jpg?v=3);} }
 .tytulfotos_89335,html.webp .tytulfotos_89335 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BNDA0MzBiOTQtYjk3OC00MDQ5LWFkMjAtOWQzMjA1NTYyMmY5XkEyXkFqcGc._V1_.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89335,html.webp .tytulfotos_89335 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BNDA0MzBiOTQtYjk3OC00MDQ5LWFkMjAtOWQzMjA1NTYyMmY5XkEyXkFqcGc._V1_.jpg_standa.jpg?v=3);} }
 @media  (min-width:900px) {.tytulfotos_89335,html.webp .tytulfotos_89335 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/MV5BNDA0MzBiOTQtYjk3OC00MDQ5LWFkMjAtOWQzMjA1NTYyMmY5XkEyXkFqcGc._V1_.jpg_max.jpg?v=3);} }
+.tytulfotos_89338,html.webp .tytulfotos_89338 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/glw_ZnakiPanaSliwki_rodzina.jpg_mini.jpg?v=3);} @media  (min-width:420px) {.tytulfotos_89338,html.webp .tytulfotos_89338 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/glw_ZnakiPanaSliwki_rodzina.jpg_standa.jpg?v=3);} }
+@media  (min-width:900px) {.tytulfotos_89338,html.webp .tytulfotos_89338 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_DLA_SZKOL/ZNAKI_PANA_SLIWKI/glw_ZnakiPanaSliwki_rodzina.jpg_max.jpg?v=3);} }
 </style>
 <div class="swiper-container fotosy vi" data-video-typ="youtube" data-video-link="5xGeDzWo2yo">
       <div class="swiper-wrapper">
-      <div class="fotos swiper-slide "><div class="tytulfotos_89334"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89336"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89337"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89341"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89340"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89339"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89338"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89335"></div><span class="play-button"></span></div></div>
+      <div class="fotos swiper-slide "><div class="tytulfotos_89341"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89340"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89339"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89334"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89337"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89336"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89335"></div><span class="play-button"></span></div><div class="fotos swiper-slide "><div class="tytulfotos_89338"></div><span class="play-button"></span></div></div>
      <div class="swiper-button-next"></div>
       <div class="swiper-button-prev"></div>
 </div>
@@ -405,40 +405,40 @@ dataLayer.push({ event: "view_film", ecommerce:  {"currency":"PLN","items":[{"af
 </div>
 
 <div class="boksy bg full-szer">
-<a href="op.s?id=22557" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/24._TYDZIEN_KINA_HISZPANSKIEGO/DRUGIE_ZYCIE/glw_DRUGIE_ZYCIE.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
+<a href="op.s?id=22555" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_1,html.webp #pic_1 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/glw_544024_5.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_1'></span></span>
       <div class="opis">
-        <h4>Drugie życie</h4>
-      </div>
-    </a>
-<a href="op.s?id=22559" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MILCZACA_PRZYJACIOLKA/glw_MILCZACA_PRZYJACIOLKA_02.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
-      <div class="opis">
-        <h4>Milcząca przyjaciółka</h4>
+        <h4>Zawieście czerwone latarnie</h4>
       </div>
     </a>
 <a href="op.s?id=22558" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/SAVAGE_HOUSE/glw_zdjecie_1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
+      <span class="ilustr"><style>#pic_2,html.webp #pic_2 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/SAVAGE_HOUSE/glw_zdjecie_1.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_2'></span></span>
       <div class="opis">
         <h4>Savage House</h4>
       </div>
     </a>
 <a href="op.s?id=22560" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_SPECJALNE/KUMOTRY__SPOTKANIE_Z_REZYSERKA/glw_1330805_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
+      <span class="ilustr"><style>#pic_3,html.webp #pic_3 {background-image: url(pliki/wgrane/image/fotosy/2026/POKAZY_SPECJALNE/KUMOTRY__SPOTKANIE_Z_REZYSERKA/glw_1330805_1.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_3'></span></span>
       <div class="opis">
         <h4>Kumotry</h4>
       </div>
     </a>
-<a href="op.s?id=22554" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/DKF_POLITECHNIKA/ROMERA/glw_Romera_2CQuimVives_ElasticaFilms_2.jpg_max.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
+<a href="op.s?id=22557" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_4,html.webp #pic_4 {background-image: url(pliki/wgrane/image/fotosy/2026/24._TYDZIEN_KINA_HISZPANSKIEGO/DRUGIE_ZYCIE/glw_DRUGIE_ZYCIE.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_4'></span></span>
       <div class="opis">
-        <h4>Romería</h4>
+        <h4>Drugie życie</h4>
       </div>
     </a>
-<a href="op.s?id=22555" class="boks mala-ilustr ilustracja-left">
-      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/glw_544024_5.13.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+<a href="op.s?id=22559" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_5,html.webp #pic_5 {background-image: url(pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MILCZACA_PRZYJACIOLKA/glw_MILCZACA_PRZYJACIOLKA_02.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_5'></span></span>
       <div class="opis">
-        <h4>Zawieście czerwone latarnie</h4>
+        <h4>Milcząca przyjaciółka</h4>
+      </div>
+    </a>
+<a href="op.s?id=22554" class="boks mala-ilustr ilustracja-left">
+      <span class="ilustr"><style>#pic_6,html.webp #pic_6 {background-image: url(pliki/wgrane/image/fotosy/2026/DKF_POLITECHNIKA/ROMERA/glw_Romera_2CQuimVives_ElasticaFilms_2.jpg_max.jpg_mini.jpg?v=3);} </style><span class='ilustrimg' style='' id='pic_6'></span></span>
+      <div class="opis">
+        <h4>Romería</h4>
       </div>
     </a>
 </div>
