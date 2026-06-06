@@ -12,14 +12,18 @@ primary_region = 'arn'
 [env]
   PORT = '9000'
   # Per-app JVM sizing (the Dockerfile no longer hardcodes it). web is
-  # serving-only now — no scrapers/enrichment/clients — so its live heap is
-  # dominated by the small in-memory MovieCache. Measured RSS at the old 384m
-  # heap was ~615 MB (~231 MB of that is non-heap: Play metaspace ~110 MB +
-  # code cache ~75 MB + direct + threads/native). Halving the heap to 192m
-  # lands RSS ~420 MB, comfortably inside the 512 MB VM below. Xms==Xmx keeps
-  # the no-resize-pause layout; G1 50ms + string-dedup carried over (the / page
-  # is a ~2 MB HTML string).
-  JAVA_OPTS = '-Xms192m -Xmx192m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=64m'
+  # serving-only — its live heap is dominated by the in-memory MovieCache,
+  # which now holds 5 cities' worth of repertoire. A brief pass ran this at a
+  # 192m heap inside a 512 MB VM; it OOM-crash-looped there once the corpus
+  # grew — anon-RSS ~408 MB tipped the 512 MB cgroup roughly every ~34 min, and
+  # the repeated JVM cold-starts pegged the single shared vCPU (that was the
+  # "high load"). Heap is back to the known-good 384m (measured RSS ~615 MB,
+  # ~231 MB of it non-heap: Play metaspace ~110 MB + code cache ~75 MB + direct
+  # + threads/native) inside the 1 GB VM below. Metaspace lifted 128m→160m to
+  # match the worker and leave margin as code grows. Xms==Xmx keeps the
+  # no-resize-pause layout; G1 50ms + string-dedup carried over (the / page is a
+  # ~2 MB HTML string).
+  JAVA_OPTS = '-Xms384m -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=64m'
 
 [http_service]
   internal_port = 9000
@@ -45,13 +49,16 @@ primary_region = 'arn'
     soft_limit = 25
 
 [[vm]]
-  # 512 MB / 1 shared vCPU (shared-cpu-1x). Memory halved from 1 GB once
-  # scraping/enrichment moved to kinowo-worker (serving JVM, 192m heap, commits
-  # ~400 MB RSS). NOTE: a previous pass ran this at 2 vCPUs because web's
+  # 1 GB / 1 shared vCPU (shared-cpu-1x). Briefly ran at 512 MB after
+  # scraping/enrichment moved to kinowo-worker, but the serving JVM OOM-crash-
+  # looped there once the MovieCache grew to 5 cities (anon-RSS ~408 MB vs the
+  # 512 MB cgroup, ~every 34 min) — the repeated cold-starts pegged the single
+  # vCPU and spiked load. Back to 1 GB; the 384m-heap JVM commits ~615 MB RSS
+  # with real headroom. NOTE: a previous pass ran this at 2 vCPUs because web's
   # MovieCache consumes the Mongo change stream and the worker's continuous
   # scrape write stream could peg a single shared vCPU; if that unresponsiveness
   # returns, the 2nd vCPU is the lever. cpu_kind stays shared.
-  memory = '512mb'
+  memory = '1024mb'
   cpu_kind = 'shared'
   cpus = 1
 
