@@ -108,6 +108,7 @@ class WorkerWiring {
     new HeliosClient(httoFetch, HeliosNuxt.Forum, heliosToday),
     new HeliosClient(httoFetch, HeliosNuxt.Riviera, heliosToday),
     new KinoSpektrumClient(httoFetch, KinoSpektrum),
+    new KinoKameralneClient(httoFetch, KinoKameralne),
   )
 
   // Scrape only the cities in KINOWO_SCRAPE_CITIES (comma-separated slugs),
