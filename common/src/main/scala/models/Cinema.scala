@@ -118,6 +118,8 @@ case object KinoMikro extends Cinema("Kino Mikro", "Mikro")
 
 case object MikroBronowice extends Cinema("Mikro Bronowice", "Mikro Bronowice")
 
+case object KinoSfinks extends Cinema("Kino Sfinks", "Sfinks")
+
 // ── Trójmiasto (Gdańsk · Gdynia · Sopot) ─────────────────────────────────────
 
 case object MultikinoGdansk extends Cinema("Multikino Gdańsk", "Multikino")
@@ -200,6 +202,7 @@ object Cinema {
     MultikinoKrakow,
     KinoMikro,
     MikroBronowice,
+    KinoSfinks,
   )
 
   /** Trójmiasto venues — the Tri-City of Gdańsk, Gdynia and Sopot treated as one
