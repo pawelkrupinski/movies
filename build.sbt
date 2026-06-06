@@ -173,31 +173,6 @@ lazy val web = (project in file("web"))
     // report paths come from unitReportSettings / itReportSettings below.
     PageTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
       ((LocalRootProject / baseDirectory).value / "target" / "test-reports" / "page").toString),
-    // Package `tools.FixtureServerMain` (PageTest scope) + its full runtime
-    // classpath into one self-contained jar. CI's page-test rows `java -jar`
-    // this instead of `sbt PageTest/runMain …`, dropping the sbt-target cache
-    // restore + sbt/Play boot (~3min/job). The server is a raw JDK HttpServer
-    // (no Play app boot), so the jar just needs the worker test-wiring +
-    // controllers + Twirl views on its classpath — exactly PageTest/fullClasspath.
-    assembly / mainClass        := Some("tools.FixtureServerMain"),
-    assembly / fullClasspath    := (PageTest / fullClasspath).value,
-    assembly / assemblyJarName  := "fixture-server.jar",
-    // Stable, scala-version-independent path so CI can reference it directly.
-    assembly / assemblyOutputPath := target.value / "fixture-server.jar",
-    assembly / assemblyMergeStrategy := {
-      case PathList("META-INF", "MANIFEST.MF")              => MergeStrategy.discard
-      case PathList("META-INF", "versions", xs @ _*)        => MergeStrategy.first
-      case PathList("META-INF", "services", xs @ _*)        => MergeStrategy.concat
-      case PathList("META-INF", "native-image", xs @ _*)    => MergeStrategy.first
-      case PathList("org", "apache", "commons", "logging", xs @ _*) => MergeStrategy.first
-      case "module-info.class"                              => MergeStrategy.discard
-      case "reference.conf"                                 => MergeStrategy.concat
-      case "application.conf"                                => MergeStrategy.concat
-      case x if x.endsWith("reference-overrides.conf")      => MergeStrategy.concat
-      case x if x.endsWith("logback.xml")                   => MergeStrategy.first
-      case x if x.endsWith(".proto")                        => MergeStrategy.first
-      case x => (assembly / assemblyMergeStrategy).value(x)
-    },
     pipelineStages := Seq(digest),
     // Eagerly trigger AppLoader on `sbt run` (see project/Warmup.scala) and start
     // the Mongo proxy for local dev (see project/MongoProxy.scala).
