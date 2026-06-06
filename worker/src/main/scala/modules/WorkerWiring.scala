@@ -1,7 +1,7 @@
 package modules
 
 import clients.TmdbClient
-import models._
+import models.City
 import services.{MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
 import services.cinemas._
 import services.enrichment._
@@ -31,89 +31,14 @@ class WorkerWiring {
   lazy val rottenTomatoesClient = new RottenTomatoesClient(httoFetch)
 
   // ── Cinema scrapers ───────────────────────────────────────────────────────
-  lazy val cinemaCityClient = new CinemaCityClient(httoFetch)
+  // The per-city scraper graph lives in CinemaScraperCatalog (Mongo-free, so a
+  // diagnostic like tools.FilmwebDiff can build the real scrapers without the
+  // worker's write machinery). WorkerWiring supplies the seams it varies —
+  // `httoFetch`, the Zyte-routed `multikinoFetch`, and Helios's REST date — and
+  // wraps each raw scraper in RetryingCinemaScraper for production ticks.
   lazy val multikinoFetch: HttpFetch = MultikinoClient.fetchFor(httoFetch)
-  lazy val kinoMuzaClient: KinoMuzaClient = new KinoMuzaClient(httoFetch)
-
-  private lazy val poznanScrapers: Seq[CinemaScraper] = Seq(
-    new MultikinoClient(multikinoFetch),
-    new CharlieMonroeClient(httoFetch),
-    new KinoPalacoweClient(httoFetch),
-    new HeliosClient(httoFetch, today = heliosToday),
-    new CinemaCityScraper(cinemaCityClient, "1078", CinemaCityPoznanPlaza),
-    new CinemaCityScraper(cinemaCityClient, "1081", CinemaCityKinepolis),
-    kinoMuzaClient,
-    new KinoBulgarskaClient(httoFetch),
-    new KinoApolloClient(httoFetch),
-    new RialtoClient(httoFetch),
-  )
-
-  private lazy val wroclawScrapers: Seq[CinemaScraper] = Seq(
-    new CinemaCityScraper(cinemaCityClient, "1097", CinemaCityWroclavia),
-    new CinemaCityScraper(cinemaCityClient, "1067", CinemaCityKorona),
-    new MultikinoClient(multikinoFetch, "0010", MultikinoPasazGrunwaldzki),
-    new HeliosClient(httoFetch, HeliosNuxt.Magnolia, heliosToday),
-    new HeliosClient(httoFetch, HeliosNuxt.AlejaBielany, heliosToday),
-    new NoweHoryzontyClient(httoFetch),
-    new DcfClient(httoFetch),
-  )
-
-  private lazy val warszawaScrapers: Seq[CinemaScraper] = Seq(
-    new CinemaCityScraper(cinemaCityClient, "1074", CinemaCityArkadia),
-    new CinemaCityScraper(cinemaCityClient, "1061", CinemaCityBemowo),
-    new CinemaCityScraper(cinemaCityClient, "1096", CinemaCityGaleriaPolnocna),
-    new CinemaCityScraper(cinemaCityClient, "1069", CinemaCityJanki),
-    new CinemaCityScraper(cinemaCityClient, "1070", CinemaCityMokotow),
-    new CinemaCityScraper(cinemaCityClient, "1068", CinemaCityPromenada),
-    new CinemaCityScraper(cinemaCityClient, "1060", CinemaCitySadyba),
-    new MultikinoClient(multikinoFetch, "0013", MultikinoZloteTarasy),
-    new MultikinoClient(multikinoFetch, "0040", MultikinoMlociny),
-    new MultikinoClient(multikinoFetch, "0052", MultikinoReduta),
-    new MultikinoClient(multikinoFetch, "0024", MultikinoTargowek),
-    new MultikinoClient(multikinoFetch, "0025", MultikinoWolaPark),
-    new HeliosClient(httoFetch, HeliosNuxt.BlueCity, heliosToday),
-    new MuranowClient(httoFetch),
-    new Bilety24Client(httoFetch, "https://kinoluna.bilety24.pl", KinoLuna),
-    new Bilety24Client(httoFetch, "https://kinoelektronik.pl", KinoElektronik, "/"),
-    new IluzjonClient(httoFetch),
-    new KinoGramClient(httoFetch),
-    new KinoKulturaClient(httoFetch),
-    new AmondoClient(httoFetch),
-    new BokClient(httoFetch, "kino-na-boku", KinoNaBoku),
-    new BokClient(httoFetch, "kino-glebocka-66", KinoGlebocka66),
-    new KinomuzeumClient(httoFetch),
-    new SwitClient(httoFetch),
-    new PromKepaClient(httoFetch),
-    new FalenicaClient(httoFetch),
-    new SdkClient(httoFetch),
-    new NoveKinoClient(httoFetch, "atlantic", KinoAtlantic),
-    new KinotekaClient(httoFetch),
-    new UjazdowskiClient(httoFetch),
-    new CytadelaClient(httoFetch),
-  )
-
-  private lazy val krakowScrapers: Seq[CinemaScraper] = Seq(
-    new CinemaCityScraper(cinemaCityClient, "1090", CinemaCityBonarka),
-    new CinemaCityScraper(cinemaCityClient, "1076", CinemaCityKazimierz),
-    new CinemaCityScraper(cinemaCityClient, "1064", CinemaCityZakopianka),
-    new MultikinoClient(multikinoFetch, "0005", MultikinoKrakow),
-    new KinoMikroClient(httoFetch, "Kino Mikro", KinoMikro),
-    new KinoMikroClient(httoFetch, "Mikro Bronowice", MikroBronowice),
-    new KinoSfinksClient(httoFetch, KinoSfinks),
-  )
-
-  private lazy val trojmiastoScrapers: Seq[CinemaScraper] = Seq(
-    new MultikinoClient(multikinoFetch, "0004", MultikinoGdansk),
-    new HeliosClient(httoFetch, HeliosNuxt.Metropolia, heliosToday),
-    new HeliosClient(httoFetch, HeliosNuxt.Forum, heliosToday),
-    new HeliosClient(httoFetch, HeliosNuxt.Riviera, heliosToday),
-    new KinoSpektrumClient(httoFetch, KinoSpektrum),
-    new KinoKameralneClient(httoFetch, KinoKameralne),
-    new KinoIkmClient(httoFetch, KinoIkm),
-    new KinoMuzeumGdanskClient(httoFetch, KinoMuzeumGdansk),
-    new KinoZakClient(httoFetch, KinoZak),
-    new KinoPortClient(httoFetch, KinoPort),
-  )
+  lazy val cinemaScraperCatalog = new CinemaScraperCatalog(httoFetch, multikinoFetch, heliosToday)
+  def kinoMuzaClient: KinoMuzaClient = cinemaScraperCatalog.kinoMuzaClient
 
   // Scrape only the cities in KINOWO_SCRAPE_CITIES (comma-separated slugs),
   // defaulting to Poznań. `protected def` so test wirings can scrape every city.
@@ -125,13 +50,11 @@ class WorkerWiring {
   protected def heliosToday: java.time.LocalDate =
     java.time.LocalDate.now(java.time.ZoneId.of("Europe/Warsaw"))
 
-  lazy val cinemaScrapers: Seq[CinemaScraper] = (
-    (if (scrapeCities("poznan"))  poznanScrapers  else Nil) ++
-    (if (scrapeCities("wroclaw")) wroclawScrapers else Nil) ++
-    (if (scrapeCities("warszawa")) warszawaScrapers else Nil) ++
-    (if (scrapeCities("krakow"))     krakowScrapers     else Nil) ++
-    (if (scrapeCities("trojmiasto")) trojmiastoScrapers else Nil)
-  ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
+  lazy val cinemaScrapers: Seq[CinemaScraper] =
+    City.all
+      .filter(c => scrapeCities(c.slug))
+      .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
+      .map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Background concurrency budget ───────────────────────────────────────────
   // Scrape + enrichment + the rating refreshers draw run permits from ONE shared
