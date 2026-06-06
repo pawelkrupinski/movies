@@ -3,6 +3,8 @@ package services
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import scala.concurrent.duration._
+
 /**
  * The boot-failure contract: with `required = true` (production), a missing
  * or unreachable Mongo must throw out of construction so the app refuses to
@@ -11,7 +13,7 @@ import org.scalatest.matchers.should.Matchers
  *
  * Both failure cases use inputs that fail synchronously (absent URI, or a
  * malformed connection string the driver rejects on parse), so no test here
- * touches the network or waits on the 10s connect probe.
+ * touches the network or waits on the connect probe.
  */
 class MongoConnectionSpec extends AnyFlatSpec with Matchers {
 
@@ -55,5 +57,30 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
 
   it should "let a local opt-out disable the requirement outside tests" in {
     MongoConnection.isRequired(testMode = false, optedOut = true) shouldBe false
+  }
+
+  // Boot-probe timeout. The old value was a hard-coded 10s; a slow/recovering
+  // Mongo blew past it, crash-looped the boot, and Fly stopped the web machine
+  // (2026-06-06). It's now `DefaultProbeTimeout` (30s), overridable via
+  // `MONGODB_PROBE_TIMEOUT_SECONDS` and parsed by `parseProbeTimeout`.
+  "MongoConnection.DefaultProbeTimeout" should "stay above the old 10s ceiling that crash-looped the boot" in {
+    MongoConnection.DefaultProbeTimeout.toSeconds should be > 10L
+  }
+
+  "MongoConnection.parseProbeTimeout" should "default when the override is absent" in {
+    MongoConnection.parseProbeTimeout(None) shouldBe MongoConnection.DefaultProbeTimeout
+  }
+
+  it should "honour a positive second count from the override" in {
+    MongoConnection.parseProbeTimeout(Some("45")) shouldBe 45.seconds
+  }
+
+  it should "fall back to the default on non-numeric input" in {
+    MongoConnection.parseProbeTimeout(Some("soon")) shouldBe MongoConnection.DefaultProbeTimeout
+  }
+
+  it should "fall back to the default on a non-positive count" in {
+    MongoConnection.parseProbeTimeout(Some("0"))  shouldBe MongoConnection.DefaultProbeTimeout
+    MongoConnection.parseProbeTimeout(Some("-5")) shouldBe MongoConnection.DefaultProbeTimeout
   }
 }
