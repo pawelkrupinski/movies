@@ -120,6 +120,16 @@ case object MikroBronowice extends Cinema("Mikro Bronowice", "Mikro Bronowice")
 
 case object KinoSfinks extends Cinema("Kino Sfinks", "Sfinks")
 
+// ── Łódź ─────────────────────────────────────────────────────────────────────
+
+case object CinemaCityManufaktura extends Cinema("Cinema City Manufaktura", "Manufaktura")
+
+case object MultikinoLodz extends Cinema("Multikino Łódź", "Multikino")
+
+case object HeliosLodz extends Cinema("Helios Łódź", "Helios")
+
+case object KinoCharlie extends Cinema("Kino Charlie", "Charlie")
+
 // ── Trójmiasto (Gdańsk · Gdynia · Sopot) ─────────────────────────────────────
 
 case object MultikinoGdansk extends Cinema("Multikino Gdańsk", "Multikino")
@@ -217,6 +227,16 @@ object Cinema {
     KinoSfinks,
   )
 
+  /** Łódź venues. Three national chains — Cinema City (Manufaktura), Multikino,
+   *  and the city's single Helios (in Galeria Sukcesja) — plus Kino Charlie, the
+   *  arthouse cinema on Piotrkowska, wired as a bespoke ld+json scraper. */
+  val lodz: Seq[Cinema] = Seq(
+    CinemaCityManufaktura,
+    MultikinoLodz,
+    HeliosLodz,
+    KinoCharlie,
+  )
+
   /** Trójmiasto venues — the Tri-City of Gdańsk, Gdynia and Sopot treated as one
    *  repertoire. Two Helios in Gdańsk (Metropolia, Forum), one in Gdynia
    *  (Riviera), plus Multikino Gdańsk. Cinema City Krewetka closed in 2018 and
@@ -235,7 +255,7 @@ object Cinema {
     KinoPort,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ trojmiasto
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ lodz ++ trojmiasto
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }

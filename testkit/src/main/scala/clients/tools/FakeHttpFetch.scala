@@ -9,7 +9,12 @@ import java.util.concurrent.CompletableFuture
 class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
   val fixtureRoot = "test/resources/fixtures/" + fixtureDir
 
-  override def get(url: String): String = read(url, body = None)
+  override def get(url: String): String = new String(readBytes(url, body = None), "UTF-8")
+
+  /** Raw fixture bytes — the on-disk file undecoded. Mirrors
+   *  `RealHttpFetch.getBytes` so a charset-quirky client (Kino Charlie, raw
+   *  ISO-8859-2) replays through the same decode path it runs in production. */
+  override def getBytes(url: String): Array[Byte] = readBytes(url, body = None)
 
   /** POST is recorded by `RecordingHttpFetch.post` with a body-hash
    *  suffix on the filename — used to distinguish, for example, IMDb's
@@ -17,7 +22,7 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
    *  call hits the same URL but the request body varies per imdbId.
    *  Mirror the same hash here so the test can replay GraphQL responses. */
   override def post(url: String, body: String, contentType: String): String =
-    read(url, body = Some(body))
+    new String(readBytes(url, body = Some(body)), "UTF-8")
 
   override def getAsync(url: String): CompletableFuture[String] =
     try CompletableFuture.completedFuture(get(url))
@@ -27,7 +32,7 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
       f
     }
 
-  private def read(url: String, body: Option[String]): String = {
+  private def readBytes(url: String, body: Option[String]): Array[Byte] = {
     val uri  = new URI(url)
     val path = uri.getPath.stripPrefix("/")
     val base = s"$fixtureRoot/${uri.getHost}/$path"
@@ -89,7 +94,7 @@ class FakeHttpFetch(fixtureDir: String) extends HttpFetch {
     candidates
       .map(Paths.get(_))
       .find(p => Files.exists(p) && Files.isRegularFile(p))
-      .map(p => new String(Files.readAllBytes(p), "UTF-8"))
+      .map(p => Files.readAllBytes(p))
       .getOrElse(throw new java.io.FileNotFoundException(
         s"No fixture file for $url — tried:\n  ${candidates.mkString("\n  ")}"
       ))

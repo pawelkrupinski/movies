@@ -15,6 +15,19 @@ import java.util.concurrent.CompletableFuture
 trait HttpFetch {
   def get(url: String): String
 
+  /** Fetch the raw response bytes, undecoded. The default re-encodes the
+   *  UTF-8 string `get` returns, which is lossless only for genuinely UTF-8
+   *  upstreams — the vast majority. Callers scraping a legacy single-byte
+   *  site that ships NO charset declaration (Kino Charlie serves raw
+   *  ISO-8859-2 with `Content-Type: text/html` and no charset) need the true
+   *  bytes so they can decode with the right charset: a UTF-8 decode of those
+   *  bytes is lossy (~580 `U+FFFD` on Charlie's page), so the String `get`
+   *  returns can't be round-tripped back. `RealHttpFetch` overrides this to
+   *  return the wire bytes and `FakeHttpFetch` returns the fixture file's
+   *  bytes; every other implementation keeps the default and is unaffected. */
+  def getBytes(url: String): Array[Byte] =
+    get(url).getBytes(java.nio.charset.StandardCharsets.UTF_8)
+
   /** GET with extra request headers. Default delegates to the no-header
    *  form, which lets test fakes (FakeHttpFetch, RecordingHttpFetch) keep
    *  overriding only `get(url)` — they fingerprint by URL and don't care
