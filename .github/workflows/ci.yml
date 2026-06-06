@@ -195,7 +195,11 @@ jobs:
                   nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
                   echo "SERVER_PID=$!" >> "$GITHUB_ENV"
 
-                  for _ in $(seq 1 60); do
+                  # 300s ceiling: a cold sbt-target cache recompiles every
+                  # module (~120s) before bootStartup, which itself grew with
+                  # the corpus (Kraków + Trójmiasto cinemas, several missing
+                  # fixtures → retry-with-backoff). 120s was timing out.
+                  for _ in $(seq 1 150); do
                       if [ -s "$PORT_FILE" ]; then break; fi
                       sleep 2
                   done
@@ -291,7 +295,11 @@ jobs:
                   nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
                   echo "SERVER_PID=$!" >> "$GITHUB_ENV"
 
-                  for _ in $(seq 1 60); do
+                  # 300s ceiling: a cold sbt-target cache recompiles every
+                  # module (~120s) before bootStartup, which itself grew with
+                  # the corpus (Kraków + Trójmiasto cinemas, several missing
+                  # fixtures → retry-with-backoff). 120s was timing out.
+                  for _ in $(seq 1 150); do
                       if [ -s "$PORT_FILE" ]; then break; fi
                       sleep 2
                   done
