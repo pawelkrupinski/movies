@@ -3,6 +3,7 @@ package services.cinemas
 import models._
 import play.api.libs.json._
 import services.cinemas.HeliosNuxt.{BookingBase, cleanTitle}
+import services.movies.MovieService
 import tools.{HeliosFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.format.DateTimeFormatter
@@ -33,7 +34,7 @@ class HeliosClient(
   def fetch(): Seq[CinemaMovie] = {
     val rest     = fetchRestData()
     val enriched = enrichFromRest(HeliosNuxt.buildMovies(http.get(PageUrl), cfg), rest)
-    removeLessSpecificOverlaps(enriched ++ restOnlyMovies(enriched, rest)).sortBy(_.movie.title)
+    mergeDuplicateFilms(removeLessSpecificOverlaps(enriched ++ restOnlyMovies(enriched, rest))).sortBy(_.movie.title)
   }
 
   private case class RestData(
@@ -271,6 +272,51 @@ class HeliosClient(
   // film title and a more-specific event/promo title (e.g. "Tom i Jerry" and
   // "Tom i Jerry - seanse z konkursami HDD"). Drop the less-specific row when its
   // showtimes overlap in time with a more-specific row.
+  /** Collapse entries that are the same film listed twice in one scrape.
+   *
+   *  Helios surfaces a film under more than one raw title that the cache's row
+   *  identity (`MovieService.normalize`) treats as one:
+   *    - a `/wydarzenie` event page and a `/filmy` film page differing only in
+   *      case ("Drzewo Magii" vs "Drzewo magii"), and
+   *    - a REST-only entry whose title carries a stray trailing space
+   *      ("Straszny film " vs "Straszny film") — the same untrimmed title also
+   *      defeats `enrichFromRest`'s exact-title match, so the film page never
+   *      gets its year and the REST row leaks through as a separate entry.
+   *
+   *  Both spellings hash to the same cache key, so the cache writes a single
+   *  slot but every raw entry overwrites it, and `recordCinemaScrape` flags each
+   *  one `isNew` on every scrape — the recurring "(N new)" on Helios. Group by
+   *  the cache's normalised title and merge each group into one entry: keep the
+   *  canonical `/filmy` film as the base, fill any field it lacks from the
+   *  siblings, and union their showtimes. */
+  private[cinemas] def mergeDuplicateFilms(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    def rank(m: CinemaMovie): Int =
+      (if (m.filmUrl.exists(_.contains("/filmy/"))) 4 else 0) +
+        (if (m.filmUrl.isDefined) 2 else 0) +
+        (if (m.movie.releaseYear.isDefined) 1 else 0)
+    movies.groupBy(m => MovieService.normalize(m.movie.title)).values.toSeq.map { group =>
+      group.reduce { (a, b) =>
+        val (primary, other) = if (rank(a) >= rank(b)) (a, b) else (b, a)
+        primary.copy(
+          movie = primary.movie.copy(
+            title          = primary.movie.title.trim,
+            releaseYear    = primary.movie.releaseYear.orElse(other.movie.releaseYear),
+            runtimeMinutes = primary.movie.runtimeMinutes.orElse(other.movie.runtimeMinutes),
+            countries      = if (primary.movie.countries.nonEmpty) primary.movie.countries else other.movie.countries,
+            genres         = if (primary.movie.genres.nonEmpty) primary.movie.genres else other.movie.genres
+          ),
+          posterUrl  = primary.posterUrl.orElse(other.posterUrl),
+          filmUrl    = primary.filmUrl.orElse(other.filmUrl),
+          synopsis   = primary.synopsis.orElse(other.synopsis),
+          cast       = if (primary.cast.nonEmpty) primary.cast else other.cast,
+          director   = if (primary.director.nonEmpty) primary.director else other.director,
+          trailerUrl = primary.trailerUrl.orElse(other.trailerUrl),
+          showtimes  = (primary.showtimes ++ other.showtimes).distinct.sortBy(_.dateTime)
+        )
+      }
+    }
+  }
+
   private def removeLessSpecificOverlaps(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
     val timesByTitle = movies.map(m => m.movie.title -> m.showtimes.map(_.dateTime).toSet).toMap
     val norm         = (s: String) => s.toLowerCase.replaceAll("\\s+", " ").trim
