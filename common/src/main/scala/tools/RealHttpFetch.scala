@@ -49,6 +49,16 @@ class RealHttpFetch extends HttpFetch with Logging {
 
   override def get(url: String): String = get(url, Map.empty)
 
+  /** Raw wire bytes (gunzipped, NOT charset-decoded) so a caller can pick the
+   *  right charset itself. See [[HttpFetch.getBytes]] — only the charset-quirky
+   *  scrapers (Kino Charlie) use this; everyone else gets the UTF-8 `get`. */
+  override def getBytes(url: String): Array[Byte] = {
+    val resp = underlying.send(buildRequest(url, Map.empty), HttpResponse.BodyHandlers.ofByteArray())
+    val code = resp.statusCode()
+    if (code >= 200 && code < 300) Gunzip.decode(resp.body())
+    else throw new RuntimeException(s"HTTP $code for GET $url")
+  }
+
   override def get(url: String, headers: Map[String, String]): String =
     sendLogged("GET", url, underlying.send(buildRequest(url, headers), HttpResponse.BodyHandlers.ofByteArray()))
 

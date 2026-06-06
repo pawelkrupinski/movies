@@ -109,6 +109,13 @@ class CinemaScraperCatalog(
     new KinoSfinksClient(http, KinoSfinks),
   )
 
+  private val lodzScrapers: Seq[CinemaScraper] = Seq(
+    new CinemaCityScraper(cinemaCityClient, "1080", CinemaCityManufaktura),
+    new MultikinoClient(mkFetch, "0023", MultikinoLodz),
+    new HeliosClient(http, HeliosNuxt.Lodz, today),
+    new CharlieClient(http, KinoCharlie),
+  )
+
   private val bialystokScrapers: Seq[CinemaScraper] = Seq(
     new HeliosClient(http, HeliosNuxt.Alfa, today),
     new HeliosClient(http, HeliosNuxt.Biala, today),
@@ -150,6 +157,7 @@ class CinemaScraperCatalog(
     "wroclaw"    -> wroclawScrapers,
     "warszawa"   -> warszawaScrapers,
     "krakow"     -> krakowScrapers,
+    "lodz"       -> lodzScrapers,
     "bialystok"  -> bialystokScrapers,
     "trojmiasto" -> trojmiastoScrapers,
     "bydgoszcz"  -> bydgoszczScrapers,

@@ -120,6 +120,16 @@ case object MikroBronowice extends Cinema("Mikro Bronowice", "Mikro Bronowice")
 
 case object KinoSfinks extends Cinema("Kino Sfinks", "Sfinks")
 
+// ── Łódź ─────────────────────────────────────────────────────────────────────
+
+case object CinemaCityManufaktura extends Cinema("Cinema City Manufaktura", "Manufaktura")
+
+case object MultikinoLodz extends Cinema("Multikino Łódź", "Multikino")
+
+case object HeliosLodz extends Cinema("Helios Łódź", "Helios")
+
+case object KinoCharlie extends Cinema("Kino Charlie", "Charlie")
+
 // ── Białystok ────────────────────────────────────────────────────────────────
 
 case object HeliosAlfa extends Cinema("Helios Alfa", "Alfa")
@@ -247,6 +257,16 @@ object Cinema {
     KinoSfinks,
   )
 
+  /** Łódź venues. Three national chains — Cinema City (Manufaktura), Multikino,
+   *  and the city's single Helios (in Galeria Sukcesja) — plus Kino Charlie, the
+   *  arthouse cinema on Piotrkowska, wired as a bespoke ld+json scraper. */
+  val lodz: Seq[Cinema] = Seq(
+    CinemaCityManufaktura,
+    MultikinoLodz,
+    HeliosLodz,
+    KinoCharlie,
+  )
+
   /** Białystok venues. No Cinema City or Multikino in the city; Helios (HQ'd in
    *  Łódź, strong in eastern Poland) runs three multiplexes — Alfa, Biała and
    *  Jurowiecka. The independent is Kino Forum, the film screen of the
@@ -298,7 +318,7 @@ object Cinema {
     KinoBajka,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ bialystok ++ trojmiasto ++ bydgoszcz ++ lublin
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ lodz ++ bialystok ++ trojmiasto ++ bydgoszcz ++ lublin
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }
