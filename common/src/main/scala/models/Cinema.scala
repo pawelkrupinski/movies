@@ -142,6 +142,16 @@ case object KinoZak extends Cinema("Kino Żak", "Żak")
 
 case object KinoPort extends Cinema("KinoPort", "KinoPort")
 
+// ── Bydgoszcz ────────────────────────────────────────────────────────────────
+
+case object CinemaCityBydgoszcz extends Cinema("Cinema City Bydgoszcz", "Cinema City")
+
+case object MultikinoBydgoszcz extends Cinema("Multikino Bydgoszcz", "Multikino")
+
+case object HeliosBydgoszcz extends Cinema("Helios Bydgoszcz", "Helios")
+
+case object KinoOrzel extends Cinema("Kino Orzeł", "Orzeł")
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -235,7 +245,18 @@ object Cinema {
     KinoPort,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ trojmiasto
+  /** Bydgoszcz venues. All three national chains have one multiplex each
+   *  (Cinema City in Focus Mall, Multikino on Focha, Helios on Fordońska);
+   *  the city's one art-house screen is MCK's Kino Orzeł, ticketed through the
+   *  national Bilety24 marketplace. */
+  val bydgoszcz: Seq[Cinema] = Seq(
+    CinemaCityBydgoszcz,
+    MultikinoBydgoszcz,
+    HeliosBydgoszcz,
+    KinoOrzel,
+  )
+
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ trojmiasto ++ bydgoszcz
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }

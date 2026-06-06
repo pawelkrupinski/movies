@@ -15,7 +15,7 @@ trait TestWiring extends WorkerWiring {
   // cover the full catalogue, so the production KINOWO_SCRAPE_CITIES gate
   // (default Poznań-only) must not narrow what tests see — otherwise the
   // coverage spec fails for the gated-out cinemas.
-  override def scrapeCities: Set[String] = Set("poznan", "wroclaw", "warszawa", "krakow", "trojmiasto")
+  override def scrapeCities: Set[String] = models.City.all.map(_.slug).toSet
 
   // Pin a DISABLED Mongo connection. Tests get their movie data from
   // `InMemoryMovieRepo` / fixtures and don't exercise the user repos, so a real
