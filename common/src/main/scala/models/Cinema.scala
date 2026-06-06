@@ -114,6 +114,10 @@ case object CinemaCityZakopianka extends Cinema("Cinema City Zakopianka", "Zakop
 
 case object MultikinoKrakow extends Cinema("Multikino Kraków", "Multikino")
 
+case object KinoMikro extends Cinema("Kino Mikro", "Mikro")
+
+case object MikroBronowice extends Cinema("Mikro Bronowice", "Mikro Bronowice")
+
 // ── Trójmiasto (Gdańsk · Gdynia · Sopot) ─────────────────────────────────────
 
 case object MultikinoGdansk extends Cinema("Multikino Gdańsk", "Multikino")
@@ -194,6 +198,8 @@ object Cinema {
     CinemaCityKazimierz,
     CinemaCityZakopianka,
     MultikinoKrakow,
+    KinoMikro,
+    MikroBronowice,
   )
 
   /** Trójmiasto venues — the Tri-City of Gdańsk, Gdynia and Sopot treated as one

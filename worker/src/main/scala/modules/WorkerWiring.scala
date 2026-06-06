@@ -97,6 +97,8 @@ class WorkerWiring {
     new CinemaCityScraper(cinemaCityClient, "1076", CinemaCityKazimierz),
     new CinemaCityScraper(cinemaCityClient, "1064", CinemaCityZakopianka),
     new MultikinoClient(multikinoFetch, "0005", MultikinoKrakow),
+    new KinoMikroClient(httoFetch, "Kino Mikro", KinoMikro),
+    new KinoMikroClient(httoFetch, "Mikro Bronowice", MikroBronowice),
   )
 
   private lazy val trojmiastoScrapers: Seq[CinemaScraper] = Seq(
