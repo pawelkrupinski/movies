@@ -8,11 +8,11 @@ import org.mongodb.scala.model.{Filters, Updates}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import org.bson.conversions.Bson
 import play.api.Logging
-import tools.{DaemonExecutors, Env}
+import tools.Env
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutorService}
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -73,43 +73,11 @@ trait MovieRepo {
   def close(): Unit
 }
 
-object MongoMovieRepo {
-  /** Split the sorted `_id` list into `parallelism` contiguous, *half-open*
-   *  ranges that together tile the entire id space: the first range has no
-   *  lower bound, the last no upper bound, and adjacent ranges meet exactly
-   *  at a chunk head — range `i` is `[headᵢ, headᵢ₊₁)`. This leaves no gap
-   *  between ranges, so a document committed between the `_id` discovery
-   *  query and the ranged finds still lands in exactly one range.
-   *
-   *  The older approach bounded each chunk by its own observed min/max id
-   *  (`gte(headᵢ) … lte(lastᵢ)`), which left a gap `(lastᵢ, headᵢ₊₁)`
-   *  matching no range — a concurrent insert whose `_id` sorted into that
-   *  gap was silently dropped from the reload.
-   *
-   *  Precondition: `ids` is sorted in the same order the ranged `gte`/`lt`
-   *  finds compare against — i.e. Mongo's `_id` order. `findAll` guarantees
-   *  this by sorting server-side rather than in Scala.
-   *
-   *  Returns one `(lower, upper)` pair per chunk; `None` means unbounded.
-   *  Empty input → empty output. */
-  private[movies] def idRanges(ids: Seq[String], parallelism: Int): Seq[(Option[String], Option[String])] =
-    if (ids.isEmpty) Seq.empty
-    else {
-      val chunkSize = math.ceil(ids.size.toDouble / parallelism).toInt.max(1)
-      val heads     = ids.grouped(chunkSize).map(_.head).toVector
-      heads.indices.map { i =>
-        val lower = if (i == 0) None else Some(heads(i))
-        val upper = if (i == heads.size - 1) None else Some(heads(i + 1))
-        (lower, upper)
-      }
-    }
-}
-
 /**
  * MongoDB-backed `MovieRepo`. Persists records to the `movies` collection.
  *
  * When `MONGODB_URI` is unset the repo silently no-ops — local dev / tests
- * without Atlas connectivity keep working off the in-memory cache only.
+ * without Mongo connectivity keep working off the in-memory cache only.
  *
  * The driver uses Reactive Streams, but the enrichment pipeline is a single
  * daemon worker so we use the blocking `.toFuture()` form throughout.
@@ -149,109 +117,60 @@ class MongoMovieRepo(
   // `sharedDb = None` (legacy path used by ad-hoc scripts under
   // test/scala/scripts/): we build our own MongoClient from `MONGODB_URI`
   // and own its close().
-  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[StoredMovieDto]], Option[MongoCollection[org.mongodb.scala.Document]]) =
+  private lazy val initResult: (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) =
     sharedDb match {
       case Some(db) =>
         val withRegistry = db.withCodecRegistry(MovieCodecs.registry)
-        val coll    = withRegistry.getCollection[StoredMovieDto]("movies")
-        val rawColl = withRegistry.getCollection("movies")
-        (None, Some(coll), Some(rawColl))
+        (None, Some(withRegistry.getCollection[StoredMovieDto]("movies")))
       case None if fallbackToOwnInit => init()
-      case None                      => (None, None, None)
+      case None                      => (None, None)
     }
-  private def clientOpt: Option[MongoClient]                                 = initResult._1
-  private def coll:      Option[MongoCollection[StoredMovieDto]]             = initResult._2
-  private def rawColl:   Option[MongoCollection[org.mongodb.scala.Document]] = initResult._3
+  private def clientOpt: Option[MongoClient]                     = initResult._1
+  private def coll:      Option[MongoCollection[StoredMovieDto]] = initResult._2
 
   def enabled: Boolean = coll.isDefined
 
-  // The ranged `findAll` fan-out runs its `Future.sequence` join on a
-  // virtual-thread EC rather than the global ForkJoinPool, matching every
-  // other background path in the app (see `DaemonExecutors`). Virtual threads
-  // park cheaply while the Mongo driver's reactive callbacks complete, so the
-  // join never pins a scarce carrier thread. Owned here and shut down by
-  // `close()`. `private[movies]` only so the repo spec can assert the EC is
-  // virtual-threaded.
-  private[movies] val findAllEc: ExecutionContextExecutorService =
-    DaemonExecutors.virtualThreadEC("movie-repo-find")
-
-  /** Boot-time + periodic full reload. Implemented as a discover-then-fan-out
-   *  pair of queries rather than one big `find()` because Atlas serialises
-   *  individual cursor responses at ~50 ms/doc — a single `find()` of 231
-   *  docs takes ~12 s, but four parallel ranged finds of ~58 docs each
-   *  finish in ~4 s. Measured against the production cluster; see
-   *  `MeasureStartup`.
+  /** Boot-time + periodic full reload: a single `find()` over the whole
+   *  collection. The earlier discover-then-fan-out (project the `_id`s, split
+   *  them into contiguous half-open `_id` ranges, fire four parallel ranged
+   *  finds, join) existed to dodge Atlas serialising single cursors at
+   *  ~50 ms/doc. We have since moved to a self-hosted Mongo, where that
+   *  pathology is gone: on the prod app→Mongo LAN one cursor ties the fan-out
+   *  — measured (N=20, warm) p50 ~108 ms for ~600 docs vs ~128 ms, inside the
+   *  run-to-run noise. Dropping it also removes the range-gap correctness
+   *  hazard — a single cursor reads a consistent set by construction.
    *
-   *  Algorithm:
-   *    1. Project just `_id` (small payload, ~200 ms).
-   *    2. Sort, split into `Parallelism` contiguous *half-open* `_id` ranges
-   *       (see `MongoMovieRepo.idRanges`) that tile the whole id space with
-   *       no gaps — so a doc committed between this discovery query and the
-   *       ranged finds can't fall between two chunk boundaries and vanish.
-   *    3. Fire one ranged `find()` per range, joined.
-   *    4. Decode + return.
+   *  Deliberate trade-off (measured, not assumed): the fan-out's one remaining
+   *  benefit is parallelising read latency across 4 connections over a HIGH-
+   *  latency link. Over a local→prod `flyctl` tunnel the fan-out stayed ~2.7 s
+   *  while a single cursor ran ~6 s p50 (up to ~8.5 s, high variance); a large
+   *  `batchSize` was measured NOT to help (the limiter is single-connection
+   *  serial throughput, not `getMore` count). We accept that *local-dev-only*
+   *  cost for the far simpler single-cursor shape, since prod — the path that
+   *  matters — is a tie. Note: on a bad tunnel night the slow hydrate can
+   *  approach the timeout below; local dev that needs fast/reliable boots
+   *  should point at a local Mongo rather than tunnelling to prod.
    *
-   *  Falls back to the single-query path on the discovery query's empty /
-   *  failure result so a transient hiccup degrades to the previous
-   *  behaviour, never worse. */
-  def findAll(): Seq[StoredMovieRecord] = (coll, rawColl) match {
-    case (Some(c), Some(rc)) =>
+   *  The 60s timeout (not the 10s used by point writes) covers a cold
+   *  WiredTiger first read after a process boot, which can take 10–20 s even
+   *  when steady-state finds are <100 ms; a short timeout there silently
+   *  strands the cache empty (the surrounding `Try.getOrElse(Seq.empty)`
+   *  swallows the `TimeoutException` with no log line — what a
+   *  stale-page-on-startup bug looks like from the outside). */
+  def findAll(): Seq[StoredMovieRecord] = coll match {
+    case Some(c) =>
       Try {
-        implicit val ec: ExecutionContext = findAllEc
-        val Parallelism = 4
-
-        // Sort in Mongo, not Scala: the chunk boundaries must be ordered by
-        // the same comparison the ranged `gte`/`lt` finds use (the `_id`
-        // index's binary order), or a boundary could straddle the range
-        // semantics and reopen a gap. A Scala `.sorted` (UTF-16 code-unit
-        // order) agrees for all BMP ids but diverges on supplementary-plane
-        // characters; sorting server-side makes the partition consistent by
-        // construction and rides the existing `_id` index for free.
-        // Discovery timeout is 60s, not 15s, because the first call after a
-        // process boot lands on a cold WiredTiger cache that can take 10–20 s
-        // to assemble the response even when steady-state finds are <100 ms.
-        // A short timeout here silently strands the cache empty (the
-        // surrounding `Try.getOrElse(Seq.empty)` swallows TimeoutException
-        // without a log line) — which is what a stale-page-on-startup bug
-        // looks like from the outside.
-        val ids = Await.result(
-          rc.find()
-            .projection(org.mongodb.scala.model.Projections.include("_id"))
-            .sort(org.mongodb.scala.model.Sorts.ascending("_id"))
-            .toFuture(),
-          60.seconds
-        ).iterator.flatMap(d =>
-          d.get[org.mongodb.scala.bson.BsonString]("_id").map(_.getValue)
-        ).toList
-
-        if (ids.isEmpty) Seq.empty
-        else {
-          val futures = MongoMovieRepo.idRanges(ids, Parallelism).map { case (lower, upper) =>
-            val bounds = Seq(
-              lower.map(Filters.gte("_id", _)),
-              upper.map(Filters.lt("_id", _))
-            ).flatten
-            val filter = bounds match {
-              case Seq()    => Filters.empty()
-              case Seq(one) => one
-              case many     => Filters.and(many*)
-            }
-            c.find(filter).toFuture()
-          }
-          val all = Await.result(scala.concurrent.Future.sequence(futures), 60.seconds).flatten
-          all.map(StoredMovieDto.toDomain)
-        }
+        Await.result(c.find().toFuture(), 60.seconds).map(StoredMovieDto.toDomain)
       }.recover {
-        // Catch every throwable here, not just MongoException — the original
-        // narrow `case MongoException` let TimeoutException (Java
-        // `j.u.c.TimeoutException` from `Await.result`) and BSON decode errors
-        // fall through to `.getOrElse(Seq.empty)`, which returned an empty
-        // result with no log line and stranded the cache on the boot path.
+        // Catch every throwable, not just MongoException — TimeoutException
+        // (Java `j.u.c.TimeoutException` from `Await.result`) and BSON decode
+        // errors must be logged, not swallowed into `.getOrElse(Seq.empty)`,
+        // which would strand the cache empty on the boot path with no log line.
         case ex: Throwable =>
           logger.warn(s"MovieRepo.findAll failed: ${ex.getClass.getSimpleName}: ${ex.getMessage}")
           Seq.empty
       }.getOrElse(Seq.empty)
-    case _ => Seq.empty
+    case None => Seq.empty
   }
 
   /** Filters by `title` + `year` fields rather than by `_id`, so legacy docs
@@ -368,35 +287,31 @@ class MongoMovieRepo(
     new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
   }
 
-  def close(): Unit = {
-    clientOpt.foreach(_.close())
-    findAllEc.shutdown()
-  }
+  def close(): Unit = clientOpt.foreach(_.close())
 
-  private def init(): (Option[MongoClient], Option[MongoCollection[StoredMovieDto]], Option[MongoCollection[org.mongodb.scala.Document]]) =
+  private def init(): (Option[MongoClient], Option[MongoCollection[StoredMovieDto]]) =
     Env.get("MONGODB_URI") match {
       case None =>
         logger.info("MONGODB_URI not set — MongoMovieRepo disabled (in-memory cache only).")
-        (None, None, None)
+        (None, None)
       case Some(uri) =>
         Try {
           val dbName  = Env.get("MONGODB_DB").getOrElse("kinowo")
           val client  = MongoClient(uri)
           val db      = client.getDatabase(dbName).withCodecRegistry(MovieCodecs.registry)
           val coll    = db.getCollection[StoredMovieDto]("movies")
-          val rawColl = db.getCollection("movies")
           // Touch the collection to surface connectivity errors at startup,
           // not on the first read after the app is "up".
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
           logger.info(s"MongoMovieRepo connected to $dbName.movies")
-          (client, coll, rawColl)
+          (client, coll)
         }.recover {
           case ex: Throwable =>
             logger.error(s"MongoMovieRepo init failed (${ex.getMessage}) — falling back to in-memory cache.")
             null
         }.toOption.filter(_ != null) match {
-          case Some((c, coll, rawColl)) => (Some(c), Some(coll), Some(rawColl))
-          case None                     => (None, None, None)
+          case Some((c, coll)) => (Some(c), Some(coll))
+          case None            => (None, None)
         }
     }
 
