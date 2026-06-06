@@ -19,6 +19,12 @@ final class CityTests: XCTestCase {
     func testEachSupportedCityResolvesFromItsOwnCoords() {
         XCTAssertEqual(City.nearestWithin100km(lat: 51.1079, lon: 17.0385)?.slug, "wroclaw")
         XCTAssertEqual(City.nearestWithin100km(lat: 52.2297, lon: 21.0122)?.slug, "warszawa")
+        XCTAssertEqual(City.nearestWithin100km(lat: 50.0647, lon: 19.9450)?.slug, "krakow")
+        // Anywhere in the Tri-City resolves to the combined Trójmiasto scope —
+        // Gdańsk in the south, Gdynia in the north are both inside 100 km of
+        // the Sopot-centred coordinate.
+        XCTAssertEqual(City.nearestWithin100km(lat: 54.3520, lon: 18.6466)?.slug, "trojmiasto") // Gdańsk
+        XCTAssertEqual(City.nearestWithin100km(lat: 54.5189, lon: 18.5305)?.slug, "trojmiasto") // Gdynia
     }
 
     func testCoordsFarFromEveryCityAreOutOfRange() {

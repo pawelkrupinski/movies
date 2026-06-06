@@ -22,6 +22,7 @@ struct City: Codable, Hashable {
         City(slug: "wroclaw", name: "Wrocław", lat: 51.1079, lon: 17.0385),
         City(slug: "warszawa", name: "Warszawa", lat: 52.2297, lon: 21.0122),
         City(slug: "krakow", name: "Kraków", lat: 50.0647, lon: 19.9450),
+        City(slug: "trojmiasto", name: "Trójmiasto", lat: 54.4416, lon: 18.5601),
     ]
 
     /// Fallback when no fix is available and the user hasn't chosen.

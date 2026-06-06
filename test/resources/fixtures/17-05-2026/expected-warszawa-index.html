@@ -64,23 +64,6 @@
       <div id="hidden-row-divider" class="panel-divider" style="display:none"></div>
 
       
-      
-        <div class="panel-section-label">Miasto</div>
-        <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
-          
-            <option value="poznan">Poznań</option>
-          
-            <option value="wroclaw">Wrocław</option>
-          
-            <option value="warszawa" selected>Warszawa</option>
-          
-            <option value="krakow">Kraków</option>
-          
-        </select>
-        <div class="panel-divider"></div>
-      
-
-      
       <div class="panel-section-label">Sortuj</div>
       <select id="sort-by" class="filter-select w-100" onchange="onSortChange()" style="margin-bottom:.4rem">
         <option value="earliest">Najbliższy seans</option>
@@ -176,6 +159,26 @@
         </select>
       </div>
       <div class="panel-divider"></div>
+
+      
+      
+        <div class="panel-section-label">Miasto</div>
+        <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
+          
+            <option value="poznan">Poznań</option>
+          
+            <option value="wroclaw">Wrocław</option>
+          
+            <option value="warszawa" selected>Warszawa</option>
+          
+            <option value="krakow">Kraków</option>
+          
+            <option value="trojmiasto">Trójmiasto</option>
+          
+        </select>
+        <div class="panel-divider"></div>
+      
+
       <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100">Wyczyść</button>
       <button onclick="copyFilterLinkToClipboard(this)" class="btn refresh-btn btn-sm w-100" style="margin-top:.4rem">Skopiuj link do schowka</button>
     </div>
@@ -233,7 +236,7 @@
   const ALL_CINEMAS         = ["Cinema City Arkadia","Cinema City Bemowo","Cinema City Galeria Północna","Cinema City Janki","Cinema City Mokotów","Cinema City Promenada","Cinema City Sadyba","Multikino Złote Tarasy","Multikino Młociny","Multikino Reduta","Multikino Targówek","Multikino Wola Park","Helios Blue City","Kino Muranów","Kino Luna","Kino Elektronik","Kino Iluzjon","KinoGram","Kino Kultura","Kino Amondo","Kino na Boku","Kino Głębocka 66","KINOMUZEUM","Kino Świt","Kino Kępa","KINOkawiarnia Stacja Falenica","Służewski Dom Kultury","Kino Atlantic","Kinoteka","Kino U-jazdowski","Kino Cytadela"];
   const CINEMA_PILLS        = {"Kino Muranów":"Muranów","Cinema City Janki":"Janki","Cinema City Mokotów":"Mokotów","Kino Świt":"Świt","Kino Iluzjon":"Iluzjon","Kino Atlantic":"Atlantic","Kino Elektronik":"Elektronik","Kinoteka":"Kinoteka","Multikino Reduta":"Reduta","Multikino Wola Park":"Wola Park","Cinema City Galeria Północna":"Galeria Północna","Kino Głębocka 66":"Głębocka 66","Multikino Targówek":"Targówek","Kino Kultura":"Kultura","Cinema City Bemowo":"Bemowo","Służewski Dom Kultury":"SDK","Cinema City Promenada":"Promenada","Kino na Boku":"na Boku","Multikino Złote Tarasy":"Złote Tarasy","KinoGram":"KinoGram","Kino U-jazdowski":"U-jazdowski","Helios Blue City":"Blue City","KINOMUZEUM":"Kinomuzeum","Kino Amondo":"Amondo","Multikino Młociny":"Młociny","Cinema City Sadyba":"Sadyba","Kino Kępa":"Kępa","Cinema City Arkadia":"Arkadia","Kino Luna":"Luna","KINOkawiarnia Stacja Falenica":"Stacja Falenica","Kino Cytadela":"Cytadela"};
   const CURRENT_CITY        = "warszawa";
-  const ALL_CITIES          = [{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252},{"slug":"wroclaw","name":"Wrocław","lat":51.1079,"lon":17.0385},{"slug":"warszawa","name":"Warszawa","lat":52.2297,"lon":21.0122},{"slug":"krakow","name":"Kraków","lat":50.0647,"lon":19.945}];
+  const ALL_CITIES          = [{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252},{"slug":"wroclaw","name":"Wrocław","lat":51.1079,"lon":17.0385},{"slug":"warszawa","name":"Warszawa","lat":52.2297,"lon":21.0122},{"slug":"krakow","name":"Kraków","lat":50.0647,"lon":19.945},{"slug":"trojmiasto","name":"Trójmiasto","lat":54.4416,"lon":18.5601}];
 </script>
 
 

@@ -99,6 +99,13 @@ class WorkerWiring {
     new MultikinoClient(multikinoFetch, "0005", MultikinoKrakow),
   )
 
+  private lazy val trojmiastoScrapers: Seq[CinemaScraper] = Seq(
+    new MultikinoClient(multikinoFetch, "0004", MultikinoGdansk),
+    new HeliosClient(httoFetch, HeliosNuxt.Metropolia, heliosToday),
+    new HeliosClient(httoFetch, HeliosNuxt.Forum, heliosToday),
+    new HeliosClient(httoFetch, HeliosNuxt.Riviera, heliosToday),
+  )
+
   // Scrape only the cities in KINOWO_SCRAPE_CITIES (comma-separated slugs),
   // defaulting to Poznań. `protected def` so test wirings can scrape every city.
   protected def scrapeCities: Set[String] =
@@ -113,7 +120,8 @@ class WorkerWiring {
     (if (scrapeCities("poznan"))  poznanScrapers  else Nil) ++
     (if (scrapeCities("wroclaw")) wroclawScrapers else Nil) ++
     (if (scrapeCities("warszawa")) warszawaScrapers else Nil) ++
-    (if (scrapeCities("krakow"))   krakowScrapers  else Nil)
+    (if (scrapeCities("krakow"))     krakowScrapers     else Nil) ++
+    (if (scrapeCities("trojmiasto")) trojmiastoScrapers else Nil)
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Background concurrency budget ───────────────────────────────────────────

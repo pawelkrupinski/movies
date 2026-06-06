@@ -64,23 +64,6 @@
       <div id="hidden-row-divider" class="panel-divider" style="display:none"></div>
 
       
-      
-        <div class="panel-section-label">Miasto</div>
-        <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
-          
-            <option value="poznan" selected>Poznań</option>
-          
-            <option value="wroclaw">Wrocław</option>
-          
-            <option value="warszawa">Warszawa</option>
-          
-            <option value="krakow">Kraków</option>
-          
-        </select>
-        <div class="panel-divider"></div>
-      
-
-      
       <div class="panel-section-label">Sortuj</div>
       <select id="sort-by" class="filter-select w-100" onchange="onSortChange()" style="margin-bottom:.4rem">
         <option value="earliest">Najbliższy seans</option>
@@ -176,6 +159,26 @@
         </select>
       </div>
       <div class="panel-divider"></div>
+
+      
+      
+        <div class="panel-section-label">Miasto</div>
+        <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
+          
+            <option value="poznan" selected>Poznań</option>
+          
+            <option value="wroclaw">Wrocław</option>
+          
+            <option value="warszawa">Warszawa</option>
+          
+            <option value="krakow">Kraków</option>
+          
+            <option value="trojmiasto">Trójmiasto</option>
+          
+        </select>
+        <div class="panel-divider"></div>
+      
+
       <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100">Wyczyść</button>
       <button onclick="copyFilterLinkToClipboard(this)" class="btn refresh-btn btn-sm w-100" style="margin-top:.4rem">Skopiuj link do schowka</button>
     </div>
@@ -233,7 +236,7 @@
   const ALL_CINEMAS         = ["Kino Apollo","Kino Bułgarska 19","Kino Malta Charlie Monroe","Helios Posnania","Cinema City Kinepolis","Kino Muza","Multikino Stary Browar","Kino Pałacowe","Cinema City Poznań Plaza","Kino Rialto"];
   const CINEMA_PILLS        = {"Kino Bułgarska 19":"Bułgarska 19","Helios Posnania":"Helios","Kino Pałacowe":"Pałacowe","Multikino Stary Browar":"Multikino","Cinema City Kinepolis":"Kinepolis","Kino Apollo":"Apollo","Kino Rialto":"Rialto","Cinema City Poznań Plaza":"Poznań Plaza","Kino Malta Charlie Monroe":"Malta Charlie Monroe","Kino Muza":"Muza"};
   const CURRENT_CITY        = "poznan";
-  const ALL_CITIES          = [{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252},{"slug":"wroclaw","name":"Wrocław","lat":51.1079,"lon":17.0385},{"slug":"warszawa","name":"Warszawa","lat":52.2297,"lon":21.0122},{"slug":"krakow","name":"Kraków","lat":50.0647,"lon":19.945}];
+  const ALL_CITIES          = [{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252},{"slug":"wroclaw","name":"Wrocław","lat":51.1079,"lon":17.0385},{"slug":"warszawa","name":"Warszawa","lat":52.2297,"lon":21.0122},{"slug":"krakow","name":"Kraków","lat":50.0647,"lon":19.945},{"slug":"trojmiasto","name":"Trójmiasto","lat":54.4416,"lon":18.5601}];
 </script>
 
 

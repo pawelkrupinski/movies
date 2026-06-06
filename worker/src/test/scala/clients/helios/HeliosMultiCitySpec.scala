@@ -15,6 +15,12 @@ class HeliosMultiCitySpec extends AnyFlatSpec with Matchers {
     HeliosNuxt.Magnolia.pageUrl shouldBe "https://helios.pl/wroclaw/kino-helios-magnolia/repertuar"
     HeliosNuxt.BlueCity.baseUrl shouldBe "https://helios.pl/warszawa/kino-helios-blue-city"
     HeliosNuxt.Poznan.pageUrl   shouldBe "https://helios.pl/poznan/kino-helios/repertuar"
+    // Trójmiasto: two Gdańsk venues + one Gdynia, each with its own REST UUID.
+    HeliosNuxt.Metropolia.pageUrl shouldBe "https://helios.pl/gdansk/kino-helios-metropolia/repertuar"
+    HeliosNuxt.Forum.pageUrl      shouldBe "https://helios.pl/gdansk/kino-helios-forum/repertuar"
+    HeliosNuxt.Riviera.pageUrl    shouldBe "https://helios.pl/gdynia/kino-helios/repertuar"
+    Seq(HeliosNuxt.Metropolia, HeliosNuxt.Forum, HeliosNuxt.Riviera)
+      .map(_.sourceId).distinct.size shouldBe 3
   }
 
   "HeliosNuxt.buildMovies" should "tag rows and links with the configured cinema, not Poznań" in {

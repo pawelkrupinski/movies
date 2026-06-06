@@ -28,6 +28,10 @@ class CitiesTest {
     fun resolvesEachSupportedCityFromItsOwnCoordinates() {
         assertEquals("wroclaw", Cities.nearestWithin100km(51.1079, 17.0385)?.slug)
         assertEquals("warszawa", Cities.nearestWithin100km(52.2297, 21.0122)?.slug)
+        assertEquals("krakow", Cities.nearestWithin100km(50.0647, 19.9450)?.slug)
+        // Both ends of the Tri-City resolve to the combined Trójmiasto scope.
+        assertEquals("trojmiasto", Cities.nearestWithin100km(54.3520, 18.6466)?.slug) // Gdańsk
+        assertEquals("trojmiasto", Cities.nearestWithin100km(54.5189, 18.5305)?.slug) // Gdynia
     }
 
     @Test

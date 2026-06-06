@@ -114,6 +114,16 @@ case object CinemaCityZakopianka extends Cinema("Cinema City Zakopianka", "Zakop
 
 case object MultikinoKrakow extends Cinema("Multikino Kraków", "Multikino")
 
+// ── Trójmiasto (Gdańsk · Gdynia · Sopot) ─────────────────────────────────────
+
+case object MultikinoGdansk extends Cinema("Multikino Gdańsk", "Multikino")
+
+case object HeliosMetropolia extends Cinema("Helios Metropolia", "Metropolia")
+
+case object HeliosForum extends Cinema("Helios Forum", "Forum")
+
+case object HeliosRiviera extends Cinema("Helios Riviera", "Riviera")
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -186,7 +196,19 @@ object Cinema {
     MultikinoKrakow,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow
+  /** Trójmiasto venues — the Tri-City of Gdańsk, Gdynia and Sopot treated as one
+   *  repertoire. Two Helios in Gdańsk (Metropolia, Forum), one in Gdynia
+   *  (Riviera), plus Multikino Gdańsk. Cinema City Krewetka closed in 2018 and
+   *  Multikino Sopot in 2026, so neither is modelled. The independents (Cinema1,
+   *  GCF, …) are wired separately as bespoke scrapers. */
+  val trojmiasto: Seq[Cinema] = Seq(
+    MultikinoGdansk,
+    HeliosMetropolia,
+    HeliosForum,
+    HeliosRiviera,
+  )
+
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ trojmiasto
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }
