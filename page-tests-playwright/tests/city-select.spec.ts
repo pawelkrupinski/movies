@@ -8,7 +8,7 @@ test.describe('city selection landing (/)', () => {
   test('lists every supported city and a pick navigates into that city', async ({ page }) => {
     await page.goto('/');
     const links = page.locator('.city-list a');
-    await expect(links).toHaveCount(11);
+    await expect(links).toHaveCount(19);
     await expect(page.locator('.city-list')).toContainText('Poznań');
     await expect(page.locator('.city-list')).toContainText('Wrocław');
     await expect(page.locator('.city-list')).toContainText('Warszawa');
@@ -20,6 +20,14 @@ test.describe('city selection landing (/)', () => {
     await expect(page.locator('.city-list')).toContainText('Białystok');
     await expect(page.locator('.city-list')).toContainText('Bydgoszcz');
     await expect(page.locator('.city-list')).toContainText('Lublin');
+    await expect(page.locator('.city-list')).toContainText('Częstochowa');
+    await expect(page.locator('.city-list')).toContainText('Radom');
+    await expect(page.locator('.city-list')).toContainText('Sosnowiec');
+    await expect(page.locator('.city-list')).toContainText('Toruń');
+    await expect(page.locator('.city-list')).toContainText('Kielce');
+    await expect(page.locator('.city-list')).toContainText('Rzeszów');
+    await expect(page.locator('.city-list')).toContainText('Gliwice');
+    await expect(page.locator('.city-list')).toContainText('Zabrze');
 
     await page.locator('.city-list a', { hasText: 'Poznań' }).click();
     await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
