@@ -109,6 +109,20 @@ class CinemaScraperCatalog(
     new KinoSfinksClient(http, KinoSfinks),
   )
 
+  private val katowiceScrapers: Seq[CinemaScraper] = Seq(
+    new CinemaCityScraper(cinemaCityClient, "1065", CinemaCityPunkt44),
+    new CinemaCityScraper(cinemaCityClient, "1079", CinemaCitySilesia),
+    new MultikinoClient(mkFetch, "0035", MultikinoKatowice),
+    new HeliosClient(http, HeliosNuxt.Katowice, today),
+    // Silesia Film's art-house pair, both Bilety24-hosted (same platform as
+    // Kino Luna / Elektronik): listing at `/repertuar/` linking per-film
+    // `/wydarzenie/?id=N` pages, so they reuse the shared Bilety24Client.
+    // (Kinoteatr Rialto, the third Silesia Film venue, programmes only
+    // concerts/theatre right now — no film repertoire — so it's not wired.)
+    new Bilety24Client(http, "https://kinokosmos.bilety24.pl", KinoKosmos),
+    new Bilety24Client(http, "https://swiatowid-katowice.bilety24.pl", KinoSwiatowid),
+  )
+
   private val trojmiastoScrapers: Seq[CinemaScraper] = Seq(
     new MultikinoClient(mkFetch, "0004", MultikinoGdansk),
     new HeliosClient(http, HeliosNuxt.Metropolia, today),
@@ -129,6 +143,7 @@ class CinemaScraperCatalog(
     "wroclaw"    -> wroclawScrapers,
     "warszawa"   -> warszawaScrapers,
     "krakow"     -> krakowScrapers,
+    "katowice"   -> katowiceScrapers,
     "trojmiasto" -> trojmiastoScrapers,
   )
 

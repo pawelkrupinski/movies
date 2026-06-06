@@ -120,6 +120,20 @@ case object MikroBronowice extends Cinema("Mikro Bronowice", "Mikro Bronowice")
 
 case object KinoSfinks extends Cinema("Kino Sfinks", "Sfinks")
 
+// ── Katowice ─────────────────────────────────────────────────────────────────
+
+case object CinemaCityPunkt44 extends Cinema("Cinema City Punkt 44", "Punkt 44")
+
+case object CinemaCitySilesia extends Cinema("Cinema City Silesia", "Silesia")
+
+case object MultikinoKatowice extends Cinema("Multikino Katowice", "Multikino")
+
+case object HeliosKatowice extends Cinema("Helios Katowice", "Helios")
+
+case object KinoKosmos extends Cinema("Kino Kosmos", "Kosmos")
+
+case object KinoSwiatowid extends Cinema("Kino Światowid", "Światowid")
+
 // ── Trójmiasto (Gdańsk · Gdynia · Sopot) ─────────────────────────────────────
 
 case object MultikinoGdansk extends Cinema("Multikino Gdańsk", "Multikino")
@@ -217,6 +231,20 @@ object Cinema {
     KinoSfinks,
   )
 
+  /** Katowice venues. Cinema City has two locations (Punkt 44 and Silesia),
+   *  Multikino one, Helios one. The art-house trio run by Silesia Film —
+   *  Kosmos and Światowid — are Bilety24-hosted independents wired as bespoke
+   *  scrapers. (Kinoteatr Rialto, the third Silesia Film venue, currently
+   *  programmes only concerts/theatre and no film repertoire, so it's omitted.) */
+  val katowice: Seq[Cinema] = Seq(
+    CinemaCityPunkt44,
+    CinemaCitySilesia,
+    MultikinoKatowice,
+    HeliosKatowice,
+    KinoKosmos,
+    KinoSwiatowid,
+  )
+
   /** Trójmiasto venues — the Tri-City of Gdańsk, Gdynia and Sopot treated as one
    *  repertoire. Two Helios in Gdańsk (Metropolia, Forum), one in Gdynia
    *  (Riviera), plus Multikino Gdańsk. Cinema City Krewetka closed in 2018 and
@@ -235,7 +263,7 @@ object Cinema {
     KinoPort,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ trojmiasto
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ katowice ++ trojmiasto
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }
