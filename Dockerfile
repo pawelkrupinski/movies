@@ -40,15 +40,14 @@ CMD exec bin/$BIN \
     -Dplay.http.secret.key="${APPLICATION_SECRET}" \
     -Dplay.server.http.address=0.0.0.0 \
     -Dhttp.address=0.0.0.0 \
-    -Dpidfile.path=/dev/null \
-    -J-Xms384m \
-    -J-Xmx384m \
-    -J-XX:+UseG1GC \
-    -J-XX:MaxGCPauseMillis=50 \
-    -J-XX:+UseStringDeduplication \
-    -J-XX:ReservedCodeCacheSize=96m \
-    -J-XX:MaxMetaspaceSize=160m \
-    -J-XX:MaxDirectMemorySize=96m
+    -Dpidfile.path=/dev/null
+    # JVM sizing (heap/GC/non-heap caps) is now per-app via `JAVA_OPTS` in each
+    # app's fly.toml — the launcher reads it — so the serving web app (kinowo)
+    # and the scrape/enrich worker can be sized independently from this one
+    # shared image. web runs a smaller heap (it no longer scrapes); the worker
+    # keeps the larger one. The historical rationale for the original single
+    # sizing is preserved below for reference.
+    #
     # JVM sizing on the 1 GB cgroup. Targets:
     #
     #   - Xms == Xmx == 384m: heap pre-allocated, no resize-up pauses

@@ -11,6 +11,15 @@ primary_region = 'arn'
 
 [env]
   PORT = '9000'
+  # Per-app JVM sizing (the Dockerfile no longer hardcodes it). web is
+  # serving-only now — no scrapers/enrichment/clients — so its live heap is
+  # dominated by the small in-memory MovieCache. Measured RSS at the old 384m
+  # heap was ~615 MB (~231 MB of that is non-heap: Play metaspace ~110 MB +
+  # code cache ~75 MB + direct + threads/native). Halving the heap to 192m
+  # lands RSS ~420 MB, comfortably inside the 512 MB VM below. Xms==Xmx keeps
+  # the no-resize-pause layout; G1 50ms + string-dedup carried over (the / page
+  # is a ~2 MB HTML string).
+  JAVA_OPTS = '-Xms192m -Xmx192m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=64m'
 
 [http_service]
   internal_port = 9000
@@ -36,14 +45,12 @@ primary_region = 'arn'
     soft_limit = 25
 
 [[vm]]
-  # 1 GB on Temurin 25. With the larger heap (Xmx=384m, see Dockerfile)
-  # and the pre-allocated Xms=Xmx layout (no GC-grow events under load)
-  # the JVM's committed footprint hovers around 600-700 MB at steady
-  # state; 1 GB gives the cgroup ~300 MB headroom for kernel + page
-  # cache + native allocations during scrape bursts. Was 768 MB,
-  # bumped to take pressure off G1 mixed-collection pauses that were
-  # spiking page TTFB to ~1.3 s under steady load.
-  memory = '1gb'
+  # 512 MB — halved from 1 GB once scraping/enrichment moved to kinowo-worker.
+  # The serving JVM (192m heap, see JAVA_OPTS) commits ~420 MB RSS, leaving
+  # ~90 MB for kernel + page cache. cpu_kind/cpus stay at the shared-1 minimum
+  # (web is near-idle: load avg ~0). Bump back up if a Playwright/load pass or
+  # a traffic spike shows GC thrash or OOM.
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
 
