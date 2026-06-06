@@ -18,11 +18,13 @@ import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
  * (`modules.WorkerWiring`); the two share only the Mongo database.
  */
 trait Wiring {
-  // watchExternalWrites: the worker now records all scraper + enrichment metrics
-  // and writes them to the shared uptimeBuckets collection. This serving process
-  // tails that collection's change stream so /uptime reflects the worker's
-  // activity live, not just a stale snapshot from the last web boot.
-  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, watchExternalWrites = true)
+  // surfaceExternalWrites: the worker records all scraper + enrichment metrics
+  // and writes them (batched) to the shared uptimeBuckets collection. This
+  // serving process POLLS that collection every ~10s so /uptime reflects the
+  // worker's activity — a fixed, bounded cost rather than reacting to every
+  // write (the per-write change stream pegged the serving vCPU at multi-city
+  // scrape volume).
+  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, surfaceExternalWrites = true)
   // OAuth providers + token validators make outbound HTTP; the monitoring
   // wrapper records their latency on the same /uptime surface the worker feeds.
   lazy val httoFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)

@@ -149,11 +149,11 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     second.head.successes shouldBe 3
   }
 
-  // Regression for the read/write split: the worker process now records all the
-  // scraper + enrichment metrics and writes them to the shared `uptimeBuckets`
-  // collection. The web process serving /uptime must surface those external
-  // writes (delivered by the Mongo change stream) in its in-memory map AND fire
-  // its SSE listeners — otherwise the page froze at the last web-boot snapshot.
+  // Regression for the read/write split: the worker records all the scraper +
+  // enrichment metrics and writes them to the shared `uptimeBuckets` collection.
+  // The web process serving /uptime POLLS that collection and merges each
+  // snapshot via applyExternalUpdate, firing its SSE listeners — otherwise the
+  // page froze at the last web-boot snapshot.
   "an external (worker) bucket update" should "surface in history, averages, services and fire listeners" in {
     val monitor = new UptimeMonitor()
     var notified = List.empty[String]
@@ -185,6 +185,26 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.history("IMDb").head.successes shouldBe 5
     monitor.history("IMDb").head.failures shouldBe 1
     monitor.history("IMDb").head.errors shouldBe Seq("boom")
+  }
+
+  // The poller re-reads the WHOLE uptimeBuckets snapshot every interval, so the
+  // same bucket value is applied over and over. Re-applying an unchanged value
+  // must NOT fire listeners — otherwise every poll would spam the /uptime SSE
+  // with ~one event per bucket regardless of activity.
+  it should "fire listeners only when the applied snapshot actually changed" in {
+    val monitor = new UptimeMonitor()
+    var notifications = 0
+    monitor.addListener((_, _) => notifications += 1)
+    val ts = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+
+    monitor.applyExternalUpdate("RT", ts, successes = 4, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    notifications shouldBe 1
+    // Same snapshot again (next poll, no new worker activity) → no listener fire.
+    monitor.applyExternalUpdate("RT", ts, successes = 4, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    notifications shouldBe 1
+    // A real change (worker recorded more) → fires.
+    monitor.applyExternalUpdate("RT", ts, successes = 5, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    notifications shouldBe 2
   }
 
   "BucketSnapshot.status" should "be green when all succeed" in {
