@@ -149,7 +149,9 @@ class CinemaScraperCatalog(
     new HeliosClient(http, HeliosNuxt.Forum, today),
     new HeliosClient(http, HeliosNuxt.Riviera, today),
     new KinoSpektrumClient(http, KinoSpektrum),
-    new KinoKameralneClient(http, KinoKameralne),
+    // biletyna.pl 403s our datacenter IP, so route through Zyte's residential
+    // egress (→ direct fallback when ZYTE_API_KEY is unset). See ZyteFallback.
+    new KinoKameralneClient(ZyteFallback.fetchFor(http), KinoKameralne),
     new KinoIkmClient(http, KinoIkm),
     new KinoMuzeumGdanskClient(http, KinoMuzeumGdansk),
     new KinoZakClient(http, KinoZak),

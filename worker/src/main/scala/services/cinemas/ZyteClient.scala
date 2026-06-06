@@ -9,9 +9,15 @@ import java.nio.charset.StandardCharsets
 import java.util.{Base64, UUID}
 
 /**
- * Wrapper around Zyte API's `/v1/extract` endpoint, used as the primary
- * Multikino proxy backend. Zyte's residential ASNs avoid the WAF blocks
- * that datacenter IPs hit.
+ * Wrapper around Zyte API's `/v1/extract` endpoint, used as a proxy backend
+ * for cinema sites whose WAF blocks our datacenter IP — Zyte's residential
+ * ASNs avoid those blocks. Two fetch shapes:
+ *
+ *   - [[get]] — a single extract call. For stateless pages that just need the
+ *     residential egress to clear an IP block (biletyna's server-rendered
+ *     venue page).
+ *   - [[getWithCookies]] — the cookie-carryover pattern below, for upstreams
+ *     with a session-cookie wall (Multikino's API).
  *
  * Cookie-carryover pattern:
  *
@@ -32,6 +38,14 @@ import java.util.{Base64, UUID}
 class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
   import ZyteClient._
 
+  /** GET `targetUrl` via Zyte in a single extract call — no cookie warm-up.
+   *  For stateless pages where the only thing standing between us and the
+   *  HTML is a datacenter-IP block (biletyna's venue page). One credit.
+   *  Throws on non-2xx upstream status or a missing body.
+   */
+  def get(targetUrl: String): String =
+    bodyOrThrow(post(targetUrl, UUID.randomUUID().toString), targetUrl)
+
   /** GET `targetUrl` via Zyte, harvesting a session from
    *  `cookieSourceUrl` first. Returns the upstream response body as
    *  UTF-8. Throws on any non-2xx upstream status or non-2xx Zyte
@@ -50,14 +64,7 @@ class ZyteClient(httpClient: HttpClient, apiKey: String) extends Logging {
     if (warmupStatus < 200 || warmupStatus >= 300)
       throw new RuntimeException(s"Zyte warm-up returned upstream status=$warmupStatus for $cookieSourceUrl")
 
-    val apiPayload = post(targetUrl, sessionId)
-    val apiStatus  = extractStatus(apiPayload)
-    if (apiStatus < 200 || apiStatus >= 300)
-      throw new RuntimeException(s"Zyte API call returned upstream status=$apiStatus for $targetUrl")
-
-    extractBody(apiPayload).getOrElse(
-      throw new RuntimeException(s"Zyte response missing httpResponseBody for $targetUrl")
-    )
+    bodyOrThrow(post(targetUrl, sessionId), targetUrl)
   }
 
   /** Single POST to Zyte's /extract. Returns the raw JSON body or throws
@@ -105,6 +112,19 @@ object ZyteClient {
     (Json.parse(zyteJson) \ "httpResponseBody")
       .asOpt[String]
       .map(b64 => new String(Base64.getDecoder.decode(b64), StandardCharsets.UTF_8))
+
+  /** Decode the upstream body from one Zyte extract response, or throw with
+   *  diagnostics: a non-2xx upstream status, or a response that carried no
+   *  `httpResponseBody`. Shared by `get` and `getWithCookies` so both fetch
+   *  shapes agree on what counts as a usable result. */
+  def bodyOrThrow(zyteJson: String, targetUrl: String): String = {
+    val status = extractStatus(zyteJson)
+    if (status < 200 || status >= 300)
+      throw new RuntimeException(s"Zyte API call returned upstream status=$status for $targetUrl")
+    extractBody(zyteJson).getOrElse(
+      throw new RuntimeException(s"Zyte response missing httpResponseBody for $targetUrl")
+    )
+  }
 
   /** Zyte authenticates with Basic auth where the API key is the username
    *  and the password is empty — see docs.zyte.com/zyte-api/usage.

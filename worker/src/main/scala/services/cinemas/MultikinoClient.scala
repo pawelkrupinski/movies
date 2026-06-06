@@ -1,10 +1,7 @@
 package services.cinemas
 
 import models.{Cinema, CinemaMovie, Multikino}
-import tools.{Env, FallbackHttpFetch, HttpFetch}
-
-import java.net.http.HttpClient
-import java.time.Duration
+import tools.HttpFetch
 
 /**
  * Multikino fetches `microservice/showings/cinemas/0011/films` and hands the
@@ -58,22 +55,11 @@ object MultikinoClient {
   val HomeUrl = s"$BaseUrl/"
 
   /** Build the `HttpFetch` to pass into `MultikinoClient` at the
-   *  composition root. Composes a fallback chain of (Zyte, direct) —
-   *  Zyte is included when its env var is set, so local dev without
-   *  the key reverts to `direct` alone. Tests override
+   *  composition root. A Zyte-primary → direct fallback chain (see
+   *  [[ZyteFallback]]); Multikino's API sits behind a session-cookie wall, so
+   *  the Zyte leg warms a session from `HomeUrl` first. Tests override
    *  `Wiring.multikinoFetch` directly with `FakeHttpFetch`.
    */
-  def fetchFor(direct: HttpFetch): HttpFetch = {
-    val zyte = Env.get("ZYTE_API_KEY").map { k =>
-      "zyte" -> (new ZyteFetch(new ZyteClient(zyteHttpClient, k), HomeUrl): HttpFetch)
-    }
-    val chain = zyte.toSeq :+ ("direct" -> direct)
-    if (chain.size == 1) chain.head._2 else new FallbackHttpFetch(chain)
-  }
-
-  private lazy val zyteHttpClient = HttpClient.newBuilder()
-    .version(HttpClient.Version.HTTP_1_1)
-    .followRedirects(HttpClient.Redirect.NORMAL)
-    .connectTimeout(Duration.ofSeconds(15))
-    .build()
+  def fetchFor(direct: HttpFetch): HttpFetch =
+    ZyteFallback.fetchFor(direct, cookieSource = Some(HomeUrl))
 }
