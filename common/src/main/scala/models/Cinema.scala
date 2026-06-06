@@ -142,6 +142,16 @@ case object KinoZak extends Cinema("Kino Żak", "Żak")
 
 case object KinoPort extends Cinema("KinoPort", "KinoPort")
 
+// ── Bydgoszcz ────────────────────────────────────────────────────────────────
+
+case object CinemaCityBydgoszcz extends Cinema("Cinema City Bydgoszcz", "Cinema City")
+
+case object MultikinoBydgoszcz extends Cinema("Multikino Bydgoszcz", "Multikino")
+
+case object HeliosBydgoszcz extends Cinema("Helios Bydgoszcz", "Helios")
+
+case object KinoOrzel extends Cinema("Kino Orzeł", "Orzeł")
+
 // ── Lublin ───────────────────────────────────────────────────────────────────
 
 case object CinemaCityLublinFelicity extends Cinema("Cinema City Felicity", "Felicity")
@@ -245,6 +255,17 @@ object Cinema {
     KinoPort,
   )
 
+  /** Bydgoszcz venues. All three national chains have one multiplex each
+   *  (Cinema City in Focus Mall, Multikino on Focha, Helios on Fordońska);
+   *  the city's one art-house screen is MCK's Kino Orzeł, ticketed through the
+   *  national Bilety24 marketplace. */
+  val bydgoszcz: Seq[Cinema] = Seq(
+    CinemaCityBydgoszcz,
+    MultikinoBydgoszcz,
+    HeliosBydgoszcz,
+    KinoOrzel,
+  )
+
   /** Lublin venues. Two Cinema City multiplexes (Felicity, Lublin Plaza) and
    *  Multikino in Galeria Olimp; no Helios in Lublin. Kino Bajka — the Centrum
    *  Kultury art-house on Radziszewskiego — is the local studyjne screen, wired
@@ -256,7 +277,7 @@ object Cinema {
     KinoBajka,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ trojmiasto ++ lublin
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ trojmiasto ++ bydgoszcz ++ lublin
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }
