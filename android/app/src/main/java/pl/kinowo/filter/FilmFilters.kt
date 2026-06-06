@@ -153,6 +153,37 @@ fun List<Film>.groupedByCinema(): List<CinemaSection> {
 }
 
 /**
+ * `disabledCinemas` is ONE global set shared by every city (matching the web's
+ * single `disabledCinemas` localStorage list and iOS's UserDefaults set) —
+ * switching city doesn't touch it, so a cinema deselected in another city
+ * lingers even though it isn't one of this city's cinemas. Deriving the count
+ * badge or the "Wszystkie kina" toggle from the raw set therefore reads stale
+ * entries: the count came out one short and the master toggle showed "not all
+ * selected" the moment you arrived. Every aggregate must be scoped to the
+ * cinemas that belong to the current city.
+ *
+ * (A per-card membership test — [filteredFor] — doesn't need this: a stale
+ * name never matches a cinema-group of this city, so it filters nothing.)
+ */
+object CinemaCityFilter {
+    /** Disabled cinemas that belong to [cityCinemas] — the only ones whose
+     *  state should drive this city's count / select-all. */
+    fun disabledIn(disabled: Set<String>, cityCinemas: List<String>): Set<String> =
+        disabled intersect cityCinemas.toSet()
+
+    /** True when every cinema of [cityCinemas] is selected (none disabled). */
+    fun allSelected(disabled: Set<String>, cityCinemas: List<String>): Boolean =
+        cityCinemas.none { it in disabled }
+
+    /** The disabled set after a scoped select-all ([selected] = true) or
+     *  deselect-all, preserving deselections made in other cities. */
+    fun afterToggleAll(disabled: Set<String>, cityCinemas: List<String>, selected: Boolean): Set<String> {
+        val others = disabled - cityCinemas.toSet()
+        return if (selected) others else others + cityCinemas
+    }
+}
+
+/**
  * Tokens shared by every showtime of a cinema-group — used to drop a
  * redundant "2D" label when all of a cinema's slots are 2D.
  */

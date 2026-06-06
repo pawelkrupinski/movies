@@ -500,9 +500,9 @@ struct FiltersSheet: View {
                 if showCinemaSection && !allCinemas.isEmpty {
                     Section("Kina") {
                         Toggle("Wszystkie kina", isOn: Binding(
-                            get: { prefs.disabledCinemas.isEmpty },
+                            get: { prefs.allCinemasSelected(in: allCinemas) },
                             set: { on in
-                                prefs.setDisabledCinemas(on ? [] : Set(allCinemas))
+                                prefs.setAllCinemas(in: allCinemas, selected: on)
                             }
                         ))
                         ForEach(allCinemas, id: \.self) { cinema in

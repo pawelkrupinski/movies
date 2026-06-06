@@ -199,7 +199,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                     Icon(
                         Icons.Outlined.FilterList,
                         contentDescription = "Filtry",
-                        tint = if (vm.filtersActive) Brand else TextSecondary,
+                        tint = if (vm.filtersActive(vm.allCinemas(films))) Brand else TextSecondary,
                     )
                 }
             }
