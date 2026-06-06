@@ -313,13 +313,13 @@ class MovieController( cc: ControllerComponents,
       ("Last-Modified" -> httpDate) +: (if (revalidate) Seq("Cache-Control" -> "private, no-cache") else Nil)
 
     if (ifModifiedSinceCurrent(request, lastMod))
-      NotModified.withHeaders(validators: _*)
+      NotModified.withHeaders(validators*)
     else if (acceptsGzip(request)) {
       val bytes = responseCache.gzippedBody(request.path, lastMod)(body)
       Ok(bytes).as(contentType)
-        .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> vary) ++ validators): _*)
+        .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> vary) ++ validators)*)
     } else
-      Ok(body).as(contentType).withHeaders((("Vary" -> vary) +: validators): _*)
+      Ok(body).as(contentType).withHeaders((("Vary" -> vary) +: validators)*)
   }
 
   private val HtmlContentType = "text/html; charset=utf-8"

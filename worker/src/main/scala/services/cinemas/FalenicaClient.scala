@@ -5,7 +5,6 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import tools.{HttpFetch, ParallelDetailFetch}
 
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
