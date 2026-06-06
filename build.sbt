@@ -18,14 +18,14 @@ import Dependencies._
 
 ThisBuild / organization := "com.example"
 ThisBuild / version      := "1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "3.8.3"
+ThisBuild / scalaVersion := "3.8.4"
 
 // Compiler options shared by every module. Play's sbt plugin adds -deprecation
 // and -unchecked on top of these for the web project.
 ThisBuild / scalacOptions ++= Seq(
   "-feature",
   "-Wunused:imports",
-  // Scala 3.8.3 caps `-java-output-version` at 21 (higher values are rejected).
+  // Scala 3.8.4 caps `-java-output-version` at 21 (higher values are rejected).
   // JRE 25 loads Java 21 class files unchanged: build on JDK 25, emit 21, run 25.
   "-java-output-version", "21",
   // Twirl-generated warnings come out without a parseable category — filter by
