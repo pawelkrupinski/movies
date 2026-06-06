@@ -1,0 +1,43 @@
+<configuration>
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%date{HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <logger name="services" level="INFO"/>
+  <logger name="clients" level="INFO"/>
+  <!-- WorkerMain's boot/drain lifecycle ("Worker up — scraping…", the SIGTERM
+       drain). Its logger is `modules.WorkerMain`; without this the root WARN
+       swallows those INFO lines and the process looks silent in prod logs. -->
+  <logger name="modules" level="INFO"/>
+  <!-- DEBUG surfaces per-entry rating changes from the hourly Cinemeta refresh
+       (look for "Cinemeta refresh:" lines). The tick-start / tick-end summary
+       and "first run in 10s" line are INFO and always visible. The worker is
+       the process that actually runs enrichment, so this logger lives here. -->
+  <logger name="services.enrichment.EnrichmentService" level="DEBUG"/>
+
+  <!-- MongoDB driver 5.x's TLS selector-monitor loop races against
+       connection-pool churn: a SocketChannel queued for selector
+       registration can be closed by another thread (idle-pool shrinkage,
+       Atlas-side disconnect, shutdown) before register() runs, throwing
+       `ClosedChannelException` from
+       `TlsChannelStreamFactoryFactory$SelectorMonitor`. The driver
+       catches it and the next read/write retries on a fresh connection;
+       the WARN line is the only effect. Raise this logger to ERROR so
+       the noise stops surfacing while real TLS-layer errors still log. -->
+  <logger name="org.mongodb.driver.connection.tls" level="ERROR"/>
+
+  <!-- Sentry: forward ERROR-level events; attach INFO+ as breadcrumbs.
+       Reads SENTRY_DSN from the environment; when unset the appender is
+       a no-op (local dev, CI). -->
+  <appender name="SENTRY" class="io.sentry.logback.SentryAppender">
+    <minimumEventLevel>ERROR</minimumEventLevel>
+    <minimumBreadcrumbLevel>INFO</minimumBreadcrumbLevel>
+  </appender>
+
+  <root level="WARN">
+    <appender-ref ref="STDOUT"/>
+    <appender-ref ref="SENTRY"/>
+  </root>
+</configuration>
