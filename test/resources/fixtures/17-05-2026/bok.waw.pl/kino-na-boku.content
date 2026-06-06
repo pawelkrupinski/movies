@@ -275,10 +275,6 @@
       <div class="fs-24 fw-black">
         Dziś      </div>
     </a>
-      <a href="/kino-na-boku,ts:1780696800" class="day btn flex-center h-100 ">
-      <div class="fs-24 fw-black">
-        Sob.      </div>
-    </a>
       <a href="/kino-na-boku,ts:1780783200" class="day btn flex-center h-100 ">
       <div class="fs-24 fw-black">
         Nd.      </div>
@@ -298,6 +294,10 @@
       <a href="/kino-na-boku,ts:1781128800" class="day btn flex-center h-100 ">
       <div class="fs-24 fw-black">
         Czw.      </div>
+    </a>
+      <a href="/kino-na-boku,ts:1781215200" class="day btn flex-center h-100 ">
+      <div class="fs-24 fw-black">
+        Pt.      </div>
     </a>
   </div>      </div>
       <div class="col-md-3 col-sm-6 text-sm-end">
@@ -344,7 +344,7 @@
         <div class="day-label">Nd.</div>
       </div>
     </div>
-    <div class="week d-flex"><a href="/kino-na-boku,ts:1780264800" class="day"><span class="flex-center" style="">1</span></a><a href="/kino-na-boku,ts:1780351200" class="day"><span class="flex-center" style="">2</span></a><a href="/kino-na-boku,ts:1780437600" class="day"><span class="flex-center" style="">3</span></a><a href="/kino-na-boku,ts:1780524000" class="day"><span class="flex-center" style="">4</span></a><a href="/kino-na-boku,ts:1780610400" class="day has-events today requested-day"><span class="flex-center" style="background-color: #cdcdcd; ">5</span></a><a href="/kino-na-boku,ts:1780696800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">6</span></a><a href="/kino-na-boku,ts:1780783200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">7</span></a></div><div class="week d-flex"><a href="/kino-na-boku,ts:1780869600" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">8</span></a><a href="/kino-na-boku,ts:1780956000" class="day"><span class="flex-center" style="">9</span></a><a href="/kino-na-boku,ts:1781042400" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">10</span></a><a href="/kino-na-boku,ts:1781128800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">11</span></a><a href="/kino-na-boku,ts:1781215200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">12</span></a><a href="/kino-na-boku,ts:1781301600" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">13</span></a><a href="/kino-na-boku,ts:1781388000" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">14</span></a></div><div class="week d-flex"><a href="/kino-na-boku,ts:1781474400" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">15</span></a><a href="/kino-na-boku,ts:1781560800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">16</span></a><a href="/kino-na-boku,ts:1781647200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">17</span></a><a href="/kino-na-boku,ts:1781733600" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">18</span></a><a href="/kino-na-boku,ts:1781820000" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">19</span></a><a href="/kino-na-boku,ts:1781906400" class="day"><span class="flex-center" style="">20</span></a><a href="/kino-na-boku,ts:1781992800" class="day"><span class="flex-center" style="">21</span></a></div><div class="week d-flex"><a href="/kino-na-boku,ts:1782079200" class="day"><span class="flex-center" style="">22</span></a><a href="/kino-na-boku,ts:1782165600" class="day"><span class="flex-center" style="">23</span></a><a href="/kino-na-boku,ts:1782252000" class="day"><span class="flex-center" style="">24</span></a><a href="/kino-na-boku,ts:1782338400" class="day"><span class="flex-center" style="">25</span></a><a href="/kino-na-boku,ts:1782424800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">26</span></a><a href="/kino-na-boku,ts:1782511200" class="day"><span class="flex-center" style="">27</span></a><a href="/kino-na-boku,ts:1782597600" class="day"><span class="flex-center" style="">28</span></a></div><div class="week d-flex"><a href="/kino-na-boku,ts:1782684000" class="day"><span class="flex-center" style="">29</span></a><a href="/kino-na-boku,ts:1782770400" class="day"><span class="flex-center" style="">30</span></a><a href="/kino-na-boku,ts:1782856800" class="day out-of-range"><span class="flex-center" style="">1</span></a><a href="/kino-na-boku,ts:1782943200" class="day out-of-range"><span class="flex-center" style="">2</span></a><a href="/kino-na-boku,ts:1783029600" class="day out-of-range"><span class="flex-center" style="">3</span></a><a href="/kino-na-boku,ts:1783116000" class="day out-of-range"><span class="flex-center" style="">4</span></a><a href="/kino-na-boku,ts:1783202400" class="day out-of-range"><span class="flex-center" style="">5</span></a></div>  </div></div>    </div>
+    <div class="week d-flex"><a href="/kino-na-boku,ts:1780264800" class="day"><span class="flex-center" style="">1</span></a><a href="/kino-na-boku,ts:1780351200" class="day"><span class="flex-center" style="">2</span></a><a href="/kino-na-boku,ts:1780437600" class="day"><span class="flex-center" style="">3</span></a><a href="/kino-na-boku,ts:1780524000" class="day"><span class="flex-center" style="">4</span></a><a href="/kino-na-boku,ts:1780610400" class="day"><span class="flex-center" style="">5</span></a><a href="/kino-na-boku,ts:1780696800" class="day today requested-day"><span class="flex-center" style="">6</span></a><a href="/kino-na-boku,ts:1780783200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">7</span></a></div><div class="week d-flex"><a href="/kino-na-boku,ts:1780869600" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">8</span></a><a href="/kino-na-boku,ts:1780956000" class="day"><span class="flex-center" style="">9</span></a><a href="/kino-na-boku,ts:1781042400" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">10</span></a><a href="/kino-na-boku,ts:1781128800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">11</span></a><a href="/kino-na-boku,ts:1781215200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">12</span></a><a href="/kino-na-boku,ts:1781301600" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">13</span></a><a href="/kino-na-boku,ts:1781388000" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">14</span></a></div><div class="week d-flex"><a href="/kino-na-boku,ts:1781474400" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">15</span></a><a href="/kino-na-boku,ts:1781560800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">16</span></a><a href="/kino-na-boku,ts:1781647200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">17</span></a><a href="/kino-na-boku,ts:1781733600" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">18</span></a><a href="/kino-na-boku,ts:1781820000" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">19</span></a><a href="/kino-na-boku,ts:1781906400" class="day"><span class="flex-center" style="">20</span></a><a href="/kino-na-boku,ts:1781992800" class="day"><span class="flex-center" style="">21</span></a></div><div class="week d-flex"><a href="/kino-na-boku,ts:1782079200" class="day"><span class="flex-center" style="">22</span></a><a href="/kino-na-boku,ts:1782165600" class="day"><span class="flex-center" style="">23</span></a><a href="/kino-na-boku,ts:1782252000" class="day"><span class="flex-center" style="">24</span></a><a href="/kino-na-boku,ts:1782338400" class="day"><span class="flex-center" style="">25</span></a><a href="/kino-na-boku,ts:1782424800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">26</span></a><a href="/kino-na-boku,ts:1782511200" class="day"><span class="flex-center" style="">27</span></a><a href="/kino-na-boku,ts:1782597600" class="day"><span class="flex-center" style="">28</span></a></div><div class="week d-flex"><a href="/kino-na-boku,ts:1782684000" class="day"><span class="flex-center" style="">29</span></a><a href="/kino-na-boku,ts:1782770400" class="day"><span class="flex-center" style="">30</span></a><a href="/kino-na-boku,ts:1782856800" class="day out-of-range"><span class="flex-center" style="">1</span></a><a href="/kino-na-boku,ts:1782943200" class="day out-of-range"><span class="flex-center" style="">2</span></a><a href="/kino-na-boku,ts:1783029600" class="day out-of-range"><span class="flex-center" style="">3</span></a><a href="/kino-na-boku,ts:1783116000" class="day out-of-range"><span class="flex-center" style="">4</span></a><a href="/kino-na-boku,ts:1783202400" class="day out-of-range"><span class="flex-center" style="">5</span></a></div>  </div></div>    </div>
   </div>
 </div>      </div>
     </div>  </div>
@@ -352,218 +352,14 @@
   <div class="py-60">
     <div class="calendar-children mb-50" data-as-view="list" data-as-id="i-ch-it-7730">
       <div class="fw-light fs-34 mb-20">
-      <strong>5 czerwca 2026 </strong><span>Piątek</span>    </div>
-        <div class="list-wrapper mb-30">
-      <div class="basic-list-item">
-  <a href="/kino-na-boku/niesamowite-przygody-skarpetek-3" class="movie-list bg-white-hover d-block mb-30">
-    <div class="row align-items-stretch">
-      <div class="col-md-3 col-4">
-        <div class="col-thumb h-100">
-          <div class="item-image-thumb item-image-sm">
-  <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/niesamowite-przygody-skarpetek-3-1-_auto_900x600.png" data-min-width="1200"/>
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/niesamowite-przygody-skarpetek-3-1-_auto_800x700.png" data-min-width="992"/>
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/niesamowite-przygody-skarpetek-3-1-_auto_600x600.png" data-min-width="768"/>
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/niesamowite-przygody-skarpetek-3-1-_auto_500x600.png" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/xniesamowite-przygody-skarpetek-3-1-_auto_400x500.png.pagespeed.ic.iyztsJn8ow.jpg" srcset="/upload/thumb/2026/05/xniesamowite-przygody-skarpetek-3-1-_auto_400x500.png.pagespeed.ic.iyztsJn8ow.jpg" alt="szara skarpetka na statku kosmicznym w kosmosie" title="" style=""/>
-</picture></div>        </div>
-      </div>
-      <div class="col-md-9 col-8 py-20 py-md-0">
-        <div class="row">
-          <div class="col-md-5 py-md-20">
-            <div class="pe-lg-4 h-100">
-              <div class="movie-list-descr">
-  <div class="fs-30 fw-black mb-10">
-    Niesamowite przygody skarpetek 3. Ale kosmos! | PREMIERA  </div>
-      <div class="movieshows mb-20">
-      <span class="movieshow-list-movie-descr bg-black fs-16 fw-black px-2 py-1 me-2">
-  14:15</span>    </div>
-        <div class="meta-short fs-14">
-      Polska, Portugalia | 55 min<br/><strong>Reż. Elżbieta Wąsik, Jarosław Szyszko, Barbara Koniecka, Mateusz Kmieć, Natalia Bartska-Kmieć</strong>    </div>
-    
-</div>            </div>
-          </div>
-          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
-                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
-                Najbardziej odlotowi bohaterowie książek dla dzieci powracają do&nbsp;kin z&nbsp;nowymi przygodami. Zagadka detektywistyczna, pojedynki na&nbsp;Dzikim Zachodzie i&nbsp;podróże w&nbsp;kosmos to dopiero początek!               </div>
-                      </div>
-        </div>      </div>
-    </div>  </a>
-</div><div class="basic-list-item">
-  <a href="/kino-na-boku/drzewo-magii" class="movie-list bg-white-hover d-block mb-30">
-    <div class="row align-items-stretch">
-      <div class="col-md-3 col-4">
-        <div class="col-thumb h-100">
-          <div class="item-image-thumb item-image-sm">
-  <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/tmft_sg_00004_auto_900x600.jpg" data-min-width="1200"/>
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/tmft_sg_00004_auto_800x700.jpg" data-min-width="992"/>
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/tmft_sg_00004_auto_600x600.jpg" data-min-width="768"/>
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/tmft_sg_00004_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/xtmft_sg_00004_auto_400x500.jpg.pagespeed.ic.ynCCWsfO5t.jpg" srcset="/upload/thumb/2026/05/xtmft_sg_00004_auto_400x500.jpg.pagespeed.ic.ynCCWsfO5t.jpg" alt="Drzewo magii | PREMIERA" title="" style="object-position: 48.296311932750505% 30.257290872503223%; "/>
-</picture></div>        </div>
-      </div>
-      <div class="col-md-9 col-8 py-20 py-md-0">
-        <div class="row">
-          <div class="col-md-5 py-md-20">
-            <div class="pe-lg-4 h-100">
-              <div class="movie-list-descr">
-  <div class="fs-30 fw-black mb-10">
-    Drzewo magii | PREMIERA  </div>
-      <div class="movieshows mb-20">
-      <span class="movieshow-list-movie-descr bg-black fs-16 fw-black px-2 py-1 me-2">
-  15:30</span>    </div>
-        <div class="meta-short fs-14">
-      Wielka Brytania | 110 min<br/><strong>Reż. Simon Farnaby</strong>    </div>
-    
-</div>            </div>
-          </div>
-          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
-                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
-                „Drzewo magii” to spektakularna i&nbsp;pełna ciepła ekranizacja na&nbsp;podstawie uwielbianej serii książek&nbsp;dla dzieci autorstwa Enit Blydon. W&nbsp;barwnej opowieści w&nbsp;role&nbsp;rodziców&nbsp;wcielają się laureat Złotego Globu, nominowany do&nbsp;Oscara Andrew Garfield&nbsp;(„Sztuka pięknego życia”, „Spider Man: Bez drogi do&nbsp;domu”) oraz lauretka Złotego Globu Claire Foy („The Crown”).&nbsp;Towarzyszą im&nbsp;m.in.&nbsp;Nicola Coughlan&nbsp;– gwiazda serialu „Bridgertonowie”,&nbsp;hipnotyzująca w...              </div>
-                      </div>
-        </div>      </div>
-    </div>  </a>
-</div><div class="basic-list-item">
-  <a href="/kino-na-boku/zawodowcy" class="movie-list bg-white-hover d-block mb-30">
-    <div class="row align-items-stretch">
-      <div class="col-md-3 col-4">
-        <div class="col-thumb h-100">
-          <div class="item-image-thumb item-image-sm">
-  <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_900x600.jpg" data-min-width="1200"/>
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_800x700.jpg" data-min-width="992"/>
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_600x600.jpg" data-min-width="768"/>
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/xugr_06152-1-_auto_400x500.jpg.pagespeed.ic.DyiADTT0Hd.jpg" srcset="/upload/thumb/2026/05/xugr_06152-1-_auto_400x500.jpg.pagespeed.ic.DyiADTT0Hd.jpg" alt="dwóch mężczyzn w ciemnych okularach stoi w słońcu; w tle droga żwirowa" title="" style=""/>
-</picture></div>        </div>
-      </div>
-      <div class="col-md-9 col-8 py-20 py-md-0">
-        <div class="row">
-          <div class="col-md-5 py-md-20">
-            <div class="pe-lg-4 h-100">
-              <div class="movie-list-descr">
-  <div class="fs-30 fw-black mb-10">
-    Zawodowcy  </div>
-      <div class="movieshows mb-20">
-      <span class="movieshow-list-movie-descr bg-black fs-16 fw-black px-2 py-1 me-2">
-  17:30</span>    </div>
-        <div class="meta-short fs-14">
-      Wielka Brytania, USA | 98 min<br/><strong>Reż. Guy Ritchie</strong>    </div>
-    
-</div>            </div>
-          </div>
-          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
-                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
-                Specjalistka od&nbsp;ekstremalnie trudnych negocjacji, wraz z&nbsp;ekipą najemników, wciela w&nbsp;życie misterny plan odzyskania wielomilionowego długu.               </div>
-                      </div>
-        </div>      </div>
-    </div>  </a>
-</div><div class="basic-list-item">
-  <a href="/kino-na-boku/zawiescie-czerwone-latarnie" class="movie-list bg-white-hover d-block mb-30">
-    <div class="row align-items-stretch">
-      <div class="col-md-3 col-4">
-        <div class="col-thumb h-100">
-          <div class="item-image-thumb item-image-sm">
-  <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_auto_900x600.jpg" data-min-width="1200"/>
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_auto_800x700.jpg" data-min-width="992"/>
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_auto_600x600.jpg" data-min-width="768"/>
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/xraise-the-red-lantern-photo-9_auto_400x500.jpg.pagespeed.ic.WGZcgN9RD3.jpg" srcset="/upload/thumb/2026/05/xraise-the-red-lantern-photo-9_auto_400x500.jpg.pagespeed.ic.WGZcgN9RD3.jpg" alt="młoda dziewczyna z grzywką i warkoczami ze łzami w oczach patrzy przed siebie" title="" style=""/>
-</picture></div>        </div>
-      </div>
-      <div class="col-md-9 col-8 py-20 py-md-0">
-        <div class="row">
-          <div class="col-md-5 py-md-20">
-            <div class="pe-lg-4 h-100">
-              <div class="movie-list-descr">
-  <div class="fs-30 fw-black mb-10">
-    Zawieście czerwone latarnie  </div>
-      <div class="movieshows mb-20">
-      <span class="movieshow-list-movie-descr bg-black fs-16 fw-black px-2 py-1 me-2">
-  19:30</span>    </div>
-        <div class="meta-short fs-14">
-      Chiny,&nbsp;Hongkong,&nbsp;Tajwan | 125 min<br/><strong>Reż. Yimou Zhang</strong>    </div>
-    
-</div>            </div>
-          </div>
-          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
-                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
-                Słynne chińskie arcydzieło i&nbsp;jeden z&nbsp;najpiękniejszych filmów lat 90. po raz pierwszy na&nbsp;dużym ekranie&nbsp;w nowej wersji 4K.               </div>
-                      </div>
-        </div>      </div>
-    </div>  </a>
-</div>    </div>
-      </div>    <div class="movies-children-upcomming" data-as-view="list" data-as-id="mchupmm-7730">
+      <strong>6 czerwca 2026 </strong><span>Sobota</span>    </div>
+    <div class="item-children-empty bg-gray-200 px-4 py-30 py-md-50 text-center text-muted mb-50">
+  <em>Brak elementów do&nbsp;wyświetlenia</em>
+</div></div>    <div class="movies-children-upcomming" data-as-view="list" data-as-id="mchupmm-7730">
       <div class="fs-34 fw-black mb-30">
       Zapowiedzi    </div>
     <div class="list-wrapper mb-30">
     <div class="basic-list-item">
-  <a href="/kino-na-boku/zawodowcy-326826803" class="movie-list bg-white-hover d-block mb-30">
-    <div class="row align-items-stretch">
-      <div class="col-md-3 col-4">
-        <div class="col-thumb h-100">
-          <div class="item-image-thumb item-image-sm">
-  <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_900x600.jpg" data-min-width="1200"/>
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_800x700.jpg" data-min-width="992"/>
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_600x600.jpg" data-min-width="768"/>
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/xugr_06152-1-_auto_400x500.jpg.pagespeed.ic.DyiADTT0Hd.jpg" srcset="/upload/thumb/2026/05/xugr_06152-1-_auto_400x500.jpg.pagespeed.ic.DyiADTT0Hd.jpg" alt="dwóch mężczyzn w ciemnych okularach stoi w słońcu; w tle droga żwirowa" title="" style=""/>
-</picture></div>        </div>
-      </div>
-      <div class="col-md-9 col-8 py-20 py-md-0">
-        <div class="row">
-          <div class="col-md-5 py-md-20">
-            <div class="pe-lg-4 h-100">
-              <div class="movie-list-descr">
-  <div class="fs-30 fw-black mb-10">
-    Zawodowcy  </div>
-        <div class="meta-short fs-14">
-      <strong>od 5 czerwca</strong> | Wielka Brytania, USA | 98 min<br/><strong>Reż. Guy Ritchie</strong>    </div>
-    
-</div>            </div>
-          </div>
-          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
-                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
-                Specjalistka od&nbsp;ekstremalnie trudnych negocjacji, wraz z&nbsp;ekipą najemników, wciela w&nbsp;życie misterny plan odzyskania wielomilionowego długu.               </div>
-                      </div>
-        </div>      </div>
-    </div>  </a>
-</div><div class="basic-list-item">
-  <a href="/kino-na-boku/zawiescie-czerwone-latarnie-437932126" class="movie-list bg-white-hover d-block mb-30">
-    <div class="row align-items-stretch">
-      <div class="col-md-3 col-4">
-        <div class="col-thumb h-100">
-          <div class="item-image-thumb item-image-sm">
-  <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_auto_900x600.jpg" data-min-width="1200"/>
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_auto_800x700.jpg" data-min-width="992"/>
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_auto_600x600.jpg" data-min-width="768"/>
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/raise-the-red-lantern-photo-9_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/xraise-the-red-lantern-photo-9_auto_400x500.jpg.pagespeed.ic.WGZcgN9RD3.jpg" srcset="/upload/thumb/2026/05/xraise-the-red-lantern-photo-9_auto_400x500.jpg.pagespeed.ic.WGZcgN9RD3.jpg" alt="młoda dziewczyna z grzywką i warkoczami ze łzami w oczach patrzy przed siebie" title="" style=""/>
-</picture></div>        </div>
-      </div>
-      <div class="col-md-9 col-8 py-20 py-md-0">
-        <div class="row">
-          <div class="col-md-5 py-md-20">
-            <div class="pe-lg-4 h-100">
-              <div class="movie-list-descr">
-  <div class="fs-30 fw-black mb-10">
-    Zawieście czerwone latarnie  </div>
-        <div class="meta-short fs-14">
-      <strong>od 5 czerwca</strong> | Chiny,&nbsp;Hongkong,&nbsp;Tajwan | 125 min<br/><strong>Reż. Yimou Zhang</strong>    </div>
-    
-</div>            </div>
-          </div>
-          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
-                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
-                Słynne chińskie arcydzieło i&nbsp;jeden z&nbsp;najpiękniejszych filmów lat 90. po raz pierwszy na&nbsp;dużym ekranie&nbsp;w nowej wersji 4K.               </div>
-                      </div>
-        </div>      </div>
-    </div>  </a>
-</div><div class="basic-list-item">
   <a href="/kino-na-boku/kinowy-poranek-wyspa-puffinow-nowi-przyjaciele-83946461" class="movie-list bg-white-hover d-block mb-30">
     <div class="row align-items-stretch">
       <div class="col-md-3 col-4">

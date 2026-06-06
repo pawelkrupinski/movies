@@ -1,3 +1,34 @@
+=== "Klątwa doliny węży" z autorską narracją Łony ===
+displayTitle:      "Klątwa doliny węży" z autorską narracją Łony
+cinemaTitles:      "Klątwa doliny węży" z autorską narracją Łony | Klątwa Doliny Węży z autorską narracją Łony | Klątwa doliny węży -  z autorską narracją Łony
+runtimeMinutes:    90
+releaseYear:       2026
+countries:         Polska
+posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/klatwa-doliny-wezy_plakat.jpg?rev=c58ea807e26643fb8bc1425578f746b0
+synopsis.length:   756
+cast:              Krzysztof Kolberger, Ewa Sałacka, Roman Wilhelmi, Lan Bich, Zygmunt Bielawski, Henryk Bista, Zbigniew Lesień
+director:          Marek Piestrak
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
+cinemaFilmUrls:
+  Multikino Stary Browar = https://www.multikino.pl/filmy/klatwa-doliny-wezy----z-autorska-narracja-ony
+cinemaScrapes:
+  Kino Amondo / Klątwa Doliny Węży z autorską narracją Łony / —
+  Kino Iluzjon / Klątwa Doliny Węży z autorską narracją Łony / 2026
+  Kino Luna / Klątwa Doliny Węży z autorską narracją Łony / —
+  Kino Mikro / "Klątwa doliny węży" z autorską narracją Łony / —
+  Multikino Stary Browar / Klątwa doliny węży -  z autorską narracją Łony / —
+showings:
+  2026-06-01  Multikino Stary Browar        20:00 Sala 1 2D
+
 === 2026 TXT MOA CON IN JAPAN: LIVE VIEWING ===
 displayTitle:      2026 TXT MOA CON IN JAPAN: LIVE VIEWING
 cinemaTitles:      2026 TXT MOA CON IN JAPAN: LIVE VIEWING
@@ -29,8 +60,8 @@ showings:
 displayTitle:      90. urodziny Pavarottiego
 cinemaTitles:      90. urodziny Pavarottiego
 runtimeMinutes:    95
-releaseYear:       2026
-countries:         Włochy
+releaseYear:       —
+countries:         —
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/wydarzenia/koncerty/pavarotti/pavarotti90_plakat.jpg?rev=10b0b0776a1740c3bc284f5e077c5434
 synopsis.length:   1777
 cast:              Andrea Bocelli, Jonathan Tetelman, Placido Domingo, Jose Carreras, Angela Gheorghiu,  Il Volo, Stjepan Hauser
@@ -48,7 +79,6 @@ filmwebUrl:        —
 cinemaFilmUrls:
   Multikino Stary Browar = https://www.multikino.pl/filmy/90-urodziny-pavarottiego
 cinemaScrapes:
-  Kino Nowe Horyzonty / 90. urodziny Pavarottiego / 2026
   Multikino Młociny / 90. urodziny Pavarottiego / —
   Multikino Pasaż Grunwaldzki / 90. urodziny Pavarottiego / —
   Multikino Reduta / 90. urodziny Pavarottiego / —
@@ -475,7 +505,7 @@ runtimeMinutes:    125
 releaseYear:       1978
 countries:         Polska
 posterUrl:         —
-synopsis.length:   703
+synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
 tmdbId:            42199
@@ -492,7 +522,6 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/bez-znieczulenia/
 cinemaScrapes:
   Kino Muza / Bez znieczulenia / 1978
-  Kino Nowe Horyzonty / Bez znieczulenia / 1978
 showings:
   2026-10-06  Kino Muza                     20:00 Sala 1
 
@@ -614,7 +643,7 @@ runtimeMinutes:    99
 releaseYear:       1970
 countries:         Polska
 posterUrl:         —
-synopsis.length:   545
+synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
 tmdbId:            42539
@@ -631,7 +660,6 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/93409/
 cinemaScrapes:
   Kino Muza / Brzezina / 1970
-  Kino Nowe Horyzonty / Brzezina / 1970
 showings:
   2026-07-14  Kino Muza                     20:30 Sala 1
 
@@ -741,7 +769,6 @@ cinemaFilmUrls:
   Multikino Stary Browar = https://www.multikino.pl/filmy/caravaggio-arcydziela-niepokornego-geniusza
 cinemaScrapes:
   Kino Muranów / Caravaggio. Arcydzieła niepokornego geniusza / 2025
-  Kino Nowe Horyzonty / Caravaggio. Arcydzieła niepokornego geniusza / 2025
   Kino Pałacowe / Caravaggio. Arcydzieła niepokornego geniusza / 2025
   Multikino Młociny / Caravaggio. Arcydzieła niepokornego geniusza / —
   Multikino Pasaż Grunwaldzki / Caravaggio. Arcydzieła niepokornego geniusza / —
@@ -800,7 +827,7 @@ displayTitle:      Chłopiec na krańcach świata
 cinemaTitles:      Chłopiec na krańcach świata
 runtimeMinutes:    88
 releaseYear:       2025
-countries:         Polska, Turcja, Hiszpania
+countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Chopiec_na_krancach_swiata_PLAKAT_teaser.jpg
 synopsis.length:   687
 cast:              —
@@ -824,7 +851,6 @@ cinemaScrapes:
   Cinema City Sadyba / Chłopiec na krańcach świata / 2025
   Cinema City Wroclavia / Chłopiec na krańcach świata / 2025
   Kino Muranów / Chłopiec na krańcach świata / 2025
-  Kino Nowe Horyzonty / Chłopiec na krańcach świata / 2025
   Kino Pałacowe / Chłopiec na krańcach świata / 2025
 showings:
   2026-06-27  Kino Pałacowe                 11:00 Sala 1 - Kinowa
@@ -987,7 +1013,6 @@ cinemaScrapes:
   Kino Głębocka 66 / Diabeł ubiera się u Prady 2 / —
   Kino Kępa / Diabeł ubiera się u Prady 2 / —
   Kino Malta Charlie Monroe / Diabeł ubiera się u Prady 2 / —
-  Kino Nowe Horyzonty / Diabeł ubiera się u Prady 2 / 2026
   Kino Rialto / Diabeł ubiera się u prady 2 / 2026
   Kino Świt / Diabeł ubiera się u Prady 2 / 2026
   KinoGram / Diabeł ubiera się u Prady 2 / 2026
@@ -1166,8 +1191,8 @@ cinemaScrapes:
   Kino Apollo / Drugie życie / —
   Kino Iluzjon / Drugie życie / 2025
   Kino Kultura / Drugie życie / —
+  Kino Mikro / Drugie życie / —
   Kino Muranów / Drugie życie / 2025
-  Kino Nowe Horyzonty / Drugie życie / 2026
   Kino Pałacowe / Drugie życie / 2025
   Kino U-jazdowski / Drugie życie / 2025
   Kinoteka / Drugie życie / 2026
@@ -1232,7 +1257,7 @@ cinemaScrapes:
   Kino Bułgarska 19 / Drzewo magii / 2026
   Kino Głębocka 66 / Drzewo magii / —
   Kino Luna / Drzewo magii / —
-  Kino Nowe Horyzonty / Drzewo magii / 2026
+  Kino Mikro / Drzewo magii / —
   Kino na Boku / Drzewo magii / —
   KinoGram / Drzewo magii / 2026
   Multikino Młociny / Drzewo magii / —
@@ -1349,6 +1374,7 @@ cinemaScrapes:
   Kino Muranów / Erupcja / 2026
   Kino U-jazdowski / Erupcja / 2025
   Kinoteka / Erupcja / 2026
+  Mikro Bronowice / Erupcja / —
   Multikino Stary Browar / Erupcja / —
 showings:
   2026-05-17  Cinema City Kinepolis         20:30 Sala 14 2D/NAP · 22:20 Sala 14 2D/NAP
@@ -1523,7 +1549,7 @@ runtimeMinutes:    128
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/l-affaire-bojarski.jpg?itok=A5L57jY1
-synopsis.length:   389
+synopsis.length:   310
 cast:              Reda Kateb, Sara Giraudeau, Bastien Bouillon
 director:          Jean-Paul Salomé
 tmdbId:            —
@@ -1541,7 +1567,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Fałszerz stulecia / 2025
   Kino Muza / Fałszerz stulecia / 2025
-  Kino Nowe Horyzonty / Fałszerz stulecia / 2025
 showings:
   2026-06-17  Kino Muza                     18:45 Sala 1
 
@@ -1741,7 +1766,7 @@ runtimeMinutes:    139
 releaseYear:       1965
 countries:         Włochy, Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Giulietta_degli_2.jpg
-synopsis.length:   745
+synopsis.length:   112
 cast:              —
 director:          Federico Fellini
 tmdbId:            19120
@@ -1759,7 +1784,6 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14403-giulietta-i-duchy-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
   Kino Muza / Giulietta i duchy / 1965
-  Kino Nowe Horyzonty / Giulietta i duchy / 1965
   Kino Pałacowe / Giulietta i duchy / 1965
 showings:
   2026-07-13  Kino Pałacowe                 20:00 Sala 1 - Kinowa
@@ -1772,7 +1796,7 @@ runtimeMinutes:    126
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/gourou.jpg?itok=YaZivJOK
-synopsis.length:   514
+synopsis.length:   359
 cast:              Pierre Niney, Marion Barbeau, Anthony Bajon
 director:          Yann Gozlan
 tmdbId:            1315702
@@ -1790,7 +1814,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Guru / 2025
   Kino Muza / Guru / 2025
-  Kino Nowe Horyzonty / Guru / 2025
 showings:
   2026-06-12  Kino Muza                     21:00 Sala 1
 
@@ -1860,7 +1883,7 @@ runtimeMinutes:    121
 releaseYear:       1990
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/La_voce_della_lunba_3.jpg
-synopsis.length:   648
+synopsis.length:   109
 cast:              —
 director:          Federico Fellini
 tmdbId:            59050
@@ -1878,7 +1901,6 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14404-gos-z-ksiezyca-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
   Kino Muza / Głos z księżyca / 1990
-  Kino Nowe Horyzonty / Głos z księżyca / 1990
   Kino Pałacowe / Głos z księżyca / 1990
 showings:
   2026-07-17  Kino Pałacowe                 18:00 Sala 1 - Kinowa
@@ -2718,36 +2740,6 @@ cinemaScrapes:
 showings:
   2026-06-30  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
-=== Klątwa doliny węży -  z autorską narracją Łony ===
-displayTitle:      Klątwa doliny węży -  z autorską narracją Łony
-cinemaTitles:      Klątwa Doliny Węży z autorską narracją Łony | Klątwa doliny węży -  z autorską narracją Łony
-runtimeMinutes:    90
-releaseYear:       2026
-countries:         Polska
-posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/klatwa-doliny-wezy_plakat.jpg?rev=c58ea807e26643fb8bc1425578f746b0
-synopsis.length:   756
-cast:              Krzysztof Kolberger, Ewa Sałacka, Roman Wilhelmi, Lan Bich, Zygmunt Bielawski, Henryk Bista, Zbigniew Lesień
-director:          Marek Piestrak
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
-cinemaFilmUrls:
-  Multikino Stary Browar = https://www.multikino.pl/filmy/klatwa-doliny-wezy----z-autorska-narracja-ony
-cinemaScrapes:
-  Kino Amondo / Klątwa Doliny Węży z autorską narracją Łony / —
-  Kino Iluzjon / Klątwa Doliny Węży z autorską narracją Łony / 2026
-  Kino Luna / Klątwa Doliny Węży z autorską narracją Łony / —
-  Multikino Stary Browar / Klątwa doliny węży -  z autorską narracją Łony / —
-showings:
-  2026-06-01  Multikino Stary Browar        20:00 Sala 1 2D
-
 === Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego ===
 displayTitle:      Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego
 cinemaTitles:      Klątwa doliny węży | autorska audiodeskrypcja łony |przed filmem wykład prof. Marka hendrykowskiego
@@ -2865,7 +2857,7 @@ runtimeMinutes:    101
 releaseYear:       1970
 countries:         Polska
 posterUrl:         —
-synopsis.length:   713
+synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
 tmdbId:            149136
@@ -2882,7 +2874,6 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/krajobraz-po-bitwie/
 cinemaScrapes:
   Kino Muza / Krajobraz po bitwie / 1970
-  Kino Nowe Horyzonty / Krajobraz po bitwie / 1970
 showings:
   2026-09-01  Kino Muza                     20:30 Sala 1
 
@@ -2893,7 +2884,7 @@ runtimeMinutes:    114
 releaseYear:       1985
 countries:         Polska
 posterUrl:         —
-synopsis.length:   622
+synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
 tmdbId:            270735
@@ -2910,7 +2901,6 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/kronika-wypadkow-milosnych/
 cinemaScrapes:
   Kino Muza / Kronika wypadków miłosnych / 1985
-  Kino Nowe Horyzonty / Kronika wypadków miłosnych / 1985
 showings:
   2026-08-04  Kino Muza                     20:30 Sala 1
 
@@ -2939,6 +2929,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   KINOMUZEUM / Kumotry / 2025
   Kino Iluzjon / Kumotry / 2025
+  Kino Mikro / Kumotry / —
   Kino Pałacowe / Kumotry / 2025
 showings:
   2026-06-12  Kino Pałacowe                 18:00 Sala 1 - Kinowa
@@ -3238,7 +3229,7 @@ runtimeMinutes:    132
 releaseYear:       2025
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/mandalorian-grogu/mandalorian-plakat-fin.jpg?rev=90e8fd31606f41a0b6393770f3fe36d1
-synopsis.length:   698
+synopsis.length:   678
 cast:              Pedro Pascal, Sigourney Weaver, Jeremy Allen White
 director:          Jon Favreau
 tmdbId:            1228710
@@ -3272,7 +3263,6 @@ cinemaScrapes:
   Helios Blue City / Mandalorian & Grogu / —
   Helios Magnolia Park / Mandalorian & Grogu / —
   Helios Posnania / Mandalorian & Grogu / 2025
-  Kino Nowe Horyzonty / Mandalorian i Grogu / 2026
   Multikino Młociny / Mandalorian i Grogu / —
   Multikino Pasaż Grunwaldzki / Mandalorian i Grogu / —
   Multikino Reduta / Mandalorian i Grogu / —
@@ -3432,7 +3422,7 @@ runtimeMinutes:    113
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/mi-amor.jpg?itok=Scka69gd
-synopsis.length:   564
+synopsis.length:   441
 cast:              Pom Klementieff, Benoît Magimel, Freya Mavor
 director:          Guillaume Nicloux
 tmdbId:            —
@@ -3450,7 +3440,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Mi Amor / 2025
   Kino Muza / Mi Amor / 2025
-  Kino Nowe Horyzonty / Mi Amor / 2025
 showings:
   2026-06-14  Kino Muza                     21:00 Sala 1
 
@@ -3629,6 +3618,7 @@ cinemaScrapes:
   Kino Atlantic / Milcząca przyjaciółka / 2025
   Kino Kultura / Milcząca przyjaciółka / —
   Kino Luna / Milcząca przyjaciółka / —
+  Kino Mikro / Milcząca przyjaciółka / —
   Kino Muranów / Milcząca przyjaciółka / 2025
   Kino Muza / Milcząca przyjaciółka / 2025
   Kino Pałacowe / Milcząca przyjaciółka / 2025
@@ -3932,7 +3922,7 @@ runtimeMinutes:    106
 releaseYear:       2025
 countries:         Francja, Niemcy
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/la-petite-derniere.jpg?itok=41yLbxKx
-synopsis.length:   468
+synopsis.length:   254
 cast:              Nadia Melliti, Ji-Min Park, Amina Ben Mohamed
 director:          Hafsia Herzi
 tmdbId:            961077
@@ -3950,7 +3940,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Młodsza siostra / 2025
   Kino Muza / Młodsza siostra / 2025
-  Kino Nowe Horyzonty / Młodsza siostra / 2025
 showings:
   2026-06-13  Kino Muza                     19:00 Sala 1
 
@@ -4073,12 +4062,12 @@ showings:
 displayTitle:      Nie ma duchów w mieszkaniu na Dobrej
 cinemaTitles:      Nie ma duchów w mieszkaniu na Dobrej
 runtimeMinutes:    90
-releaseYear:       2025
-countries:         Polska
+releaseYear:       2026
+countries:         —
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/03/NIE-MA-DUCHOW_PLAKAT-po-zmniejszeniu-200x288.jpg
-synopsis.length:   741
+synopsis.length:   272
 cast:              —
-director:          Emi Buchwald
+director:          —
 tmdbId:            1433707
 imdbId:            tt37592728
 originalTitle:     Nie ma duchów w mieszkaniu na Dobrej
@@ -4093,7 +4082,6 @@ cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/nie-ma-duchow-w-mieszkaniu-na-dobrej
 cinemaScrapes:
   Kino Malta Charlie Monroe / Nie ma duchów w mieszkaniu na Dobrej / —
-  Kino Nowe Horyzonty / Nie ma duchów w mieszkaniu na Dobrej / 2025
 showings:
   2026-05-17  Kino Malta Charlie Monroe     17:10 Sala Audrey
   2026-05-18  Kino Malta Charlie Monroe     20:30 Sala Audrey
@@ -4283,10 +4271,11 @@ cinemaScrapes:
   Helios Posnania / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   KINOkawiarnia Stacja Falenica / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Cytadela / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
+  Kino Głębocka 66 / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Iluzjon / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Luna / Niesamowite przygody skarpetek 3. Ale kosmos! / —
+  Kino Mikro / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Muranów / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
-  Kino Nowe Horyzonty / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Pałacowe / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Rialto / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino na Boku / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -4414,7 +4403,7 @@ runtimeMinutes:    110
 releaseYear:       1957
 countries:         Włochy, Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/Le-Notti-di-Cabiria-1957-Giulietta-Masina.jpg
-synopsis.length:   622
+synopsis.length:   114
 cast:              —
 director:          Federico Fellini
 tmdbId:            19426
@@ -4432,7 +4421,6 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14400-noce-cabirii-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
   Kino Muza / Noce Cabirii / 1957
-  Kino Nowe Horyzonty / Noce Cabirii / 1957
   Kino Pałacowe / Noce Cabirii / 1957
 showings:
   2026-06-20  Kino Pałacowe                 18:00 Sala 1 - Kinowa
@@ -4504,7 +4492,7 @@ runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja, USA
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/nouvelle-vague.jpg?itok=E-qpOmj9
-synopsis.length:   542
+synopsis.length:   384
 cast:              Guillaume Marbeck, Zoey Deutch, Aubry Dullin
 director:          Richard Linklater
 tmdbId:            1254808
@@ -4522,7 +4510,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Nowa Fala / 2025
   Kino Muza / Nowa fala / 2025
-  Kino Nowe Horyzonty / Nowa Fala / 2025
 showings:
   2026-06-12  Kino Muza                     19:00 Sala 1
 
@@ -4715,7 +4702,7 @@ runtimeMinutes:    122
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/25_09_12_1757674263_0_l-etranger-f-ozon-photo-01-_photo_carole_bethuel_c_foz_-_gaumont_-_france_2_cinema.jpg?itok=SsVM-tHk
-synopsis.length:   620
+synopsis.length:   520
 cast:              Benjamin Voisin, Rebecca Marder, Pierre Lottin
 director:          François Ozon
 tmdbId:            1429348
@@ -4733,7 +4720,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Obcy / 2025
   Kino Muza / Obcy / 2025
-  Kino Nowe Horyzonty / Obcy / 2025
 showings:
   2026-06-11  Kino Muza                     19:00 Sala 1
 
@@ -4964,7 +4950,7 @@ runtimeMinutes:    138
 releaseYear:       1963
 countries:         Włochy, Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/still2_zqnlD61.jpg
-synopsis.length:   395
+synopsis.length:   114
 cast:              —
 director:          Federico Fellini
 tmdbId:            422
@@ -4982,7 +4968,6 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14402-osiem-i-po-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
   Kino Muza / Osiem i pół / 1963
-  Kino Nowe Horyzonty / Osiem i pół / 1963
   Kino Pałacowe / Osiem i pół / 1963
 showings:
   2026-07-05  Kino Pałacowe                 17:00 Sala 1 - Kinowa
@@ -5178,7 +5163,7 @@ runtimeMinutes:    102
 releaseYear:       2024
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/le-repondeur.jpg?itok=HOpB6Ayz
-synopsis.length:   469
+synopsis.length:   232
 cast:              Salif Cissé, Denis Podalydès, Aure Atika
 director:          Fabienne Godet
 tmdbId:            —
@@ -5196,7 +5181,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Poczta głosowa / 2024
   Kino Muza / Poczta głosowa / 2024
-  Kino Nowe Horyzonty / Poczta głosowa / 2024
 showings:
   2026-06-15  Kino Muza                     17:00 Sala 1
 
@@ -5234,7 +5218,7 @@ runtimeMinutes:    139
 releaseYear:       1999
 countries:         Niemcy, USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/kultowe-kino/podziemny-krag_online_cut.jpg?rev=8b4016e21dd74d46a7dc788b826c7a8e
-synopsis.length:   1167
+synopsis.length:   324
 cast:              Edward Norton, Brad Pitt, Helena Bonham Carter, Meat Loaf
 director:          David Fincher
 tmdbId:            550
@@ -5269,7 +5253,6 @@ cinemaScrapes:
   Helios Posnania / Podziemny krąg / —
   Kino Kultura / Podziemny krąg / —
   Kino Malta Charlie Monroe / Podziemny krąg / —
-  Kino Nowe Horyzonty / Podziemny krąg / 1999
   Kino Pałacowe / Podziemny krąg / 1999
   Kinoteka / Podziemny krąg / 2026
   Multikino Młociny / Podziemny krąg / —
@@ -5506,7 +5489,6 @@ cinemaScrapes:
   Cinema City Sadyba / Projekt Hail Mary / 2026
   Helios Magnolia Park / Projekt Hail Mary / —
   Helios Posnania / Projekt Hail Mary / 2026
-  Kino Nowe Horyzonty / Projekt Hail Mary / 2026
   Kinoteka / Projekt Hail Mary / 2026
   Multikino Stary Browar / Projekt Hail Mary / —
 showings:
@@ -5569,7 +5551,7 @@ runtimeMinutes:    116
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/juste-une-illusion.jpg?itok=vtl2Be5J
-synopsis.length:   460
+synopsis.length:   334
 cast:              Louis Garrel, Camille Cottin, Pierre Lottin
 director:          Olivier Nakache, Eric Toledano
 tmdbId:            —
@@ -5587,7 +5569,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Przeżyj to sam / 2025
   Kino Muza / Przeżyj to sam / 2025
-  Kino Nowe Horyzonty / Przeżyj to sam / 2025
 showings:
   2026-06-10  Kino Muza                     20:30 Sala 1
 
@@ -5703,7 +5684,7 @@ runtimeMinutes:    115
 releaseYear:       2025
 countries:         Hiszpania
 posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/Romeria-B1.jpg
-synopsis.length:   1175
+synopsis.length:   973
 cast:              Llúcia Garcia, Alberto Gracia, José Ángel Egido, Tristán Ulloa, Janet Novás, Marina Troncoso, Miryam Gallego, Mitch
 director:          Carla Simón
 tmdbId:            1182861
@@ -5731,7 +5712,6 @@ cinemaScrapes:
   Kino Malta Charlie Monroe / Romería / —
   Kino Muranów / Romería / 2025
   Kino Muza / Romería / 2025
-  Kino Nowe Horyzonty / Romería / 2025
   Kino Pałacowe / Romería / 2025
 showings:
   2026-05-17  Cinema City Kinepolis         19:20 Sala 7 2D/NAP
@@ -5894,6 +5874,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   KINOMUZEUM / Sny o słoniach / 2025
   Kino Iluzjon / Sny o słoniach / 2025
+  Kino Mikro / Sny o słoniach / —
   Kino Muranów / Sny o słoniach / 2025
   Kino Muza / Sny o słoniach / 2025
 showings:
@@ -6170,7 +6151,7 @@ runtimeMinutes:    176
 releaseYear:       1960
 countries:         Włochy, Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/still_4_PbgzW23.jpg
-synopsis.length:   452
+synopsis.length:   113
 cast:              —
 director:          Federico Fellini
 tmdbId:            439
@@ -6188,7 +6169,6 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14401-sodkie-zycie-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
   Kino Muza / Słodkie życie / 1960
-  Kino Nowe Horyzonty / Słodkie życie / 1960
   Kino Pałacowe / Słodkie życie / 1960
 showings:
   2026-06-28  Kino Pałacowe                 17:00 Sala 1 - Kinowa
@@ -6324,7 +6304,6 @@ cinemaScrapes:
   Cinema City Promenada / The Amazing Digital Circus: The Last Act / 2026
   Cinema City Sadyba / The Amazing Digital Circus: The Last Act / 2026
   Cinema City Wroclavia / The Amazing Digital Circus: The Last Act / 2026
-  Kino Nowe Horyzonty / The Amazing Digital Circus: The Last Act / 2026
 showings:
   2026-06-04  Cinema City Kinepolis         17:00 Sala 13 2D/DUB · 17:30 Sala 12 2D/NAP · 17:50 Sala 17 2D/DUB · 19:20 Sala 13 2D/DUB · 19:50 Sala 12 2D/NAP · 20:10 Sala 17 2D/NAP · 22:10 Sala 12 2D/NAP · 22:30 Sala 17 2D/NAP
   2026-06-04  Cinema City Poznań Plaza      17:00 Sala 3 2D/NAP · 17:30 Sala 6 2D/DUB · 19:20 Sala 3 2D/NAP · 19:50 Sala 6 2D/DUB
@@ -6439,8 +6418,11 @@ cinemaScrapes:
   KINOkawiarnia Stacja Falenica / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino Atlantic / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Cytadela / Tom i Jerry. Przygoda w muzeum / 2026
+  Kino Głębocka 66 / Tom i Jerry: Przygoda w muzeum / —
   Kino Luna / Tom i Jerry: Przygoda w muzeum / —
+  Kino Mikro / Tom i Jerry: Przygoda w muzeum / —
   Kino Rialto / Tom i jerry: przygoda w muzeum / 2025
+  Kino na Boku / Tom i Jerry: Przygoda w muzeum / —
   KinoGram / Tom i Jerry: Przygoda w muzeum / 2026
   Multikino Młociny / Tom i Jerry: Przygoda w muzeum / —
   Multikino Pasaż Grunwaldzki / Tom i Jerry: Przygoda w muzeum / —
@@ -6599,6 +6581,7 @@ cinemaScrapes:
   Helios Posnania / Wartość sentymentalna / —
   Kino Amondo / Wartość sentymentalna / —
   Kino Malta Charlie Monroe / Wartość sentymentalna / —
+  Kino Mikro / Wartość sentymentalna / —
   Kino Pałacowe / Wartość sentymentalna / 2025
 showings:
   2026-05-18  Kino Malta Charlie Monroe     19:40 Sala Marilyn
@@ -6616,7 +6599,7 @@ runtimeMinutes:    103
 releaseYear:       1953
 countries:         Włochy, Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/I_Vitelloni_02.jpg
-synopsis.length:   580
+synopsis.length:   119
 cast:              —
 director:          Federico Fellini
 tmdbId:            12548
@@ -6634,7 +6617,6 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14399-wakonie-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
   Kino Muza / Wałkonie / 1953
-  Kino Nowe Horyzonty / Wałkonie / 1953
   Kino Pałacowe / Wałkonie / 1953
 showings:
   2026-06-15  Kino Pałacowe                 18:00 Sala 1 - Kinowa
@@ -6670,7 +6652,6 @@ cinemaScrapes:
   Helios Posnania / Werdykt / —
   Kino Apollo / Werdykt / —
   Kino Luna / Werdykt / —
-  Kino Nowe Horyzonty / Werdykt / 2025
   Multikino Stary Browar / Werdykt / —
 showings:
   2026-05-18  Helios Posnania               18:00 2D/NAP
@@ -6712,7 +6693,7 @@ runtimeMinutes:    106
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/l-inconnu-de-la-grande-arche1.jpg?itok=ut-imgaQ
-synopsis.length:   591
+synopsis.length:   371
 cast:              —
 director:          Stéphane Demoustier
 tmdbId:            1290424
@@ -6730,7 +6711,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Muranów / Wielki Łuk / 2025
   Kino Muza / Wielki Łuk / 2025
-  Kino Nowe Horyzonty / Wielki Łuk / 2025
 showings:
   2026-06-14  Kino Muza                     19:00 Sala 1
 
@@ -6912,7 +6892,7 @@ runtimeMinutes:    94
 releaseYear:       1968
 countries:         Polska
 posterUrl:         —
-synopsis.length:   716
+synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
 tmdbId:            94527
@@ -6929,7 +6909,6 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/wszystko-na-sprzedaz/
 cinemaScrapes:
   Kino Muza / Wszystko na sprzedaż / 1968
-  Kino Nowe Horyzonty / Wszystko na sprzedaż / 1968
 showings:
   2026-12-01  Kino Muza                     20:30 Sala 1
 
@@ -6940,7 +6919,7 @@ runtimeMinutes:    88
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/l-accident-de-piano1.jpg?itok=CrZu2bBf
-synopsis.length:   533
+synopsis.length:   394
 cast:              Adèle Exarchopoulos, Jérôme Commandeur, Sandrine Kiberlain
 director:          Quentin Dupieux
 tmdbId:            1313144
@@ -6959,7 +6938,6 @@ cinemaScrapes:
   KINOMUZEUM / Wypadek fortepianowy / 2025
   Kino Muranów / Wypadek fortepianowy / 2025
   Kino Muza / Wypadek fortepianowy / 2025
-  Kino Nowe Horyzonty / Wypadek fortepianowy / 2025
 showings:
   2026-06-13  Kino Muza                     21:00 Sala 1
 
@@ -7217,7 +7195,7 @@ showings:
 
 === Zawieście czerwone latarnie ===
 displayTitle:      Zawieście czerwone latarnie
-cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | Zawieście czerwone latarnie
+cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | Zawieście Czerwone Latarnie | Zawieście czerwone latarnie
 runtimeMinutes:    142
 releaseYear:       1991
 countries:         Chiny, Hongkong, Tajwan
@@ -7246,8 +7224,8 @@ cinemaScrapes:
   Kino Iluzjon / Zawieście czerwone latarnie / 1991
   Kino Kultura / Zawieście czerwone latarnie / —
   Kino Luna / Zawieście czerwone latarnie / —
+  Kino Mikro / Zawieście Czerwone Latarnie / —
   Kino Muranów / Zawieście czerwone latarnie / 1991
-  Kino Nowe Horyzonty / Zawieście czerwone latarnie / 1991
   Kino Pałacowe / Zawieście czerwone latarnie / 1991
   Kino U-jazdowski / Zawieście czerwone latarnie / 1991
   Kino na Boku / Zawieście czerwone latarnie / —
@@ -7328,7 +7306,7 @@ runtimeMinutes:    179
 releaseYear:       1974
 countries:         Polska
 posterUrl:         —
-synopsis.length:   1027
+synopsis.length:   —
 cast:              —
 director:          Andrzej Wajda
 tmdbId:            511
@@ -7345,7 +7323,6 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/ziemia-obiecana/
 cinemaScrapes:
   Kino Muza / Ziemia obiecana / 1974
-  Kino Nowe Horyzonty / Ziemia obiecana / 1974
 showings:
   2026-11-03  Kino Muza                     20:00 Sala 1
 
@@ -7380,8 +7357,8 @@ cinemaScrapes:
   Kino Apollo / Znaki Pana Śliwki / —
   Kino Kultura / Znaki Pana Śliwki / —
   Kino Malta Charlie Monroe / Znaki Pana Śliwki / —
+  Kino Mikro / Znaki Pana Śliwki / —
   Kino Muza / Znaki Pana Śliwki / 2025
-  Kino Nowe Horyzonty / Znaki Pana Śliwki / 2025
   Kino Pałacowe / Znaki Pana Śliwki / 2025
   Kino Rialto / Znaki pana śliwki / 2025
 showings:
@@ -7435,14 +7412,14 @@ showings:
 
 === Żywot Briana ===
 displayTitle:      Żywot Briana
-cinemaTitles:      Cykl "Kultowa klasyka" - Żywot Briana / Life of Brian (1979) | Żywot Briana
+cinemaTitles:      Cykl "Kultowa klasyka" - Żywot Briana / Life of Brian (1979)
 runtimeMinutes:    94
 releaseYear:       1979
-countries:         Wielka Brytania
+countries:         —
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/03/KM_Zywot_briana_plakat-scaled.png
 synopsis.length:   1706
 cast:              —
-director:          Terry Jones
+director:          —
 tmdbId:            583
 imdbId:            tt0079470
 originalTitle:     Life of Brian
@@ -7457,7 +7434,6 @@ cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/cykl-kultowa-klasyka-zywot-briana-life-of-brian-1979/
 cinemaScrapes:
   Kino Apollo / Cykl "Kultowa klasyka" - Żywot Briana / Life of Brian (1979) / —
-  Kino Nowe Horyzonty / Żywot Briana / 1979
 showings:
   2026-05-23  Kino Apollo                   20:15
 

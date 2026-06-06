@@ -275,10 +275,6 @@
       <div class="fs-24 fw-black">
         Dziś      </div>
     </a>
-      <a href="/kino-glebocka-66,ts:1780696800" class="day btn flex-center h-100 ">
-      <div class="fs-24 fw-black">
-        Sob.      </div>
-    </a>
       <a href="/kino-glebocka-66,ts:1780783200" class="day btn flex-center h-100 ">
       <div class="fs-24 fw-black">
         Nd.      </div>
@@ -298,6 +294,10 @@
       <a href="/kino-glebocka-66,ts:1781128800" class="day btn flex-center h-100 ">
       <div class="fs-24 fw-black">
         Czw.      </div>
+    </a>
+      <a href="/kino-glebocka-66,ts:1781215200" class="day btn flex-center h-100 ">
+      <div class="fs-24 fw-black">
+        Pt.      </div>
     </a>
   </div>      </div>
       <div class="col-md-3 col-sm-6 text-sm-end">
@@ -344,7 +344,7 @@
         <div class="day-label">Nd.</div>
       </div>
     </div>
-    <div class="week d-flex"><a href="/kino-glebocka-66,ts:1780264800" class="day"><span class="flex-center" style="">1</span></a><a href="/kino-glebocka-66,ts:1780351200" class="day"><span class="flex-center" style="">2</span></a><a href="/kino-glebocka-66,ts:1780437600" class="day"><span class="flex-center" style="">3</span></a><a href="/kino-glebocka-66,ts:1780524000" class="day"><span class="flex-center" style="">4</span></a><a href="/kino-glebocka-66,ts:1780610400" class="day has-events today requested-day"><span class="flex-center" style="background-color: #cdcdcd; ">5</span></a><a href="/kino-glebocka-66,ts:1780696800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">6</span></a><a href="/kino-glebocka-66,ts:1780783200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">7</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1780869600" class="day"><span class="flex-center" style="">8</span></a><a href="/kino-glebocka-66,ts:1780956000" class="day"><span class="flex-center" style="">9</span></a><a href="/kino-glebocka-66,ts:1781042400" class="day"><span class="flex-center" style="">10</span></a><a href="/kino-glebocka-66,ts:1781128800" class="day"><span class="flex-center" style="">11</span></a><a href="/kino-glebocka-66,ts:1781215200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">12</span></a><a href="/kino-glebocka-66,ts:1781301600" class="day"><span class="flex-center" style="">13</span></a><a href="/kino-glebocka-66,ts:1781388000" class="day"><span class="flex-center" style="">14</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1781474400" class="day"><span class="flex-center" style="">15</span></a><a href="/kino-glebocka-66,ts:1781560800" class="day"><span class="flex-center" style="">16</span></a><a href="/kino-glebocka-66,ts:1781647200" class="day"><span class="flex-center" style="">17</span></a><a href="/kino-glebocka-66,ts:1781733600" class="day"><span class="flex-center" style="">18</span></a><a href="/kino-glebocka-66,ts:1781820000" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">19</span></a><a href="/kino-glebocka-66,ts:1781906400" class="day"><span class="flex-center" style="">20</span></a><a href="/kino-glebocka-66,ts:1781992800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">21</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1782079200" class="day"><span class="flex-center" style="">22</span></a><a href="/kino-glebocka-66,ts:1782165600" class="day"><span class="flex-center" style="">23</span></a><a href="/kino-glebocka-66,ts:1782252000" class="day"><span class="flex-center" style="">24</span></a><a href="/kino-glebocka-66,ts:1782338400" class="day"><span class="flex-center" style="">25</span></a><a href="/kino-glebocka-66,ts:1782424800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">26</span></a><a href="/kino-glebocka-66,ts:1782511200" class="day"><span class="flex-center" style="">27</span></a><a href="/kino-glebocka-66,ts:1782597600" class="day"><span class="flex-center" style="">28</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1782684000" class="day"><span class="flex-center" style="">29</span></a><a href="/kino-glebocka-66,ts:1782770400" class="day"><span class="flex-center" style="">30</span></a><a href="/kino-glebocka-66,ts:1782856800" class="day out-of-range"><span class="flex-center" style="">1</span></a><a href="/kino-glebocka-66,ts:1782943200" class="day out-of-range"><span class="flex-center" style="">2</span></a><a href="/kino-glebocka-66,ts:1783029600" class="day out-of-range"><span class="flex-center" style="">3</span></a><a href="/kino-glebocka-66,ts:1783116000" class="day out-of-range"><span class="flex-center" style="">4</span></a><a href="/kino-glebocka-66,ts:1783202400" class="day out-of-range"><span class="flex-center" style="">5</span></a></div>  </div></div>    </div>
+    <div class="week d-flex"><a href="/kino-glebocka-66,ts:1780264800" class="day"><span class="flex-center" style="">1</span></a><a href="/kino-glebocka-66,ts:1780351200" class="day"><span class="flex-center" style="">2</span></a><a href="/kino-glebocka-66,ts:1780437600" class="day"><span class="flex-center" style="">3</span></a><a href="/kino-glebocka-66,ts:1780524000" class="day"><span class="flex-center" style="">4</span></a><a href="/kino-glebocka-66,ts:1780610400" class="day"><span class="flex-center" style="">5</span></a><a href="/kino-glebocka-66,ts:1780696800" class="day today requested-day"><span class="flex-center" style="">6</span></a><a href="/kino-glebocka-66,ts:1780783200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">7</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1780869600" class="day"><span class="flex-center" style="">8</span></a><a href="/kino-glebocka-66,ts:1780956000" class="day"><span class="flex-center" style="">9</span></a><a href="/kino-glebocka-66,ts:1781042400" class="day"><span class="flex-center" style="">10</span></a><a href="/kino-glebocka-66,ts:1781128800" class="day"><span class="flex-center" style="">11</span></a><a href="/kino-glebocka-66,ts:1781215200" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">12</span></a><a href="/kino-glebocka-66,ts:1781301600" class="day"><span class="flex-center" style="">13</span></a><a href="/kino-glebocka-66,ts:1781388000" class="day"><span class="flex-center" style="">14</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1781474400" class="day"><span class="flex-center" style="">15</span></a><a href="/kino-glebocka-66,ts:1781560800" class="day"><span class="flex-center" style="">16</span></a><a href="/kino-glebocka-66,ts:1781647200" class="day"><span class="flex-center" style="">17</span></a><a href="/kino-glebocka-66,ts:1781733600" class="day"><span class="flex-center" style="">18</span></a><a href="/kino-glebocka-66,ts:1781820000" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">19</span></a><a href="/kino-glebocka-66,ts:1781906400" class="day"><span class="flex-center" style="">20</span></a><a href="/kino-glebocka-66,ts:1781992800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">21</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1782079200" class="day"><span class="flex-center" style="">22</span></a><a href="/kino-glebocka-66,ts:1782165600" class="day"><span class="flex-center" style="">23</span></a><a href="/kino-glebocka-66,ts:1782252000" class="day"><span class="flex-center" style="">24</span></a><a href="/kino-glebocka-66,ts:1782338400" class="day"><span class="flex-center" style="">25</span></a><a href="/kino-glebocka-66,ts:1782424800" class="day has-events"><span class="flex-center" style="background-color: #cdcdcd; ">26</span></a><a href="/kino-glebocka-66,ts:1782511200" class="day"><span class="flex-center" style="">27</span></a><a href="/kino-glebocka-66,ts:1782597600" class="day"><span class="flex-center" style="">28</span></a></div><div class="week d-flex"><a href="/kino-glebocka-66,ts:1782684000" class="day"><span class="flex-center" style="">29</span></a><a href="/kino-glebocka-66,ts:1782770400" class="day"><span class="flex-center" style="">30</span></a><a href="/kino-glebocka-66,ts:1782856800" class="day out-of-range"><span class="flex-center" style="">1</span></a><a href="/kino-glebocka-66,ts:1782943200" class="day out-of-range"><span class="flex-center" style="">2</span></a><a href="/kino-glebocka-66,ts:1783029600" class="day out-of-range"><span class="flex-center" style="">3</span></a><a href="/kino-glebocka-66,ts:1783116000" class="day out-of-range"><span class="flex-center" style="">4</span></a><a href="/kino-glebocka-66,ts:1783202400" class="day out-of-range"><span class="flex-center" style="">5</span></a></div>  </div></div>    </div>
   </div>
 </div>      </div>
     </div>  </div>
@@ -352,128 +352,14 @@
   <div class="py-60">
     <div class="calendar-children mb-50" data-as-view="list" data-as-id="i-ch-it-7738">
       <div class="fw-light fs-34 mb-20">
-      <strong>5 czerwca 2026 </strong><span>Piątek</span>    </div>
-        <div class="list-wrapper mb-30">
-      <div class="basic-list-item">
-  <a href="/kino-glebocka-66/drzewo-magii" class="movie-list bg-white-hover d-block mb-30">
-    <div class="row align-items-stretch">
-      <div class="col-md-3 col-4">
-        <div class="col-thumb h-100">
-          <div class="item-image-thumb item-image-sm">
-  <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/tmft_sg_00004_auto_900x600.jpg" data-min-width="1200"/>
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/tmft_sg_00004_auto_800x700.jpg" data-min-width="992"/>
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/tmft_sg_00004_auto_600x600.jpg" data-min-width="768"/>
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/tmft_sg_00004_auto_500x600.jpg" data-min-width="576"/>
-  <script data-pagespeed-no-defer>//<![CDATA[
-(function(){for(var g="function"==typeof Object.defineProperties?Object.defineProperty:function(b,c,a){if(a.get||a.set)throw new TypeError("ES3 does not support getters and setters.");b!=Array.prototype&&b!=Object.prototype&&(b[c]=a.value)},h="undefined"!=typeof window&&window===this?this:"undefined"!=typeof global&&null!=global?global:this,k=["String","prototype","repeat"],l=0;l<k.length-1;l++){var m=k[l];m in h||(h[m]={});h=h[m]}
-var n=k[k.length-1],p=h[n],q=p?p:function(b){var c;if(null==this)throw new TypeError("The 'this' value for String.prototype.repeat must not be null or undefined");c=this+"";if(0>b||1342177279<b)throw new RangeError("Invalid count value");b|=0;for(var a="";b;)if(b&1&&(a+=c),b>>>=1)c+=c;return a};q!=p&&null!=q&&g(h,n,{configurable:!0,writable:!0,value:q});var t=this;
-function u(b,c){var a=b.split("."),d=t;a[0]in d||!d.execScript||d.execScript("var "+a[0]);for(var e;a.length&&(e=a.shift());)a.length||void 0===c?d[e]?d=d[e]:d=d[e]={}:d[e]=c};function v(b){var c=b.length;if(0<c){for(var a=Array(c),d=0;d<c;d++)a[d]=b[d];return a}return[]};function w(b){var c=window;if(c.addEventListener)c.addEventListener("load",b,!1);else if(c.attachEvent)c.attachEvent("onload",b);else{var a=c.onload;c.onload=function(){b.call(this);a&&a.call(this)}}};var x;function y(b,c,a,d,e){this.h=b;this.j=c;this.l=a;this.f=e;this.g={height:window.innerHeight||document.documentElement.clientHeight||document.body.clientHeight,width:window.innerWidth||document.documentElement.clientWidth||document.body.clientWidth};this.i=d;this.b={};this.a=[];this.c={}}
-function z(b,c){var a,d,e=c.getAttribute("data-pagespeed-url-hash");if(a=e&&!(e in b.c))if(0>=c.offsetWidth&&0>=c.offsetHeight)a=!1;else{d=c.getBoundingClientRect();var f=document.body;a=d.top+("pageYOffset"in window?window.pageYOffset:(document.documentElement||f.parentNode||f).scrollTop);d=d.left+("pageXOffset"in window?window.pageXOffset:(document.documentElement||f.parentNode||f).scrollLeft);f=a.toString()+","+d;b.b.hasOwnProperty(f)?a=!1:(b.b[f]=!0,a=a<=b.g.height&&d<=b.g.width)}a&&(b.a.push(e),
-b.c[e]=!0)}y.prototype.checkImageForCriticality=function(b){b.getBoundingClientRect&&z(this,b)};u("pagespeed.CriticalImages.checkImageForCriticality",function(b){x.checkImageForCriticality(b)});u("pagespeed.CriticalImages.checkCriticalImages",function(){A(x)});
-function A(b){b.b={};for(var c=["IMG","INPUT"],a=[],d=0;d<c.length;++d)a=a.concat(v(document.getElementsByTagName(c[d])));if(a.length&&a[0].getBoundingClientRect){for(d=0;c=a[d];++d)z(b,c);a="oh="+b.l;b.f&&(a+="&n="+b.f);if(c=!!b.a.length)for(a+="&ci="+encodeURIComponent(b.a[0]),d=1;d<b.a.length;++d){var e=","+encodeURIComponent(b.a[d]);131072>=a.length+e.length&&(a+=e)}b.i&&(e="&rd="+encodeURIComponent(JSON.stringify(B())),131072>=a.length+e.length&&(a+=e),c=!0);C=a;if(c){d=b.h;b=b.j;var f;if(window.XMLHttpRequest)f=
-new XMLHttpRequest;else if(window.ActiveXObject)try{f=new ActiveXObject("Msxml2.XMLHTTP")}catch(r){try{f=new ActiveXObject("Microsoft.XMLHTTP")}catch(D){}}f&&(f.open("POST",d+(-1==d.indexOf("?")?"?":"&")+"url="+encodeURIComponent(b)),f.setRequestHeader("Content-Type","application/x-www-form-urlencoded"),f.send(a))}}}
-function B(){var b={},c;c=document.getElementsByTagName("IMG");if(!c.length)return{};var a=c[0];if(!("naturalWidth"in a&&"naturalHeight"in a))return{};for(var d=0;a=c[d];++d){var e=a.getAttribute("data-pagespeed-url-hash");e&&(!(e in b)&&0<a.width&&0<a.height&&0<a.naturalWidth&&0<a.naturalHeight||e in b&&a.width>=b[e].o&&a.height>=b[e].m)&&(b[e]={rw:a.width,rh:a.height,ow:a.naturalWidth,oh:a.naturalHeight})}return b}var C="";u("pagespeed.CriticalImages.getBeaconData",function(){return C});
-u("pagespeed.CriticalImages.Run",function(b,c,a,d,e,f){var r=new y(b,c,a,e,f);x=r;d&&w(function(){window.setTimeout(function(){A(r)},0)})});})();
-
-pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-glebocka-66','Tt5XTryosv',true,false,'VCN1Xp0bsMo');
-//]]></script><img src="/upload/thumb/2026/05/xtmft_sg_00004_auto_400x500.jpg.pagespeed.ic.ynCCWsfO5t.jpg" srcset="/upload/thumb/2026/05/xtmft_sg_00004_auto_400x500.jpg.pagespeed.ic.ynCCWsfO5t.jpg" alt="Drzewo magii | PREMIERA" title="" style="object-position: 48.296311932750505% 30.257290872503223%; " data-pagespeed-url-hash="926028267" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
-</picture></div>        </div>
-      </div>
-      <div class="col-md-9 col-8 py-20 py-md-0">
-        <div class="row">
-          <div class="col-md-5 py-md-20">
-            <div class="pe-lg-4 h-100">
-              <div class="movie-list-descr">
-  <div class="fs-30 fw-black mb-10">
-    Drzewo magii | PREMIERA  </div>
-      <div class="movieshows mb-20">
-      <span class="movieshow-list-movie-descr bg-black fs-16 fw-black px-2 py-1 me-2">
-  14:00</span>    </div>
-        <div class="meta-short fs-14">
-      Wielka Brytania | 110 min<br/><strong>Reż. Simon Farnaby</strong>    </div>
-    
-</div>            </div>
-          </div>
-          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
-                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
-                „Drzewo magii” to spektakularna i&nbsp;pełna ciepła ekranizacja na&nbsp;podstawie uwielbianej serii książek&nbsp;dla dzieci autorstwa Enit Blydon. W&nbsp;barwnej opowieści w&nbsp;role&nbsp;rodziców&nbsp;wcielają się laureat Złotego Globu, nominowany do&nbsp;Oscara Andrew Garfield&nbsp;(„Sztuka pięknego życia”, „Spider Man: Bez drogi do&nbsp;domu”) oraz lauretka Złotego Globu Claire Foy („The Crown”).&nbsp;Towarzyszą im&nbsp;m.in.&nbsp;Nicola Coughlan&nbsp;– gwiazda serialu „Bridgertonowie”,&nbsp;hipnotyzująca w...              </div>
-                      </div>
-        </div>      </div>
-    </div>  </a>
-</div><div class="basic-list-item">
-  <a href="/kino-glebocka-66/diabel-ubiera-sie-u-prady-2" class="movie-list bg-white-hover d-block mb-30">
-    <div class="row align-items-stretch">
-      <div class="col-md-3 col-4">
-        <div class="col-thumb h-100">
-          <div class="item-image-thumb item-image-sm">
-  <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/diabel-2-fot_8-1-_auto_900x600.jpg" data-min-width="1200"/>
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/diabel-2-fot_8-1-_auto_800x700.jpg" data-min-width="992"/>
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/diabel-2-fot_8-1-_auto_600x600.jpg" data-min-width="768"/>
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/diabel-2-fot_8-1-_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/xdiabel-2-fot_8-1-_auto_400x500.jpg.pagespeed.ic.TEQb2isf71.jpg" srcset="/upload/thumb/2026/05/xdiabel-2-fot_8-1-_auto_400x500.jpg.pagespeed.ic.TEQb2isf71.jpg" alt="dwie kobiety w czarnych strojach i ciemnych okularach" title="" style="" data-pagespeed-url-hash="2927189460" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
-</picture></div>        </div>
-      </div>
-      <div class="col-md-9 col-8 py-20 py-md-0">
-        <div class="row">
-          <div class="col-md-5 py-md-20">
-            <div class="pe-lg-4 h-100">
-              <div class="movie-list-descr">
-  <div class="fs-30 fw-black mb-10">
-    Diabeł ubiera się u&nbsp;Prady 2  </div>
-      <div class="movieshows mb-20">
-      <span class="movieshow-list-movie-descr bg-black fs-16 fw-black px-2 py-1 me-2">
-  19:00</span>    </div>
-        <div class="meta-short fs-14">
-      USA | 120 min<br/><strong>Reż. David Frankel</strong>    </div>
-    
-</div>            </div>
-          </div>
-          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
-                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
-                Miranda Priestly powraca! Dwadzieścia lat po wydarzeniach, które zdefiniowały świat mody i&nbsp;popkultury, kultowi bohaterowie znów spotykają się na&nbsp;stylowych ulicach Nowego Jorku i&nbsp;w&nbsp;eleganckich biurach magazynu Runway.               </div>
-                      </div>
-        </div>      </div>
-    </div>  </a>
-</div>    </div>
-      </div>    <div class="movies-children-upcomming" data-as-view="list" data-as-id="mchupmm-7738">
+      <strong>6 czerwca 2026 </strong><span>Sobota</span>    </div>
+    <div class="item-children-empty bg-gray-200 px-4 py-30 py-md-50 text-center text-muted mb-50">
+  <em>Brak elementów do&nbsp;wyświetlenia</em>
+</div></div>    <div class="movies-children-upcomming" data-as-view="list" data-as-id="mchupmm-7738">
       <div class="fs-34 fw-black mb-30">
       Zapowiedzi    </div>
     <div class="list-wrapper mb-30">
     <div class="basic-list-item">
-  <a href="/kino-glebocka-66/wajda-re-wizje-czlowiek-z-marmuru-pokaz-z-prelekcja-wideo-joanny-najbor-169955732" class="movie-list bg-white-hover d-block mb-30">
-    <div class="row align-items-stretch">
-      <div class="col-md-3 col-4">
-        <div class="col-thumb h-100">
-          <div class="item-image-thumb item-image-sm">
-  <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/czlowiek_z_marmuru_10_gallery_auto_900x600.jpg" data-min-width="1200"/>
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/czlowiek_z_marmuru_10_gallery_auto_800x700.jpg" data-min-width="992"/>
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/czlowiek_z_marmuru_10_gallery_auto_600x600.jpg" data-min-width="768"/>
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/czlowiek_z_marmuru_10_gallery_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/xczlowiek_z_marmuru_10_gallery_auto_400x500.jpg.pagespeed.ic.JDgfNWRmpq.jpg" srcset="/upload/thumb/2026/05/xczlowiek_z_marmuru_10_gallery_auto_400x500.jpg.pagespeed.ic.JDgfNWRmpq.jpg" alt="młoda dziewczyna o blond włosach w dżinsowym stroju siedzi w samochodzie - Krystyna Janda w filmie &quot;Człowiek z marmuru&quot;" title="" style="" data-pagespeed-url-hash="3047662870" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
-</picture></div>        </div>
-      </div>
-      <div class="col-md-9 col-8 py-20 py-md-0">
-        <div class="row">
-          <div class="col-md-5 py-md-20">
-            <div class="pe-lg-4 h-100">
-              <div class="movie-list-descr">
-  <div class="fs-30 fw-black mb-10">
-    WAJDA: re-wizje | Człowiek z&nbsp;marmuru | pokaz z&nbsp;prelekcją wideo Joanny Najbor  </div>
-        <div class="meta-short fs-14">
-      <strong>6 czerwca</strong> | Polska | 160 min + 15 min prelekcji wideo<br/><strong>Reż. Andrzej Wajda</strong>    </div>
-    
-</div>            </div>
-          </div>
-          <div class="col-md-7 py-md-20 info-col d-none d-md-block">
-                          <div class="info-attr fs-16 ps-lg-3 pe-lg-4">
-                W setną rocznicę urodzin Andrzeja Wajdy zapraszamy na&nbsp;wyjątkowy przegląd „WAJDA: re-wizje”.&nbsp;To nie tylko hołd dla dorobku reżysera, lecz także ponowne spojrzenie na&nbsp;jego dzieła: odczytywane dziś na&nbsp;nowo, w&nbsp;innym kontekście historycznym i&nbsp;społecznym, wciąż poruszają, prowokują i&nbsp;inspirują.               </div>
-                      </div>
-        </div>      </div>
-    </div>  </a>
-</div><div class="basic-list-item">
   <a href="/kino-glebocka-66/kinowy-poranek-wyspa-puffinow-nowi-przyjaciele-421758485" class="movie-list bg-white-hover d-block mb-30">
     <div class="row align-items-stretch">
       <div class="col-md-3 col-4">
@@ -484,7 +370,7 @@ pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-gl
   <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/wyspa-puffinow_-nowi-przyjaciele_01_auto_800x700.jpg" data-min-width="992"/>
   <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/wyspa-puffinow_-nowi-przyjaciele_01_auto_600x600.jpg" data-min-width="768"/>
   <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/wyspa-puffinow_-nowi-przyjaciele_01_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/xwyspa-puffinow_-nowi-przyjaciele_01_auto_400x500.jpg.pagespeed.ic.H4HmUKxLkA.jpg" srcset="/upload/thumb/2026/05/xwyspa-puffinow_-nowi-przyjaciele_01_auto_400x500.jpg.pagespeed.ic.H4HmUKxLkA.jpg" alt="Kinowy Poranek | Wyspa Puffinów. Nowi przyjaciele" title="" style="" data-pagespeed-url-hash="2278744321" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+  <img src="/upload/thumb/2026/05/xwyspa-puffinow_-nowi-przyjaciele_01_auto_400x500.jpg.pagespeed.ic.H4HmUKxLkA.jpg" srcset="/upload/thumb/2026/05/xwyspa-puffinow_-nowi-przyjaciele_01_auto_400x500.jpg.pagespeed.ic.H4HmUKxLkA.jpg" alt="Kinowy Poranek | Wyspa Puffinów. Nowi przyjaciele" title="" style=""/>
 </picture></div>        </div>
       </div>
       <div class="col-md-9 col-8 py-20 py-md-0">
@@ -516,7 +402,7 @@ pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-gl
   <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/8jpg_auto_800x700.jpg" data-min-width="992"/>
   <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/8jpg_auto_600x600.jpg" data-min-width="768"/>
   <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/8jpg_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/x8jpg_auto_400x500.jpg.pagespeed.ic._FLlJV-kcJ.jpg" srcset="/upload/thumb/2026/05/x8jpg_auto_400x500.jpg.pagespeed.ic._FLlJV-kcJ.jpg" alt="kot trzyma w łapie mysz: kadr z animacji &quot;Tom i Jerry&quot;" title="" style="" data-pagespeed-url-hash="2677420529" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+  <img src="/upload/thumb/2026/05/x8jpg_auto_400x500.jpg.pagespeed.ic._FLlJV-kcJ.jpg" srcset="/upload/thumb/2026/05/x8jpg_auto_400x500.jpg.pagespeed.ic._FLlJV-kcJ.jpg" alt="kot trzyma w łapie mysz: kadr z animacji &quot;Tom i Jerry&quot;" title="" style=""/>
 </picture></div>        </div>
       </div>
       <div class="col-md-9 col-8 py-20 py-md-0">
@@ -548,7 +434,7 @@ pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-gl
   <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_800x700.jpg" data-min-width="992"/>
   <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_600x600.jpg" data-min-width="768"/>
   <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/ugr_06152-1-_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/xugr_06152-1-_auto_400x500.jpg.pagespeed.ic.DyiADTT0Hd.jpg" srcset="/upload/thumb/2026/05/xugr_06152-1-_auto_400x500.jpg.pagespeed.ic.DyiADTT0Hd.jpg" alt="dwóch mężczyzn w ciemnych okularach stoi w słońcu; w tle droga żwirowa" title="" style="" data-pagespeed-url-hash="3928906962" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+  <img src="/upload/thumb/2026/05/xugr_06152-1-_auto_400x500.jpg.pagespeed.ic.DyiADTT0Hd.jpg" srcset="/upload/thumb/2026/05/xugr_06152-1-_auto_400x500.jpg.pagespeed.ic.DyiADTT0Hd.jpg" alt="dwóch mężczyzn w ciemnych okularach stoi w słońcu; w tle droga żwirowa" title="" style=""/>
 </picture></div>        </div>
       </div>
       <div class="col-md-9 col-8 py-20 py-md-0">
@@ -580,7 +466,7 @@ pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-gl
   <source media="(min-width: 992px)" srcset="/upload/2026/05/webp_landscape_1620.webp" data-min-width="992"/>
   <source media="(min-width: 768px)" srcset="/upload/2026/05/webp_landscape_1620.webp" data-min-width="768"/>
   <source media="(min-width: 576px)" srcset="/upload/2026/05/webp_landscape_1620.webp" data-min-width="576"/>
-  <img src="/upload/2026/05/webp_landscape_1620.webp" srcset="/upload/2026/05/webp_landscape_1620.webp" alt="Rozmowy Łukasza Maciejewskiego | Przepiękne!" title="" style="" data-pagespeed-url-hash="1923293564" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+  <img src="/upload/2026/05/webp_landscape_1620.webp" srcset="/upload/2026/05/webp_landscape_1620.webp" alt="Rozmowy Łukasza Maciejewskiego | Przepiękne!" title="" style=""/>
 </picture></div>        </div>
       </div>
       <div class="col-md-9 col-8 py-20 py-md-0">
@@ -612,7 +498,7 @@ pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-gl
   <source media="(min-width: 992px)" srcset="/upload/thumb/2026/04/drugie-zycie_01_auto_800x700.jpg" data-min-width="992"/>
   <source media="(min-width: 768px)" srcset="/upload/thumb/2026/04/drugie-zycie_01_auto_600x600.jpg" data-min-width="768"/>
   <source media="(min-width: 576px)" srcset="/upload/thumb/2026/04/drugie-zycie_01_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/04/xdrugie-zycie_01_auto_400x500.jpg.pagespeed.ic.moVTOvZguY.jpg" srcset="/upload/thumb/2026/04/xdrugie-zycie_01_auto_400x500.jpg.pagespeed.ic.moVTOvZguY.jpg" alt="dojrzała pani w kwiecistej bluzce siedzi na balkonie, w tle budynki miasta" title="" style="object-position: 59.551110803650054% 28.112059921477066%; " data-pagespeed-url-hash="940259804" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+  <img src="/upload/thumb/2026/04/xdrugie-zycie_01_auto_400x500.jpg.pagespeed.ic.moVTOvZguY.jpg" srcset="/upload/thumb/2026/04/xdrugie-zycie_01_auto_400x500.jpg.pagespeed.ic.moVTOvZguY.jpg" alt="dojrzała pani w kwiecistej bluzce siedzi na balkonie, w tle budynki miasta" title="" style="object-position: 59.551110803650054% 28.112059921477066%; "/>
 </picture></div>        </div>
       </div>
       <div class="col-md-9 col-8 py-20 py-md-0">
@@ -644,7 +530,7 @@ pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-gl
   <source media="(min-width: 992px)" srcset="/upload/2026/05/miniaturka-1-_1.webp" data-min-width="992"/>
   <source media="(min-width: 768px)" srcset="/upload/2026/05/miniaturka-1-_1.webp" data-min-width="768"/>
   <source media="(min-width: 576px)" srcset="/upload/2026/05/miniaturka-1-_1.webp" data-min-width="576"/>
-  <img src="/upload/2026/05/miniaturka-1-_1.webp" srcset="/upload/2026/05/miniaturka-1-_1.webp" alt="Spotkania Filmowe | Ojczyzna" title="" style="" data-pagespeed-url-hash="915375152" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+  <img src="/upload/2026/05/miniaturka-1-_1.webp" srcset="/upload/2026/05/miniaturka-1-_1.webp" alt="Spotkania Filmowe | Ojczyzna" title="" style=""/>
 </picture></div>        </div>
       </div>
       <div class="col-md-9 col-8 py-20 py-md-0">
@@ -676,7 +562,7 @@ pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-gl
   <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/kamper_9_auto_800x700.jpg" data-min-width="992"/>
   <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/kamper_9_auto_600x600.jpg" data-min-width="768"/>
   <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/kamper_9_auto_500x600.jpg" data-min-width="576"/>
-  <img src="/upload/thumb/2026/05/xkamper_9_auto_400x500.jpg.pagespeed.ic.oQntcKzUt8.jpg" srcset="/upload/thumb/2026/05/xkamper_9_auto_400x500.jpg.pagespeed.ic.oQntcKzUt8.jpg" alt="Młoda Polska | kino plenerowe | Kamper (2016)" title="" style="" data-pagespeed-url-hash="3389926078" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+  <img src="/upload/thumb/2026/05/xkamper_9_auto_400x500.jpg.pagespeed.ic.oQntcKzUt8.jpg" srcset="/upload/thumb/2026/05/xkamper_9_auto_400x500.jpg.pagespeed.ic.oQntcKzUt8.jpg" alt="Młoda Polska | kino plenerowe | Kamper (2016)" title="" style=""/>
 </picture></div>        </div>
       </div>
       <div class="col-md-9 col-8 py-20 py-md-0">
