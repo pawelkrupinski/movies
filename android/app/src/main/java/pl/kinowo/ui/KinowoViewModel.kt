@@ -34,6 +34,7 @@ import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
 import pl.kinowo.model.FilmDetails
+import pl.kinowo.filter.CinemaCityFilter
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.FormatFilter
@@ -112,9 +113,12 @@ class KinowoViewModel(
     var excludedDirectors by mutableStateOf<Set<String>>(emptySet())
     var excludedCast by mutableStateOf<Set<String>>(emptySet())
 
-    val filtersActive: Boolean
-        get() = !formatFilter.isEmpty ||
-            disabledCinemas.value.isNotEmpty() ||
+    // `allCinemas` of the current city is passed in so the cinema clause is
+    // scoped to it — a cinema deselected in another city lingers in the global
+    // set but must not light up the Filtry icon here. See [CinemaCityFilter].
+    fun filtersActive(allCinemas: List<String>): Boolean =
+        !formatFilter.isEmpty ||
+            CinemaCityFilter.disabledIn(disabledCinemas.value, allCinemas).isNotEmpty() ||
             hiddenFilms.value.isNotEmpty() ||
             excludedCountries.isNotEmpty() ||
             excludedGenres.isNotEmpty() ||
@@ -326,6 +330,11 @@ class KinowoViewModel(
         viewModelScope.launch { prefs.toggleCinema(cinema, disabled) }
     fun setDisabledCinemas(set: Set<String>) =
         viewModelScope.launch { prefs.setDisabledCinemas(set) }
+
+    /** Scoped "Wszystkie kina" select-all / deselect-all: flips only this
+     *  city's cinemas, preserving deselections made in other cities. */
+    fun setAllCinemas(allCinemas: List<String>, selected: Boolean) =
+        setDisabledCinemas(CinemaCityFilter.afterToggleAll(disabledCinemas.value, allCinemas, selected))
 
     fun filmByTitle(title: String): Film? = films.value.firstOrNull { it.title == title }
     fun detailsByTitle(title: String): FilmDetails? = details.value[title]
