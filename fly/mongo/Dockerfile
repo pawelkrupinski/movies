@@ -28,4 +28,11 @@ RUN openssl rand -base64 756 > /etc/mongo-keyfile \
 #
 # `--ipv6 --bind_ip_all` keeps it reachable over Fly's 6PN `.internal` network;
 # `--keyFile` implies `--auth`.
-CMD ["mongod", "--ipv6", "--bind_ip_all", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile"]
+#
+# `--wiredTigerCacheSizeGB 0.25` pins the WiredTiger cache. WiredTiger auto-sizes
+# its cache from the *host's* reported RAM, not the container's cgroup limit, so
+# in a Fly VM it can wildly over-allocate; an unbounded cache + mongod baseline +
+# live connections is what OOM-killed the 512mb box on 2026-06-06. Pinning it
+# bounds steady-state RSS far under the (now 1gb) ceiling — the structural fix
+# for the OOM. The dataset is tiny (hundreds of docs), so 256mb of cache is ample.
+CMD ["mongod", "--ipv6", "--bind_ip_all", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile", "--wiredTigerCacheSizeGB", "0.25"]

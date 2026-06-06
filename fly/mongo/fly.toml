@@ -16,6 +16,24 @@ primary_region = "arn"
 
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "512mb"
+  # Bumped 512mb → 1gb after a 2026-06-06 OOM-kill (exit 137, oom_killed=true)
+  # took Mongo down and cascaded into a kinowo web outage. 512mb left no
+  # headroom over WiredTiger's cache + mongod baseline + the ~50 live
+  # connections. The Dockerfile now also pins the WT cache
+  # (--wiredTigerCacheSizeGB), so steady-state RSS is bounded well under this.
+  memory = "1gb"
+
+# TCP liveness check on the mongod port. Mongo has no [[services]] (it stays on
+# the private network), so this app-level check is what makes a dead or hung
+# mongod visible in `fly status` / `fly checks list` instead of silently
+# wedging until it OOMs. TCP-accepting ≠ replica-set-healthy, but it catches the
+# process being gone — the failure mode that took the cluster down with no signal.
+[checks]
+  [checks.tcp]
+    type = "tcp"
+    port = 27017
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"
 
 # No `[[services]]` block — Mongo stays on the .internal/.flycast network.
