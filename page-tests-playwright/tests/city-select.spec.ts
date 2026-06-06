@@ -8,12 +8,13 @@ test.describe('city selection landing (/)', () => {
   test('lists every supported city and a pick navigates into that city', async ({ page }) => {
     await page.goto('/');
     const links = page.locator('.city-list a');
-    await expect(links).toHaveCount(7);
+    await expect(links).toHaveCount(8);
     await expect(page.locator('.city-list')).toContainText('Poznań');
     await expect(page.locator('.city-list')).toContainText('Wrocław');
     await expect(page.locator('.city-list')).toContainText('Warszawa');
     await expect(page.locator('.city-list')).toContainText('Kraków');
     await expect(page.locator('.city-list')).toContainText('Trójmiasto');
+    await expect(page.locator('.city-list')).toContainText('Białystok');
     await expect(page.locator('.city-list')).toContainText('Bydgoszcz');
     await expect(page.locator('.city-list')).toContainText('Lublin');
 

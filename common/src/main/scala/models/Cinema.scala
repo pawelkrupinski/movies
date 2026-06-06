@@ -120,6 +120,16 @@ case object MikroBronowice extends Cinema("Mikro Bronowice", "Mikro Bronowice")
 
 case object KinoSfinks extends Cinema("Kino Sfinks", "Sfinks")
 
+// ── Białystok ────────────────────────────────────────────────────────────────
+
+case object HeliosAlfa extends Cinema("Helios Alfa", "Alfa")
+
+case object HeliosBiala extends Cinema("Helios Biała", "Biała")
+
+case object HeliosJurowiecka extends Cinema("Helios Jurowiecka", "Jurowiecka")
+
+case object KinoForum extends Cinema("Kino Forum", "Forum")
+
 // ── Trójmiasto (Gdańsk · Gdynia · Sopot) ─────────────────────────────────────
 
 case object MultikinoGdansk extends Cinema("Multikino Gdańsk", "Multikino")
@@ -237,6 +247,17 @@ object Cinema {
     KinoSfinks,
   )
 
+  /** Białystok venues. No Cinema City or Multikino in the city; Helios (HQ'd in
+   *  Łódź, strong in eastern Poland) runs three multiplexes — Alfa, Biała and
+   *  Jurowiecka. The independent is Kino Forum, the film screen of the
+   *  Białostocki Ośrodek Kultury, wired as a bespoke scraper. */
+  val bialystok: Seq[Cinema] = Seq(
+    HeliosAlfa,
+    HeliosBiala,
+    HeliosJurowiecka,
+    KinoForum,
+  )
+
   /** Trójmiasto venues — the Tri-City of Gdańsk, Gdynia and Sopot treated as one
    *  repertoire. Two Helios in Gdańsk (Metropolia, Forum), one in Gdynia
    *  (Riviera), plus Multikino Gdańsk. Cinema City Krewetka closed in 2018 and
@@ -277,7 +298,7 @@ object Cinema {
     KinoBajka,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ trojmiasto ++ bydgoszcz ++ lublin
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ bialystok ++ trojmiasto ++ bydgoszcz ++ lublin
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }
