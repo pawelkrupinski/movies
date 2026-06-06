@@ -1,0 +1,36 @@
+name: Scala Steward
+
+# Scala Steward scans build.sbt, project/*.scala (so it reads the version
+# vals in project/Dependencies.scala directly) and project/plugins.sbt, then
+# opens one PR per available dependency / sbt-plugin upgrade with a link to
+# the release notes. It only proposes the bump — per CLAUDE.md's test gate,
+# a human still reviews each PR and lands it once the suite is green.
+on:
+    # Weekly sweep — Monday 06:00 UTC. Dependency churn is slow enough that
+    # daily would just be noise; weekly keeps the PR queue reviewable.
+    schedule:
+        - cron: '0 6 * * 1'
+    # Manual kick from the Actions tab when you want an upgrade pass now.
+    workflow_dispatch:
+
+# Steward needs to push its update branches and open PRs. With the default
+# GITHUB_TOKEN these two scopes are required; with a PAT they're implicit.
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    scala-steward:
+        runs-on: ubuntu-latest
+        name: Scala Steward
+        steps:
+            - name: Scala Steward
+              uses: scala-steward-org/scala-steward-action@v2
+              with:
+                  # Prefer a PAT (or GitHub App token) in secrets.SCALA_STEWARD_TOKEN:
+                  # PRs opened by the default GITHUB_TOKEN do NOT trigger other
+                  # workflows, so a PAT is what lets any future pull_request CI run
+                  # on Steward's branches. Falls back to GITHUB_TOKEN if unset.
+                  github-token: ${{ secrets.SCALA_STEWARD_TOKEN || github.token }}
+                  author-name: Paweł Krupiński
+                  author-email: pawel.krupinski@gmail.com
