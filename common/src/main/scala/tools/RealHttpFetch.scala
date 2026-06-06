@@ -30,6 +30,11 @@ class RealHttpFetch extends HttpFetch with Logging {
     .version(HttpClient.Version.HTTP_1_1)
     .followRedirects(HttpClient.Redirect.NORMAL)
     .connectTimeout(ConnectTimeout)
+    // Trust the JDK defaults PLUS the Certum root that OpenJDK's cacerts omits,
+    // so the Certum-rooted cinema sites (Kinomuzeum/artmuseum.pl, Kino
+    // Muranów/kinomuranow.pl, sdk.waw.pl) stop failing PKIX path building. See
+    // TlsTrust — touching it here also enables AIA intermediate fetching.
+    .sslContext(TlsTrust.augmentedContext)
     .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
     .build()
 
