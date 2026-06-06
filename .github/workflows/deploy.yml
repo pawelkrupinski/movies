@@ -69,14 +69,17 @@ jobs:
                       project/target
                       project/project/target
                   # Scope the exact key to the sources this job compiles
-                  # (unit = app + test); a change to it/page specs no
-                  # longer busts it. restore-keys still falls back to any
-                  # recent sbt-target cache so zinc stays warm on a miss.
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'conf/**') }}
+                  # (unit = every module's main + test). restore-keys still
+                  # falls back to any recent sbt-target cache so zinc stays
+                  # warm on a miss.
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            - run: sbt test
+            # Every module's unit tests in one sbt run; `all` keeps going so a
+            # failure in one module still runs the rest (testkit + e2e join the
+            # existing job — no new GH job is added).
+            - run: sbt testUnit
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
@@ -350,12 +353,14 @@ jobs:
                       target
                       project/target
                       project/project/target
-                  # it scope (app + test + it). restore-keys keeps zinc warm.
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'it/**/*.scala', 'conf/**') }}
+                  # it scope (every module's main + test + it). restore-keys keeps zinc warm.
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            - run: sbt IntegrationTest/test
+            # Both apps' integration suites in one run (web + worker now each have
+            # an `it` config); `all` keeps going across them. Still one GH job.
+            - run: sbt itAll
               env:
                   ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}

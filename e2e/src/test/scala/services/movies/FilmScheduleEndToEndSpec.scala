@@ -1,6 +1,6 @@
 package services.movies
 
-import controllers.FilmSchedule
+import controllers.{FilmSchedule, MovieControllerService}
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -69,7 +69,11 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     w.bootStartup()
     w
   }
-  private lazy val schedules: Seq[FilmSchedule] = wiring.movieControllerService.toSchedules(Poznan, now)
+  // The web app's read transform, built directly from the worker-populated
+  // cache — this is the seam the two apps share in production (web reads what
+  // worker wrote), exercised here in one JVM against the in-memory cache.
+  private lazy val schedules: Seq[FilmSchedule] =
+    new MovieControllerService(wiring.movieCache).toSchedules(Poznan, now)
 
   "the full enrichment pipeline" should
     "keep Diabeł u Prady 2 visible after a startup scrape + event drain + cleanup tick" in {

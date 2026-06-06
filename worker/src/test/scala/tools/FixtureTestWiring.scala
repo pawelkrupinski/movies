@@ -1,17 +1,12 @@
 package tools
 
 import clients.tools.FakeHttpFetch
-import play.api.Mode
-import play.api.mvc.ControllerComponents
-import play.api.test.Helpers.stubControllerComponents
 import services.events.MovieRecordCreated
 import services.movies.InMemoryMovieRepo
 
 class FixtureTestWiring(val fixture: String) extends TestWiring {
   override lazy val httoFetch: HttpFetch = new FakeHttpFetch(fixture)
   override lazy val movieRepo = new InMemoryMovieRepo()
-  override val controllerComponents: ControllerComponents = stubControllerComponents()
-  override def environmentMode: Mode = Mode.Test
 
   // Pin Helios's REST date to the fixture's capture day when the `fixture` dir
   // is named `dd-MM-yyyy` (e.g. "17-05-2026"). Helios bakes the date window into
@@ -54,8 +49,9 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   /** Convenience: scrape every cinema once, drain the cascade, then run
    *  the daily `UnscreenedCleanup` pass. After this returns the cache is in
    *  the same shape it would be ~20s into production boot, so the rest of
-   *  the test can assert against `movieControllerService.toSchedules(now)`
-   *  / `.toCinemaSchedules(now)` / `movieCache.snapshot()` directly. */
+   *  the test can assert against `movieCache.snapshot()` directly (the serving
+   *  transform — `MovieControllerService.toSchedules` — is the web app's job
+   *  now and is tested there). */
   def bootStartup(): Unit = {
     runOneScrapeTick()
     drainServices()

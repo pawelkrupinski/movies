@@ -2,12 +2,15 @@
 //
 //   common  — shared domain + data layer (models, MovieRepo/MovieCache, Mongo,
 //             EventBus, UptimeMonitor, the HTTP-fetch family). Plain Scala lib.
+//   testkit — shared test fakes/helpers (not deployed). dependsOn(common).
 //   web     — content-serving Play app (controllers, Twirl views). Fly: kinowo.
 //   worker  — scrape + enrich background app (plain `def main`). Fly: <worker>.
+//   e2e     — cross-app end-to-end specs (not deployed). dependsOn(web, worker).
 //
 // `root` is a pure aggregator — no sources of its own. web and worker each
 // depend on common and never on each other; they share the Mongo database, not
-// in-process state.
+// in-process state. testkit and e2e are libraries — only web and worker are
+// ever staged/deployed, so the build still ships exactly two Fly apps.
 
 ThisBuild / organization := "com.example"
 ThisBuild / version      := "1.0-SNAPSHOT"
@@ -34,6 +37,20 @@ ThisBuild / javacOptions ++= Seq("--release", "21")
 lazy val IntegrationTest = config("it") extend Test
 lazy val PageTest = config("page") extend Test
 
+// Every module writes its JUnit XML into ONE root-level dir per layer, so each
+// CI job's single action-junit-report step (`target/test-reports/<layer>/**`)
+// annotates failures from every module. Without this, per-module
+// `<module>/target/test-reports/...` dirs would escape the root-relative glob
+// and the check-run would miss most modules.
+lazy val unitReportSettings = Seq(
+  Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
+    ((LocalRootProject / baseDirectory).value / "target" / "test-reports" / "unit").toString)
+)
+lazy val itReportSettings = Seq(
+  IntegrationTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
+    ((LocalRootProject / baseDirectory).value / "target" / "test-reports" / "it").toString)
+)
+
 // ── Shared module ────────────────────────────────────────────────────────────
 
 lazy val common = (project in file("common"))
@@ -46,10 +63,29 @@ lazy val common = (project in file("common"))
       "org.mongodb.scala"             %% "mongo-scala-driver"  % "5.7.0",
       "com.github.ben-manes.caffeine" %  "caffeine"            % "3.2.4",
       "org.jsoup"                     %  "jsoup"               % "1.22.2",
-      // Shared test helpers/fakes live in common/test and are re-exported to web
-      // and worker via `dependsOn(common % "test->test")`.
+      // common's test config covers ONLY its own specs (models, codecs, Mongo,
+      // DaemonExecutors, …) — the shared fakes live in `testkit`, not here, so
+      // common's test surface stays lean and self-contained.
       "org.scalatestplus.play"        %% "scalatestplus-play"  % "7.0.2" % Test,
     )
+  )
+  .settings(unitReportSettings)
+
+// ── Shared test support (not deployed) ───────────────────────────────────────
+//
+// The fakes/helpers every module's tests reuse — FakeHttpFetch, InMemoryMovieRepo,
+// RecordingHttpFetch, RoutingHttpFetch, Eventually, ExecutorProbes. Sources live
+// in src/main/scala so consumers pull them with a plain `dependsOn(testkit % Test)`
+// rather than the old `common % "test->test"` re-export. That keeps common's test
+// surface to its own specs and stops worker-only fakes from being forced into
+// common. Depends on common for HttpFetch/MovieRepo/models; carries scalatest on
+// the compile classpath because Eventually returns an `org.scalatest.Assertion`.
+lazy val testkit = (project in file("testkit"))
+  .dependsOn(common)
+  .settings(
+    name := "testkit",
+    publish / skip := true,
+    libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2",
   )
 
 // ── Worker app (scrape + enrich) ─────────────────────────────────────────────
@@ -60,7 +96,7 @@ lazy val common = (project in file("common"))
 // MovieCache to Mongo; the web app's cache picks those writes up via the Mongo
 // change stream, so the two processes share no in-process state.
 lazy val worker = (project in file("worker"))
-  .dependsOn(common % "compile->compile;test->test")
+  .dependsOn(common, testkit % Test)
   .enablePlugins(JavaAppPackaging)
   .configs(IntegrationTest)
   .settings(
@@ -73,10 +109,13 @@ lazy val worker = (project in file("worker"))
     IntegrationTest / scalaSource       := baseDirectory.value / "src" / "it" / "scala",
     IntegrationTest / resourceDirectory := baseDirectory.value / "src" / "it" / "resources",
     IntegrationTest / parallelExecution := true,
-    Test / testOptions +=
-      Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports/unit"),
-    IntegrationTest / testOptions +=
-      Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports/it"),
+    // A handful of enrichment specs (MetacriticClientSpec, RottenTomatoesClientSpec,
+    // ImdbClientSpec, ImdbIdResolverSpec) read fixtures off the CLASSPATH via
+    // `getResourceAsStream("/fixtures/…")`, but those HTML captures live in the
+    // shared repo-root `test/resources` tree, not under worker/src/test/resources.
+    // Reference that dir on the test classpath WITHOUT copying it — the tree is
+    // ~400MB, so copyResources is out; unmanagedClasspath points at it in place.
+    Test / unmanagedClasspath += Attributed.blank((LocalRootProject / baseDirectory).value / "test" / "resources"),
     libraryDependencies ++= Seq(
       // jsoup + mongo + caffeine arrive transitively via `common`; Sentry is the
       // worker's own error-reporting sink.
@@ -84,6 +123,8 @@ lazy val worker = (project in file("worker"))
       "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test,
     )
   )
+  .settings(unitReportSettings)
+  .settings(itReportSettings)
 
 // ── Web app (content serving) ────────────────────────────────────────────────
 
@@ -94,7 +135,7 @@ lazy val web = (project in file("web"))
   // application.conf + logback.xml), src/main/twirl (views), src/main/assets —
   // matching common and worker.
   .disablePlugins(PlayLayoutPlugin)
-  .dependsOn(common % "compile->compile;test->test")
+  .dependsOn(common, testkit % Test)
   .configs(IntegrationTest, PageTest)
   .settings(
     name := "web",
@@ -106,14 +147,11 @@ lazy val web = (project in file("web"))
     PageTest / scalaSource              := baseDirectory.value / "src" / "page" / "scala",
     PageTest / resourceDirectory        := baseDirectory.value / "src" / "page" / "resources",
     PageTest / parallelExecution        := false,
-    // Emit JUnit-style XML alongside the console reporter so CI can turn a
-    // failure into an inline check-run annotation instead of a raw log scroll.
-    Test / testOptions +=
-      Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports/unit"),
-    IntegrationTest / testOptions +=
-      Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports/it"),
-    PageTest / testOptions +=
-      Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports/page"),
+    // Page-regression XML stays under the root report dir too (single web module,
+    // but keep the layer convention so the page job's glob matches). Unit + it
+    // report paths come from unitReportSettings / itReportSettings below.
+    PageTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
+      ((LocalRootProject / baseDirectory).value / "target" / "test-reports" / "page").toString),
     pipelineStages := Seq(digest),
     // Eagerly trigger AppLoader on `sbt run` (see project/Warmup.scala) and start
     // the Mongo proxy for local dev (see project/MongoProxy.scala).
@@ -139,12 +177,40 @@ lazy val web = (project in file("web"))
     coverageExcludedFiles := ".*/test/scala/scripts/.*",
     coverageFailOnMinimum := false,
   )
+  .settings(unitReportSettings)
+  .settings(itReportSettings)
+
+// ── End-to-end test module (not deployed) ────────────────────────────────────
+//
+// The few specs that exercise the full scrape → cache → render contract and so
+// need BOTH apps on the classpath: the worker's scrape pipeline (via
+// FixtureTestWiring) and the web app's MovieControllerService / FilmSchedule
+// transform. Depending on web + worker here means neither app depends on the
+// other and no view code has to sink into common. Test-only — `publish / skip`,
+// never staged. CI runs its specs inside the existing unit `test` job via
+// aggregation, so it adds no deploy artifact and no CI job.
+lazy val e2e = (project in file("e2e"))
+  .dependsOn(web, worker % "test->test", testkit % Test)
+  .settings(
+    name := "e2e",
+    publish / skip := true,
+    libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test,
+  )
+  .settings(unitReportSettings)
 
 // ── Root aggregator (no sources) ─────────────────────────────────────────────
 
 lazy val root = (project in file("."))
-  .aggregate(common, web, worker)
+  .aggregate(common, testkit, web, worker, e2e)
   .settings(
     name := "movies",
     publish / skip := true,
   )
+
+// One sbt invocation, every module's unit tests, no fail-fast: `all` runs each
+// listed task in parallel and reports all failures instead of stopping at the
+// first failing module. CI's unit job calls `sbt testUnit`; the integration
+// job `sbt itAll`. Keeping both as aggregating aliases means new modules join
+// the existing CI jobs rather than spawning new ones.
+addCommandAlias("testUnit", "all common/Test/test testkit/Test/test web/Test/test worker/Test/test e2e/Test/test")
+addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/test")
