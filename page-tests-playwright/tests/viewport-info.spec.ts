@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // The tune-panel viewport readout is a pure function shared by the browser and
 // this test, so exercise it directly in node (no browser/server needed) — it
 // can't drift from what `_tunePanel` renders.
-const { formatViewportInfo } = require('../../public/js/viewportInfo.js');
+const { formatViewportInfo } = require('../../web/src/main/assets/js/viewportInfo.js');
 
 test.describe('tune-panel viewport readout', () => {
   test('reports viewport, ratio and physical px', () => {
