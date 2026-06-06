@@ -57,14 +57,16 @@ class MonitoringHttpFetch(delegate: HttpFetch, monitor: UptimeMonitor) extends H
     classify(url) match {
       case None => block
       case Some(service) =>
+        val t0 = System.nanoTime()
+        def ms = (System.nanoTime() - t0) / 1000000L
         try {
           val result = block
-          monitor.recordSuccess(service)
+          monitor.recordSuccess(service, ms)
           result
         } catch {
           case e: Exception =>
             if (isConnectionFailure(e)) monitor.recordFailure(service, errorDescription(e))
-            else monitor.recordSuccess(service)
+            else monitor.recordSuccess(service, ms)  // non-connection error → the call still reached the server
             throw e
         }
     }
@@ -80,12 +82,14 @@ class MonitoringHttpFetch(delegate: HttpFetch, monitor: UptimeMonitor) extends H
     classify(url) match {
       case None => delegate.getAsync(url)
       case Some(service) =>
+        val t0 = System.nanoTime()
         delegate.getAsync(url).whenComplete { (_, ex) =>
-          if (ex == null) monitor.recordSuccess(service)
+          val ms = (System.nanoTime() - t0) / 1000000L
+          if (ex == null) monitor.recordSuccess(service, ms)
           else {
             val cause = unwrap(ex)
             if (isConnectionFailure(cause)) monitor.recordFailure(service, errorDescription(cause))
-            else monitor.recordSuccess(service)
+            else monitor.recordSuccess(service, ms)
           }
         }
     }

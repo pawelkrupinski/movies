@@ -48,9 +48,10 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
       }
     }
 
-    val cinemas  = cinemaNames.filter(active.contains).map(n => ServiceRow(n, barsFor(n)))
-    val services = enrichmentNames.filter(active.contains).map(n => ServiceRow(n, barsFor(n)))
-    val other    = (active -- cinemaNames.toSet -- enrichmentNames.toSet).toSeq.sorted.map(n => ServiceRow(n, barsFor(n)))
+    def row(n: String) = ServiceRow(n, barsFor(n), monitor.averageMs1h(n), monitor.averageMsTotal(n))
+    val cinemas  = cinemaNames.filter(active.contains).map(row)
+    val services = enrichmentNames.filter(active.contains).map(row)
+    val other    = (active -- cinemaNames.toSet -- enrichmentNames.toSet).toSeq.sorted.map(row)
 
     Ok(views.html.uptime(cinemas, services, other))
   }
@@ -131,4 +132,4 @@ object BarData {
   )
 }
 
-case class ServiceRow(name: String, bars: Seq[BarData])
+case class ServiceRow(name: String, bars: Seq[BarData], avg1hMs: Option[Long] = None, avgTotalMs: Option[Long] = None)

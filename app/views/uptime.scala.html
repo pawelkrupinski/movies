@@ -22,6 +22,11 @@
       overflow: hidden; text-overflow: ellipsis; font-size: 12px;
     }
     .bars { display: flex; gap: 1px; overflow: hidden; }
+    .latency {
+      margin-left: 10px; flex-shrink: 0; color: #888; font-size: 11px;
+      white-space: nowrap; font-variant-numeric: tabular-nums;
+    }
+    .latency .lat-total { color: #6a9b78; }
     .bar {
       width: 3px; height: 26px; border-radius: 1px; flex-shrink: 0;
       cursor: default;
@@ -172,6 +177,9 @@
       @for(b <- s.bars) {
         <div class="bar @b.status" data-ts="@b.bucketTs" data-info="@{Json.toJson(b)(BarData.writes).toString}"></div>
       }
+    </div>
+    <div class="latency" title="avg successful call latency — last 1h / all retained">
+      @s.avg1hMs.map(_ + "ms").getOrElse("—") <span class="lat-total">/ @s.avgTotalMs.map(_ + "ms").getOrElse("—")</span>
     </div>
   </div>
 }

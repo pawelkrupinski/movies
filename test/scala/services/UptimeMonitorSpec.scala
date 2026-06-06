@@ -36,6 +36,32 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.history("nonexistent") shouldBe empty
   }
 
+  "average latency" should "be the mean of timed successful calls (1h and total)" in {
+    val monitor = new UptimeMonitor()
+    monitor.recordSuccess("TMDB", 100L)
+    monitor.recordSuccess("TMDB", 300L)
+    monitor.averageMs1h("TMDB")    shouldBe Some(200L)
+    monitor.averageMsTotal("TMDB") shouldBe Some(200L)
+  }
+
+  it should "be None when no call has been timed" in {
+    val monitor = new UptimeMonitor()
+    monitor.recordSuccess("TMDB")            // untimed
+    monitor.averageMs1h("TMDB")    shouldBe None
+    monitor.averageMsTotal("TMDB") shouldBe None
+    monitor.averageMs1h("never-seen") shouldBe None
+  }
+
+  it should "not let untimed successes drag the average toward zero" in {
+    val monitor = new UptimeMonitor()
+    monitor.recordSuccess("TMDB", 200L)
+    monitor.recordSuccess("TMDB")            // untimed — must not count as 0ms
+    monitor.recordSuccess("TMDB", 400L)
+    // mean of the two TIMED calls (200, 400), not (200, 0, 400)
+    monitor.averageMsTotal("TMDB") shouldBe Some(300L)
+    monitor.history("TMDB").head.successes shouldBe 3   // all three still count as successes
+  }
+
   it should "track services independently" in {
     val monitor = new UptimeMonitor()
     monitor.recordSuccess("TMDB")

@@ -102,7 +102,10 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
     RetryWithBackoff("t", maxAttempts = 3, initialBackoff = 1.millis, sleep = sleep, onAttempt = outcomes += _) {
       "ok"
     }
-    outcomes.toSeq shouldBe Seq(RetryWithBackoff.AttemptOutcome.Success(1))
+    outcomes.toSeq match {
+      case Seq(RetryWithBackoff.AttemptOutcome.Success(1, _)) => succeed
+      case other => fail(s"expected one Success(1, _), got $other")
+    }
   }
 
   it should "fire once per attempt: failures for each retry, then the final Success" in {
@@ -115,16 +118,19 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
     }
     outcomes.size shouldBe 3
     outcomes(0) match {
-      case RetryWithBackoff.AttemptOutcome.Failure(1, e, isFinal) =>
+      case RetryWithBackoff.AttemptOutcome.Failure(1, e, isFinal, _) =>
         e.getMessage shouldBe "fail-1"; isFinal shouldBe false
       case other => fail(s"expected Failure(1, ...), got $other")
     }
     outcomes(1) match {
-      case RetryWithBackoff.AttemptOutcome.Failure(2, e, isFinal) =>
+      case RetryWithBackoff.AttemptOutcome.Failure(2, e, isFinal, _) =>
         e.getMessage shouldBe "fail-2"; isFinal shouldBe false
       case other => fail(s"expected Failure(2, ...), got $other")
     }
-    outcomes(2) shouldBe RetryWithBackoff.AttemptOutcome.Success(3)
+    outcomes(2) match {
+      case RetryWithBackoff.AttemptOutcome.Success(3, _) => succeed
+      case other => fail(s"expected Success(3, _), got $other")
+    }
   }
 
   it should "mark the last attempt's failure as isFinal=true when all attempts fail" in {
@@ -136,8 +142,8 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
       }
     }
     outcomes.last match {
-      case RetryWithBackoff.AttemptOutcome.Failure(2, _, true) => succeed
-      case other => fail(s"expected Failure(2, _, true), got $other")
+      case RetryWithBackoff.AttemptOutcome.Failure(2, _, true, _) => succeed
+      case other => fail(s"expected Failure(2, _, true, _), got $other")
     }
   }
 }

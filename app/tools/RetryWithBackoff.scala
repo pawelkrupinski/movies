@@ -37,10 +37,10 @@ import scala.util.control.NonFatal
  */
 object RetryWithBackoff extends Logging {
 
-  sealed trait AttemptOutcome { def attempt: Int }
+  sealed trait AttemptOutcome { def attempt: Int; def durationMs: Long }
   object AttemptOutcome {
-    case class Success(attempt: Int) extends AttemptOutcome
-    case class Failure(attempt: Int, error: Throwable, isFinal: Boolean) extends AttemptOutcome
+    case class Success(attempt: Int, durationMs: Long) extends AttemptOutcome
+    case class Failure(attempt: Int, error: Throwable, isFinal: Boolean, durationMs: Long) extends AttemptOutcome
   }
 
   def apply[T](
@@ -54,15 +54,17 @@ object RetryWithBackoff extends Logging {
     var attempt                = 1
     var lastFailure: Throwable = null
     while (attempt <= maxAttempts) {
+      val t0 = System.nanoTime()
       try {
         val result = block
-        onAttempt(AttemptOutcome.Success(attempt))
+        onAttempt(AttemptOutcome.Success(attempt, (System.nanoTime() - t0) / 1000000L))
         return result
       } catch {
         case NonFatal(t) =>
+          val ms = (System.nanoTime() - t0) / 1000000L
           lastFailure = t
           val isFinal = attempt >= maxAttempts
-          onAttempt(AttemptOutcome.Failure(attempt, t, isFinal))
+          onAttempt(AttemptOutcome.Failure(attempt, t, isFinal, ms))
           if (!isFinal) {
             val wait = initialBackoff * (1L << (attempt - 1))   // 1×, 2×, 4×, …
             logger.warn(

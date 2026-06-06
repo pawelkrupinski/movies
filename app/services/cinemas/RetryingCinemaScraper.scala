@@ -52,9 +52,9 @@ class RetryingCinemaScraper(
     }
 
   private def recordAttempt(outcome: AttemptOutcome): Unit = outcome match {
-    case AttemptOutcome.Success(_) =>
-      monitor.recordSuccess(cinema.displayName)
-    case AttemptOutcome.Failure(_, t, _) =>
+    case AttemptOutcome.Success(_, durationMs) =>
+      monitor.recordSuccess(cinema.displayName, durationMs)
+    case AttemptOutcome.Failure(_, t, _, _) =>
       val msg = s"${t.getClass.getSimpleName}: ${Option(t.getMessage).getOrElse("")}".take(200)
       monitor.recordFailure(cinema.displayName, msg)
   }

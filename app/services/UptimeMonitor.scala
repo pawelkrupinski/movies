@@ -8,7 +8,7 @@ import org.bson.conversions.Bson
 import play.api.Logging
 
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -46,11 +46,44 @@ class UptimeMonitor(db: Option[MongoDatabase] = None) extends Logging {
   def addListener(f: BucketListener): Unit = { listeners.add(f); () }
   def removeListener(f: BucketListener): Unit = { listeners.remove(f); () }
 
-  def recordSuccess(service: String): Unit = {
+  def recordSuccess(service: String): Unit = recordSuccess(service, None)
+
+  /** Record a successful call along with how long it took, so the uptime page
+   *  can show per-service average latency (1h + total). */
+  def recordSuccess(service: String, durationMs: Long): Unit = recordSuccess(service, Some(durationMs))
+
+  private def recordSuccess(service: String, durationMs: Option[Long]): Unit = {
     val bucket = currentBucket(service)
     bucket.successes.incrementAndGet()
-    mongoUpsertSuccess(service)
+    durationMs.foreach { ms =>
+      bucket.durationSumMs.addAndGet(ms)
+      bucket.durationCount.incrementAndGet()
+    }
+    mongoUpsertSuccess(service, durationMs)
     notifyListeners(service, bucket)
+  }
+
+  /** Average duration (ms) of timed successful calls for `service` within the
+   *  last hour, or None when nothing was timed in that window. */
+  def averageMs1h(service: String): Option[Long] = averageMs(service, Some(60 * 60 * 1000L))
+
+  /** Average duration (ms) of timed successful calls for `service` across all
+   *  retained buckets (up to the 24h Mongo TTL), or None when none were timed. */
+  def averageMsTotal(service: String): Option[Long] = averageMs(service, None)
+
+  private def averageMs(service: String, windowMs: Option[Long]): Option[Long] = {
+    val buckets = data.get(service)
+    if (buckets == null) None
+    else {
+      val relevant = windowMs match {
+        case Some(w) => buckets.tailMap(bucketTimestamp(System.currentTimeMillis() - w)).values()
+        case None    => buckets.values()
+      }
+      var sum = 0L
+      var cnt = 0L
+      relevant.forEach { b => sum += b.durationSumMs.get(); cnt += b.durationCount.get() }
+      if (cnt == 0L) None else Some(sum / cnt)
+    }
   }
 
   def recordFailure(service: String, error: String): Unit = {
@@ -80,12 +113,15 @@ class UptimeMonitor(db: Option[MongoDatabase] = None) extends Logging {
     bucket
   }
 
-  private def mongoUpsertSuccess(service: String): Unit =
-    upsertBucket(service, Updates.combine(
-      Updates.inc("successes", 1),
-      Updates.setOnInsert("failures", 0),
-      Updates.setOnInsert("errors", java.util.Collections.emptyList[String]())
-    ))
+  private def mongoUpsertSuccess(service: String, durationMs: Option[Long]): Unit = {
+    val timing = durationMs.toList.flatMap(ms =>
+      List(Updates.inc("durationSumMs", ms), Updates.inc("durationCount", 1)))
+    upsertBucket(service, Updates.combine((
+      Updates.inc("successes", 1) ::
+      timing :::
+      List(Updates.setOnInsert("failures", 0),
+           Updates.setOnInsert("errors", java.util.Collections.emptyList[String]())))*))
+  }
 
   private def mongoUpsertFailure(service: String, error: String): Unit =
     upsertBucket(service, Updates.combine(
@@ -134,6 +170,8 @@ class UptimeMonitor(db: Option[MongoDatabase] = None) extends Logging {
         val bucket = buckets.computeIfAbsent(ts, t => Bucket(t))
         bucket.successes.addAndGet(doc.getInteger("successes", 0))
         bucket.failures.addAndGet(doc.getInteger("failures", 0))
+        bucket.durationSumMs.addAndGet(Try(doc.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L))
+        bucket.durationCount.addAndGet(doc.getInteger("durationCount", 0))
         Try(doc.getList("errors", classOf[String])).toOption.foreach { errs =>
           errs.asScala.take(MaxErrorsPerBucket).foreach(bucket.errors.add)
         }
@@ -157,6 +195,11 @@ object UptimeMonitor {
     val successes = new AtomicInteger(0)
     val failures  = new AtomicInteger(0)
     val errors    = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    // Timing of *successful* calls: total ms and how many were timed. Kept
+    // separate from `successes` so untimed successes (e.g. browser img events)
+    // don't skew the average toward zero.
+    val durationSumMs = new AtomicLong(0L)
+    val durationCount = new AtomicInteger(0)
   }
 
   case class BucketSnapshot(timestamp: Long, successes: Int, failures: Int, errors: Seq[String]) {
