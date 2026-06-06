@@ -40,10 +40,13 @@ primary_region = 'arn'
     type = 'http'
 
 [[vm]]
-  # 1 vCPU / 1 GB, matching `kinowo`'s shape for now. The whole point of the
-  # split is that this box can peg its vCPU on scrape+enrich without starving
-  # the serving app — they're separate machines. (Phase 4 may retune each
-  # independently once steady-state RSS is measured.)
+  # 2 shared vCPUs / 1 GB. The 3-city continuous scrape pegged a single shared
+  # vCPU (load avg ~2.7), risking Fly's shared-CPU balance throttling. A second
+  # vCPU halves per-core load to ~1.35 and doubles the throttle balance — and
+  # it's ~free here (the second shared vCPU is ~$0.77/mo, covered by the web
+  # scale-down's ~$2.50/mo saving). Memory plateaus ~600 MB, so 1 GB stays.
+  # (Scrape concurrency stays at its default 2 — the extra core is headroom,
+  # not a reason to fan out wider.) Bump to performance-1x if it still throttles.
   memory = '1gb'
   cpu_kind = 'shared'
-  cpus = 1
+  cpus = 2
