@@ -138,9 +138,15 @@ class WorkerWiring {
   lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
 
   // ── Showtime aggregation ──────────────────────────────────────────────────
+  // How many cinemas scrape in parallel — a slice of the shared backgroundBudget
+  // (see SharedExecutionBudget) so a cold-start scrape can't crowd out enrichment.
+  // Single source of truth: the test wiring's scrape spy reuses `showtimeFetchEc`
+  // rather than re-spelling this default.
+  def scrapeConcurrency: Int = Env.positiveInt("KINOWO_SCRAPE_CONCURRENCY", 4)
+  lazy val showtimeFetchEc = backgroundBudget.ec("showtime-fetch", scrapeConcurrency)
+
   lazy val showtimeCache = new ShowtimeCache(
-    cinemaScrapers, eventBus, movieCache,
-    backgroundBudget.ec("showtime-fetch", Env.positiveInt("KINOWO_SCRAPE_CONCURRENCY", 2))
+    cinemaScrapers, eventBus, movieCache, showtimeFetchEc
   )
 
   // Subscribe BEFORE start() so the bus's first MovieRecordCreated events reach

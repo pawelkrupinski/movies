@@ -23,8 +23,8 @@ class ShowtimeCache(
   bus:        EventBus,
   movieCache: MovieCache,
   // Defaults to a dedicated unbounded pool so tests/scripts construct it as
-  // before; `Wiring` injects a shared-budget EC (sub-capped at 2) so a burst of
-  // slow scrapes can't peg the box. See `SharedExecutionBudget`.
+  // before; `Wiring` injects a shared-budget EC (sub-capped at `scrapeConcurrency`)
+  // so a burst of slow scrapes can't peg the box. See `SharedExecutionBudget`.
   ec:          ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("showtime-fetch"),
   // Safety net so one pathologically-stuck pass can't stall the continuous loop
   // forever. Generous — a normal pass (even ~48 cinemas at 2-at-a-time) finishes

@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 
 import services.ShowtimeCache
 import services.movies.MovieService
-import tools.TestWiring
+import tools.{ExecutorProbes, TestWiring}
 
 /** The worker composition root must boot BOTH halves of the write pipeline:
  *  the scrape side (`showtimeCache`) and the enrich/TMDB side (`movieService`).
@@ -25,8 +25,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     @volatile var movieServiceStarted = false
 
     override lazy val showtimeCache: ShowtimeCache = new ShowtimeCache(
-      cinemaScrapers, eventBus, movieCache,
-      backgroundBudget.ec("showtime-fetch", tools.Env.positiveInt("KINOWO_SCRAPE_CONCURRENCY", 2))
+      cinemaScrapers, eventBus, movieCache, showtimeFetchEc
     ) {
       override def start(): Unit = showtimeStarted = true
     }
@@ -43,6 +42,18 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.start()
     wiring.showtimeStarted shouldBe true
     wiring.movieServiceStarted shouldBe true
+    wiring.stop()
+  }
+
+  // The number of cinemas that scrape concurrently. Probe the EXACT EC the
+  // wiring hands to `ShowtimeCache`: launch more tasks than the cap and assert
+  // the peak in-flight tops out at `scrapeConcurrency`. Guards the default
+  // against accidental drift (fails at the old value of 2).
+  "the showtime-fetch pool" should "let scrapeConcurrency (default 4) cinemas scrape at once" in {
+    val wiring = new SpyWiring
+    wiring.scrapeConcurrency shouldBe 4
+    val ec = wiring.showtimeFetchEc
+    ExecutorProbes.peakConcurrency(10, IndexedSeq(ec)) shouldBe wiring.scrapeConcurrency
     wiring.stop()
   }
 }
