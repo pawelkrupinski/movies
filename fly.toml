@@ -45,17 +45,15 @@ primary_region = 'arn'
     soft_limit = 25
 
 [[vm]]
-  # 512 MB / 2 shared vCPUs. Memory halved from 1 GB once scraping/enrichment
-  # moved to kinowo-worker (serving JVM, 192m heap, commits ~400 MB RSS). But
-  # serving is NOT idle: web's MovieCache stays warm by consuming the Mongo
-  # change stream, and the worker's 3-city scrape produces a heavy, continuous
-  # write stream — that processing pegged a single shared vCPU (load avg ~12)
-  # and made web unresponsive (connection refused). The 2nd vCPU fixes it; web
-  # at shared-cpu-2x/512 MB ($4.04/mo) is still cheaper than the old
-  # shared-cpu-1x/1 GB ($5.77/mo). cpu_kind stays shared.
+  # 512 MB / 1 shared vCPU (shared-cpu-1x). Memory halved from 1 GB once
+  # scraping/enrichment moved to kinowo-worker (serving JVM, 192m heap, commits
+  # ~400 MB RSS). NOTE: a previous pass ran this at 2 vCPUs because web's
+  # MovieCache consumes the Mongo change stream and the worker's continuous
+  # scrape write stream could peg a single shared vCPU; if that unresponsiveness
+  # returns, the 2nd vCPU is the lever. cpu_kind stays shared.
   memory = '512mb'
   cpu_kind = 'shared'
-  cpus = 2
+  cpus = 1
 
 [checks]
   [checks.health]
