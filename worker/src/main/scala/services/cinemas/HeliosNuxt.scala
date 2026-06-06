@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie, Helios, HeliosAlejaBielany, HeliosAlfa, HeliosBiala, HeliosBlueCity, HeliosBydgoszcz, HeliosForum, HeliosJurowiecka, HeliosLodz, HeliosMagnolia, HeliosMetropolia, HeliosRiviera, Movie, Showtime}
+import models.{Cinema, CinemaMovie, Helios, HeliosAlejaBielany, HeliosAlfa, HeliosBiala, HeliosBlueCity, HeliosBydgoszcz, HeliosForum, HeliosJurowiecka, HeliosKatowice, HeliosLodz, HeliosMagnolia, HeliosMetropolia, HeliosRiviera, HeliosSzczecin, Movie, Showtime}
 import play.api.libs.json._
 
 import java.time.LocalDateTime
@@ -40,6 +40,8 @@ object HeliosNuxt {
   val Biala        = HeliosCinema(HeliosBiala,        "bialystok", "kino-helios-biala",         "d516a0dd-b0ab-4e15-85b2-0286eaf6dde6")
   val Jurowiecka   = HeliosCinema(HeliosJurowiecka,   "bialystok", "kino-helios-jurowiecka",    "5c699a45-d219-4f4e-90f4-4aac0ca44a88")
   val Bydgoszcz    = HeliosCinema(HeliosBydgoszcz,    "bydgoszcz","kino-helios",                "8acb28a0-2e4b-4beb-a13a-bb97e17085cc")
+  val Katowice     = HeliosCinema(HeliosKatowice,     "katowice", "kino-helios",                "6f3ef265-ef99-48e9-84f4-ed862badb756")
+  val Szczecin     = HeliosCinema(HeliosSzczecin,     "szczecin", "kino-helios-chr-kupiec",     "3e60a454-c438-4c9b-b24f-7c6feff3b5ed")
 
   // Strip event/promo suffixes so that "Diabeł ubiera się u Prady 2 - KNT"
   // collapses to the canonical "Diabeł ubiera się u Prady 2".

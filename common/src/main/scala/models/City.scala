@@ -81,6 +81,26 @@ case object Lodz extends City(
   val cinemas: Seq[Cinema] = Cinema.lodz
 }
 
+case object Katowice extends City(
+  slug   = "katowice",
+  labels = CityLabels(nominative = "Katowice", genitivePlural = "katowickich", locative = "Katowicach"),
+  lat    = 50.2649,
+  lon    = 19.0238,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.katowice
+}
+
+case object Szczecin extends City(
+  slug   = "szczecin",
+  labels = CityLabels(nominative = "Szczecin", genitivePlural = "szczecińskich", locative = "Szczecinie"),
+  lat    = 53.4285,
+  lon    = 14.5528,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.szczecin
+}
+
 case object Bialystok extends City(
   slug   = "bialystok",
   labels = CityLabels(nominative = "Białystok", genitivePlural = "białostockich", locative = "Białymstoku"),
@@ -125,7 +145,7 @@ case object Lublin extends City(
 }
 
 object City {
-  val all: Seq[City] = Seq(Poznan, Wroclaw, Warszawa, Krakow, Lodz, Bialystok, Trojmiasto, Bydgoszcz, Lublin)
+  val all: Seq[City] = Seq(Poznan, Wroclaw, Warszawa, Krakow, Lodz, Katowice, Szczecin, Bialystok, Trojmiasto, Bydgoszcz, Lublin)
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 
   /** Compact JSON array of every city for the client (web `ALL_CITIES`,

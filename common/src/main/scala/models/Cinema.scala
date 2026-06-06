@@ -130,6 +130,28 @@ case object HeliosLodz extends Cinema("Helios Łódź", "Helios")
 
 case object KinoCharlie extends Cinema("Kino Charlie", "Charlie")
 
+// ── Katowice ─────────────────────────────────────────────────────────────────
+
+case object CinemaCityPunkt44 extends Cinema("Cinema City Punkt 44", "Punkt 44")
+
+case object CinemaCitySilesia extends Cinema("Cinema City Silesia", "Silesia")
+
+case object MultikinoKatowice extends Cinema("Multikino Katowice", "Multikino")
+
+case object HeliosKatowice extends Cinema("Helios Katowice", "Helios")
+
+case object KinoKosmos extends Cinema("Kino Kosmos", "Kosmos")
+
+case object KinoSwiatowid extends Cinema("Kino Światowid", "Światowid")
+
+// ── Szczecin ─────────────────────────────────────────────────────────────────
+
+case object HeliosSzczecin extends Cinema("Helios Kupiec", "Helios")
+
+case object MultikinoSzczecin extends Cinema("Multikino Szczecin", "Multikino")
+
+case object KinoPionier extends Cinema("Kino Pionier 1907", "Pionier")
+
 // ── Białystok ────────────────────────────────────────────────────────────────
 
 case object HeliosAlfa extends Cinema("Helios Alfa", "Alfa")
@@ -267,6 +289,30 @@ object Cinema {
     KinoCharlie,
   )
 
+  /** Katowice venues. Cinema City has two locations (Punkt 44 and Silesia),
+   *  Multikino one, Helios one. The art-house trio run by Silesia Film —
+   *  Kosmos and Światowid — are Bilety24-hosted independents wired as bespoke
+   *  scrapers. (Kinoteatr Rialto, the third Silesia Film venue, currently
+   *  programmes only concerts/theatre and no film repertoire, so it's omitted.) */
+  val katowice: Seq[Cinema] = Seq(
+    CinemaCityPunkt44,
+    CinemaCitySilesia,
+    MultikinoKatowice,
+    HeliosKatowice,
+    KinoKosmos,
+    KinoSwiatowid,
+  )
+
+  /** Szczecin venues. No Cinema City here; the two multiplexes are Helios (in
+   *  CH Kupiec) and Multikino. The lone independent is Kino Pionier 1907 — the
+   *  oldest continuously-operating cinema in the world — wired as a bespoke
+   *  scraper. */
+  val szczecin: Seq[Cinema] = Seq(
+    HeliosSzczecin,
+    MultikinoSzczecin,
+    KinoPionier,
+  )
+
   /** Białystok venues. No Cinema City or Multikino in the city; Helios (HQ'd in
    *  Łódź, strong in eastern Poland) runs three multiplexes — Alfa, Biała and
    *  Jurowiecka. The independent is Kino Forum, the film screen of the
@@ -318,7 +364,7 @@ object Cinema {
     KinoBajka,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ lodz ++ bialystok ++ trojmiasto ++ bydgoszcz ++ lublin
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ lodz ++ katowice ++ szczecin ++ bialystok ++ trojmiasto ++ bydgoszcz ++ lublin
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }
