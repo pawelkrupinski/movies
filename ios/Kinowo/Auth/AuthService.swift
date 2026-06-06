@@ -7,6 +7,10 @@ final class AuthService: NSObject, ObservableObject {
     @Published var user: UserProfile?
     @Published var isLoading = false
 
+    /// Armed when a sign-in starts so the post-OAuth foreground doesn't re-fire
+    /// the nearer-city prompt the user already answered. Read by `ContentView`.
+    let citySwitchSuppressor = CitySwitchSuppressor()
+
     private let session: URLSession
     private var webAuthSession: ASWebAuthenticationSession?
 
@@ -26,6 +30,9 @@ final class AuthService: NSObject, ObservableObject {
     }
 
     private func signInWithWeb(provider: String) async {
+        // The auth sheet briefly backgrounds the app; skip the nearer-city
+        // check that the return-to-foreground would otherwise re-fire.
+        citySwitchSuppressor.suppressNextCheck()
         isLoading = true
         defer { isLoading = false }
         let startURL = kinowoBaseURL.appendingPathComponent("auth/\(provider)/start")
@@ -59,6 +66,9 @@ final class AuthService: NSObject, ObservableObject {
     private nonisolated(unsafe) var appleSignInContinuation: CheckedContinuation<ASAuthorization, Error>?
 
     func signInWithApple() async {
+        // The Apple sheet briefly backgrounds the app; skip the nearer-city
+        // check that the return-to-foreground would otherwise re-fire.
+        citySwitchSuppressor.suppressNextCheck()
         isLoading = true
         defer { isLoading = false }
         do {

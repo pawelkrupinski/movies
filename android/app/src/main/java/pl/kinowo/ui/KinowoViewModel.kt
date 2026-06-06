@@ -73,6 +73,10 @@ class KinowoViewModel(
     // the ViewModel's scope; `start()` makes it observe the auth state.
     private val sync = StateSyncService(prefs, authRepo.user, userStateClient, viewModelScope)
 
+    // Skips the one nearer-city check that the post-OAuth resume would otherwise
+    // fire — armed when a web sign-in starts (see [signInWithGoogle]).
+    private val citySwitchSuppressor = CitySwitchSuppressor()
+
     init {
         sync.start()
         // Re-hydrate a session persisted across launches (iOS does this in
@@ -295,6 +299,9 @@ class KinowoViewModel(
      * for [KinowoApp] to render.
      */
     fun checkCitySwitch(context: Context) = viewModelScope.launch {
+        // A web sign-in just returned via a Custom Tab resume — skip the one
+        // check that would re-surface the prompt the user already answered.
+        if (citySwitchSuppressor.consumeShouldSkip()) return@launch
         if (citySwitchSuggestion != null) return@launch
         val chosen = selectedCity.value ?: return@launch
         val fix = LocationCityResolver(context).resolveIfGranted() ?: return@launch
@@ -324,8 +331,17 @@ class KinowoViewModel(
     fun detailsByTitle(title: String): FilmDetails? = details.value[title]
 
     // ── auth ──────────────────────────────────────────────────────────────
-    fun signInWithGoogle(context: Context) = authRepo.startWebSignIn(context, "google")
-    fun signInWithFacebook(context: Context) = authRepo.startWebSignIn(context, "facebook")
+    // Arm the suppressor before launching the Custom Tab: the resume when it
+    // returns must not re-fire the nearer-city prompt the user just dealt with.
+    fun signInWithGoogle(context: Context) {
+        citySwitchSuppressor.suppressNextCheck()
+        authRepo.startWebSignIn(context, "google")
+    }
+
+    fun signInWithFacebook(context: Context) {
+        citySwitchSuppressor.suppressNextCheck()
+        authRepo.startWebSignIn(context, "facebook")
+    }
 
     /** Redeem the one-shot code delivered by the `kinowo://auth-done` deep link. */
     fun handleAuthRedirect(code: String) = viewModelScope.launch { authRepo.exchangeCode(code) }

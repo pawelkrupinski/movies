@@ -4,6 +4,7 @@ struct ContentView: View {
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
     @EnvironmentObject var prefs: UserPreferences
+    @EnvironmentObject var authService: AuthService
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var dateFilter: DateFilter = .today
@@ -254,6 +255,9 @@ struct ContentView: View {
     /// moment it decides to show, so the alert fires at most once per
     /// `chosen→nearest` pair whether the user accepts or declines.
     private func maybeSuggestCitySwitch() async {
+        // A web / Apple sign-in just returned to the foreground — skip the one
+        // check that would re-surface the prompt the user already answered.
+        if authService.citySwitchSuppressor.consumeShouldSkip() { return }
         guard let chosen = prefs.selectedCity,
               citySwitchSuggestion == nil,
               let fix = await locationResolver.resolveIfAuthorized(),
