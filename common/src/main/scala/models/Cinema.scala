@@ -204,6 +204,52 @@ case object MultikinoLublin extends Cinema("Multikino Lublin", "Multikino")
 
 case object KinoBajka extends Cinema("Kino Bajka", "Bajka")
 
+// ── Częstochowa ──────────────────────────────────────────────────────────────
+
+case object CinemaCityCzestochowaJurajska extends Cinema("Cinema City Jurajska", "Jurajska")
+
+case object CinemaCityCzestochowaWolnosc extends Cinema("Cinema City Wolność", "Wolność")
+
+// ── Radom ────────────────────────────────────────────────────────────────────
+
+case object HeliosRadom extends Cinema("Helios Radom", "Helios")
+
+case object MultikinoRadom extends Cinema("Multikino Radom", "Multikino")
+
+// ── Sosnowiec ────────────────────────────────────────────────────────────────
+
+case object HeliosSosnowiec extends Cinema("Helios Sosnowiec", "Helios")
+
+case object CinemaCitySosnowiec extends Cinema("Cinema City Sosnowiec", "Cinema City")
+
+// ── Toruń ────────────────────────────────────────────────────────────────────
+
+case object CinemaCityTorunCzerwonaDroga extends Cinema("Cinema City Czerwona Droga", "Czerwona Droga")
+
+case object CinemaCityTorunPlaza extends Cinema("Cinema City Toruń Plaza", "Plaza")
+
+// ── Kielce ───────────────────────────────────────────────────────────────────
+
+case object HeliosKielce extends Cinema("Helios Kielce", "Helios")
+
+case object MultikinoKielce extends Cinema("Multikino Kielce", "Multikino")
+
+// ── Rzeszów ──────────────────────────────────────────────────────────────────
+
+case object HeliosRzeszow extends Cinema("Helios Rzeszów", "Helios")
+
+case object MultikinoRzeszow extends Cinema("Multikino Rzeszów", "Multikino")
+
+case object KinoZorza extends Cinema("Kino Zorza", "Zorza")
+
+// ── Gliwice ──────────────────────────────────────────────────────────────────
+
+case object CinemaCityGliwice extends Cinema("Cinema City Gliwice", "Cinema City")
+
+// ── Zabrze ───────────────────────────────────────────────────────────────────
+
+case object MultikinoZabrze extends Cinema("Multikino Zabrze", "Multikino")
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -364,7 +410,24 @@ object Cinema {
     KinoBajka,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ lodz ++ katowice ++ szczecin ++ bialystok ++ trojmiasto ++ bydgoszcz ++ lublin
+  val czestochowa: Seq[Cinema] = Seq(CinemaCityCzestochowaJurajska, CinemaCityCzestochowaWolnosc)
+
+  val radom: Seq[Cinema] = Seq(HeliosRadom, MultikinoRadom)
+
+  val sosnowiec: Seq[Cinema] = Seq(HeliosSosnowiec, CinemaCitySosnowiec)
+
+  val torun: Seq[Cinema] = Seq(CinemaCityTorunCzerwonaDroga, CinemaCityTorunPlaza)
+
+  val kielce: Seq[Cinema] = Seq(HeliosKielce, MultikinoKielce)
+
+  val rzeszow: Seq[Cinema] = Seq(HeliosRzeszow, MultikinoRzeszow, KinoZorza)
+
+  val gliwice: Seq[Cinema] = Seq(CinemaCityGliwice)
+
+  val zabrze: Seq[Cinema] = Seq(MultikinoZabrze)
+
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ lodz ++ katowice ++ szczecin ++ bialystok ++ trojmiasto ++ bydgoszcz ++ lublin ++
+    czestochowa ++ radom ++ sosnowiec ++ torun ++ kielce ++ rzeszow ++ gliwice ++ zabrze
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }
