@@ -14,7 +14,7 @@ import sbt._
 object Dependencies {
   // ── Versions ───────────────────────────────────────────────────────────────
   private val playVersion          = "3.0.10"
-  private val mongoScalaVersion    = "5.7.0"
+  private val mongoScalaVersion    = "5.7.1"
   private val caffeineVersion      = "3.2.4"
   private val jsoupVersion         = "1.22.2"
   private val sentryVersion        = "8.42.0"
