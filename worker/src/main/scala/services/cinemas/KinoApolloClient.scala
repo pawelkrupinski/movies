@@ -2,7 +2,7 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, LocalTime}
@@ -35,6 +35,10 @@ import scala.util.Try
  *   7. Poster     — `<img>` to a WordPress media URL
  */
 class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
+
+  // Static film detail pages cached across passes; the repertoire listing keeps
+  // the live `http` since its showtimes change every pass.
+  private val detailHttp = new CachingDetailFetch(http)
 
   val cinema: Cinema = KinoApollo
   // Production redirects from /kino to /kino/ — request the canonical-shaped URL
@@ -131,7 +135,7 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
     ParallelDetailFetch("kino-apollo-details", urls, 1.minute)(fetchDetail)
 
   private def fetchDetail(detailUrl: String): DetailMeta =
-    Try(http.get(detailUrl)).toOption.map(parseDetail).getOrElse(EmptyDetailMeta)
+    Try(detailHttp.get(detailUrl)).toOption.map(parseDetail).getOrElse(EmptyDetailMeta)
 
   def parseDetail(html: String): DetailMeta = {
     val doc = Jsoup.parse(html)

@@ -3,7 +3,7 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import play.api.libs.json._
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -13,6 +13,9 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
 
   val cinema: Cinema = KinoPalacowe
   private val BaseUrl = "https://kinopalacowe.pl"
+  // Static film pages cached across passes; the paginated calendar API keeps the
+  // live `http` since its screenings change every pass.
+  private val detailHttp = new CachingDetailFetch(http)
   private val ApiBase = s"$BaseUrl/public/api/calendar/?widgetHash=widget_17943"
 
   // Each film page carries a single one-liner like
@@ -53,7 +56,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
   private val EmptyMeta = FilmMeta(Seq.empty, Seq.empty, None, None, Seq.empty, None)
 
   private def fetchFilmMeta(filmUrl: String): FilmMeta =
-    Try(http.get(filmUrl)).toOption.flatMap(parseFilmMeta).getOrElse(EmptyMeta)
+    Try(detailHttp.get(filmUrl)).toOption.flatMap(parseFilmMeta).getOrElse(EmptyMeta)
 
   private def parseFilmMeta(html: String): Option[FilmMeta] = {
     val trailer = parseTrailer(html)

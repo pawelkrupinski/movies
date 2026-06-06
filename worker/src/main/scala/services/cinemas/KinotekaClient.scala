@@ -2,7 +2,7 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -18,6 +18,10 @@ import scala.util.Try
  * is deterministic.
  */
 class KinotekaClient(http: HttpFetch) extends CinemaScraper {
+
+  // Static detail pages cached across passes (CachingDetailFetch); the listing
+  // and day pages keep the live `http` since their showtimes change every pass.
+  private val detailHttp = new CachingDetailFetch(http)
 
   val cinema: Cinema = Kinoteka
 
@@ -39,7 +43,7 @@ class KinotekaClient(http: HttpFetch) extends CinemaScraper {
 
     val bySlug  = slots.groupBy(_.slug)
     val details = ParallelDetailFetch.keyed("kinoteka-details", bySlug.keys.toSeq.filter(_.nonEmpty), 1.minute)(s => s"$BaseUrl/film/$s/") { url =>
-      Try(http.get(url)).toOption.map(KinotekaClient.parseDetail).getOrElse(KinotekaClient.Detail.empty)
+      Try(detailHttp.get(url)).toOption.map(KinotekaClient.parseDetail).getOrElse(KinotekaClient.Detail.empty)
     }
 
     bySlug.toSeq.flatMap { case (slug, group) =>

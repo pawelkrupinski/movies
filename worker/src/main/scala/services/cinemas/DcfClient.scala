@@ -3,7 +3,7 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -20,6 +20,10 @@ import scala.util.Try
  * missing or slow detail fetch degrades to listing-only data for that film.
  */
 class DcfClient(http: HttpFetch) extends CinemaScraper {
+
+  // Static event detail pages cached across passes; the repertoire listing keeps
+  // the live `http` since its showtimes change every pass.
+  private val detailHttp = new CachingDetailFetch(http)
 
   val cinema: Cinema = DolnoslaskieCentrumFilmowe
 
@@ -55,7 +59,7 @@ class DcfClient(http: HttpFetch) extends CinemaScraper {
 
     val details: Map[String, DcfClient.Detail] =
       ParallelDetailFetch.keyed("dcf-details", byTitle.values.map(_.head.filmId).toSeq.distinct, 1.minute)(id => EventBase + id) { url =>
-        Try(http.get(url)).toOption.map(DcfClient.parseDetail).getOrElse(DcfClient.Detail.empty)
+        Try(detailHttp.get(url)).toOption.map(DcfClient.parseDetail).getOrElse(DcfClient.Detail.empty)
       }
 
     byTitle.toSeq.flatMap { case (title, group) =>

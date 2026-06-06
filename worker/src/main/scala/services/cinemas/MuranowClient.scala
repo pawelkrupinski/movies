@@ -3,7 +3,7 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -19,6 +19,10 @@ import scala.util.Try
  * year / countries / genres / synopsis, degrading to listing-only on failure.
  */
 class MuranowClient(http: HttpFetch) extends CinemaScraper {
+
+  // Static film node pages cached across passes; the calendar listing keeps the
+  // live `http` since its showtimes change every pass.
+  private val detailHttp = new CachingDetailFetch(http)
 
   val cinema: Cinema = KinoMuranow
 
@@ -57,7 +61,7 @@ class MuranowClient(http: HttpFetch) extends CinemaScraper {
 
     val bySlug  = slots.groupBy(_.slug)
     val details = ParallelDetailFetch.keyed("muranow-details", bySlug.keys.toSeq.filter(_.startsWith("/")), 1.minute)(slug => BaseUrl + slug) { url =>
-      Try(http.get(url)).toOption.map(MuranowClient.parseDetail).getOrElse(MuranowClient.Detail.empty)
+      Try(detailHttp.get(url)).toOption.map(MuranowClient.parseDetail).getOrElse(MuranowClient.Detail.empty)
     }
 
     bySlug.toSeq.flatMap { case (slug, group) =>

@@ -3,7 +3,7 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.concurrent.duration._
@@ -19,6 +19,10 @@ import scala.util.Try
  * — the latter is the JS app shell.)
  */
 class CytadelaClient(http: HttpFetch) extends CinemaScraper {
+
+  // Static /kino-film detail pages cached across passes; the repertoire listing
+  // keeps the live `http` since its showtimes change every pass.
+  private val detailHttp = new CachingDetailFetch(http)
 
   val cinema: Cinema = KinoCytadela
 
@@ -41,7 +45,7 @@ class CytadelaClient(http: HttpFetch) extends CinemaScraper {
 
     val bySlug  = slots.groupBy(_.slug)
     val details = ParallelDetailFetch.keyed("cytadela-details", bySlug.keys.toSeq.filter(_.nonEmpty), 1.minute)(s => s"$BaseUrl/kino-film/$s") { url =>
-      Try(http.get(url)).toOption.map(Jsoup.parse)
+      Try(detailHttp.get(url)).toOption.map(Jsoup.parse)
     }
 
     bySlug.toSeq.flatMap { case (slug, group) =>
