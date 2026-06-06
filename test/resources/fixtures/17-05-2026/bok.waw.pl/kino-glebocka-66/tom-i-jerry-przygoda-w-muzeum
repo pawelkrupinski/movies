@@ -27,12 +27,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital@0;1&family=Mulish:wght@200;300;400;700;800&display=swap" rel="stylesheet">
-    	<title>Kino dla Seniora | Tajny agent  - Białołęcki Ośrodek Kultury</title>
-	<meta name="description" content="Zapraszamy starszych koneserów kina na specjalne pokazy filmowe w wybrane czwartki w Kinie na Boku (ul. Vincenta van Gogha 1). Na ekranie pojawią się znakomite polskie i zagraniczne filmy fabularne oraz dokumentalne.
-
- Każdy seans poprzedzi wideo prelekcja Łukasza Maciejewskiego – cenionego krytyka filmowego, dziennikarza i kuratora programowego festiwali filmowych. Białołęckiej publiczności znany jest z inspirujących spotkań w Kinie Głębocka 66."/>
-	<link rel="alternate" hreflang="pl" href="https://bok.waw.pl/kino-na-boku/kino-dla-seniora-tajny-agent-906593255"/>
-	<link rel="alternate" hreflang="en" href="https://bok.waw.pl/en/kino-na-boku/kino-dla-seniora-tajny-agent-906593255"/>
+    	<title>Tom i Jerry: Przygoda w muzeum  - Białołęcki Ośrodek Kultury</title>
+	<meta name="description" content="Tom i Jerry przenoszą się w czasie do starożytnego Złotego Miasta, gdzie trafią w sam środek szczurzego spisku."/>
+	<link rel="alternate" hreflang="pl" href="https://bok.waw.pl/kino-glebocka-66/tom-i-jerry-przygoda-w-muzeum"/>
+	<link rel="alternate" hreflang="en" href="https://bok.waw.pl/en/kino-glebocka-66/tom-i-jerry-przygoda-w-muzeum"/>
  
 	<link type="text/plain" rel="author" href="/humans.txt"/>
 	<meta name="robots" content="index, follow"/>
@@ -61,19 +59,19 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/local/images/favicons/favicon-32x32.png?v=1.1.9">
 <link rel="icon" type="image/png" sizes="16x16" href="/local/images/favicons/favicon-16x16.png?v=1.1.9">
 <link rel="manifest" href="/local/images/favicons/site.webmanifest?v=1.1.9">	<!-- Schema.org markup for Google+ -->
-	<meta itemprop="name" content="Kino dla Seniora | Tajny agent  - Białołęcki Ośrodek Kultury">
-	<meta itemprop="description" content="Zapraszamy starszych koneserów kina na specjalne pokazy filmowe w wybrane czwartki w Kinie na Boku (ul. Vincenta van Gogha 1). Na ekranie pojawią się znakomite polskie i zagraniczne filmy fabularne">
-	 <meta itemprop="image" content="https://bok.waw.pl/upload/thumb/2026/03/tuo_1_auto_640x640.png">
+	<meta itemprop="name" content="Tom i Jerry: Przygoda w muzeum  - Białołęcki Ośrodek Kultury">
+	<meta itemprop="description" content="Tom i Jerry przenoszą się w czasie do starożytnego Złotego Miasta, gdzie trafią w sam środek szczurzego spisku.">
+	 <meta itemprop="image" content="https://bok.waw.pl/upload/thumb/2026/05/4_auto_640x640.jpg">
 	<!-- Twitter Card data -->
 	<meta name="twitter:card" content="summary_large_image">
-	<meta name="twitter:title" content="Kino dla Seniora | Tajny agent  - Białołęcki Ośrodek Kultury">
-	<meta name="twitter:description" content="Zapraszamy starszych koneserów kina na specjalne pokazy filmowe w wybrane czwartki w Kinie na Boku (ul. Vincenta van Gogha 1). Na ekranie pojawią się znakomite polskie i zagraniczne filmy fabularne">
+	<meta name="twitter:title" content="Tom i Jerry: Przygoda w muzeum  - Białołęcki Ośrodek Kultury">
+	<meta name="twitter:description" content="Tom i Jerry przenoszą się w czasie do starożytnego Złotego Miasta, gdzie trafią w sam środek szczurzego spisku.">
 	<!-- Twitter Summary card images must be at least 120x120px -->
-	<meta name="twitter:image" content="https://bok.waw.pl/upload/thumb/2026/03/tuo_1_auto_640x640.png">	<!-- Open Graph data -->
-	<meta property="og:title" content="Kino dla Seniora | Tajny agent  - Białołęcki Ośrodek Kultury"/>
+	<meta name="twitter:image" content="https://bok.waw.pl/upload/thumb/2026/05/4_auto_640x640.jpg">	<!-- Open Graph data -->
+	<meta property="og:title" content="Tom i Jerry: Przygoda w muzeum  - Białołęcki Ośrodek Kultury"/>
 	<meta property="og:type" content="article"/>
-	<meta property="og:url" content="https://bok.waw.pl/kino-na-boku/kino-dla-seniora-tajny-agent-906593255"/>
-	<meta property="og:image" content="https://bok.waw.pl/upload/thumb/2026/03/tuo_1_auto_640x640.png"/>	<meta property="og:description" content="Zapraszamy starszych koneserów kina na specjalne pokazy filmowe w wybrane czwartki w Kinie na Boku (ul. Vincenta van Gogha 1). Na ekranie pojawią się znakomite polskie i zagraniczne filmy fabularne"/> 
+	<meta property="og:url" content="https://bok.waw.pl/kino-glebocka-66/tom-i-jerry-przygoda-w-muzeum"/>
+	<meta property="og:image" content="https://bok.waw.pl/upload/thumb/2026/05/4_auto_640x640.jpg"/>	<meta property="og:description" content="Tom i Jerry przenoszą się w czasie do starożytnego Złotego Miasta, gdzie trafią w sam środek szczurzego spisku."/> 
 	<meta property="og:site_name" content=" - Białołęcki Ośrodek Kultury"/>
   </head>
   <body data-html-classes="item-type-movie">
@@ -82,7 +80,7 @@
         <div id="box-loading"></div>        <header>
           <div class="header-full bg-black">
   <h1 class="visually-hidden as-focus-to" tabindex="-1">
-  Kino dla Seniora | Tajny agent  - Białołęcki Ośrodek Kultury</h1>
+  Tom i Jerry: Przygoda w muzeum  - Białołęcki Ośrodek Kultury</h1>
 <a href="#c-start" class="page-f1 no-as" data-focus-to="#c-start">
   Przejdź do treści</a>  <div class="header-inner" data-affix-top="1">
     <div class="header-top bg-gray-300">
@@ -138,7 +136,7 @@
         </div>
         <div class="ms-auto">
           <ul class="header-main-menu list-unstyled d-none d-xl-flex justify-content-end align-items-center mb-0 fs-17 fw-bold">
-  <li class="menu-item menu-level1 menu-item-7706 "><a href="/wydarzenia" data-id="7706">Wydarzenia</a></li><li class="menu-item menu-level1 menu-item-7719 "><a href="/zajecia" data-id="7719">Zajęcia</a></li><li class="menu-item menu-level1 menu-item-7730 active"><a href="/kino-na-boku" data-id="7730">Kino na boku</a></li><li class="menu-item menu-level1 menu-item-7738 "><a href="/kino-glebocka-66" data-id="7738">Kino Głębocka 66</a></li><li class="menu-item menu-level1 menu-item-7743 "><a href="/3-pokoje-z-kuchnia/wydarzenia" data-id="7743">3 pokoje z kuchnią</a></li><li class="menu-item menu-level1 menu-item-393726726 "><a href="/modlinska-257/o-modlinskiej-257" data-id="393726726">Modlińska 257</a></li><li class="menu-item menu-level1 menu-item-7764 "><a href="/kontakt" data-id="7764">Kontakt</a></li><li class="menu-item menu-level1 menu-item-7757 "><a href="/o-nas/bialolecki-osrodek-kultury" data-id="7757">O nas</a></li></ul>          <a class="hamburger d-flex d-xl-none ms-auto no-as" data-bs-toggle="offcanvas" href="#mobileMenu" role="button" aria-controls="mobileMenu">
+  <li class="menu-item menu-level1 menu-item-7706 "><a href="/wydarzenia" data-id="7706">Wydarzenia</a></li><li class="menu-item menu-level1 menu-item-7719 "><a href="/zajecia" data-id="7719">Zajęcia</a></li><li class="menu-item menu-level1 menu-item-7730 "><a href="/kino-na-boku" data-id="7730">Kino na boku</a></li><li class="menu-item menu-level1 menu-item-7738 active"><a href="/kino-glebocka-66" data-id="7738">Kino Głębocka 66</a></li><li class="menu-item menu-level1 menu-item-7743 "><a href="/3-pokoje-z-kuchnia/wydarzenia" data-id="7743">3 pokoje z kuchnią</a></li><li class="menu-item menu-level1 menu-item-393726726 "><a href="/modlinska-257/o-modlinskiej-257" data-id="393726726">Modlińska 257</a></li><li class="menu-item menu-level1 menu-item-7764 "><a href="/kontakt" data-id="7764">Kontakt</a></li><li class="menu-item menu-level1 menu-item-7757 "><a href="/o-nas/bialolecki-osrodek-kultury" data-id="7757">O nas</a></li></ul>          <a class="hamburger d-flex d-xl-none ms-auto no-as" data-bs-toggle="offcanvas" href="#mobileMenu" role="button" aria-controls="mobileMenu">
             <div>
               <span></span>
               <span></span>
@@ -169,10 +167,10 @@
 </li><li class="item-menu-li-mobile ">
   <a href="/zajecia" class="d-block">
     Zajęcia  </a>
-</li><li class="item-menu-li-mobile active">
+</li><li class="item-menu-li-mobile ">
   <a href="/kino-na-boku" class="d-block">
     Kino na&nbsp;boku  </a>
-</li><li class="item-menu-li-mobile ">
+</li><li class="item-menu-li-mobile active">
   <a href="/kino-glebocka-66" class="d-block">
     Kino Głębocka 66  </a>
 </li><li class="item-menu-li-mobile ">
@@ -250,15 +248,15 @@
     <div class="row flex-sm-row-reverse">
       <div class="col-sm-5 mb-30 mb-sm-0">
         <div class="activity-full-header-right text-end pt-sm-15">
-  <a href="/kino-na-boku" class="item-back d-inline-block">
+  <a href="/kino-glebocka-66" class="item-back d-inline-block">
   <div class="d-flex" data-webflow="o:0,t:.4,d:0;o:0,t:.4,d:.1">
     <span>Powrót</span>
     <svg class="i-md ms-3" style="" viewBox="0 0 21 17" xmlns="http://www.w3.org/2000/svg"><path d="M6.07991192,9.95161065 C6.40381269,10.2982755 6.36581077,10.8247056 5.99491846,11.1274845 C5.82583615,11.2655536 5.61695885,11.3333333 5.40893769,11.3333333 C5.16053192,11.3333333 4.91357192,11.2366415 4.73706692,11.0483155 L4.73706692,11.0483155 L0.536404615,6.55520654 C0.221856923,6.43229816 0,6.13462492 0,5.78688426 C0,5.76590787 0.000807692308,5.74511364 0.00239076923,5.72452906 C-0.0138357692,5.5101704 0.0588403846,5.29091735 0.220209231,5.11840783 L0.220209231,5.11840783 L4.73702654,0.284965394 C5.06122615,-0.0614209391 5.62407462,-0.0969833202 5.99491846,0.205517108 C6.36577038,0.508296823 6.40351385,1.03472611 6.07991192,1.38139173 L6.07991192,1.38139173 L2.73726923,4.95752387 L14.7627577,4.9583334 C18.1345177,4.9583334 20.8900246,7.55453292 20.9967854,10.7846171 L21,10.9791667 C21,14.2989138 18.2016692,17 14.7627577,17 L14.7627577,17 L2.00271346,17 C1.52865462,17 1.14441923,16.6290803 1.14441923,16.1714492 C1.14441923,15.7138173 1.52865462,15.3428984 2.00271346,15.3428984 L2.00271346,15.3428984 L14.7627577,15.3428984 C17.2555223,15.3428984 19.2834115,13.3853144 19.2834115,10.9791667 C19.2834115,8.57301913 17.2555223,6.61543511 14.7627577,6.61543511 L14.7627577,6.61543511 L2.96261538,6.61542864 L6.07991192,9.95161065 Z"/></svg>  </div>
 </a></div>      </div>
       <div class="col-sm-7">
-        <a href="/kino-na-boku" class="activity-full-title fs-50 fw-black">
-  <div data-as-view="basic" data-as-id="i-f-t-7730">
-    Kino na&nbsp;boku  </div>
+        <a href="/kino-glebocka-66" class="activity-full-title fs-50 fw-black">
+  <div data-as-view="basic" data-as-id="i-f-t-7738">
+    Kino Głębocka 66  </div>
 </a>      </div>
     </div>  </div>
 </div>        <div class="movie-main item-main">
@@ -266,10 +264,10 @@
     <div data-webflow="o:0,t:.8,d:0;o:0,t:.4,d:.1">
       <div class="item-image-lg">
   <picture>
-  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/03/tuo_1_auto_1800x900.png" data-min-width="1200"/>
-  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/03/tuo_1_auto_1600x800.png" data-min-width="992"/>
-  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/03/tuo_1_auto_1400x700.png" data-min-width="768"/>
-  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/03/tuo_1_auto_900x800.png" data-min-width="576"/>
+  <source media="(min-width: 1200px)" srcset="/upload/thumb/2026/05/4_auto_1800x900.jpg" data-min-width="1200"/>
+  <source media="(min-width: 992px)" srcset="/upload/thumb/2026/05/4_auto_1600x800.jpg" data-min-width="992"/>
+  <source media="(min-width: 768px)" srcset="/upload/thumb/2026/05/4_auto_1400x700.jpg" data-min-width="768"/>
+  <source media="(min-width: 576px)" srcset="/upload/thumb/2026/05/4_auto_900x800.jpg" data-min-width="576"/>
   <script data-pagespeed-no-defer>//<![CDATA[
 (function(){for(var g="function"==typeof Object.defineProperties?Object.defineProperty:function(b,c,a){if(a.get||a.set)throw new TypeError("ES3 does not support getters and setters.");b!=Array.prototype&&b!=Object.prototype&&(b[c]=a.value)},h="undefined"!=typeof window&&window===this?this:"undefined"!=typeof global&&null!=global?global:this,k=["String","prototype","repeat"],l=0;l<k.length-1;l++){var m=k[l];m in h||(h[m]={});h=h[m]}
 var n=k[k.length-1],p=h[n],q=p?p:function(b){var c;if(null==this)throw new TypeError("The 'this' value for String.prototype.repeat must not be null or undefined");c=this+"";if(0>b||1342177279<b)throw new RangeError("Invalid count value");b|=0;for(var a="";b;)if(b&1&&(a+=c),b>>>=1)c+=c;return a};q!=p&&null!=q&&g(h,n,{configurable:!0,writable:!0,value:q});var t=this;
@@ -281,8 +279,8 @@ new XMLHttpRequest;else if(window.ActiveXObject)try{f=new ActiveXObject("Msxml2.
 function B(){var b={},c;c=document.getElementsByTagName("IMG");if(!c.length)return{};var a=c[0];if(!("naturalWidth"in a&&"naturalHeight"in a))return{};for(var d=0;a=c[d];++d){var e=a.getAttribute("data-pagespeed-url-hash");e&&(!(e in b)&&0<a.width&&0<a.height&&0<a.naturalWidth&&0<a.naturalHeight||e in b&&a.width>=b[e].o&&a.height>=b[e].m)&&(b[e]={rw:a.width,rh:a.height,ow:a.naturalWidth,oh:a.naturalHeight})}return b}var C="";u("pagespeed.CriticalImages.getBeaconData",function(){return C});
 u("pagespeed.CriticalImages.Run",function(b,c,a,d,e,f){var r=new y(b,c,a,e,f);x=r;d&&w(function(){window.setTimeout(function(){A(r)},0)})});})();
 
-pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-na-boku/kino-dla-seniora-tajny-agent-906593255','Tt5XTryosv',true,false,'iVVBIwX57XU');
-//]]></script><img src="/upload/thumb/2026/03/xtuo_1_auto_800x900.png.pagespeed.ic.Cev9AdssK7.jpg" srcset="/upload/thumb/2026/03/xtuo_1_auto_800x900.png.pagespeed.ic.Cev9AdssK7.jpg" alt="mężczyzna w białym t-shircie rozmawia w budce telefonicznej" title="" style="object-position: 36.59364414951973% 21.399040150572755%; " data-pagespeed-url-hash="4287413246" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
+pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-glebocka-66/tom-i-jerry-przygoda-w-muzeum','Tt5XTryosv',true,false,'Rx1VLh7b_ns');
+//]]></script><img src="/upload/thumb/2026/05/x4_auto_800x900.jpg.pagespeed.ic.L7POBX41ev.jpg" srcset="/upload/thumb/2026/05/x4_auto_800x900.jpg.pagespeed.ic.L7POBX41ev.jpg" alt="kot trzyma w łapie mysz: kadr z animacji &quot;Tom i Jerry&quot;" title="" style="object-position: 48.69354012819402% 36.80802689981525%; " data-pagespeed-url-hash="2387128560" onload="pagespeed.CriticalImages.checkImageForCriticality(this);"/>
 </picture></div>    </div>
   </div>
   <div class="bg-white container-negative py-40">
@@ -293,61 +291,114 @@ pagespeed.CriticalImages.Run('/mod_pagespeed_beacon','https://bok.waw.pl/kino-na
   <div class="row">
     <div class="col-lg-9 col-md-8 mb-10 mb-md-0">
               <h2 class="fs-44 fw-black mb-0">
-          Kino dla Seniora | Tajny agent        </h2>
+          Tom i&nbsp;Jerry: Przygoda w&nbsp;muzeum        </h2>
                 </div>
     <div class="col-lg-3 col-md-4 text-md-end pt-md-1">
-          </div>
+      <div class="move-tickets-cfa">
+  <a href="#MovieCh566271955" class="btn btn-dark scroll-to no-as">
+    Bilety  </a>
+</div>    </div>
   </div>  
 </div>          <div class="movie-content">
       <div class="info-attr body fw-bold" data-webflow="o:0,t:.4,d:.1;o:0,t:.4,d:.05">
-      <p>Zapraszamy starszych koneserów kina na&nbsp;specjalne pokazy filmowe w&nbsp;wybrane czwartki w&nbsp;Kinie na&nbsp;Boku (ul. Vincenta van Gogha 1). Na&nbsp;ekranie pojawią się znakomite polskie i&nbsp;zagraniczne filmy fabularne oraz dokumentalne.</p> <p>Każdy seans poprzedzi wideo prelekcja Łukasza Maciejewskiego – cenionego krytyka filmowego, dziennikarza i&nbsp;kuratora programowego festiwali filmowych. Białołęckiej publiczności znany jest z&nbsp;inspirujących spotkań w&nbsp;Kinie Głębocka 66.</p>     </div>
+      <p class="Default">Tom i&nbsp;Jerry przenoszą się w&nbsp;czasie do&nbsp;starożytnego Złotego Miasta, gdzie trafią w&nbsp;sam środek szczurzego spisku.</p>     </div>
         <div class="content-attr body" data-webflow="o:0,t:.4,d:.1;o:0,t:.4,d:.05">
-      <p class="tukiembed-wrapper tukiembed-youtube embed-responsive embed-responsive-16by9"><iframe src="https://www.youtube.com/embed/d16xft0iJUE?autoplay=1&amp;mute=1&amp;enablejsapi=1"></iframe></p> <p><strong>11 czerwca | 12:00</strong></p> <p>„Tajny agent" to jeden z&nbsp;najbardziej elektryzujących tytułów ostatnich lat. Nominowany do&nbsp;Oscara w&nbsp;4 kategoriach (w tym za Najlepszy Film), zdobywca dwóch Złotych Globów, dwóch nagród w&nbsp;konkursie festiwalu w&nbsp;Cannes. Film Klebera Mendonçy Filho („Aquarius", „Bacurau"), należącego do&nbsp;czołówki najwybitniejszych reżyserów współczesnego kina światowego, przywołuje ducha klasycznego kina gangsterskiego.</p> <p>Film Mendonçy Filho rozgrywa się w&nbsp;Brazylii lat 70. podczas karnawału. Zanurzone w&nbsp;palącym słońcu miasto Recife jest na&nbsp;granicy szaleństwa: w&nbsp;trakcie roztańczonego święta giną ludzie, gdzieś na&nbsp;plaży znaleziono rekina z&nbsp;ludzką nogą w&nbsp;brzuchu, a&nbsp;wśród tłumów krążą dwaj zabójcy z&nbsp;tajną misją... Kolory i&nbsp;radość to tylko pozory – to czasy brutalnej wojskowej dyktatury. Marcelo, bohater „Tajnego agenta", to mężczyzna przypadkowo uwikłany w&nbsp;sieć politycznych i&nbsp;kryminalnych intryg sięgających szczytów władzy. Był uczciwy, więc stał się celem skorumpowanego systemu i&nbsp;teraz każdy kolejny krok może kosztować go życie. Jak ocalić siebie i&nbsp;rodzinę w&nbsp;świecie brutalnej przemocy, fałszywych tożsamości, podsłuchów i&nbsp;kłamstw?</p> <p><a href="https://iframe17.biletyna.pl/event/view/id/658183" target="_blank"><strong>Kup bilet na&nbsp;seans</strong></a></p>     </div>
+      <p class="tukiembed-wrapper tukiembed-youtube embed-responsive embed-responsive-16by9"><iframe src="https://www.youtube.com/embed/SYysA0ST5Qc?autoplay=1&amp;mute=1&amp;enablejsapi=1"></iframe></p> <p>Podczas pościgu w&nbsp;nowojorskim Metropolitan Museum Tom i&nbsp;Jerry przypadkowo uruchamiają mityczny Astralny Kompas, który przenosi ich do&nbsp;olśniewającego Złotego Miasta rodem ze&nbsp;starożytnych legend. Tom zostaje uznany za bóstwo i&nbsp;staje się ulubieńcem władcy oraz jego poddanych. Tymczasem niedoceniony i&nbsp;zazdrosny Jerry wpada w&nbsp;sidła charyzmatycznego, lecz niebezpiecznego szczurzego bossa.</p> <p>Wkrótce okaże, że władca miasta i&nbsp;szczurzy boss toczą między sobą odwieczną walkę o&nbsp;władanie nad Złotym Miastem, a&nbsp;Tom i&nbsp;Jerry mają być tylko pionkami w&nbsp;ich grze. Aby przetrwać i&nbsp;ocalić poddanych będą musieli zawiesić swoją odwieczną rywalizację i&nbsp;łapa w&nbsp;łapę staną w&nbsp;obronie dobra.</p>     </div>
   </div>          <div class="activity-main-footer">
   </div>        </div>
         <div class="col-md-4">
           <div class="movie-sidebar mb-20 bok-sticky" data-webflow="o:0,t:.3,d:.1;o:0,t:.3,d:0">
       <div class="meta-row mb-10">
-            <div class="body">
-        <strong>11 czerwca</strong>      </div>
-    </div>
-      <div class="meta-row mb-10">
               <div class="fw-bold">
           Reżyseria:
         </div>
             <div class="body">
-        Kleber Mendonça Filho      </div>
-    </div>
-      <div class="meta-row mb-10">
-              <div class="fw-bold">
-          Obsada:
-        </div>
-            <div class="body">
-        Wagner Moura, Maria Fernanda Cândido, Gabriel Leone      </div>
+        Gang Zhang      </div>
     </div>
       <div class="meta-row mb-10">
               <div class="fw-bold">
           Produkcja:
         </div>
             <div class="body">
-        Niemcy, Francja, Holandia, Brazylia      </div>
+        Chiny, USA      </div>
     </div>
       <div class="meta-row mb-10">
               <div class="fw-bold">
           Czas trwania:
         </div>
             <div class="body">
-        161 min      </div>
+        99 min      </div>
     </div>
       <div class="meta-row mb-10">
             <div class="body">
-        <strong>Ograniczenie wiekowe:</strong> 15+<br/> <br/> <strong>Napisy</strong>      </div>
+        <strong>Ograniczenie wiekowe: </strong>6+<br/> <br/> <strong>Dubbing</strong>      </div>
     </div>
   </div>        </div>
       </div>    </div>
   </div>
 </div>    <div class="movie-full-footer">
-  </div>  </div>
+  <div id="MovieCh566271955" class="movie-children py-30" data-as-view="list" data-as-id="i-ch-it-566271955">
+  <h3 class="fs-34 mb-20">
+    Seanse filmowe  </h3>
+  <div class="list-wrapper mb-30">
+    <div class="movieshow-list p-relative basic-list-item mb-30 mb-sm-20">
+  <a href="/kino-glebocka-66/tom-i-jerry-przygoda-w-muzeum" class="parent-link d-block bg-white-hover mb-2">
+    <div class="row g-0 align-items-stretch">
+      <div class="col-xl-3 col-lg-4 col-md-5 col-date-time">
+        <div class="row g-0 align-items-stretch text-center">
+          <div class="col-4 bg-black">
+            <div class="fs-24 fw-black py-3">
+              12.06            </div>
+          </div>
+          <div class="col-4 border-end">
+            <div class="fs-24 fw-light py-3">
+              Pt.            </div>
+          </div>
+          <div class="col-4 col-time">
+            <div class="flex-center h-100">
+              <div class="fs-16 fw-black px-2 py-1 bg-black">
+                12:00              </div>
+            </div>
+          </div>
+        </div>      </div>
+      <div class="col-xl-7 col-lg-6 col-md-5">
+                  <div class="fs-24 fw-black py-3 px-3">
+            Tom i&nbsp;Jerry: Przygoda w&nbsp;muzeum          </div>
+              </div>
+    </div>  </a>
+  
+    <a href="https://iframe17.biletyna.pl/event/view/id/666143" class="item-tickets-cfa btn btn-dark d-block d-md-inline-block" target="_blank">
+  Kup bilet  </a>
+</div><div class="movieshow-list p-relative basic-list-item mb-30 mb-sm-20">
+  <a href="/kino-glebocka-66/tom-i-jerry-przygoda-w-muzeum" class="parent-link d-block bg-white-hover mb-2">
+    <div class="row g-0 align-items-stretch">
+      <div class="col-xl-3 col-lg-4 col-md-5 col-date-time">
+        <div class="row g-0 align-items-stretch text-center">
+          <div class="col-4 bg-black">
+            <div class="fs-24 fw-black py-3">
+              12.06            </div>
+          </div>
+          <div class="col-4 border-end">
+            <div class="fs-24 fw-light py-3">
+              Pt.            </div>
+          </div>
+          <div class="col-4 col-time">
+            <div class="flex-center h-100">
+              <div class="fs-16 fw-black px-2 py-1 bg-black">
+                14:00              </div>
+            </div>
+          </div>
+        </div>      </div>
+      <div class="col-xl-7 col-lg-6 col-md-5">
+                  <div class="fs-24 fw-black py-3 px-3">
+            Tom i&nbsp;Jerry: Przygoda w&nbsp;muzeum          </div>
+              </div>
+    </div>  </a>
+  
+    <a href="https://iframe17.biletyna.pl/event/view/id/666144" class="item-tickets-cfa btn btn-dark d-block d-md-inline-block" target="_blank">
+  Kup bilet  </a>
+</div>  </div>
+  </div></div>  </div>
 </div>        </main>
         <footer>
           <div class="footer-full bg-white">
