@@ -44,7 +44,11 @@ import scala.util.{Failure, Success, Try}
  * `close()` in its shutdown hook; each repo's own `close()` becomes a
  * no-op when it borrowed the database from here.
  */
-class MongoConnection(uri: Option[String], dbName: String, required: Boolean) extends Logging {
+class MongoConnection(
+    uri: Option[String],
+    dbName: String,
+    required: Boolean,
+    probeTimeout: FiniteDuration = MongoConnection.DefaultProbeTimeout) extends Logging {
 
   // Eager — connecting now (at construction) surfaces wiring / network
   // problems at boot rather than at the first request. `Wiring` touches
@@ -76,8 +80,9 @@ class MongoConnection(uri: Option[String], dbName: String, required: Boolean) ex
           // (same `countDocuments`-against-a-known-collection probe the
           // old per-repo init used). Picking `movies` here because it
           // exists in every environment; an empty collection still
-          // round-trips fine.
-          Await.result(db.getCollection("movies").countDocuments().toFuture(), 10.seconds)
+          // round-trips fine. The wait is `probeTimeout` (default 30s) rather
+          // than the old hard-coded 10s — see `DefaultProbeTimeout`.
+          Await.result(db.getCollection("movies").countDocuments().toFuture(), probeTimeout)
           logger.info(s"MongoConnection connected to $dbName")
           (client, db)
         } match {
@@ -106,10 +111,30 @@ object MongoConnection {
    *  stays trivially unit-testable. */
   def isRequired(testMode: Boolean, optedOut: Boolean): Boolean = !testMode && !optedOut
 
+  /** Boot connectivity-probe timeout. Raised from a hard-coded 10s after the
+   *  2026-06-06 incident: the self-hosted Mongo went unresponsive under memory
+   *  pressure (it OOM-killed minutes later), the 10s `countDocuments` probe
+   *  timed out, the web process exited 255 → crash-looped → Fly hit the
+   *  max-restart-count and stopped the machine. 30s rides out a momentarily
+   *  slow or freshly-restarted Mongo. Override with
+   *  `MONGODB_PROBE_TIMEOUT_SECONDS`. */
+  val DefaultProbeTimeout: FiniteDuration = 30.seconds
+
+  /** Parse `MONGODB_PROBE_TIMEOUT_SECONDS` into a positive second count,
+   *  falling back to `DefaultProbeTimeout` on absent / non-numeric /
+   *  non-positive input. Pure (takes the raw string, not the env) so it's
+   *  unit-testable without poking at process env vars. */
+  private[services] def parseProbeTimeout(raw: Option[String]): FiniteDuration =
+    raw.flatMap(_.toIntOption).filter(_ > 0).map(_.seconds).getOrElse(DefaultProbeTimeout)
+
   /** Build from the ambient environment (`MONGODB_URI` / `MONGODB_DB`,
    *  defaulting the db name to `kinowo`) — the wiring's entry point.
    *  `required = true` turns a missing or unreachable Mongo into a hard boot
    *  failure instead of silent degradation. */
   def fromEnv(required: Boolean): MongoConnection =
-    new MongoConnection(Env.get("MONGODB_URI"), Env.get("MONGODB_DB").getOrElse("kinowo"), required)
+    new MongoConnection(
+      Env.get("MONGODB_URI"),
+      Env.get("MONGODB_DB").getOrElse("kinowo"),
+      required,
+      parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")))
 }
