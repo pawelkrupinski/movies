@@ -17,7 +17,16 @@ class RealHttpFetch extends HttpFetch with Logging {
   // thread that nobody noticed. The recording script can't: one stuck
   // request blocks `fullySyncOne`'s sequential loop and the rest of the
   // 200+ rows never run.
-  private val ConnectTimeout = Duration.ofSeconds(10)
+  // Connect timeout bounds only the TCP handshake — a live host completes it
+  // in well under a second, so 5s is generous headroom. Keeping it low matters
+  // for the fan-out scrapers: ParallelDetailFetch runs just 2 fetches at once,
+  // so a dead/refusing host that hangs the connect pins HALF the budget for the
+  // whole timeout. At 10s a couple of unreachable detail URLs stalled a wave for
+  // 10s each (most of Kinoteka's ~57s scrape); at 5s the slot is freed twice as
+  // fast to fetch the films that *are* reachable. The request timeout below is
+  // separate — it bounds reading the response, where a slow upstream legitimately
+  // needs longer — so trimming connect doesn't cut off slow-but-alive servers.
+  private val ConnectTimeout = Duration.ofSeconds(5)
   private val RequestTimeout = Duration.ofSeconds(30)
 
   // `CookieManager` makes the client a well-behaved HTTP citizen: any
