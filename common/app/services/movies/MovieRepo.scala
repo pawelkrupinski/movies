@@ -1,6 +1,5 @@
 package services.movies
 
-import com.mongodb.MongoException
 import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.MovieRecord
@@ -400,5 +399,5 @@ class MongoMovieRepo(
   // their own row, and only one can be updated per hourly refresh tick (the
   // tick walks the deduplicated Caffeine cache).
   private def docId(title: String, year: Option[Int]): String =
-    s"${MovieService.normalize(title)}|${year.map(_.toString).getOrElse("")}"
+    s"${TitleNormalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
 }

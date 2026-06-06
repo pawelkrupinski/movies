@@ -18,7 +18,7 @@ import scala.util.Try
  * the original casing for display in snapshots.
  */
 private[services] case class CacheKey(cleanTitle: String, year: Option[Int]) {
-  private val normalized = MovieService.normalize(cleanTitle)
+  private val normalized = TitleNormalizer.sanitize(cleanTitle)
   override def hashCode(): Int = (normalized, year).hashCode()
   override def equals(other: Any): Boolean = other match {
     case k: CacheKey => k.normalized == normalized && k.year == year
@@ -116,7 +116,7 @@ class CaffeineMovieCache(
   // normalised titles still scrape in parallel.
   private val titleLocks = new ConcurrentHashMap[String, AnyRef]()
   private def lockFor(rawTitle: String): AnyRef =
-    titleLocks.computeIfAbsent(MovieService.normalize(rawTitle), _ => new Object())
+    titleLocks.computeIfAbsent(TitleNormalizer.sanitize(rawTitle), _ => new Object())
 
   /** The lock that serialises every read-modify-write on rows whose
    *  normalised cleanTitle matches `cleanTitle`. Reentrant (JVM
@@ -142,7 +142,7 @@ class CaffeineMovieCache(
   rehydrate()
 
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey =
-    CacheKey(MovieService.searchTitle(title), year)
+    CacheKey(TitleNormalizer.searchTitle(title), year)
 
   private[services] def get(key: CacheKey): Option[MovieRecord] =
     Option(positive.getIfPresent(key))
@@ -217,12 +217,12 @@ class CaffeineMovieCache(
    *  invisible here — see the `put` docstring above. */
   private def siblingKeyByTmdb(tid: Int, excluding: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
-    val target = MovieService.normalize(excluding.cleanTitle)
+    val target = TitleNormalizer.sanitize(excluding.cleanTitle)
     positive.asMap().asScala.iterator
       .find { case (k, v) =>
         k != excluding &&
         v.tmdbId.contains(tid) &&
-        MovieService.normalize(k.cleanTitle) == target
+        TitleNormalizer.sanitize(k.cleanTitle) == target
       }
       .map(_._1)
   }
@@ -312,7 +312,7 @@ class CaffeineMovieCache(
    *  TMDB stage when a no-year scrape's resolved year promotes the row
    *  to a year-keyed identity. */
   private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord): Unit = {
-    require(MovieService.normalize(oldKey.cleanTitle) == MovieService.normalize(newKey.cleanTitle),
+    require(TitleNormalizer.sanitize(oldKey.cleanTitle) == TitleNormalizer.sanitize(newKey.cleanTitle),
       s"rekey requires same normalised cleanTitle: ${oldKey.cleanTitle} vs ${newKey.cleanTitle}")
     withTitleLock(oldKey.cleanTitle) {
       val current = Option(positive.getIfPresent(oldKey)).getOrElse(MovieRecord())
@@ -500,7 +500,7 @@ class CaffeineMovieCache(
    *  ambiguous (cross-film collision) and zero-match cases fall through to
    *  None and the caller creates a fresh row.
    *
-   *  Match uses `MovieService.normalize` so an Arabic/Roman /
+   *  Match uses `TitleNormalizer.sanitize` so an Arabic/Roman /
    *  punctuation / case variant ("Mortal Kombat 2") redirects onto a row
    *  that only knows the canonical form ("Mortal Kombat II") — without
    *  this, the FIRST cinema's raw spelling would pin the row's
@@ -509,12 +509,12 @@ class CaffeineMovieCache(
   private def redirectToExistingVariant(primary: CacheKey): Option[CacheKey] = {
     if (positive.getIfPresent(primary) != null) return None
     import scala.jdk.CollectionConverters._
-    val normalizedRaw = MovieService.normalize(primary.cleanTitle)
+    val normalizedRaw = TitleNormalizer.sanitize(primary.cleanTitle)
     // Match by cleanTitle normalisation. Cross-script titles produce
     // different normalised forms (sanitize keeps Unicode letters), so a
     // Cyrillic row can't be matched by a Latin scrape and vice versa.
     val candidates = positive.asMap().asScala.iterator
-      .filter { case (k, _) => MovieService.normalize(k.cleanTitle) == normalizedRaw }
+      .filter { case (k, _) => TitleNormalizer.sanitize(k.cleanTitle) == normalizedRaw }
       .map(_._1)
       .toSet  // unique by CacheKey (which dedups by normalized form)
     if (candidates.size == 1) Some(candidates.head) else None
@@ -522,9 +522,9 @@ class CaffeineMovieCache(
 
   def hasResolvedSiblingByTitle(rawTitle: String): Boolean = {
     import scala.jdk.CollectionConverters._
-    val normalizedRaw = MovieService.normalize(rawTitle)
+    val normalizedRaw = TitleNormalizer.sanitize(rawTitle)
     positive.asMap().asScala.iterator.exists { case (k, e) =>
-      e.tmdbId.isDefined && MovieService.normalize(k.cleanTitle) == normalizedRaw
+      e.tmdbId.isDefined && TitleNormalizer.sanitize(k.cleanTitle) == normalizedRaw
     }
   }
 
