@@ -32,13 +32,16 @@ ThisBuild / javacOptions ++= Seq("--release", "21")
 lazy val common = (project in file("common"))
   .settings(
     name := "common",
-    Compile / scalaSource := baseDirectory.value / "app",
+    // standard sbt layout: src/main/scala, src/test/scala, src/test/resources
     libraryDependencies ++= Seq(
       // play.api.Logging (the only Play API the shared code uses)
       "org.playframework"             %% "play"                % "3.0.10",
       "org.mongodb.scala"             %% "mongo-scala-driver"  % "5.7.0",
       "com.github.ben-manes.caffeine" %  "caffeine"            % "3.2.4",
       "org.jsoup"                     %  "jsoup"               % "1.22.2",
+      // Shared test helpers/fakes live in common/test and are re-exported to web
+      // and worker via `dependsOn(common % "test->test")`.
+      "org.scalatestplus.play"        %% "scalatestplus-play"  % "7.0.2" % Test,
     )
   )
 
@@ -50,13 +53,12 @@ lazy val common = (project in file("common"))
 // MovieCache to Mongo; the web app's cache picks those writes up via the Mongo
 // change stream, so the two processes share no in-process state.
 lazy val worker = (project in file("worker"))
-  .dependsOn(common)
+  .dependsOn(common % "compile->compile;test->test")
   .enablePlugins(JavaAppPackaging)
   .settings(
     name := "worker",
-    Compile / scalaSource := baseDirectory.value / "app",
-    Test / scalaSource    := baseDirectory.value / "test" / "scala",
-    Compile / mainClass   := Some("modules.WorkerMain"),
+    // standard sbt layout: src/main/scala, src/test/scala
+    Compile / mainClass := Some("modules.WorkerMain"),
     libraryDependencies ++= Seq(
       // jsoup + mongo + caffeine arrive transitively via `common`; Sentry is the
       // worker's own error-reporting sink.
@@ -75,17 +77,22 @@ lazy val PageTest = config("page") extend Test
 
 lazy val web = (project in file("web"))
   .enablePlugins(PlayScala, SbtWeb)
-  .dependsOn(common)
+  // Disable Play's app/ + conf/ + public/ layout so it falls back to the
+  // standard sbt layout — src/main/scala, src/main/resources (routes +
+  // application.conf + logback.xml), src/main/twirl (views), src/main/assets —
+  // matching common and worker.
+  .disablePlugins(PlayLayoutPlugin)
+  .dependsOn(common % "compile->compile;test->test")
   .configs(IntegrationTest, PageTest)
   .settings(
     name := "web",
     inConfig(IntegrationTest)(Defaults.testSettings),
-    IntegrationTest / scalaSource       := baseDirectory.value / "it" / "scala",
-    IntegrationTest / resourceDirectory := baseDirectory.value / "it" / "resources",
+    IntegrationTest / scalaSource       := baseDirectory.value / "src" / "it" / "scala",
+    IntegrationTest / resourceDirectory := baseDirectory.value / "src" / "it" / "resources",
     IntegrationTest / parallelExecution := true,
     inConfig(PageTest)(Defaults.testSettings),
-    PageTest / scalaSource              := baseDirectory.value / "page" / "scala",
-    PageTest / resourceDirectory        := baseDirectory.value / "page" / "resources",
+    PageTest / scalaSource              := baseDirectory.value / "src" / "page" / "scala",
+    PageTest / resourceDirectory        := baseDirectory.value / "src" / "page" / "resources",
     PageTest / parallelExecution        := false,
     // Emit JUnit-style XML alongside the console reporter so CI can turn a
     // failure into an inline check-run annotation instead of a raw log scroll.
@@ -108,8 +115,7 @@ lazy val web = (project in file("web"))
       "io.sentry" % "sentry-logback" % "8.42.0",   // error reporting
       "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test
     ),
-    Test / scalaSource       := baseDirectory.value / "test" / "scala",
-    Test / resourceDirectory := baseDirectory.value / "test" / "resources",
+    // Test = src/test/scala (sbt default, now that PlayLayoutPlugin is off).
     // ── Coverage (sbt-scoverage) ──────────────────────────────────────────────
     coverageExcludedPackages := Seq(
       "<empty>",

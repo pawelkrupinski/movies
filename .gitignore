@@ -36,7 +36,7 @@ project/plugins/project/
 # tools.MobileScreenshots`. Re-runnable diagnostic; the runner
 # regenerates them on demand from the same fixture corpus the page
 # specs use, so committing them would just churn the diff.
-/web/page/screenshots/
+/web/src/page/screenshots/
 
 # Playwright drops a `.last-run.json` and trace zips here when run
 # from the project root (which the CI workflow does via the
