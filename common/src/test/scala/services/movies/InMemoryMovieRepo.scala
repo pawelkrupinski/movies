@@ -10,7 +10,7 @@ import scala.collection.mutable
  * in wherever the production cache expects a repo.
  *
  * Indexed by the same normalized docId formula as the production repo
- * (`MovieService.normalize(title)|year`), so case + diacritic + whitespace
+ * (`TitleNormalizer.sanitize(title)|year`), so case + diacritic + whitespace
  * variants of the same title collapse to one row exactly as they do in Mongo.
  *
  * Every upsert / delete is recorded in `upserts` / `deletes` in order so a
@@ -85,5 +85,5 @@ class InMemoryMovieRepo(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empt
   }
 
   private def idOf(t: String, y: Option[Int]): String =
-    s"${MovieService.normalize(t)}|${y.map(_.toString).getOrElse("")}"
+    s"${TitleNormalizer.sanitize(t)}|${y.map(_.toString).getOrElse("")}"
 }

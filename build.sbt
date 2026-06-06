@@ -27,6 +27,13 @@ ThisBuild / scalacOptions ++= Seq(
 )
 ThisBuild / javacOptions ++= Seq("--release", "21")
 
+// Integration tests (it/scala) and page-regression tests (page/scala) run under
+// their own sbt configurations so CI can dispatch them as separate jobs. Both
+// `extend Test` to reuse helpers from test/scala. Defined here because both the
+// worker and web modules attach the `it` config.
+lazy val IntegrationTest = config("it") extend Test
+lazy val PageTest = config("page") extend Test
+
 // ── Shared module ────────────────────────────────────────────────────────────
 
 lazy val common = (project in file("common"))
@@ -55,10 +62,21 @@ lazy val common = (project in file("common"))
 lazy val worker = (project in file("worker"))
   .dependsOn(common % "compile->compile;test->test")
   .enablePlugins(JavaAppPackaging)
+  .configs(IntegrationTest)
   .settings(
     name := "worker",
     // standard sbt layout: src/main/scala, src/test/scala
     Compile / mainClass := Some("modules.WorkerMain"),
+    // Integration tests (live scrape + Mongo) run under their own config so CI
+    // can dispatch them as a separate job — same pattern as the web module.
+    inConfig(IntegrationTest)(Defaults.testSettings),
+    IntegrationTest / scalaSource       := baseDirectory.value / "src" / "it" / "scala",
+    IntegrationTest / resourceDirectory := baseDirectory.value / "src" / "it" / "resources",
+    IntegrationTest / parallelExecution := true,
+    Test / testOptions +=
+      Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports/unit"),
+    IntegrationTest / testOptions +=
+      Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", "target/test-reports/it"),
     libraryDependencies ++= Seq(
       // jsoup + mongo + caffeine arrive transitively via `common`; Sentry is the
       // worker's own error-reporting sink.
@@ -68,12 +86,6 @@ lazy val worker = (project in file("worker"))
   )
 
 // ── Web app (content serving) ────────────────────────────────────────────────
-
-// Integration tests (it/scala) and page-regression tests (page/scala) run under
-// their own sbt configurations so CI can dispatch them as separate jobs. Both
-// `extend Test` to reuse helpers from test/scala.
-lazy val IntegrationTest = config("it") extend Test
-lazy val PageTest = config("page") extend Test
 
 lazy val web = (project in file("web"))
   .enablePlugins(PlayScala, SbtWeb)

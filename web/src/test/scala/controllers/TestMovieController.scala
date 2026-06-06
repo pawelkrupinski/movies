@@ -1,11 +1,8 @@
 package controllers
 
-import clients.TmdbClient
 import play.api.Mode
 import play.api.test.Helpers
-import services.events.InProcessEventBus
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepo, MovieService}
-import tools.RealHttpFetch
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
 
 /** Shared builder for a fully-wired [[MovieController]] backed by an in-memory
  *  repo/cache and no live HTTP — the seam every controller spec needs. Pass the
@@ -19,7 +16,6 @@ object TestMovieController {
   ): (MovieController, CaffeineMovieCache) = {
     val repo  = new InMemoryMovieRepo(records)
     val cache = new CaffeineMovieCache(repo)
-    val svc   = new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
     val ctrl  = new MovieController(
       cc                     = Helpers.stubControllerComponents(),
       movieControllerService = new MovieControllerService(cache),
