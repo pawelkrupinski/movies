@@ -143,7 +143,7 @@
     // the picker on this page". When it's absent, the count belongs to
     // the pill row, not the Filtry label.
     if (document.getElementById('cinema-list')) {
-      const disabled = getDisabledCinemas();
+      const disabled = disabledCinemasInCity();
       if (disabled.length > 0 && disabled.length < ALL_CINEMAS.length) {
         parts.push('kina ' + (ALL_CINEMAS.length - disabled.length) + '/' + ALL_CINEMAS.length);
       }
@@ -560,6 +560,21 @@
   function setHidden(titles)     { _lsSet('hiddenFilms',    titles); scheduleServerSync(); }
   function getDisabledCinemas()  { return _lsGet('disabledCinemas') || []; }
   function setDisabledCinemas(l) { _lsSet('disabledCinemas', l);    scheduleServerSync(); }
+  // `disabledCinemas` is ONE global list (cinema display-names) shared across
+  // every city — switching city is a full navigation that doesn't touch it, so
+  // a cinema you deselected in another city stays in the list. That's
+  // deliberate (return to that city and your deselection is still there), but
+  // it means the raw list can name cinemas that don't exist in the *current*
+  // city. Any count or select-all/indeterminate state MUST be derived from the
+  // entries that actually belong to this city — otherwise an other-city name
+  // makes the count read one short and wrongly flips "Wszystkie kina" to
+  // indeterminate right after a city switch. Membership tests against a single
+  // card's cinema (e.g. applyFilters) don't need this — a stale name simply
+  // never matches — so only the aggregate count/state callers scope here.
+  function disabledCinemasInCity() { return getDisabledCinemas().filter(c => ALL_CINEMAS.includes(c)); }
+  // Entries naming a cinema in some OTHER city — preserved verbatim when this
+  // city's select-all toggles the whole set, so a round-trip keeps them.
+  function disabledCinemasElsewhere() { return getDisabledCinemas().filter(c => !ALL_CINEMAS.includes(c)); }
   // /plan-side state. `selectedMovies` is the inverse of `hiddenFilms`
   // (titles to schedule, not titles to skip). `favouriteRooms` are
   // composite `"<Cinema displayName>|<Room>"` keys — same shape the
@@ -918,7 +933,7 @@
   function syncAllCheckbox() {
     const allCb = document.getElementById('cinema-all');
     if (!allCb) return;  // /kina has no Wszystkie-kina checkbox.
-    const disabled = getDisabledCinemas();
+    const disabled = disabledCinemasInCity();
     allCb.checked = disabled.length === 0;
     allCb.indeterminate = disabled.length > 0 && disabled.length < ALL_CINEMAS.length;
   }
@@ -929,7 +944,12 @@
   // there. The cinema-count summary surfaces in `updateFormatBtn` instead.
 
   function toggleAllCinemas(checked) {
-    setDisabledCinemas(checked ? [] : ALL_CINEMAS.slice());
+    // Only flip THIS city's cinemas; leave deselections made in other cities
+    // untouched (the list is global — see `disabledCinemasInCity`). "Select
+    // all" drops just this city's entries; "deselect all" adds every cinema of
+    // this city on top of whatever other cities already disabled.
+    const others = disabledCinemasElsewhere();
+    setDisabledCinemas(checked ? others : others.concat(ALL_CINEMAS));
     buildCinemaPanel();
     applyFilters();
   }
