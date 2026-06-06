@@ -71,6 +71,16 @@ case object Krakow extends City(
   val cinemas: Seq[Cinema] = Cinema.krakow
 }
 
+case object Szczecin extends City(
+  slug   = "szczecin",
+  labels = CityLabels(nominative = "Szczecin", genitivePlural = "szczecińskich", locative = "Szczecinie"),
+  lat    = 53.4285,
+  lon    = 14.5528,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.szczecin
+}
+
 /** The Tri-City (Gdańsk · Gdynia · Sopot) as one repertoire scope. Centred on
  *  Sopot, the geographic middle of the three towns, so the nearest-city pick
  *  resolves anywhere in the conurbation. */
@@ -85,7 +95,7 @@ case object Trojmiasto extends City(
 }
 
 object City {
-  val all: Seq[City] = Seq(Poznan, Wroclaw, Warszawa, Krakow, Trojmiasto)
+  val all: Seq[City] = Seq(Poznan, Wroclaw, Warszawa, Krakow, Szczecin, Trojmiasto)
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 
   /** Compact JSON array of every city for the client (web `ALL_CITIES`,

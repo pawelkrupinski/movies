@@ -120,6 +120,14 @@ case object MikroBronowice extends Cinema("Mikro Bronowice", "Mikro Bronowice")
 
 case object KinoSfinks extends Cinema("Kino Sfinks", "Sfinks")
 
+// ── Szczecin ─────────────────────────────────────────────────────────────────
+
+case object HeliosSzczecin extends Cinema("Helios Kupiec", "Helios")
+
+case object MultikinoSzczecin extends Cinema("Multikino Szczecin", "Multikino")
+
+case object KinoPionier extends Cinema("Kino Pionier 1907", "Pionier")
+
 // ── Trójmiasto (Gdańsk · Gdynia · Sopot) ─────────────────────────────────────
 
 case object MultikinoGdansk extends Cinema("Multikino Gdańsk", "Multikino")
@@ -217,6 +225,16 @@ object Cinema {
     KinoSfinks,
   )
 
+  /** Szczecin venues. No Cinema City here; the two multiplexes are Helios (in
+   *  CH Kupiec) and Multikino. The lone independent is Kino Pionier 1907 — the
+   *  oldest continuously-operating cinema in the world — wired as a bespoke
+   *  scraper. */
+  val szczecin: Seq[Cinema] = Seq(
+    HeliosSzczecin,
+    MultikinoSzczecin,
+    KinoPionier,
+  )
+
   /** Trójmiasto venues — the Tri-City of Gdańsk, Gdynia and Sopot treated as one
    *  repertoire. Two Helios in Gdańsk (Metropolia, Forum), one in Gdynia
    *  (Riviera), plus Multikino Gdańsk. Cinema City Krewetka closed in 2018 and
@@ -235,7 +253,7 @@ object Cinema {
     KinoPort,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ trojmiasto
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ szczecin ++ trojmiasto
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }
