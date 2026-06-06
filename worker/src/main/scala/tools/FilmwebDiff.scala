@@ -8,6 +8,8 @@ import play.api.libs.json.Json
 
 import java.io.PrintWriter
 import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -43,6 +45,12 @@ import scala.util.{Failure, Success, Try}
  * Filmweb failures backs off harder.
  */
 object FilmwebDiff {
+
+  // How many OUR-side scrapes run at once. Each hits a different cinema host and
+  // fans its own detail fetches out internally, so a handful of concurrent
+  // scrapers keeps the GitHub runner's cores busy without burying any single
+  // upstream. The Filmweb side is NOT covered by this — it stays sequential.
+  private val OurFetchWorkers = 6
 
   // Multiset ops over LocalDateTime live in FilmwebDiffJson, shared so the
   // text/CSV path and the JSON path agree on shared/ours-only/fw-only counts.
@@ -124,13 +132,24 @@ object FilmwebDiff {
     emit(s"Cinemas compared: ${ourScrapers.size}")
     emit("")
 
+    // OUR side fans out across many independent hosts (bok.waw.pl, kinomikro.pl,
+    // helios.pl, …), so it parallelises freely — each scraper already throttles
+    // its own per-cinema detail fetches via ParallelDetailFetch. Pre-fetch all
+    // of them on a bounded pool so the slow scrapers (Bok now walks a week of
+    // day pages; Helios/Multikino are heavy) overlap instead of summing. The
+    // FILMWEB side stays strictly sequential below — Filmweb soft-blocks
+    // aggressive callers by holding sockets open, so hammering its seances API
+    // in parallel is exactly what we must not do.
+    emit(s"Pre-fetching our side for ${ourScrapers.size} cinema(s) (≤$OurFetchWorkers at once)…")
+    val ourResults: Map[Cinema, Try[Seq[CinemaMovie]]] = fetchOursInParallel(ourScrapers)
+
     var consecutiveFwFailures = 0
     val comparedDiffs: Seq[CinemaDiff] = ourScrapers.zipWithIndex.map { case (scraper, i) =>
       if (i > 0) Thread.sleep(if (consecutiveFwFailures >= 3) 8000L else 1500L)
       val cinema = scraper.cinema
       emit(s"… ${cinema.displayName}")
 
-      val oursTry = Try(scraper.fetch())
+      val oursTry = ourResults(cinema)
       val fwTry   = Try(new FilmwebShowtimesClient(http, fwIdByCinema(cinema), cinema, daysAhead, today).fetch())
 
       fwTry match {
@@ -203,6 +222,20 @@ object FilmwebDiff {
     case Override       => "override"
     case Fuzzy(_, _)    => "fuzzy"
     case _              => "none"
+  }
+
+  /** Run every scraper's `fetch()` on a bounded pool, each result `Try`-wrapped
+   *  (a thrown scraper can't sink the batch) and keyed back to its own cinema.
+   *  The keying is by `scraper.cinema`, so parallelism can't misattribute one
+   *  cinema's films to another. `package`-visible for direct testing. */
+  private[tools] def fetchOursInParallel(scrapers: Seq[CinemaScraper]): Map[Cinema, Try[Seq[CinemaMovie]]] = {
+    if (scrapers.isEmpty) return Map.empty
+    given pool: scala.concurrent.ExecutionContextExecutorService =
+      DaemonExecutors.boundedEC("fwdiff-ours", OurFetchWorkers)
+    try {
+      val futures = scrapers.map(scraper => Future(scraper.cinema -> Try(scraper.fetch())))
+      Await.result(Future.sequence(futures), Duration.Inf).toMap
+    } finally pool.shutdown()
   }
 
   private def writeFile(path: String, content: String): Try[Unit] = Try {
