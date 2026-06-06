@@ -12,6 +12,10 @@
 // in-process state. testkit and e2e are libraries — only web and worker are
 // ever staged/deployed, so the build still ships exactly two Fly apps.
 
+// Every third-party artifact + its version lives in project/Dependencies.scala;
+// the modules below reference those vals so no version string is repeated here.
+import Dependencies._
+
 ThisBuild / organization := "com.example"
 ThisBuild / version      := "1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.8.3"
@@ -58,15 +62,14 @@ lazy val common = (project in file("common"))
     name := "common",
     // standard sbt layout: src/main/scala, src/test/scala, src/test/resources
     libraryDependencies ++= Seq(
-      // play.api.Logging (the only Play API the shared code uses)
-      "org.playframework"             %% "play"                % "3.0.10",
-      "org.mongodb.scala"             %% "mongo-scala-driver"  % "5.7.0",
-      "com.github.ben-manes.caffeine" %  "caffeine"            % "3.2.4",
-      "org.jsoup"                     %  "jsoup"               % "1.22.2",
+      play,             // play.api.Logging (the only Play API the shared code uses)
+      mongoScalaDriver,
+      Dependencies.caffeine,   // qualified: Play's autoImport also defines `caffeine`
+      jsoup,
       // common's test config covers ONLY its own specs (models, codecs, Mongo,
       // DaemonExecutors, …) — the shared fakes live in `testkit`, not here, so
       // common's test surface stays lean and self-contained.
-      "org.scalatestplus.play"        %% "scalatestplus-play"  % "7.0.2" % Test,
+      scalatestPlay % Test,
     )
   )
   .settings(unitReportSettings)
@@ -85,7 +88,7 @@ lazy val testkit = (project in file("testkit"))
   .settings(
     name := "testkit",
     publish / skip := true,
-    libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2",
+    libraryDependencies += scalatestPlay,
   )
 
 // ── Worker app (scrape + enrich) ─────────────────────────────────────────────
@@ -119,15 +122,14 @@ lazy val worker = (project in file("worker"))
     libraryDependencies ++= Seq(
       // jsoup + mongo + caffeine arrive transitively via `common`; Sentry is the
       // worker's own error-reporting sink.
-      "io.sentry"              %  "sentry-logback"     % "8.42.0",
+      sentryLogback,
       // The SLF4J binding. The web app gets logback-classic via Play's
       // play-logback; this plain `def main` worker does NOT, so without it
       // SLF4J finds no provider, falls back to a NOP logger, and silently drops
       // EVERY log line — WorkerMain lifecycle, scrape ticks, and Sentry error
-      // reporting all vanish. Pinned to the version Play uses (1.5.22) so
-      // logback.xml + the sentry-logback appender stay compatible.
-      "ch.qos.logback"         %  "logback-classic"    % "1.5.22",
-      "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test,
+      // reporting all vanish. (Version pinned in Dependencies.scala to match Play.)
+      logbackClassic,
+      scalatestPlay % Test,
     )
   )
   .settings(unitReportSettings)
@@ -180,9 +182,9 @@ lazy val web = (project in file("web"))
     PlayKeys.playRunHooks += MongoProxy((LocalRootProject / baseDirectory).value),
     // mongo-scala-driver, caffeine and jsoup come transitively via `common`.
     libraryDependencies ++= Seq(
-      "org.jsoup" % "jsoup" % "1.22.2",            // also used directly in views/helpers
-      "io.sentry" % "sentry-logback" % "8.42.0",   // error reporting
-      "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test
+      jsoup,                 // also used directly in views/helpers
+      sentryLogback,         // error reporting
+      scalatestPlay % Test
     ),
     // Test = src/test/scala (sbt default, now that PlayLayoutPlugin is off).
     // ── Coverage (sbt-scoverage) ──────────────────────────────────────────────
@@ -213,7 +215,7 @@ lazy val e2e = (project in file("e2e"))
   .settings(
     name := "e2e",
     publish / skip := true,
-    libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test,
+    libraryDependencies += scalatestPlay % Test,
   )
   .settings(unitReportSettings)
 
