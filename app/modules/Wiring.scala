@@ -50,7 +50,7 @@ trait Wiring {
     new MultikinoClient(multikinoFetch),
     new CharlieMonroeClient(httoFetch),
     new KinoPalacoweClient(httoFetch),
-    new HeliosClient(httoFetch),
+    new HeliosClient(httoFetch, today = heliosToday),
     new CinemaCityScraper(cinemaCityClient, "1078", CinemaCityPoznanPlaza),
     new CinemaCityScraper(cinemaCityClient, "1081", CinemaCityKinepolis),
     kinoMuzaClient,
@@ -63,8 +63,8 @@ trait Wiring {
     new CinemaCityScraper(cinemaCityClient, "1097", CinemaCityWroclavia),
     new CinemaCityScraper(cinemaCityClient, "1067", CinemaCityKorona),
     new MultikinoClient(multikinoFetch, "0010", MultikinoPasazGrunwaldzki),
-    new HeliosClient(httoFetch, HeliosNuxt.Magnolia),
-    new HeliosClient(httoFetch, HeliosNuxt.AlejaBielany),
+    new HeliosClient(httoFetch, HeliosNuxt.Magnolia, heliosToday),
+    new HeliosClient(httoFetch, HeliosNuxt.AlejaBielany, heliosToday),
     new NoweHoryzontyClient(httoFetch),
     new DcfClient(httoFetch),
   )
@@ -82,7 +82,7 @@ trait Wiring {
     new MultikinoClient(multikinoFetch, "0052", MultikinoReduta),
     new MultikinoClient(multikinoFetch, "0024", MultikinoTargowek),
     new MultikinoClient(multikinoFetch, "0025", MultikinoWolaPark),
-    new HeliosClient(httoFetch, HeliosNuxt.BlueCity),
+    new HeliosClient(httoFetch, HeliosNuxt.BlueCity, heliosToday),
     new MuranowClient(httoFetch),
     new Bilety24Client(httoFetch, "https://kinoluna.bilety24.pl", KinoLuna),
     new Bilety24Client(httoFetch, "https://kinoelektronik.pl", KinoElektronik, "/"),
@@ -116,6 +116,13 @@ trait Wiring {
   // production gate.
   protected def scrapeCities: Set[String] =
     ScrapeCities.enabled(Env.get("KINOWO_SCRAPE_CITIES"), default = Set("poznan"))
+
+  // The date Helios bakes into its REST `/screening` + `/event` URLs. Production
+  // uses the real Warsaw date; fixture-replay test wirings override this with the
+  // fixture's capture date so the recorded URLs still resolve. `protected def` so
+  // only the composition root (and its test subclasses) can set it.
+  protected def heliosToday: java.time.LocalDate =
+    java.time.LocalDate.now(java.time.ZoneId.of("Europe/Warsaw"))
 
   lazy val cinemaScrapers: Seq[CinemaScraper] = (
     (if (scrapeCities("poznan"))  poznanScrapers  else Nil) ++

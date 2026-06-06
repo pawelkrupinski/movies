@@ -10,7 +10,15 @@ import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
 import scala.concurrent.duration._
 import scala.util.Try
 
-class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt.Poznan) extends CinemaScraper {
+// `today` is injected so tests can pin it: the REST `/screening` + `/event`
+// URLs bake the date window, and the recorded fixtures were captured for a
+// specific day. The composition root passes the real Warsaw date; fixture
+// wirings pass the fixture's capture date so the recorded URLs still match.
+class HeliosClient(
+  http:  HttpFetch    = HeliosFetch,
+  cfg:   HeliosCinema = HeliosNuxt.Poznan,
+  today: LocalDate    = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+) extends CinemaScraper {
 
   override val cinema: Cinema = cfg.cinema
 
@@ -35,8 +43,7 @@ class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt
   )
 
   private def fetchRestData(): RestData = {
-    val today = LocalDate.now(WarsawZone)
-    val in6   = today.plusDays(6)
+    val in6 = today.plusDays(6)
     val window = s"dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
     val screeningsUrl = s"$ApiBase/cinema/$sourceId/screening?$window"
     // `/event` honours the SAME date window as `/screening`. Without it the

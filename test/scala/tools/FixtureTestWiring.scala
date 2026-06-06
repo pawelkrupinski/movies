@@ -13,6 +13,18 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   override val controllerComponents: ControllerComponents = stubControllerComponents()
   override def environmentMode: Mode = Mode.Test
 
+  // Pin Helios's REST date to the fixture's capture day when the `fixture` dir
+  // is named `dd-MM-yyyy` (e.g. "17-05-2026"). Helios bakes the date window into
+  // its `/screening` + `/event` URLs; without this the live `LocalDate.now`
+  // makes those URLs miss the recorded fixtures, dropping Helios room/format
+  // enrichment and breaking the whole-corpus snapshot on every day after
+  // capture. Fixtures named for something else ("multikino") aren't date-keyed,
+  // so fall back to the real date for them.
+  override protected def heliosToday: java.time.LocalDate =
+    scala.util.Try(
+      java.time.LocalDate.parse(fixture, java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
+    ).getOrElse(super.heliosToday)
+
   // Route Multikino through the same `FakeHttpFetch` as every other cinema —
   // single override point. The base `TestWiring` inherits production's
   // `MultikinoClient.fetchFor(httoFetch)` so `ClientIntegrationSpec`'s
