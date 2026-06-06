@@ -509,15 +509,35 @@ jobs:
                   browser:       ${{ matrix.browser }}
                   shard:         ${{ matrix.shard }}
 
+    # Two apps from one Dockerfile, deployed as PARALLEL matrix legs — web
+    # (kinowo) and worker (kinowo-worker) ship on their own runners at the same
+    # time. `fail-fast: false` so a worker-deploy failure doesn't cancel web's
+    # (and vice versa). Each leg downloads ITS app's staged dist into the fixed
+    # `./stage/` path the Dockerfile COPYs, then `flyctl deploy --build-arg
+    # BIN=<app>` selects the launcher. The cutover (web stops scraping) happens
+    # when this branch merges to main; a brief simultaneous switchover is fine
+    # per the project's "short prod downtime is fine" convention.
     deploy:
         needs: [lint, test, integration-test, ios-local-server, android-local-server, page-tests-chrome, page-tests-safari, page-tests-firefox]
         runs-on: ubuntu-latest
-        # Serialize deploys so two passing builds can't race flyctl.
-        # cancel-in-progress is false — a queued deploy still runs once
-        # the active one finishes, then the guard below decides whether
-        # to actually ship it.
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - app: kinowo
+                      toml: fly.toml
+                      bin: web
+                      artifact: stage-web
+                    - app: kinowo-worker
+                      toml: fly.worker.toml
+                      bin: worker
+                      artifact: stage-worker
+        # Serialize deploys PER APP (so two passing builds can't race flyctl on
+        # the same app) while letting web + worker deploy in parallel.
+        # cancel-in-progress is false — a queued deploy still runs once the
+        # active one finishes, then the guard below decides whether to ship it.
         concurrency:
-            group: fly-deploy
+            group: fly-deploy-${{ matrix.app }}
             cancel-in-progress: false
         steps:
             - uses: actions/checkout@v4
@@ -526,63 +546,32 @@ jobs:
 
             - uses: superfly/flyctl-actions/setup-flyctl@master
 
-            # Skip if a newer commit is already live on Fly. The running
-            # machine carries COMMIT_SHA from the Dockerfile build-arg;
-            # if this workflow's commit is an ancestor of that SHA, a
-            # newer build already deployed successfully and re-deploying
-            # this one would roll back.
+            # Skip if a newer commit is already live on THIS app. The running
+            # machine carries COMMIT_SHA from the Dockerfile build-arg; if this
+            # workflow's commit is an ancestor of that SHA, a newer build
+            # already deployed successfully and re-deploying would roll back.
+            # (On the worker's first-ever deploy the app has no machine yet, so
+            # the ssh probe returns empty and we proceed.)
             - name: Check deployed commit
               id: guard
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
               run: |
-                  deployed=$(flyctl ssh console -a kinowo -C 'printenv COMMIT_SHA' 2>/dev/null || echo "")
+                  deployed=$(flyctl ssh console -a ${{ matrix.app }} -C 'printenv COMMIT_SHA' 2>/dev/null || echo "")
                   if [ -n "$deployed" ] && [ "$deployed" != "${{ github.sha }}" ]; then
                       if git merge-base --is-ancestor "${{ github.sha }}" "$deployed" 2>/dev/null; then
-                          echo "::warning::Skipping deploy — commit $deployed (descendant of ${{ github.sha }}) is already live"
+                          echo "::warning::Skipping ${{ matrix.app }} — commit $deployed (descendant of ${{ github.sha }}) is already live"
                           echo "skip=true" >> "$GITHUB_OUTPUT"
                       fi
                   fi
 
-            # Two apps from one Dockerfile. Each deploy lands ITS app's staged
-            # dist at `./stage/` (the fixed path the Dockerfile `COPY`s and
-            # `.dockerignore` whitelists), then `flyctl deploy` with
-            # `--build-arg BIN=<app>` selects the launcher. `rm -rf stage`
-            # between them keeps each build context to one app's JARs.
-            #
-            # Both deploys share the one skip guard above: web + worker ship
-            # from the same commit, so if a newer commit is already live on
-            # `kinowo` we skip both rather than rolling either back.
-            #
-            # WORKER FIRST, then web: bring the scraper up before cutting the
-            # serving app to its scrape-free build. If the worker deploy fails
-            # the job stops here and the old (still-scraping) web stays live —
-            # whereas web-first would leave prod with no scraper on a worker
-            # failure.
-
-            # ── worker (kinowo-worker) ────────────────────────────────────
             - uses: actions/download-artifact@v4
               if: steps.guard.outputs.skip != 'true'
               with:
-                  name: stage-worker
+                  name: ${{ matrix.artifact }}
                   path: stage
 
-            - run: flyctl deploy --remote-only -c fly.worker.toml -a kinowo-worker --build-arg BIN=worker --build-arg COMMIT_SHA=${{ github.sha }}
-              if: steps.guard.outputs.skip != 'true'
-              env:
-                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-            # ── web (kinowo) ──────────────────────────────────────────────
-            - run: rm -rf stage
-              if: steps.guard.outputs.skip != 'true'
-
-            - uses: actions/download-artifact@v4
-              if: steps.guard.outputs.skip != 'true'
-              with:
-                  name: stage-web
-                  path: stage
-
-            - run: flyctl deploy --remote-only -c fly.toml -a kinowo --build-arg BIN=web --build-arg COMMIT_SHA=${{ github.sha }}
+            - run: flyctl deploy --remote-only -c ${{ matrix.toml }} -a ${{ matrix.app }} --build-arg BIN=${{ matrix.bin }} --build-arg COMMIT_SHA=${{ github.sha }}
               if: steps.guard.outputs.skip != 'true'
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
