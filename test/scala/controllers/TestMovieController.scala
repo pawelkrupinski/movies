@@ -22,7 +22,7 @@ object TestMovieController {
     val svc   = new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None))
     val ctrl  = new MovieController(
       cc                     = Helpers.stubControllerComponents(),
-      movieControllerService = new MovieControllerService(svc),
+      movieControllerService = new MovieControllerService(cache),
       movieCache             = cache,
       userRepo               = new services.users.InMemoryUserRepo,
       oauthProviders         = Set.empty,

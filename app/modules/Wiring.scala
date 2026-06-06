@@ -193,7 +193,20 @@ trait Wiring {
   lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, backgroundBudget.ec("Metascore-stage"))
   lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, backgroundBudget.ec("Filmweb-stage"))
   lazy val movieService = new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"))
-  lazy val movieControllerService = new MovieControllerService(movieService)
+  // Reads come straight from the cache; the dev-only debug re-enrich button
+  // forwards to MovieService here (the combined app still owns enrichment). The
+  // read app constructs this with the no-op default instead.
+  lazy val movieControllerService = new MovieControllerService(
+    movieCache,
+    (title, year) => {
+      val hint = movieService.get(title, year)
+      movieService.reEnrich(
+        title, year,
+        hint.flatMap(_.cinemaOriginalTitle),
+        hint.map(_.director).filter(_.nonEmpty).map(_.mkString(", "))
+      )
+    }
+  )
   // Daily tick that drops rows whose `cinemaData` is empty — i.e. films
   // that no cinema is currently showing. Without it the cache + Mongo grow
   // unbounded (every festival / anniversary / one-off screening leaves a

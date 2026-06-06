@@ -142,7 +142,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       // fixture showtime so every showtime is in the future — if the film
       // still vanishes from the schedule output, the bug is in the
       // read path itself, not in the data.
-      val ctrl = new MovieControllerService(svc)
+      val ctrl = new MovieControllerService(cache)
       val firstShowtime: java.time.LocalDateTime =
         cache.snapshot().filter(r => isPrada(r.record))
           .flatMap(_.record.cinemaData.values.flatMap(_.showtimes.map(_.dateTime)))

@@ -5,7 +5,7 @@ import play.api.Logging
 import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 import play.api.Mode
-import services.movies.{MovieCache, MovieService, StoredMovieRecord, TitleNormalizer, TrailerEmbed}
+import services.movies.{MovieCache, StoredMovieRecord, TitleNormalizer, TrailerEmbed}
 
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
@@ -135,21 +135,18 @@ case class CinemaMovieSchedule(
 
 case class CinemaSchedule(cinema: Cinema, movies: Seq[CinemaMovieSchedule])
 
-class MovieControllerService(movieService: MovieService) {
-  def debugData(): Seq[StoredMovieRecord] = {
-    val rows = movieService.snapshot().sortBy(_.title.toLowerCase)
-    rows
-  }
+class MovieControllerService(
+  cache:        MovieCache,
+  // Dev-only debug re-enrich trigger. Enrichment runs in the write process, so
+  // the composition root supplies this: the combined/worker wiring forwards it
+  // to MovieService; the read app leaves it the no-op default (the worker
+  // re-enriches on its own continuous pass).
+  reEnrichHook: (String, Option[Int]) => Unit = (_, _) => ()
+) {
+  def debugData(): Seq[StoredMovieRecord] =
+    cache.snapshot().sortBy(_.title.toLowerCase)
 
-  def reenrich(title: String, year: Option[Int]): Unit = {
-    val hint = movieService.get(title, year)
-    movieService.reEnrich(
-      title,
-      year,
-      hint.flatMap(_.cinemaOriginalTitle),
-      hint.map(_.director).filter(_.nonEmpty).map(_.mkString(", "))
-    )
-  }
+  def reenrich(title: String, year: Option[Int]): Unit = reEnrichHook(title, year)
 
   def toSchedules(city: City): Seq[FilmSchedule] =
     toSchedules(city, LocalDateTime.now(city.zoneId))
@@ -163,7 +160,7 @@ class MovieControllerService(movieService: MovieService) {
    * The cache itself is global (one enriched row per film across all cities). */
   def toSchedules(city: City, now: LocalDateTime): Seq[FilmSchedule] = {
     val cityCinemas = city.cinemaSet
-    movieService.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
+    cache.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
       // Flatten this city's cinemas' future showtimes for this film. Records
       // with no future showings in this city drop out of its list view — they
       // stay in storage per the "keep forever" policy.
@@ -212,7 +209,7 @@ class MovieControllerService(movieService: MovieService) {
    *  Sections are this city's cinemas only. */
   def toCinemaSchedules(city: City, now: LocalDateTime): Seq[CinemaSchedule] = {
     city.cinemas.flatMap { cinema =>
-      val moviesForCinema = movieService.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
+      val moviesForCinema = cache.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
         e.cinemaData.get(cinema).flatMap { slot =>
           val future = slot.showtimes.filter(_.dateTime.isAfter(now.minusMinutes(30)))
           if (future.isEmpty) None
@@ -246,7 +243,7 @@ class MovieControllerService(movieService: MovieService) {
 
   private def normalizeTitle(title: String): String = TitleNormalizer.normalize(title)
 
-  def rehydrate(): Int = movieService.rehydrate()
+  def rehydrate(): Int = cache.rehydrate()
 }
 
 class MovieController( cc: ControllerComponents,
