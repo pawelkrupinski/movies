@@ -10,9 +10,19 @@
 # bytecode (the highest output version it accepts); JRE 25 loads those
 # class files unchanged. CI builds on the same JDK 25 — toolchain
 # consistent end-to-end.
+# One image, two apps. `BIN` selects which staged launcher the container
+# runs: `web` (the Play serving app, Fly app `kinowo`) or `worker` (the
+# scrape/enrich `def main` app, Fly app `kinowo-worker`). Each app's deploy
+# downloads ITS OWN `web/target/universal/stage` or
+# `worker/target/universal/stage` into the build context's `stage/`, so
+# `COPY stage/` stays a single fixed path and only the launcher name differs.
+# The Play `-D` props below are harmless no-op system properties for the
+# worker (it isn't a Play app).
 FROM eclipse-temurin:25-jre
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
+ARG BIN=web
+ENV BIN=$BIN
 WORKDIR /app
 COPY stage/ ./
 # `actions/upload-artifact@v4` strips the Unix executable bit, so the
@@ -26,7 +36,7 @@ COPY stage/ ./
 # by re-applying 0755.
 RUN chmod +x bin/*
 EXPOSE 9000
-CMD exec bin/movies \
+CMD exec bin/$BIN \
     -Dplay.http.secret.key="${APPLICATION_SECRET}" \
     -Dplay.server.http.address=0.0.0.0 \
     -Dhttp.address=0.0.0.0 \

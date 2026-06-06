@@ -95,16 +95,23 @@ jobs:
                   detailed_summary: true
                   include_passed: false
 
-            # Produce the Play universal-stage distribution here so the
-            # deploy job can ship it straight to Fly's builder without
-            # recompiling. Reuses the warm zinc state from `sbt test` —
-            # only linking + writing the dist costs anything.
-            - run: sbt stage
+            # Produce BOTH apps' universal-stage distributions here so the
+            # deploy job can ship them straight to Fly's builder without
+            # recompiling. Reuses the warm zinc state from `sbt testUnit` —
+            # only linking + writing the dists costs anything.
+            - run: sbt "web/stage" "worker/stage"
 
             - uses: actions/upload-artifact@v4
               with:
-                  name: stage
-                  path: target/universal/stage
+                  name: stage-web
+                  path: web/target/universal/stage
+                  retention-days: 1
+                  if-no-files-found: error
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: stage-worker
+                  path: worker/target/universal/stage
                   retention-days: 1
                   if-no-files-found: error
 
@@ -537,20 +544,45 @@ jobs:
                       fi
                   fi
 
-            # Pull the staged distribution built by the `test` job. The
-            # Dockerfile expects it at top-level `stage/`; the upload
-            # artifact's `path` was the directory's contents, so this
-            # download lands those contents directly at `./stage/`.
-            # `.dockerignore` whitelists exactly `stage/`, so Fly's
-            # builder receives the staged JARs but none of the
-            # surrounding test artefacts.
+            # Two apps from one Dockerfile. Each deploy lands ITS app's staged
+            # dist at `./stage/` (the fixed path the Dockerfile `COPY`s and
+            # `.dockerignore` whitelists), then `flyctl deploy` with
+            # `--build-arg BIN=<app>` selects the launcher. `rm -rf stage`
+            # between them keeps each build context to one app's JARs.
+            #
+            # Both deploys share the one skip guard above: web + worker ship
+            # from the same commit, so if a newer commit is already live on
+            # `kinowo` we skip both rather than rolling either back.
+            #
+            # WORKER FIRST, then web: bring the scraper up before cutting the
+            # serving app to its scrape-free build. If the worker deploy fails
+            # the job stops here and the old (still-scraping) web stays live —
+            # whereas web-first would leave prod with no scraper on a worker
+            # failure.
+
+            # ── worker (kinowo-worker) ────────────────────────────────────
             - uses: actions/download-artifact@v4
               if: steps.guard.outputs.skip != 'true'
               with:
-                  name: stage
+                  name: stage-worker
                   path: stage
 
-            - run: flyctl deploy --remote-only -a kinowo --build-arg COMMIT_SHA=${{ github.sha }}
+            - run: flyctl deploy --remote-only -c fly.worker.toml -a kinowo-worker --build-arg BIN=worker --build-arg COMMIT_SHA=${{ github.sha }}
+              if: steps.guard.outputs.skip != 'true'
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+            # ── web (kinowo) ──────────────────────────────────────────────
+            - run: rm -rf stage
+              if: steps.guard.outputs.skip != 'true'
+
+            - uses: actions/download-artifact@v4
+              if: steps.guard.outputs.skip != 'true'
+              with:
+                  name: stage-web
+                  path: stage
+
+            - run: flyctl deploy --remote-only -c fly.toml -a kinowo --build-arg BIN=web --build-arg COMMIT_SHA=${{ github.sha }}
               if: steps.guard.outputs.skip != 'true'
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
