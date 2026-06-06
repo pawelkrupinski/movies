@@ -105,7 +105,7 @@ const projects: Project[] = [
 
 export default defineConfig({
   testDir: './tests',
-  workers: '50%',
+  workers: '100%',
   retries: IS_LOCAL_FIXTURE ? 0 : 1,
   timeout: 30_000,
   expect: { timeout: 5_000 },
