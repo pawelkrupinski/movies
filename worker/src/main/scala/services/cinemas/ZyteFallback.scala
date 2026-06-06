@@ -15,11 +15,20 @@ import java.time.Duration
  * upstreams with a session-cookie wall (Multikino), `None` for stateless pages
  * (biletyna). Extracted from `MultikinoClient.fetchFor` once a second caller
  * (Kino Kameralne) needed the same chain.
+ *
+ * `apiKey` defaults to the `ZYTE_API_KEY` env read but is a parameter so tests
+ * pin both branches deterministically — `Env` reads `System.getenv`, which a
+ * test can't unset, and CI does set the key, so reading it inside here would
+ * make the "no key → direct" path untestable.
  */
 object ZyteFallback {
 
-  def fetchFor(direct: HttpFetch, cookieSource: Option[String] = None): HttpFetch = {
-    val zyte = Env.get("ZYTE_API_KEY").map { k =>
+  def fetchFor(
+    direct:       HttpFetch,
+    cookieSource: Option[String] = None,
+    apiKey:       Option[String] = Env.get("ZYTE_API_KEY")
+  ): HttpFetch = {
+    val zyte = apiKey.filter(_.nonEmpty).map { k =>
       "zyte" -> (new ZyteFetch(new ZyteClient(httpClient, k), cookieSource): HttpFetch)
     }
     val chain = zyte.toSeq :+ ("direct" -> direct)
