@@ -1,247 +1,66 @@
 package modules
 
-import clients.TmdbClient
 import controllers.{AuthController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, UptimeController, UserStateController}
-import models._
 import play.api.Mode
 import play.api.mvc.ControllerComponents
-import services.{MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
+import services.{MongoConnection, UptimeMonitor}
 import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
-import services.cinemas._
-import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
-import services.movies._
+import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo}
 import services.users.{AccountDeletion, CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
-import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
+import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
+/**
+ * Read/serving composition root. Builds the content-serving half of the app: the
+ * shared data layer (Mongo + MovieCache, kept warm purely from Mongo via the
+ * change stream — this process never scrapes), the user/auth stack, and the
+ * controllers. The scrape + enrichment half lives in the separate `worker` app
+ * (`modules.WorkerWiring`); the two share only the Mongo database.
+ */
 trait Wiring {
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database)
+  // OAuth providers + token validators make outbound HTTP; the monitoring
+  // wrapper records their latency on the same /uptime surface the worker feeds.
   lazy val httoFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)
 
-  // ── External API clients ──────────────────────────────────────────────────
-  lazy val tmdbClient = new TmdbClient(httoFetch)
-  lazy val filmwebClient = new FilmwebClient(httoFetch)
-  lazy val imdbClient = new ImdbClient(httoFetch)
-  lazy val metacriticClient = new MetacriticClient(httoFetch)
-  lazy val rottenTomatoesClient = new RottenTomatoesClient(httoFetch)
-
-  // ── Cinema scrapers ───────────────────────────────────────────────────────
-  // The only place that names a specific cinema. ShowtimeCache iterates the
-  // list — adding a new cinema is a new entry here plus its scraper class.
-  lazy val cinemaCityClient = new CinemaCityClient(httoFetch)
-
-  // Single override point for Multikino's transport. `fetchFor` builds a
-  // Zyte → direct fallback chain. Tests override this field with
-  // `FakeHttpFetch` and the routing decision drops out entirely.
-  lazy val multikinoFetch: HttpFetch = MultikinoClient.fetchFor(httoFetch)
-
-  // Named so `KinoMuzaSynopsisRefresher` can share the same instance — the
-  // refresher calls `client.parseSynopsis` to keep one source of truth for
-  // the detail-page parse.
-  lazy val kinoMuzaClient: KinoMuzaClient = new KinoMuzaClient(httoFetch)
-
-  // Every cinema scraper is wrapped in `RetryingCinemaScraper` so a single
-  // transient upstream blip (5xx, dropped connection, momentarily broken
-  // HTML block) doesn't leave the cinema's slot empty for an entire
-  // refresh cycle. Multikino retains its own internal retry layers (Zyte
-  // → direct + homepage warm-up); the outer wrapper only adds extra
-  // coverage when every inner layer is exhausted.
-  private lazy val poznanScrapers: Seq[CinemaScraper] = Seq(
-    new MultikinoClient(multikinoFetch),
-    new CharlieMonroeClient(httoFetch),
-    new KinoPalacoweClient(httoFetch),
-    new HeliosClient(httoFetch, today = heliosToday),
-    new CinemaCityScraper(cinemaCityClient, "1078", CinemaCityPoznanPlaza),
-    new CinemaCityScraper(cinemaCityClient, "1081", CinemaCityKinepolis),
-    kinoMuzaClient,
-    new KinoBulgarskaClient(httoFetch),
-    new KinoApolloClient(httoFetch),
-    new RialtoClient(httoFetch),
-  )
-
-  private lazy val wroclawScrapers: Seq[CinemaScraper] = Seq(
-    new CinemaCityScraper(cinemaCityClient, "1097", CinemaCityWroclavia),
-    new CinemaCityScraper(cinemaCityClient, "1067", CinemaCityKorona),
-    new MultikinoClient(multikinoFetch, "0010", MultikinoPasazGrunwaldzki),
-    new HeliosClient(httoFetch, HeliosNuxt.Magnolia, heliosToday),
-    new HeliosClient(httoFetch, HeliosNuxt.AlejaBielany, heliosToday),
-    new NoweHoryzontyClient(httoFetch),
-    new DcfClient(httoFetch),
-  )
-
-  private lazy val warszawaScrapers: Seq[CinemaScraper] = Seq(
-    new CinemaCityScraper(cinemaCityClient, "1074", CinemaCityArkadia),
-    new CinemaCityScraper(cinemaCityClient, "1061", CinemaCityBemowo),
-    new CinemaCityScraper(cinemaCityClient, "1096", CinemaCityGaleriaPolnocna),
-    new CinemaCityScraper(cinemaCityClient, "1069", CinemaCityJanki),
-    new CinemaCityScraper(cinemaCityClient, "1070", CinemaCityMokotow),
-    new CinemaCityScraper(cinemaCityClient, "1068", CinemaCityPromenada),
-    new CinemaCityScraper(cinemaCityClient, "1060", CinemaCitySadyba),
-    new MultikinoClient(multikinoFetch, "0013", MultikinoZloteTarasy),
-    new MultikinoClient(multikinoFetch, "0040", MultikinoMlociny),
-    new MultikinoClient(multikinoFetch, "0052", MultikinoReduta),
-    new MultikinoClient(multikinoFetch, "0024", MultikinoTargowek),
-    new MultikinoClient(multikinoFetch, "0025", MultikinoWolaPark),
-    new HeliosClient(httoFetch, HeliosNuxt.BlueCity, heliosToday),
-    new MuranowClient(httoFetch),
-    new Bilety24Client(httoFetch, "https://kinoluna.bilety24.pl", KinoLuna),
-    new Bilety24Client(httoFetch, "https://kinoelektronik.pl", KinoElektronik, "/"),
-    new IluzjonClient(httoFetch),
-    new KinoGramClient(httoFetch),
-    new KinoKulturaClient(httoFetch),
-    new AmondoClient(httoFetch),
-    new BokClient(httoFetch, "kino-na-boku", KinoNaBoku),
-    new BokClient(httoFetch, "kino-glebocka-66", KinoGlebocka66),
-    new KinomuzeumClient(httoFetch),
-    new SwitClient(httoFetch),
-    new PromKepaClient(httoFetch),
-    new FalenicaClient(httoFetch),
-    new SdkClient(httoFetch),
-    new NoveKinoClient(httoFetch, "atlantic", KinoAtlantic),
-    new KinotekaClient(httoFetch),
-    new UjazdowskiClient(httoFetch),
-    new CytadelaClient(httoFetch),
-  )
-
-  // TEMP (2026-06-05, per-city load investigation): scrape only the cities in
-  // KINOWO_SCRAPE_CITIES (comma-separated slugs), defaulting to Poznań alone.
-  // Adding Wrocław + Warszawa (~11 → ~48 cinemas) overwhelmed the 1-vCPU box
-  // (30s cache rehydrate + scrapes + first-time enrichment pegged CPU; heavy
-  // pages stalled for minutes). Bring cities back one at a time and watch the
-  // load: `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` (restart), then
-  // add `warszawa`. Once the box sustains all three, set that as the value (or
-  // restore an all-cities default here) and drop this gate.
-  // `protected def` so test wirings can override to scrape every city — the
-  // recorded fixtures + snapshots cover all of them regardless of this
-  // production gate.
-  protected def scrapeCities: Set[String] =
-    ScrapeCities.enabled(Env.get("KINOWO_SCRAPE_CITIES"), default = Set("poznan"))
-
-  // The date Helios bakes into its REST `/screening` + `/event` URLs. Production
-  // uses the real Warsaw date; fixture-replay test wirings override this with the
-  // fixture's capture date so the recorded URLs still resolve. `protected def` so
-  // only the composition root (and its test subclasses) can set it.
-  protected def heliosToday: java.time.LocalDate =
-    java.time.LocalDate.now(java.time.ZoneId.of("Europe/Warsaw"))
-
-  lazy val cinemaScrapers: Seq[CinemaScraper] = (
-    (if (scrapeCities("poznan"))  poznanScrapers  else Nil) ++
-    (if (scrapeCities("wroclaw")) wroclawScrapers else Nil) ++
-    (if (scrapeCities("warszawa")) warszawaScrapers else Nil)
-  ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
-
-  // ── Background concurrency budget ───────────────────────────────────────────
-  // Cinema scrape (ShowtimeCache), movie enrichment (MovieService), the IMDb-id
-  // resolver, and the four rating refreshers all draw their run permits from
-  // ONE shared budget. Without it, a cold start fans out across ~48 cinemas at
-  // once (each then triggering enrichment + rating stages), and the hourly
-  // rating walk fans out across hundreds of rows — together pegging the single
-  // shared vCPU for minutes, during which every outbound HTTP call times out
-  // and the box stops answering. Each service keeps its OWN pool (so the
-  // ordered cascade-drain in `stop()` still works); the budget only caps how
-  // many tasks run at once across all of them. Tune via KINOWO_BG_CONCURRENCY.
-  lazy val backgroundBudget = new SharedExecutionBudget(Env.positiveInt("KINOWO_BG_CONCURRENCY", 8))
-
-  // ── Events ────────────────────────────────────────────────────────────────
+  // ── Events ──────────────────────────────────────────────────────────────────
+  // The serving process has no enrichment subscribers; the bus exists only
+  // because MovieCache publishes through it. Upserts arriving via the change
+  // stream therefore fan out to nothing — a harmless no-op.
   lazy val eventBus: EventBus = new InProcessEventBus()
 
   // ── Mongo ─────────────────────────────────────────────────────────────────
-  // Single shared MongoClient + database for every repo in the app. Prior
-  // shape was three independent MongoClients (movies + users + userStates),
-  // each with its own Netty event loop / connection pool / replica-set
-  // monitor thread — together they tipped the JVM RSS past Fly's 512 MB
-  // cgroup ceiling, causing the kernel OOM cycle. Sharing one connection
-  // is the standard Mongo driver usage pattern.
-  // A missing/unreachable Mongo is a hard boot failure (throws out of
-  // construction, aborts startup) everywhere except tests, rather than
-  // silently serving a film-less site. A local dev who intentionally runs
-  // without Mongo can opt back into silent-degrade with MONGODB_OPTIONAL=true
-  // (or =1) — see `MongoConnection`.
+  // Single shared MongoClient + database. A missing/unreachable Mongo is a hard
+  // boot failure everywhere except tests (opt back into silent-degrade with
+  // MONGODB_OPTIONAL=true) — see `MongoConnection`.
   lazy val mongoConnection: MongoConnection = {
     val optedOut = Env.get("MONGODB_OPTIONAL").exists(v => v == "true" || v == "1")
     MongoConnection.fromEnv(required = MongoConnection.isRequired(environmentMode == Mode.Test, optedOut))
   }
 
   // ── Users ─────────────────────────────────────────────────────────────────
-  // Wrap the Mongo-backed user repos in caching decorators — every
-  // logged-in page render goes through `userRepo.findById`, and
-  // `bootMergeFromServer` hits `userStateRepo.find` right after.
-  // Caching trims the Frankfurt-Atlas RTT off the critical path
-  // once the row's in memory.
+  // Caching decorators trim the Atlas RTT off the logged-in critical path.
   lazy val userRepo:      UserRepo      = new CachingUserRepo(new MongoUserRepo(mongoConnection.database, fallbackToOwnInit = false))
   lazy val userStateRepo: UserStateRepo = new CachingUserStateRepo(new MongoUserStateRepo(mongoConnection.database, fallbackToOwnInit = false))
 
-  // ── MovieRecord ────────────────────────────────────────────────────────────
+  // ── MovieRecord cache ───────────────────────────────────────────────────────
+  // Read-only here: hydrated from Mongo on boot and kept current by the change
+  // stream the worker's writes trigger. No write-through traffic originates in
+  // this process.
   lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
-  // Cache publishes `CinemaMovieAdded` directly from `recordCinemaScrape`
-  // so the event fires AFTER the slot is persisted — a downstream handler
-  // that reads the cache for the just-added (cinema, title, year) tuple
-  // always sees the new slot. The bus passes through the same instance
-  // every other service shares for `MovieRecordCreated` / `TmdbResolved`
-  // / `ImdbIdMissing` / `ImdbIdResolved`.
   lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo, eventBus)
-  // ImdbRatings / RottenTomatoesRatings own the hourly rating refresh + the
-  // per-row event listener for their respective services. Pulled out of
-  // MovieService so each external service has its own tempo and the TMDB
-  // stage doesn't block on IMDb's GraphQL CDN or RT's HTML render.
-  lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, backgroundBudget.ec("IMDb-stage"))
-  // Split out of ImdbRatings: handles `ImdbIdMissing` events by hitting IMDb's
-  // suggestion endpoint, writes the resolved id back, then publishes
-  // `ImdbIdResolved` so the rating fetchers chain on.
-  lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient, eventBus, backgroundBudget.ec("imdb-id-resolver"))
-  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, backgroundBudget.ec("RT-stage"))
-  lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, backgroundBudget.ec("Metascore-stage"))
-  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, backgroundBudget.ec("Filmweb-stage"))
-  lazy val movieService = new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"))
-  // Reads come straight from the cache; the dev-only debug re-enrich button
-  // forwards to MovieService here (the combined app still owns enrichment). The
-  // read app constructs this with the no-op default instead.
-  lazy val movieControllerService = new MovieControllerService(
-    movieCache,
-    (title, year) => {
-      val hint = movieService.get(title, year)
-      movieService.reEnrich(
-        title, year,
-        hint.flatMap(_.cinemaOriginalTitle),
-        hint.map(_.director).filter(_.nonEmpty).map(_.mkString(", "))
-      )
-    }
-  )
-  // Daily tick that drops rows whose `cinemaData` is empty — i.e. films
-  // that no cinema is currently showing. Without it the cache + Mongo grow
-  // unbounded (every festival / anniversary / one-off screening leaves a
-  // permanent row when its single cinema drops the listing).
-  lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
 
-  // Detail-page enricher for Muza — the listing scrape no longer hits
-  // per-film detail pages (their burst limiter doesn't tolerate 80+ every
-  // 5 min) or carries the portrait poster, synopsis, or trailer. Two
-  // triggers: the `CinemaMovieAdded` event (subscribed below; fires
-  // immediately when a new Muza film is persisted) and a periodic 1-min
-  // safety-net scan (`refreshOne`) that catches rows whose first event
-  // was lost across a restart. `Some("")` is the "tried, nothing" sentinel
-  // so each row stays out of the rescan once processed.
-  lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
-
-  // ── Showtime aggregation ──────────────────────────────────────────────────
-  // The scrape gets at most KINOWO_SCRAPE_CONCURRENCY (default 2) of the shared
-  // budget's 8 permits, so a burst of slow cinema scrapes can't peg the single
-  // vCPU or crowd enrichment out of the budget — page renders stay responsive.
-  lazy val showtimeCache = new ShowtimeCache(
-    cinemaScrapers, eventBus, movieCache,
-    backgroundBudget.ec("showtime-fetch", Env.positiveInt("KINOWO_SCRAPE_CONCURRENCY", 2))
-  )
+  // Reads come straight from the cache; the dev-only debug re-enrich button is a
+  // no-op in the serving process (the worker re-enriches on its continuous pass).
+  lazy val movieControllerService = new MovieControllerService(movieCache)
 
   def controllerComponents: ControllerComponents
   def environmentMode: Mode
   implicit def materializer: org.apache.pekko.stream.Materializer
 
   // ── OAuth providers ──────────────────────────────────────────────────────
-  // Each provider is wired only when its env vars are present. The result
-  // is a Map keyed by `OauthProvider.name` — the `/auth/:provider/start`
-  // route indexes directly. Missing keys → provider absent → start route
-  // returns 404 and the navbar UI hides the login button. Local dev with
-  // no OAuth secrets keeps working: pages render, login pill just doesn't.
+  // Each provider is wired only when its env vars are present. Missing keys →
+  // provider absent → start route 404s and the navbar hides the login button.
   lazy val oauthProviders: Map[String, OauthProvider] = {
     val google = for {
       id     <- Env.get("GOOGLE_CLIENT_ID")
@@ -281,86 +100,15 @@ trait Wiring {
   lazy val facebookDataDeletionController =
     new FacebookDataDeletionController(controllerComponents, Env.get("FACEBOOK_APP_SECRET"), userRepo, accountDeletion)
 
-  // Subscribe BEFORE ShowtimeCache.start() so the bus's first MovieRecordCreated
-  // events reach the enrichment handlers. Bus uses PartialFunction.applyOrElse,
-  // so each listener only sees events it pattern-matches.
-  //
-  // Non-IMDb listeners (Filmweb / MC / RT) subscribe to BOTH `TmdbResolved`
-  // and `ImdbIdMissing` — neither service needs an IMDb id, and the latter
-  // event is the only signal we get for TMDB hits without an IMDb cross-
-  // reference (very recent Polish indies, e.g. "Chłopiec na krańcach świata"
-  // tmdbId=1277047, imdb_id=null). Without subscribing to `ImdbIdMissing`,
-  // those rows had to wait an hour for the next periodic walk to pick them up.
-  //
-  //   MovieRecordCreated → movieService.onMovieRecordCreated         (runs TMDB stage)
-  //   TmdbResolved       → imdbRatings.onTmdbResolved                (runs IMDb stage)
-  //   TmdbResolved       → rottenTomatoesRatings.onTmdbResolved      (runs RT stage)
-  //   TmdbResolved       → metascoreRatings.onTmdbResolved           (runs Metascore stage)
-  //   TmdbResolved       → filmwebRatings.onTmdbResolved             (runs Filmweb stage)
-  //   ImdbIdMissing      → imdbIdResolver.onImdbIdMissing            (IMDb-search fallback → publishes ImdbIdResolved)
-  //   ImdbIdMissing      → rottenTomatoesRatings.onImdbIdMissing     (RT stage on TMDB-only hits)
-  //   ImdbIdMissing      → metascoreRatings.onImdbIdMissing          (Metascore stage on TMDB-only hits)
-  //   ImdbIdMissing      → filmwebRatings.onImdbIdMissing            (Filmweb stage on TMDB-only hits)
-  //   ImdbIdResolved     → imdbRatings.onImdbIdResolved              (rating fetch once id is known)
-  eventBus.subscribe(movieService.onMovieRecordCreated)
-  eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
-  eventBus.subscribe(imdbRatings.onTmdbResolved)
-  eventBus.subscribe(imdbRatings.onImdbIdResolved)
-  eventBus.subscribe(rottenTomatoesRatings.onTmdbResolved)
-  eventBus.subscribe(rottenTomatoesRatings.onImdbIdMissing)
-  eventBus.subscribe(metascoreRatings.onTmdbResolved)
-  eventBus.subscribe(metascoreRatings.onImdbIdMissing)
-  eventBus.subscribe(filmwebRatings.onTmdbResolved)
-  eventBus.subscribe(filmwebRatings.onImdbIdMissing)
-  eventBus.subscribe(kinoMuzaSynopsisRefresher.onCinemaMovieAdded)
-
-  // Start background work and register shutdown hooks. Order matters on stop:
-  // every ratings service's stop() must drain its worker pool before the
-  // repo's close() runs so in-flight upserts land.
+  // Start the data layer. Force the Mongo connection at boot (so connection
+  // errors surface in the boot timeline, not mid-request), then start the cache
+  // — hydrate from Mongo + open the change stream that keeps it warm.
   protected def start(): Unit = {
-    // Force Mongo connection at boot rather than waiting for the first
-    // lazy val that needs it. Connection errors / hydrate-from-Mongo
-    // delays surface here in the boot timeline instead of slipping into
-    // the middle of a user request.
     mongoConnection.database
     movieCache.start()
-    movieService.start()
-    imdbRatings.start()
-    rottenTomatoesRatings.start()
-    metascoreRatings.start()
-    filmwebRatings.start()
-    unscreenedCleanup.start()
-    kinoMuzaSynopsisRefresher.start()
-    showtimeCache.start()
   }
 
-  /** The full event-cascade drain order, producer→consumer. Each `stop()`
-   *  in this sequence awaits its worker pool's termination, so by the time
-   *  the next entry runs every event the previous one was going to publish
-   *  has fired and the next entry's queue is fully populated:
-   *
-   *    movieService     → publishes TmdbResolved / ImdbIdMissing
-   *    imdbIdResolver   → consumes ImdbIdMissing, publishes ImdbIdResolved
-   *    imdbRatings      → consumes TmdbResolved + ImdbIdResolved
-   *    *Ratings (RT, MC, FW) → consume TmdbResolved + ImdbIdMissing
-   *
-   *  Exposed as a `Seq[Stoppable]` so tests / recording scripts can drain
-   *  the same set in the same order without duplicating the list. */
-  def cascadeDrainOrder: Seq[Stoppable] = Seq(
-    movieService,
-    imdbIdResolver,
-    imdbRatings,
-    rottenTomatoesRatings,
-    metascoreRatings,
-    filmwebRatings
-  )
-
   protected def stop(): Unit = {
-    // showtimeCache first so no more scrape submissions land while we drain.
-    showtimeCache.stop()
-    cascadeDrainOrder.foreach(_.stop())
-    unscreenedCleanup.stop()
-    kinoMuzaSynopsisRefresher.stop()
     movieCache.stop()
     // Each repo's close() is a no-op when it borrowed its database from
     // `mongoConnection` — closing the shared MongoClient is owned here.
@@ -368,42 +116,5 @@ trait Wiring {
     userRepo.close()
     userStateRepo.close()
     mongoConnection.close()
-  }
-
-  /** Run the entire enrichment pipeline for one row, synchronously, on the
-   *  calling thread. No worker pools, no scheduled retries — every HTTP
-   *  call goes out and back before the next stage starts.
-   *
-   *  Used by recording scripts (`RecordAllDataToFixture`) as a safety net
-   *  *after* the bus-driven path has drained. The async path's retry
-   *  scheduler can drop tasks if their backoff window outlives
-   *  `movieService.worker`'s shutdown — a transient TMDB rate-limit
-   *  blip during the first scrape burst, for example, would cost every
-   *  affected row its enrichment. This pass picks those rows up and
-   *  records every fixture they're entitled to.
-   *
-   *  Stages:
-   *    1. `reEnrichSync` runs the TMDB stage — tmdb.search → /external_ids
-   *       (or sister-row donation, if a cached sibling already resolved).
-   *    2. If TMDB resolved a tmdbId without an imdbId cross-reference,
-   *       `imdbIdResolver.resolveSync` hits IMDb's suggestion endpoint.
-   *    3. Each `*Ratings.refreshOneSync` does its URL discovery + rating
-   *       scrape — Filmweb (search + info + preview + rating), Metacritic
-   *       (slug probe + canonical-page scrape), Rotten Tomatoes (slug
-   *       probe + canonical-page scrape), IMDb (GraphQL CDN POST).
-   *
-   *  Idempotent — safe to call after the bus-driven path. Already-resolved
-   *  rows re-hit the same URLs; `RecordingHttpFetch` overwrites the
-   *  fixture with byte-identical content. */
-  def fullySyncOne(title: String, year: Option[Int]): Unit = {
-    if (movieService.get(title, year).flatMap(_.tmdbId).isEmpty) movieService.reEnrichSync(title, year)
-    for {
-      row <- movieService.get(title, year)
-      _   <- row.tmdbId if row.imdbId.isEmpty
-    } imdbIdResolver.resolveSync(title, year, row.originalTitle.getOrElse(title))
-    imdbRatings.refreshOneSync(title, year)
-    rottenTomatoesRatings.refreshOneSync(title, year)
-    metascoreRatings.refreshOneSync(title, year)
-    filmwebRatings.refreshOneSync(title, year)
   }
 }

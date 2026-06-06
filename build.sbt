@@ -51,7 +51,30 @@ lazy val common = (project in file("common"))
     )
   )
 
-// ── Web app (content serving + — for now — scrape/enrich) ────────────────────
+// ── Worker app (scrape + enrich) ─────────────────────────────────────────────
+//
+// Plain Scala app (no Play): its only inbound HTTP is a Fly health check, so it
+// skips Play's server/router/Twirl stack entirely — leaner, and a `def main`
+// boot avoids the `extends App` init-order hazards with Mongo/Sentry. It writes
+// through MovieCache to Mongo; the web app's cache picks those writes up via the
+// Mongo change stream, so the two processes share no in-process state.
+lazy val worker = (project in file("worker"))
+  .dependsOn(common)
+  .enablePlugins(JavaAppPackaging)
+  .settings(
+    name := "kinowo-worker",
+    Compile / scalaSource := baseDirectory.value / "app",
+    Test / scalaSource    := baseDirectory.value / "test" / "scala",
+    Compile / mainClass   := Some("modules.WorkerMain"),
+    libraryDependencies ++= Seq(
+      // jsoup + mongo + caffeine arrive transitively via `common`; Sentry is the
+      // worker's own error-reporting sink.
+      "io.sentry"              %  "sentry-logback"     % "8.42.0",
+      "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test,
+    )
+  )
+
+// ── Web app (content serving) ────────────────────────────────────────────────
 
 // Integration tests live in `it/scala/` and run under a separate sbt
 // configuration so CI can dispatch `sbt test` and `sbt IntegrationTest/test`
@@ -69,7 +92,7 @@ lazy val PageTest = config("page") extend Test
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala, SbtWeb)
   .dependsOn(common)
-  .aggregate(common)
+  .aggregate(common, worker)
   .configs(IntegrationTest, PageTest)
   .settings(
     name := "movies",
