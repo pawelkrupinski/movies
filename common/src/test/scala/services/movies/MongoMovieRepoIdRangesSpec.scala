@@ -3,6 +3,9 @@ package services.movies
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
+
 /**
  * Guards `MongoMovieRepo.idRanges` — the partitioning behind `findAll`'s
  * parallel ranged cursors.
@@ -76,5 +79,22 @@ class MongoMovieRepoIdRangesSpec extends AnyFlatSpec with Matchers {
 
   it should "return no ranges for an empty id list" in {
     MongoMovieRepo.idRanges(Vector.empty, parallelism = 4) shouldBe empty
+  }
+
+  // `findAll` fans its ranged cursors out and joins them on `findAllEc`. That
+  // EC must be virtual-threaded for consistency with the rest of the app's
+  // background work — the old `ExecutionContext.Implicits.global` ran the join
+  // on platform ForkJoinPool threads (isVirtual == false).
+  "findAllEc" should "run its tasks on virtual threads" in {
+    // fallbackToOwnInit = false → no Mongo connection attempt; we only touch
+    // the EC, which is owned independently of the (disabled) collection.
+    val repo = new MongoMovieRepo(sharedDb = None, fallbackToOwnInit = false)
+    try {
+      val onVirtual = Await.result(
+        Future(Thread.currentThread().isVirtual)(using repo.findAllEc),
+        5.seconds
+      )
+      onVirtual shouldBe true
+    } finally repo.close()
   }
 }

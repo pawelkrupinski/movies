@@ -8,11 +8,11 @@ import org.mongodb.scala.model.{Filters, Updates}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import org.bson.conversions.Bson
 import play.api.Logging
-import tools.Env
+import tools.{DaemonExecutors, Env}
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutorService}
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -165,6 +165,16 @@ class MongoMovieRepo(
 
   def enabled: Boolean = coll.isDefined
 
+  // The ranged `findAll` fan-out runs its `Future.sequence` join on a
+  // virtual-thread EC rather than the global ForkJoinPool, matching every
+  // other background path in the app (see `DaemonExecutors`). Virtual threads
+  // park cheaply while the Mongo driver's reactive callbacks complete, so the
+  // join never pins a scarce carrier thread. Owned here and shut down by
+  // `close()`. `private[movies]` only so the repo spec can assert the EC is
+  // virtual-threaded.
+  private[movies] val findAllEc: ExecutionContextExecutorService =
+    DaemonExecutors.virtualThreadEC("movie-repo-find")
+
   /** Boot-time + periodic full reload. Implemented as a discover-then-fan-out
    *  pair of queries rather than one big `find()` because Atlas serialises
    *  individual cursor responses at ~50 ms/doc — a single `find()` of 231
@@ -187,7 +197,7 @@ class MongoMovieRepo(
   def findAll(): Seq[StoredMovieRecord] = (coll, rawColl) match {
     case (Some(c), Some(rc)) =>
       Try {
-        import scala.concurrent.ExecutionContext.Implicits.global
+        implicit val ec: ExecutionContext = findAllEc
         val Parallelism = 4
 
         // Sort in Mongo, not Scala: the chunk boundaries must be ordered by
@@ -358,7 +368,10 @@ class MongoMovieRepo(
     new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
   }
 
-  def close(): Unit = clientOpt.foreach(_.close())
+  def close(): Unit = {
+    clientOpt.foreach(_.close())
+    findAllEc.shutdown()
+  }
 
   private def init(): (Option[MongoClient], Option[MongoCollection[StoredMovieDto]], Option[MongoCollection[org.mongodb.scala.Document]]) =
     Env.get("MONGODB_URI") match {
