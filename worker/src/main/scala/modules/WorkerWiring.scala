@@ -34,10 +34,12 @@ class WorkerWiring {
   // The per-city scraper graph lives in CinemaScraperCatalog (Mongo-free, so a
   // diagnostic like tools.FilmwebDiff can build the real scrapers without the
   // worker's write machinery). WorkerWiring supplies the seams it varies —
-  // `httoFetch`, the Zyte-routed `multikinoFetch`, and Helios's REST date — and
+  // `httoFetch`, the Zyte-routed `multikinoFetch` / `biletynaFetch`, and Helios's REST date — and
   // wraps each raw scraper in RetryingCinemaScraper for production ticks.
   lazy val multikinoFetch: HttpFetch = MultikinoClient.fetchFor(httoFetch)
-  lazy val cinemaScraperCatalog = new CinemaScraperCatalog(httoFetch, multikinoFetch, heliosToday)
+  // biletyna.pl 403s our datacenter IP; route Kino Kameralne through Zyte.
+  lazy val biletynaFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch)
+  lazy val cinemaScraperCatalog = new CinemaScraperCatalog(httoFetch, multikinoFetch, biletynaFetch, heliosToday)
   def kinoMuzaClient: KinoMuzaClient = cinemaScraperCatalog.kinoMuzaClient
 
   // Scrape only the cities in KINOWO_SCRAPE_CITIES (comma-separated slugs),
