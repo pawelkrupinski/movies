@@ -38,7 +38,11 @@ runs:
         java-version: 25
         cache: sbt
 
+    # sbt is only needed by the `chrome` kind, which runs `web/PageTest/test`.
+    # The `playwright` kind boots the prebuilt fixture-server jar (downloaded
+    # below) and never touches sbt.
     - uses: sbt/setup-sbt@v1
+      if: inputs.kind == 'chrome'
 
     - uses: browser-actions/setup-chrome@v1
       if: inputs.kind == 'chrome'
@@ -48,15 +52,17 @@ runs:
 
 
 
+    # Only the sbt-backed `chrome` kind needs the warm compile cache. The
+    # `playwright` kind runs the prebuilt jar, so it skips the ~93s restore.
     - uses: actions/cache@v4
+      if: inputs.kind == 'chrome'
       with:
         path: |
           target
           project/target
           project/project/target
-        # web/PageTest/test + FixtureServerMain → page scope (every module's
-        # main + test + the web page sources). restore-keys falls back to any
-        # recent sbt-target cache.
+        # web/PageTest/test → page scope (every module's main + test + the web
+        # page sources). restore-keys falls back to any recent sbt-target cache.
         key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
         restore-keys: |
           sbt-target-${{ runner.os }}-
@@ -91,24 +97,32 @@ runs:
       shell: bash
       run: cd page-tests-playwright && npx playwright install --with-deps ${{ inputs.browser }}
 
-    # Start the fixture server in the background. Writes the chosen
-    # free port to a file so we can read it from the next step without
-    # parsing sbt's chatty stdout. The PID is captured for the
-    # always-run kill step further below.
+    # Pull the prebuilt fixture-server jar (built once by `build-fixture-jar`).
+    - name: Download fixture-server jar
+      if: inputs.kind == 'playwright'
+      uses: actions/download-artifact@v4
+      with:
+        name: fixture-server-jar
+        path: web/target
+
+    # Start the fixture server from the jar in the background. Boots in ~20s
+    # (a cold JVM + the FixtureTestWiring scrape population) and writes the
+    # chosen free port to a file. Must run from the repo root so the server's
+    # repo-root-relative fixture paths (`test/resources/fixtures/…`) resolve.
     - name: Start FixtureServerMain
       if: inputs.kind == 'playwright'
       shell: bash
       run: |
         rm -f /tmp/kinowo-port.txt
-        sbt 'web/PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 &
+        java -jar web/target/fixture-server.jar /tmp/kinowo-port.txt > /tmp/fixture.log 2>&1 &
         echo "FIXTURE_PID=$!" >> $GITHUB_ENV
         for _ in $(seq 1 60); do
             [ -f /tmp/kinowo-port.txt ] && break
             sleep 2
         done
         if [ ! -f /tmp/kinowo-port.txt ]; then
-            echo "FixtureServerMain didn't write port within 120s; sbt log:"
-            cat /tmp/sbt-fixture.log
+            echo "FixtureServerMain didn't write port within 120s; log:"
+            cat /tmp/fixture.log
             exit 1
         fi
         echo "KINOWO_BASE_URL=http://127.0.0.1:$(cat /tmp/kinowo-port.txt)" >> $GITHUB_ENV

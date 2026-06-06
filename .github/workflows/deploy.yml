@@ -419,7 +419,50 @@ jobs:
     # (`color-contrast` on `.text-secondary` against the dark body
     # bg) that aren't worth blocking deploys over.
 
+    # Build the fixture server ONCE into a self-contained fat jar, then let
+    # every playwright page-test row `java -jar` it (~20s cold boot) instead
+    # of each booting `sbt PageTest/runMain` (~110s sbt launch + classpath
+    # load) on top of a ~93s sbt-target cache restore. One ~2.5min serial job
+    # replaces ~3min of sbt overhead on ~15 parallel rows — a net wall-clock
+    # win plus a large CI-compute reduction. The chrome row still runs sbt
+    # (it executes `web/PageTest/test`, not the jar), so it ignores the jar.
+    build-fixture-jar:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            - uses: actions/cache@v4
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  # Page scope — same sources/key the page-test rows used to
+                  # compile, so this shares the warm zinc cache with `test`.
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            - run: sbt web/assembly
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: fixture-server-jar
+                  path: web/target/fixture-server.jar
+                  retention-days: 1
+
     page-tests-chrome:
+        needs: build-fixture-jar
         name: page tests (chrome / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
         strategy:
             fail-fast: false
@@ -452,6 +495,7 @@ jobs:
                   shard:         ${{ matrix.shard }}
 
     page-tests-safari:
+        needs: build-fixture-jar
         name: page tests (safari / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
         strategy:
             fail-fast: false
@@ -484,6 +528,7 @@ jobs:
                   shard:         ${{ matrix.shard }}
 
     page-tests-firefox:
+        needs: build-fixture-jar
         name: page tests (firefox / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
         strategy:
             fail-fast: false
