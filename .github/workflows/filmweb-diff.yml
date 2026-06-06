@@ -44,12 +44,13 @@ jobs:
               continue-on-error: true
               env:
                   ZYTE_API_KEY: ${{ secrets.ZYTE_API_KEY }}
-              run: sbt "worker/runMain tools.FilmwebDiff 3 filmweb-diff.txt filmweb-diff.csv"
+              run: sbt "worker/runMain tools.FilmwebDiff 3 filmweb-diff.txt filmweb-diff.csv filmweb-diff.json"
 
-            # Upload BOTH the human-readable report and the CSV summary under a
-            # date-stamped name. 90 days is GitHub's artifact-retention ceiling;
-            # for history beyond that the CSV would need committing to the repo
-            # (out of scope unless asked).
+            # Upload the human-readable report, the CSV summary, AND the
+            # deterministic JSON (per-film discrepancies; diffs cleanly across
+            # days) under a date-stamped name. 90 days is GitHub's artifact-
+            # retention ceiling; for history beyond that a file would need
+            # committing to the repo (out of scope unless asked).
             - name: Upload diff artifacts
               if: always()
               uses: actions/upload-artifact@v4
@@ -58,5 +59,6 @@ jobs:
                   path: |
                       filmweb-diff.txt
                       filmweb-diff.csv
+                      filmweb-diff.json
                   retention-days: 90
                   if-no-files-found: warn

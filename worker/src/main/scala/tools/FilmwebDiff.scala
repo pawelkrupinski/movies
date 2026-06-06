@@ -1,11 +1,13 @@
 package tools
 
 import models._
-import services.cinemas.FilmwebCinemaIdResolver.{Fuzzy, Override, OverrideSuppressed, Resolution, Unmatched}
+import services.cinemas.FilmwebCinemaIdResolver.{Fuzzy, Override, OverrideSuppressed, Resolution, Source, Unmatched}
 import services.cinemas.{CinemaScraperCatalog, CinemaScraper, FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 
+import play.api.libs.json.Json
+
 import java.io.PrintWriter
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -42,6 +44,10 @@ import scala.util.{Failure, Success, Try}
  */
 object FilmwebDiff {
 
+  // Multiset ops over LocalDateTime live in FilmwebDiffJson, shared so the
+  // text/CSV path and the JSON path agree on shared/ours-only/fw-only counts.
+  import FilmwebDiffJson.{multisetIntersect, multisetDiff}
+
   sealed trait Verdict
   case object SAME             extends Verdict
   case object OURS_EXTRA       extends Verdict
@@ -49,18 +55,25 @@ object FilmwebDiff {
   case object BOTH_DIFFER      extends Verdict
   case object OUR_FETCH_FAILED extends Verdict
   case object FW_FETCH_FAILED  extends Verdict
+  case object NO_FILMWEB_ID    extends Verdict
 
   /** One cinema's comparison result. Times are multisets (Seq, not Set) so a
-   *  duplicate slot on one side counts as a difference. */
+   *  duplicate slot on one side counts as a difference. `oursByFilm`/`fwByFilm`
+   *  carry the same normalised-title → screening-time maps the JSON renderer
+   *  needs, so text, CSV, and JSON all agree. */
   private case class CinemaDiff(
-    cinema:    Cinema,
-    oursCount: Int,
-    fwCount:   Int,
-    shared:    Int,
-    oursOnly:  Int,
-    fwOnly:    Int,
-    verdict:   Verdict,
-    detail:    String
+    cinema:     Cinema,
+    filmwebId:  Option[Int],
+    source:     Source,
+    oursCount:  Int,
+    fwCount:    Int,
+    shared:     Int,
+    oursOnly:   Int,
+    fwOnly:     Int,
+    verdict:    Verdict,
+    detail:     String,
+    oursByFilm: Map[String, Seq[LocalDateTime]],
+    fwByFilm:   Map[String, Seq[LocalDateTime]]
   )
 
   def main(args: Array[String]): Unit = {
@@ -68,13 +81,17 @@ object FilmwebDiff {
     val today     = LocalDate.now(ZoneId.of("Europe/Warsaw"))
     val windowEnd = today.plusDays(daysAhead.toLong)
 
-    // Path args: a `*.txt` → text report, a `*.csv` → summary CSV. Bare slugs
-    // (matching a known city) restrict the diff to those cities.
+    // Path args: a `*.txt` → text report, a `*.csv` → summary CSV, a `*.json` →
+    // the deterministic JSON report. Bare slugs (matching a known city) restrict
+    // the diff to those cities. Order-independent: classified by extension, so the
+    // documented `<days> <txt> <csv> <json>` order works and omitting the json
+    // path just defaults it (doesn't break older 2-3 arg invocations).
     val knownSlugs  = City.all.map(_.slug).toSet
-    val pathArgs    = args.tail.filter(a => a.endsWith(".txt") || a.endsWith(".csv") || a.startsWith("/"))
+    val pathArgs    = args.tail.filter(a => a.endsWith(".txt") || a.endsWith(".csv") || a.endsWith(".json") || a.startsWith("/"))
     val cityFilter  = args.tail.filter(knownSlugs).toSet
     val txtPath     = pathArgs.find(_.endsWith(".txt")).getOrElse("/tmp/filmweb-diff-output.txt")
     val csvPath     = pathArgs.find(_.endsWith(".csv")).getOrElse("/tmp/filmweb-diff-summary.csv")
+    val jsonPath    = pathArgs.find(_.endsWith(".json")).getOrElse("/tmp/filmweb-diff-output.json")
 
     val http     = new RealHttpFetch()
     val catalog  = new CinemaScraperCatalog(http, today = today)
@@ -95,6 +112,8 @@ object FilmwebDiff {
     emit(resolutionReport(resolutions))
     emit("")
 
+    val resolutionByCinema: Map[Cinema, Resolution] =
+      resolutions.map(r => r.cinema -> r).toMap
     val fwIdByCinema: Map[Cinema, Int] =
       resolutions.collect { case Resolution(c, Some(id), _) => c -> id }.toMap
 
@@ -106,7 +125,7 @@ object FilmwebDiff {
     emit("")
 
     var consecutiveFwFailures = 0
-    val diffs: Seq[CinemaDiff] = ourScrapers.zipWithIndex.map { case (scraper, i) =>
+    val comparedDiffs: Seq[CinemaDiff] = ourScrapers.zipWithIndex.map { case (scraper, i) =>
       if (i > 0) Thread.sleep(if (consecutiveFwFailures >= 3) 8000L else 1500L)
       val cinema = scraper.cinema
       emit(s"… ${cinema.displayName}")
@@ -119,8 +138,20 @@ object FilmwebDiff {
         case Success(_) => consecutiveFwFailures = 0
       }
 
-      diffFor(cinema, oursTry, fwTry, today, windowEnd)
+      val r = resolutionByCinema(cinema)
+      diffFor(cinema, r.filmwebId, r.source, oursTry, fwTry, today, windowEnd)
     }
+
+    // Cinemas with NO Filmweb id never reach the comparison loop, but they DO
+    // belong in the JSON (counts 0, verdict NO_FILMWEB_ID, empty discrepancies)
+    // so the set of cinemas is stable across days. Not added to the text/CSV —
+    // those already list them in the RESOLUTION section.
+    val unresolvedDiffs: Seq[CinemaDiff] =
+      resolutions.filterNot(_.resolved).map { r =>
+        CinemaDiff(r.cinema, None, r.source, 0, 0, 0, 0, 0, NO_FILMWEB_ID, "", Map.empty, Map.empty)
+      }
+
+    val diffs = comparedDiffs
 
     emit("")
     emit("══════════════════════════════ SUMMARY ══════════════════════════════")
@@ -141,6 +172,37 @@ object FilmwebDiff {
       case Success(_) => emit(s"CSV summary written to $csvPath")
       case Failure(e) => emit(s"Could not write $csvPath: ${e.getMessage}")
     }
+
+    // JSON includes the unresolved cinemas too, so its `cinemas` set is stable.
+    val meta = FilmwebDiffJson.Meta(
+      date        = today.toString,
+      generatedAt = Instant.now().toString,
+      windowDays  = daysAhead,
+      commit      = sys.env.getOrElse("GITHUB_SHA", "unknown")
+    )
+    val json = Json.prettyPrint(FilmwebDiffJson.render((diffs ++ unresolvedDiffs).map(cinemaResult), meta))
+    writeFile(jsonPath, json + "\n") match {
+      case Success(_) => emit(s"JSON report written to $jsonPath")
+      case Failure(e) => emit(s"Could not write $jsonPath: ${e.getMessage}")
+    }
+  }
+
+  /** Map a per-cinema [[CinemaDiff]] to the JSON renderer's input. */
+  private def cinemaResult(d: CinemaDiff): FilmwebDiffJson.CinemaResult =
+    FilmwebDiffJson.CinemaResult(
+      city        = cityOf(d.cinema).map(_.slug).getOrElse(""),
+      cinema      = d.cinema.displayName,
+      filmwebId   = d.filmwebId,
+      resolvedVia = resolvedVia(d.source),
+      verdict     = verdictLabel(d.verdict),
+      oursByFilm  = d.oursByFilm,
+      fwByFilm    = d.fwByFilm
+    )
+
+  private def resolvedVia(source: Source): String = source match {
+    case Override       => "override"
+    case Fuzzy(_, _)    => "fuzzy"
+    case _              => "none"
   }
 
   private def writeFile(path: String, content: String): Try[Unit] = Try {
@@ -211,15 +273,19 @@ object FilmwebDiff {
 
   private def diffFor(
     cinema:    Cinema,
+    filmwebId: Option[Int],
+    source:    Source,
     oursTry:   Try[Seq[CinemaMovie]],
     fwTry:     Try[Seq[CinemaMovie]],
     today:     LocalDate,
     windowEnd: LocalDate
   ): CinemaDiff = (oursTry, fwTry) match {
     case (Failure(e), _) =>
-      CinemaDiff(cinema, 0, 0, 0, 0, 0, OUR_FETCH_FAILED, s"  OUR fetch failed: ${msg(e)}")
+      CinemaDiff(cinema, filmwebId, source, 0, 0, 0, 0, 0, OUR_FETCH_FAILED,
+        s"  OUR fetch failed: ${msg(e)}", Map.empty, Map.empty)
     case (_, Failure(e)) =>
-      CinemaDiff(cinema, 0, 0, 0, 0, 0, FW_FETCH_FAILED, s"  Filmweb fetch failed: ${msg(e)}")
+      CinemaDiff(cinema, filmwebId, source, 0, 0, 0, 0, 0, FW_FETCH_FAILED,
+        s"  Filmweb fetch failed: ${msg(e)}", Map.empty, Map.empty)
     case (Success(ours), Success(fw)) =>
       val oursByFilm = withinWindow(ours, today, windowEnd)
       val fwByFilm   = withinWindow(fw, today, windowEnd)
@@ -237,8 +303,8 @@ object FilmwebDiff {
         else BOTH_DIFFER
 
       CinemaDiff(
-        cinema, oursTimes.size, fwTimes.size, shared.size, oursOnly.size, fwOnly.size,
-        verdict, perFilmDetail(oursByFilm, fwByFilm)
+        cinema, filmwebId, source, oursTimes.size, fwTimes.size, shared.size, oursOnly.size, fwOnly.size,
+        verdict, perFilmDetail(oursByFilm, fwByFilm), oursByFilm, fwByFilm
       )
   }
 
@@ -273,25 +339,6 @@ object FilmwebDiff {
     times.sorted.map(t => t.toLocalDate.toString.drop(5) + " " + "%02d:%02d".format(t.getHour, t.getMinute))
       .mkString(", ")
 
-  // Multiset ops over LocalDateTime: count duplicates correctly.
-  private def multisetIntersect(a: Seq[LocalDateTime], b: Seq[LocalDateTime]): Seq[LocalDateTime] = {
-    val bCounts = scala.collection.mutable.HashMap[LocalDateTime, Int]()
-    b.foreach(x => bCounts.update(x, bCounts.getOrElse(x, 0) + 1))
-    a.flatMap { x =>
-      val c = bCounts.getOrElse(x, 0)
-      if (c > 0) { bCounts.update(x, c - 1); Some(x) } else None
-    }
-  }
-
-  private def multisetDiff(a: Seq[LocalDateTime], b: Seq[LocalDateTime]): Seq[LocalDateTime] = {
-    val bCounts = scala.collection.mutable.HashMap[LocalDateTime, Int]()
-    b.foreach(x => bCounts.update(x, bCounts.getOrElse(x, 0) + 1))
-    a.flatMap { x =>
-      val c = bCounts.getOrElse(x, 0)
-      if (c > 0) { bCounts.update(x, c - 1); None } else Some(x)
-    }
-  }
-
   private def summaryTable(diffs: Seq[CinemaDiff]): String = {
     val nameW = (diffs.map(_.cinema.displayName.length).maxOption.getOrElse(20)).max("cinema".length)
     val header = f"  ${"cinema".padTo(nameW, ' ')}  ${"ours#"}%6s  ${"fw#"}%6s  ${"shared"}%6s  ${"ours-only"}%9s  ${"fw-only"}%7s  verdict"
@@ -308,6 +355,7 @@ object FilmwebDiff {
     case BOTH_DIFFER      => "BOTH_DIFFER"
     case OUR_FETCH_FAILED => "OUR_FETCH_FAILED"
     case FW_FETCH_FAILED  => "FW_FETCH_FAILED"
+    case NO_FILMWEB_ID    => "NO_FILMWEB_ID"
   }
 
   private def msg(e: Throwable): String =
