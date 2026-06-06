@@ -2,7 +2,6 @@ package tools
 
 import play.api.Logging
 
-import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
@@ -38,7 +37,7 @@ object ParallelDetailFetch extends Logging {
     label:         String,
     urls:          Seq[String],
     timeout:       FiniteDuration,
-    maxConcurrent: Int = 6
+    maxConcurrent: Int = 2
   )(fetch: String => T): Map[String, T] =
     keyed(label, urls, timeout, maxConcurrent)(identity)(fetch)
 
@@ -51,11 +50,11 @@ object ParallelDetailFetch extends Logging {
     label:         String,
     keys:          Seq[K],
     timeout:       FiniteDuration,
-    maxConcurrent: Int = 6
+    maxConcurrent: Int = 2
   )(urlOf: K => String)(fetch: String => T): Map[K, T] = {
     val distinct = keys.distinct
     if (distinct.isEmpty) return Map.empty
-    logger.debug(s"$label: fetching ${distinct.size} detail pages (timeout ${timeout.toSeconds}s, ≤$maxConcurrent at once)")
+    logger.debug(s"$label: fetching ${distinct.size} detail pages (≤$maxConcurrent at once)")
     val ec = DaemonExecutors.boundedEC(label, maxConcurrent)
     val t0 = System.currentTimeMillis()
     val completed = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
@@ -68,20 +67,16 @@ object ParallelDetailFetch extends Logging {
           result
         }(using ec)
       }
-      val result = Await.result(Future.sequence(futures)(using implicitly, ec), timeout).toMap
+      // No batch timeout: each `fetch` is bounded by the HTTP layer's own
+      // per-request timeout (and the caller's `fetch` swallows its failures),
+      // so the batch always settles. Per-call timing is recorded by the HTTP
+      // monitor instead of cut off here. `timeout` is kept on the signature for
+      // call-site compatibility but no longer gates the wait.
+      val _ = timeout
+      val result = Await.result(Future.sequence(futures)(using implicitly, ec), Duration.Inf).toMap
       val elapsed = System.currentTimeMillis() - t0
       logger.debug(s"$label: fetched ${result.size} detail pages in ${elapsed}ms")
       result
-    } catch {
-      case e: TimeoutException =>
-        val elapsed = System.currentTimeMillis() - t0
-        val done    = completed.size()
-        val pending = distinct.map(urlOf).filterNot(completed.contains)
-        logger.warn(
-          s"$label: timed out after ${elapsed}ms — completed $done/${distinct.size}" +
-          (if (pending.nonEmpty) s", pending: ${pending.mkString(", ")}" else "")
-        )
-        throw e
     } finally ec.shutdown()
   }
 }
