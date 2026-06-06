@@ -1647,6 +1647,129 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Cinema picker across a city switch ──────────────────────────────────────
+  //
+  // `disabledCinemas` is ONE global localStorage list shared by every city.
+  // Switching city is a full navigation that leaves it untouched, so a cinema
+  // deselected in another city stays in the list even though it isn't one of
+  // this city's cinemas. The bug: the selected-count and the "Wszystkie kina"
+  // checkbox were derived from the RAW list, so an other-city name made the
+  // count read one short of this city's total and wrongly flipped the master
+  // checkbox to indeterminate the moment you arrived. The fix scopes every
+  // count/select-all derivation to the cinemas that actually belong to this
+  // city; this spec pins that down (Poznań is the rendered city, so any
+  // non-Poznań name stands in for "deselected elsewhere").
+
+  // A cinema name guaranteed NOT to be in the rendered (Poznań) corpus —
+  // a real Kraków cinema, so it reads like genuine cross-city state.
+  private val foreignCinema = "Kino Pod Baranami"
+
+  "a cinema deselected in another city" should "not pollute this city's count or Wszystkie-kina state" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      // Sanity: the stand-in really is foreign to this city, else the test
+      // would assert nothing.
+      page.evalBool(s"ALL_CINEMAS.includes(${jsString(foreignCinema)})") shouldBe false
+
+      page.eval(s"localStorage.setItem('disabledCinemas', ${jsString(s"""["$foreignCinema"]""")})")
+      page.reload()
+      pinDateFilterAnytime(page)
+
+      // Every one of THIS city's cinemas is actually selected …
+      page.evalBool(
+        "[...document.querySelectorAll('#cinema-list input[type=\"checkbox\"]')].every(cb => cb.checked)"
+      ) shouldBe true
+      // … so the master checkbox is fully checked, not indeterminate …
+      page.evalBool("document.getElementById('cinema-all').checked")       shouldBe true
+      page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe false
+      // … and the Filtry label carries no "kina N/N" narrowing badge.
+      page.evalString("document.getElementById('format-filter-btn').textContent")
+        .toLowerCase should not include "kina"
+
+      clearLocalStorage(page)
+    }
+  }
+
+  it should "still flip count + master state when a cinema of THIS city is the one deselected" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      val here = page.evalString("ALL_CINEMAS[0]")
+      // A real in-city deselection alongside the stale foreign entry.
+      page.eval(
+        s"localStorage.setItem('disabledCinemas', JSON.stringify([${jsString(foreignCinema)}, ${jsString(here)}]))"
+      )
+      page.reload()
+      pinDateFilterAnytime(page)
+
+      // First checkbox (ALL_CINEMAS[0] order) off, the rest on.
+      page.evalBool(
+        "(() => { const bs = [...document.querySelectorAll('#cinema-list input[type=\"checkbox\"]')];" +
+          "  return !bs[0].checked && bs.slice(1).every(cb => cb.checked); })()"
+      ) shouldBe true
+      page.evalBool("document.getElementById('cinema-all').checked")       shouldBe false
+      page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe true
+      // Count is scoped to this city: total − 1, NOT total − 2 (the foreign
+      // entry must not be counted).
+      val total = page.evalInt("ALL_CINEMAS.length")
+      page.evalString("document.getElementById('format-filter-btn').textContent") should
+        include(s"kina ${total - 1}/$total")
+
+      clearLocalStorage(page)
+    }
+  }
+
+  "Wszystkie kina → select-all" should "drop only this city's cinemas, preserving deselections made elsewhere" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      val here = page.evalString("ALL_CINEMAS[0]")
+      page.eval(
+        s"localStorage.setItem('disabledCinemas', JSON.stringify([${jsString(foreignCinema)}, ${jsString(here)}]))"
+      )
+      page.reload()
+      pinDateFilterAnytime(page)
+
+      // Boot state is indeterminate (one in-city cinema off); clicking flips
+      // it to checked → toggleAllCinemas(true).
+      page.eval("document.getElementById('cinema-all').click()")
+
+      // The foreign deselection survives; this city's entry is gone.
+      page.evalBool(
+        s"(() => { const d = JSON.parse(localStorage.getItem('disabledCinemas') || '[]');" +
+          s"  return d.length === 1 && d[0] === ${jsString(foreignCinema)}; })()"
+      ) shouldBe true
+      page.evalBool("document.getElementById('cinema-all').checked")       shouldBe true
+      page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe false
+
+      clearLocalStorage(page)
+    }
+  }
+
+  "Wszystkie kina → deselect-all" should "add every cinema of this city on top of deselections made elsewhere" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      page.eval(s"localStorage.setItem('disabledCinemas', ${jsString(s"""["$foreignCinema"]""")})")
+      page.reload()
+      pinDateFilterAnytime(page)
+
+      // Boot state is fully checked (no in-city cinema disabled); clicking
+      // unchecks it → toggleAllCinemas(false).
+      page.eval("document.getElementById('cinema-all').click()")
+
+      // Disabled set is now the foreign entry PLUS every cinema of this city.
+      page.evalBool(
+        s"(() => { const d = new Set(JSON.parse(localStorage.getItem('disabledCinemas') || '[]'));" +
+          s"  return d.has(${jsString(foreignCinema)}) && ALL_CINEMAS.every(c => d.has(c))" +
+          s"    && d.size === ALL_CINEMAS.length + 1; })()"
+      ) shouldBe true
+      page.evalBool("document.getElementById('cinema-all').checked")       shouldBe false
+      // Every in-city cinema is disabled, so the master is unchecked, not
+      // indeterminate.
+      page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe false
+
+      clearLocalStorage(page)
+    }
+  }
+
   // ── Cinema+room (Sale) filter ───────────────────────────────────────────────
 
   "the Sale (room) submenu" should "list one entry per (cinema, room) pair on /" in {
