@@ -381,6 +381,16 @@ class CaffeineMovieCache(
         // tick, so this is a no-op for them — they keep their authoritative
         // per-tick refresh.
         val priorSlot = existing.data.get(cinema)
+        // A cinema's freshly-scraped year wins when it reports one; when this
+        // tick reports None, preserve the year we already had. Helios sources
+        // `releaseYear` solely from a best-effort REST lookup with no fallback
+        // (its NUXT listing carries no year), so a transiently-absent REST body
+        // makes the year oscillate Some(year)↔None across passes. Without this
+        // fallback that drop would (a) wipe the year from the merged view and
+        // (b) flip `isNew` to true every pass — the recurring "(N new)" on
+        // Helios. Treat a dropped year as data loss, not a correction; a
+        // genuine year change (None→Some, or one Some to another) still flows.
+        val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
         val slot = SourceData(
           title          = Some(cm.movie.title),
           originalTitle  = cm.movie.originalTitle,
@@ -399,7 +409,7 @@ class CaffeineMovieCache(
           // unrelated text. Squash to None so a real reading from another
           // cinema isn't outranked by a phantom zero in the merged view.
           runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0),
-          releaseYear    = cm.movie.releaseYear,
+          releaseYear    = effectiveYear,
           // Fold every spelling/alias into a single canonical name per
           // CountryNames — "Stany Zjednoczone" / "USA" / "U.S.A." all
           // become "USA", "UK" / "Wielka Brytania" both become
@@ -420,7 +430,7 @@ class CaffeineMovieCache(
         // (no prior slot to compare against), which is harmless since the
         // listeners early-exit on already-resolved rows.
         val isNew = !priorSlot.exists(s =>
-          s.title.contains(cm.movie.title) && s.releaseYear == cm.movie.releaseYear
+          s.title.contains(cm.movie.title) && s.releaseYear == effectiveYear
         )
         // For existing rows, route through `putIfPresent` so the Mongo write
         // is a `$set`-diff against the (before, after) pair. The diff only
