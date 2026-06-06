@@ -136,6 +136,13 @@ class CinemaScraperCatalog(
     new KinoPortClient(http, KinoPort),
   )
 
+  private val lublinScrapers: Seq[CinemaScraper] = Seq(
+    new CinemaCityScraper(cinemaCityClient, "1094", CinemaCityLublinFelicity),
+    new CinemaCityScraper(cinemaCityClient, "1084", CinemaCityLublinPlaza),
+    new MultikinoClient(mkFetch, "0034", MultikinoLublin),
+    new KinoBajkaClient(http, KinoBajka),
+  )
+
   /** Raw scrapers grouped by city slug — same slugs `City.slug` uses, so a
    *  caller can scope by city without re-spelling the membership. */
   val byCity: Map[String, Seq[CinemaScraper]] = Map(
@@ -145,6 +152,7 @@ class CinemaScraperCatalog(
     "krakow"     -> krakowScrapers,
     "katowice"   -> katowiceScrapers,
     "trojmiasto" -> trojmiastoScrapers,
+    "lublin"     -> lublinScrapers,
   )
 
   /** Every raw scraper across every city, in city order. */

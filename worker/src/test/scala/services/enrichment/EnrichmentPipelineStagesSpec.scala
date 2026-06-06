@@ -439,14 +439,17 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
     bus.publish(MovieRecordCreated("Niedźwiedzica", Some(2026), None, Some("Asgeir Helgestad")))
 
+    // Wait on the event, not just the cache row: runTmdbStageSync writes the
+    // resolved row (cache.put) BEFORE runTmdbStage publishes ImdbIdMissing, so
+    // asserting missing.size outside `eventually` races that publish.
     eventually {
       val e = cache.get(cache.keyOf("Niedźwiedzica", Some(2026)))
       e.flatMap(_.tmdbId) shouldBe Some(1648927)
+      missing.size shouldBe 1
     }
     // Resolved without an imdb cross-reference → ImdbIdMissing fires, no
     // TmdbResolved.
     resolved shouldBe empty
-    missing.size shouldBe 1
   }
 
   it should "leave behaviour unchanged when the cinema doesn't report a director" in {
