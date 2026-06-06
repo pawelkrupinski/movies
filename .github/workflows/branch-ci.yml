@@ -1,0 +1,26 @@
+name: Branch CI
+
+# Runs the exact same build + test pipeline deploy.yml gates on — but
+# WITHOUT deploying — for every pull request. The Scala Steward
+# dependency-bump PRs (and any feature branch) are thereby confirmed to
+# compile and pass every layer before they can be merged, instead of
+# only finding out on the push-to-main deploy run.
+#
+# Reuses ci.yml verbatim (one definition, two callers — see ci.yml's
+# header). `secrets: inherit` hands the called workflow the
+# ZYTE / TMDB / MONGODB secrets its test jobs need; same-repo PRs (which
+# is what Steward opens) get a write-scoped token so the junit
+# check-runs post fine.
+on:
+    pull_request:
+
+# A newer push to the same PR branch cancels the older run mid-flight so
+# stale commits don't hold worker slots.
+concurrency:
+    group: branch-ci-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    ci:
+        uses: ./.github/workflows/ci.yml
+        secrets: inherit
