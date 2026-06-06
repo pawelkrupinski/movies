@@ -6,10 +6,11 @@ name: Scala Steward
 # the release notes. It only proposes the bump — per CLAUDE.md's test gate,
 # a human still reviews each PR and lands it once the suite is green.
 on:
-    # Weekly sweep — Monday 06:00 UTC. Dependency churn is slow enough that
-    # daily would just be noise; weekly keeps the PR queue reviewable.
+    # Daily sweep — 06:00 UTC every day. Steward only opens a PR when a new
+    # version actually exists and dedups against open ones, so a quiet day
+    # produces nothing; this just shortens the lag between a release and its PR.
     schedule:
-        - cron: '0 6 * * 1'
+        - cron: '0 6 * * *'
     # Manual kick from the Actions tab when you want an upgrade pass now.
     workflow_dispatch:
 
