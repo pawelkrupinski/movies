@@ -70,6 +70,35 @@ final class UserPreferences: ObservableObject {
         store.set(Array(disabledCinemas), forKey: kDisabled)
     }
 
+    // `disabledCinemas` is ONE global set shared across every city (matching
+    // the web's single `disabledCinemas` localStorage list) — switching city
+    // doesn't touch it, so a cinema deselected in another city lingers even
+    // though it isn't one of this city's cinemas. Deriving a count or the
+    // "Wszystkie kina" toggle from the raw set therefore reads stale entries:
+    // the count came out one short and the master toggle showed "not all
+    // selected" the moment you arrived. Every aggregate must be scoped to the
+    // cinemas that actually belong to the current city. (A per-card membership
+    // test — `filteredFor` — doesn't need this: a stale name never matches a
+    // card of this city.)
+
+    /// The disabled cinemas that belong to `cityCinemas` — the only ones whose
+    /// state should drive this city's count / select-all.
+    func disabledCinemas(in cityCinemas: [String]) -> Set<String> {
+        disabledCinemas.intersection(cityCinemas)
+    }
+
+    /// True when every cinema of `cityCinemas` is selected (none disabled here).
+    func allCinemasSelected(in cityCinemas: [String]) -> Bool {
+        disabledCinemas.isDisjoint(with: cityCinemas)
+    }
+
+    /// Select-all (`selected = true`) / deselect-all scoped to one city.
+    /// Deselections made in OTHER cities are preserved untouched.
+    func setAllCinemas(in cityCinemas: [String], selected: Bool) {
+        let others = disabledCinemas.subtracting(cityCinemas)
+        setDisabledCinemas(selected ? others : others.union(cityCinemas))
+    }
+
     func markSwiped() {
         guard !hasSwipedScreens else { return }
         hasSwipedScreens = true

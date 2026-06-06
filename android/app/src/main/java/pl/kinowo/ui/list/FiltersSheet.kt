@@ -40,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pl.kinowo.filter.CinemaCityFilter
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.model.Cities
@@ -133,11 +134,15 @@ internal fun FiltersSheetContent(
             // cinema and this multi-select would only confuse.
             if (showCinemaFilter && allCinemas.isNotEmpty()) {
                 item(key = "sec_cinemas") {
-                    CollapsibleSection("Kina", if (disabled.isNotEmpty()) "${disabled.size} wyłączonych" else null) {
+                    // Scope the badge + master toggle to THIS city's cinemas — a
+                    // cinema deselected in another city lingers in the global set
+                    // (see CinemaCityFilter) and must not be counted here.
+                    val disabledHere = CinemaCityFilter.disabledIn(disabled, allCinemas)
+                    CollapsibleSection("Kina", if (disabledHere.isNotEmpty()) "${disabledHere.size} wyłączonych" else null) {
                         LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
                             item(key = "cin_all") {
-                                ToggleRow("Wszystkie kina", disabled.isEmpty()) { on ->
-                                    vm.setDisabledCinemas(if (on) emptySet() else allCinemas.toSet())
+                                ToggleRow("Wszystkie kina", CinemaCityFilter.allSelected(disabled, allCinemas)) { on ->
+                                    vm.setAllCinemas(allCinemas, on)
                                 }
                             }
                             items(allCinemas, key = { "cin_$it" }) { cinema ->

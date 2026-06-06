@@ -15,6 +15,7 @@ test.describe('city selection landing (/)', () => {
     await expect(page.locator('.city-list')).toContainText('Kraków');
     await expect(page.locator('.city-list')).toContainText('Łódź');
     await expect(page.locator('.city-list')).toContainText('Trójmiasto');
+    await expect(page.locator('.city-list')).toContainText('Lublin');
 
     await page.locator('.city-list a', { hasText: 'Poznań' }).click();
     await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
