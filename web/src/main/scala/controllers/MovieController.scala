@@ -208,8 +208,12 @@ class MovieControllerService(
    *  same pattern. Production callers should always use the city-only variant.
    *  Sections are this city's cinemas only. */
   def toCinemaSchedules(city: City, now: LocalDateTime): Seq[CinemaSchedule] = {
+    // One snapshot for the whole request — `snapshot()` allocates and
+    // title-sorts the entire global corpus, so reading it per-cinema would
+    // redo that work N times (N = cinemas in this city) for one page render.
+    val all = cache.snapshot()
     city.cinemas.flatMap { cinema =>
-      val moviesForCinema = cache.snapshot().flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
+      val moviesForCinema = all.flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
         e.cinemaData.get(cinema).flatMap { slot =>
           val future = slot.showtimes.filter(_.dateTime.isAfter(now.minusMinutes(30)))
           if (future.isEmpty) None
