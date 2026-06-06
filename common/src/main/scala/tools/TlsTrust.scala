@@ -21,10 +21,20 @@ import scala.util.{Try, Using}
  *
  *   1. Hosts that send a complete chain to the Certum root (kinomuranow.pl,
  *      sdk.waw.pl) just need that root to be a trust anchor — we bundle it.
- *   2. artmuseum.pl serves a *broken* chain (the wrong intermediates). With the
- *      root now trusted, `enableAIAcaIssuers` (set below) lets the JVM fetch the
- *      missing intermediate from the leaf's Authority-Information-Access URL —
- *      which is also durable across the upstream rotating that intermediate.
+ *   2. artmuseum.pl serves a *broken* chain: the leaf (`*.artmuseum.pl`, issued
+ *      by `home pl DV TLS G2 R35 CA`) ships with an unrelated, orphaned set of
+ *      intermediates that don't include its real issuer. The leaf's actual
+ *      issuer is reachable two ways, and we bundle BOTH so neither is a single
+ *      point of failure:
+ *        a. `enableAIAcaIssuers` (set below) lets the JVM fetch the missing
+ *           intermediate from the leaf's Authority-Information-Access URL —
+ *           durable across the upstream rotating that intermediate, but it is a
+ *           SYNCHRONOUS network fetch to certum.pl on every cold handshake. When
+ *           that repository hiccups, the whole scrape dies with the PKIX error
+ *           (a recurring transient red on Kinomuzeum's /uptime).
+ *        b. We also bundle the `home pl DV TLS G2 R35 CA` intermediate itself as
+ *           a trust anchor, so the common case needs no network at all. If the
+ *           upstream rotates it, (a) still recovers. Belt and braces.
  *
  * The extra roots are ADDED to the defaults, never a replacement: well-behaved
  * APIs (TMDB, IMDb, Filmweb, …) keep validating against the standard store. The
@@ -39,8 +49,14 @@ object TlsTrust extends Logging {
   // is constructed, at wiring time, ahead of any scrape).
   System.setProperty("com.sun.security.enableAIAcaIssuers", "true")
 
-  /** Classpath-absolute paths of PEM roots to add on top of the default store. */
-  val BundledRootResources: Seq[String] = Seq("/certs/certum-trusted-root-ca.pem")
+  /** Classpath-absolute paths of PEM certs to add as trust anchors on top of the
+   *  default store: the Certum root the JDK omits, plus the artmuseum.pl leaf's
+   *  issuing intermediate (see point 2b above) so its broken chain validates
+   *  without a per-handshake AIA network fetch. */
+  val BundledRootResources: Seq[String] = Seq(
+    "/certs/certum-trusted-root-ca.pem",
+    "/certs/home-pl-dv-tls-g2-r35-ca.pem"
+  )
 
   /** The bundled extra roots, parsed. Empty if a resource is missing (logged). */
   private[tools] def bundledCerts: Seq[X509Certificate] = loadCerts(BundledRootResources)
