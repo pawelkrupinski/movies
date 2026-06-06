@@ -37,9 +37,16 @@ class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt
   private def fetchRestData(): RestData = {
     val today = LocalDate.now(WarsawZone)
     val in6   = today.plusDays(6)
-    val screeningsUrl =
-      s"$ApiBase/cinema/$sourceId/screening?dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
-    val eventsUrl = s"$ApiBase/cinema/$sourceId/event"
+    val window = s"dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
+    val screeningsUrl = s"$ApiBase/cinema/$sourceId/screening?$window"
+    // `/event` honours the SAME date window as `/screening`. Without it the
+    // endpoint returns the cinema's ENTIRE event history — ~4400 events, 9 MB,
+    // ~99% of them in the past — and the 18-20s spent hauling-then-discarding
+    // that payload was the single dominant cost of a Helios scrape (the whole
+    // fetch dropped from ~20s to ~1s once windowed). We only ever use events
+    // whose screenings fall in the window `/screening` already covers, so the
+    // filter loses nothing.
+    val eventsUrl = s"$ApiBase/cinema/$sourceId/event?$window"
 
     // `/screening` lists regular film screenings; event screenings (anime, concerts,
     // sports broadcasts) are excluded from it but carry the same id→screenId mapping
@@ -88,8 +95,8 @@ class HeliosClient(http: HttpFetch = HeliosFetch, cfg: HeliosCinema = HeliosNuxt
       }.toMap
     }.getOrElse(Map.empty)
 
-  // The `/event` endpoint returns one entry per event screening (a flat array, no
-  // date window), each with its `screeningId`, `screenId` and `release`. We map them
+  // The `/event` endpoint returns one entry per event screening (a flat array),
+  // each with its `screeningId`, `screenId` and `release`. We map them
   // into the same ApiScreening shape used for room/format enrichment. `movieId` is
   // left empty — events already arrive fully described via NUXT, so they neither need
   // nor have a REST movie body to fetch (the empty id is filtered out before fetching).
