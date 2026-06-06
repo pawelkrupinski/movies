@@ -14,10 +14,11 @@ import java.time.{LocalDate, ZoneId}
  *
  * Takes the three seams the worker (and its fixture-replay test wiring) vary:
  *   - `http`     — the shared `HttpFetch` every cinema fetches through.
- *   - `mkFetch`  — Multikino's fetch path. Production routes it through Zyte
- *                  (`MultikinoClient.fetchFor(http)`, the primary-constructor
- *                  default); the fixture wiring routes it back at `http` via the
- *                  secondary constructor below.
+ *   - `mkFetch`  — Multikino's fetch path, passed by `WorkerWiring` (production
+ *                  routes it through Zyte via `MultikinoClient.fetchFor`; the
+ *                  fixture wiring overrides it back to `http`). A diagnostic that
+ *                  doesn't care uses the secondary constructor below, which
+ *                  defaults `mkFetch` to the Zyte-routed path.
  *   - `today`    — the date Helios bakes into its REST URLs.
  *
  * Returns RAW scrapers. `WorkerWiring` wraps each in a `RetryingCinemaScraper`
@@ -29,11 +30,11 @@ class CinemaScraperCatalog(
   today:   LocalDate
 ) {
 
-  /** Production / diagnostic ctor: Multikino's fetch defaults to the Zyte-routed
-   *  path derived from `http` (a clean body-derived default, not the old
-   *  `null`-param workaround — Scala can't reference `http` in a default, but a
-   *  secondary constructor can). The fixture wiring uses the primary ctor to
-   *  route Multikino back through `http`. */
+  /** Diagnostic ctor: Multikino's fetch defaults to the Zyte-routed path derived
+   *  from `http` (a clean body-derived default, not the old `null`-param
+   *  workaround — Scala can't reference `http` in a primary-constructor default,
+   *  but a secondary constructor can). `WorkerWiring` uses the primary ctor to
+   *  inject its (possibly fixture-overridden) `multikinoFetch`. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) =
     this(http, MultikinoClient.fetchFor(http), today)
 
