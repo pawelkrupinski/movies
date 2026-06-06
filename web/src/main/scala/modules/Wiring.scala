@@ -18,7 +18,11 @@ import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
  * (`modules.WorkerWiring`); the two share only the Mongo database.
  */
 trait Wiring {
-  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database)
+  // watchExternalWrites: the worker now records all scraper + enrichment metrics
+  // and writes them to the shared uptimeBuckets collection. This serving process
+  // tails that collection's change stream so /uptime reflects the worker's
+  // activity live, not just a stale snapshot from the last web boot.
+  lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, watchExternalWrites = true)
   // OAuth providers + token validators make outbound HTTP; the monitoring
   // wrapper records their latency on the same /uptime surface the worker feeds.
   lazy val httoFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)
@@ -109,6 +113,7 @@ trait Wiring {
   }
 
   protected def stop(): Unit = {
+    uptimeMonitor.close()
     movieCache.stop()
     // Each repo's close() is a no-op when it borrowed its database from
     // `mongoConnection` — closing the shared MongoClient is owned here.

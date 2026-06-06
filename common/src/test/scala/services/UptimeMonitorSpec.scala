@@ -115,6 +115,44 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     history.failures shouldBe 1
   }
 
+  // Regression for the read/write split: the worker process now records all the
+  // scraper + enrichment metrics and writes them to the shared `uptimeBuckets`
+  // collection. The web process serving /uptime must surface those external
+  // writes (delivered by the Mongo change stream) in its in-memory map AND fire
+  // its SSE listeners — otherwise the page froze at the last web-boot snapshot.
+  "an external (worker) bucket update" should "surface in history, averages, services and fire listeners" in {
+    val monitor = new UptimeMonitor()
+    var notified = List.empty[String]
+    monitor.addListener((s, _) => notified = s :: notified)
+
+    val ts = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    monitor.applyExternalUpdate("TMDB", ts,
+      successes = 7, failures = 2, durationSumMs = 1400L, durationCount = 7, errors = Seq("HTTP 503"))
+
+    val h = monitor.history("TMDB")
+    h should have size 1
+    h.head.successes shouldBe 7
+    h.head.failures shouldBe 2
+    h.head.errors shouldBe Seq("HTTP 503")
+    monitor.averageMsTotal("TMDB") shouldBe Some(200L)
+    monitor.services should contain ("TMDB")
+    notified should contain ("TMDB")
+  }
+
+  // The change stream delivers the full post-image, which carries CUMULATIVE
+  // counts for the bucket. Applying it must REPLACE the bucket, not add — else
+  // re-delivery (driver resume) or the web app's own echoed writes double-count.
+  it should "replace (not add to) the bucket's counts when applied repeatedly" in {
+    val monitor = new UptimeMonitor()
+    val ts = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    monitor.applyExternalUpdate("IMDb", ts, successes = 3, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.applyExternalUpdate("IMDb", ts, successes = 5, failures = 1, durationSumMs = 0L, durationCount = 0, errors = Seq("boom"))
+
+    monitor.history("IMDb").head.successes shouldBe 5
+    monitor.history("IMDb").head.failures shouldBe 1
+    monitor.history("IMDb").head.errors shouldBe Seq("boom")
+  }
+
   "BucketSnapshot.status" should "be green when all succeed" in {
     UptimeMonitor.BucketSnapshot(0, successes = 5, failures = 0, Seq.empty).status shouldBe "green"
   }

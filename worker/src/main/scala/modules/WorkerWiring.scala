@@ -6,7 +6,7 @@ import services.{MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
 import services.cinemas._
 import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
-import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieCache, MovieRepo, MovieService, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, UnscreenedCleanup}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
 /**
