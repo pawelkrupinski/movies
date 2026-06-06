@@ -168,9 +168,9 @@ jobs:
                       target
                       project/target
                       project/project/target
-                  # Boots PageTest FixtureServerMain → page scope
-                  # (app + test + page). restore-keys keeps zinc warm.
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+                  # Boots web/PageTest FixtureServerMain → page scope
+                  # (every module's main + test + the web page sources).
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
@@ -195,7 +195,7 @@ jobs:
                   PORT_FILE=$(mktemp)
                   echo "PORT_FILE=$PORT_FILE" >> "$GITHUB_ENV"
 
-                  nohup sbt "PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
+                  nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
                   echo "SERVER_PID=$!" >> "$GITHUB_ENV"
 
                   for _ in $(seq 1 60); do
@@ -271,8 +271,8 @@ jobs:
                       target
                       project/target
                       project/project/target
-                  # Boots PageTest FixtureServerMain → page scope (app + test + page).
-                  key: sbt-target-android-ls-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+                  # Boots web/PageTest FixtureServerMain → page scope (every module's main + test + web page sources).
+                  key: sbt-target-android-ls-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
                       sbt-target-android-ls-${{ runner.os }}-
 
@@ -291,7 +291,7 @@ jobs:
                   PORT_FILE=$(mktemp)
                   echo "PORT_FILE=$PORT_FILE" >> "$GITHUB_ENV"
 
-                  nohup sbt "PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
+                  nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
                   echo "SERVER_PID=$!" >> "$GITHUB_ENV"
 
                   for _ in $(seq 1 60); do

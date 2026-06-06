@@ -1,4 +1,4 @@
-// ESLint 9 flat config. Lints `public/js/**/*.js` — the production
+// ESLint 9 flat config. Lints `web/src/main/assets/js/**/*.js` — the production
 // browser code that ships to users. Test JS lives under
 // `page-tests-playwright/tests/` and has its own setup; this config
 // deliberately stays narrow.
@@ -24,7 +24,7 @@ const globals = require('globals');
 module.exports = [
   js.configs.recommended,
   {
-    files: ['public/js/**/*.js'],
+    files: ['web/src/main/assets/js/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

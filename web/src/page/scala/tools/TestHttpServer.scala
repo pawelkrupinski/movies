@@ -52,20 +52,20 @@ class TestHttpServer(
         // bare path — `routeKey` is the path verbatim when there's no
         // query at all.
         val routeKey = if (rawQ == null) path else s"$path?$rawQ"
-        // `/assets/*` is served from `public/*` on disk so the rendered
-        // page can `<link>` Bootstrap CSS in the test the same way prod
-        // does. Tests that assert on rendered geometry (e.g. the mobile
-        // navbar layout test in `PageJsBehaviourSpec`) need this — the
-        // page's flex layout depends entirely on Bootstrap's `.d-flex`
-        // rules; without them the navbar collapses to a vertical stack
-        // and assertions on element rects all fail. HTML routes still
-        // come from `routes`; assets always fall through to disk.
+        // `/assets/*` is served from the web app's assets dir on disk
+        // (`web/src/main/assets/*`, the same source Play's Assets controller
+        // serves in prod) so the rendered page can load `shared.js` + the
+        // inline-linked CSS in the test the same way prod does. Tests that
+        // call shared.js functions (hideFilm, applyFilters, …) or assert on
+        // rendered geometry need this — without shared.js every CDP eval hits
+        // `ReferenceError: <fn> is not defined`. HTML routes still come from
+        // `routes`; assets always fall through to disk.
         if (path.startsWith("/assets/")) {
           val rel  = path.stripPrefix("/assets/")
-          val file = Paths.get("public").resolve(rel).toAbsolutePath
-          // Guard against `../` traversal — only serve files under
-          // `public/` (resolve + startsWith).
-          val publicRoot = Paths.get("public").toAbsolutePath
+          val file = Paths.get("web/src/main/assets").resolve(rel).toAbsolutePath
+          // Guard against `../` traversal — only serve files under the
+          // assets dir (resolve + startsWith).
+          val publicRoot = Paths.get("web/src/main/assets").toAbsolutePath
           if (!file.startsWith(publicRoot) || !Files.exists(file)) {
             ex.sendResponseHeaders(404, -1)
           } else {

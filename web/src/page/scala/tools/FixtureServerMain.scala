@@ -47,6 +47,10 @@ object FixtureServerMain {
     val wiring = new FixtureTestWiring("17-05-2026")
     wiring.bootStartup()
 
+    // The read transform is the web app's, built directly from the
+    // worker-populated cache (the seam the two apps share in production).
+    val svc = new controllers.MovieControllerService(wiring.movieCache)
+
     val anon    = Option.empty[models.User]
     // Render with a non-empty oauthProviders set so the Twirl
     // `@if(oauthProviders.nonEmpty)` branches surface the anon-nag
@@ -60,8 +64,8 @@ object FixtureServerMain {
     // production's hard-cut routing. The fixture corpus is Poznań's; the other
     // cities resolve to empty schedules (no scrapers wired in tests), exactly
     // as production serves a not-yet-populated city.
-    def schedulesFor(c: City)       = wiring.movieControllerService.toSchedules(c, now)
-    def cinemaSchedulesFor(c: City) = wiring.movieControllerService.toCinemaSchedules(c, now)
+    def schedulesFor(c: City)       = svc.toSchedules(c, now)
+    def cinemaSchedulesFor(c: City) = svc.toCinemaSchedules(c, now)
 
     // `#view-root`-only fragments served for `X-Requested-With: view-swap`
     // requests — mirrors the production controller so the in-place swap (and

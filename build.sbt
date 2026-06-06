@@ -135,7 +135,12 @@ lazy val web = (project in file("web"))
   // application.conf + logback.xml), src/main/twirl (views), src/main/assets —
   // matching common and worker.
   .disablePlugins(PlayLayoutPlugin)
-  .dependsOn(common, testkit % Test)
+  // The page tests render real pages from a fixture-populated cache that the
+  // worker's `FixtureTestWiring` (scrape pipeline) seeds — so the PAGE scope
+  // alone reaches into worker's test classpath. Compile/Test stay independent:
+  // the deployed `web/stage` is built from Compile, which never sees worker, so
+  // the two apps remain decoupled in production. (Same cross-app shape as e2e.)
+  .dependsOn(common, testkit % Test, worker % "page->test")
   .configs(IntegrationTest, PageTest)
   .settings(
     name := "web",
@@ -147,6 +152,13 @@ lazy val web = (project in file("web"))
     PageTest / scalaSource              := baseDirectory.value / "src" / "page" / "scala",
     PageTest / resourceDirectory        := baseDirectory.value / "src" / "page" / "resources",
     PageTest / parallelExecution        := false,
+    // Run PageTest UNFORKED so the JVM's working directory is the repo root, not
+    // this submodule's dir. The page specs + FixtureServerMain load fixtures and
+    // diff snapshots via repo-root-relative paths (`test/resources/fixtures/…`);
+    // Play forks tests by default (CWD = web/ baseDirectory), which the monolith
+    // never hit because its baseDirectory WAS the repo root. e2e (also unforked)
+    // loads the same fixtures fine.
+    PageTest / fork                     := false,
     // Page-regression XML stays under the root report dir too (single web module,
     // but keep the layer convention so the page job's glob matches). Unit + it
     // report paths come from unitReportSettings / itReportSettings below.

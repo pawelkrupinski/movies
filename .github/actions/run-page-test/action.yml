@@ -5,7 +5,7 @@ description: |
   Two execution kinds:
 
   - `chrome`: install Chrome via `browser-actions/setup-chrome`,
-    then `sbt PageTest/test` with `CDP_BROWSER_BIN` pointing at it.
+    then `sbt web/PageTest/test` with `CDP_BROWSER_BIN` pointing at it.
 
   - `playwright`: install Node + the one engine binary specified
     by `browser`, boot `FixtureServerMain` over a kernel-assigned
@@ -54,9 +54,10 @@ runs:
           target
           project/target
           project/project/target
-        # PageTest/test + FixtureServerMain → page scope (app + test +
-        # page). restore-keys falls back to any recent sbt-target cache.
-        key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', 'app/**/*.scala', 'test/**/*.scala', 'page/**/*.scala', 'conf/**') }}
+        # web/PageTest/test + FixtureServerMain → page scope (every module's
+        # main + test + the web page sources). restore-keys falls back to any
+        # recent sbt-target cache.
+        key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
         restore-keys: |
           sbt-target-${{ runner.os }}-
 
@@ -99,7 +100,7 @@ runs:
       shell: bash
       run: |
         rm -f /tmp/kinowo-port.txt
-        sbt 'PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 &
+        sbt 'web/PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 &
         echo "FIXTURE_PID=$!" >> $GITHUB_ENV
         for _ in $(seq 1 60); do
             [ -f /tmp/kinowo-port.txt ] && break
@@ -121,7 +122,7 @@ runs:
       shell: bash
       env:
         CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
-      run: sbt PageTest/test
+      run: sbt web/PageTest/test
 
     - name: Publish PageTest report
       if: always() && inputs.kind == 'chrome'
