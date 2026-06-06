@@ -92,6 +92,13 @@ class WorkerWiring {
     new CytadelaClient(httoFetch),
   )
 
+  private lazy val krakowScrapers: Seq[CinemaScraper] = Seq(
+    new CinemaCityScraper(cinemaCityClient, "1090", CinemaCityBonarka),
+    new CinemaCityScraper(cinemaCityClient, "1076", CinemaCityKazimierz),
+    new CinemaCityScraper(cinemaCityClient, "1064", CinemaCityZakopianka),
+    new MultikinoClient(multikinoFetch, "0005", MultikinoKrakow),
+  )
+
   // Scrape only the cities in KINOWO_SCRAPE_CITIES (comma-separated slugs),
   // defaulting to Poznań. `protected def` so test wirings can scrape every city.
   protected def scrapeCities: Set[String] =
@@ -105,7 +112,8 @@ class WorkerWiring {
   lazy val cinemaScrapers: Seq[CinemaScraper] = (
     (if (scrapeCities("poznan"))  poznanScrapers  else Nil) ++
     (if (scrapeCities("wroclaw")) wroclawScrapers else Nil) ++
-    (if (scrapeCities("warszawa")) warszawaScrapers else Nil)
+    (if (scrapeCities("warszawa")) warszawaScrapers else Nil) ++
+    (if (scrapeCities("krakow"))   krakowScrapers  else Nil)
   ).map(s => new RetryingCinemaScraper(s, uptimeMonitor))
 
   // ── Background concurrency budget ───────────────────────────────────────────

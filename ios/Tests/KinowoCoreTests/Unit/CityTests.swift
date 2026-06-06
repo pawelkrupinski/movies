@@ -22,9 +22,10 @@ final class CityTests: XCTestCase {
     }
 
     func testCoordsFarFromEveryCityAreOutOfRange() {
-        // Kraków (50.06, 19.94) is >200 km from Poznań, Wrocław and Warszawa —
-        // beyond the 100 km cutoff, so the gate falls back to manual choice.
-        XCTAssertNil(City.nearestWithin100km(lat: 50.0647, lon: 19.9450))
+        // Szczecin (53.43, 14.55) is ~195 km from its nearest served city
+        // (Poznań) — beyond the 100 km cutoff, so the gate falls back to a
+        // manual choice rather than dropping the user on a far-off city.
+        XCTAssertNil(City.nearestWithin100km(lat: 53.4285, lon: 14.5528))
     }
 
     func testFarAwayCoordsReturnNil() {
@@ -69,10 +70,10 @@ final class CityTests: XCTestCase {
     }
 
     func testNoSwitchSuggestionWhenOutOfRangeOfEveryCity() {
-        // Kraków — beyond the 100 km radius of every supported city.
+        // Szczecin — beyond the 100 km radius of every supported city.
         let s = City.switchSuggestion(
             chosenSlug: "poznan",
-            lat: 50.0647, lon: 19.9450,
+            lat: 53.4285, lon: 14.5528,
             lastPromptKey: nil
         )
         XCTAssertNil(s)

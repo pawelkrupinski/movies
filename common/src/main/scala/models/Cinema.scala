@@ -104,6 +104,16 @@ case object Ujazdowski extends Cinema("Kino U-jazdowski", "U-jazdowski")
 
 case object KinoCytadela extends Cinema("Kino Cytadela", "Cytadela")
 
+// ── Kraków ───────────────────────────────────────────────────────────────────
+
+case object CinemaCityBonarka extends Cinema("Cinema City Bonarka", "Bonarka")
+
+case object CinemaCityKazimierz extends Cinema("Cinema City Kazimierz", "Kazimierz")
+
+case object CinemaCityZakopianka extends Cinema("Cinema City Zakopianka", "Zakopianka")
+
+case object MultikinoKrakow extends Cinema("Multikino Kraków", "Multikino")
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -165,7 +175,18 @@ object Cinema {
     KinoCytadela,
   )
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa
+  /** Kraków venues. Cinema City has three multiplexes here (Bonarka,
+   *  Kazimierz, Zakopianka — Zakopianka also houses the city's only IMAX);
+   *  Multikino has one. No Helios in Kraków. The independents (Pod Baranami,
+   *  Kijów, Mikro, …) are wired separately as bespoke scrapers. */
+  val krakow: Seq[Cinema] = Seq(
+    CinemaCityBonarka,
+    CinemaCityKazimierz,
+    CinemaCityZakopianka,
+    MultikinoKrakow,
+  )
+
+  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }

@@ -29,6 +29,7 @@ object Cities {
         City("poznan", "Poznań", 52.4064, 16.9252),
         City("wroclaw", "Wrocław", 51.1079, 17.0385),
         City("warszawa", "Warszawa", 52.2297, 21.0122),
+        City("krakow", "Kraków", 50.0647, 19.9450),
     )
 
     val DEFAULT: City = all.first()

@@ -32,9 +32,9 @@ class CitiesTest {
 
     @Test
     fun returnsNullWhenFartherThan100km() {
-        // Kraków (50.06, 19.94) is >200 km from Poznań, Wrocław and Warszawa —
-        // out of range of every supported city.
-        assertNull(Cities.nearestWithin100km(50.0647, 19.9450))
+        // Szczecin (53.43, 14.55) is ~195 km from its nearest served city
+        // (Poznań) — out of range of every supported city.
+        assertNull(Cities.nearestWithin100km(53.4285, 14.5528))
     }
 
     @Test
@@ -62,8 +62,8 @@ class CitiesTest {
 
     @Test
     fun noSuggestionWhenOutOfRangeOfEveryCity() {
-        // Kraków is out of range of every supported city → no offer.
-        assertNull(Cities.switchSuggestion("poznan", 50.0647, 19.9450, lastPromptKey = null))
+        // Szczecin is out of range of every supported city → no offer.
+        assertNull(Cities.switchSuggestion("poznan", 53.4285, 14.5528, lastPromptKey = null))
     }
 
     @Test

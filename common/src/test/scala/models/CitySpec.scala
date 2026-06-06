@@ -9,7 +9,8 @@ class CitySpec extends AnyFlatSpec with Matchers {
     City.bySlug("poznan") shouldBe Some(Poznan)
     City.bySlug("wroclaw") shouldBe Some(Wroclaw)
     City.bySlug("warszawa") shouldBe Some(Warszawa)
-    City.bySlug("krakow") shouldBe None
+    City.bySlug("krakow") shouldBe Some(Krakow)
+    City.bySlug("gliwice") shouldBe None
     City.bySlug("") shouldBe None
   }
 
