@@ -82,7 +82,7 @@ import pl.kinowo.ui.TopBarLayout
 import pl.kinowo.ui.common.LocalCinemaHeaderStyle
 import pl.kinowo.ui.common.PosterGridMetrics
 import pl.kinowo.ui.common.PosterPrefetch
-import pl.kinowo.ui.common.layoutWidthDp
+import pl.kinowo.ui.common.viewportWidthDp
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -104,12 +104,14 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     val hidden by vm.hiddenFilms.collectAsState()
     val disabled by vm.disabledCinemas.collectAsState()
 
-    // Wide screens (tablets) host search inline on the top bar; narrow ones
-    // (phones) keep it as the floating bottom pill. Keyed off the device's
-    // portrait width (layoutWidthDp), not the live width, so a phone keeps the
-    // floating pill in landscape too — search placement, the date-pill layout
-    // and the compact field stay exactly as in portrait. See TopBarLayout.
-    val wide = TopBarLayout.searchInline(layoutWidthDp())
+    // Wide viewports (tablets, and phones rotated to landscape) host search
+    // inline on the top bar; narrow ones (portrait phones) keep it as the
+    // floating bottom pill. Keyed off the LIVE viewport width (viewportWidthDp),
+    // so a phone moves search into the bar — and spreads the date pills evenly —
+    // the moment it's rotated to landscape, matching iOS. The width-driven chip
+    // and rating metrics deliberately stay locked to the portrait width. See
+    // TopBarLayout and LayoutWidth.
+    val wide = TopBarLayout.searchInline(viewportWidthDp())
 
     // Pull-to-refresh indicator state. Driven ONLY by a user pull — NOT by the
     // background `isLoading`. Binding the indicator to `isLoading` left it stuck:
