@@ -187,6 +187,22 @@
           
             <option value="lublin">Lublin</option>
           
+            <option value="czestochowa">Częstochowa</option>
+          
+            <option value="radom">Radom</option>
+          
+            <option value="sosnowiec">Sosnowiec</option>
+          
+            <option value="torun">Toruń</option>
+          
+            <option value="kielce">Kielce</option>
+          
+            <option value="rzeszow">Rzeszów</option>
+          
+            <option value="gliwice">Gliwice</option>
+          
+            <option value="zabrze">Zabrze</option>
+          
         </select>
         <div class="panel-divider"></div>
       
@@ -248,7 +264,7 @@
   const ALL_CINEMAS         = ["Cinema City Arkadia","Cinema City Bemowo","Cinema City Galeria Północna","Cinema City Janki","Cinema City Mokotów","Cinema City Promenada","Cinema City Sadyba","Multikino Złote Tarasy","Multikino Młociny","Multikino Reduta","Multikino Targówek","Multikino Wola Park","Helios Blue City","Kino Muranów","Kino Luna","Kino Elektronik","Kino Iluzjon","KinoGram","Kino Kultura","Kino Amondo","Kino na Boku","Kino Głębocka 66","KINOMUZEUM","Kino Świt","Kino Kępa","KINOkawiarnia Stacja Falenica","Służewski Dom Kultury","Kino Atlantic","Kinoteka","Kino U-jazdowski","Kino Cytadela"];
   const CINEMA_PILLS        = {"Kino Muranów":"Muranów","Cinema City Janki":"Janki","Cinema City Mokotów":"Mokotów","Kino Świt":"Świt","Kino Iluzjon":"Iluzjon","Kino Atlantic":"Atlantic","Kino Elektronik":"Elektronik","Kinoteka":"Kinoteka","Multikino Reduta":"Reduta","Multikino Wola Park":"Wola Park","Cinema City Galeria Północna":"Galeria Północna","Kino Głębocka 66":"Głębocka 66","Multikino Targówek":"Targówek","Kino Kultura":"Kultura","Cinema City Bemowo":"Bemowo","Służewski Dom Kultury":"SDK","Cinema City Promenada":"Promenada","Kino na Boku":"na Boku","Multikino Złote Tarasy":"Złote Tarasy","KinoGram":"KinoGram","Kino U-jazdowski":"U-jazdowski","Helios Blue City":"Blue City","KINOMUZEUM":"Kinomuzeum","Kino Amondo":"Amondo","Multikino Młociny":"Młociny","Cinema City Sadyba":"Sadyba","Kino Kępa":"Kępa","Cinema City Arkadia":"Arkadia","Kino Luna":"Luna","KINOkawiarnia Stacja Falenica":"Stacja Falenica","Kino Cytadela":"Cytadela"};
   const CURRENT_CITY        = "warszawa";
-  const ALL_CITIES          = [{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252},{"slug":"wroclaw","name":"Wrocław","lat":51.1079,"lon":17.0385},{"slug":"warszawa","name":"Warszawa","lat":52.2297,"lon":21.0122},{"slug":"krakow","name":"Kraków","lat":50.0647,"lon":19.945},{"slug":"lodz","name":"Łódź","lat":51.7592,"lon":19.456},{"slug":"katowice","name":"Katowice","lat":50.2649,"lon":19.0238},{"slug":"szczecin","name":"Szczecin","lat":53.4285,"lon":14.5528},{"slug":"bialystok","name":"Białystok","lat":53.1325,"lon":23.1688},{"slug":"trojmiasto","name":"Trójmiasto","lat":54.4416,"lon":18.5601},{"slug":"bydgoszcz","name":"Bydgoszcz","lat":53.1235,"lon":18.0084},{"slug":"lublin","name":"Lublin","lat":51.2465,"lon":22.5684}];
+  const ALL_CITIES          = [{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252},{"slug":"wroclaw","name":"Wrocław","lat":51.1079,"lon":17.0385},{"slug":"warszawa","name":"Warszawa","lat":52.2297,"lon":21.0122},{"slug":"krakow","name":"Kraków","lat":50.0647,"lon":19.945},{"slug":"lodz","name":"Łódź","lat":51.7592,"lon":19.456},{"slug":"katowice","name":"Katowice","lat":50.2649,"lon":19.0238},{"slug":"szczecin","name":"Szczecin","lat":53.4285,"lon":14.5528},{"slug":"bialystok","name":"Białystok","lat":53.1325,"lon":23.1688},{"slug":"trojmiasto","name":"Trójmiasto","lat":54.4416,"lon":18.5601},{"slug":"bydgoszcz","name":"Bydgoszcz","lat":53.1235,"lon":18.0084},{"slug":"lublin","name":"Lublin","lat":51.2465,"lon":22.5684},{"slug":"czestochowa","name":"Częstochowa","lat":50.8118,"lon":19.1203},{"slug":"radom","name":"Radom","lat":51.4027,"lon":21.1471},{"slug":"sosnowiec","name":"Sosnowiec","lat":50.2863,"lon":19.1041},{"slug":"torun","name":"Toruń","lat":53.0138,"lon":18.5984},{"slug":"kielce","name":"Kielce","lat":50.8661,"lon":20.6286},{"slug":"rzeszow","name":"Rzeszów","lat":50.0413,"lon":21.999},{"slug":"gliwice","name":"Gliwice","lat":50.2945,"lon":18.6714},{"slug":"zabrze","name":"Zabrze","lat":50.3249,"lon":18.7857}];
 </script>
 
 
@@ -1515,23 +1531,6 @@
       
     
       
-      <div class="cinema-group" data-cinema="Kino Głębocka 66">
-        
-          <div class="cinema-label">
-             <a href="https://bok.waw.pl/kino-glebocka-66/niesamowite-przygody-skarpetek-3" target="_blank" class="cinema-label-link">Kino Głębocka 66 ↗</a> 
-          </div>
-        
-        <div>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/665231" class="badge-time" target="_blank" data-format="" data-time="13:00">13:00</a>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/665232" class="badge-time" target="_blank" data-format="" data-time="14:00">14:00</a>
-          
-        </div>
-      </div>
-      
-    
-      
       <div class="cinema-group" data-cinema="KinoGram">
         
           <div class="cinema-label">
@@ -1541,23 +1540,6 @@
         <div>
           
             <a href="https://bilety.kinogram.pl/screening/0d2c9f5d-7389-4296-a445-605bc1dca1b0" class="badge-time" target="_blank" data-format="" data-time="13:00">13:00</a>
-          
-        </div>
-      </div>
-      
-    
-      
-      <div class="cinema-group" data-cinema="Kino na Boku">
-        
-          <div class="cinema-label">
-             <a href="https://bok.waw.pl/kino-na-boku/niesamowite-przygody-skarpetek-3" target="_blank" class="cinema-label-link">Kino na Boku ↗</a> 
-          </div>
-        
-        <div>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/665157" class="badge-time" target="_blank" data-format="" data-time="13:00">13:00</a>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/665158" class="badge-time" target="_blank" data-format="" data-time="14:15">14:15</a>
           
         </div>
       </div>
@@ -2336,7 +2318,7 @@
       
 
     
-      <img src="https://www.multikino.pl/-/media/multikino/images/kultowe-kino/zawiecie_czerwone_laternie_plakat.jpg?rev=300dbab82eef4904a6bb9c1888bbea70" alt="Zawieście czerwone latarnie" loading="lazy" data-original-src="https://www.multikino.pl/-/media/multikino/images/kultowe-kino/zawiecie_czerwone_laternie_plakat.jpg?rev=300dbab82eef4904a6bb9c1888bbea70" data-fallbacks="https://images.weserv.nl/?url=kinoapollo.pl%2Fwp-content%2Fuploads%2F2026%2F04%2FZCL_poster_B1_web_light-1-724x1024-1.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinopalacowe.pl%2Fmedia%2Fgallery%2Flg%2FZawiescie_czerwone_latarnie_poster_web_light.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinomuranow.pl%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fgrid_thumb_wide_semi%2Fpublic%2Fmedia%2Fimages%2Fmovies%2Fraise_the_red_lantern_photo_1.jpg%3Fitok%3Dau1FlO-C&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.iluzjon.fn.org.pl%2Fpublic%2Fcovers%2Fmovie-7815.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.kinokultura.pl%2Ffoto%2C20550%2C6dfd152f3bd82e4fd6f49d90077445f9%2Cjpg.html&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinoamondo.pl%2Fwp-content%2Fuploads%2F2026%2F05%2FZawiescie_czerwone_laternie_poster-scaled.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=bok.waw.pl%2Fupload%2Fthumb%2F2026%2F05%2Fraise-the-red-lantern-photo-4_auto_640x640.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=api-sf.artmuseum.pl%2Fuploads%2Fthumbs%2F69f34ee1cc209610522965.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=medstore.kinoteka.pl%2Fd97ef05ecbcf44c4ac0a98117fbc3863.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=u-jazdowski.pl%2Fupload%2Fthumb%2F2026%2F05%2Fraise-the-red-lantern-photo-9_1_auto_600x900.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=bilety.kinomikro.pl%2Fuploads%2Fevent%2F2944%2F1777365222.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" data-original-fallbacks="https://images.weserv.nl/?url=kinoapollo.pl%2Fwp-content%2Fuploads%2F2026%2F04%2FZCL_poster_B1_web_light-1-724x1024-1.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinopalacowe.pl%2Fmedia%2Fgallery%2Flg%2FZawiescie_czerwone_latarnie_poster_web_light.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinomuranow.pl%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fgrid_thumb_wide_semi%2Fpublic%2Fmedia%2Fimages%2Fmovies%2Fraise_the_red_lantern_photo_1.jpg%3Fitok%3Dau1FlO-C&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.iluzjon.fn.org.pl%2Fpublic%2Fcovers%2Fmovie-7815.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.kinokultura.pl%2Ffoto%2C20550%2C6dfd152f3bd82e4fd6f49d90077445f9%2Cjpg.html&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinoamondo.pl%2Fwp-content%2Fuploads%2F2026%2F05%2FZawiescie_czerwone_laternie_poster-scaled.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=bok.waw.pl%2Fupload%2Fthumb%2F2026%2F05%2Fraise-the-red-lantern-photo-4_auto_640x640.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=api-sf.artmuseum.pl%2Fuploads%2Fthumbs%2F69f34ee1cc209610522965.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=medstore.kinoteka.pl%2Fd97ef05ecbcf44c4ac0a98117fbc3863.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=u-jazdowski.pl%2Fupload%2Fthumb%2F2026%2F05%2Fraise-the-red-lantern-photo-9_1_auto_600x900.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=bilety.kinomikro.pl%2Fuploads%2Fevent%2F2944%2F1777365222.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
+      <img src="https://www.multikino.pl/-/media/multikino/images/kultowe-kino/zawiecie_czerwone_laternie_plakat.jpg?rev=300dbab82eef4904a6bb9c1888bbea70" alt="Zawieście czerwone latarnie" loading="lazy" data-original-src="https://www.multikino.pl/-/media/multikino/images/kultowe-kino/zawiecie_czerwone_laternie_plakat.jpg?rev=300dbab82eef4904a6bb9c1888bbea70" data-fallbacks="https://images.weserv.nl/?url=kinoapollo.pl%2Fwp-content%2Fuploads%2F2026%2F04%2FZCL_poster_B1_web_light-1-724x1024-1.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinopalacowe.pl%2Fmedia%2Fgallery%2Flg%2FZawiescie_czerwone_latarnie_poster_web_light.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinomuranow.pl%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fgrid_thumb_wide_semi%2Fpublic%2Fmedia%2Fimages%2Fmovies%2Fraise_the_red_lantern_photo_1.jpg%3Fitok%3Dau1FlO-C&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.iluzjon.fn.org.pl%2Fpublic%2Fcovers%2Fmovie-7815.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.kinokultura.pl%2Ffoto%2C20550%2C6dfd152f3bd82e4fd6f49d90077445f9%2Cjpg.html&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinoamondo.pl%2Fwp-content%2Fuploads%2F2026%2F05%2FZawiescie_czerwone_laternie_poster-scaled.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=api-sf.artmuseum.pl%2Fuploads%2Fthumbs%2F69f34ee1cc209610522965.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=medstore.kinoteka.pl%2Fd97ef05ecbcf44c4ac0a98117fbc3863.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=u-jazdowski.pl%2Fupload%2Fthumb%2F2026%2F05%2Fraise-the-red-lantern-photo-9_1_auto_600x900.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=bilety.kinomikro.pl%2Fuploads%2Fevent%2F2944%2F1777365222.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" data-original-fallbacks="https://images.weserv.nl/?url=kinoapollo.pl%2Fwp-content%2Fuploads%2F2026%2F04%2FZCL_poster_B1_web_light-1-724x1024-1.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinopalacowe.pl%2Fmedia%2Fgallery%2Flg%2FZawiescie_czerwone_latarnie_poster_web_light.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinomuranow.pl%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fgrid_thumb_wide_semi%2Fpublic%2Fmedia%2Fimages%2Fmovies%2Fraise_the_red_lantern_photo_1.jpg%3Fitok%3Dau1FlO-C&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.iluzjon.fn.org.pl%2Fpublic%2Fcovers%2Fmovie-7815.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.kinokultura.pl%2Ffoto%2C20550%2C6dfd152f3bd82e4fd6f49d90077445f9%2Cjpg.html&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinoamondo.pl%2Fwp-content%2Fuploads%2F2026%2F05%2FZawiescie_czerwone_laternie_poster-scaled.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=api-sf.artmuseum.pl%2Fuploads%2Fthumbs%2F69f34ee1cc209610522965.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=medstore.kinoteka.pl%2Fd97ef05ecbcf44c4ac0a98117fbc3863.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=u-jazdowski.pl%2Fupload%2Fthumb%2F2026%2F05%2Fraise-the-red-lantern-photo-9_1_auto_600x900.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=bilety.kinomikro.pl%2Fuploads%2Fevent%2F2944%2F1777365222.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
     
     <div class="no-poster" style="display:none">Brak plakatu</div>
   
@@ -2613,21 +2595,6 @@
         <div>
           
             <a href="https://biletomat.pl/embeddables/repertoire?organizerId=1772&amp;showId=31906" class="badge-time" target="_blank" data-room="Sala II" data-format="" data-time="17:45">17:45</a>
-          
-        </div>
-      </div>
-      
-    
-      
-      <div class="cinema-group" data-cinema="Kino na Boku">
-        
-          <div class="cinema-label">
-             <a href="https://bok.waw.pl/kino-na-boku/zawiescie-czerwone-latarnie" target="_blank" class="cinema-label-link">Kino na Boku ↗</a> 
-          </div>
-        
-        <div>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/665199" class="badge-time" target="_blank" data-format="" data-time="19:30">19:30</a>
           
         </div>
       </div>
@@ -11717,36 +11684,6 @@
             <a href="https://bilety.kinogram.pl/screening/c745be4f-0596-4fa9-869b-0b7ea3a457a5" class="badge-time" target="_blank" data-format="" data-time="13:15">13:15</a>
           
             <a href="https://bilety.kinogram.pl/screening/d774c381-bd30-427b-8e78-13e2af6dfc84" class="badge-time" target="_blank" data-format="" data-time="14:45">14:45</a>
-          
-        </div>
-      </div>
-      
-    
-      
-      <div class="cinema-group" data-cinema="Kino Głębocka 66">
-        
-          <div class="cinema-label">
-             <a href="https://bok.waw.pl/kino-glebocka-66/drzewo-magii" target="_blank" class="cinema-label-link">Kino Głębocka 66 ↗</a> 
-          </div>
-        
-        <div>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/670298" class="badge-time" target="_blank" data-format="" data-time="15:15">15:15</a>
-          
-        </div>
-      </div>
-      
-    
-      
-      <div class="cinema-group" data-cinema="Kino na Boku">
-        
-          <div class="cinema-label">
-             <a href="https://bok.waw.pl/kino-na-boku/drzewo-magii" target="_blank" class="cinema-label-link">Kino na Boku ↗</a> 
-          </div>
-        
-        <div>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/665164" class="badge-time" target="_blank" data-format="" data-time="15:30">15:30</a>
           
         </div>
       </div>
@@ -20885,21 +20822,6 @@
       
     
       
-      <div class="cinema-group" data-cinema="Kino na Boku">
-        
-          <div class="cinema-label">
-             <a href="https://bok.waw.pl/kino-na-boku/zawodowcy" target="_blank" class="cinema-label-link">Kino na Boku ↗</a> 
-          </div>
-        
-        <div>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/665180" class="badge-time" target="_blank" data-format="" data-time="17:30">17:30</a>
-          
-        </div>
-      </div>
-      
-    
-      
       <div class="cinema-group" data-cinema="KinoGram">
         
           <div class="cinema-label">
@@ -23080,7 +23002,7 @@
 
 </div>
 
-<div class="col" data-title="Diabeł ubiera się u Prady 2" data-countries="USA" data-rating="6.773" data-genres="Dramat|Komedia" data-director="David Frankel" data-cast="Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci, Kenneth Branagh, Simone Ashley, Justin Theroux, Lucy Liu, Patrick Brammall, Caleb Hearon, Helen J. Shen, Pauline Chalamet, B.J. Novak, Conrad Ricamora, Tracie Thoms, Tibor Feldman">
+<div class="col" data-title="Diabeł ubiera się u Prady 2" data-countries="USA" data-rating="6.773" data-genres="Dramat|Komedia" data-director="David Frankel" data-cast="Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
@@ -23089,7 +23011,7 @@
       
 
     
-      <img src="https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/diabel-ubiera-sie-u-prady-2/diabelprada2_plakatoficial-cut.jpg?rev=6e854aefaa8e47c0b27446b60a57f68a" alt="Diabeł ubiera się u Prady 2" loading="lazy" data-original-src="https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/diabel-ubiera-sie-u-prady-2/diabelprada2_plakatoficial-cut.jpg?rev=6e854aefaa8e47c0b27446b60a57f68a" data-fallbacks="https://images.weserv.nl/?url=www.kinomalta.pl%2Fwp-content%2Fuploads%2F2026%2F04%2Fdiabelprada2_plakatoficial-cut-png-200x288.png&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=movies.helios.pl%2Fimages%2Fprada2plakat.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.cinema-city.pl%2Fxmedia-cw%2Frepo%2Ffeats%2Fposters%2F7795S2R.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F235%2Fdiabel-ubiera-sie-u-prady-2-plakat1.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=img.helios.pl%2Fpliki%2Ffilm%2Fdiabel-ubiera-sie-u-prady-2%2Fdiabel-ubiera-sie-u-prady-2-plakat-594.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F1491%2Fdiabel-ubiera-sie-u-prady-2.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=media.user.com%2Fuploads%2Fj0sawm-kinogram%2Fcerulean-payoff-poster-poland_MgUzooY.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=bok.waw.pl%2Fupload%2Fthumb%2F2026%2F05%2Fdiabel-2-fot_6_auto_640x640.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=dkswit.com.pl%2Fapp%2Fuploads%2F2026%2F05%2Fdiabel-prady.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=promkultury.pl%2Fwp-content%2Fuploads%2F2026%2F05%2F676827830_1411699330991633_2570148421999231509_n.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.novekino.pl%2Fmultimedia%2Fdiabel_ubiera_sie_u_prady_2%2Fplakat.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=medstore.kinoteka.pl%2FCERULEANPAYOFFPOSTERPOLAND.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" data-original-fallbacks="https://images.weserv.nl/?url=www.kinomalta.pl%2Fwp-content%2Fuploads%2F2026%2F04%2Fdiabelprada2_plakatoficial-cut-png-200x288.png&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=movies.helios.pl%2Fimages%2Fprada2plakat.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.cinema-city.pl%2Fxmedia-cw%2Frepo%2Ffeats%2Fposters%2F7795S2R.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F235%2Fdiabel-ubiera-sie-u-prady-2-plakat1.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=img.helios.pl%2Fpliki%2Ffilm%2Fdiabel-ubiera-sie-u-prady-2%2Fdiabel-ubiera-sie-u-prady-2-plakat-594.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F1491%2Fdiabel-ubiera-sie-u-prady-2.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=media.user.com%2Fuploads%2Fj0sawm-kinogram%2Fcerulean-payoff-poster-poland_MgUzooY.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=bok.waw.pl%2Fupload%2Fthumb%2F2026%2F05%2Fdiabel-2-fot_6_auto_640x640.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=dkswit.com.pl%2Fapp%2Fuploads%2F2026%2F05%2Fdiabel-prady.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=promkultury.pl%2Fwp-content%2Fuploads%2F2026%2F05%2F676827830_1411699330991633_2570148421999231509_n.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.novekino.pl%2Fmultimedia%2Fdiabel_ubiera_sie_u_prady_2%2Fplakat.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=medstore.kinoteka.pl%2FCERULEANPAYOFFPOSTERPOLAND.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
+      <img src="https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/diabel-ubiera-sie-u-prady-2/diabelprada2_plakatoficial-cut.jpg?rev=6e854aefaa8e47c0b27446b60a57f68a" alt="Diabeł ubiera się u Prady 2" loading="lazy" data-original-src="https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/diabel-ubiera-sie-u-prady-2/diabelprada2_plakatoficial-cut.jpg?rev=6e854aefaa8e47c0b27446b60a57f68a" data-fallbacks="https://images.weserv.nl/?url=www.kinomalta.pl%2Fwp-content%2Fuploads%2F2026%2F04%2Fdiabelprada2_plakatoficial-cut-png-200x288.png&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=movies.helios.pl%2Fimages%2Fprada2plakat.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.cinema-city.pl%2Fxmedia-cw%2Frepo%2Ffeats%2Fposters%2F7795S2R.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F235%2Fdiabel-ubiera-sie-u-prady-2-plakat1.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=img.helios.pl%2Fpliki%2Ffilm%2Fdiabel-ubiera-sie-u-prady-2%2Fdiabel-ubiera-sie-u-prady-2-plakat-594.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F1491%2Fdiabel-ubiera-sie-u-prady-2.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=media.user.com%2Fuploads%2Fj0sawm-kinogram%2Fcerulean-payoff-poster-poland_MgUzooY.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=dkswit.com.pl%2Fapp%2Fuploads%2F2026%2F05%2Fdiabel-prady.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=promkultury.pl%2Fwp-content%2Fuploads%2F2026%2F05%2F676827830_1411699330991633_2570148421999231509_n.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.novekino.pl%2Fmultimedia%2Fdiabel_ubiera_sie_u_prady_2%2Fplakat.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=medstore.kinoteka.pl%2FCERULEANPAYOFFPOSTERPOLAND.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" data-original-fallbacks="https://images.weserv.nl/?url=www.kinomalta.pl%2Fwp-content%2Fuploads%2F2026%2F04%2Fdiabelprada2_plakatoficial-cut-png-200x288.png&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=movies.helios.pl%2Fimages%2Fprada2plakat.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.cinema-city.pl%2Fxmedia-cw%2Frepo%2Ffeats%2Fposters%2F7795S2R.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F235%2Fdiabel-ubiera-sie-u-prady-2-plakat1.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=img.helios.pl%2Fpliki%2Ffilm%2Fdiabel-ubiera-sie-u-prady-2%2Fdiabel-ubiera-sie-u-prady-2-plakat-594.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F1491%2Fdiabel-ubiera-sie-u-prady-2.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=media.user.com%2Fuploads%2Fj0sawm-kinogram%2Fcerulean-payoff-poster-poland_MgUzooY.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=dkswit.com.pl%2Fapp%2Fuploads%2F2026%2F05%2Fdiabel-prady.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=promkultury.pl%2Fwp-content%2Fuploads%2F2026%2F05%2F676827830_1411699330991633_2570148421999231509_n.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.novekino.pl%2Fmultimedia%2Fdiabel_ubiera_sie_u_prady_2%2Fplakat.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=medstore.kinoteka.pl%2FCERULEANPAYOFFPOSTERPOLAND.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
     
     <div class="no-poster" style="display:none">Brak plakatu</div>
   
@@ -24005,23 +23927,6 @@
             <a href="https://tickets.cinema-city.pl/api/order/1491078?lang=pl" class="badge-time" target="_blank" data-room="Sala 6" data-format="2D NAP" data-time="17:00">17:00</a>
           
             <a href="https://tickets.cinema-city.pl/api/order/1491198?lang=pl" class="badge-time" target="_blank" data-room="Sala 6" data-format="2D NAP" data-time="19:50">19:50</a>
-          
-        </div>
-      </div>
-      
-    
-      
-      <div class="cinema-group" data-cinema="Kino Głębocka 66">
-        
-          <div class="cinema-label">
-             <a href="https://bok.waw.pl/kino-glebocka-66/diabel-ubiera-sie-u-prady-2" target="_blank" class="cinema-label-link">Kino Głębocka 66 ↗</a> 
-          </div>
-        
-        <div>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/665222" class="badge-time" target="_blank" data-format="" data-time="17:30">17:30</a>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/665223" class="badge-time" target="_blank" data-format="" data-time="19:45">19:45</a>
           
         </div>
       </div>
@@ -47610,86 +47515,6 @@
   </div>
 
 <a href="/warszawa/film?title=Historanki%20z%20Maluchem" class="showings-more" style="display:none"></a>
-
-
-  
-  </div>
-</div>
-
-</div>
-
-<div class="col" data-title="Kinowy Poranek: Wyspa Puffinów. Nowi przyjaciele" data-countries="Wielka Brytania|Irlandia" data-rating="0.000" data-director="Jeremy Purcell">
-  <div class="card">
-  <div class="poster-wrap">
-    <button type="button" class="hide-btn" title="Ukryj film">✕</button>
-    <a href="/warszawa/film?title=Kinowy%20Poranek%3A%20Wyspa%20Puffin%C3%B3w.%20Nowi%20przyjaciele" style="display:block;height:100%">
-      
-      
-
-    
-      <img src="https://images.weserv.nl/?url=bok.waw.pl%2Fupload%2Fthumb%2F2026%2F05%2Fwyspa-puffinow_-nowi-przyjaciele_04_auto_640x640.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" alt="Kinowy Poranek: Wyspa Puffinów. Nowi przyjaciele" loading="lazy" data-original-src="https://images.weserv.nl/?url=bok.waw.pl%2Fupload%2Fthumb%2F2026%2F05%2Fwyspa-puffinow_-nowi-przyjaciele_04_auto_640x640.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
-    
-    <div class="no-poster" style="display:none">Brak plakatu</div>
-  
-
-    </a>
-  </div>
-  <div class="card-body">
-    <div class="card-title">
-      <a href="/warszawa/film?title=Kinowy%20Poranek%3A%20Wyspa%20Puffin%C3%B3w.%20Nowi%20przyjaciele">Kinowy Poranek: Wyspa Puffinów. Nowi przyjaciele</a>
-  <span class="pill runtime">1h 20min</span>
-
-    </div>
-    
-
-  <div class="ratings">
-    
-    
-    
-    
-  </div>
-
-
-    
-    
-
-
-  <div class="date-group" data-date="2026-06-07">
-    <div class="date-label">Niedziela 7 czerwca</div>
-    
-      
-      <div class="cinema-group" data-cinema="Kino Głębocka 66">
-        
-          <div class="cinema-label">
-             <a href="https://bok.waw.pl/kino-glebocka-66/kinowy-poranek-wyspa-puffinow-nowi-przyjaciele" target="_blank" class="cinema-label-link">Kino Głębocka 66 ↗</a> 
-          </div>
-        
-        <div>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/665233" class="badge-time" target="_blank" data-format="" data-time="11:00">11:00</a>
-          
-        </div>
-      </div>
-      
-    
-      
-      <div class="cinema-group" data-cinema="Kino na Boku">
-        
-          <div class="cinema-label">
-             <a href="https://bok.waw.pl/kino-na-boku/kinowy-poranek-wyspa-puffinow-nowi-przyjaciele" target="_blank" class="cinema-label-link">Kino na Boku ↗</a> 
-          </div>
-        
-        <div>
-          
-            <a href="https://iframe17.biletyna.pl/event/view/id/665187" class="badge-time" target="_blank" data-format="" data-time="11:00">11:00</a>
-          
-        </div>
-      </div>
-      
-    
-  </div>
-
-<a href="/warszawa/film?title=Kinowy%20Poranek%3A%20Wyspa%20Puffin%C3%B3w.%20Nowi%20przyjaciele" class="showings-more" style="display:none"></a>
 
 
   

@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie, Helios, HeliosAlejaBielany, HeliosAlfa, HeliosBiala, HeliosBlueCity, HeliosBydgoszcz, HeliosForum, HeliosJurowiecka, HeliosKatowice, HeliosLodz, HeliosMagnolia, HeliosMetropolia, HeliosRiviera, HeliosSzczecin, Movie, Showtime}
+import models.{Cinema, CinemaMovie, Helios, HeliosAlejaBielany, HeliosAlfa, HeliosBiala, HeliosBlueCity, HeliosBydgoszcz, HeliosForum, HeliosJurowiecka, HeliosKatowice, HeliosKielce, HeliosLodz, HeliosMagnolia, HeliosMetropolia, HeliosRadom, HeliosRiviera, HeliosRzeszow, HeliosSosnowiec, HeliosSzczecin, Movie, Showtime}
 import play.api.libs.json._
 
 import java.time.LocalDateTime
@@ -42,6 +42,10 @@ object HeliosNuxt {
   val Bydgoszcz    = HeliosCinema(HeliosBydgoszcz,    "bydgoszcz","kino-helios",                "8acb28a0-2e4b-4beb-a13a-bb97e17085cc")
   val Katowice     = HeliosCinema(HeliosKatowice,     "katowice", "kino-helios",                "6f3ef265-ef99-48e9-84f4-ed862badb756")
   val Szczecin     = HeliosCinema(HeliosSzczecin,     "szczecin", "kino-helios-chr-kupiec",     "3e60a454-c438-4c9b-b24f-7c6feff3b5ed")
+  val Radom        = HeliosCinema(HeliosRadom,        "radom",    "kino-helios-radom",          "287fc8f4-7bee-49b4-afcd-b22b52e520b9")
+  val Sosnowiec    = HeliosCinema(HeliosSosnowiec,    "sosnowiec","kino-helios-sosnowiec",      "880f2a3a-e9e8-447c-95ca-72c49ca38a1e")
+  val Kielce       = HeliosCinema(HeliosKielce,       "kielce",   "kino-helios",                "d01162e6-31a4-41b9-97cd-1ef7707522fe")
+  val Rzeszow      = HeliosCinema(HeliosRzeszow,      "rzeszow",  "kino-helios-galeria",        "409eac78-9718-4fa3-b590-d1e1fb60892d")
 
   // Strip event/promo suffixes so that "Diabeł ubiera się u Prady 2 - KNT"
   // collapses to the canonical "Diabeł ubiera się u Prady 2".

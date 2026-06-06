@@ -20,6 +20,12 @@ final class CityTests: XCTestCase {
         XCTAssertEqual(City.nearestWithin100km(lat: 51.1079, lon: 17.0385)?.slug, "wroclaw")
         XCTAssertEqual(City.nearestWithin100km(lat: 52.2297, lon: 21.0122)?.slug, "warszawa")
         XCTAssertEqual(City.nearestWithin100km(lat: 50.0647, lon: 19.9450)?.slug, "krakow")
+        XCTAssertEqual(City.nearestWithin100km(lat: 51.7592, lon: 19.4560)?.slug, "lodz")
+        XCTAssertEqual(City.nearestWithin100km(lat: 50.2649, lon: 19.0238)?.slug, "katowice")
+        XCTAssertEqual(City.nearestWithin100km(lat: 53.4285, lon: 14.5528)?.slug, "szczecin")
+        XCTAssertEqual(City.nearestWithin100km(lat: 53.1325, lon: 23.1688)?.slug, "bialystok")
+        XCTAssertEqual(City.nearestWithin100km(lat: 53.1235, lon: 18.0084)?.slug, "bydgoszcz")
+        XCTAssertEqual(City.nearestWithin100km(lat: 51.2465, lon: 22.5684)?.slug, "lublin")
         // Anywhere in the Tri-City resolves to the combined Trójmiasto scope —
         // Gdańsk in the south, Gdynia in the north are both inside 100 km of
         // the Sopot-centred coordinate.
@@ -28,10 +34,10 @@ final class CityTests: XCTestCase {
     }
 
     func testCoordsFarFromEveryCityAreOutOfRange() {
-        // Szczecin (53.43, 14.55) is ~195 km from its nearest served city
-        // (Poznań) — beyond the 100 km cutoff, so the gate falls back to a
-        // manual choice rather than dropping the user on a far-off city.
-        XCTAssertNil(City.nearestWithin100km(lat: 53.4285, lon: 14.5528))
+        // Open Baltic, ~150 km north of Trójmiasto (its nearest served city) —
+        // beyond the 100 km cutoff, so the gate falls back to a manual choice
+        // rather than dropping the user on a far-off city.
+        XCTAssertNil(City.nearestWithin100km(lat: 55.5, lon: 17.0))
     }
 
     func testFarAwayCoordsReturnNil() {
@@ -76,10 +82,10 @@ final class CityTests: XCTestCase {
     }
 
     func testNoSwitchSuggestionWhenOutOfRangeOfEveryCity() {
-        // Szczecin — beyond the 100 km radius of every supported city.
+        // Open Baltic — beyond the 100 km radius of every supported city.
         let s = City.switchSuggestion(
             chosenSlug: "poznan",
-            lat: 53.4285, lon: 14.5528,
+            lat: 55.5, lon: 17.0,
             lastPromptKey: nil
         )
         XCTAssertNil(s)

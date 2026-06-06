@@ -20,9 +20,10 @@ data class City(val slug: String, val name: String, val lat: Double, val lon: Do
 data class CitySwitchSuggestion(val target: City, val key: String)
 
 /**
- * The (currently single) catalogue of supported cities, plus the location →
- * city resolution used by the first-launch gate. New cities are added by
- * extending [all]; nothing else here changes.
+ * The catalogue of supported cities, plus the location → city resolution used
+ * by the first-launch gate. [all] mirrors the web `City.all` ordering so the
+ * "Miasto" picker reads identically across platforms; new cities are added by
+ * extending it, nothing else here changes.
  */
 object Cities {
     val all: List<City> = listOf(
@@ -30,7 +31,13 @@ object Cities {
         City("wroclaw", "Wrocław", 51.1079, 17.0385),
         City("warszawa", "Warszawa", 52.2297, 21.0122),
         City("krakow", "Kraków", 50.0647, 19.9450),
+        City("lodz", "Łódź", 51.7592, 19.4560),
+        City("katowice", "Katowice", 50.2649, 19.0238),
+        City("szczecin", "Szczecin", 53.4285, 14.5528),
+        City("bialystok", "Białystok", 53.1325, 23.1688),
         City("trojmiasto", "Trójmiasto", 54.4416, 18.5601),
+        City("bydgoszcz", "Bydgoszcz", 53.1235, 18.0084),
+        City("lublin", "Lublin", 51.2465, 22.5684),
     )
 
     val DEFAULT: City = all.first()

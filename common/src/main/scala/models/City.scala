@@ -144,8 +144,91 @@ case object Lublin extends City(
   val cinemas: Seq[Cinema] = Cinema.lublin
 }
 
+case object Czestochowa extends City(
+  slug   = "czestochowa",
+  labels = CityLabels(nominative = "Częstochowa", genitivePlural = "częstochowskich", locative = "Częstochowie"),
+  lat    = 50.8118,
+  lon    = 19.1203,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.czestochowa
+}
+
+case object Radom extends City(
+  slug   = "radom",
+  labels = CityLabels(nominative = "Radom", genitivePlural = "radomskich", locative = "Radomiu"),
+  lat    = 51.4027,
+  lon    = 21.1471,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.radom
+}
+
+case object Sosnowiec extends City(
+  slug   = "sosnowiec",
+  labels = CityLabels(nominative = "Sosnowiec", genitivePlural = "sosnowieckich", locative = "Sosnowcu"),
+  lat    = 50.2863,
+  lon    = 19.1041,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.sosnowiec
+}
+
+case object Torun extends City(
+  slug   = "torun",
+  labels = CityLabels(nominative = "Toruń", genitivePlural = "toruńskich", locative = "Toruniu"),
+  lat    = 53.0138,
+  lon    = 18.5984,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.torun
+}
+
+case object Kielce extends City(
+  slug   = "kielce",
+  labels = CityLabels(nominative = "Kielce", genitivePlural = "kieleckich", locative = "Kielcach"),
+  lat    = 50.8661,
+  lon    = 20.6286,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.kielce
+}
+
+case object Rzeszow extends City(
+  slug   = "rzeszow",
+  labels = CityLabels(nominative = "Rzeszów", genitivePlural = "rzeszowskich", locative = "Rzeszowie"),
+  lat    = 50.0413,
+  lon    = 21.9990,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.rzeszow
+}
+
+case object Gliwice extends City(
+  slug   = "gliwice",
+  labels = CityLabels(nominative = "Gliwice", genitivePlural = "gliwickich", locative = "Gliwicach"),
+  lat    = 50.2945,
+  lon    = 18.6714,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.gliwice
+}
+
+case object Zabrze extends City(
+  slug   = "zabrze",
+  labels = CityLabels(nominative = "Zabrze", genitivePlural = "zabrzańskich", locative = "Zabrzu"),
+  lat    = 50.3249,
+  lon    = 18.7857,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.zabrze
+}
+
 object City {
-  val all: Seq[City] = Seq(Poznan, Wroclaw, Warszawa, Krakow, Lodz, Katowice, Szczecin, Bialystok, Trojmiasto, Bydgoszcz, Lublin)
+  val all: Seq[City] = Seq(
+    Poznan, Wroclaw, Warszawa, Krakow, Lodz, Katowice, Szczecin, Bialystok, Trojmiasto, Bydgoszcz, Lublin,
+    Czestochowa, Radom, Sosnowiec, Torun, Kielce, Rzeszow, Gliwice, Zabrze,
+  )
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 
   /** Compact JSON array of every city for the client (web `ALL_CITIES`,

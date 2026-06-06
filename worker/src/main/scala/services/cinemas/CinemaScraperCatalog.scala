@@ -175,6 +175,45 @@ class CinemaScraperCatalog(
     new KinoBajkaClient(http, KinoBajka),
   )
 
+  private val czestochowaScrapers: Seq[CinemaScraper] = Seq(
+    new CinemaCityScraper(cinemaCityClient, "1089", CinemaCityCzestochowaJurajska),
+    new CinemaCityScraper(cinemaCityClient, "1075", CinemaCityCzestochowaWolnosc),
+  )
+
+  private val radomScrapers: Seq[CinemaScraper] = Seq(
+    new HeliosClient(http, HeliosNuxt.Radom, today),
+    new MultikinoClient(mkFetch, "0026", MultikinoRadom),
+  )
+
+  private val sosnowiecScrapers: Seq[CinemaScraper] = Seq(
+    new HeliosClient(http, HeliosNuxt.Sosnowiec, today),
+    new CinemaCityScraper(cinemaCityClient, "1083", CinemaCitySosnowiec),
+  )
+
+  private val torunScrapers: Seq[CinemaScraper] = Seq(
+    new CinemaCityScraper(cinemaCityClient, "1077", CinemaCityTorunCzerwonaDroga),
+    new CinemaCityScraper(cinemaCityClient, "1093", CinemaCityTorunPlaza),
+  )
+
+  private val kielceScrapers: Seq[CinemaScraper] = Seq(
+    new HeliosClient(http, HeliosNuxt.Kielce, today),
+    new MultikinoClient(mkFetch, "0029", MultikinoKielce),
+  )
+
+  private val rzeszowScrapers: Seq[CinemaScraper] = Seq(
+    new HeliosClient(http, HeliosNuxt.Rzeszow, today),
+    new MultikinoClient(mkFetch, "0028", MultikinoRzeszow),
+    new KinoZorzaClient(http, KinoZorza),
+  )
+
+  private val gliwiceScrapers: Seq[CinemaScraper] = Seq(
+    new CinemaCityScraper(cinemaCityClient, "1085", CinemaCityGliwice),
+  )
+
+  private val zabrzeScrapers: Seq[CinemaScraper] = Seq(
+    new MultikinoClient(mkFetch, "0003", MultikinoZabrze),
+  )
+
   /** Raw scrapers grouped by city slug — same slugs `City.slug` uses, so a
    *  caller can scope by city without re-spelling the membership. */
   val byCity: Map[String, Seq[CinemaScraper]] = Map(
@@ -189,6 +228,14 @@ class CinemaScraperCatalog(
     "trojmiasto" -> trojmiastoScrapers,
     "bydgoszcz"  -> bydgoszczScrapers,
     "lublin"     -> lublinScrapers,
+    "czestochowa" -> czestochowaScrapers,
+    "radom"      -> radomScrapers,
+    "sosnowiec"  -> sosnowiecScrapers,
+    "torun"      -> torunScrapers,
+    "kielce"     -> kielceScrapers,
+    "rzeszow"    -> rzeszowScrapers,
+    "gliwice"    -> gliwiceScrapers,
+    "zabrze"     -> zabrzeScrapers,
   )
 
   /** Every raw scraper across every city, in city order. */

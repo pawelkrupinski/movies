@@ -27,8 +27,7 @@ private val ControlMinHeight = 56.dp
 /**
  * Fallback city picker shown when the location gate can't place the user
  * (permission denied, no fix, or out of range of every supported city). Lists
- * every [Cities.all] entry as a tap target — with one city it's a single tap,
- * but it scales to a row per city as the catalogue grows.
+ * every [Cities.all] entry as a tap target, one row per city.
  */
 @Composable
 fun CityChoiceScreen(onPick: (City) -> Unit) {
