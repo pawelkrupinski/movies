@@ -576,7 +576,7 @@ struct FiltersSheet: View {
                 // Always available (signed in or out): picks which city's
                 // repertoire the app shows. Changing it re-points both
                 // stores at the new `/{slug}/api/…` path and persists the
-                // choice. One city today; the picker scales with `City.all`.
+                // choice. The picker lists every `City.all` entry.
                 Section("Miasto") {
                     Picker("Miasto", selection: Binding(
                         get: { prefs.selectedCity ?? City.default.slug },

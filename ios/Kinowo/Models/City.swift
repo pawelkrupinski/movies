@@ -14,15 +14,22 @@ struct City: Codable, Hashable {
     let lat: Double
     let lon: Double
 
-    /// Every city the app knows about. One for now; the first-launch gate
-    /// and the Filtry "Miasto" picker iterate this list so adding a row
-    /// here is the only change a second city needs on the model side.
+    /// Every city the app knows about, in the same order the web `City.all`
+    /// lists them so the "Miasto" picker reads identically across platforms.
+    /// The first-launch gate and the Filtry "Miasto" picker iterate this list,
+    /// so adding a row here is the only change a new city needs on the model side.
     static let all: [City] = [
         City(slug: "poznan", name: "Poznań", lat: 52.4064, lon: 16.9252),
         City(slug: "wroclaw", name: "Wrocław", lat: 51.1079, lon: 17.0385),
         City(slug: "warszawa", name: "Warszawa", lat: 52.2297, lon: 21.0122),
         City(slug: "krakow", name: "Kraków", lat: 50.0647, lon: 19.9450),
+        City(slug: "lodz", name: "Łódź", lat: 51.7592, lon: 19.4560),
+        City(slug: "katowice", name: "Katowice", lat: 50.2649, lon: 19.0238),
+        City(slug: "szczecin", name: "Szczecin", lat: 53.4285, lon: 14.5528),
+        City(slug: "bialystok", name: "Białystok", lat: 53.1325, lon: 23.1688),
         City(slug: "trojmiasto", name: "Trójmiasto", lat: 54.4416, lon: 18.5601),
+        City(slug: "bydgoszcz", name: "Bydgoszcz", lat: 53.1235, lon: 18.0084),
+        City(slug: "lublin", name: "Lublin", lat: 51.2465, lon: 22.5684),
     ]
 
     /// Fallback when no fix is available and the user hasn't chosen.

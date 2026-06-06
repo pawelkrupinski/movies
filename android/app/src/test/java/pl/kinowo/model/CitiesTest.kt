@@ -29,6 +29,12 @@ class CitiesTest {
         assertEquals("wroclaw", Cities.nearestWithin100km(51.1079, 17.0385)?.slug)
         assertEquals("warszawa", Cities.nearestWithin100km(52.2297, 21.0122)?.slug)
         assertEquals("krakow", Cities.nearestWithin100km(50.0647, 19.9450)?.slug)
+        assertEquals("lodz", Cities.nearestWithin100km(51.7592, 19.4560)?.slug)
+        assertEquals("katowice", Cities.nearestWithin100km(50.2649, 19.0238)?.slug)
+        assertEquals("szczecin", Cities.nearestWithin100km(53.4285, 14.5528)?.slug)
+        assertEquals("bialystok", Cities.nearestWithin100km(53.1325, 23.1688)?.slug)
+        assertEquals("bydgoszcz", Cities.nearestWithin100km(53.1235, 18.0084)?.slug)
+        assertEquals("lublin", Cities.nearestWithin100km(51.2465, 22.5684)?.slug)
         // Both ends of the Tri-City resolve to the combined Trójmiasto scope.
         assertEquals("trojmiasto", Cities.nearestWithin100km(54.3520, 18.6466)?.slug) // Gdańsk
         assertEquals("trojmiasto", Cities.nearestWithin100km(54.5189, 18.5305)?.slug) // Gdynia
@@ -36,9 +42,9 @@ class CitiesTest {
 
     @Test
     fun returnsNullWhenFartherThan100km() {
-        // Szczecin (53.43, 14.55) is ~195 km from its nearest served city
-        // (Poznań) — out of range of every supported city.
-        assertNull(Cities.nearestWithin100km(53.4285, 14.5528))
+        // Open Baltic, ~150 km north of Trójmiasto (its nearest served city) —
+        // out of range of every supported city.
+        assertNull(Cities.nearestWithin100km(55.5, 17.0))
     }
 
     @Test
@@ -66,8 +72,8 @@ class CitiesTest {
 
     @Test
     fun noSuggestionWhenOutOfRangeOfEveryCity() {
-        // Szczecin is out of range of every supported city → no offer.
-        assertNull(Cities.switchSuggestion("poznan", 53.4285, 14.5528, lastPromptKey = null))
+        // Open Baltic — out of range of every supported city → no offer.
+        assertNull(Cities.switchSuggestion("poznan", 55.5, 17.0, lastPromptKey = null))
     }
 
     @Test

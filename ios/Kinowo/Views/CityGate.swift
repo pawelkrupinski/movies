@@ -126,8 +126,7 @@ struct CityConfirmView: View {
 
 /// Manual city picker — the fallback when location is unavailable or the user
 /// is outside every served city. A native grouped `List`, one row per
-/// `City.all`; with a single city it's a one-tap screen, but it scales as
-/// cities are added.
+/// `City.all`, so it grows automatically as cities are added.
 struct CityChoiceView: View {
     @EnvironmentObject var prefs: UserPreferences
     /// The location-detected nearest city, when one was found — used only to
