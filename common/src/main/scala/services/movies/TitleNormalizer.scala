@@ -57,6 +57,7 @@ object TitleNormalizer {
      """Pokaz\s+sensorycznie\s+przyjazny|""" +
      """Filmowe\s+Poranki|""" +
      """Filmowy\s+Klub\s+Seniora|""" +
+     """Dyskusyjny\s+Klub\s+Filmowy|""" +
      """Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|""" +
      """Cinema\s+Italia\s+Oggi|""" +
      """Plenerowe\s+Pa[łl]acowe):\s+""").r

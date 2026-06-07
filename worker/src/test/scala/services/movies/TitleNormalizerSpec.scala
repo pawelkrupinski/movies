@@ -301,6 +301,15 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     searchTitle("Filmowy Klub Seniora: Ojczyzna") shouldBe "Filmowy Klub Seniora: Ojczyzna"
   }
 
+  it should "strip the 'Dyskusyjny Klub Filmowy:' prefix for ratings/enrichment but keep it on the row" in {
+    // Film-club screenings are their own row but rate/enrich off the clean title.
+    // Case-insensitive: cinemas report it upper-cased ("DYSKUSYJNY KLUB FILMOWY: ").
+    apiQuery("Dyskusyjny Klub Filmowy: Vertigo") shouldBe "Vertigo"
+    apiQuery("DYSKUSYJNY KLUB FILMOWY: Vertigo") shouldBe "Vertigo"
+    searchTitle("Dyskusyjny Klub Filmowy: Vertigo") shouldBe "Dyskusyjny Klub Filmowy: Vertigo"
+    programmePrefix("DYSKUSYJNY KLUB FILMOWY: Vertigo") shouldBe Some("DYSKUSYJNY KLUB FILMOWY: ")
+  }
+
   // ── programmePrefix — split point for prefix-vs-film-title casing ──────────
 
   "programmePrefix" should "return the matched prefix including the ': ' delimiter" in {
