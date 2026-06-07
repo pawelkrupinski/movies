@@ -221,6 +221,16 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     filterDoc.getDocument("bucket").getDateTime("$gte").getValue shouldBe (now - UptimeMonitor.PollLookbackMs)
   }
 
+  // Bucket granularity is 15 minutes: two records up to 14 min apart share a
+  // bucket, and the retained window stays 24h (MaxBuckets * BucketDurationMs),
+  // matching the collection's 24h TTL index.
+  "bucket granularity" should "span 15 minutes and keep a 24h retained window" in {
+    val b0 = UptimeMonitor.bucketTimestamp(1700000000000L)
+    UptimeMonitor.bucketTimestamp(b0 + 14 * 60 * 1000L) shouldBe b0
+    UptimeMonitor.bucketTimestamp(b0 + 15 * 60 * 1000L) shouldBe (b0 + 15 * 60 * 1000L)
+    UptimeMonitor.MaxBuckets.toLong * UptimeMonitor.BucketDurationMs shouldBe 24L * 60 * 60 * 1000L
+  }
+
   "BucketSnapshot.status" should "be green when all succeed" in {
     UptimeMonitor.BucketSnapshot(0, successes = 5, failures = 0, Seq.empty).status shouldBe "green"
   }

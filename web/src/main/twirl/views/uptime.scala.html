@@ -1,5 +1,6 @@
 @import controllers.{BarData, ServiceRow}
 @import play.api.libs.json.Json
+@import services.UptimeMonitor
 @(cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow])
 <!DOCTYPE html>
 <html lang="en">
@@ -176,7 +177,7 @@
           nb.dataset.info = JSON.stringify(d);
           attachBarHover(nb);
           barsDiv.appendChild(nb);
-          if (barsDiv.children.length > 288) barsDiv.removeChild(barsDiv.firstElementChild);
+          if (barsDiv.children.length > @UptimeMonitor.MaxBuckets) barsDiv.removeChild(barsDiv.firstElementChild);
         }
       });
     }

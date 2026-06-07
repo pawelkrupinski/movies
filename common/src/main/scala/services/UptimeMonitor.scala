@@ -206,7 +206,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
   // ── Polled reads (serving app) ──────────────────────────────────────────────
 
   /** The poll only needs buckets that can still change. Writes only ever land in
-   *  the CURRENT 5-min slot (see `currentBucket`), so a bucket is frozen once its
+   *  the CURRENT 15-min slot (see `currentBucket`), so a bucket is frozen once its
    *  slot closes and its final cumulative count flushes — within
    *  `BucketDurationMs + FlushIntervalMs` of the slot start. Everything older was
    *  already loaded by the boot `hydrate` and never changes again, so re-reading
@@ -319,8 +319,11 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
 object UptimeMonitor {
   type BucketListener = (String, BucketSnapshot) => Unit
 
-  val BucketDurationMs: Long = 5 * 60 * 1000L
-  val MaxBuckets: Int = 288
+  val BucketDurationMs: Long = 15 * 60 * 1000L
+  // Kept in lock-step with BucketDurationMs so the retained window stays 24h
+  // (matching the collection's 24h TTL index): MaxBuckets * BucketDurationMs = 24h.
+  // It bounds both the in-memory cutoff and the /uptime timeline's slot count.
+  val MaxBuckets: Int = 96
   val MaxErrorsPerBucket: Int = 10
   // Dirty buckets flush to Mongo this often (writer side).
   val FlushIntervalMs: Long = 10000L
@@ -329,9 +332,10 @@ object UptimeMonitor {
   // The poll only fetches buckets newer than this — older ones are frozen (writes
   // only ever hit the current slot) and were already loaded at boot. Must exceed
   // a slot + the final flush + slack for a poll delayed while the serving box is
-  // under load: 3 slots (15 min) sits ~9 min past the freeze point. Bounds the
+  // under load: 3 slots (45 min) sits ~30 min past the freeze point. Bounds the
   // poll to the recent window instead of the full 24h history, so its cost stops
-  // growing with retention (and with the scraper/cinema count behind it).
+  // growing with retention (and with the scraper/cinema count behind it). Stays a
+  // multiple of the slot, so the per-poll bucket count is flat regardless of size.
   val PollLookbackMs: Long = 3 * BucketDurationMs
 
   def bucketTimestamp(epochMs: Long): Long = epochMs - (epochMs % BucketDurationMs)
