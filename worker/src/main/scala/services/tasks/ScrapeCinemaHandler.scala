@@ -2,7 +2,7 @@ package services.tasks
 
 import models.Cinema
 import play.api.Logging
-import services.cinemas.{CinemaScrapeRunner, CinemaScraper, DetailEnricher, ScrapeErrors}
+import services.cinemas.{CinemaScrapeRunner, CinemaScraper, ScrapeErrors}
 import services.freshness.{FreshnessKind, FreshnessStore}
 
 /**
@@ -11,12 +11,9 @@ import services.freshness.{FreshnessKind, FreshnessStore}
  * re-check guards against a duplicate task or a stale enqueue (per the queue's
  * "the consumer decides redundancy" contract).
  *
- * For a cinema that defers its per-film detail (a `DetailEnricher`), this also
- * enqueues one `EnrichDetails` task per scraped film that has a detail reference
- * and isn't already detail-fresh — the separation of "fetch screenings" from
- * "fetch detail". The queue dedups those per `(detailGroup, film)`, so the same
- * film's detail is enriched once per group regardless of how many locations or
- * passes scrape it.
+ * The scrape itself runs through `CinemaScrapeRunner`, which also enqueues any
+ * deferred per-film detail tasks — so detail enrichment happens the same way
+ * regardless of whether scraping is queue-driven or the legacy loop.
  *
  * A scrape failure is swallowed and reported as `Done` rather than `Reschedule`:
  * because we don't mark the cinema fresh on failure, the reaper re-enqueues it on
@@ -25,11 +22,9 @@ import services.freshness.{FreshnessKind, FreshnessStore}
  * a failed scrape simply waited for the next pass.
  */
 class ScrapeCinemaHandler(
-  scrapersByKey:   Map[String, CinemaScraper],
-  runner:          CinemaScrapeRunner,
-  freshness:       FreshnessStore,
-  queue:           TaskQueue,
-  detailEnrichers: Map[String, DetailEnricher] = Map.empty // keyed by cinema display name
+  scrapersByKey: Map[String, CinemaScraper],
+  runner:        CinemaScrapeRunner,
+  freshness:     FreshnessStore
 ) extends TaskHandler with Logging {
   import ScrapeCinemaHandler._
   import HandlerOutcome._
@@ -49,9 +44,8 @@ class ScrapeCinemaHandler(
         val cinema = scraper.cinema
         val t0     = System.currentTimeMillis()
         try {
-          val touched = runner.run(scraper)
+          runner.run(scraper)
           freshness.markFresh(key, FreshnessKind.CinemaScrape)
-          enqueueDetailTasks(cinema, touched)
           Done
         } catch {
           case e: Exception =>
@@ -65,21 +59,6 @@ class ScrapeCinemaHandler(
         }
     }
   }
-
-  /** For a detail-deferring cinema, enqueue one EnrichDetails task per scraped
-   *  film that carries a detail reference and isn't already detail-fresh. The
-   *  freshness pre-check just avoids queue churn; the queue's unique index is the
-   *  real guarantee that a `(group, film)` detail task can't be queued twice. */
-  private def enqueueDetailTasks(cinema: Cinema, touched: Seq[(models.CinemaMovie, services.movies.CacheKey, Boolean)]): Unit =
-    detailEnrichers.get(cinema.displayName).foreach { enricher =>
-      touched.foreach { case (cm, key, _) =>
-        cm.filmUrl.foreach { ref =>
-          val dk = EnrichDetailsTasks.dedupKey(enricher.detailGroup, key)
-          if (!freshness.isFresh(dk, FreshnessKind.DetailEnrich))
-            queue.enqueue(TaskType.EnrichDetails, dk, EnrichDetailsTasks.payload(enricher, key, ref))
-        }
-      }
-    }
 }
 
 object ScrapeCinemaHandler {

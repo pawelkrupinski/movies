@@ -34,7 +34,7 @@ import scala.util.Try
  *   6. "Czytaj opis" link — `<a href="kinoapollo.pl/kino/<slug>/">` → detail page
  *   7. Poster     — `<img>` to a WordPress media URL
  */
-class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
+class KinoApolloClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
 
   // Static film detail pages cached across passes; the repertoire listing keeps
   // the live `http` since its showtimes change every pass.
@@ -102,24 +102,55 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl, "https://bilety.kinoapollo.pl")
 
+  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
+  // the per-film detail-page URL) and the detail is filled in later by an
+  // EnrichDetails task via `fetchFilmDetail` — so a scrape pass doesn't block on
+  // N detail-page round-trips. When off (default), it enriches inline as before.
   def fetch(): Seq[CinemaMovie] = {
-    val movies = parseHtml(http.get(PageUrl))
-    val urls   = movies.flatMap(_.filmUrl).distinct
+    val bare = parseHtml(http.get(PageUrl))
+    if (deferDetail) bare else enrichInline(bare)
+  }
+
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
     if (urls.isEmpty) movies
     else {
-      val metas = fetchDetails(urls)
+      val metas = ParallelDetailFetch("kino-apollo-details", urls, 1.minute)(u => fetchFilmDetail(u))
       movies.map { m =>
-        val meta = m.filmUrl.flatMap(metas.get).getOrElse(EmptyDetailMeta)
-        m.copy(
-          movie      = m.movie.copy(runtimeMinutes = meta.runtime, countries = meta.countries, genres = meta.genres),
-          synopsis   = meta.synopsis.orElse(m.synopsis),
-          director   = if (meta.director.nonEmpty) meta.director else m.director,
-          cast       = if (meta.cast.nonEmpty) meta.cast else m.cast,
-          trailerUrl = meta.trailerUrl.orElse(m.trailerUrl)
-        )
+        m.filmUrl.flatMap(metas.get).flatten match {
+          case Some(d) => merge(m, d)
+          case None    => m
+        }
       }
     }
   }
+
+  private def merge(m: CinemaMovie, d: FilmDetail): CinemaMovie = m.copy(
+    movie      = m.movie.copy(runtimeMinutes = d.runtimeMinutes, countries = d.countries, genres = d.genres),
+    synopsis   = d.synopsis.orElse(m.synopsis),
+    director   = if (d.director.nonEmpty) d.director else m.director,
+    cast       = if (d.cast.nonEmpty) d.cast else m.cast,
+    trailerUrl = d.trailerUrl.orElse(m.trailerUrl)
+  )
+
+  override val detailGroup: String = "kino-apollo"
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's filmUrl. None on a fetch failure so the task stays stale and is
+   *  retried by the next scrape rather than recording an empty result as fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map { html =>
+      val m = parseDetail(html)
+      FilmDetail(
+        synopsis       = m.synopsis,
+        cast           = m.cast,
+        director       = m.director,
+        runtimeMinutes = m.runtime,
+        countries      = m.countries,
+        genres         = m.genres,
+        trailerUrl     = m.trailerUrl
+      )
+    }
 
   case class DetailMeta(
     runtime:    Option[Int],
@@ -130,14 +161,6 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
     genres:     Seq[String],
     trailerUrl: Option[String]
   )
-
-  private val EmptyDetailMeta = DetailMeta(None, None, Seq.empty, Seq.empty, Seq.empty, Seq.empty, None)
-
-  private def fetchDetails(urls: Seq[String]): Map[String, DetailMeta] =
-    ParallelDetailFetch("kino-apollo-details", urls, 1.minute)(fetchDetail)
-
-  private def fetchDetail(detailUrl: String): DetailMeta =
-    Try(detailHttp.get(detailUrl)).toOption.map(parseDetail).getOrElse(EmptyDetailMeta)
 
   def parseDetail(html: String): DetailMeta = {
     val doc = Jsoup.parse(html)

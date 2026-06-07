@@ -10,7 +10,11 @@ import java.time.LocalDateTime
 
 class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
 
-  private val client  = new KinoApolloClient(new FakeHttpFetch("kino-apollo"))
+  private val fake    = new FakeHttpFetch("kino-apollo")
+  // Deferred-detail ON: fetch() returns BARE movies (showtimes + poster +
+  // filmUrl); detail is fetched separately via fetchFilmDetail. The structural
+  // assertions below run on these bare results.
+  private val client  = new KinoApolloClient(fake, deferDetail = true)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
@@ -206,108 +210,91 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Drzewo Magii").filmUrl shouldBe Some("https://kinoapollo.pl/kino/drzewo-magii/")
   }
 
-  // ── Runtime via detail-page fetch ─────────────────────────────────────────
-
-  // The listing layout doesn't expose runtime — the fetch chases each film's
-  // "Czytaj opis" link to the detail page and reads `Czas trwania: NN min.`
-  // from the Elementor heading. Only one detail fixture is recorded here
-  // (`znaki-pana-sliwki.content`); every other film's detail fetch raises
-  // `FileNotFoundException` and the runtime stays `None`, which is exactly
-  // the graceful-degradation contract used in production when a detail page
-  // is transiently unreachable.
-  it should "extract runtimeMinutes for the film whose detail page is in the fixture" in {
-    byTitle("Znaki Pana Śliwki").movie.runtimeMinutes shouldBe Some(72)
-  }
-
-  it should "leave runtimeMinutes None when the detail-page fetch fails" in {
-    byTitle("Milcząca przyjaciółka").movie.runtimeMinutes shouldBe None
-  }
-
-  it should "extract runtimeMinutes from the Wajda-cycle 'NN minutes' format" in {
-    // Cycle pages render runtime as `Czas trwania: /running time: 84'`
-    // (apostrophe minute mark) rather than `NN min.`. The runtime regex
-    // matches both forms.
-    byTitle("Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)")
-      .movie.runtimeMinutes shouldBe Some(84)
-  }
-
-  // ── Director / cast / synopsis from the detail page ───────────────────────
-
-  it should "extract Reżyseria and Obsada from a modern-layout detail page" in {
-    // Drzewo Magii's detail page carries the modern layout:
-    //   `Reżyseria: <a>Ben Gregor</a>` + `Obsada: <a>name1, …</a>`.
-    val drzewo = byTitle("Drzewo Magii")
-    drzewo.director shouldBe Seq("Ben Gregor")
-    drzewo.cast     should not be empty
-    drzewo.cast.mkString(", ") should startWith ("Andrew Garfield")
-  }
-
-  it should "extract obsada/cast from the Wajda-cycle layout (no director field)" in {
-    // Cycle pages don't carry a structured `Reżyseria:` line (the director
-    // is implicit in the cycle name) but do carry `<strong>obsada/cast:</strong>`.
-    val niewinni = byTitle("Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)")
-    niewinni.director shouldBe empty
-    niewinni.cast     shouldBe Seq("Tadeusz Łomnicki", "Krystyna Stypułkowska", "Roman Polański")
-  }
-
-  it should "extract a synopsis paragraph from the detail page" in {
-    // Modern-layout: takes the first text-editor paragraph(s), drops the
-    // trailing `Oryginalny tytuł:` / `Reżyseria:` / `Obsada:` metadata line.
-    val drzewo = byTitle("Drzewo Magii").synopsis
-    drzewo                            should not be empty
-    drzewo.get                        should startWith ("Polly i Tim")
-    drzewo.get                        should not include "Reżyseria:"
-    drzewo.get                        should not include "Obsada:"
-    drzewo.get                        should not include "Oryginalny tytuł:"
-  }
-
-  it should "leave director / cast / synopsis None when the detail page is unreachable" in {
-    val milczaca = byTitle("Milcząca przyjaciółka")
-    milczaca.director shouldBe empty
-    milczaca.cast     shouldBe empty
-    milczaca.synopsis shouldBe None
-  }
-
-  // Apollo's modern-film layout sometimes prefixes a `Uwagi:` block with
-  // `Gatunek: <comma list>`. Wajda-cycle pages omit it.
-
-  it should "extract genres from a `Uwagi: Gatunek: …` line" in {
-    byTitle("Drzewo Magii").movie.genres shouldBe Seq("Familijny", "Przygodowy")
-  }
-
-  it should "leave genres empty when the detail page has no Gatunek marker" in {
-    byTitle("Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)")
-      .movie.genres shouldBe empty
-  }
-
   it should "produce showtimes with no room and no format" in {
     val all = results.flatMap(_.showtimes)
     all.exists(_.room.isDefined)  shouldBe false
     all.exists(_.format.nonEmpty) shouldBe false
   }
 
-  // ── Trailers ──────────────────────────────────────────────────────────────
+  // ── Detail via the deferred fetchFilmDetail ───────────────────────────────
   //
-  // Apollo's Elementor button block embeds a YouTube URL via a JSON-in-HTML
-  // `data-settings` attribute (`{"youtube_url":"…"}` with `&quot;` for the
-  // quotes and `\/` for the slashes). We canonicalise to a `watch?v=…` form
-  // and store that; the view layer reshapes to /embed/ at render time.
-  //
-  // The "znaki pana sliwki" fixture's `youtube_url` is an `http://youtube.com`
-  // (no scheme upgrade, no `www.`) — that's how Apollo's CMS shipped the URL.
-  // We accept that shape because `TrailerEmbed.youTubeId` doesn't care about
-  // scheme or `www.` prefix.
+  // fetch() now returns BARE movies (showtimes + poster + filmUrl). The detail —
+  // runtime, synopsis, cast, director, genres, trailer — is fetched separately by
+  // the EnrichDetails task calling fetchFilmDetail(filmUrl), so a scrape pass no
+  // longer blocks on N detail-page round-trips. These tests drive that path with
+  // the filmUrl the bare scrape produced. (Only some films' detail pages are in
+  // the fixtures; an unreachable one yields None — the graceful-degradation
+  // contract used in production.)
 
-  it should "extract YouTube trailer URLs from detail-page Elementor blocks" in {
-    byTitle("Znaki Pana Śliwki").trailerUrl shouldBe
-      Some("https://www.youtube.com/watch?v=VJflATrYhU0")
-    byTitle("Drzewo Magii").trailerUrl shouldBe
-      Some("https://www.youtube.com/watch?v=gzRz4XpyKCY")
-    byTitle("Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)").trailerUrl shouldBe
-      Some("https://www.youtube.com/watch?v=RYlitj4DpgE")
+  private def detailOf(title: String): Option[services.cinemas.FilmDetail] =
+    byTitle(title).filmUrl.flatMap(client.fetchFilmDetail)
+
+  private val niewinniTitle =
+    "Cykl „Wajda: re-wizje\" - Niewinni czarodzieje / Innocent Sorcerers (1960)"
+
+  "KinoApolloClient.fetch" should "return bare movies, with detail deferred" in {
+    val drzewo = byTitle("Drzewo Magii")
+    drzewo.synopsis             shouldBe None
+    drzewo.cast                 shouldBe empty
+    drzewo.director             shouldBe empty
+    drzewo.movie.runtimeMinutes shouldBe None
+    drzewo.movie.genres         shouldBe empty
+    drzewo.trailerUrl           shouldBe None
   }
 
-  it should "leave trailerUrl None when the detail page is unreachable" in {
-    byTitle("Milcząca przyjaciółka").trailerUrl shouldBe None
+  "fetchFilmDetail" should "extract runtimeMinutes for a film whose detail page is in the fixture" in {
+    detailOf("Znaki Pana Śliwki").flatMap(_.runtimeMinutes) shouldBe Some(72)
+  }
+
+  it should "return None when the detail-page fetch fails" in {
+    detailOf("Milcząca przyjaciółka") shouldBe None
+  }
+
+  it should "extract runtime from the Wajda-cycle 'NN minutes' format" in {
+    detailOf(niewinniTitle).flatMap(_.runtimeMinutes) shouldBe Some(84)
+  }
+
+  it should "extract Reżyseria and Obsada from a modern-layout detail page" in {
+    val d = detailOf("Drzewo Magii")
+    d.map(_.director) shouldBe Some(Seq("Ben Gregor"))
+    d.map(_.cast.mkString(", ")).getOrElse("") should startWith ("Andrew Garfield")
+  }
+
+  it should "extract obsada/cast from the Wajda-cycle layout (no director field)" in {
+    val d = detailOf(niewinniTitle)
+    d.map(_.director) shouldBe Some(Seq.empty)
+    d.map(_.cast)     shouldBe Some(Seq("Tadeusz Łomnicki", "Krystyna Stypułkowska", "Roman Polański"))
+  }
+
+  it should "extract a synopsis paragraph from the detail page" in {
+    val s = detailOf("Drzewo Magii").flatMap(_.synopsis)
+    s should not be empty
+    s.get should startWith ("Polly i Tim")
+    s.get should not include "Reżyseria:"
+    s.get should not include "Obsada:"
+    s.get should not include "Oryginalny tytuł:"
+  }
+
+  it should "extract genres from a `Uwagi: Gatunek: …` line" in {
+    detailOf("Drzewo Magii").map(_.genres) shouldBe Some(Seq("Familijny", "Przygodowy"))
+  }
+
+  it should "leave genres empty when the detail page has no Gatunek marker" in {
+    detailOf(niewinniTitle).map(_.genres) shouldBe Some(Seq.empty)
+  }
+
+  it should "extract YouTube trailer URLs from detail-page Elementor blocks" in {
+    detailOf("Znaki Pana Śliwki").flatMap(_.trailerUrl) shouldBe Some("https://www.youtube.com/watch?v=VJflATrYhU0")
+    detailOf("Drzewo Magii").flatMap(_.trailerUrl)      shouldBe Some("https://www.youtube.com/watch?v=gzRz4XpyKCY")
+    detailOf(niewinniTitle).flatMap(_.trailerUrl)       shouldBe Some("https://www.youtube.com/watch?v=RYlitj4DpgE")
+  }
+
+  // The legacy inline path (deferDetail off, the current default) still enriches
+  // movies during fetch() by chasing each film's detail page.
+  "KinoApolloClient.fetch with deferDetail off" should "enrich movies inline from detail pages" in {
+    val enriched = new KinoApolloClient(fake).fetch().map(cm => cm.movie.title -> cm).toMap
+    enriched("Znaki Pana Śliwki").movie.runtimeMinutes shouldBe Some(72)
+    enriched("Drzewo Magii").director                  shouldBe Seq("Ben Gregor")
+    enriched("Drzewo Magii").synopsis.exists(_.startsWith("Polly i Tim")) shouldBe true
   }
 }

@@ -28,10 +28,15 @@ class ShowtimeCache(
   // Safety net so one pathologically-stuck pass can't stall the continuous loop
   // forever. Generous — a normal pass (even ~48 cinemas at 2-at-a-time) finishes
   // well within this. Injectable so tests can exercise the timeout path.
-  passTimeout: FiniteDuration = 30.minutes
+  passTimeout: FiniteDuration = 30.minutes,
+  // The shared scrape core (record + publish + enqueue deferred detail). Injected
+  // so the loop uses the same wired runner as the queue path — incl. detail-task
+  // enqueue when deferred detail is enabled. Defaults to a bare runner for
+  // tests/scripts that construct ShowtimeCache directly.
+  runner:      Option[CinemaScrapeRunner] = None
 ) extends Stoppable with Logging {
 
-  private val runner = new CinemaScrapeRunner(movieCache, bus)
+  private val scrapeRunner: CinemaScrapeRunner = runner.getOrElse(new CinemaScrapeRunner(movieCache, bus))
   private val scheduler = DaemonExecutors.scheduler("showtime-cache-refresh")
   // Brief breather between back-to-back passes — essentially "start the next one
   // as soon as this finishes" without a hot loop.
@@ -109,7 +114,7 @@ class ShowtimeCache(
     // The fetch→record→publish core (incl. canonical-key publishing and the
     // suppress-no-op-events logic) lives in CinemaScrapeRunner, shared with the
     // queue-driven ScrapeCinemaHandler. Here we just classify a failure.
-    try runner.run(scraper)
+    try scrapeRunner.run(scraper)
     catch {
       case e: Exception =>
         val elapsed = System.currentTimeMillis() - t0

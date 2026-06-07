@@ -29,7 +29,13 @@ class CinemaScraperCatalog(
   http:    HttpFetch,
   mkFetch: HttpFetch,
   bnFetch: HttpFetch,
-  today:   LocalDate
+  today:   LocalDate,
+  // When true, cinemas that implement DetailEnricher return BARE movies from
+  // fetch() and their per-film detail is fetched later via EnrichDetails tasks.
+  // Required (no default) because the secondary diagnostic ctor below already
+  // carries defaults, and Scala allows only one overloaded ctor to do so; the
+  // secondary passes false (inline detail).
+  deferDetail: Boolean
 ) {
 
   /** Diagnostic ctor: the Zyte-routed fetches (Multikino's API, biletyna's venue
@@ -39,7 +45,7 @@ class CinemaScraperCatalog(
    *  `WorkerWiring` uses the primary ctor to inject its (possibly
    *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) =
-    this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today)
+    this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today, false)
 
   // Per-film detail bodies are static between passes and IDENTICAL across a
   // chain's locations, so each chain shares ONE 6h CachingDetailFetch: a film's
@@ -65,7 +71,7 @@ class CinemaScraperCatalog(
     new CinemaCityScraper(cinemaCityClient, "1081", CinemaCityKinepolis),
     kinoMuzaClient,
     new KinoBulgarskaClient(http, today),
-    new KinoApolloClient(http),
+    new KinoApolloClient(http, deferDetail),
     new RialtoClient(http),
   )
 
