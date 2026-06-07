@@ -2,7 +2,7 @@ package services.tasks
 
 import com.mongodb.MongoWriteException
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.model.{Filters, FindOneAndUpdateOptions, Indexes, ReturnDocument, Updates}
 
@@ -41,9 +41,9 @@ import scala.util.Try
  *
  * Blocking `.toFuture()` throughout — callers are daemon worker/reaper threads.
  */
-class MongoTaskQueue(db: Option[MongoDatabase] = None) extends TaskQueue with Logging {
+class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = "tasks") extends TaskQueue with Logging {
 
-  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("tasks"))
+  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(collectionName))
 
   coll.foreach { c =>
     val t = new Thread(() => createIndexes(c), "tasks-init")
@@ -107,7 +107,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None) extends TaskQueue with Lo
         .sort(Indexes.ascending("submittedAt"))
         .returnDocument(ReturnDocument.AFTER)
       Try {
-        Await.result(c.findOneAndUpdate(Filters.eq("state", TaskState.Waiting), update, opts).toFutureOption(), 10.seconds)
+        Await.result(c.findOneAndUpdate(Filters.eq("state", TaskState.Waiting), update, opts).headOption(), 10.seconds)
           .map(toTask)
       }.recover {
         case ex: Throwable =>
