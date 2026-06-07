@@ -61,7 +61,9 @@ object Bilety24Client {
       val href = a.attr("href")
       // Skip disabled/placeholder buttons (href="#") — only real kup-bilety
       // links are bookable slots.
-      if (!href.contains("kup-bilety")) None
+      // Active buttons link to a real URL (/kup-bilety/ or /b24-do-miejsc-numerowanych-i-nienumerowanych/);
+      // inactive/disabled buttons use href="#".
+      if (href == "#") None
       else ButtonTitlePat.findFirstMatchIn(a.attr("title")).flatMap { m =>
         Try(LocalDateTime.parse(s"${m.group(2)} ${m.group(3)}", DateTimeFmt)).toOption.map { dt =>
           val booking = if (href.startsWith("http")) href else baseUrl + href

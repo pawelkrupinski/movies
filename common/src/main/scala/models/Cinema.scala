@@ -347,6 +347,7 @@ case object HeliosJeleniaGora extends Cinema("Helios Jelenia Góra", "Helios")
 case object HeliosPrzemysl extends Cinema("Helios Przemyśl", "Helios")
 // Konin
 case object HeliosKonin extends Cinema("Helios Konin", "Helios")
+case object KinoOskard  extends Cinema("Kino Oskard", "Oskard")  // Konin — bilety24
 
 // ── Independent cinemas served via shared platform clients ────────────────────
 // No bespoke scraper needed: each reuses an existing, fixture-tested client —
@@ -585,7 +586,7 @@ object Cinema {
   val slupsk: Seq[Cinema]       = Seq(MultikinoSlupsk, KinoRejs)
   val jeleniaGora: Seq[Cinema]  = Seq(HeliosJeleniaGora, KinoLot)
   val przemysl: Seq[Cinema]     = Seq(HeliosPrzemysl)
-  val konin: Seq[Cinema]        = Seq(HeliosKonin)
+  val konin: Seq[Cinema]        = Seq(HeliosKonin, KinoOskard)
 
   /** Every city's venues in page order, paired with the city's display label.
    *  Single source of truth for `all` and for the uptime page's per-city

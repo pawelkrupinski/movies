@@ -266,7 +266,7 @@ class CinemaScraperCatalog(
   private val slupskScrapers       = Seq(new MultikinoClient(mkFetch, "0030", MultikinoSlupsk), new FilmwebShowtimesClient(http, 447, KinoRejs, today = today))
   private val jeleniaGoraScrapers  = Seq(new HeliosClient(http, HeliosNuxt.JeleniaGora, today), new Bilety24Client(http, "https://kino-lot.bilety24.pl", KinoLot))
   private val przemyslScrapers     = Seq(new HeliosClient(http, HeliosNuxt.Przemysl, today))
-  private val koninScrapers        = Seq(new HeliosClient(http, HeliosNuxt.Konin, today))
+  private val koninScrapers        = Seq(new HeliosClient(http, HeliosNuxt.Konin, today), new Bilety24Client(http, "https://ckis-konin.bilety24.pl", KinoOskard))
 
   /** Raw scrapers grouped by city slug — same slugs `City.slug` uses, so a
    *  caller can scope by city without re-spelling the membership. */
