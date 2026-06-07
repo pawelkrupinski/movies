@@ -51,6 +51,8 @@ class NckfClient(
 
   import NckfClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl), today, cinema)
 }
 

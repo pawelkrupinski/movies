@@ -46,6 +46,8 @@ class Cinema1Client(
 
   import Cinema1Client._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(MsiBaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val thisMonth = YearMonth.from(today)
     val nextMonth = thisMonth.plusMonths(1)

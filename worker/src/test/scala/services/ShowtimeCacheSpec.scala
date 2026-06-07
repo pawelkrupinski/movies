@@ -82,6 +82,7 @@ class ShowtimeCacheSpec extends AnyFlatSpec with Matchers {
     import scala.concurrent.duration._
     val slow = new services.cinemas.CinemaScraper {
       val cinema = models.KinoApollo
+      def scrapeHosts: Set[String] = Set.empty
       def fetch() = { Thread.sleep(500); throw new java.io.IOException("slow upstream") }
     }
     val sc = new ShowtimeCache(Seq(slow), null, null, passTimeout = 100.millis)

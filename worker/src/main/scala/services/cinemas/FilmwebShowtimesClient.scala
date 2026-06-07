@@ -51,6 +51,8 @@ class FilmwebShowtimesClient(
 
   import FilmwebShowtimesClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ApiBase)
+
   def fetch(): Seq[CinemaMovie] = {
     val dates = (0 to daysAhead).map(today.plusDays(_))
 

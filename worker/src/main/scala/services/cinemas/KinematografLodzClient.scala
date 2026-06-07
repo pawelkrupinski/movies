@@ -48,6 +48,8 @@ class KinematografLodzClient(
 
   import KinematografLodzClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl), today, cinema)
 }
 

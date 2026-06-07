@@ -29,6 +29,8 @@ class UjazdowskiClient(http: HttpFetch) extends CinemaScraper {
 
   private case class RawSlot(slug: String, title: String, dateTime: LocalDateTime, meta: Option[String], poster: Option[String])
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val main = http.get(ListingUrl)
     val uts  = UtPat.findAllMatchIn(main).map(_.group(1)).toSeq.distinct

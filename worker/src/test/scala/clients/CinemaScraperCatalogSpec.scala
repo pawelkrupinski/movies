@@ -57,4 +57,39 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       (modelled diff scraped) shouldBe empty
     }
   }
+
+  // `MonitoringHttpFetch` suppresses these hosts so cinema scrapes don't
+  // double-record under their host in the uptime page's "Other" bucket. A
+  // scraper that returns an EMPTY set leaks its host into "Other" — exactly the
+  // bug this guards. The abstract `CinemaScraper.scrapeHosts` makes the compiler
+  // demand the method; this makes the runtime demand it be non-trivial.
+  it should "declare a non-empty scrapeHosts for every scraper" in {
+    val leaking = catalogWithBiletyna("kino-kameralne").all.filter(_.scrapeHosts.isEmpty).map(_.cinema.displayName)
+    withClue(s"scrapers with empty scrapeHosts: ${leaking.sorted}") { leaking shouldBe empty }
+  }
+
+  // Spot-check the union covers the host shapes that were leaking into "Other":
+  // bespoke per-cinema domains, shared national-chain hosts, and the per-venue
+  // bilety24 subdomains. A missed client or a re-spelled host fails here.
+  it should "cover representative bespoke, shared-chain and per-venue hosts" in {
+    val hosts = catalogWithBiletyna("kino-kameralne").scrapeHosts
+    val expected = Set(
+      "kinomuranow.pl", "amok.gliwice.pl", "stacjafalenica.pl",   // bespoke per-cinema
+      "www.multikino.pl", "www.cinema-city.pl", "restapi.helios.pl", "www.filmweb.pl", "www.novekino.pl", // shared chains
+      "kinoluna.bilety24.pl", "swiatowid-katowice.bilety24.pl",   // per-venue bilety24
+    )
+    withClue(s"missing from catalog.scrapeHosts: ${(expected diff hosts).toSeq.sorted}") {
+      (expected diff hosts) shouldBe empty
+    }
+  }
+
+  it should "expose only bare lower-case hosts (no scheme, port or path)" in {
+    catalogWithBiletyna("kino-kameralne").scrapeHosts.foreach { h =>
+      withClue(s"malformed host: '$h'") {
+        h shouldBe h.toLowerCase
+        h should not include "/"
+        h should not include ":"
+      }
+    }
+  }
 }

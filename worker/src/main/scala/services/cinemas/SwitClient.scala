@@ -24,6 +24,8 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
   private val DateFmt    = DateTimeFormatter.ofPattern("yyyyMMdd")
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ListingUrl)
+
   def fetch(): Seq[CinemaMovie] =
     Jsoup.parse(http.get(ListingUrl)).select("div.cks-movie-card").asScala.toSeq.flatMap(parseCard)
 

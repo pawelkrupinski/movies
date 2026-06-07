@@ -374,4 +374,13 @@ class CinemaScraperCatalog(
   /** Every raw scraper across every city, in city order. */
   val all: Seq[CinemaScraper] =
     City.all.flatMap(c => byCity.getOrElse(c.slug, Nil))
+
+  /** Union of every cinema scraper's HTTP hosts. `MonitoringHttpFetch`
+   *  suppresses per-host uptime rows for these — each cinema's health is
+   *  already tracked under its `displayName` by `RetryingCinemaScraper`, so a
+   *  per-host row would be a duplicate landing in the uptime page's "Other"
+   *  bucket. Single source of truth: a new cinema's client declares its host
+   *  (forced by the abstract `CinemaScraper.scrapeHosts`) and is suppressed
+   *  automatically — no hand-kept host list to drift. */
+  val scrapeHosts: Set[String] = all.flatMap(_.scrapeHosts).toSet
 }

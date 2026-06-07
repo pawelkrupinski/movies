@@ -33,6 +33,8 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
   private val BaseUrl  = "https://bok.waw.pl"
   private val Warsaw   = ZoneId.of("Europe/Warsaw")
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val listing = http.get(s"$BaseUrl/$prefix")
     val days    = dayLinks(listing)

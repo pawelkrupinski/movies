@@ -34,6 +34,8 @@ class KinoKulturaClient(http: HttpFetch) extends CinemaScraper {
   private case class RawSlot(filmId: String, title: String, dateTime: LocalDateTime, room: Option[String],
                              booking: String, poster: Option[String])
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl, "https://rezerwacja.kinokultura.pl")
+
   def fetch(): Seq[CinemaMovie] = {
     val main  = http.get(s"$BaseUrl/")
     val nonce = NoncePat.findFirstMatchIn(main).map(_.group(1)).getOrElse("")

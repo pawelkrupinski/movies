@@ -45,6 +45,8 @@ class McswElektrowniaCinemaClient(
 
   import McswElektrowniaCinemaClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     // Scrape today and the next 6 days in parallel.
     val dates = (0 until DaysAhead).map(today.plusDays(_))

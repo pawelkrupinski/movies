@@ -27,6 +27,7 @@ class RetryingCinemaScraperSpec extends AnyFlatSpec with Matchers {
   private def scriptedScraper(plan: List[Either[Throwable, Seq[CinemaMovie]]]): CinemaScraper = new CinemaScraper {
     private var remaining = plan
     val cinema: Cinema    = Multikino
+    def scrapeHosts: Set[String] = Set.empty
     def fetch(): Seq[CinemaMovie] = remaining match {
       case Right(v) :: rest => remaining = rest; v
       case Left(t)  :: rest => remaining = rest; throw t

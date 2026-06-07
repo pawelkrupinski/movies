@@ -39,6 +39,8 @@ class KinoBajkaClient(http: HttpFetch, override val cinema: Cinema) extends Cine
 
   import KinoBajkaClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
 
   def parseHtml(html: String): Seq[CinemaMovie] = {

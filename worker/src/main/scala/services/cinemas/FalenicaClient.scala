@@ -27,6 +27,8 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper {
 
   private case class Film(slug: String, title: String, runtime: Option[Int], director: Seq[String], poster: Option[String])
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val films = Jsoup.parse(http.get(ListingUrl)).select("article.filmy").asScala.toSeq.flatMap(parseListItem)
       .filterNot(_.slug.contains("__trashed")).distinctBy(_.slug)

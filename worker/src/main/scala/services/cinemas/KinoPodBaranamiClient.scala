@@ -38,6 +38,8 @@ class KinoPodBaranamiClient(
 
   import KinoPodBaranamiClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val html  = http.getBytes(RepertoireUrl)
     val str   = new String(html, "ISO-8859-2")

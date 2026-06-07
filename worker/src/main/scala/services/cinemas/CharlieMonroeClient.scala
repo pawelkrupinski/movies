@@ -25,6 +25,8 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
     """(?s)class="wpmoly[^"]*meta label[^"]*">Kraj:.*?class="wpmoly[^"]*meta value[^"]*">(.*?)</span>""".r
   private val AnchorTextPat    = """<a[^>]*>([^<]+)</a>""".r
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val movies = parseHtml(http.get(PageUrl))
     val urls   = movies.flatMap(_.filmUrl).distinct

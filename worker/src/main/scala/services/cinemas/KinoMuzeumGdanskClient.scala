@@ -35,6 +35,8 @@ class KinoMuzeumGdanskClient(http: HttpFetch, override val cinema: Cinema) exten
 
   import KinoMuzeumGdanskClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val base     = http.get(RepertoireUrl)
     val dayLinks = parseDayLinks(base)

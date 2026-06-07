@@ -34,6 +34,8 @@ class CytadelaClient(http: HttpFetch) extends CinemaScraper {
                              year: Option[Int], director: Seq[String], runtime: Option[Int],
                              booking: Option[String], poster: Option[String])
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(http.get(ListingUrl))
 

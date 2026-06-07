@@ -27,6 +27,8 @@ class AmondoClient(http: HttpFetch) extends CinemaScraper {
   private case class RawSlot(slug: String, title: String, genres: Seq[String], dateTime: LocalDateTime,
                              room: Option[String], booking: Option[String], poster: Option[String])
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(http.get(RepertoireUrl))
 

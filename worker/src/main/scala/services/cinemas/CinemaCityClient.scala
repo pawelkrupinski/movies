@@ -10,7 +10,7 @@ import scala.util.Try
 
 class CinemaCityClient(http: HttpFetch) {
 
-  private val BaseApiUrl = "https://www.cinema-city.pl/pl/data-api-service/v1/quickbook/10103"
+  private val BaseApiUrl = CinemaCityClient.BaseApiUrl
   private val FarFuture  = "2027-01-01"
 
   def fetch(cinemaId: String, cinema: Cinema): Seq[CinemaMovie] = {
@@ -136,6 +136,11 @@ class CinemaCityClient(http: HttpFetch) {
 }
 
 object CinemaCityClient {
+
+  /** The quickbook data-API base. Public so the 1:N `CinemaCityScraper`
+   *  wrapper can derive its `scrapeHosts` from the same string the client
+   *  fetches with. */
+  val BaseApiUrl = "https://www.cinema-city.pl/pl/data-api-service/v1/quickbook/10103"
 
   /** Strip event/cycle decoration so a decorated screening collapses onto the
    *  same Movie — and enriches off the same clean title — as the regular run:

@@ -30,6 +30,8 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
   private case class RawSlot(filmId: String, title: String, dateTime: LocalDateTime, room: Option[String],
                              booking: Option[String], poster: Option[String], detailPath: String)
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(http.get(ListingUrl))
 

@@ -31,6 +31,8 @@ class HeliosClient(
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl, ApiBase, BookingBase)
+
   def fetch(): Seq[CinemaMovie] = {
     val rest     = fetchRestData()
     val enriched = enrichFromRest(HeliosNuxt.buildMovies(http.get(PageUrl), cfg), rest)

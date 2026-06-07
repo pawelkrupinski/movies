@@ -33,6 +33,8 @@ class KinotekaClient(http: HttpFetch) extends CinemaScraper {
   private case class RawSlot(slug: String, title: String, genres: Seq[String], dateTime: LocalDateTime,
                              booking: Option[String], poster: Option[String])
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val base  = http.get(ListingUrl)
     val dates = DatePat.findAllMatchIn(base).map(_.group(1)).toSeq.distinct

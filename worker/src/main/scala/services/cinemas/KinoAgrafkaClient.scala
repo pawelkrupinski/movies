@@ -35,6 +35,8 @@ class KinoAgrafkaClient(http: HttpFetch, override val cinema: Cinema) extends Ci
 
   import KinoAgrafkaClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)
     val slots = parseDoc(html)

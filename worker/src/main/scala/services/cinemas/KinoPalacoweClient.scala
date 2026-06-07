@@ -111,6 +111,8 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
   def parseTrailer(html: String): Option[String] =
     TrailerPat.findFirstMatchIn(html).map(_.group(1)).flatMap(ScraperParse.canonicalTrailer)
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val entries = fetchAllEntries()
 

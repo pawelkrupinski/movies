@@ -36,6 +36,8 @@ class KinoSpektrumClient(http: HttpFetch, override val cinema: Cinema) extends C
 
   import KinoSpektrumClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
 
   def parseHtml(html: String): Seq[CinemaMovie] = {

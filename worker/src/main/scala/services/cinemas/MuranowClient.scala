@@ -31,6 +31,8 @@ class MuranowClient(http: HttpFetch) extends CinemaScraper {
 
   private case class RawSlot(slug: String, title: String, dateTime: LocalDateTime, poster: Option[String], bookingUrl: Option[String])
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val doc  = Jsoup.parse(http.get(RepertoireUrl))
     val year = MuranowClient.yearFromLabel(Option(doc.selectFirst("p.calendar-seance-full__month-label")).map(_.text).getOrElse(""))

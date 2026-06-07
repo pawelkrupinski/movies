@@ -28,6 +28,8 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
   private case class RawSlot(filmId: String, title: String, dateTime: LocalDateTime, booking: Option[String],
                              poster: Option[String], countries: Seq[String], genres: Seq[String], format: List[String])
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val today = http.get(s"$CinemaUrl/repertuar.php")
     val dates = DatePat.findAllMatchIn(today).map(_.group(1)).toSeq.distinct

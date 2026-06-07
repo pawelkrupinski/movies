@@ -31,6 +31,8 @@ class Bilety24Client(
 
   private val EventLinkPat = """/wydarzenie/\?id=(\d+)""".r
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val listing  = http.get(baseUrl + listingPath)
     val eventIds = EventLinkPat.findAllMatchIn(listing).map(_.group(1)).toSeq.distinct

@@ -41,6 +41,8 @@ class KinoCskClient(http: HttpFetch, override val cinema: Cinema = KinoCskLublin
 
   import KinoCskClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(TerminUrl)
     val doc  = Jsoup.parse(html)

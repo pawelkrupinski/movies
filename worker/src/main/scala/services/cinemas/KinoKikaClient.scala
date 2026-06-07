@@ -31,6 +31,8 @@ class KinoKikaClient(http: HttpFetch, override val cinema: Cinema) extends Cinem
 
   import KinoKikaClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val html  = http.get(RepertoireUrl)
     val slots = parseDoc(html)

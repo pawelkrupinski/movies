@@ -18,6 +18,8 @@ import scala.util.Try
  * runtime / genres — TMDB supplies those downstream.
  */
 class KinoMikroClient(http: HttpFetch, venueName: String, override val cinema: Cinema) extends CinemaScraper {
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoMikroClient.ApiUrl, "https://bilety.kinomikro.pl")
+
   def fetch(): Seq[CinemaMovie] = KinoMikroParser.parse(http.get(KinoMikroClient.ApiUrl), venueName, cinema)
 }
 

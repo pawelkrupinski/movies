@@ -66,6 +66,8 @@ class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
       }
     }.getOrElse((Seq.empty, Seq.empty, None, None))
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val movies     = parseHtml(http.get(PageUrl))
     val trailerByUrl = fetchTrailers(movies.flatMap(_.filmUrl).distinct)

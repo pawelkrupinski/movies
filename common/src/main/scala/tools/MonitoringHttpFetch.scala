@@ -6,7 +6,26 @@ import java.io.IOException
 import java.net.URI
 import java.util.concurrent.CompletableFuture
 
-class MonitoringHttpFetch(delegate: HttpFetch, monitor: UptimeMonitor) extends HttpFetch {
+/**
+ *  Wraps an `HttpFetch` to feed every call's outcome to the `UptimeMonitor`,
+ *  keyed by a service name derived from the request host (see `classify`).
+ *
+ *  `cinemaHosts` is the set of hosts that belong to a cinema scrape. They're
+ *  SUPPRESSED here (recorded as `None`) because `RetryingCinemaScraper` already
+ *  tracks each cinema's health under its `displayName`; a second per-host row
+ *  would be a duplicate cluttering the uptime page's "Other" bucket. It's
+ *  passed BY-NAME and memoised: the worker derives it from
+ *  `CinemaScraperCatalog.scrapeHosts`, but the catalog itself fetches through
+ *  this very `MonitoringHttpFetch`, so eager evaluation would be a constructor
+ *  cycle. The thunk is forced once, on the first `classify` call — long after
+ *  the wiring graph is built. Defaults to empty (the web wiring scrapes no
+ *  cinemas, so it has nothing to suppress).
+ */
+class MonitoringHttpFetch(
+  delegate: HttpFetch,
+  monitor: UptimeMonitor,
+  cinemaHosts: => Set[String] = Set.empty
+) extends HttpFetch {
 
   private val enrichmentNames: Map[String, String] = Map(
     "api.themoviedb.org"        -> "TMDB",
@@ -20,23 +39,22 @@ class MonitoringHttpFetch(delegate: HttpFetch, monitor: UptimeMonitor) extends H
     "rottentomatoes.com"        -> "Rotten Tomatoes"
   )
 
-  private val cinemaHosts: Set[String] = Set(
-    "www.multikino.pl", "multikino.pl",
-    "kinomalta.pl", "www.kinomalta.pl",
-    "kinopalacowe.pl", "www.kinopalacowe.pl",
-    "helios.pl", "www.helios.pl", "restapi.helios.pl",
-    "www.cinema-city.pl", "cinema-city.pl",
-    "www.kinomuza.pl", "kinomuza.pl",
-    "kinobulgarska19.pl", "www.kinobulgarska19.pl",
-    "kinoapollo.pl", "www.kinoapollo.pl",
-    "www.kinorialto.poznan.pl", "kinorialto.poznan.pl"
-  )
+  /** Force the by-name `cinemaHosts` exactly once, then reuse — building the
+   *  catalog graph is not free, and `classify` runs per request. */
+  private lazy val suppressedHosts: Set[String] = cinemaHosts
 
   private[tools] def classify(url: String): Option[String] =
     try {
       val host = URI.create(url).getHost
-      if (cinemaHosts.contains(host)) None
-      else Some(enrichmentNames.getOrElse(host, host))
+      // Enrichment FIRST: a host can be both an enrichment source and a scrape
+      // source (filmweb.pl is scraped by FilmwebShowtimesClient and read for
+      // ratings), and its enrichment health is what the uptime page wants — so
+      // a named enrichment row wins over cinema-host suppression.
+      enrichmentNames.get(host) match {
+        case some @ Some(_)                         => some
+        case None if suppressedHosts.contains(host) => None
+        case None                                   => Some(host)
+      }
     } catch {
       case _: Exception => None
     }

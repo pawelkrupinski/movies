@@ -34,6 +34,8 @@ class KinoFenomenClient(
 
   import KinoFenomenClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(ListingUrl)
     val doc  = Jsoup.parse(html)

@@ -54,6 +54,8 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
     countries:      Seq[String]     = Seq.empty
   )
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl, BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val filmEntries = parseRepertoire(http.get(RepertoireUrl))
 

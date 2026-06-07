@@ -38,6 +38,8 @@ class DcfClient(http: HttpFetch) extends CinemaScraper {
 
   private case class RawSlot(dateTime: LocalDateTime, room: Option[String], bookingUrl: Option[String])
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl, EventBase)
+
   def fetch(): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(http.get(RepertoireUrl))
 

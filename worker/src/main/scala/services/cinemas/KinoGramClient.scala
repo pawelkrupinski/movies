@@ -25,6 +25,8 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
   private val Query =
     """{ getScreeningList(query: {}) { id screeningTimeFrom screen { name } movie { id title originalTitle duration description director country yearOfProduction genres { name } posters trailers } } }"""
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ApiUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val body = Json.obj("query" -> Query).toString
     val json = Try(Json.parse(http.post(ApiUrl, body, "application/json"))).getOrElse(Json.obj())

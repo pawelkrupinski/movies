@@ -39,6 +39,8 @@ class KinoAmokClient(
 
   import KinoAmokClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)
     val doc  = Jsoup.parse(html)

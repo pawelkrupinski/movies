@@ -39,6 +39,8 @@ class KinoForumClient(
 
   override val cinema: Cinema = KinoForum
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val doc   = Jsoup.parse(http.get(PageUrl))
     val slots = doc.select("div.repertoire-row[data-date][data-hour]").asScala.toSeq

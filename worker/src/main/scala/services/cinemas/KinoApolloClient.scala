@@ -100,6 +100,8 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper {
   // first subsequent `<` so the line break / inline tag bounds the genre list.
   private val GenrePat      = """(?i)Gatunek:\s*([^<|]+)""".r
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl, "https://bilety.kinoapollo.pl")
+
   def fetch(): Seq[CinemaMovie] = {
     val movies = parseHtml(http.get(PageUrl))
     val urls   = movies.flatMap(_.filmUrl).distinct

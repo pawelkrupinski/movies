@@ -41,6 +41,8 @@ class KinoKijowClient(
 
   import KinoKijowClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val months = monthsToFetch(today)
     val pages  = ParallelDetailFetch.keyed("kino-kijow-months", months, 1.minute)(m => monthUrl(m)) { url =>

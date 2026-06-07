@@ -39,6 +39,8 @@ class KinoIkmClient(
   today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper {
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoIkmClient.PageUrl)
+
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(KinoIkmClient.PageUrl))
 
   def parseHtml(html: String): Seq[CinemaMovie] = {

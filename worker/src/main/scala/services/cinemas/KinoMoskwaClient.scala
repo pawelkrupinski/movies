@@ -48,6 +48,8 @@ class KinoMoskwaClient(
 
   import KinoMoskwaClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val todayHtml  = http.get(dayUrl(today))
     val todayDoc   = Jsoup.parse(todayHtml)

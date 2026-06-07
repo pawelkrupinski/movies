@@ -19,6 +19,7 @@ class FilmwebDiffParallelFetchSpec extends AnyFlatSpec with Matchers {
 
   private class FakeScraper(override val cinema: Cinema, calls: AtomicInteger, boom: Boolean = false)
     extends CinemaScraper {
+    def scrapeHosts: Set[String] = Set.empty
     def fetch(): Seq[CinemaMovie] = {
       calls.incrementAndGet()
       Thread.sleep(20) // overlap windows so a keying bug would surface

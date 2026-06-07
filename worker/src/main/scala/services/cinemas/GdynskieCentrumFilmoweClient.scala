@@ -36,6 +36,8 @@ class GdynskieCentrumFilmoweClient(http: HttpFetch, override val cinema: Cinema)
 
   import GdynskieCentrumFilmoweClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)
     parseHtml(html, cinema)

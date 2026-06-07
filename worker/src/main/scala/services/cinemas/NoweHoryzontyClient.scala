@@ -47,6 +47,8 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
   private def dayUrl(date: LocalDate): String =
     s"$BaseUrl/rep.json?dzien=${date.format(DayFmt)}&forwardback=$Forwardback"
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val days     = (0 until WindowDays).map(today.plusDays(_)).toList
     val dayLists = ParallelDetailFetch.keyed("nowe-horyzonty-days", days, 1.minute)(dayUrl) { url =>

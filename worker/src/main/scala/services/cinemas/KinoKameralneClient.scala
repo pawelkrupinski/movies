@@ -33,6 +33,8 @@ import scala.util.Try
  */
 class KinoKameralneClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoKameralneClient.PageUrl)
+
   def fetch(): Seq[CinemaMovie] = KinoKameralneClient.parse(http.get(KinoKameralneClient.PageUrl), cinema)
 }
 

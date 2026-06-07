@@ -31,6 +31,8 @@ class AdaKinoStudyjneClient(http: HttpFetch, override val cinema: Cinema) extend
 
   import AdaKinoStudyjneClient._
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(PageUrl)
     parseHtml(html, cinema)

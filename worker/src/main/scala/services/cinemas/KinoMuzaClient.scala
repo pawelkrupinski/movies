@@ -36,6 +36,8 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
   // `KinoMuzaSynopsisRefresher` walks unresolved rows once, slowly, off
   // the scrape tick; this `fetch()` is back to a single repertuar-page
   // request.
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl)
+
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl))
 
   // Muza's detail pages render the synopsis in the first `paragraph`-classed

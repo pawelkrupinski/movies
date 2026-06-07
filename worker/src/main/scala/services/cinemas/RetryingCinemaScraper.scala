@@ -41,6 +41,8 @@ class RetryingCinemaScraper(
 
   val cinema: Cinema = delegate.cinema
 
+  def scrapeHosts: Set[String] = delegate.scrapeHosts
+
   def fetch(): Seq[CinemaMovie] =
     RetryWithBackoff(
       label          = s"${cinema.displayName} fetch",

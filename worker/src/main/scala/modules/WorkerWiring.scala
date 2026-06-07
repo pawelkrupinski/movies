@@ -21,7 +21,13 @@ import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, 
  */
 class WorkerWiring {
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database)
-  lazy val httoFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)
+  // `cinemaScraperCatalog.scrapeHosts` is passed BY-NAME (the catalog fetches
+  // through this very `httoFetch`, so eager evaluation would cycle). It's forced
+  // once on the first request and tells the monitor which hosts are cinema
+  // scrapes — suppressed, since RetryingCinemaScraper already tracks each cinema
+  // under its displayName.
+  lazy val httoFetch: HttpFetch =
+    new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
 
   // ── External API clients ──────────────────────────────────────────────────
   lazy val tmdbClient = new TmdbClient(httoFetch)

@@ -28,6 +28,8 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
   private case class RawSlot(slug: String, title: String, dateTime: LocalDateTime, runtime: Option[Int],
                              booking: Option[String], poster: Option[String])
 
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
   def fetch(): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(http.get(ListingUrl))
 
