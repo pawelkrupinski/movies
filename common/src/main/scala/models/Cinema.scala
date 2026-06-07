@@ -711,4 +711,12 @@ object Cinema {
   val all: Seq[Cinema] = byCity.flatMap(_._2)
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
+
+  /** City display label for each cinema — derived from `byCity`, the single
+   *  source of truth. Used by the debug source-data view to disambiguate
+   *  same-named chains (e.g. the many "Helios" venues across cities). */
+  val cityByCinema: Map[Cinema, String] =
+    byCity.flatMap { case (city, cinemas) => cinemas.map(_ -> city) }.toMap
+
+  def cityOf(cinema: Cinema): Option[String] = cityByCinema.get(cinema)
 }

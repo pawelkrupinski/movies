@@ -112,7 +112,7 @@
 } else {
   <div class="cinemas">
     @for(cinema <- Cinema.all) {
-      @perSourceSlot(cinema.displayName, cinema)
+      @perSourceSlot(Cinema.cityOf(cinema).fold(cinema.displayName)(city => s"${cinema.displayName} · $city"), cinema)
     }
     @perSourceSlot("TMDB", Tmdb)
     @perSourceSlot("IMDB", Imdb)

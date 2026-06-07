@@ -33,4 +33,17 @@ class CinemaByCitySpec extends AnyFlatSpec with Matchers {
     cityOf(CinemaCityArkadia) shouldBe "Warszawa"
     cityOf(MultikinoKrakow) shouldBe "Kraków"
   }
+
+  "Cinema.cityOf" should "resolve every venue to its byCity label" in {
+    Cinema.all.foreach { c =>
+      Cinema.cityOf(c) shouldBe Some(Cinema.byCity.collectFirst { case (city, vs) if vs.contains(c) => city }.get)
+    }
+  }
+
+  it should "disambiguate same-named chains by city" in {
+    // Many venues share the "Helios" display name across cities; cityOf is what
+    // lets the debug source-data view tell them apart.
+    Cinema.cityOf(HeliosKonin) shouldBe Some("Konin")
+    Cinema.cityOf(HeliosKatowice) shouldBe Some("Katowice")
+  }
 }
