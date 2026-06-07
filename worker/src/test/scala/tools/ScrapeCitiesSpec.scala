@@ -1,11 +1,25 @@
 package tools
 
+import models.City
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class ScrapeCitiesSpec extends AnyFlatSpec with Matchers {
 
   private val default = Set("poznan")
+
+  "ScrapeCities.allCities (the production default)" should "be every modelled city, not a gated subset" in {
+    // Guards the city limit staying removed: every City.all slug — including the
+    // ones the old KINOWO_SCRAPE_CITIES gate excluded (łódź, katowice, rzeszów…)
+    // — must be in the default scrape set.
+    ScrapeCities.allCities shouldBe City.all.map(_.slug).toSet
+    ScrapeCities.allCities should contain allOf ("lodz", "katowice", "rzeszow", "torun")
+    ScrapeCities.allCities.size shouldBe City.all.size
+  }
+
+  it should "be the set scraped when the override is unset (no limit by default)" in {
+    ScrapeCities.enabled(None, ScrapeCities.allCities) shouldBe City.all.map(_.slug).toSet
+  }
 
   "ScrapeCities.enabled" should "fall back to the default when the override is unset" in {
     ScrapeCities.enabled(None, default) shouldBe Set("poznan")

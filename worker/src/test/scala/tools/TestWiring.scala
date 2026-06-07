@@ -1,7 +1,6 @@
 package tools
 
 import clients.TmdbClient
-import models.City
 import modules.WorkerWiring
 import services.{MongoConnection, Stoppable}
 
@@ -12,12 +11,11 @@ import services.{MongoConnection, Stoppable}
  *  is a plain `def main` app, not Play, so they no longer exist to override. */
 trait TestWiring extends WorkerWiring {
 
-  // Scrape every city in tests. The recorded fixtures and the coverage spec
-  // cover the full catalogue, so the production KINOWO_SCRAPE_CITIES gate
-  // (default Poznań-only) must not narrow what tests see — otherwise the
-  // coverage spec fails for the gated-out cinemas. Derived from `City.all` so a
-  // newly modelled city is covered automatically, without re-spelling the list.
-  override def scrapeCities: Set[String] = City.all.map(_.slug).toSet
+  // Scrape every city in tests, independent of any KINOWO_SCRAPE_CITIES the
+  // local/CI env might set, so the recorded fixtures and the coverage spec
+  // always see the full catalogue. (Production already defaults to every city;
+  // this pin just makes the test set immune to a narrowing override.)
+  override def scrapeCities: Set[String] = ScrapeCities.allCities
 
   // Pin a DISABLED Mongo connection. Tests get their movie data from
   // `InMemoryMovieRepo` / fixtures and don't exercise the user repos, so a real

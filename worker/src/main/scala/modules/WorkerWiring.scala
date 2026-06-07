@@ -42,10 +42,11 @@ class WorkerWiring {
   lazy val cinemaScraperCatalog = new CinemaScraperCatalog(httoFetch, multikinoFetch, biletynaFetch, heliosToday)
   def kinoMuzaClient: KinoMuzaClient = cinemaScraperCatalog.kinoMuzaClient
 
-  // Scrape only the cities in KINOWO_SCRAPE_CITIES (comma-separated slugs),
-  // defaulting to Poznań. `protected def` so test wirings can scrape every city.
+  // Scrape every modelled city by default; KINOWO_SCRAPE_CITIES (comma-separated
+  // slugs) only NARROWS the set, e.g. to shed load if the worker throttles/OOMs.
+  // `protected def` so test wirings can pin the set independently.
   protected def scrapeCities: Set[String] =
-    ScrapeCities.enabled(Env.get("KINOWO_SCRAPE_CITIES"), default = Set("poznan"))
+    ScrapeCities.enabled(Env.get("KINOWO_SCRAPE_CITIES"), default = ScrapeCities.allCities)
 
   // The date Helios bakes into its REST URLs. Production uses the real Warsaw
   // date; fixture-replay test wirings override with the fixture's capture date.

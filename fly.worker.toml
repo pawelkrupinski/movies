@@ -15,12 +15,12 @@ primary_region = 'arn'
   # WorkerMain's JDK health server binds this port; the [checks] block below
   # probes it. No public router fronts it (no [http_service]).
   PORT = '9000'
-  # Cities to scrape (ScrapeCities reads this; default is poznan only). The old
-  # monolith scraped poznan,wroclaw; warszawa was added next (~30 cinemas,
-  # ~tripling the fan-out), then krakow (9) + trojmiasto (6). That's ~69 cinemas
-  # across 5 cities on 2 shared vCPUs / 1 GB — watch this worker's RSS/CPU after
-  # it ships; if it throttles or OOMs, drop a city or bump the [[vm]] (see below).
-  KINOWO_SCRAPE_CITIES = 'poznan,wroclaw,warszawa,krakow,trojmiasto'
+  # No KINOWO_SCRAPE_CITIES: the worker now scrapes EVERY modelled city by
+  # default (ScrapeCities.allCities). The var still exists as a load-shedding
+  # escape hatch — `fly secrets set KINOWO_SCRAPE_CITIES=poznan,wroclaw` NARROWS
+  # the set — but the steady state is all ~19 cities on 2 shared vCPUs / 1 GB.
+  # Watch this worker's RSS/CPU: if it throttles or OOMs, narrow via the secret
+  # or bump the [[vm]] (see below).
   # Per-app JVM sizing (moved out of the shared Dockerfile). Keeps the proven
   # monolith sizing — 384m heap + non-heap caps fit the 1 GB cgroup with
   # ~100 MB headroom. If the 3-city load OOM-kills or GC-thrashes, the fix is a
