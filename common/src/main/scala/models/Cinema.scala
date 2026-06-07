@@ -144,6 +144,8 @@ case object KinoKosmos extends Cinema("Kino Kosmos", "Kosmos")
 
 case object KinoSwiatowid extends Cinema("Kino Światowid", "Światowid")
 
+case object KinoteatrRialto extends Cinema("Kinoteatr Rialto", "Kinoteatr Rialto")
+
 // ── Szczecin ─────────────────────────────────────────────────────────────────
 
 case object HeliosSzczecin extends Cinema("Helios Kupiec", "Helios")
@@ -466,10 +468,8 @@ object Cinema {
   )
 
   /** Katowice venues. Cinema City has two locations (Punkt 44 and Silesia),
-   *  Multikino one, Helios one. The art-house trio run by Silesia Film —
-   *  Kosmos and Światowid — are Bilety24-hosted independents wired as bespoke
-   *  scrapers. (Kinoteatr Rialto, the third Silesia Film venue, currently
-   *  programmes only concerts/theatre and no film repertoire, so it's omitted.) */
+   *  Multikino one, Helios one. The three art-house venues run by Silesia Film —
+   *  Kosmos, Światowid, and Kinoteatr Rialto — are all Bilety24-hosted. */
   val katowice: Seq[Cinema] = Seq(
     CinemaCityPunkt44,
     CinemaCitySilesia,
@@ -477,6 +477,7 @@ object Cinema {
     HeliosKatowice,
     KinoKosmos,
     KinoSwiatowid,
+    KinoteatrRialto,
   )
 
   /** Szczecin venues. No Cinema City here; the two multiplexes are Helios (in
