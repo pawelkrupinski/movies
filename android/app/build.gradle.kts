@@ -148,12 +148,6 @@ dependencies {
 
     implementation("io.coil-kt:coil-compose:2.7.0")
 
-    // Scrolling wheel/drum pickers for the Od-godziny hour + minute selectors:
-    // a 3-row drag picker (prev/selected/next). Maven Central. Built on Compose
-    // Material2, so it pulls androidx.compose.material — we pass it explicit M3
-    // colours/text style and never wrap it in an M2 theme.
-    implementation("com.chargemap.compose:numberpicker:1.0.3")
-
     // Backdrop blur for the floating search pill — real frosted-glass that
     // distorts the grid scrolling under it (RenderEffect on API 32+, graceful
     // tint-only fallback below). 1.1.x is the Compose 1.7 line; newer Haze

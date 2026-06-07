@@ -84,29 +84,27 @@ class FiltersSheetOrderTest {
     }
 
     /**
-     * The city picker is a scrolling wheel/drum (chargemap ListItemPicker), not
-     * a collapsed dropdown: it centres on the active city AND renders its
-     * alphabetical neighbour inline, with no tap-to-open. A dropdown would
-     * compose only the active city until tapped, so the neighbour assertion
-     * fails on the old collapsed-button picker.
+     * The city picker is a Material3 ExposedDropdownMenu: the field shows the
+     * active city, the other cities stay hidden until the field is tapped, and
+     * picking one switches the city (collapsing the menu). Fails if the field
+     * eagerly composes every city, or the picker regresses to the wheel.
      */
     @Test
-    fun cityPickerIsAWheelDrum() {
+    fun cityPickerIsAnExposedDropdown() {
         compose.setContent {
             FiltersSheetContent(viewModel(), films = emptyList())
         }
 
-        // Scroll the active city (the drum's centre) into view.
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(Cities.DEFAULT.name))
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Miasto"))
 
-        // The drum below/above row is the active city's alphabetical neighbour
-        // in the (Polish-collated) picker list — composed only because this is a
-        // wheel, never by a collapsed dropdown.
-        val centreIndex = Cities.allSorted.indexOfFirst { it.slug == Cities.DEFAULT.slug }
-        val neighbour = Cities.allSorted[centreIndex + 1].name
-
+        // The field shows the active city; another city is hidden until opened.
+        val other = Cities.allSorted.first { it.slug != Cities.DEFAULT.slug }.name
         compose.onNodeWithText(Cities.DEFAULT.name).assertIsDisplayed()
-        compose.onNodeWithText(neighbour).assertExists()
+        compose.onNodeWithText(other).assertDoesNotExist()
+
+        // Tapping the field opens the menu, revealing the other cities.
+        compose.onNodeWithText(Cities.DEFAULT.name).performClick()
+        compose.onNodeWithText(other).assertExists()
     }
 
     /**

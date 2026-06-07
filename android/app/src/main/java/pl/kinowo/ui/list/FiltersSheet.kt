@@ -21,10 +21,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SheetState
@@ -34,7 +38,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,7 +54,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.chargemap.compose.numberpicker.ListItemPicker
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
@@ -317,38 +319,44 @@ private fun CollapsibleSection(
 }
 
 /**
- * Miasto — the active city, as a scrolling wheel/drum (chargemap
- * ListItemPicker) over [Cities.allSorted]. The drum centres on the active city
- * and exposes its alphabetical neighbours inline; spinning it persists the
- * choice (and re-fetches that city's repertoire). Independent of login — it's
- * just a city switch.
+ * Miasto — the active city, as a Material3 ExposedDropdownMenu: a read-only
+ * field showing the active city over an elevated, animated menu of
+ * [Cities.allSorted]. Picking persists the choice (and re-fetches that city's
+ * repertoire). Independent of login — it's just a city switch.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CitySection(vm: KinowoViewModel) {
     val selected by vm.selectedCity.collectAsState()
-    // Drive the drum from local state, committed synchronously as you spin.
-    // setCity persists asynchronously and selectedCity only re-emits after the
-    // round-trip (which also re-fetches the repertoire and recomposes the
-    // sheet); binding `value` straight to the flow made the drum flip old→new
-    // for a frame and visibly shake on every pick. Sync back only when the city
-    // changes from elsewhere (nearest-city pick, switch suggestion).
-    var current by remember {
-        mutableStateOf(Cities.allSorted.firstOrNull { it.slug == selected } ?: Cities.DEFAULT)
-    }
-    LaunchedEffect(selected) {
-        val external = Cities.allSorted.firstOrNull { it.slug == selected }
-        if (external != null && external != current) current = external
-    }
+    val current = Cities.allSorted.firstOrNull { it.slug == selected } ?: Cities.DEFAULT
+    var expanded by remember { mutableStateOf(false) }
     FilterSectionLabel("Miasto")
-    ListItemPicker(
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
         modifier = Modifier.fillMaxWidth(),
-        value = current,
-        list = Cities.allSorted,
-        label = { it.name },
-        dividersColor = MaterialTheme.colorScheme.outlineVariant,
-        textStyle = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-        onValueChange = { current = it; vm.setCity(it.slug) },
-    )
+    ) {
+        OutlinedTextField(
+            value = current.name,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Cities.allSorted.forEach { city ->
+                DropdownMenuItem(
+                    text = { Text(city.name) },
+                    onClick = {
+                        vm.setCity(city.slug)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                )
+            }
+        }
+    }
 }
 
 @Composable
