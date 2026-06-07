@@ -8,7 +8,7 @@ import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, UnscreenedCleanup}
-import services.tasks.{MongoTaskQueue, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskWorker}
+import services.tasks.{EnrichDetailsHandler, MongoTaskQueue, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskWorker}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
 /**
@@ -136,14 +136,25 @@ class WorkerWiring {
   lazy val taskQueue: TaskQueue = new MongoTaskQueue(mongoConnection.database)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
   lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus)
+
+  // Cinemas that defer their per-film detail (implement DetailEnricher). Their
+  // scrape returns bare movies; ScrapeCinemaHandler enqueues EnrichDetails tasks
+  // (deduped per detailGroup+film) and EnrichDetailsHandler fills the detail in.
+  lazy val detailEnrichers: Seq[DetailEnricher] =
+    cinemaScraperCatalog.all.collect { case de: DetailEnricher => de }
+
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
-    cinemaScrapeRunner, freshnessStore
+    cinemaScrapeRunner, freshnessStore, taskQueue,
+    detailEnrichers.map(de => de.cinema.displayName -> de).toMap
   )
-  // The worker dispatches scrapes onto the same sub-capped budget the old loop
-  // used, so a backlog can't peg the box.
+  lazy val enrichDetailsHandler = new EnrichDetailsHandler(
+    detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore
+  )
+  // The worker dispatches scrapes/enrichment onto the same sub-capped budget the
+  // old loop used, so a backlog can't peg the box.
   lazy val taskWorker = new TaskWorker(
-    taskQueue, Seq(scrapeCinemaHandler),
+    taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler),
     backgroundBudget.ec("task-worker", scrapeConcurrency),
     pollInterval = scala.concurrent.duration.DurationInt(5).seconds
   )
