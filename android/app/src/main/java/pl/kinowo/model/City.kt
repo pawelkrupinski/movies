@@ -38,6 +38,14 @@ object Cities {
         City("trojmiasto", "Trójmiasto", 54.4416, 18.5601),
         City("bydgoszcz", "Bydgoszcz", 53.1235, 18.0084),
         City("lublin", "Lublin", 51.2465, 22.5684),
+        City("czestochowa", "Częstochowa", 50.8118, 19.1203),
+        City("radom", "Radom", 51.4027, 21.1471),
+        City("sosnowiec", "Sosnowiec", 50.2863, 19.1041),
+        City("torun", "Toruń", 53.0138, 18.5984),
+        City("kielce", "Kielce", 50.8661, 20.6286),
+        City("rzeszow", "Rzeszów", 50.0413, 21.9990),
+        City("gliwice", "Gliwice", 50.2945, 18.6714),
+        City("zabrze", "Zabrze", 50.3249, 18.7857),
     )
 
     val DEFAULT: City = all.first()

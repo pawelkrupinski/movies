@@ -30,6 +30,14 @@ struct City: Codable, Hashable {
         City(slug: "trojmiasto", name: "Trójmiasto", lat: 54.4416, lon: 18.5601),
         City(slug: "bydgoszcz", name: "Bydgoszcz", lat: 53.1235, lon: 18.0084),
         City(slug: "lublin", name: "Lublin", lat: 51.2465, lon: 22.5684),
+        City(slug: "czestochowa", name: "Częstochowa", lat: 50.8118, lon: 19.1203),
+        City(slug: "radom", name: "Radom", lat: 51.4027, lon: 21.1471),
+        City(slug: "sosnowiec", name: "Sosnowiec", lat: 50.2863, lon: 19.1041),
+        City(slug: "torun", name: "Toruń", lat: 53.0138, lon: 18.5984),
+        City(slug: "kielce", name: "Kielce", lat: 50.8661, lon: 20.6286),
+        City(slug: "rzeszow", name: "Rzeszów", lat: 50.0413, lon: 21.9990),
+        City(slug: "gliwice", name: "Gliwice", lat: 50.2945, lon: 18.6714),
+        City(slug: "zabrze", name: "Zabrze", lat: 50.3249, lon: 18.7857),
     ]
 
     /// Fallback when no fix is available and the user hasn't chosen.

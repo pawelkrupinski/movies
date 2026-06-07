@@ -7,6 +7,7 @@ import pl.kinowo.TestData.cinema
 import pl.kinowo.TestData.day
 import pl.kinowo.TestData.film
 import pl.kinowo.TestData.slot
+import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.groupedByCinema
 import pl.kinowo.model.Film
 
@@ -15,6 +16,20 @@ class GroupedByCinemaTest {
     @Test
     fun emptyInputReturnsEmptyList() {
         assertTrue(emptyList<Film>().groupedByCinema().isEmpty())
+    }
+
+    @Test
+    fun pillNameShortensCinemasBeyondPoznan() {
+        // The full pill map (mirrors web Cinema.pillMap) now shortens cinemas
+        // outside the original Poznań ten instead of falling back to the name.
+        assertEquals("Wroclavia", CinemaSection.pillName("Cinema City Wroclavia"))
+        assertEquals("Złote Tarasy", CinemaSection.pillName("Multikino Złote Tarasy"))
+        assertEquals("Zorza", CinemaSection.pillName("Kino Zorza"))
+    }
+
+    @Test
+    fun pillNameFallsBackToFullNameWhenUnmapped() {
+        assertEquals("Some New Kino", CinemaSection.pillName("Some New Kino"))
     }
 
     @Test

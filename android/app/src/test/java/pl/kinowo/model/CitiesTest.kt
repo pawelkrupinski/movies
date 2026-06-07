@@ -35,9 +35,29 @@ class CitiesTest {
         assertEquals("bialystok", Cities.nearestWithin100km(53.1325, 23.1688)?.slug)
         assertEquals("bydgoszcz", Cities.nearestWithin100km(53.1235, 18.0084)?.slug)
         assertEquals("lublin", Cities.nearestWithin100km(51.2465, 22.5684)?.slug)
+        assertEquals("czestochowa", Cities.nearestWithin100km(50.8118, 19.1203)?.slug)
+        assertEquals("radom", Cities.nearestWithin100km(51.4027, 21.1471)?.slug)
+        assertEquals("sosnowiec", Cities.nearestWithin100km(50.2863, 19.1041)?.slug)
+        assertEquals("torun", Cities.nearestWithin100km(53.0138, 18.5984)?.slug)
+        assertEquals("kielce", Cities.nearestWithin100km(50.8661, 20.6286)?.slug)
+        assertEquals("rzeszow", Cities.nearestWithin100km(50.0413, 21.9990)?.slug)
+        assertEquals("gliwice", Cities.nearestWithin100km(50.2945, 18.6714)?.slug)
+        assertEquals("zabrze", Cities.nearestWithin100km(50.3249, 18.7857)?.slug)
         // Both ends of the Tri-City resolve to the combined Trójmiasto scope.
         assertEquals("trojmiasto", Cities.nearestWithin100km(54.3520, 18.6466)?.slug) // Gdańsk
         assertEquals("trojmiasto", Cities.nearestWithin100km(54.5189, 18.5305)?.slug) // Gdynia
+    }
+
+    @Test
+    fun listsAllNineteenServedCitiesInOrder() {
+        assertEquals(
+            listOf(
+                "poznan", "wroclaw", "warszawa", "krakow", "lodz", "katowice", "szczecin",
+                "bialystok", "trojmiasto", "bydgoszcz", "lublin", "czestochowa", "radom",
+                "sosnowiec", "torun", "kielce", "rzeszow", "gliwice", "zabrze",
+            ),
+            Cities.all.map { it.slug },
+        )
     }
 
     @Test

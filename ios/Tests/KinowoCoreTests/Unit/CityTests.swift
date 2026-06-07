@@ -26,6 +26,14 @@ final class CityTests: XCTestCase {
         XCTAssertEqual(City.nearestWithin100km(lat: 53.1325, lon: 23.1688)?.slug, "bialystok")
         XCTAssertEqual(City.nearestWithin100km(lat: 53.1235, lon: 18.0084)?.slug, "bydgoszcz")
         XCTAssertEqual(City.nearestWithin100km(lat: 51.2465, lon: 22.5684)?.slug, "lublin")
+        XCTAssertEqual(City.nearestWithin100km(lat: 50.8118, lon: 19.1203)?.slug, "czestochowa")
+        XCTAssertEqual(City.nearestWithin100km(lat: 51.4027, lon: 21.1471)?.slug, "radom")
+        XCTAssertEqual(City.nearestWithin100km(lat: 50.2863, lon: 19.1041)?.slug, "sosnowiec")
+        XCTAssertEqual(City.nearestWithin100km(lat: 53.0138, lon: 18.5984)?.slug, "torun")
+        XCTAssertEqual(City.nearestWithin100km(lat: 50.8661, lon: 20.6286)?.slug, "kielce")
+        XCTAssertEqual(City.nearestWithin100km(lat: 50.0413, lon: 21.9990)?.slug, "rzeszow")
+        XCTAssertEqual(City.nearestWithin100km(lat: 50.2945, lon: 18.6714)?.slug, "gliwice")
+        XCTAssertEqual(City.nearestWithin100km(lat: 50.3249, lon: 18.7857)?.slug, "zabrze")
         // Anywhere in the Tri-City resolves to the combined Trójmiasto scope —
         // Gdańsk in the south, Gdynia in the north are both inside 100 km of
         // the Sopot-centred coordinate.
@@ -48,6 +56,28 @@ final class CityTests: XCTestCase {
     func testDefaultIsFirstCity() {
         XCTAssertEqual(City.default.slug, City.all.first?.slug)
         XCTAssertEqual(City.default.slug, "poznan")
+    }
+
+    func testAllNineteenServedCitiesArePresentInOrder() {
+        XCTAssertEqual(City.all.map(\.slug), [
+            "poznan", "wroclaw", "warszawa", "krakow", "lodz", "katowice", "szczecin",
+            "bialystok", "trojmiasto", "bydgoszcz", "lublin", "czestochowa", "radom",
+            "sosnowiec", "torun", "kielce", "rzeszow", "gliwice", "zabrze",
+        ])
+    }
+
+    // ── cinema pill names (full map mirrors web Cinema.pillMap) ────
+
+    func testPillNameShortensCinemasBeyondPoznan() {
+        // A cinema outside the original Poznań ten now resolves to its short
+        // pill label instead of falling back to the full name.
+        XCTAssertEqual(CinemaSection.pillName(for: "Cinema City Wroclavia"), "Wroclavia")
+        XCTAssertEqual(CinemaSection.pillName(for: "Multikino Złote Tarasy"), "Złote Tarasy")
+        XCTAssertEqual(CinemaSection.pillName(for: "Kino Zorza"), "Zorza")
+    }
+
+    func testPillNameFallsBackToTheFullNameWhenUnmapped() {
+        XCTAssertEqual(CinemaSection.pillName(for: "Some New Kino"), "Some New Kino")
     }
 
     // ── switchSuggestion (you're-nearer-another-city prompt) ──────
