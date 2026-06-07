@@ -8,8 +8,6 @@ GET     /                           controllers.LandingController.index()
 # ── Repertoire (city-scoped: /:city/…) ─────────────────────────────────────────
 GET     /:city/                     controllers.MovieController.index(city: String)
 GET     /:city/film                 controllers.MovieController.film(city: String, title: String)
-GET     /:city/kina                 controllers.MovieController.kina(city: String)
-GET     /:city/kina/:cinema         controllers.MovieController.kinaPinned(city: String, cinema: String)
 GET     /:city/filmy                controllers.MovieController.browse(city: String, kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None, gatunek: Option[String] ?= None)
 GET     /:city/plan                 controllers.PlanController.plan(city: String)
 
@@ -27,10 +25,9 @@ GET     /:city/debug                controllers.MovieController.debug(city: Stri
 # showtime-pill + rating-pill font/padding/corner). Lets us eyeball spacing
 # without redeploying; never exposed in prod.
 GET     /:city/debug/tune           controllers.MovieController.tune(city: String)
-# Sibling tuning pages for the Kina (cinema-sectioned) view and the film-detail
-# view, linked by a sub-nav inside the three /:city/debug/tune* pages. Same
-# live-CSS-variable approach as /:city/debug/tune; dev-only.
-GET     /:city/debug/tune/kina      controllers.MovieController.tuneKina(city: String)
+# Sibling tuning page for the film-detail view, linked by a sub-nav inside the
+# /:city/debug/tune* pages. Same live-CSS-variable approach as
+# /:city/debug/tune; dev-only.
 GET     /:city/debug/tune/film      controllers.MovieController.tuneFilm(city: String)
 # Drop one row from cache+Mongo and re-fetch all upstream sources. Writes
 # incrementally as each stage completes so a debug-page reload shows the row

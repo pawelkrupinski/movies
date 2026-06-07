@@ -15,10 +15,10 @@ import scala.concurrent.{Await, ExecutionContext}
 
 /**
  * Locks the response-compression behaviour `AppLoader` wires via
- * `GzipFilterComponents`. The `/` and `/kina` listings are multi-MB of
- * uncompressed HTML (200+ server-rendered cards + the embedded sibling
- * view); gzip is the single biggest mobile-load win, taking the wire
- * payload to a fraction of that. This spec uses the SAME filter + default
+ * `GzipFilterComponents`. The `/` listing is multi-MB of uncompressed HTML
+ * (200+ server-rendered cards); gzip is the single biggest mobile-load win,
+ * taking the wire payload to a fraction of that. This spec uses the SAME
+ * filter + default
  * config the app builds, so a future change that drops the filter from the
  * chain or whitelists content-types away from `text/html` trips here.
  */

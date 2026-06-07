@@ -18,17 +18,17 @@ import java.time.LocalDateTime
  *
  * Complements `PageSnapshotSpec`: that spec catches "the markup the
  * server emits" regressions; this spec catches "the JS that decides
- * what to show in that markup" regressions — `applyFilters` math, pill
- * toggle semantics, `_kinaPinned` lifecycle, the /kina ↔ /kina/<cinema>
- * URL ↔ pin sync via `history.replaceState`.
+ * what to show in that markup" regressions — `applyFilters` math,
+ * the single-cinema label toggle, the day-stepping wrap, the date ↔
+ * URL sync via `history.replaceState`.
  *
  * Why an HTTP server and not file://: `history.replaceState` (called by
- * `toggleCinemaPill` to rewrite the URL on pin/un-pin) throws a
+ * `syncDateToURL` to rewrite `?date=` on a day change) throws a
  * SecurityError under file:// — the target URL isn't same-origin with
  * the file's directory-scoped origin. Without http://, the rewrite
- * throws synchronously and the rest of the click handler (the
- * `buildCinemaPills()` / `applyFilters()` calls that update the DOM)
- * never runs, so every test would look broken even when prod is fine.
+ * throws synchronously and the rest of the handler (the `applyFilters()`
+ * call that updates the DOM) never runs, so every test would look broken
+ * even when prod is fine.
  *
  * Skips gracefully when Chrome isn't installed locally — CI images that
  * lack a browser get a green spec with `cancelled` tests; developers
@@ -59,24 +59,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val noOauth = Set.empty[String]
       val cinemas = city.cinemaDisplayNames
       val schedules       = svc.toSchedules(city, now)
-      val cinemaSchedules = svc.toCinemaSchedules(city, now)
 
       val pills = city.cinemaPillMap
-      def renderKina(pinned: Option[String]): String = views.html.kina(
-        cinemaSchedules, cinemas, pills, devMode = false,
-        currentUser = anon, oauthProviders = noOauth,
-        pinnedCinema = pinned
-      ).body
-
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
         currentUser = anon, oauthProviders = noOauth
       ).body
 
-      // `/kina/X` mirrors the controller's `kinaPinned` action: filter the
-      // path segment against the known cinema list and pass the matched
-      // displayName as `pinnedCinema`. Garbage paths still render the page
-      // with no pin (and a 200 — the controller does the same).
       // `/film?title=…` mirrors the `MovieController.film` action: look
       // the title up in the fixture corpus and render the per-film
       // page. Used by the layout-sweep tests to drive /film through
@@ -103,18 +92,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // prepends the prefix, so strip it here, then match the in-city sub-path.
       def sub(p: String): String = p.stripPrefix(cityPrefix)
       server = new TestHttpServer({
-        // `/{city}/` and `/{city}/kina` accept arbitrary query strings (e.g.
-        // `?date=tomorrow`) — the real Play routes do too, and the day-selector
-        // ↔ URL tests need to boot the page with the param already in
-        // `location.search`.
+        // `/{city}/` accepts arbitrary query strings (e.g. `?date=tomorrow`)
+        // — the real Play routes do too, and the day-selector ↔ URL tests
+        // need to boot the page with the param already in `location.search`.
         case p if { val s = sub(p); s == "/" || s.startsWith("/?") }     => indexHtml
-        case p if { val s = sub(p); s == "/kina" || s.startsWith("/kina?") } => renderKina(None)
-        case p if sub(p).startsWith("/kina/") =>
-          // Strip optional query string before resolving the pinned cinema.
-          val rawWithQuery = sub(p).stripPrefix("/kina/")
-          val raw          = URLDecoder.decode(rawWithQuery.takeWhile(_ != '?'), "UTF-8")
-          val pinned       = cinemas.find(_ == raw)
-          renderKina(pinned)
         case p if sub(p).startsWith("/film?title=") =>
           renderFilm(sub(p).stripPrefix("/film?title="))
         case p if { val s = sub(p); s == "/plan" || s.startsWith("/plan?") } => planHtml
@@ -134,144 +115,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  the test cleanly when Chrome wasn't located in beforeAll. */
   private def onPath(path: String)(body: CdpPage => Any): Unit =
     chrome match {
-      // `path` is an in-city sub-path ("/", "/kina", "/film?title=…"); pages
+      // `path` is an in-city sub-path ("/", "/film?title=…"); pages
       // live under `/{city}/…`, so prepend the city prefix.
       case Some(c) => c.openPage(server.baseUrl + cityPrefix + path)(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
-  // ── /kina pill behaviour ─────────────────────────────────────────────────
-
-  "the /kina pill row" should "filter to only the pinned cinema's section on click" in {
-    onPath("/kina") { page =>
-      setDateAnytime(page)
-      val totalSections = page.evalInt("document.querySelectorAll('.cinema-section').length")
-      totalSections should be > 1
-
-      // First `.cinema-section` data-cinema — robust to future
-      // re-orderings of Cinema.all. Pinning a known-empty cinema (e.g.
-      // Kino Apollo with no showtimes today) would mask a filter
-      // regression with a legitimately empty result.
-      val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
-      clickPill(page, pinTarget)
-
-      val visibleSections = page.evalInt(
-        "[...document.querySelectorAll('.cinema-section')].filter(s => s.style.display !== 'none').length"
-      )
-      visibleSections shouldBe 1
-      page.evalString(
-        "document.querySelector('.cinema-section:not([style*=\"none\"])').dataset.cinema"
-      ) shouldBe pinTarget
-      page.evalInt("document.querySelectorAll('#cinema-pills .cinema-pill.active').length") shouldBe 1
-    }
-  }
-
-  it should "restore every cinema section when the active pill is clicked again" in {
-    onPath("/kina") { page =>
-      setDateAnytime(page)
-      val totalVisibleAtBoot = page.evalInt(
-        "[...document.querySelectorAll('.cinema-section')].filter(s => s.style.display !== 'none').length"
-      )
-      val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
-
-      clickPill(page, pinTarget)
-      page.evalInt("document.querySelectorAll('#cinema-pills .cinema-pill.active').length") shouldBe 1
-
-      clickPill(page, pinTarget)
-      page.evalInt("document.querySelectorAll('#cinema-pills .cinema-pill.active').length") shouldBe 0
-      page.evalInt(
-        "[...document.querySelectorAll('.cinema-section')].filter(s => s.style.display !== 'none').length"
-      ) shouldBe totalVisibleAtBoot
-    }
-  }
-
-  it should "rewrite the URL path to /kina/<cinema> when a pill is pinned" in {
-    onPath("/kina") { page =>
-      val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
-      clickPill(page, pinTarget)
-
-      // history.replaceState moves the address bar to /kina/<cinema> so
-      // a refresh keeps the pin. Comparing the decoded path sidesteps
-      // the `encodeURIComponent` (browser, RFC3986, `%20`) vs
-      // `URLEncoder.encode` (Java, form-encoded, `+`) mismatch — the
-      // assertion is "the URL means /kina/<this cinema>", not "the
-      // bytes are exactly this encoding".
-      java.net.URLDecoder.decode(page.evalString("location.pathname"), "UTF-8") shouldBe (cityPrefix + "/kina/" + pinTarget)
-
-      clickPill(page, pinTarget)
-      page.evalString("location.pathname") shouldBe (cityPrefix + "/kina")
-    }
-  }
-
-  it should "not write the pin into the shared `disabledCinemas` localStorage" in {
-    onPath("/kina") { page =>
-      // Pre-seed localStorage as if Filtry on `/` had set it. /kina
-      // ignores this on load AND must not overwrite it when a pill is
-      // clicked — the persistent filter on / stays intact.
-      val preset = """["Multikino Stary Browar","Helios Posnania"]"""
-      page.eval(s"localStorage.setItem('disabledCinemas', ${jsString(preset)})")
-      page.reload()
-
-      page.evalInt("document.querySelectorAll('#cinema-pills .cinema-pill.active').length") shouldBe 0
-      val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
-      clickPill(page, pinTarget)
-      page.evalString("localStorage.getItem('disabledCinemas')") shouldBe preset
-    }
-  }
-
-  // ── /kina/<cinema> URL-pinning ───────────────────────────────────────────
-
-  "/kina/<cinema>" should "seed _kinaPinned from the URL path on load" in {
-    // Pick a cinema known to be in the fixture corpus. Cinema City
-    // Kinepolis has 84 Prada showtimes alone — reliably present.
-    val target = "Cinema City Kinepolis"
-    onPath("/kina/" + java.net.URLEncoder.encode(target, "UTF-8")) { page =>
-      setDateAnytime(page)
-      page.evalString("_kinaPinned") shouldBe target
-      page.evalInt("document.querySelectorAll('#cinema-pills .cinema-pill.active').length") shouldBe 1
-      page.evalString(
-        "document.querySelector('#cinema-pills .cinema-pill.active').dataset.cinema"
-      ) shouldBe target
-      page.evalInt(
-        "[...document.querySelectorAll('.cinema-section')].filter(s => s.style.display !== 'none').length"
-      ) shouldBe 1
-    }
-  }
-
-  it should "still not remember the pin across a plain /kina reload" in {
-    onPath("/kina") { page =>
-      val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
-      clickPill(page, pinTarget)
-      page.evalString("_kinaPinned") shouldBe pinTarget
-
-      // Force a navigation back to plain /kina (the test server, like
-      // the real controller, serves the no-pin variant for the bare
-      // path). The URL pin is the source of truth — bare /kina = no pin.
-      page.eval(s"location.assign(${jsString(server.baseUrl + cityPrefix + "/kina")})")
-      page.waitFor("document.readyState === 'complete'", timeoutMs = 5000)
-      page.evalBool("_kinaPinned === null") shouldBe true
-    }
-  }
-
   // ── shared.js globals ────────────────────────────────────────────────────
 
-  // The inline <script> blocks in repertoire.scala.html and kina.scala.html
-  // call functions exported by shared.js (undoTruncation, truncateAllShowings,
+  // The inline <script> block in repertoire.scala.html calls functions
+  // exported by shared.js (undoTruncation, truncateAllShowings,
   // schedulePosterRetry, applyFilters, applyFiltersDebounced). If shared.js
   // fails to load — stale cache, broken fingerprinting, wrong load order —
   // every page interaction breaks with a ReferenceError.
   "shared.js globals" should "be defined on / before any user interaction" in {
     onPath("/") { page =>
-      page.evalBool("typeof undoTruncation === 'function'") shouldBe true
-      page.evalBool("typeof truncateAllShowings === 'function'") shouldBe true
-      page.evalBool("typeof schedulePosterRetry === 'function'") shouldBe true
-      page.evalBool("typeof applyFilters === 'function'") shouldBe true
-      page.evalBool("typeof applyFiltersDebounced === 'function'") shouldBe true
-    }
-  }
-
-  it should "be defined on /kina before any user interaction" in {
-    onPath("/kina") { page =>
       page.evalBool("typeof undoTruncation === 'function'") shouldBe true
       page.evalBool("typeof truncateAllShowings === 'function'") shouldBe true
       page.evalBool("typeof schedulePosterRetry === 'function'") shouldBe true
@@ -308,7 +166,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   }
 
   it should "tolerate a mouseover event whose target isn't an Element" in {
-    onPath("/kina") { page =>
+    onPath("/") { page =>
       val ok = page.evalBool(
         """(() => {
           |  try {
@@ -322,7 +180,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   }
 
   it should "tolerate a touchstart event whose target isn't an Element" in {
-    onPath("/kina") { page =>
+    onPath("/") { page =>
       val ok = page.evalBool(
         """(() => {
           |  try {
@@ -611,7 +469,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // ── Mobile-scale invariants across common phone widths ───────────────────
   //
-  // Sweeps each navbar-bearing page (`/`, `/kina`) through seven
+  // Sweeps the navbar-bearing listing page (`/`) through seven
   // phone-class viewports and asserts two structural invariants:
   //
   //   1. The navbar wraps to at most 2 rows. Visible flex children of
@@ -630,9 +488,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // its own cap viewport. The refactor collapsed every per-mobile size
   // to `calc(BASE * var(--mobile-scale))` against one shared scale
   // variable; this test pins the resulting layout against regressions
-  // — both on the listing page and on `/kina`'s sticky-pill layout
-  // (which adds a second nav-row that the same scale has to keep
-  // legible without crowding the row above).
+  // on the listing page.
 
   // Common phone viewports (CSS px). 360 = Samsung Galaxy S10/S20/S22
   // + the narrowest Android in current circulation; 375 = iPhone SE
@@ -650,7 +506,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // narrow limit.
   private val MobileViewports = Seq(360, 375, 390, 412, 430, 540, 575)
 
-  for (path <- Seq("/", "/kina")) {
+  for (path <- Seq("/")) {
     s"the mobile navbar on $path" should "wrap to ≤ 2 rows with zero horizontal overflow at every common phone width" in {
       onPath(path) { page =>
         pinDeterministicFont(page)
@@ -981,7 +837,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // desktop browser does, and the `--mobile-scale` clamps stay at 1.0.
   private val DesktopViewports = Seq(1280, 1440, 1920)
 
-  for (path <- Seq("/", "/kina")) {
+  for (path <- Seq("/")) {
     s"the desktop navbar on $path" should "fit in one row with zero horizontal overflow at every common desktop width" in {
       onPath(path) { page =>
         pinDeterministicFont(page)
@@ -1277,9 +1133,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // ── Sortuj (sort axis) ─────────────────────────────────────────────────────
   //
   // The Filtry panel's "Sortuj" select reorders the visible grid: earliest
-  // screening (default) or weighted rating (biggest-first). On / the whole
-  // grid is one sorted list; on /kina each cinema section is sorted
-  // independently. The sort key rides on each card's `data-rating`
+  // screening (default) or weighted rating (biggest-first). The whole grid
+  // is one sorted list. The sort key rides on each card's `data-rating`
   // (server-computed), parsed once into INDEX.
 
   "the Sortuj control" should "default to 'earliest'" in {
@@ -1313,25 +1168,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("document.getElementById('sort-by').value = 'rating'; onSortChange()")
       page.eval("document.getElementById('sort-by').value = 'earliest'; onSortChange()")
       visibleTitleOrder(page) shouldBe earliestOrder
-    }
-  }
-
-  it should "sort each cinema section independently by descending rating on /kina" in {
-    onPath("/kina") { page =>
-      setDateAnytime(page)
-      page.eval("document.getElementById('sort-by').value = 'rating'; onSortChange()")
-      val ok = page.evalBool(
-        "(() => { let checked = 0;" +
-        "  for (const s of [...document.querySelectorAll('.cinema-section')].filter(x => x.style.display !== 'none')) {" +
-        "    const r = [...s.querySelectorAll('.col[data-title]')]" +
-        "      .filter(c => c.style.display !== 'none')" +
-        "      .map(c => parseFloat(c.dataset.rating) || 0);" +
-        "    if (r.length > 1) checked++;" +
-        "    for (let i = 1; i < r.length; i++) if (r[i] > r[i-1] + 1e-9) return false;" +
-        "  }" +
-        "  return checked > 0; })()"
-      )
-      ok shouldBe true
     }
   }
 
@@ -1369,6 +1205,79 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Day-stepping wrap (horizontal swipe) ────────────────────────────────────
+  //
+  // A horizontal swipe steps the selected day via `window.stepDateWrap(dir)`
+  // (dir = +1 next, -1 previous), wrapping the `#date-filter` option list with
+  // modulo arithmetic — last → first on +1, first → last on -1 — then
+  // re-rendering through `onDateChange()` → `applyFilters()`. The clamping
+  // `stepDate` (arrow buttons / keys) is exercised separately; this asserts the
+  // wrap-around the swipe relies on.
+
+  "the day-stepping wrap" should "advance the date selector and wrap last → first on stepDateWrap(+1)" in {
+    onPath("/") { page =>
+      val optionCount = page.evalInt("document.getElementById('date-filter').options.length")
+      optionCount should be > 1
+
+      // From index 0, stepping forward through every option lands back on 0
+      // (the modulo wrap), and each intermediate step advances by one.
+      page.eval("document.getElementById('date-filter').selectedIndex = 0; window.stepDateWrap(1)")
+      page.evalInt("document.getElementById('date-filter').selectedIndex") shouldBe 1
+
+      // Drive to the last option, then one more step wraps to index 0.
+      page.eval(
+        s"document.getElementById('date-filter').selectedIndex = ${optionCount - 1}; window.stepDateWrap(1)"
+      )
+      page.evalInt("document.getElementById('date-filter').selectedIndex") shouldBe 0
+
+      // The wrap re-rendered the grid via onDateChange → applyFilters: the
+      // current day ('today', index 0 after the wrap) shows at least one card.
+      visibleCardCount(page) should be > 0
+    }
+  }
+
+  it should "wrap first → last on stepDateWrap(-1)" in {
+    onPath("/") { page =>
+      val optionCount = page.evalInt("document.getElementById('date-filter').options.length")
+      page.eval("document.getElementById('date-filter').selectedIndex = 0; window.stepDateWrap(-1)")
+      page.evalInt("document.getElementById('date-filter').selectedIndex") shouldBe (optionCount - 1)
+    }
+  }
+
+  // ── Single-cinema label suppression ─────────────────────────────────────────
+  //
+  // `applyFilters()` tags `#film-grid` with class `single-cinema` when at most
+  // one of this city's enabled cinemas remains (ALL_CINEMAS minus the in-city
+  // `disabledCinemas`); CSS then hides every per-card `.cinema-label`. With
+  // multiple cinemas enabled the labels stay visible and the class is absent.
+
+  "the single-cinema label toggle" should "show cinema labels with multiple cinemas and hide them when only one remains" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+
+      // Baseline: multiple cinemas enabled — the grid carries no
+      // `single-cinema` class and at least one `.cinema-label` is visible.
+      page.evalBool("ALL_CINEMAS.length > 1") shouldBe true
+      page.evalBool("document.getElementById('film-grid').classList.contains('single-cinema')") shouldBe false
+      page.evalBool(
+        "[...document.querySelectorAll('.cinema-label')].some(el => el.offsetParent !== null)"
+      ) shouldBe true
+
+      // Disable every cinema except the first → one enabled cinema remains.
+      page.eval(
+        "localStorage.setItem('disabledCinemas', JSON.stringify(ALL_CINEMAS.slice(1))); applyFilters()"
+      )
+
+      page.evalBool("document.getElementById('film-grid').classList.contains('single-cinema')") shouldBe true
+      // Every `.cinema-label` is now hidden (display:none → offsetParent null).
+      page.evalBool(
+        "(() => { const labels = [...document.querySelectorAll('.cinema-label')];" +
+        "  return labels.length > 0 && labels.every(el =>" +
+        "    el.offsetParent === null || getComputedStyle(el).display === 'none'); })()"
+      ) shouldBe true
+    }
+  }
+
   // ── Date filter ↔ URL round-trip ───────────────────────────────────────────
   //
   // `?date=` is the pasteable representation of the navbar's #date-filter:
@@ -1400,24 +1309,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "ignore an unrecognised ?date= value and keep the 'today' default" in {
     onPath("/?date=bogus") { page =>
       page.evalString("document.getElementById('date-filter').value") shouldBe "today"
-    }
-  }
-
-  it should "round-trip ?date= on /kina the same way" in {
-    onPath("/kina?date=week") { page =>
-      page.evalString("document.getElementById('date-filter').value") shouldBe "week"
-      page.eval("document.getElementById('date-filter').value = 'tomorrow'; onDateChange()")
-      page.evalString("new URL(location.href).searchParams.get('date')") shouldBe "tomorrow"
-      page.evalString("location.pathname") shouldBe (cityPrefix + "/kina")
-    }
-  }
-
-  it should "preserve ?date= when a /kina cinema pill is toggled" in {
-    onPath("/kina?date=tomorrow") { page =>
-      val pinTarget = page.evalString("document.querySelector('.cinema-section').dataset.cinema")
-      clickPill(page, pinTarget)
-      page.evalString("new URL(location.href).searchParams.get('date')") shouldBe "tomorrow"
-      java.net.URLDecoder.decode(page.evalString("location.pathname"), "UTF-8") shouldBe (cityPrefix + "/kina/" + pinTarget)
     }
   }
 
@@ -2180,23 +2071,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       "          s.textContent = '*, body { font-family: Arial, \"Liberation Sans\", sans-serif !important; }';" +
       "          document.head.appendChild(s); })()"
     )
-
-  /** Click the pill whose `data-cinema` matches `cinema`. Asserts the
-   *  pill was found so a typo'd cinema name fails the test with a clear
-   *  message instead of silently no-op'ing. Wrapped in an IIFE so the
-   *  internal `const` doesn't bleed into the per-page evaluation scope
-   *  (every `Runtime.evaluate` shares one execution context — two calls
-   *  with the same top-level `const` would `SyntaxError`). */
-  private def setDateAnytime(page: CdpPage): Unit =
-    page.eval("document.getElementById('date-filter').value = 'anytime'; applyFilters()")
-
-  private def clickPill(page: CdpPage, cinema: String): Unit = {
-    val js =
-      s"(() => { const p = [...document.querySelectorAll('#cinema-pills .cinema-pill')]" +
-        s".find(el => el.dataset.cinema === ${jsString(cinema)}); " +
-        s"if (!p) throw new Error('no pill for ' + ${jsString(cinema)}); p.click(); return true; })()"
-    page.evalBool(js) shouldBe true
-  }
 
   /** Quote a string for embedding inside a JS expression. Round-trips
    *  Polish diacritics + apostrophes via `JSON.stringify`-compatible

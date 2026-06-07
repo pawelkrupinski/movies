@@ -10,9 +10,9 @@ import java.nio.file.{Files, Path, Paths}
 import java.time.LocalDateTime
 
 /**
- * Whole-page HTML snapshot regression. Renders the two user-facing pages
- * (`/`, `/kina`) against the recorded `17-05-2026` fixture corpus and
- * diffs each rendered body against a checked-in expected file.
+ * Whole-page HTML snapshot regression. Renders the user-facing pages
+ * (`/` per city, `/plan`) against the recorded `17-05-2026` fixture corpus
+ * and diffs each rendered body against a checked-in expected file.
  */
 class PageSnapshotSpec extends AnyFlatSpec with Matchers {
 
@@ -45,23 +45,6 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
     ).body
     assertSnapshot(snapshotDir.resolve("expected-index.html"), html)
-  }
-
-  "the /kina page" should "render the same HTML as the checked-in snapshot" in {
-    val html = views.html.kina(
-      svc.toCinemaSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
-      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
-    ).body
-    assertSnapshot(snapshotDir.resolve("expected-kina.html"), html)
-  }
-
-  "the /kina/:cinema page" should "seed _kinaPinned from the URL-path cinema label" in {
-    val html = views.html.kina(
-      svc.toCinemaSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
-      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders,
-      pinnedCinema = Some("Kino Apollo")
-    ).body
-    html should include ("""window._kinaPinned = "Kino Apollo";""")
   }
 
   // Multi-city coverage: the same corpus now carries Wrocław + Warszawa

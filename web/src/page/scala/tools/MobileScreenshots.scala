@@ -8,7 +8,7 @@ import java.util.Base64
 
 /**
  * Screenshot generator for the mobile-scale refactor. Loads each
- * navbar-bearing fixture page (`/`, `/kina`, `/film?title=…`) in a
+ * navbar-bearing fixture page (`/`, `/film?title=…`) in a
  * real headless Chrome, resizes the viewport through every entry in
  * `Viewports`, and writes one PNG per (page, width) pair to
  * `page/screenshots/<slug>-<width>px.png`.
@@ -55,7 +55,6 @@ object MobileScreenshots {
       implicit val city: models.City = Poznan
       val cinemas  = city.cinemaDisplayNames
       val schedules       = svc.toSchedules(city, now)
-      val cinemaSchedules = svc.toCinemaSchedules(city, now)
       val anon    = Option.empty[models.User]
       val noOauth = Set.empty[String]
 
@@ -63,12 +62,6 @@ object MobileScreenshots {
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
         currentUser    = anon, oauthProviders = noOauth
-      ).body
-
-      val kinaHtml: String = views.html.kina(
-        cinemaSchedules, cinemas, pills, devMode = false,
-        currentUser    = anon, oauthProviders = noOauth,
-        pinnedCinema = None
       ).body
 
       // Pick a well-populated film from the fixture corpus — Diabeł ubiera
@@ -88,13 +81,11 @@ object MobileScreenshots {
 
       val server = new TestHttpServer({
         case "/"     => indexHtml
-        case "/kina" => kinaHtml
         case `filmQuery` => filmHtml
       })
       try {
         val pages: Seq[(String, String)] = Seq(
           "index" -> "/",
-          "kina"  -> "/kina",
           "film"  -> filmQuery
         )
         val t0 = System.currentTimeMillis()

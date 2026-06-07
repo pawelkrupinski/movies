@@ -63,33 +63,15 @@ object FixtureServerMain {
     // Every page is served city-scoped under `/{city}/…`, mirroring
     // production's hard-cut routing. The fixture corpus is Poznań's; the other
     // cities resolve to empty schedules (no scrapers wired in tests), exactly
-    // as production serves a not-yet-populated city.
-    def schedulesFor(c: City)       = svc.toSchedules(c, now)
-    def cinemaSchedulesFor(c: City) = svc.toCinemaSchedules(c, now)
+    // as production serves a not-yet-populated city. The listing page (`/`,
+    // `/filmy`) steps the selected day on a horizontal swipe — there's no
+    // longer a separate Kina page or in-place view swap.
+    def schedulesFor(c: City) = svc.toSchedules(c, now)
 
-    // `#view-root`-only fragments served for `X-Requested-With: view-swap`
-    // requests — mirrors the production controller so the in-place swap (and
-    // its tests) exercise the real "fetch just the fragment" path. The full
-    // pages also embed the SIBLING fragment as the prefetch seed.
-    def indexFragmentFor(c: City): String = {
-      implicit val ci: City = c
-      views.html._repertoireView(schedulesFor(c), devMode = false).body
-    }
-    def kinaFragmentFor(c: City, pinned: Option[String]): String = {
-      implicit val ci: City = c
-      views.html._kinaView(cinemaSchedulesFor(c), pinned, devMode = false).body
-    }
-    def kinaPageFor(c: City, pinned: Option[String]): String = {
-      implicit val ci: City = c
-      views.html.kina(cinemaSchedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
-        currentUser = anon, oauthProviders = noOauth, pinnedCinema = pinned,
-        siblingPath = s"/${c.slug}/", siblingHtml = indexFragmentFor(c)).body
-    }
     def indexPageFor(c: City): String = {
       implicit val ci: City = c
       views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
-        currentUser = anon, oauthProviders = noOauth,
-        siblingPath = s"/${c.slug}/kina", siblingHtml = kinaFragmentFor(c, None)).body
+        currentUser = anon, oauthProviders = noOauth).body
     }
     def filmyPageFor(c: City): String = {
       implicit val ci: City = c
@@ -136,29 +118,10 @@ object FixtureServerMain {
           case s if s.startsWith("/filmy?") &&
                      (s.contains("kraj=") || s.contains("rezyser=") || s.contains("aktor=")) => filmyPageFor(c)
           case s if s.startsWith("/filmy?")                => indexPageFor(c)
-          case s if s == "/kina" || s.startsWith("/kina?") => kinaPageFor(c, None)
           case s if s == "/plan" || s.startsWith("/plan?") => planPageFor(c)
-          case s if s.startsWith("/kina/") =>
-            val raw = URLDecoder.decode(s.stripPrefix("/kina/").takeWhile(_ != '?'), "UTF-8")
-            kinaPageFor(c, c.cinemaDisplayNames.find(_ == raw))
           case s if s.startsWith("/film?title=") =>
             filmPageFor(c, s.stripPrefix("/film?title="))
         }
-    }
-
-    // `#view-root`-only responses for view-swap requests — the swap-managed
-    // routes (`/{city}/`, `/{city}/filmy`, `/{city}/kina`, `/{city}/kina/<cinema>`).
-    val swapRoutes: PartialFunction[String, String] = {
-      case p if resolve(p).exists { case (_, s) =>
-        s == "/" || s.startsWith("/?") || s == "/filmy" || s.startsWith("/filmy?") ||
-          s == "/kina" || s.startsWith("/kina?") || s.startsWith("/kina/")
-      } =>
-        val (c, s) = resolve(p).get
-        if (s.startsWith("/kina/")) {
-          val raw = URLDecoder.decode(s.stripPrefix("/kina/").takeWhile(_ != '?'), "UTF-8")
-          kinaFragmentFor(c, c.cinemaDisplayNames.find(_ == raw))
-        } else if (s == "/kina" || s.startsWith("/kina?")) kinaFragmentFor(c, None)
-        else indexFragmentFor(c)
     }
 
     // The two JSON endpoints the mobile apps consume — the Android `KinowoApi`
@@ -175,7 +138,7 @@ object FixtureServerMain {
       case p if resolve(p).exists(_._2.startsWith("/api/details"))    => detailsJsonFor(resolve(p).get._1)
     }
 
-    val server = new TestHttpServer(routes, swapRoutes, jsonRoutes)
+    val server = new TestHttpServer(routes, jsonRoutes = jsonRoutes)
 
     Files.write(portFile, server.port.toString.getBytes(StandardCharsets.UTF_8))
     System.err.println(s"[FixtureServerMain] listening on ${server.baseUrl} — wrote port $portFile")

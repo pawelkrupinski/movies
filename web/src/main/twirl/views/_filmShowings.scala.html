@@ -1,18 +1,14 @@
 @import controllers.{FilmSchedule, DateFormatter, FilmHref}
-@(film: FilmSchedule, showCinemaHeaders: Boolean = true)(implicit city: models.City)
+@(film: FilmSchedule)(implicit city: models.City)
 @*
-   One film's showings, grouped by date → cinema → time slots.
+   One film's showings, grouped by date → cinema → time slots. Used by
+   `_filmCards` (the listing) and `_filmDetailContent` (the per-film page).
 
-   Used by:
-   - `_filmCards` (the listing page): one card per film, multiple cinemas
-     per card → cinema sub-headers visible.
-   - `film.scala.html` (the per-film page): same shape.
-   - `_cinemaCards` (the /kina page): one card per (cinema, film), so the
-     parent section already announces the cinema → `showCinemaHeaders=false`
-     suppresses the redundant per-card cinema label.
-
-   Cinema name links to that cinema's page for the film when available;
-   per-cinema common format tokens are stripped from each slot's badge.
+   The cinema sub-header names each cinema (and links to its page for the film
+   when available); per-cinema common format tokens are stripped from each
+   slot's badge. On the listing the label is hidden via the grid's
+   `.single-cinema` class (see `_sharedStyles`) once the cinema filter is down
+   to one — there it would just repeat the same name on every card.
 *@
 @defining(
   film.showings.flatMap(_._2)
@@ -28,14 +24,12 @@
     @for(cinemaShowtimes <- cinemaShowtimesList) {
       @defining(commonToksByCinema.getOrElse(cinemaShowtimes.cinema, Set.empty[String])) { commonToks =>
       <div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName">
-        @if(showCinemaHeaders) {
-          <div class="cinema-label">
-            @film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {
-              case Some((_, url)) => { <a href="@url" target="_blank" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a> }
-              case None           => { @cinemaShowtimes.cinema.displayName }
-            }
-          </div>
-        }
+        <div class="cinema-label">
+          @film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {
+            case Some((_, url)) => { <a href="@url" target="_blank" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a> }
+            case None           => { @cinemaShowtimes.cinema.displayName }
+          }
+        </div>
         <div>
           @for(slot <- cinemaShowtimes.showtimes) {
             @{

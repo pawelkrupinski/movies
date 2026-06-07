@@ -10,23 +10,17 @@ import java.nio.file.{Files, Paths}
  * Minimal embedded HTTP server used by `PageJsBehaviourSpec` to serve
  * rendered Twirl HTML over `http://localhost:<freePort>`. file:// URLs
  * can't host the page for CDP-driven tests because `history.replaceState`
- * (called by /kina's pill toggle to rewrite the path to `/kina/<cinema>`)
- * throws a SecurityError on file://: the target URL isn't same-origin
- * with the served file's directory-scoped origin.
+ * (called by the date-filter ↔ URL sync to rewrite `?date=`) throws a
+ * SecurityError on file://: the target URL isn't same-origin with the
+ * served file's directory-scoped origin.
  *
  * Backed by JDK's `com.sun.net.httpserver.HttpServer` — no Play, no
  * dependency, no port collision (binds to a free port and exposes it via
  * `baseUrl`). Routes are a `PartialFunction[String, String]` so the test
- * can express the path-to-body mapping declaratively, including a
- * wildcard for `/kina/<cinema>` URL-path pinning.
+ * can express the path-to-body mapping declaratively.
  */
 class TestHttpServer(
   routes: PartialFunction[String, String],
-  // Served instead of `routes` when the request carries
-  // `X-Requested-With: view-swap` — mirrors the production controller, which
-  // returns just the `#view-root` fragment for an in-place Filmy↔Kina swap.
-  // Defaults to empty so existing single-arg callers are unaffected.
-  swapRoutes: PartialFunction[String, String] = PartialFunction.empty,
   // JSON API routes (`/api/repertoire`, `/api/details`) the mobile apps
   // consume. Served as `application/json` with a `Last-Modified` header so the
   // Android `KinowoApi` / iOS `RepertoireStore` exercise the real wire
@@ -47,10 +41,9 @@ class TestHttpServer(
         val rawQ = ex.getRequestURI.getRawQuery
         // Routes match on the path-plus-query (`/film?title=…` carries
         // its identity in the query string, not the path). Existing
-        // path-only routes (`/`, `/kina`, `/kina/<X>`) don't ever come
-        // through with a query attached, so they keep matching on the
-        // bare path — `routeKey` is the path verbatim when there's no
-        // query at all.
+        // path-only routes (`/`, `/plan`) don't ever come through with a
+        // query attached, so they keep matching on the bare path —
+        // `routeKey` is the path verbatim when there's no query at all.
         val routeKey = if (rawQ == null) path else s"$path?$rawQ"
         // `/assets/*` is served from the web app's assets dir on disk
         // (`web/src/main/assets/*`, the same source Play's Assets controller
@@ -86,11 +79,7 @@ class TestHttpServer(
           val os = ex.getResponseBody
           try os.write(bytes) finally os.close()
         } else {
-          val isSwap = Option(ex.getRequestHeaders.getFirst("X-Requested-With"))
-                         .contains("view-swap")
-          val body   = if (isSwap) swapRoutes.lift(routeKey).orElse(routes.lift(routeKey))
-                       else        routes.lift(routeKey)
-          body match {
+          routes.lift(routeKey) match {
           case Some(html) =>
             val bytes = html.getBytes(StandardCharsets.UTF_8)
             ex.getResponseHeaders.add("Content-Type", "text/html; charset=UTF-8")

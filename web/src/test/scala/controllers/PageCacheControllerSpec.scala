@@ -11,11 +11,11 @@ import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 import java.util.zip.GZIPInputStream
 
-/** The plain `/{city}/` and `/{city}/kina` pages are served as pre-rendered,
- *  pre-gzipped blobs to anonymous, gzip-accepting visitors. These assert the
- *  controller wiring of [[PageResponseCache]]: the right responses carry
- *  `Content-Encoding: gzip` and decode to the real page, while the paths that
- *  must bypass the shared blob (no gzip, view-swap) still render correctly. */
+/** The plain `/{city}/` page is served as a pre-rendered, pre-gzipped blob to
+ *  anonymous, gzip-accepting visitors. These assert the controller wiring of
+ *  [[PageResponseCache]]: the right responses carry `Content-Encoding: gzip`
+ *  and decode to the real page, while a non-gzip client still renders
+ *  correctly. */
 class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
   private def buildController(): (MovieController, services.movies.CaffeineMovieCache) = {
@@ -50,30 +50,21 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     gunzip(contentAsBytes(result)) should include ("Cache Test Film")
   }
 
-  "the /kina page" should "be served gzip-precompressed to a gzip-accepting anonymous visitor" in {
-    val (ctrl, _) = buildController()
-    val result = ctrl.kina("poznan")(gzipReq("/poznan/kina"))
-
-    status(result) shouldBe OK
-    header("Content-Encoding", result) shouldBe Some("gzip")
-    gunzip(contentAsBytes(result)) should include ("Cache Test Film")
-  }
-
   it should "serve byte-identical bytes on a repeat request at the same cache version" in {
     val (ctrl, _) = buildController()
-    val first  = contentAsBytes(ctrl.kina("poznan")(gzipReq("/poznan/kina")))
-    val second = contentAsBytes(ctrl.kina("poznan")(gzipReq("/poznan/kina")))
+    val first  = contentAsBytes(ctrl.index("poznan")(gzipReq("/poznan/")))
+    val second = contentAsBytes(ctrl.index("poznan")(gzipReq("/poznan/")))
     second shouldBe first
   }
 
   it should "re-serve a fresh valid page after the cache version advances" in {
     val (ctrl, cache) = buildController()
-    ctrl.kina("poznan")(gzipReq("/poznan/kina"))
+    ctrl.index("poznan")(gzipReq("/poznan/"))
 
     Thread.sleep(1100) // mtime is second-resolution; ensure the rehydrate advances it
     cache.rehydrate()
 
-    val after = ctrl.kina("poznan")(gzipReq("/poznan/kina"))
+    val after = ctrl.index("poznan")(gzipReq("/poznan/"))
     status(after) shouldBe OK
     header("Content-Encoding", after) shouldBe Some("gzip")
     gunzip(contentAsBytes(after)) should include ("Cache Test Film")
@@ -88,26 +79,11 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     contentAsString(result) should include ("Cache Test Film")
   }
 
-  "a view-swap request" should "get the bare fragment, never the cached full page" in {
-    val (ctrl, _) = buildController()
-    val result = ctrl.kina("poznan")(
-      FakeRequest("GET", "/poznan/kina")
-        .withHeaders("Accept-Encoding" -> "gzip", "X-Requested-With" -> "view-swap")
-    )
-
-    status(result) shouldBe OK
-    header("Content-Encoding", result) shouldBe None
-    val body = contentAsString(result)
-    body should include ("Cache Test Film")
-    // The swap fragment is just the #view-root inner content — no document shell.
-    body.toLowerCase should not include "<!doctype"
-  }
-
   // ── Browser conditional-GET (304 on refresh) ───────────────────────────────
 
   "a cacheable page" should "carry Last-Modified + Cache-Control so the browser revalidates" in {
     val (ctrl, _) = buildController()
-    val result = ctrl.kina("poznan")(gzipReq("/poznan/kina"))
+    val result = ctrl.index("poznan")(gzipReq("/poznan/"))
 
     header("Last-Modified", result) shouldBe defined
     header("Cache-Control", result) shouldBe Some("private, no-cache")
@@ -115,10 +91,10 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "304 a refresh whose If-Modified-Since is current, with no body" in {
     val (ctrl, _) = buildController()
-    val first   = ctrl.kina("poznan")(gzipReq("/poznan/kina"))
+    val first   = ctrl.index("poznan")(gzipReq("/poznan/"))
     val lastMod = header("Last-Modified", first).get
 
-    val refresh = ctrl.kina("poznan")(gzipReq("/poznan/kina").withHeaders("If-Modified-Since" -> lastMod))
+    val refresh = ctrl.index("poznan")(gzipReq("/poznan/").withHeaders("If-Modified-Since" -> lastMod))
     status(refresh) shouldBe NOT_MODIFIED
     header("Content-Encoding", refresh) shouldBe None
     contentAsBytes(refresh).isEmpty shouldBe true
@@ -126,12 +102,12 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "200 with a fresh body after the cache version advances despite an old If-Modified-Since" in {
     val (ctrl, cache) = buildController()
-    val lastMod = header("Last-Modified", ctrl.kina("poznan")(gzipReq("/poznan/kina"))).get
+    val lastMod = header("Last-Modified", ctrl.index("poznan")(gzipReq("/poznan/"))).get
 
     Thread.sleep(1100)
     cache.rehydrate()
 
-    val after = ctrl.kina("poznan")(gzipReq("/poznan/kina").withHeaders("If-Modified-Since" -> lastMod))
+    val after = ctrl.index("poznan")(gzipReq("/poznan/").withHeaders("If-Modified-Since" -> lastMod))
     status(after) shouldBe OK
     header("Content-Encoding", after) shouldBe Some("gzip")
     gunzip(contentAsBytes(after)) should include ("Cache Test Film")

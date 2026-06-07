@@ -39,7 +39,6 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
   "An unknown city slug" should "404 on every city-scoped route" in {
     val ctrl = buildController()
     status(ctrl.index("nieznane")(FakeRequest(GET, "/nieznane/")))               shouldBe NOT_FOUND
-    status(ctrl.kina("nieznane")(FakeRequest(GET, "/nieznane/kina")))            shouldBe NOT_FOUND
     status(ctrl.film("nieznane", "x")(FakeRequest(GET, "/nieznane/film?title=x"))) shouldBe NOT_FOUND
     status(ctrl.apiRepertoire("nieznane")(FakeRequest(GET, "/nieznane/api/repertoire"))) shouldBe NOT_FOUND
     status(ctrl.apiDetails("nieznane")(FakeRequest(GET, "/nieznane/api/details"))) shouldBe NOT_FOUND
@@ -52,7 +51,7 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     val html = contentAsString(res)
     html should include("Repertuar kinowy Poznań")
     // Navbar links carry the city prefix.
-    html should include("""href="/poznan/kina"""")
+    html should include("""href="/poznan/"""")
     // The lone fixture film is in a Poznań cinema → present.
     html should include("Testowy Film")
   }
@@ -70,7 +69,7 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     status(res) shouldBe OK
     val html = contentAsString(res)
     html should include("Repertuar kinowy Wrocław")
-    html should include("""href="/wroclaw/kina"""")
+    html should include("""href="/wroclaw/"""")
     html should include("Wrocławski Film")
     html should not include "Testowy Film"   // Poznań
     html should not include "Warszawski Film" // Warszawa
@@ -82,7 +81,7 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     status(res) shouldBe OK
     val html = contentAsString(res)
     html should include("Repertuar kinowy Warszawa")
-    html should include("""href="/warszawa/kina"""")
+    html should include("""href="/warszawa/"""")
     html should include("Warszawski Film")
     html should not include "Testowy Film"    // Poznań
     html should not include "Wrocławski Film"  // Wrocław

@@ -96,7 +96,6 @@ test.describe('/film detail page', () => {
   for (const { from, label } of [
     { from: '/poznan/',      label: 'Filmy' },
     { from: '/poznan/filmy', label: 'Filmy' },
-    { from: '/poznan/kina',  label: 'Kina'  },
     { from: '/poznan/plan',  label: 'Plan'  },
   ]) {
     test(`the ← back link reads "${label}" and returns to ${from} when that was the referrer`, async ({ page }) => {

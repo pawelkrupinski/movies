@@ -10,11 +10,11 @@ import java.util.zip.GZIPOutputStream
 
 /** Caches the gzip-compressed bytes of the responses that are byte-identical
  *  for every client at a given cache version: the anonymous HTML pages
- *  (`/{city}/`, `/{city}/filmy`, `/{city}/kina[/:cinema]`) and the mobile JSON
- *  endpoints (`/{city}/api/repertoire`, `/{city}/api/details`). A hit skips
- *  BOTH the body build (Twirl render / JSON serialize) and the gzip pass —
- *  measured at ~40 ms of server CPU per `/kina` request and ~16 ms per
- *  `/api/repertoire`, of which gzip alone is a large share. Caching the
+ *  (`/{city}/`, `/{city}/filmy`) and the mobile JSON endpoints
+ *  (`/{city}/api/repertoire`, `/{city}/api/details`). A hit skips BOTH the body
+ *  build (Twirl render / JSON serialize) and the gzip pass — measured at ~16 ms
+ *  of server CPU per `/api/repertoire`, of which gzip alone is a large share.
+ *  Caching the
  *  compressed bytes (not just the body string) is what captures that share.
  *
  *  The cache is keyed by request path and versioned by the [[MovieCache]]

@@ -99,9 +99,7 @@
      relative` — scrolling past the first viewport hid the navbar
      and the only way back to the date / search controls was to
      scroll all the way up. `z-index: 10` keeps it above film cards
-     and modal backdrops. The /kina-only second row (`.cinema-nav-row`)
-     opts back out of sticky so the two rows don't both jam against
-     the top edge. */
+     and modal backdrops. */
   /* The navbar owns its own flex layout (rather than relying solely on the
      `.navbar .d-flex .align-items-center` classes on the element). Historically
      this guarded against Bootstrap loading late (cold load / slow link) leaving
@@ -371,10 +369,8 @@
     justify-content: center;
     min-height: 35px;
   }
-  /* Gate `:hover` behind `hover: hover` so iOS/Android don't park the post-tap
-     sticky hover on the tab you just left — otherwise a swipe to the sibling
-     view lights up BOTH tabs (the new `.active` one and the still-hovered old
-     one). Same reasoning as `.cinema-pill:hover` below. */
+  /* Gate `:hover` behind `hover: hover` so iOS/Android don't park a sticky
+     post-tap hover on a tab the user just left. */
   @@media (hover: hover) and (pointer: fine) {
     .nav-tab:hover { background: #3a3a6e; color: #fff; }
     .nav-tab-login:hover { background: #5a5a9e; color: #fff; }
@@ -799,8 +795,7 @@
       padding-left:  min(calc(.75 * var(--mobile-scale)), 2.5vw) !important;
       padding-right: min(calc(.75 * var(--mobile-scale)), 2.5vw) !important;
     }
-    #film-grid,
-    .cinema-section .row { --bs-gutter-x: min(var(--mobile-scale), 3.5vw); }
+    #film-grid { --bs-gutter-x: min(var(--mobile-scale), 3.5vw); }
     .card-body         { padding: min(var(--mobile-scale), 4vw); }
     .card-title a      { font-size: calc(.95 * var(--mobile-scale)); }
     .pill              { font-size: calc(.72 * var(--mobile-scale)); padding: 0 calc(5 * var(--mobile-scale-px)); }
@@ -910,14 +905,12 @@
     /* Tighter card gaps — default Bootstrap gutter (1.5 rem) wastes
        horizontal room that narrow landscape phones need for card
        content. */
-    #film-grid,
-    .cinema-section .row { --bs-gutter-x: .5rem; }
+    #film-grid { --bs-gutter-x: .5rem; }
 
     /* Default landscape density: 4 columns. Narrow landscape phones
        (Galaxy S10 → 760 px) can't fit 6 readable cards; 4 gives
        ~190 px per card — enough for a 2-line title. */
-    #film-grid > .col,
-    .cinema-section .row > .col {
+    #film-grid > .col {
       flex: 0 0 25%;
       max-width: 25%;
     }
@@ -934,8 +927,7 @@
      narrow-landscape 760 px test viewport correctly stay at 4 cols.
      The Galaxy S10 narrow-landscape spec assumes this boundary. */
   @@media (max-height: 500px) and (orientation: landscape) and (min-width: 800px) {
-    #film-grid > .col,
-    .cinema-section .row > .col {
+    #film-grid > .col {
       flex: 0 0 calc(100% / 6);
       max-width: calc(100% / 6);
     }
@@ -967,139 +959,43 @@
     }
   }
 
-  /* ── Filmy ↔ Kina slide-swap (shared.js `navigateTo`) ──────────────────────
-     `#view-pager` is the stable slot; its single `<main id="view-root">` child
-     is the swappable view. During a swap the entering view is stacked
-     absolutely over the pager and both slide via `translateX`; on settle the
-     outgoing node is removed and the entering one returns to normal flow.
-     `overflow-x: clip` hides the off-screen panel without creating a scroll
-     container (so it can't add a phantom vertical scrollbar the way
-     `overflow-x: hidden` would). */
+  /* ── Day-swipe (shared.js) ─────────────────────────────────────────────────
+     `#view-pager` holds the `<main id="view-root">` grid. A horizontal swipe
+     translates the grid to step the selected day; shared.js drives the
+     transform inline. `overflow-x: clip` hides the grid as it slides off-screen
+     without creating a scroll container (so it can't add a phantom vertical
+     scrollbar the way `overflow-x: hidden` would). */
   #view-pager { position: relative; overflow-x: clip; }
   #view-pager > main { will-change: transform; }
-  #view-pager.view-sliding > main {
-    transition: transform .3s cubic-bezier(.22, .61, .36, 1);
-  }
-  #view-pager > main.view-entering {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-  }
-  /* Honour reduced-motion: shared.js skips the animation and settles the swap
-     instantly, but kill the transition too in case a class lingers a frame. */
-  @@media (prefers-reduced-motion: reduce) {
-    #view-pager.view-sliding > main { transition: none; }
-  }
   /* Claim horizontal gestures over the grid for the swipe-to-switch handler:
      it lets the browser keep vertical scrolling but stops it treating a
      horizontal drag as a (non-existent) horizontal scroll and cancelling the
      pointer stream mid-swipe. `pinch-zoom` is kept in the value so two-finger
      pinch-to-zoom on the cards still works — only single-finger HORIZONTAL pan
      is reserved for the swipe (`pan-y pinch-zoom` = everything `manipulation`
-     allows minus `pan-x`). Scoped to the grid wrapper, NOT `#view-root`, so it
-     doesn't sit above the cinema-pill strip (a sibling outside
-     `.container-fluid`) whose own horizontal scroll must keep working. */
+     allows minus `pan-x`). */
   #view-pager .container-fluid { touch-action: pan-y pinch-zoom; }
 
   /* ── Filmy (/) view chrome ─────────────────────────────────────────────────
-     Lives here (shared, every page) rather than in repertoire's <head> for the
-     same reason as the /kina chrome below: the slide-swap injects only
-     `#view-root`, so a head-local <style> would leave the swapped-in Filmy view
-     unstyled (missing cinema labels). Inert on Kina/Plan (Kina nests `.col`
-     under `.cinema-section`, so `#film-grid > .col` doesn't match it). */
+     Lives here (shared, every page) rather than in repertoire's <head> so the
+     listing's cinema labels + card content-visibility are always styled. Inert
+     on /plan (no `#film-grid > .col`). */
   /* Off-screen film cards skip layout + paint until scrolled into view
      (~460 px intrinsic-size keeps the scrollbar from jumping on measure). */
   #film-grid > .col { content-visibility: auto; contain-intrinsic-size: 0 460px; }
   .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: var(--gap-cinema-pills, .1rem); margin-top: var(--gap-cinema-top, .3rem); }
   .cinema-label-link { color: #66aadd; text-decoration: none; }
   .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
+  /* With the cinema filter narrowed to a single cinema (or a one-cinema city),
+     every card repeats the same cinema name — `applyFilters` adds
+     `.single-cinema` to the grid and we drop the now-redundant labels. */
+  #film-grid.single-cinema .cinema-label { display: none; }
   /* The per-cinema label above each card's pill row rides the shared
      `--mobile-scale` so it tracks the card text on narrow phones. */
   @@media (max-width: 575px) {
     .cinema-label { font-size: calc(.65 * var(--mobile-scale)); }
   }
 
-  /* ── /kina view chrome ─────────────────────────────────────────────────────
-     These rules style the Kina view's cinema sections + the cinema-pill picker
-     strip. They live HERE (shared, on every page) rather than in kina's <head>
-     because the Filmy↔Kina slide-swap only injects `#view-root` (the body
-     fragment) — the swapped-in Kina view would otherwise arrive unstyled. They
-     are inert on Filmy/Plan (no `.cinema-section`/`.cinema-pill` elements). */
-
-  /* Off-screen cinema sections skip layout + paint until they scroll into view
-     (≈1200 px intrinsic-size placeholder keeps the scrollbar from jumping). */
-  .cinema-section { content-visibility: auto; contain-intrinsic-size: 0 1200px; }
-  .cinema-section-title { color: #aad4ff; font-size: 1rem; font-weight: 600; border-bottom: 1px solid #3a3a6e; padding-bottom: .4rem; }
-  /* Cinema-picker row — a second navbar row directly under the main navbar on
-     /kina. A pill is "active" only when it's the single pinned cinema. */
-  .cinema-nav-row {
-    gap: .25rem;
-    padding-top: .35rem !important;
-    padding-bottom: .35rem !important;
-    border-top: 1px solid #2a2a4e;
-    /* Override the shared `.navbar > div:first-child { height: 28px;
-       max-height: 28px }` cap — the pill strip sizes its own height off the
-       pills (one row tall) and shouldn't be clamped to the tab-row height. */
-    & > div:first-child { height: auto; max-height: none; }
-    /* The main `.navbar` is sticky; this second row scrolls away with the grid
-       (the pinned cinema lives in the URL path), so override to static — two
-       sticky rows would stack at the viewport top. */
-    position: static;
-  }
-  /* Pills inherit the nav-tab look (transparent, same blue + hover/active as
-     Filmy / Kina). Reset <button> chrome since each pill is a real <button>. */
-  .cinema-pill {
-    background: transparent;
-    color: #aad4ff;
-    border: none;
-    border-radius: 6px;
-    padding: .25rem .6rem;
-    font-size: .875rem;
-    font-family: inherit;
-    cursor: pointer;
-    -webkit-user-select: none;
-    user-select: none;
-  }
-  /* Gate `:hover` behind `hover: hover` so iOS/Android Safari don't paint the
-     post-tap sticky hover onto a pill the user just *un*-pinned. */
-  @@media (hover: hover) and (pointer: fine) {
-    .cinema-pill:hover { background: #3a3a6e; color: #fff; }
-  }
-  .cinema-pill.active { background: #3a3a6e; color: #fff; }
-  /* The pill row is always a single, non-wrapping strip that scrolls
-     horizontally whenever the pills don't fit. The selector is
-     `.navbar.cinema-nav-row > .cinema-pills` (0,3,0) on purpose: the
-     `.navbar > div:first-child { overflow: visible }` rule above (active below
-     575px) matches this element at (0,2,1) and would otherwise clobber
-     `overflow-x`. `flex: 1 1 0; min-width: 0` constrain it to the nav width so
-     the overflow scrolls inside the row, not past the viewport edge. */
-  .navbar.cinema-nav-row > .cinema-pills {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: .25rem;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    flex: 1 1 0;
-    min-width: 0;
-  }
-  .cinema-pills::-webkit-scrollbar { display: none; }
-  .cinema-pill { flex-shrink: 0; white-space: nowrap; }
-  /* Below 576 px the kina chrome rides the shared `--mobile-scale` knob, in
-     lockstep with the navbar/card text. */
-  @@media (max-width: 575px) {
-    .cinema-section-title { font-size: var(--mobile-scale); }
-    .cinema-nav-row {
-      padding-left:  calc(.75 * var(--mobile-scale)) !important;
-      padding-right: calc(.75 * var(--mobile-scale)) !important;
-      gap: calc(.25 * var(--mobile-scale));
-    }
-    .navbar.cinema-nav-row > .cinema-pills { gap: calc(.25 * var(--mobile-scale)); }
-    .cinema-pill {
-      font-size: calc(.875 * var(--mobile-scale));
-      padding: calc(.25 * var(--mobile-scale)) calc(.6 * var(--mobile-scale));
-    }
-  }
 </style>
 @_pillStyles()
 @_ratingStyles()

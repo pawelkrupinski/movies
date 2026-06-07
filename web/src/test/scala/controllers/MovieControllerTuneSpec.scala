@@ -69,25 +69,6 @@ class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe NOT_FOUND
   }
 
-  "GET /debug/tune/kina" should "render the kina tuning page in dev mode" in {
-    val ctrl   = buildController(Mode.Dev)
-    val result = ctrl.tuneKina("poznan").apply(FakeRequest(GET, "/debug/tune/kina"))
-
-    status(result) shouldBe OK
-    val html = contentAsString(result)
-    html should include("tune-scope")
-    // The real `_cinemaCards` markup (cinema section header) is present.
-    html should include("cinema-section-title")
-    // A kina-specific slider var, and the sub-nav linking the sibling pages.
-    html should include("--kina-title-font")
-    html should include("/debug/tune/film")
-  }
-
-  it should "404 in production" in {
-    val result = buildController(Mode.Prod).tuneKina("poznan").apply(FakeRequest(GET, "/debug/tune/kina"))
-    status(result) shouldBe NOT_FOUND
-  }
-
   "GET /debug/tune/film" should "render the film tuning page in dev mode" in {
     val ctrl   = buildController(Mode.Dev)
     val result = ctrl.tuneFilm("poznan").apply(FakeRequest(GET, "/debug/tune/film"))
@@ -98,22 +79,14 @@ class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
     // The real `_filmDetailContent` markup + a populated meta block.
     html should include("film-title")
     html should include("Christopher Nolan")
-    // A film-specific slider var, and the sub-nav linking the sibling pages.
+    // A film-specific slider var, and the sub-nav linking the sibling page.
     html should include("--film-title-font")
-    html should include("/debug/tune/kina")
+    html should include("/debug/tune")
   }
 
   it should "404 in production" in {
     val result = buildController(Mode.Prod).tuneFilm("poznan").apply(FakeRequest(GET, "/debug/tune/film"))
     status(result) shouldBe NOT_FOUND
-  }
-
-  "tuneSampleCinemas" should "pivot the sample films into cinema sections" in {
-    val cinemas = MovieController.tuneSampleCinemas
-    cinemas should not be empty
-    all(cinemas.map(_.movies.size)) should be >= 1
-    // The pivot must preserve showtimes (no empty sections).
-    cinemas.flatMap(_.movies).flatMap(_.showings).flatMap(_._2) should not be empty
   }
 
   "tuneSampleFilm" should "populate synopsis + cast + director for the meta blocks" in {

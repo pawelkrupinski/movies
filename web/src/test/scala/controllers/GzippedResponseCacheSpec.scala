@@ -23,8 +23,8 @@ class GzippedResponseCacheSpec extends AnyFlatSpec with Matchers {
     var renders = 0
     def render(): String = { renders += 1; "<html>hello</html>" }
 
-    val first  = cache.gzippedBody("/poznan/kina", v1)(render())
-    val second = cache.gzippedBody("/poznan/kina", v1)(render())
+    val first  = cache.gzippedBody("/poznan/filmy", v1)(render())
+    val second = cache.gzippedBody("/poznan/filmy", v1)(render())
 
     renders shouldBe 1
     second shouldBe first
@@ -36,8 +36,8 @@ class GzippedResponseCacheSpec extends AnyFlatSpec with Matchers {
     var renders = 0
     def render(): String = { renders += 1; s"<html>v$renders</html>" }
 
-    cache.gzippedBody("/poznan/kina", v1)(render())
-    val afterBump = cache.gzippedBody("/poznan/kina", v2)(render())
+    cache.gzippedBody("/poznan/filmy", v1)(render())
+    val afterBump = cache.gzippedBody("/poznan/filmy", v2)(render())
 
     renders shouldBe 2
     gunzip(afterBump) shouldBe "<html>v2</html>"
@@ -45,10 +45,10 @@ class GzippedResponseCacheSpec extends AnyFlatSpec with Matchers {
 
   it should "key independently per path" in {
     val cache = new GzippedResponseCache
-    val a = cache.gzippedBody("/poznan/kina", v1)("<html>kina</html>")
+    val a = cache.gzippedBody("/poznan/filmy", v1)("<html>filmy</html>")
     val b = cache.gzippedBody("/poznan/", v1)("<html>index</html>")
 
-    gunzip(a) shouldBe "<html>kina</html>"
+    gunzip(a) shouldBe "<html>filmy</html>"
     gunzip(b) shouldBe "<html>index</html>"
   }
 }

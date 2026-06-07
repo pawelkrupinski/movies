@@ -125,16 +125,6 @@ case class FilmSchedule(
                          enrichment: Option[MovieRecord] = None
                        )
 
-case class CinemaMovieSchedule(
-                                movie: Movie,
-                                posterUrl: Option[String],
-                                filmUrl: Option[String],
-                                showings: Seq[(LocalDate, Seq[Showtime])],
-                                enrichment: Option[MovieRecord] = None
-                              )
-
-case class CinemaSchedule(cinema: Cinema, movies: Seq[CinemaMovieSchedule])
-
 class MovieControllerService(
   cache:        MovieCache,
   // Dev-only debug re-enrich trigger. Enrichment runs in the write process, so
@@ -201,45 +191,6 @@ class MovieControllerService(
     }.sortBy(_._1).map(_._2)
   }
 
-  def toCinemaSchedules(city: City): Seq[CinemaSchedule] =
-    toCinemaSchedules(city, LocalDateTime.now(city.zoneId))
-
-  /** Overload with an injectable `now` — see `toSchedules(city, now)` for the
-   *  same pattern. Production callers should always use the city-only variant.
-   *  Sections are this city's cinemas only. */
-  def toCinemaSchedules(city: City, now: LocalDateTime): Seq[CinemaSchedule] = {
-    // One snapshot for the whole request — `snapshot()` allocates and
-    // title-sorts the entire global corpus, so reading it per-cinema would
-    // redo that work N times (N = cinemas in this city) for one page render.
-    val all = cache.snapshot()
-    city.cinemas.flatMap { cinema =>
-      val moviesForCinema = all.flatMap { case StoredMovieRecord(cleanTitle, _, e) =>
-        e.cinemaData.get(cinema).flatMap { slot =>
-          val future = slot.showtimes.filter(_.dateTime.isAfter(now.minusMinutes(30)))
-          if (future.isEmpty) None
-          else {
-            val byDate = future
-              .groupBy(_.dateTime.toLocalDate)
-              .toSeq.sortBy(_._1)
-              .map { case (date, sts) => (date, sts.sortBy(_.dateTime)) }
-            Some(CinemaMovieSchedule(
-              movie = Movie(e.displayTitle(cleanTitle), e.runtimeMinutes, e.releaseYear, countries = e.countries, genres = e.genres),
-              // Per-cinema view shows that cinema's own poster (fidelity over
-              // merge); fall back to the merged best only if this cinema
-              // didn't ship one.
-              posterUrl = slot.posterUrl.orElse(e.posterUrl),
-              filmUrl = slot.filmUrl,
-              showings = byDate,
-              enrichment = Some(e)
-            ))
-          }
-        }
-      }.sortBy(_.showings.head._1)
-      if (moviesForCinema.isEmpty) None
-      else Some(CinemaSchedule(cinema, moviesForCinema))
-    }
-  }
-
   def film(city: City, title: String): Option[FilmSchedule] = {
     val needle = normalizeTitle(title)
     toSchedules(city).find(s => normalizeTitle(s.movie.title) == needle)
@@ -267,28 +218,18 @@ class MovieController( cc: ControllerComponents,
   private def currentUser(request: RequestHeader): Option[models.User] =
     request.session.get("userId").flatMap(userRepo.findById)
 
-  // The Filmy↔Kina slide-swap fetches the sibling page with this marker. When
-  // present we return ONLY the `#view-root` fragment (the bit the swap injects)
-  // instead of the whole page — head, navbar, modals and the inline configs are
-  // the stable shell the client already has, so re-sending them is pure waste.
-  private def isViewSwap(request: RequestHeader): Boolean =
-    request.headers.get("X-Requested-With").contains("view-swap")
-
-  // Caches must not serve a fragment to a normal navigation (or vice versa).
-  private val varyOnSwap = "Vary" -> "X-Requested-With"
-
   private def acceptsGzip(request: RequestHeader): Boolean =
     request.headers.get("Accept-Encoding").exists(_.toLowerCase.contains("gzip"))
 
-  // The plain HTML pages (`/{city}/`, `/{city}/filmy`, `/{city}/kina[/:cinema]`)
-  // are byte-identical for every anonymous visitor at a given cache version, so
-  // we serve a pre-rendered, pre-gzipped blob keyed on the request path (which
-  // fully determines the output: city, page type, and pinned cinema all live in
-  // the path). Logged-in users (personalised navbar), filter queries (OG meta),
-  // and view-swap fragments must NOT hit the shared blob — they render fresh.
-  // Non-gzip clients also bypass it, since the cache stores compressed bytes.
+  // The plain HTML pages (`/{city}/`, `/{city}/filmy`) are byte-identical for
+  // every anonymous visitor at a given cache version, so we serve a
+  // pre-rendered, pre-gzipped blob keyed on the request path (which fully
+  // determines the output: city and page type). Logged-in users (personalised
+  // navbar) and filter queries (OG meta) must NOT hit the shared blob — they
+  // render fresh. Non-gzip clients also bypass it, since the cache stores
+  // compressed bytes.
   private def cacheablePlainPage(request: RequestHeader, user: Option[models.User]): Boolean =
-    user.isEmpty && request.queryString.isEmpty && !isViewSwap(request) && acceptsGzip(request)
+    user.isEmpty && request.queryString.isEmpty && acceptsGzip(request)
 
   private def ifModifiedSinceCurrent(request: RequestHeader, lastMod: java.time.Instant): Boolean =
     request.headers.get("If-Modified-Since").exists { ims =>
@@ -327,7 +268,7 @@ class MovieController( cc: ControllerComponents,
   }
 
   private val HtmlContentType = "text/html; charset=utf-8"
-  private val HtmlVary        = "X-Requested-With, Accept-Encoding"
+  private val HtmlVary        = "Accept-Encoding"
 
   // Resolve the `/{city}/…` slug; 404 on an unknown city. Every city-scoped
   // handler wraps its body in this so resolution + not-found behaviour lives
@@ -357,19 +298,14 @@ class MovieController( cc: ControllerComponents,
       // (and its data-prep) never runs either.
       conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true)(renderIndexHtml(city, request, user).body)
         .withCookies(cityCookie(city))
-    } else if (isViewSwap(request)) {
-      Ok(views.html._repertoireView(movieControllerService.toSchedules(city), devMode)).withHeaders(varyOnSwap)
     } else {
-      Ok(renderIndexHtml(city, request, user)).withHeaders(varyOnSwap).withCookies(cityCookie(city))
+      Ok(renderIndexHtml(city, request, user)).withCookies(cityCookie(city))
     }
   }
 
   private def renderIndexHtml(city: City, request: RequestHeader, user: Option[models.User])(implicit c: City): play.twirl.api.Html = {
     val schedules = movieControllerService.toSchedules(city)
     val meta = FilterDescription.forIndex(city, request.queryString, schedules)
-    // Embed the Kina sibling fragment so the first swipe tracks instantly with
-    // no network fetch — shared.js seeds its prefetch cache from this at boot.
-    val sibling = views.html._kinaView(movieControllerService.toCinemaSchedules(city), None, devMode).body
     views.html.repertoire(
       schedules, city.cinemaDisplayNames, city.cinemaPillMap,
       devMode, user, oauthProviders,
@@ -377,8 +313,6 @@ class MovieController( cc: ControllerComponents,
       pageDescription = meta.description,
       pageUrl         = PageMeta.canonicalUrl(request),
       fbAppId         = PageMeta.fbAppId,
-      siblingPath     = s"/${city.slug}/kina",
-      siblingHtml     = sibling,
     )
   }
 
@@ -417,48 +351,6 @@ class MovieController( cc: ControllerComponents,
   // to gate.
   def robotsTxt: Action[AnyContent] = Action {
     Ok("User-agent: *\nAllow: /\n").as("text/plain; charset=utf-8")
-  }
-
-  def kina(city: String): Action[AnyContent] = Action { request => withCity(city)(c => renderKina(c, None, request)) }
-
-  // `/{city}/kina/:cinema` — pin the grid to a single cinema by display name.
-  // The pinned cinema persists across refreshes because it lives in the URL;
-  // clicking a pill on the page rewrites the path so the URL and the pin
-  // never drift apart. Unknown labels are ignored (the page renders as
-  // unpinned) — see `renderKina`.
-  def kinaPinned(city: String, cinema: String): Action[AnyContent] = Action { request => withCity(city)(c => renderKina(c, Some(cinema), request)) }
-
-  private def renderKina(city: City, pinnedCinema: Option[String], request: RequestHeader): Result = {
-    implicit val c: City = city
-    val user = currentUser(request)
-    if (cacheablePlainPage(request, user)) {
-      // 304 short-circuits before any work; on a 200 cache hit `renderKinaHtml`
-      // (and its data-prep) never runs either.
-      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true)(renderKinaHtml(city, pinnedCinema, request, user).body)
-        .withCookies(cityCookie(city))
-    } else if (isViewSwap(request)) {
-      val pinned = pinnedCinema.filter(city.cinemaDisplayNames.contains)
-      Ok(views.html._kinaView(movieControllerService.toCinemaSchedules(city), pinned, devMode)).withHeaders(varyOnSwap)
-    } else {
-      Ok(renderKinaHtml(city, pinnedCinema, request, user)).withHeaders(varyOnSwap).withCookies(cityCookie(city))
-    }
-  }
-
-  private def renderKinaHtml(city: City, pinnedCinema: Option[String], request: RequestHeader, user: Option[models.User])(implicit c: City): play.twirl.api.Html = {
-    val allCinemas = city.cinemaDisplayNames
-    val pinned = pinnedCinema.filter(allCinemas.contains)
-    val cinemas = movieControllerService.toCinemaSchedules(city)
-    // Embed the Filmy sibling fragment so the first swipe tracks instantly with
-    // no network fetch — shared.js seeds its prefetch cache from this at boot.
-    val sibling = views.html._repertoireView(movieControllerService.toSchedules(city), devMode).body
-    views.html.kina(
-      cinemas, allCinemas, city.cinemaPillMap,
-      devMode, user, oauthProviders, pinned,
-      pageUrl = PageMeta.canonicalUrl(request),
-      fbAppId = PageMeta.fbAppId,
-      siblingPath = s"/${city.slug}/",
-      siblingHtml = sibling,
-    )
   }
 
   /** Conditional-GET wrapper for the JSON API endpoints — the same mechanism as
@@ -510,16 +402,6 @@ class MovieController( cc: ControllerComponents,
     withCity(city) { implicit c =>
       devOnly {
         Ok(views.html.tune(MovieController.tuneSampleFilms))
-      }
-    }
-  }
-
-  /** Dev-only tuning page for the Kina (cinema-sectioned) view — live sliders
-   *  over the real `_cinemaCards` for the cinema-header font / spacing. */
-  def tuneKina(city: String): Action[AnyContent] = Action {
-    withCity(city) { implicit c =>
-      devOnly {
-        Ok(views.html.tuneKina(MovieController.tuneSampleCinemas))
       }
     }
   }
@@ -718,30 +600,6 @@ object MovieController {
     )
 
     Seq(rich, manyTimes, rotten, extremes, metaOnly, noRatings, seniorClub, sparse)
-  }
-
-  /** Cinema-sectioned view of `tuneSampleFilms`, pivoted film→cinema, for the
-   *  `/debug/tune/kina` page. Derived from the same sample so the two tuning
-   *  pages stay in lockstep. */
-  private[controllers] def tuneSampleCinemas: Seq[CinemaSchedule] = {
-    val flat = for {
-      f               <- tuneSampleFilms
-      (date, perCine) <- f.showings
-      cs              <- perCine
-    } yield (cs.cinema, f, date, cs.showtimes)
-
-    flat.groupBy(_._1).toSeq.sortBy(_._1.displayName).map { case (cinema, rows) =>
-      val movies = rows.groupBy(_._2).toSeq.sortBy(_._1.movie.title).map { case (f, mRows) =>
-        CinemaMovieSchedule(
-          movie      = f.movie,
-          posterUrl  = f.posterUrl,
-          filmUrl    = None,
-          showings   = mRows.map(r => (r._3, r._4)).sortBy(_._1.toString),
-          enrichment = f.enrichment
-        )
-      }
-      CinemaSchedule(cinema, movies)
-    }
   }
 
   /** One fully-populated film (synopsis + cast + director, which the listing

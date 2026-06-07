@@ -1,23 +1,21 @@
 @(activePage: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])(implicit city: models.City)
 @*
    Navbar layout:
-     - Logo + tab links (Filmy / Kina / Debug)                  — left
+     - Logo + tab links (Filmy / Debug)                         — left
      - Search + date                                            — right cluster
      - Hidden-films flyout button (auto-shown when set)        — right cluster
-     - Filtry dropdown (now includes the Kina cinema picker)   — right cluster
+     - Filtry dropdown (includes the cinema picker)            — right cluster
      - Login pill / avatar dropdown                             — far right (desktop)
                                                                  row-1 right (mobile)
 
-   The Kina cinema picker (formerly a standalone Kina dropdown next to
-   Filtry) now lives inside the Filtry panel — fewer top-level buttons,
-   one source of truth for "what's filtering this page".
+   The cinema picker lives inside the Filtry panel — one source of truth for
+   "what's filtering this page".
 *@
 <nav class="navbar px-4 py-3 d-flex align-items-center">
   <div class="d-flex align-items-center gap-3 navbar-logo">
     <span class="fw-bold fs-5">🎬<span class="navbar-title"> Repertuar kinowy @city.labels.nominative</span></span>
     <div class="d-flex gap-1 align-items-center">
       <a href="/@city.slug/" class="nav-tab@if(activePage == "films"){ active}">Filmy</a>
-      <a href="/@city.slug/kina" class="nav-tab@if(activePage == "kina"){ active}">Kina</a>
       @if(devMode) {
         <a href="/@city.slug/debug" class="nav-tab nav-tab-debug">Debug</a>
       }
@@ -50,19 +48,10 @@
       </select>
       <div class="panel-divider"></div>
 
-      @* Kina cinema picker — moved here from its own dropdown. Same DOM
-         ids (`cinema-all`, `cinema-list`) so the existing
-         `buildCinemaPanel`/`toggleAllCinemas` JS keeps working unchanged.
-         Owned by the Filmy view (it drives `disabledCinemas`); the Kina
-         view surfaces the same axis as its pill-pin row instead. Always
-         rendered now (no `activePage` gate) so the Filmy↔Kina slide-swap
-         has it available regardless of which view loaded first — shared.js
-         `syncFiltryForView` STASHES this whole `#filtry-cinema-section` node
-         out of the DOM while the Kina view is active, which keeps every
-         `#cinema-list`-presence check in shared.js correctly view-aware.
-         Rendered hidden when the page first loads on /kina so it can't
-         flash before boot detaches it. *@
-      <div id="filtry-cinema-section"@if(activePage == "kina"){ style="display:none"}>
+      @* Cinema picker. `cinema-all` / `cinema-list` ids drive the existing
+         `buildCinemaPanel`/`toggleAllCinemas` JS; it writes `disabledCinemas`,
+         which filters the film grid. *@
+      <div id="filtry-cinema-section">
         <div class="panel-section-label">Kina</div>
         <label class="panel-label" style="border-bottom:1px solid #3a3a6e; margin-bottom:4px; padding-bottom:8px;">
           <input type="checkbox" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> Wszystkie kina

@@ -13,11 +13,9 @@
 
 @_minified(devMode) {
 <script>
-  // Wrapped in an IIFE so the slide-swap (shared.js `navigateTo`) can
-  // re-execute an injected copy of this exact block when the user switches
-  // back to Filmy: a fresh IIFE scope re-creates the per-view locals
-  // (`INDEX`, `_prevVisibleOrder`) and re-assigns the `window.*` entry points
-  // below, instead of throwing "Identifier 'INDEX' has already been declared".
+  // Wrapped in an IIFE to keep the per-view locals (`INDEX`,
+  // `_prevVisibleOrder`) off the global scope; the `window.*` entry points
+  // below are what shared.js `bootView` drives.
   (function () {
   // ── DOM index ─────────────────────────────────────────────────────────────
 
@@ -104,6 +102,13 @@
     const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
     const hidden    = new Set(getHidden());
     const disabled  = new Set(getDisabledCinemas());
+    // When the cinema filter is narrowed to a single cinema (or the city only
+    // has one), every card's cinema sub-header repeats the same name — pure
+    // noise. Toggle a grid-level class that hides `.cinema-label` via CSS, and
+    // feed the same flag into truncation so its line accounting matches.
+    const singleCinema  = ALL_CINEMAS.filter(c => !disabled.has(c)).length <= 1;
+    const gridEl        = document.getElementById('film-grid');
+    if (gridEl) gridEl.classList.toggle('single-cinema', singleCinema);
     const fmtTokens     = getFormatFilter();
     const hasFmt        = fmtTokens.length > 0;
     const fromMin       = getFromMinutes();
@@ -199,7 +204,7 @@
     }
 
     sortByEarliestVisible(earlyMap);
-    truncateAllShowings(true);
+    truncateAllShowings(!singleCinema);
     updateEmptyState(visibleCount);
   }
 
@@ -227,12 +232,9 @@
     grid.appendChild(frag);
   }
 
-  // Entry points shared.js drives at boot and after a swap (`bootView`).
+  // Entry points shared.js drives at boot (`bootView`).
   window.buildIndex   = buildIndex;
   window.applyFilters = applyFilters;
-  // Filmy has no per-view boot hook; clear any stale one a previous Kina
-  // view may have left so a Kina→Filmy swap doesn't re-run `buildCinemaPills`.
-  window.__viewInit   = null;
   })();
 </script>
 }

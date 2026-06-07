@@ -128,11 +128,10 @@
     // correctly — anything not in the map falls through to "Wstecz".
     // `/` and `/filmy` are aliases for the main listing, so both label
     // as "Filmy" (matches the navbar tab).
-    var LABELS = { '/': 'Filmy', '/filmy': 'Filmy', '/kina': 'Kina', '/plan': 'Plan' };
+    var LABELS = { '/': 'Filmy', '/filmy': 'Filmy', '/plan': 'Plan' };
     var label = LABELS[p];
     if (!label) {
-      if (p.indexOf('/kina/')  === 0) label = 'Kina';
-      else if (p.indexOf('/filmy/') === 0) label = 'Filmy';
+      if (p.indexOf('/filmy/') === 0) label = 'Filmy';
       else label = 'Wstecz';
     }
 

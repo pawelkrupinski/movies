@@ -38,25 +38,4 @@ test.describe('date selector ↔ URL', () => {
     await expect(page.locator('#date-filter')).toHaveValue('today');
   });
 
-  test('?date= works the same on /kina', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/poznan/kina?date=week');
-
-    await expect(page.locator('#date-filter')).toHaveValue('week');
-
-    await setDateFilter(page, 'tomorrow');
-    expect(new URL(page.url()).searchParams.get('date')).toBe('tomorrow');
-    // Path preserved — query change shouldn't move us off /kina.
-    expect(new URL(page.url()).pathname).toBe('/poznan/kina');
-  });
-
-  test('toggling a cinema pill on /kina preserves ?date=', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/poznan/kina?date=tomorrow');
-
-    const firstPill = page.locator('#cinema-pills .cinema-pill').first();
-    await firstPill.click();
-
-    const url = new URL(page.url());
-    expect(url.pathname).toMatch(/^\/poznan\/kina\//);
-    expect(url.searchParams.get('date')).toBe('tomorrow');
-  });
 });

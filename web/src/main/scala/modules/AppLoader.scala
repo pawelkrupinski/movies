@@ -61,8 +61,8 @@ class AppComponents(context: Context)
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)
   // Gzip last so it compresses the final rendered body. The pages are large
   // (the `/` listing is ~4.2 MB of uncompressed HTML — 200+ server-rendered
-  // cards + the embedded sibling view); gzip takes that to ~300 KB on the
-  // wire, the single biggest mobile-load win. The filter is a no-op for
+  // cards); gzip takes that to ~300 KB on the wire, the single biggest
+  // mobile-load win. The filter is a no-op for
   // clients that don't send `Accept-Encoding: gzip` and skips already-
   // compressed payloads (images), so it only ever helps.
   override def httpFilters: Seq[EssentialFilter] =

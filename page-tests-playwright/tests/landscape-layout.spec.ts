@@ -25,7 +25,6 @@ test.describe('mobile landscape layout', () => {
     const logoTabs = page.locator('.navbar > .d-flex').first();
     await expect(logoTabs).toBeVisible();
     await expect(page.locator('.navbar a.nav-tab', { hasText: 'Filmy' })).toBeVisible();
-    await expect(page.locator('.navbar a.nav-tab', { hasText: 'Kina' })).toBeVisible();
   });
 
   test('all navbar items share a single row', async ({ page }) => {

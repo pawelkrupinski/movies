@@ -154,19 +154,19 @@ class Chrome private[tools] (
 
   /** Open `url` in a fresh tab, run `body`, then close the tab. The page
    *  is loaded synchronously — `body` runs after `document.readyState`
-   *  is `complete`, so DOMContentLoaded handlers (buildCinemaPills,
-   *  buildIndex, the boot-time applyFilters() in _sharedJs) have fired.
+   *  is `complete`, so DOMContentLoaded handlers (buildIndex, the
+   *  boot-time applyFilters() in _sharedJs) have fired.
    *
    *  Callers usually point at `TestHttpServer.baseUrl + "/some/path"`.
-   *  Avoid file:// — `history.replaceState` (used by /kina's pill toggle
-   *  to rewrite the URL) throws SecurityError on file:// origins, which
-   *  silently aborts the rest of the click handler in production code. */
+   *  Avoid file:// — `history.replaceState` (used by the date-filter ↔
+   *  URL sync to rewrite `?date=`) throws SecurityError on file:// origins,
+   *  which silently aborts the rest of the handler in production code. */
   def openPage[T](url: String)(body: CdpPage => T): T = {
     // Open a blank tab first, then navigate via CDP. Chrome ≥ 130 silently
     // ignores the URL passed to `/json/new?<URL>` on some platforms (CI
     // runners with the latest stable) — the tab lands on `about:blank`,
     // which has an opaque origin (localStorage denied, scripts not
-    // executed against the test server) and produces null `.cinema-section`
+    // executed against the test server) and produces null `#film-grid`
     // queries that look like phantom page failures. Driving the navigation
     // through `Page.navigate` over CDP is the supported path that doesn't
     // depend on the legacy query-string URL.
