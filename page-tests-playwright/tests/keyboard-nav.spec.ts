@@ -15,23 +15,24 @@ test.describe('keyboard arrow date navigation', () => {
     await setDateFilter(page, 'today');
   });
 
+  // The arrow keys now route through the carousel's `animateToDay`, which
+  // commits the `#date-filter` value only after the slide settles — so the
+  // value change is asserted with `expect.poll`, not read synchronously.
   test('ArrowRight advances the date filter', async ({ page }) => {
-    const before = await page.locator('#date-filter').inputValue();
-    expect(before).toBe('today');
+    expect(await page.locator('#date-filter').inputValue()).toBe('today');
 
     await page.keyboard.press('ArrowRight');
 
-    const after = await page.locator('#date-filter').inputValue();
-    expect(after).not.toBe('today');
+    await expect.poll(() => page.locator('#date-filter').inputValue()).not.toBe('today');
   });
 
   test('ArrowLeft returns to the previous filter', async ({ page }) => {
     await page.keyboard.press('ArrowRight');
+    await expect.poll(() => page.locator('#date-filter').inputValue()).not.toBe('today');
     const advanced = await page.locator('#date-filter').inputValue();
     await page.keyboard.press('ArrowLeft');
-    const back = await page.locator('#date-filter').inputValue();
-    expect(back).toBe('today');
-    expect(back).not.toBe(advanced);
+    await expect.poll(() => page.locator('#date-filter').inputValue()).toBe('today');
+    expect(advanced).not.toBe('today');
   });
 
   test('arrow keys do nothing when focus is inside the search input', async ({ page }) => {
@@ -42,6 +43,8 @@ test.describe('keyboard arrow date navigation', () => {
     await search.focus();
     const before = await page.locator('#date-filter').inputValue();
     await page.keyboard.press('ArrowRight');
+    // Give any (erroneous) slide a beat to commit, then assert no change.
+    await page.waitForTimeout(400);
     const after = await page.locator('#date-filter').inputValue();
     expect(after).toBe(before);
   });
