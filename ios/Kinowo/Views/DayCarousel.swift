@@ -56,12 +56,23 @@ struct DayCarousel: View {
     var body: some View {
         GeometryReader { geo in
             let width = geo.size.width
-            HStack(spacing: 0) {
-                mirrorPane(for: dateFilter.previousPreset, width: width)
-                currentPane(width: width)
-                mirrorPane(for: dateFilter.nextPreset, width: width)
+            let height = geo.size.height
+            // Top-aligned, with every pane clamped to the GeometryReader's
+            // height. The interactive (centre) pane is a ScrollView, whose own
+            // height is the viewport (~screen), while the read-only mirror panes
+            // render their grid at its FULL natural content height (thousands of
+            // points). Without clamping, the tallest mirror inflated the HStack
+            // row to that natural height and the default `.center` alignment then
+            // dropped the shorter ScrollView's frame far below the screen
+            // (origin y ≈ (rowHeight − viewport)/2) — so the centre pane's cards
+            // mounted off the bottom and the grid read blank at rest. Pinning
+            // every pane to `height` keeps the row exactly one screen tall.
+            HStack(alignment: .top, spacing: 0) {
+                mirrorPane(for: dateFilter.previousPreset, width: width, height: height)
+                currentPane(width: width, height: height)
+                mirrorPane(for: dateFilter.nextPreset, width: width, height: height)
             }
-            .frame(width: width * 3, alignment: .leading)
+            .frame(width: width * 3, height: height, alignment: .topLeading)
             // Park the centre pane on screen at rest, slide with the finger.
             .offset(x: -width + dragX)
             .contentShape(Rectangle())
@@ -79,7 +90,7 @@ struct DayCarousel: View {
     /// The single interactive pane: a real `FilmGridView` whose ScrollView owns
     /// the vertical pan and reports its offset into `sharedScrollY`. Keyed on
     /// `dateFilter` so a committed day change animates its scroll back to top.
-    private func currentPane(width: CGFloat) -> some View {
+    private func currentPane(width: CGFloat, height: CGFloat) -> some View {
         FilmGridView(
             films: films(dateFilter),
             showCinemaHeaders: showCinemaHeaders,
@@ -87,20 +98,23 @@ struct DayCarousel: View {
             pagedInTabView: false,
             scrollOffsetReporter: { sharedScrollY = $0 }
         )
-        .frame(width: width)
+        .frame(width: width, height: height, alignment: .top)
     }
 
     /// A read-only neighbour pane: the same grid content with no ScrollView,
     /// translated by the shared scroll offset so it mirrors the current day's
     /// vertical position during the drag.
-    private func mirrorPane(for filter: DateFilter, width: CGFloat) -> some View {
+    private func mirrorPane(for filter: DateFilter, width: CGFloat, height: CGFloat) -> some View {
         FilmGridView(
             films: films(filter),
             showCinemaHeaders: showCinemaHeaders,
             pagedInTabView: false,
             mirroredOffset: sharedScrollY
         )
-        .frame(width: width)
+        // Clamp to the viewport and clip: the mirror renders its grid at full
+        // natural height, but it must occupy only one screen in the strip so it
+        // can't inflate the HStack row (see the carousel body comment).
+        .frame(width: width, height: height, alignment: .top)
         .clipped()
     }
 
