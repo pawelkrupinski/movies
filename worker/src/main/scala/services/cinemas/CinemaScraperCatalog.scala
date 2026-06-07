@@ -284,7 +284,46 @@ class CinemaScraperCatalog(
 
   /** Raw scrapers grouped by city slug — same slugs `City.slug` uses, so a
    *  caller can scope by city without re-spelling the membership. */
-  val byCity: Map[String, Seq[CinemaScraper]] = Map(
+  // Filmweb catchment cinemas (nearby towns), each by Filmweb internal cinema id.
+  // Merged into byCity below so every city's catchment is scraped without
+  // touching its hand-written scraper group.
+  private val filmwebExtra: Map[String, Seq[CinemaScraper]] = Map(
+    "wroclaw" -> Seq(new FilmwebShowtimesClient(http, 2328, KinoAstra, today = today), new FilmwebShowtimesClient(http, 1645, KinoDyskusyjnyKlubFilmowyPolitechnika, today = today)),
+    "warszawa" -> Seq(new FilmwebShowtimesClient(http, 2180, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha, today = today), new FilmwebShowtimesClient(http, 2130, KinoPlanetariumCentrumNaukiKopernik, today = today)),
+    "lodz" -> Seq(new FilmwebShowtimesClient(http, 2403, KinoSpojnia, today = today), new FilmwebShowtimesClient(http, 2443, KinoStaryMlyn, today = today)),
+    "katowice" -> Seq(new FilmwebShowtimesClient(http, 388, CinemaCity, today = today), new FilmwebShowtimesClient(http, 352, KinoPatria, today = today)),
+    "szczecin" -> Seq(new FilmwebShowtimesClient(http, 117, KinoKawiarnia, today = today), new FilmwebShowtimesClient(http, 2363, KinoPDK, today = today), new FilmwebShowtimesClient(http, 1941, KinoSCK, today = today)),
+    "bialystok" -> Seq(new FilmwebShowtimesClient(http, 1659, KinoSokolSokolka, today = today)),
+    "trojmiasto" -> Seq(new FilmwebShowtimesClient(http, 2100, KinoNaSzekspirowskim, today = today), new FilmwebShowtimesClient(http, 1464, MultikinoRumia, today = today)),
+    "bydgoszcz" -> Seq(new FilmwebShowtimesClient(http, 1124, KinoKinomax, today = today), new FilmwebShowtimesClient(http, 3121, KinoRondo, today = today)),
+    "lublin" -> Seq(new FilmwebShowtimesClient(http, 1697, KinoLewart, today = today), new FilmwebShowtimesClient(http, 285, KinoMetalowiec, today = today)),
+    "czestochowa" -> Seq(new FilmwebShowtimesClient(http, 1714, KinoDKFRumcajs, today = today), new FilmwebShowtimesClient(http, 1719, KinoKarolinka, today = today), new FilmwebShowtimesClient(http, 1732, KinoMDK, today = today), new FilmwebShowtimesClient(http, 1525, KinoMOKCentrum, today = today), new FilmwebShowtimesClient(http, 2350, KinoZacisze, today = today)),
+    "radom" -> Seq(new FilmwebShowtimesClient(http, 1845, HeliosStarachowice, today = today), new FilmwebShowtimesClient(http, 1705, KinoCentrumSkarzyskoKamienna, today = today), new FilmwebShowtimesClient(http, 3064, KinoGornik, today = today), new FilmwebShowtimesClient(http, 1913, KinoKozienickiDomKultury, today = today), new FilmwebShowtimesClient(http, 1713, KinoKuznica, today = today), new FilmwebShowtimesClient(http, 2342, KinoSwitZwolen, today = today)),
+    "torun" -> Seq(new FilmwebShowtimesClient(http, 3119, KinoMiejskieCentrumKultury, today = today), new FilmwebShowtimesClient(http, 1771, KinoZdroj, today = today)),
+    "kielce" -> Seq(new FilmwebShowtimesClient(http, 2351, KinoCK, today = today), new FilmwebShowtimesClient(http, 3128, KinoKoneckieCentrumKultury, today = today)),
+    "rzeszow" -> Seq(new FilmwebShowtimesClient(http, 2014, HeliosKrosno, today = today), new FilmwebShowtimesClient(http, 1122, KinoArtKino, today = today), new FilmwebShowtimesClient(http, 2335, KinoJednosc, today = today), new FilmwebShowtimesClient(http, 2344, KinoMCK, today = today), new FilmwebShowtimesClient(http, 1500, KinoSniezka, today = today), new FilmwebShowtimesClient(http, 1477, KinoSokolBrzozow, today = today), new FilmwebShowtimesClient(http, 2346, KinoWarszawa, today = today)),
+    "gliwice" -> Seq(new FilmwebShowtimesClient(http, 1494, KinoScenaKultura, today = today)),
+    "olsztyn" -> Seq(new FilmwebShowtimesClient(http, 2357, KinoCinemaLumiere, today = today), new FilmwebShowtimesClient(http, 2354, KinoIgnacy, today = today), new FilmwebShowtimesClient(http, 2355, KinoNarie, today = today)),
+    "bielsko-biala" -> Seq(new FilmwebShowtimesClient(http, 157, KinoJanosik, today = today), new FilmwebShowtimesClient(http, 3248, KinoPckulKino, today = today), new FilmwebShowtimesClient(http, 135, KinoSwitCzechowiceDziedzice, today = today), new FilmwebShowtimesClient(http, 3141, KinoTeatrElektryczny, today = today), new FilmwebShowtimesClient(http, 1490, KinoWislaBrzeszcze, today = today), new FilmwebShowtimesClient(http, 1776, MultikinoCzechowiceDziedzice, today = today)),
+    "opole" -> Seq(new FilmwebShowtimesClient(http, 1703, HeliosKedzierzynKozle, today = today), new FilmwebShowtimesClient(http, 2320, KinoBajkaKluczbork, today = today), new FilmwebShowtimesClient(http, 619, KinoChemik, today = today), new FilmwebShowtimesClient(http, 2343, KinoDiana, today = today), new FilmwebShowtimesClient(http, 1681, KinoKrapkowice, today = today), new FilmwebShowtimesClient(http, 431, KinoStudio, today = today), new FilmwebShowtimesClient(http, 1672, KinoTwierdza, today = today)),
+    "rybnik" -> Seq(new FilmwebShowtimesClient(http, 2326, HeliosZory, today = today), new FilmwebShowtimesClient(http, 168, KinoBaltyk, today = today), new FilmwebShowtimesClient(http, 514, KinoCentrum, today = today), new FilmwebShowtimesClient(http, 588, KinoNaStarowce, today = today), new FilmwebShowtimesClient(http, 3148, KinoPegaz, today = today), new FilmwebShowtimesClient(http, 3140, KinoTeatrZiemiRybnickiej, today = today)),
+    "elblag" -> Seq(new FilmwebShowtimesClient(http, 1673, HeliosTczew, today = today), new FilmwebShowtimesClient(http, 2352, KinoBaszta, today = today), new FilmwebShowtimesClient(http, 1798, KinoPowisle, today = today), new FilmwebShowtimesClient(http, 3131, KinoZulawskiOsrodekKultury, today = today)),
+    "koszalin" -> Seq(new FilmwebShowtimesClient(http, 255, KinoBajkaDarlowo, today = today), new FilmwebShowtimesClient(http, 1675, KinoCentrumBialogard, today = today), new FilmwebShowtimesClient(http, 2365, KinoDK, today = today), new FilmwebShowtimesClient(http, 2414, KinoGOK, today = today), new FilmwebShowtimesClient(http, 1864, KinoGoplana, today = today), new FilmwebShowtimesClient(http, 276, KinoWybrzeze, today = today)),
+    "kalisz" -> Seq(new FilmwebShowtimesClient(http, 2372, HeliosOstrowWlkp, today = today), new FilmwebShowtimesClient(http, 1513, KinoCentrum3D, today = today), new FilmwebShowtimesClient(http, 1484, KinoEcho, today = today), new FilmwebShowtimesClient(http, 2359, KinoPiastOstrzeszow, today = today), new FilmwebShowtimesClient(http, 1121, KinoPrzedwiosnieKrotoszyn, today = today)),
+    "zielona-gora" -> Seq(new FilmwebShowtimesClient(http, 1955, KinoEuropa, today = today), new FilmwebShowtimesClient(http, 2171, KinoMaxKino, today = today), new FilmwebShowtimesClient(http, 1430, KinoPionierZary, today = today), new FilmwebShowtimesClient(http, 2331, KinoSDKSwiebodzin, today = today)),
+    "tychy" -> Seq(new FilmwebShowtimesClient(http, 1480, KinoNaszeKino, today = today), new FilmwebShowtimesClient(http, 1528, KinoPlanetCinema, today = today)),
+    "walbrzych" -> Seq(new FilmwebShowtimesClient(http, 1493, KinoMOKNowaRuda, today = today), new FilmwebShowtimesClient(http, 197, KinoMOKiS, today = today), new FilmwebShowtimesClient(http, 2410, KinoSleza, today = today), new FilmwebShowtimesClient(http, 1530, KinoZbyszek, today = today), new FilmwebShowtimesClient(http, 2990, MultikinoKlodzko, today = today), new FilmwebShowtimesClient(http, 2993, MultikinoSwidnica, today = today)),
+    "tarnow" -> Seq(new FilmwebShowtimesClient(http, 2315, KinoFarys, today = today), new FilmwebShowtimesClient(http, 2411, KinoGCK, today = today), new FilmwebShowtimesClient(http, 2404, KinoKolory, today = today), new FilmwebShowtimesClient(http, 1481, KinoPlaneta, today = today), new FilmwebShowtimesClient(http, 2419, KinoPromien, today = today), new FilmwebShowtimesClient(http, 1294, KinoRegis, today = today), new FilmwebShowtimesClient(http, 1488, KinoSokolDabrowaTarnowska, today = today)),
+    "wloclawek" -> Seq(new FilmwebShowtimesClient(http, 2341, KinoJutrzenka, today = today), new FilmwebShowtimesClient(http, 3130, KinoNawojka, today = today), new FilmwebShowtimesClient(http, 3246, KinoNoweKinoWarszawa, today = today), new FilmwebShowtimesClient(http, 1949, KinoZaRogiem, today = today)),
+    "legnica" -> Seq(new FilmwebShowtimesClient(http, 1420, HeliosLubin, today = today), new FilmwebShowtimesClient(http, 1718, KinoAurum, today = today), new FilmwebShowtimesClient(http, 2313, KinoCyfroweKino, today = today), new FilmwebShowtimesClient(http, 373, KinoForumBoleslawiec, today = today), new FilmwebShowtimesClient(http, 288, KinoMuzaLubin, today = today), new FilmwebShowtimesClient(http, 1139, KinoPCA, today = today)),
+    "plock" -> Seq(new FilmwebShowtimesClient(http, 1134, KinoKDK, today = today), new FilmwebShowtimesClient(http, 1702, KinoKalejdoskop, today = today), new FilmwebShowtimesClient(http, 2128, KinoODEON, today = today)),
+    "nowy-sacz" -> Seq(new FilmwebShowtimesClient(http, 561, KinoJaworzyna, today = today), new FilmwebShowtimesClient(http, 1137, KinoKlaps, today = today)),
+    "slupsk" -> Seq(new FilmwebShowtimesClient(http, 2123, KinoFregata, today = today)),
+    "jelenia-gora" -> Seq(new FilmwebShowtimesClient(http, 1721, KinoWawel, today = today)),
+    "przemysl" -> Seq(new FilmwebShowtimesClient(http, 1786, KinoCentrum3DPrzemysl, today = today), new FilmwebShowtimesClient(http, 1707, KinoIkar, today = today), new FilmwebShowtimesClient(http, 2172, KinoNaBiegunach, today = today), new FilmwebShowtimesClient(http, 2118, KinoSDK, today = today)),
+  )
+
+  private val baseByCity: Map[String, Seq[CinemaScraper]] = Map(
     "poznan"     -> poznanScrapers,
     "wroclaw"    -> wroclawScrapers,
     "warszawa"   -> warszawaScrapers,
@@ -327,6 +366,10 @@ class CinemaScraperCatalog(
     "przemysl"   -> przemyslScrapers,
     "konin"      -> koninScrapers,
   )
+
+  /** Per-city scrapers plus any Filmweb-catchment venues for that city. */
+  val byCity: Map[String, Seq[CinemaScraper]] =
+    baseByCity.map { case (slug, scrapers) => slug -> (scrapers ++ filmwebExtra.getOrElse(slug, Nil)) }
 
   /** Every raw scraper across every city, in city order. */
   val all: Seq[CinemaScraper] =
