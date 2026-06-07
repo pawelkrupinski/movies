@@ -2,7 +2,7 @@ package modules
 
 import clients.TmdbClient
 import models.City
-import services.{MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
+import services.{MongoCachingDetailFetch, MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
 import services.cinemas._
 import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
@@ -47,7 +47,11 @@ class WorkerWiring {
   lazy val multikinoFetch: HttpFetch = MultikinoClient.fetchFor(httoFetch)
   // biletyna.pl 403s our datacenter IP; route Kino Kameralne through Zyte.
   lazy val biletynaFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch)
-  lazy val cinemaScraperCatalog = new CinemaScraperCatalog(httoFetch, multikinoFetch, biletynaFetch, heliosToday, deferDetail)
+  lazy val cinemaScraperCatalog = new CinemaScraperCatalog(
+    httoFetch, multikinoFetch, biletynaFetch, heliosToday, deferDetail,
+    // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped
+    // across worker servers, not just within one process.
+    (h, ttl) => new MongoCachingDetailFetch(h, mongoConnection.database, ttl))
   def kinoMuzaClient: KinoMuzaClient = cinemaScraperCatalog.kinoMuzaClient
 
   // When true, cinemas that implement DetailEnricher scrape BARE and their
