@@ -41,7 +41,13 @@ class MovieService(
   // so enrichment shares one concurrency cap with the scrape + rating
   // refreshers and can't peg the box on the hourly walk. See
   // `SharedExecutionBudget`.
-  ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("enrichment-worker")
+  ec:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("enrichment-worker"),
+  // How many times a TMDB stage is retried (with backoff) after a transient
+  // failure. Production keeps the default; fixture-replay tests set 0 so a
+  // permanently-missing fixture isn't retried 6× — that retry churn both slows
+  // the suite (backoff waits) and widens the window in which the cascade drain
+  // drops in-flight enrichment, making whole-corpus renders nondeterministic.
+  maxRetries: Int = 6
 ) extends Stoppable with Logging {
 
   // Active or queued TMDB-stage lookups, so we don't dispatch the same key
@@ -70,7 +76,7 @@ class MovieService(
   // on success / non-transient miss. Caps a runaway loop for a key that
   // perpetually fails some non-cacheable way.
   private val retryAttempts = new ConcurrentHashMap[CacheKey, Integer]()
-  private val MaxRetries    = 6
+  private val MaxRetries    = maxRetries
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 

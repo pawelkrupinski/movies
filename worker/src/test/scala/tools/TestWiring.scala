@@ -40,6 +40,13 @@ trait TestWiring extends WorkerWiring {
   // `RecordingHttpFetch.stableQueryFingerprint`), so any non-empty string works.
   override lazy val tmdbClient: TmdbClient = new TmdbClient(httoFetch, apiKey = Some("test-api-key"))
 
+  // No TMDB retries in fixture replay: a missing fixture is a permanent miss,
+  // not a transient, so retrying it 6× (with 30s+ backoff) only slows the suite
+  // and churns the cascade — the churn is what makes the drain drop in-flight
+  // enrichment and renders nondeterministic. Failing once and giving up lets the
+  // cascade settle quickly and identically every run.
+  override def tmdbMaxRetries: Int = 0
+
   /** Synchronously force one title all the way through the enrichment cascade:
    *  TMDB resolve → IMDb id recovery → the four `*Ratings.refreshOneSync` URL
    *  discovery + rating scrapes. Idempotent — safe to call after the bus-driven

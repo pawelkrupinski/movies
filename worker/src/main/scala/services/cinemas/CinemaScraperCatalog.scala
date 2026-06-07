@@ -27,16 +27,18 @@ import java.time.{LocalDate, ZoneId}
 class CinemaScraperCatalog(
   http:    HttpFetch,
   mkFetch: HttpFetch,
+  bnFetch: HttpFetch,
   today:   LocalDate
 ) {
 
-  /** Diagnostic ctor: Multikino's fetch defaults to the Zyte-routed path derived
-   *  from `http` (a clean body-derived default, not the old `null`-param
-   *  workaround — Scala can't reference `http` in a primary-constructor default,
-   *  but a secondary constructor can). `WorkerWiring` uses the primary ctor to
-   *  inject its (possibly fixture-overridden) `multikinoFetch`. */
+  /** Diagnostic ctor: the Zyte-routed fetches (Multikino's API, biletyna's venue
+   *  pages) default to the path derived from `http` (a clean body-derived
+   *  default, not the old `null`-param workaround — Scala can't reference `http`
+   *  in a primary-constructor default, but a secondary constructor can).
+   *  `WorkerWiring` uses the primary ctor to inject its (possibly
+   *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) =
-    this(http, MultikinoClient.fetchFor(http), today)
+    this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today)
 
   // Shared per-source helper clients the scrapers below reuse.
   val cinemaCityClient: CinemaCityClient = new CinemaCityClient(http)
@@ -149,9 +151,10 @@ class CinemaScraperCatalog(
     new HeliosClient(http, HeliosNuxt.Forum, today),
     new HeliosClient(http, HeliosNuxt.Riviera, today),
     new KinoSpektrumClient(http, KinoSpektrum),
-    // biletyna.pl 403s our datacenter IP, so route through Zyte's residential
-    // egress (→ direct fallback when ZYTE_API_KEY is unset). See ZyteFallback.
-    new KinoKameralneClient(ZyteFallback.fetchFor(http), KinoKameralne),
+    // biletyna.pl 403s our datacenter IP, so route through `bnFetch` — Zyte's
+    // residential egress in production, the fixture fake in tests. See
+    // WorkerWiring.biletynaFetch / ZyteFallback.
+    new KinoKameralneClient(bnFetch, KinoKameralne),
     new KinoIkmClient(http, KinoIkm),
     new KinoMuzeumGdanskClient(http, KinoMuzeumGdansk),
     new KinoZakClient(http, KinoZak),

@@ -34,10 +34,12 @@ class WorkerWiring {
   // The per-city scraper graph lives in CinemaScraperCatalog (Mongo-free, so a
   // diagnostic like tools.FilmwebDiff can build the real scrapers without the
   // worker's write machinery). WorkerWiring supplies the seams it varies —
-  // `httoFetch`, the Zyte-routed `multikinoFetch`, and Helios's REST date — and
+  // `httoFetch`, the Zyte-routed `multikinoFetch` / `biletynaFetch`, and Helios's REST date — and
   // wraps each raw scraper in RetryingCinemaScraper for production ticks.
   lazy val multikinoFetch: HttpFetch = MultikinoClient.fetchFor(httoFetch)
-  lazy val cinemaScraperCatalog = new CinemaScraperCatalog(httoFetch, multikinoFetch, heliosToday)
+  // biletyna.pl 403s our datacenter IP; route Kino Kameralne through Zyte.
+  lazy val biletynaFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch)
+  lazy val cinemaScraperCatalog = new CinemaScraperCatalog(httoFetch, multikinoFetch, biletynaFetch, heliosToday)
   def kinoMuzaClient: KinoMuzaClient = cinemaScraperCatalog.kinoMuzaClient
 
   // Scrape only the cities in KINOWO_SCRAPE_CITIES (comma-separated slugs),
@@ -81,7 +83,11 @@ class WorkerWiring {
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, backgroundBudget.ec("RT-stage"))
   lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, backgroundBudget.ec("Metascore-stage"))
   lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, backgroundBudget.ec("Filmweb-stage"))
-  lazy val movieService = new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"))
+  // How many times the TMDB stage retries a transient failure. Overridden to 0
+  // by the fixture-replay test wiring (see TestWiring) so permanent fixture
+  // misses don't churn the cascade.
+  def tmdbMaxRetries: Int = 6
+  lazy val movieService = new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.ec("enrichment-worker"), maxRetries = tmdbMaxRetries)
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
   lazy val kinoMuzaSynopsisRefresher = new KinoMuzaSynopsisRefresher(movieCache, kinoMuzaClient, httoFetch)
 

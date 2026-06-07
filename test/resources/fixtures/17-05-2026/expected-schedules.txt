@@ -973,7 +973,7 @@ releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/diabel-ubiera-sie-u-prady-2/diabelprada2_plakatoficial-cut.jpg?rev=6e854aefaa8e47c0b27446b60a57f68a
 synopsis.length:   1002
-cast:              Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci, Kenneth Branagh, Simone Ashley, Justin Theroux, Lucy Liu, Patrick Brammall, Caleb Hearon, Helen J. Shen, Pauline Chalamet, B.J. Novak, Conrad Ricamora, Tracie Thoms, Tibor Feldman
+cast:              Meryl Streep, Anne Hathaway, Emily Blunt, Stanley Tucci
 director:          David Frankel
 tmdbId:            1314481
 imdbId:            tt33612209
@@ -1010,7 +1010,6 @@ cinemaScrapes:
   Helios Magnolia Park / Diabeł ubiera się u Prady 2 / —
   Helios Posnania / Diabeł ubiera się u Prady 2 / 2026
   Kino Atlantic / Diabeł ubiera się u Prady 2 / 2026
-  Kino Głębocka 66 / Diabeł ubiera się u Prady 2 / —
   Kino Kępa / Diabeł ubiera się u Prady 2 / —
   Kino Malta Charlie Monroe / Diabeł ubiera się u Prady 2 / —
   Kino Rialto / Diabeł ubiera się u prady 2 / 2026
@@ -1255,7 +1254,6 @@ cinemaScrapes:
   Kino Apollo / Drzewo Magii / —
   Kino Atlantic / Drzewo magii / 2026
   Kino Bułgarska 19 / Drzewo magii / 2026
-  Kino Głębocka 66 / Drzewo magii / —
   Kino Luna / Drzewo magii / —
   Kino Mikro / Drzewo magii / —
   Kino na Boku / Drzewo magii / —
@@ -4271,7 +4269,6 @@ cinemaScrapes:
   Helios Posnania / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   KINOkawiarnia Stacja Falenica / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Cytadela / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
-  Kino Głębocka 66 / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Iluzjon / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino Luna / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Mikro / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -7228,7 +7225,6 @@ cinemaScrapes:
   Kino Muranów / Zawieście czerwone latarnie / 1991
   Kino Pałacowe / Zawieście czerwone latarnie / 1991
   Kino U-jazdowski / Zawieście czerwone latarnie / 1991
-  Kino na Boku / Zawieście czerwone latarnie / —
   Kinoteka / Zawieście czerwone latarnie / 2026
   Multikino Młociny / Zawieście czerwone latarnie / —
   Multikino Pasaż Grunwaldzki / Zawieście czerwone latarnie / —

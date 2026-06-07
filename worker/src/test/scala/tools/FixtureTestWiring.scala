@@ -26,6 +26,12 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // live-network smoke still goes through Zyte.
   override lazy val multikinoFetch: HttpFetch = httoFetch
 
+  // Same single override point for biletyna (Kino Kameralne): replay the
+  // fixture rather than hitting Zyte. Without this, CI — where ZYTE_API_KEY is
+  // set — routes the fixture-replay scrape through real Zyte → biletyna,
+  // breaking hermetic end-to-end specs (FilmScheduleEndToEndSpec).
+  override lazy val biletynaFetch: HttpFetch = httoFetch
+
   /** Mirror of `ShowtimeCache.refreshOne`, sequenced so a test doesn't race
    *  the production scheduler. Catches per-scraper failures the same way
    *  production does so one missing-fixture cinema can't take down the
