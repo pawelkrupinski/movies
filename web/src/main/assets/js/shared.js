@@ -1546,6 +1546,46 @@
   }
   window.stepDateWrap = stepDateWrap;
 
+  // ── First-run swipe hint ────────────────────────────────────────────────────
+  // Reveal "Przesuń, aby zmienić dzień" once per calendar day on a touch device,
+  // until the first real swipe retires it for good — the same rule the iOS and
+  // Android apps follow. Device-local (plain localStorage, NOT the server-synced
+  // store): it's a per-device onboarding nudge, not user state worth syncing.
+  const SWIPE_HINT_DAY  = 'kinowoSwipeHintDay';   // last calendar day (Warsaw) it was shown
+  const SWIPE_HINT_DONE = 'kinowoSwipeHintDone';  // set on the first swipe → never show again
+  const SWIPE_HINT_MS   = 3000;                   // auto-hide after this long if untouched
+  let _swipeHintTimer = null;
+
+  function _hintGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function _hintSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode — skip */ } }
+
+  // Reveal the hint if this is a touch device, the user hasn't swiped before,
+  // and it hasn't already shown today. Called once at boot.
+  function maybeShowSwipeHint() {
+    if (!matchMedia('(pointer: coarse)').matches) return;   // desktop never sees it
+    const el = document.getElementById('swipe-hint');
+    if (!el) return;                                        // not the listing page
+    if (_hintGet(SWIPE_HINT_DONE)) return;                 // retired by a past swipe
+    const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+    if (_hintGet(SWIPE_HINT_DAY) === today) return;        // already shown today
+    _hintSet(SWIPE_HINT_DAY, today);
+    el.classList.add('visible');
+    clearTimeout(_swipeHintTimer);
+    _swipeHintTimer = setTimeout(() => el.classList.remove('visible'), SWIPE_HINT_MS);
+  }
+
+  // Hide the hint without retiring it (the user has started a horizontal drag).
+  function dismissSwipeHint() {
+    clearTimeout(_swipeHintTimer);
+    document.getElementById('swipe-hint')?.classList.remove('visible');
+  }
+
+  // Retire the hint for good (the user committed a day-swipe — they've got it).
+  function retireSwipeHint() {
+    dismissSwipeHint();
+    _hintSet(SWIPE_HINT_DONE, '1');
+  }
+
   // Slide the grid out toward the swipe direction ('left' = swiped left → next
   // day), switch the day while it's off-screen, then slide the refreshed grid in
   // from the opposite edge. `fromPx` is the live drag offset so the commit
@@ -1553,6 +1593,7 @@
   function commitDaySwipe(dir, fromPx) {
     const root  = document.getElementById('view-root');
     if (!root) return;
+    retireSwipeHint();   // a committed swipe means they've found the gesture
     const pager = document.getElementById('view-pager');
     const w     = (pager && pager.offsetWidth) || window.innerWidth;
     const dayDir = dir === 'left' ? 1 : -1;   // swipe-left → next day
@@ -1648,6 +1689,7 @@
       // Horizontal intent — past the deadzone and at least as horizontal as vertical → lock the swipe.
       if (adx >= SWIPE_DEADZONE_PX && adx >= ady) {
         _drag.axis = 'x';
+        dismissSwipeHint();                    // they're swiping — get the nudge out of the way
         const r = document.getElementById('view-root');
         if (r) r.style.transition = 'none';   // track the finger without lag
       }
@@ -1693,6 +1735,7 @@
     updateNavbar();
     bootView();
     bootMergeFromServer();
+    maybeShowSwipeHint();   // once-a-day phone nudge, retired on first swipe
   });
 
   // ── Image-fetch uptime tracker ────────────────────────────────────────────

@@ -27,5 +27,10 @@
 <div id="view-pager">
 @_repertoireView(films, devMode)
 </div>
+
+@* First-run swipe hint (phones only). shared.js reveals it once per calendar
+   day until the first swipe retires it for good — same rule as the iOS/Android
+   apps. Hidden by default; never shown on a fine-pointer (desktop) device. *@
+<div id="swipe-hint" aria-hidden="true"><span class="swipe-hint-arrows">‹ ›</span> Przesuń, aby zmienić dzień</div>
 </body>
 </html>

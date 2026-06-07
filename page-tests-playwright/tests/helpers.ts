@@ -1,6 +1,32 @@
 import type { Page } from '@playwright/test';
 
 /**
+ * Drag a real horizontal touch across `#film-grid` via CDP — the same path a
+ * finger takes, so it actually drives the production swipe handlers. The
+ * distance is 55% of the grid WIDTH (above the handler's 40% commit threshold)
+ * and the start point is offset so the whole drag stays on-screen, so the
+ * commit is decided by position rather than the CDP touch's unreliable
+ * synthetic velocity, on any viewport. Chromium-only (CDP touch injection);
+ * `dir` is 'left' (next day) / 'right' (previous day).
+ */
+export async function cdpSwipe(page: Page, dir: 'left' | 'right'): Promise<void> {
+  const box = (await page.locator('#film-grid').boundingBox())!;
+  const y    = box.y + Math.min(box.height / 2, 150);
+  const dist = box.width * 0.55;
+  const x0   = dir === 'left' ? box.x + box.width * 0.8 : box.x + box.width * 0.2;
+  const dx   = dir === 'left' ? -dist : dist;
+  const client = await page.context().newCDPSession(page);
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
+  const steps = 12;
+  for (let i = 1; i <= steps; i++) {
+    await client.send('Input.dispatchTouchEvent',
+      { type: 'touchMove', touchPoints: [{ x: x0 + (dx * i) / steps, y }] });
+  }
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await client.detach();
+}
+
+/**
  * Pin the date filter to "anytime" so the visible-card set isn't a
  * function of the runner's wall-clock relative to the fixture's
  * recorded dates. Mirrors the Scala spec's `pinDateFilterAnytime`
