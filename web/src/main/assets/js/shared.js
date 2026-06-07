@@ -1104,9 +1104,21 @@
   // toward the index delta, even for a multi-step jump). The select has already
   // moved to the new value by the time `onchange` fires; `animateToDay` reads
   // the still-displayed day from `_appliedDay`.
+  //
+  // Unlike the arrow/keyboard/swipe paths (which wrap and want the shorter way
+  // round the ring), a dropdown pick is a LINEAR list choice: the slide enters
+  // from the right when the target sits after the current option in list order,
+  // from the left when it sits before. Derive that linear `dir` from the same
+  // ordered ring `animateToDay` uses and pass it explicitly; fall back to the
+  // wrap-shortest default (null) only when either day isn't in the list.
   function onDateSelect() {
     const sel = document.getElementById('date-filter');
-    if (sel) animateToDay(sel.value);
+    if (!sel) return;
+    const ring    = dayRing();
+    const fromIdx = ring.indexOf(_appliedDay);
+    const toIdx   = ring.indexOf(sel.value);
+    const dir = (fromIdx < 0 || toIdx < 0) ? null : (toIdx > fromIdx ? 1 : -1);
+    animateToDay(sel.value, dir);
   }
   window.onDateSelect = onDateSelect;
 
