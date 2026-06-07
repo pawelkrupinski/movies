@@ -3,6 +3,8 @@ package pl.kinowo.ui.list
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -637,8 +639,16 @@ private fun CenteredMessage(text: String) {
 
 @Composable
 private fun EmptyState(text: String, modifier: Modifier = Modifier) {
+    // A bare Column dispatches no nested-scroll deltas, so the enclosing
+    // PullToRefreshBox never sees a drag — pull-to-refresh dies on a "brak
+    // repertuaru" day. verticalScroll makes the column over-draggable (the
+    // content fits, so it never actually scrolls, but a top over-drag is
+    // forwarded up to the refresh box), re-enabling refresh on an empty day.
+    // fillMaxSize keeps the minHeight, so Arrangement.Center still centres.
     Column(
-        modifier.fillMaxSize(),
+        modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
