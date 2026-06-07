@@ -46,6 +46,31 @@ object Cities {
         City("rzeszow", "Rzeszów", 50.0413, 21.9990),
         City("gliwice", "Gliwice", 50.2945, 18.6714),
         City("zabrze", "Zabrze", 50.3249, 18.7857),
+        // The 22 mid-size cities that round the catalogue out to 41. They serve
+        // an empty repertoire until the worker wires their venues, but appear in
+        // the nearest-city pick + "Miasto" picker now (mirrors web `City.all`).
+        City("olsztyn", "Olsztyn", 53.7784, 20.4801),
+        City("bielsko-biala", "Bielsko-Biała", 49.8224, 19.0584),
+        City("opole", "Opole", 50.6751, 17.9213),
+        City("rybnik", "Rybnik", 50.0971, 18.5416),
+        City("gorzow-wielkopolski", "Gorzów Wielkopolski", 52.7368, 15.2288),
+        City("elblag", "Elbląg", 54.1522, 19.4088),
+        City("koszalin", "Koszalin", 54.1943, 16.1722),
+        City("kalisz", "Kalisz", 51.7611, 18.0911),
+        City("zielona-gora", "Zielona Góra", 51.9356, 15.5062),
+        City("tychy", "Tychy", 50.1357, 18.9985),
+        City("walbrzych", "Wałbrzych", 50.7714, 16.2845),
+        City("tarnow", "Tarnów", 50.0121, 20.9858),
+        City("wloclawek", "Włocławek", 52.6483, 19.0677),
+        City("legnica", "Legnica", 51.2070, 16.1619),
+        City("plock", "Płock", 52.5468, 19.7064),
+        City("bytom", "Bytom", 50.3483, 18.9157),
+        City("dabrowa-gornicza", "Dąbrowa Górnicza", 50.3219, 19.1876),
+        City("nowy-sacz", "Nowy Sącz", 49.6175, 20.7154),
+        City("slupsk", "Słupsk", 54.4641, 17.0287),
+        City("jelenia-gora", "Jelenia Góra", 50.9044, 15.7197),
+        City("przemysl", "Przemyśl", 49.7838, 22.7677),
+        City("konin", "Konin", 52.2230, 18.2511),
     )
 
     val DEFAULT: City = all.first()

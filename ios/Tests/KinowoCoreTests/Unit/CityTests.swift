@@ -58,11 +58,15 @@ final class CityTests: XCTestCase {
         XCTAssertEqual(City.default.slug, "poznan")
     }
 
-    func testAllNineteenServedCitiesArePresentInOrder() {
+    func testAllFortyOneCitiesArePresentInOrder() {
         XCTAssertEqual(City.all.map(\.slug), [
             "poznan", "wroclaw", "warszawa", "krakow", "lodz", "katowice", "szczecin",
             "bialystok", "trojmiasto", "bydgoszcz", "lublin", "czestochowa", "radom",
             "sosnowiec", "torun", "kielce", "rzeszow", "gliwice", "zabrze",
+            "olsztyn", "bielsko-biala", "opole", "rybnik", "gorzow-wielkopolski", "elblag",
+            "koszalin", "kalisz", "zielona-gora", "tychy", "walbrzych", "tarnow", "wloclawek",
+            "legnica", "plock", "bytom", "dabrowa-gornicza", "nowy-sacz", "slupsk",
+            "jelenia-gora", "przemysl", "konin",
         ])
     }
 

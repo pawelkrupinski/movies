@@ -49,12 +49,16 @@ class CitiesTest {
     }
 
     @Test
-    fun listsAllNineteenServedCitiesInOrder() {
+    fun listsAllFortyOneCitiesInOrder() {
         assertEquals(
             listOf(
                 "poznan", "wroclaw", "warszawa", "krakow", "lodz", "katowice", "szczecin",
                 "bialystok", "trojmiasto", "bydgoszcz", "lublin", "czestochowa", "radom",
                 "sosnowiec", "torun", "kielce", "rzeszow", "gliwice", "zabrze",
+                "olsztyn", "bielsko-biala", "opole", "rybnik", "gorzow-wielkopolski", "elblag",
+                "koszalin", "kalisz", "zielona-gora", "tychy", "walbrzych", "tarnow", "wloclawek",
+                "legnica", "plock", "bytom", "dabrowa-gornicza", "nowy-sacz", "slupsk",
+                "jelenia-gora", "przemysl", "konin",
             ),
             Cities.all.map { it.slug },
         )

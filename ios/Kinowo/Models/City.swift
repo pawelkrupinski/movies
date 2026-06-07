@@ -38,6 +38,31 @@ struct City: Codable, Hashable {
         City(slug: "rzeszow", name: "Rzeszów", lat: 50.0413, lon: 21.9990),
         City(slug: "gliwice", name: "Gliwice", lat: 50.2945, lon: 18.6714),
         City(slug: "zabrze", name: "Zabrze", lat: 50.3249, lon: 18.7857),
+        // The 22 mid-size cities that round the catalogue out to 41. They serve
+        // an empty repertoire until the worker wires their venues, but appear in
+        // the nearest-city pick + "Miasto" picker now (mirrors web `City.all`).
+        City(slug: "olsztyn", name: "Olsztyn", lat: 53.7784, lon: 20.4801),
+        City(slug: "bielsko-biala", name: "Bielsko-Biała", lat: 49.8224, lon: 19.0584),
+        City(slug: "opole", name: "Opole", lat: 50.6751, lon: 17.9213),
+        City(slug: "rybnik", name: "Rybnik", lat: 50.0971, lon: 18.5416),
+        City(slug: "gorzow-wielkopolski", name: "Gorzów Wielkopolski", lat: 52.7368, lon: 15.2288),
+        City(slug: "elblag", name: "Elbląg", lat: 54.1522, lon: 19.4088),
+        City(slug: "koszalin", name: "Koszalin", lat: 54.1943, lon: 16.1722),
+        City(slug: "kalisz", name: "Kalisz", lat: 51.7611, lon: 18.0911),
+        City(slug: "zielona-gora", name: "Zielona Góra", lat: 51.9356, lon: 15.5062),
+        City(slug: "tychy", name: "Tychy", lat: 50.1357, lon: 18.9985),
+        City(slug: "walbrzych", name: "Wałbrzych", lat: 50.7714, lon: 16.2845),
+        City(slug: "tarnow", name: "Tarnów", lat: 50.0121, lon: 20.9858),
+        City(slug: "wloclawek", name: "Włocławek", lat: 52.6483, lon: 19.0677),
+        City(slug: "legnica", name: "Legnica", lat: 51.2070, lon: 16.1619),
+        City(slug: "plock", name: "Płock", lat: 52.5468, lon: 19.7064),
+        City(slug: "bytom", name: "Bytom", lat: 50.3483, lon: 18.9157),
+        City(slug: "dabrowa-gornicza", name: "Dąbrowa Górnicza", lat: 50.3219, lon: 19.1876),
+        City(slug: "nowy-sacz", name: "Nowy Sącz", lat: 49.6175, lon: 20.7154),
+        City(slug: "slupsk", name: "Słupsk", lat: 54.4641, lon: 17.0287),
+        City(slug: "jelenia-gora", name: "Jelenia Góra", lat: 50.9044, lon: 15.7197),
+        City(slug: "przemysl", name: "Przemyśl", lat: 49.7838, lon: 22.7677),
+        City(slug: "konin", name: "Konin", lat: 52.2230, lon: 18.2511),
     ]
 
     /// Fallback when no fix is available and the user hasn't chosen.
