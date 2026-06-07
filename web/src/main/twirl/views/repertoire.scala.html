@@ -22,20 +22,6 @@
 @_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
 <script defer src="@routes.Assets.versioned("js/shared.js")"></script>
 
-@* `#view-pager` is the day carousel viewport. `#day-track` is a flex row of
-   100vw day columns; the real grid (`#view-root`) is the centre column. A
-   horizontal swipe (or arrow / key / dropdown change) translates `#day-track`,
-   revealing the neighbouring day's grid — cloned + filtered to its day at
-   gesture start and removed once the slide settles (see shared.js). *@
-<div id="view-pager">
-  <div id="day-track">
 @_repertoireView(films, devMode)
-  </div>
-</div>
-
-@* First-run swipe hint (phones only). shared.js reveals it once per calendar
-   day until the first swipe retires it for good — same rule as the iOS/Android
-   apps. Hidden by default; never shown on a fine-pointer (desktop) device. *@
-<div id="swipe-hint" aria-hidden="true"><span class="swipe-hint-arrows">‹ ›</span> Przesuń, aby zmienić dzień</div>
 </body>
 </html>

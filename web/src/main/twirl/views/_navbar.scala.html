@@ -174,15 +174,13 @@
     <div class="navbar-search">
       <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
     </div>
-    <div class="d-flex align-items-stretch navbar-date" style="gap:2px">
-      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)">&#8249;</button>
+    <div class="d-flex align-items-stretch navbar-date">
       <select id="date-filter" class="filter-select" aria-label="Filtruj według daty" onchange="onDateSelect()">
-        <option value="today">Dzisiaj</option>
+        <option value="today">Dziś</option>
         <option value="tomorrow">Jutro</option>
-        <option value="week">Następne 7 dni</option>
-        <option value="anytime">Kiedykolwiek</option>
+        <option value="week">7 dni</option>
+        <option value="anytime">Wszystkie</option>
       </select>
-      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)">&#8250;</button>
     </div>
   }
 

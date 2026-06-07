@@ -599,7 +599,6 @@
     }
   });
 
-
   // ── Showings truncation ─────────────────────────────────────────────────
   //
   // After each filter pass, caps visible showings per card at ~10 visual
@@ -710,7 +709,6 @@
   }
 
   window.truncateAllShowings = truncateAllShowings;
-
 
   // ── Hidden-films UI ───────────────────────────────────────────────────────
   //
@@ -992,14 +990,6 @@
   document.addEventListener('touchend',  () => { clearTimeout(_roomTimer); _roomTimer = null; }, { passive: true });
   document.addEventListener('touchmove', () => { clearTimeout(_roomTimer); _roomTimer = null; }, { passive: true });
 
-  // ── Keyboard navigation ───────────────────────────────────────────────────
-
-  document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
-    if (e.key === 'ArrowLeft')  stepDate(-1);
-    if (e.key === 'ArrowRight') stepDate(1);
-  });
-
   // ── Click outside an open dropdown: dismiss only, swallow everything else ──
   //
   // When a `.dropdown-panel` (Filtry) or the auth menu is open, a click
@@ -1068,68 +1058,16 @@
     return { today: _cachedToday, tomorrow: _cachedTomorrow, in7Days: _cachedIn7Days };
   }
 
-  function populateDayOptions() {
-    const select  = document.getElementById('date-filter');
-    if (!select) return;  // /ulubione: no date filter UI in the navbar.
-    const weekOpt = select.querySelector('option[value="week"]');
-    const today   = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
-    for (let i = 2; i <= 6; i++) {
-      const iso = isoAddDays(today, i);
-      const [y, mo, da] = iso.split('-').map(Number);
-      const dow = new Date(y, mo - 1, da).getDay();
-      const opt = document.createElement('option');
-      opt.value = iso;
-      opt.textContent = DAY2[dow] + ' ' + da + ' ' + MONTHS[mo - 1];
-      select.insertBefore(opt, weekOpt);
-    }
-  }
-
-  // The day the centre grid is currently rendering. Tracked separately from the
-  // `#date-filter` value because the carousel moves the dropdown to the target
-  // up front (at slide start) while the centre grid keeps showing the old day
-  // until the slide commits — `animateToDay` derives the slide direction from
-  // THIS, not from the dropdown's already-moved index.
-  let _appliedDay = null;
-
-  // Arrow buttons (‹ ›) and the Left/Right keys: step one day and slide there
-  // like a swipe. Clamps at the ends (no wrap) — same reach the dropdown gives.
-  function stepDate(dir) {
-    const sel  = document.getElementById('date-filter');
-    if (!sel) return;
-    const next = sel.selectedIndex + dir;
-    if (next >= 0 && next < sel.options.length) animateToDay(sel.options[next].value, dir);
-  }
-
-  // The `#date-filter` dropdown changed — slide to the chosen day (one slide
-  // toward the index delta, even for a multi-step jump). The select has already
-  // moved to the new value by the time `onchange` fires; `animateToDay` reads
-  // the still-displayed day from `_appliedDay`.
-  //
-  // Unlike the arrow/keyboard/swipe paths (which wrap and want the shorter way
-  // round the ring), a dropdown pick is a LINEAR list choice: the slide enters
-  // from the right when the target sits after the current option in list order,
-  // from the left when it sits before. Derive that linear `dir` from the same
-  // ordered ring `animateToDay` uses and pass it explicitly; fall back to the
-  // wrap-shortest default (null) only when either day isn't in the list.
-  function onDateSelect() {
-    const sel = document.getElementById('date-filter');
-    if (!sel) return;
-    const ring    = dayRing();
-    const fromIdx = ring.indexOf(_appliedDay);
-    const toIdx   = ring.indexOf(sel.value);
-    const dir = (fromIdx < 0 || toIdx < 0) ? null : (toIdx > fromIdx ? 1 : -1);
-    animateToDay(sel.value, dir);
-  }
+  // The `#date-filter` dropdown changed — re-render the grid for the chosen day.
+  // No animation: the four presets (Dziś / Jutro / 7 dni / Wszystkie) are plain
+  // filter choices, matching the iOS/Android apps.
+  function onDateSelect() { onDateChange(); }
   window.onDateSelect = onDateSelect;
 
-  // "Apply the current day NOW" — no animation. Rebuilds the visible grid the
-  // same way every other filter does (`applyFilters` also calls `syncDateToURL`,
-  // date-only) and records the displayed day. The carousel's `commitDay`, the
-  // wrap helper, and reduced-motion paths funnel through here after they've set
-  // the dropdown to the target.
+  // Apply the current day NOW: rebuild the visible grid the same way every other
+  // filter does (`applyFilters` also calls `syncDateToURL`, date-only). Kept as a
+  // named entry point the page specs drive.
   function onDateChange() {
-    const sel = document.getElementById('date-filter');
-    if (sel) _appliedDay = sel.value;
     applyFilters();
   }
 
@@ -1277,9 +1215,9 @@
       const isIso = val && /^\d{4}-\d{2}-\d{2}$/.test(val);
       if (val && (ALLOW.includes(val) || isIso)) {
         if (isIso && !Array.from(dateSel.options).some(o => o.value === val)) {
-          // ISO date outside the populateDayOptions range (today+2..today+6):
-          // add an option on the fly so the select reflects the chosen value
-          // rather than silently snapping back to 'today'.
+          // An old shared/bookmarked link can carry a specific ISO date even
+          // though the picker now only offers the four presets — add an option
+          // on the fly so the select reflects it rather than snapping to 'today'.
           const opt = document.createElement('option');
           opt.value = val;
           const [y, mo, da] = val.split('-').map(Number);
@@ -1358,16 +1296,6 @@
     }
 
     updateFormatBtn();
-  }
-
-  function squareDateNavBtns() {
-    const sel = document.getElementById('date-filter');
-    if (!sel) return;  // /ulubione: no date filter UI in the navbar.
-    const h = sel.offsetHeight;
-    document.querySelectorAll('.date-nav-btn').forEach(b => {
-      b.style.width  = h + 'px';
-      b.style.height = h + 'px';
-    });
   }
 
   // ── Server sync for logged-in users ──────────────────────────────────────
@@ -1536,10 +1464,6 @@
     // filtered.
     applyFiltersFromURL();
     updateFormatBtn();
-    // Record the boot day so the carousel can derive slide direction from the
-    // displayed day (see `_appliedDay`).
-    const dateSel = document.getElementById('date-filter');
-    if (dateSel) _appliedDay = dateSel.value;
     applyFilters();
   }
   window.bootView = bootView;
@@ -1547,377 +1471,13 @@
   // Every page is under `/{city}/…`. CURRENT_CITY is the global from
   // `_sharedJsConfig`.
   const CITY_BASE = '/' + CURRENT_CITY;
-  // ── Day carousel: swipe / arrows / keys / dropdown all slide ────────────────
-  //
-  // The films grid is the centre column of a three-column carousel
-  // (prev | current | next). The neighbouring columns are CLONES of `#film-grid`
-  // filtered to their day (honouring every other active filter), mounted into
-  // `#day-track` only while a slide is in flight. A horizontal swipe translates
-  // the track 1:1 with the finger so the neighbour day is revealed from the
-  // screen edge; on release past ~40% of the width (or a quick flick) the track
-  // slides the rest of the way, the centre grid's day is committed, the page
-  // scrolls to top, and the clones are removed. A shorter drag snaps back and
-  // leaves scroll untouched.
-  //
-  // The SAME slide animation backs the arrow buttons, the Left/Right keys, and
-  // the `#date-filter` dropdown — all four route through `animateToDay`. Because
-  // the three columns are normal block flow in one flex row (no inner overflow),
-  // they share the page's single vertical scroll, so a revealed neighbour lines
-  // up at the same `scrollY` offset for free. Listeners are passive except the
-  // `touchmove` claim that holds the browser off its scroll-vs-gesture arbitration.
-
-  // Swipe-gesture tuning.
-  const COMMIT_FRACTION   = 0.4;   // drag past this fraction of the width → commit
-  const FLICK_VX          = 0.4;   // px/ms — a quick flick commits a shorter drag
-  const FLICK_MIN_PX      = 24;    // ignore micro-flicks
-  const SWIPE_DEADZONE_PX = 10;    // horizontal travel before we lock to a swipe
-  const SWIPE_ANIM_MS     = 220;   // slide-out / slide-in duration
-  // Axis lock is biased toward HORIZONTAL so a swipe that starts with a little
-  // vertical jitter isn't misread as a scroll and killed. We concede to vertical
-  // scrolling only when it CLEARLY dominates.
-  const SWIPE_VBAIL_PX    = 16;    // vertical must travel at least this far to even consider bailing
-  const SWIPE_VBIAS_RATIO = 1.6;   // …and beat horizontal by this factor → it's a real vertical scroll
-
-  let _drag = null;
-  let _animating = false;   // guards re-entrancy while a commit animation runs
-
-  // Step the day dropdown by `dir` (+1 = next day, -1 = previous), WRAPPING
-  // around its full option list, then re-render via the normal date-change path
-  // (`onDateChange` → `applyFilters` → `syncDateToURL`). Exposed for the swipe
-  // gesture and unit tests.
-  function stepDateWrap(dir) {
-    const sel = document.getElementById('date-filter');
-    if (!sel || sel.options.length === 0) return;
-    const n = sel.options.length;
-    sel.selectedIndex = ((sel.selectedIndex + dir) % n + n) % n;
-    onDateChange();
-  }
-  window.stepDateWrap = stepDateWrap;
-
-  // ── First-run swipe hint ────────────────────────────────────────────────────
-  // Reveal "Przesuń, aby zmienić dzień" once per calendar day on a touch device,
-  // until the first real swipe retires it for good — the same rule the iOS and
-  // Android apps follow. Device-local (plain localStorage, NOT the server-synced
-  // store): it's a per-device onboarding nudge, not user state worth syncing.
-  const SWIPE_HINT_DAY  = 'kinowoSwipeHintDay';   // last calendar day (Warsaw) it was shown
-  const SWIPE_HINT_DONE = 'kinowoSwipeHintDone';  // set on the first swipe → never show again
-  const SWIPE_HINT_MS   = 3000;                   // auto-hide after this long if untouched
-  let _swipeHintTimer = null;
-
-  function _hintGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function _hintSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode — skip */ } }
-
-  // Reveal the hint if this is a touch device, the user hasn't swiped before,
-  // and it hasn't already shown today. Called once at boot.
-  function maybeShowSwipeHint() {
-    if (!matchMedia('(pointer: coarse)').matches) return;   // desktop never sees it
-    const el = document.getElementById('swipe-hint');
-    if (!el) return;                                        // not the listing page
-    if (_hintGet(SWIPE_HINT_DONE)) return;                 // retired by a past swipe
-    const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
-    if (_hintGet(SWIPE_HINT_DAY) === today) return;        // already shown today
-    _hintSet(SWIPE_HINT_DAY, today);
-    el.classList.add('visible');
-    clearTimeout(_swipeHintTimer);
-    _swipeHintTimer = setTimeout(() => el.classList.remove('visible'), SWIPE_HINT_MS);
-  }
-
-  // Hide the hint without retiring it (the user has started a horizontal drag).
-  function dismissSwipeHint() {
-    clearTimeout(_swipeHintTimer);
-    document.getElementById('swipe-hint')?.classList.remove('visible');
-  }
-
-  // Retire the hint for good (the user committed a day-swipe — they've got it).
-  function retireSwipeHint() {
-    dismissSwipeHint();
-    _hintSet(SWIPE_HINT_DONE, '1');
-  }
-
-  // ── Carousel track plumbing ────────────────────────────────────────────────
-
-  function dayTrack() { return document.getElementById('day-track'); }
-  function pagerWidth() {
-    const pager = document.getElementById('view-pager');
-    return (pager && pager.offsetWidth) || window.innerWidth;
-  }
-
-  // Ordered list of `#date-filter` option values — the day ring the carousel and
-  // every entry point step through (wrap-around). Empty when there's no selector.
-  function dayRing() {
-    const sel = document.getElementById('date-filter');
-    if (!sel) return [];
-    return [...sel.options].map(o => o.value);
-  }
-
-  // The day value `dir` steps from the current selection, wrapping the ring.
-  // dir = +1 → next day, -1 → previous.
-  function neighborDay(dir) {
-    const sel = document.getElementById('date-filter');
-    const ring = dayRing();
-    if (!sel || ring.length === 0) return null;
-    const n = ring.length;
-    return ring[((sel.selectedIndex + dir) % n + n) % n];
-  }
-
-  // Build a carousel column: a `.day-col` wrapper around a clone of `#film-grid`
-  // filtered to `dayValue` (honouring all other active filters via the view's
-  // `applyFiltersForDay`). Returns null when there's no grid to clone.
-  function buildDayColumn(dayValue) {
-    const grid = document.getElementById('film-grid');
-    if (!grid) return null;
-    const col = document.createElement('div');
-    col.className = 'day-col';
-    col.setAttribute('aria-hidden', 'true');
-    const clone = grid.cloneNode(true);
-    clone.removeAttribute('id');   // keep `#film-grid` unique to the real centre
-    // The clone is a transient preview — strip ids so nothing inside collides
-    // with the live DOM the filter helpers query by id.
-    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-    col.appendChild(clone);
-    if (typeof applyFiltersForDay === 'function') applyFiltersForDay(clone, dayValue);
-    return col;
-  }
-
-  // Arm the track: park it at -100vw with the centre `#view-root` flanked by a
-  // prev (left) and next (right) column for the given day values. A missing
-  // value (e.g. a directed slide that only needs one side) leaves that flank as
-  // a spacer so the centre stays centred. Re-arming first tears down any prior
-  // clones so we never stack columns.
-  function armTrack(prevDay, nextDay) {
-    const track = dayTrack();
-    const root  = document.getElementById('view-root');
-    if (!track || !root) return false;
-    unmountNeighbors();
-    const prev = (prevDay != null ? buildDayColumn(prevDay) : null) || spacerColumn();
-    const next = (nextDay != null ? buildDayColumn(nextDay) : null) || spacerColumn();
-    track.insertBefore(prev, root);
-    track.appendChild(next);
-    track.classList.add('day-track--armed');
-    track.style.transition = 'none';
-    setTrack(0);
-    // Force a reflow so a following transition animates from the parked
-    // position rather than jumping.
-    void track.offsetWidth;
-    return true;
-  }
-
-  function spacerColumn() {
-    const col = document.createElement('div');
-    col.className = 'day-col';
-    col.setAttribute('aria-hidden', 'true');
-    return col;
-  }
-
-  // Remove the prev/next clones and disarm the track, returning to the resting
-  // single-column layout.
-  function unmountNeighbors() {
-    const track = dayTrack();
-    if (!track) return;
-    track.querySelectorAll(':scope > .day-col').forEach(c => c.remove());
-    track.classList.remove('day-track--armed');
-    track.style.transition = '';
-    track.style.transform  = '';
-  }
-
-  // Live drag offset while armed: parked at -100vw, plus the finger delta.
-  function setTrack(dx) {
-    const track = dayTrack();
-    if (track) track.style.transform = 'translateX(calc(-100vw + ' + dx + 'px))';
-  }
-
-  // ── Unified day-change slide ────────────────────────────────────────────────
-
-  // Commit the day change once a slide has carried the target column into view:
-  // set the dropdown, fire the normal date-change render, scroll to top (the
-  // committed-change behaviour), then tear the clones down.
-  function commitDay(targetValue) {
-    const sel = document.getElementById('date-filter');
-    if (sel) { sel.value = targetValue; onDateChange(); }
-    window.scrollTo(0, 0);
-    unmountNeighbors();
-    _animating = false;
-  }
-
-  // Animate the armed track to the dir side and commit `targetValue` when it
-  // settles. `dir` = +1 (slide to the next/right column) or -1 (prev/left).
-  // `fromPx` continues a live drag smoothly from where the finger left off.
-  function slideArmedTo(dir, targetValue, fromPx) {
-    const track = dayTrack();
-    if (!track) { commitDay(targetValue); return; }
-    const w   = pagerWidth();
-    const end = dir > 0 ? -2 * w : 0;   // -200vw reveals next, 0 reveals prev
-    _animating = true;
-    track.style.transition = 'none';
-    setTrack(fromPx || 0);
-    void track.offsetWidth;
-    requestAnimationFrame(() => {
-      track.style.transition = 'transform ' + SWIPE_ANIM_MS + 'ms ease';
-      track.style.transform  = 'translateX(' + end + 'px)';
-    });
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      track.removeEventListener('transitionend', finish);
-      commitDay(targetValue);
-    };
-    track.addEventListener('transitionend', finish);
-    setTimeout(finish, SWIPE_ANIM_MS + 60);   // fallback if transitionend is missed
-  }
-
-  // THE single entry point every day change funnels through. `targetValue` is a
-  // `#date-filter` option value; `dir` (optional) forces a slide direction —
-  // when omitted it's derived from the ring index delta between the CURRENTLY
-  // DISPLAYED day (`_appliedDay`) and the target (a multi-step dropdown jump
-  // does ONE slide toward the delta's sign, not an animation through every
-  // intermediate day). Wrap-around picks the shorter visual direction. Reduced
-  // motion skips straight to the committed change.
-  function animateToDay(targetValue, dir) {
-    const sel = document.getElementById('date-filter');
-    if (!sel) return;
-    if (targetValue === _appliedDay) {        // no-op: already showing this day
-      if (sel.value !== targetValue) { sel.value = targetValue; onDateChange(); }
-      return;
-    }
-    if (_animating) return;
-    retireSwipeHint();   // any deliberate day change means they've got the gesture
-    if (dir == null) {
-      const ring = dayRing();
-      const from = ring.indexOf(_appliedDay);
-      const to   = ring.indexOf(targetValue);
-      if (from < 0 || to < 0) { commitDay(targetValue); return; }
-      const n = ring.length;
-      const fwd = ((to - from) % n + n) % n;   // steps walking forward (right)
-      dir = fwd <= n - fwd ? 1 : -1;           // shorter way round the ring
-    }
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      commitDay(targetValue);
-      return;
-    }
-    // Mount only the side we're sliding toward with the TARGET day's grid; the
-    // opposite flank is a spacer (we never reveal it on a directed slide).
-    const armed = dir > 0 ? armTrack(null, targetValue) : armTrack(targetValue, null);
-    if (!armed) { commitDay(targetValue); return; }
-    slideArmedTo(dir, targetValue, 0);
-  }
-  window.animateToDay = animateToDay;
-
-  // Swipe commit: 'left' = finger went left → next day (dir +1). The prev/next
-  // clones are already mounted by the drag (`armTrack` ran at axis-lock), so we
-  // slide the existing armed track from the live offset.
-  function commitDaySwipe(dir, fromPx) {
-    const sel = document.getElementById('date-filter');
-    if (!sel) return;
-    retireSwipeHint();   // a committed swipe means they've found the gesture
-    const dayDir = dir === 'left' ? 1 : -1;   // swipe-left → next day
-    const target = neighborDay(dayDir);
-    if (target == null) { unmountNeighbors(); return; }
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      commitDay(target);
-      return;
-    }
-    slideArmedTo(dayDir, target, fromPx);
-  }
-
-  // A drag that didn't commit: ease the armed track back to its parked centre,
-  // then tear the clones down. Scroll is left untouched (no committed change).
-  function snapBack() {
-    const track = dayTrack();
-    if (!track) return;
-    track.style.transition = 'transform ' + SWIPE_ANIM_MS + 'ms ease';
-    setTrack(0);
-    let done = false;
-    const clear = () => {
-      if (done) return;
-      done = true;
-      track.removeEventListener('transitionend', clear);
-      unmountNeighbors();
-    };
-    track.addEventListener('transitionend', clear);
-    setTimeout(clear, SWIPE_ANIM_MS + 60);
-  }
-
-  document.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' || _animating) return;
-    if (!matchMedia('(pointer: coarse)').matches) return;
-    if (!document.getElementById('view-root')) return;     // not the listing grid
-    if (!document.getElementById('date-filter')) return;   // no day axis to step
-    _drag = { x0: e.clientX, y0: e.clientY, axis: null, lastDx: 0, vx: 0, lastT: e.timeStamp };
-  }, { passive: true });
-
-  // Claim a single-finger HORIZONTAL drag so the browser can't decide mid-drag
-  // that it's a vertical scroll, steal the gesture (pointercancel) and snap the
-  // page back without the finger lifting. NON-passive so `preventDefault` is
-  // allowed; it fires only for a horizontal-leaning single touch, so vertical
-  // scroll and two-finger pinch-zoom still pass through untouched.
-  document.addEventListener('touchmove', (e) => {
-    if (!_drag || !e.cancelable || e.touches.length !== 1) return;
-    if (_drag.axis === 'x') { e.preventDefault(); return; }   // already a swipe — keep it
-    const tdx = Math.abs(e.touches[0].clientX - _drag.x0);
-    const tdy = Math.abs(e.touches[0].clientY - _drag.y0);
-    if (tdy >= SWIPE_VBAIL_PX && tdy > tdx * SWIPE_VBIAS_RATIO) return;
-    if (tdx > tdy) e.preventDefault();
-  }, { passive: false });
-
-  document.addEventListener('pointermove', (e) => {
-    if (!_drag) return;
-    const dx = e.clientX - _drag.x0, dy = e.clientY - _drag.y0;
-    if (_drag.axis === null) {
-      const adx = Math.abs(dx), ady = Math.abs(dy);
-      // Clear vertical scroll — enough vertical travel AND vertical dominates → yield to the browser.
-      if (ady >= SWIPE_VBAIL_PX && ady > adx * SWIPE_VBIAS_RATIO) { _drag = null; return; }
-      // Horizontal intent — past the deadzone and at least as horizontal as vertical → lock the swipe.
-      if (adx >= SWIPE_DEADZONE_PX && adx >= ady) {
-        _drag.axis = 'x';
-        dismissSwipeHint();                    // they're swiping — get the nudge out of the way
-        // Mount BOTH neighbour columns so either drag direction reveals the
-        // right day from the screen edge, parked at -100vw. The day ring wraps,
-        // so every direction has a destination.
-        _drag.armed = armTrack(neighborDay(-1), neighborDay(1));
-      }
-      // Otherwise still ambiguous → wait for the next move.
-      else return;
-    }
-    if (_drag.axis !== 'x') return;
-    // Track the latest delta + a smoothed velocity HERE — `pointerup`'s clientX
-    // is unreliable on touch (iOS often reports the touchstart point or 0), so
-    // the release decision reads `lastDx`/`vx`, never the pointerup coordinate.
-    const dt = Math.max(1, e.timeStamp - _drag.lastT);
-    _drag.vx = (dx - _drag.lastDx) / dt;   // px per ms
-    _drag.lastDx = dx;
-    _drag.lastT = e.timeStamp;
-    // The track follows the finger 1:1 (on top of the parked -100vw), revealing
-    // the neighbour day's column from whichever edge the finger pulls in.
-    if (_drag.armed) setTrack(dx);
-  }, { passive: true });
-
-  // Decision happens ONLY when the finger lifts (or the gesture cancels): step
-  // the day if the drag ended past ~40% of the width OR left with a quick flick;
-  // otherwise snap back. Reads the tracked `lastDx`/`vx`.
-  function endDrag() {
-    const drag = _drag;
-    _drag = null;
-    if (!drag || drag.axis !== 'x') return;
-    if (!drag.armed) { unmountNeighbors(); return; }   // arming failed — just clean up
-    const dx    = drag.lastDx;
-    const w     = pagerWidth();
-    const flick = Math.abs(drag.vx) > FLICK_VX && Math.abs(dx) > FLICK_MIN_PX;
-    if (Math.abs(dx) > w * COMMIT_FRACTION || flick) commitDaySwipe(dx < 0 ? 'left' : 'right', dx);
-    else snapBack();
-  }
-  document.addEventListener('pointerup', endDrag, { passive: true });
-  document.addEventListener('pointercancel', endDrag, { passive: true });
 
   document.addEventListener('DOMContentLoaded', () => {
-    // One-time shell init — navbar chrome (date options, square nav buttons,
-    // hidden-films badge) — then the grid-dependent boot.
-    populateDayOptions();
-    squareDateNavBtns();
+    // One-time shell init — navbar chrome (hidden-films badge) — then the
+    // grid-dependent boot.
     updateNavbar();
     bootView();
     bootMergeFromServer();
-    maybeShowSwipeHint();   // once-a-day phone nudge, retired on first swipe
   });
 
   // ── Image-fetch uptime tracker ────────────────────────────────────────────

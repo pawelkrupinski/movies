@@ -1,7 +1,7 @@
 @import controllers.FilmSchedule
 @(films: Seq[FilmSchedule], devMode: Boolean)(implicit city: models.City)
-@* The swappable Filmy view-root. Rendered inside `#view-pager` on the full
-   page, and returned on its own by the controller for a view-swap fetch
+@* The swappable Filmy view-root. Rendered as the page's main grid, and
+   returned on its own by the controller for a view-swap fetch
    (X-Requested-With: view-swap) so the swap transfers just this fragment. *@
 <main id="view-root" data-view="films">
 <div class="container-fluid py-4 px-4">
@@ -94,8 +94,7 @@
     if (!INDEX) return;
     // Only the day select rides the URL in real time — every other filter
     // stays local until the user opts in via the Filtry panel's "Skopiuj
-    // link do schowka" button. `syncDateToURL` covers the date dropdown,
-    // the `stepDate` arrows, and the URL-driven day-step keyboard shortcut.
+    // link do schowka" button. `syncDateToURL` covers the date dropdown.
     syncDateToURL();
     undoTruncation();
     const filter    = document.getElementById('date-filter')?.value || 'anytime';
@@ -232,121 +231,9 @@
     grid.appendChild(frag);
   }
 
-  // ── Per-day filter for carousel neighbour columns ──────────────────────────
-  //
-  // The day carousel (shared.js) reveals the prev/next day's grid by cloning
-  // `#film-grid` and filtering the clone to a SINGLE fixed day, honouring every
-  // OTHER active filter (search / cinema / format / from-hour / submenus) the
-  // same way the live `applyFilters` does. Clones carry no INDEX, so this walks
-  // the DOM directly. `dayValue` is a `#date-filter` option value
-  // (today/tomorrow/week/anytime/YYYY-MM-DD); the predicate matches `applyFilters`'
-  // `dateOk`. The visible cards are re-ordered to the SAME earliest-showtime
-  // (or rating) order the commit lands on — otherwise the preview shows the
-  // current day's order and the cards visibly jump on release. No
-  // truncation/URL sync — a neighbour column is a static preview that only
-  // needs the right cards, in the right order, at the right scroll offset.
-  function applyFiltersForDay(gridEl, dayValue) {
-    if (!gridEl) return;
-    const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
-    const hidden    = new Set(getHidden());
-    const disabled  = new Set(getDisabledCinemas());
-    const singleCinema  = ALL_CINEMAS.filter(c => !disabled.has(c)).length <= 1;
-    gridEl.classList.toggle('single-cinema', singleCinema);
-    const fmtTokens     = getFormatFilter();
-    const hasFmt        = fmtTokens.length > 0;
-    const fromMin       = getFromMinutes();
-    const hasFrom       = fromMin !== null;
-    const countryFilter  = getCountryFilter();
-    const genreFilter    = getSubmenuFilter('genre');
-    const directorFilter = getDirectorFilter();
-    const castFilter     = getCastFilter();
-    const roomList       = getSubmenuFilter('room');
-    const roomSet        = roomList !== null ? new Set(roomList) : null;
-    const { today, tomorrow, in7Days } = dateBounds();
-    const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(dayValue);
-    const dateOk = dayValue === 'today'    ? d => d === today :
-                   dayValue === 'tomorrow' ? d => d === tomorrow :
-                   dayValue === 'week'     ? d => d >= today && d <= in7Days :
-                   isSpecific              ? d => d === dayValue :
-                                             _  => true;
-
-    const has = (filter, get) => filter !== null && !filter.some(get);
-    // The active sort axis, read the same way shared.js's getSortBy does — the
-    // neighbour preview must commit-match, including under 'rating'.
-    const sortBy = (document.getElementById('sort-by')?.value === 'rating') ? 'rating' : 'earliest';
-    // Visible cards with their commit sort key: earliest visible showtime
-    // ("<date>T<HH:MM>", matching applyFilters) + rating + original DOM index.
-    const visible = [];
-    const cols = [...gridEl.querySelectorAll('.col[data-title]')];
-    cols.forEach((col, idx) => {
-      const countries = new Set((col.dataset.countries || '').split('|').filter(Boolean));
-      const genres    = new Set((col.dataset.genres    || '').split('|').filter(Boolean));
-      const directors = new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean));
-      const cast      = new Set((col.dataset.cast     || '').split(',').map(s => s.trim()).filter(Boolean));
-      const titleLc   = (col.dataset.title || '').toLowerCase();
-      let colVisible = false;
-      let colEarliest = null;   // earliest visible "<date>T<HH:MM>" for the sort
-      if (!(hidden.has(col.dataset.title) || (query && !titleLc.includes(query))
-            || has(countryFilter,  c => countries.has(c))
-            || has(genreFilter,    g => genres.has(g))
-            || has(directorFilter, d => directors.has(d))
-            || has(castFilter,     a => cast.has(a)))) {
-        col.querySelectorAll('.date-group[data-date]').forEach(group => {
-          let groupVisible = false;
-          if (dateOk(group.dataset.date)) {
-            group.querySelectorAll('.cinema-group[data-cinema]').forEach(cg => {
-              if (disabled.has(cg.dataset.cinema)) { cg.style.display = 'none'; return; }
-              let cgVisible = 0;
-              cg.querySelectorAll('.badge-time').forEach(b => {
-                const formats = new Set((b.dataset.format || '').split(' ').filter(Boolean));
-                const t = (b.dataset.time || '').trim();
-                const colon = t.indexOf(':');
-                const timeMin = colon > 0 ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10) : -1;
-                const room = b.dataset.room || '';
-                const roomKey = room ? (cg.dataset.cinema + '|' + room) : '';
-                const ok = (!hasFmt || badgeFormatMatch(formats, fmtTokens))
-                        && (!hasFrom || timeMin < 0 || timeMin >= fromMin)
-                        && (roomSet === null || (roomKey && roomSet.has(roomKey)));
-                b.style.display = ok ? '' : 'none';
-                if (ok) {
-                  cgVisible++;
-                  const key = group.dataset.date + 'T' + t;
-                  if (colEarliest === null || key < colEarliest) colEarliest = key;
-                }
-              });
-              cg.style.display = cgVisible > 0 ? '' : 'none';
-              if (cgVisible > 0) groupVisible = true;
-            });
-          }
-          group.style.display = groupVisible ? '' : 'none';
-          if (groupVisible) colVisible = true;
-        });
-      }
-      col.style.display = colVisible ? '' : 'none';
-      if (colVisible) {
-        visible.push({ el: col, earliest: colEarliest || '', rating: parseFloat(col.dataset.rating) || 0, idx });
-      }
-    });
-
-    // Re-order the visible cards into the committed order. Mirrors
-    // applyFilters' compareCards: rating biggest-first (earliest tiebreak),
-    // else earliest-showtime ascending, with the original DOM index as the
-    // stable final tiebreak. Without this the preview keeps the CURRENT day's
-    // order and the cards jump on release.
-    visible.sort((a, b) => {
-      if (sortBy === 'rating' && a.rating !== b.rating) return b.rating - a.rating;
-      if (a.earliest !== b.earliest) return a.earliest < b.earliest ? -1 : 1;
-      return a.idx - b.idx;
-    });
-    const frag = document.createDocumentFragment();
-    for (const v of visible) frag.appendChild(v.el);
-    gridEl.appendChild(frag);
-  }
-
   // Entry points shared.js drives at boot (`bootView`).
   window.buildIndex         = buildIndex;
   window.applyFilters       = applyFilters;
-  window.applyFiltersForDay = applyFiltersForDay;
   })();
 </script>
 }
