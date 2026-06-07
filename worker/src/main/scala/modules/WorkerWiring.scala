@@ -6,9 +6,9 @@ import services.{MongoCachingDetailFetch, MongoConnection, ShowtimeCache, Stoppa
 import services.cinemas._
 import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
-import services.freshness.{FreshnessStore, MongoFreshnessStore}
+import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, UnscreenedCleanup}
-import services.tasks.{EnrichDetailsHandler, MongoTaskQueue, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskWorker}
+import services.tasks.{EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
 /**
@@ -145,6 +145,14 @@ class WorkerWiring {
   protected def queueScraping: Boolean =
     Env.get("KINOWO_QUEUE_SCRAPING").exists(v => v == "true" || v == "1")
 
+  // When enabled, rating refresh (IMDb/Filmweb/RT/Metacritic) runs as freshness-
+  // gated queue tasks instead of the in-process bus-fetch + 4h cache walks — so
+  // ratings are deduped and shared across servers. TMDB / IMDb-id RESOLUTION
+  // stays inline (it's one-shot per scraped row, already driven by the queue-
+  // gated scrape). Off by default; KINOWO_QUEUE_ENRICHMENT=true flips it.
+  protected def queueEnrichment: Boolean =
+    Env.get("KINOWO_QUEUE_ENRICHMENT").exists(v => v == "true" || v == "1")
+
   lazy val taskQueue: TaskQueue = new MongoTaskQueue(mongoConnection.database)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
 
@@ -170,10 +178,25 @@ class WorkerWiring {
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore
   )
+
+  // Rating refresh as queue tasks (wired only when queueEnrichment). The handlers
+  // reuse each *Ratings class's existing per-row refreshOneSync; the enqueuer
+  // turns the resolution bus events into rating tasks; the reaper is the periodic
+  // (staggered 4h) backstop that replaces the 4h cache walks.
+  lazy val ratingEnqueuer = new RatingEnqueuer(movieCache, taskQueue)
+  lazy val ratingHandlers: Seq[services.tasks.TaskHandler] =
+    if (queueEnrichment) Seq(
+      new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, imdbRatings.refreshOneSync),
+      new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, filmwebRatings.refreshOneSync),
+      new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, rottenTomatoesRatings.refreshOneSync),
+      new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, metascoreRatings.refreshOneSync)
+    ) else Nil
+  lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore)
+
   // The worker dispatches scrapes/enrichment onto the same sub-capped budget the
   // old loop used, so a backlog can't peg the box.
   lazy val taskWorker = new TaskWorker(
-    taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler),
+    taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler) ++ ratingHandlers,
     backgroundBudget.ec("task-worker", scrapeConcurrency),
     pollInterval = scala.concurrent.duration.DurationInt(5).seconds
   )
@@ -187,32 +210,47 @@ class WorkerWiring {
   //   ImdbIdMissing      → imdbIdResolver + RT/MC/Filmweb (TMDB-only hits)
   //   ImdbIdResolved     → imdbRatings
   //   CinemaMovieAdded   → kinoMuzaSynopsisRefresher
+  // Resolution stays inline in both modes (one-shot per scraped row).
   eventBus.subscribe(movieService.onMovieRecordCreated)
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
-  eventBus.subscribe(imdbRatings.onTmdbResolved)
-  eventBus.subscribe(imdbRatings.onImdbIdResolved)
-  eventBus.subscribe(rottenTomatoesRatings.onTmdbResolved)
-  eventBus.subscribe(rottenTomatoesRatings.onImdbIdMissing)
-  eventBus.subscribe(metascoreRatings.onTmdbResolved)
-  eventBus.subscribe(metascoreRatings.onImdbIdMissing)
-  eventBus.subscribe(filmwebRatings.onTmdbResolved)
-  eventBus.subscribe(filmwebRatings.onImdbIdMissing)
   eventBus.subscribe(kinoMuzaSynopsisRefresher.onCinemaMovieAdded)
+  if (queueEnrichment) {
+    // Rating subscribers ENQUEUE tasks; RatingHandlers + EnrichmentReaper fetch.
+    eventBus.subscribe(ratingEnqueuer.onTmdbResolved)
+    eventBus.subscribe(ratingEnqueuer.onImdbIdResolved)
+    eventBus.subscribe(ratingEnqueuer.onImdbIdMissing)
+  } else {
+    // Legacy: rating subscribers fetch inline (+ 4h cache walks started below).
+    eventBus.subscribe(imdbRatings.onTmdbResolved)
+    eventBus.subscribe(imdbRatings.onImdbIdResolved)
+    eventBus.subscribe(rottenTomatoesRatings.onTmdbResolved)
+    eventBus.subscribe(rottenTomatoesRatings.onImdbIdMissing)
+    eventBus.subscribe(metascoreRatings.onTmdbResolved)
+    eventBus.subscribe(metascoreRatings.onImdbIdMissing)
+    eventBus.subscribe(filmwebRatings.onTmdbResolved)
+    eventBus.subscribe(filmwebRatings.onImdbIdMissing)
+  }
 
   def start(): Unit = {
     // Force Mongo at boot so connection errors surface in the boot timeline.
     mongoConnection.database
     movieCache.start()
     movieService.start()
-    imdbRatings.start()
-    rottenTomatoesRatings.start()
-    metascoreRatings.start()
-    filmwebRatings.start()
+    // The *Ratings 4h cache walks run only in legacy mode; the EnrichmentReaper
+    // replaces them when ratings are queue-driven. (refreshOneSync, which the
+    // rating handlers call, needs no start().)
+    if (!queueEnrichment) {
+      imdbRatings.start()
+      rottenTomatoesRatings.start()
+      metascoreRatings.start()
+      filmwebRatings.start()
+    }
     unscreenedCleanup.start()
     kinoMuzaSynopsisRefresher.start()
-    // The task worker runs whenever there's queue work: queue-driven scraping
-    // and/or deferred detail enrichment.
-    if (queueScraping || deferDetail) taskWorker.start()
+    // The task worker runs whenever there's queue work: queue-driven scraping,
+    // deferred detail, and/or queue-driven rating enrichment.
+    if (queueScraping || deferDetail || queueEnrichment) taskWorker.start()
+    if (queueEnrichment) enrichmentReaper.start()
     if (queueScraping) scrapeReaper.start() else showtimeCache.start()
   }
 
@@ -224,7 +262,8 @@ class WorkerWiring {
 
   def stop(): Unit = {
     if (queueScraping) scrapeReaper.stop() else showtimeCache.stop()
-    if (queueScraping || deferDetail) {
+    if (queueEnrichment) enrichmentReaper.stop()
+    if (queueScraping || deferDetail || queueEnrichment) {
       taskWorker.stop()
       taskQueue.close()
       freshnessStore.close()
