@@ -17,14 +17,13 @@ test.describe('mobile landscape layout', () => {
 
   // ── Navbar: same as portrait/desktop on one row ─────────────
 
-  test('logo and tab links are visible', async ({ page }) => {
-    // Logo + tabs sit in the first `.d-flex` child of the navbar.
+  test('logo cluster is visible', async ({ page }) => {
+    // The logo sits in the first `.d-flex` child of the navbar.
     // The two-row landscape reflow used to set `display: none` on
     // this element — keep a guard so future "tidy-up" changes
     // can't reintroduce that.
-    const logoTabs = page.locator('.navbar > .d-flex').first();
-    await expect(logoTabs).toBeVisible();
-    await expect(page.locator('.navbar a.nav-tab', { hasText: 'Filmy' })).toBeVisible();
+    const logoCluster = page.locator('.navbar > .d-flex').first();
+    await expect(logoCluster).toBeVisible();
   });
 
   test('all navbar items share a single row', async ({ page }) => {

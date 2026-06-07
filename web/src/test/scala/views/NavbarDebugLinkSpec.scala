@@ -18,7 +18,14 @@ class NavbarDebugLinkSpec extends AnyFlatSpec with Matchers {
     views.html._navbar(activePage = "films", devMode = devMode,
       currentUser = None, oauthProviders = Set.empty).body
 
-  "navbar partial" should "omit the Debug link entirely when devMode is false" in {
+  "navbar partial" should "not render a Filmy nav link" in {
+    // The Filmy pill was dropped from the navbar. The logo stays, but
+    // there is no longer a tab linking back to the city's film listing.
+    val html = render(devMode = false)
+    html should not include ">Filmy<"
+  }
+
+  it should "omit the Debug link entirely when devMode is false" in {
     val html = render(devMode = false)
     html should not include "/debug"
     html should not include "nav-tab-debug"

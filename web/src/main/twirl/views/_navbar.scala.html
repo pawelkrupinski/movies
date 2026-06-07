@@ -1,7 +1,7 @@
 @(activePage: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])(implicit city: models.City)
 @*
    Navbar layout:
-     - Logo + tab links (Filmy / Debug)                         — left
+     - Logo + tab links (Debug, dev-only)                       — left
      - Search + date                                            — right cluster
      - Hidden-films flyout button (auto-shown when set)        — right cluster
      - Filtry dropdown (includes the cinema picker)            — right cluster
@@ -15,7 +15,6 @@
   <div class="d-flex align-items-center gap-3 navbar-logo">
     <span class="fw-bold fs-5">🎬<span class="navbar-title"> Repertuar kinowy @city.labels.nominative</span></span>
     <div class="d-flex gap-1 align-items-center">
-      <a href="/@city.slug/" class="nav-tab@if(activePage == "films"){ active}">Filmy</a>
       @if(devMode) {
         <a href="/@city.slug/debug" class="nav-tab nav-tab-debug">Debug</a>
       }

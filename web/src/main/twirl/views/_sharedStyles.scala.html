@@ -109,7 +109,11 @@
      flex on its own rule means the row is correct regardless of class ordering.
      `justify-content: space-between` preserves what Bootstrap's `.navbar` gave. */
   .navbar { background: #1a1a2e; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; gap: .4rem; }
-  .navbar-logo { flex-shrink: 0; }
+  /* Pin to the unified 35 px navbar height so the logo cluster lines up
+     with the (taller) control row even when it holds no 35 px nav-tab —
+     since the Filmy tab was dropped the logo is the cluster's only child
+     on a logged-out page. */
+  .navbar-logo { flex-shrink: 0; min-height: 35px; }
   .card {
     background: #1e1e2e;
     border: none;
@@ -375,7 +379,6 @@
     .nav-tab:hover { background: #3a3a6e; color: #fff; }
     .nav-tab-login:hover { background: #5a5a9e; color: #fff; }
   }
-  .nav-tab.active { background: #3a3a6e; color: #fff; }
   /* ── Auth pill / dropdown / login modal ──────────────────────────────── */
   .nav-tab-login {
     cursor: pointer;
@@ -705,6 +708,10 @@
     .navbar-logo { gap: min(1rem, 3vw) !important; }
     .navbar > div:first-child {
       height: 28px;
+      /* Override the desktop 35 px floor on `.navbar-logo` — mobile pins
+         the logo cluster to 28px, and `min-height` otherwise wins over
+         `max-height` and would mis-align the row. */
+      min-height: 28px;
       max-height: 28px;
       overflow: visible;
     }
