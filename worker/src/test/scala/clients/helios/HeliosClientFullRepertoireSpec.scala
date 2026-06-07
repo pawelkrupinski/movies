@@ -16,8 +16,8 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
 
   // ── Totals ────────────────────────────────────────────────────────────────
 
-  "HeliosClient.fetch" should "return exactly 48 movies from the full fixture" in {
-    results.size shouldBe 48
+  "HeliosClient.fetch" should "return exactly 47 movies from the full fixture" in {
+    results.size shouldBe 47
   }
 
   it should "return 421 showtimes in total" in {
@@ -64,8 +64,10 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
       "Sprawiedliwość owiec",
       "Straszny film ",
       "Super Mario Galaxy Film",
-      "The Amazing Digital Circus: The Last Act - dubbing - Event projekt",
-      "The Amazing Digital Circus: The Last Act - napisy - Event projekt",
+      // The dubbing + napisy event variants strip their "- <version> - Event
+      // projekt" tail (version is carried per-showtime in `format`) and collapse
+      // into one clean film row.
+      "The Amazing Digital Circus: The Last Act",
       "Tom i Jerry: Przygoda w muzeum",
       "Top Gun 40. Rocznica",
       "Top Gun: Maverick",
@@ -119,8 +121,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     runtimes("Sprawiedliwość owiec")                                        shouldBe Some(109)
     runtimes("Straszny film ")                                              shouldBe Some(94)
     runtimes("Super Mario Galaxy Film")                                     shouldBe Some(100)
-    runtimes("The Amazing Digital Circus: The Last Act - dubbing - Event projekt") shouldBe Some(93)
-    runtimes("The Amazing Digital Circus: The Last Act - napisy - Event projekt")  shouldBe Some(93)
+    runtimes("The Amazing Digital Circus: The Last Act")                    shouldBe Some(93)
     runtimes("Tom i Jerry: Przygoda w muzeum")                              shouldBe Some(140)
     runtimes("Top Gun 40. Rocznica")                                        shouldBe Some(110)
     runtimes("Top Gun: Maverick")                                           shouldBe Some(130)
@@ -253,7 +254,7 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     posters("Powrót do przyszłości II")       shouldBe Some("https://img.helios.pl/pliki/film/powrot-do-przyszlosci-ii/powrot-do-przyszlosci-ii-plakat-70759.jpg")
     posters("Powrót do przyszłości III")      shouldBe Some("https://img.helios.pl/pliki/film/powrot-do-przyszlosci-iii/powrot-do-przyszlosci-iii-plakat-29754.jpg")
     posters("Straszny film ")                 shouldBe Some("https://img.helios.pl/pliki/film/straszny-film-6/straszny-film-6-plakat-66159.jpg")
-    posters("The Amazing Digital Circus: The Last Act - dubbing - Event projekt") shouldBe
+    posters("The Amazing Digital Circus: The Last Act") shouldBe
       Some("https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg")
     posters("Tom i Jerry: Przygoda w muzeum") shouldBe
       Some("https://img.helios.pl/pliki/film/tom-i-jerry-przygoda-w-muzeum/tom-i-jerry-przygoda-w-muzeum-plakat-650.jpg")
@@ -272,8 +273,6 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     posters("Billie Eilish - Hit Me Hard and Soft: The Tour Live") shouldBe
       Some("https://img.helios.pl/pliki/film/billie-eilish-hit-me-hard-and-soft-the-tour/billie-eilish-hit-me-hard-and-soft-the-tour-plakat-28207.png")
     posters("Drugie życie")     shouldBe Some("https://img.helios.pl/pliki/film/drugie-zycie/drugie-zycie-plakat-293.jpg")
-    posters("The Amazing Digital Circus: The Last Act - napisy - Event projekt") shouldBe
-      Some("https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg")
   }
 
   // ── Film URLs ─────────────────────────────────────────────────────────────
@@ -341,8 +340,8 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     counts("Sprawiedliwość owiec")                                        shouldBe 20
     counts("Straszny film ")                                              shouldBe 11
     counts("Super Mario Galaxy Film")                                     shouldBe 27
-    counts("The Amazing Digital Circus: The Last Act - dubbing - Event projekt") shouldBe 4
-    counts("The Amazing Digital Circus: The Last Act - napisy - Event projekt")  shouldBe 4
+    // dubbing (4) + napisy (4) variants merged into one clean row.
+    counts("The Amazing Digital Circus: The Last Act")                    shouldBe 8
     counts("Tom i Jerry: Przygoda w muzeum")                              shouldBe 9
     counts("Top Gun 40. Rocznica")                                        shouldBe 7
     counts("Top Gun: Maverick")                                           shouldBe 4
@@ -597,6 +596,26 @@ class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
     titles                                                             should contain ("Niesamowite przygody skarpetek 3. Ale kosmos!")
     // Tom i Jerry had a plain entry and an HDD entry sharing screenings — distinct'd to 9 slots.
     byTitle("Tom i Jerry: Przygoda w muzeum").showtimes.size           shouldBe 9
+  }
+
+  // ── Audio-version / event-source tail stripping ───────────────────────────
+
+  it should "strip the '- <version> - Event projekt' tail and merge dubbing+napisy into one row" in {
+    val titles = results.map(_.movie.title).toSet
+    // No decorated variant survives in any output title.
+    titles.foreach { t =>
+      t should not include "- Event projekt"
+      t should not include "- dubbing"
+      t should not include "- napisy"
+    }
+    // The two event variants collapse to one clean film row…
+    titles should contain ("The Amazing Digital Circus: The Last Act")
+    val adc = byTitle("The Amazing Digital Circus: The Last Act")
+    adc.showtimes.size shouldBe 8
+    // …with the audio version still carried per-showtime in `format`
+    // (DUB from the dubbing variant, ORG from the napisy/original variant),
+    // so nothing is lost by dropping it from the title.
+    adc.showtimes.map(_.format).toSet shouldBe Set(List("2D", "DUB"), List("2D", "ORG"))
   }
 
   // ── REST/NUXT split for Latin-vs-Cyrillic UA titles ───────────────────────

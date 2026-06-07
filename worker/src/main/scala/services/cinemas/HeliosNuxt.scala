@@ -70,10 +70,22 @@ object HeliosNuxt {
 
   // Strip event/promo suffixes so that "Diabeł ubiera się u Prady 2 - KNT"
   // collapses to the canonical "Diabeł ubiera się u Prady 2".
+  //
+  // The audio-version + screen-code tail Helios bakes into an event title
+  // ("… - dubbing - Event projekt", "Michael - AF") is decoration only — the
+  // 2D/3D dimension and DUB/ORG/NAP/LEK version it implies is already parsed
+  // into `Showtime.format` from each screening's `release`/`printRelease`, so
+  // stripping it from the title loses nothing while letting the row enrich off
+  // the clean film name and the dubbing/napisy variants collapse into one row.
+  // Order matters: the `- Event projekt` event-source tag is peeled first so a
+  // preceding `- dubbing`/`- napisy` becomes the new suffix in the same pass.
   def cleanTitle(title: String): String =
     Seq(" w Helios RePlay", " w Helios Anime", " w Helios na Scenie", " w HnS",
         " - Salon Kultury Helios", " - KNTJ", " - KNT", " - Kino Kobiet",
-        " - Kino Konesera", " - seanse z konkursami HDD")
+        " - Kino Konesera", " - seanse z konkursami HDD",
+        " - Event projekt",
+        " - dubbing", " - Dubbing", " - napisy", " - NAP", " - DUB",
+        " - AF")
       .foldLeft(title)((t, suffix) => t.stripSuffix(suffix))
 
   def buildMovies(html: String, cfg: HeliosCinema = Poznan): Seq[CinemaMovie] = {

@@ -52,10 +52,19 @@ object TitleNormalizer {
   // Hope"). Kept in the display title and cache key (a programme screening is
   // its own row); stripped only by `apiQuery` for upstream lookups. Add new
   // programmes / festival banners here as cinemas introduce them.
+  // The kids-morning programme ships in several spellings — "Filmowe Poranki",
+  // singular "Filmowy Poranek", "Poranek dla dzieci", seasonal "Zimowe
+  // Poranki" — and often carries a series subtitle before the colon ("Filmowe
+  // Poranki - Miraculous: …", "Zimowe Poranki z Bobem Budowniczym: …"). The
+  // optional `\s+[^:]+` tail swallows that subtitle so the whole banner is
+  // stripped down to the film that follows the colon, for upstream lookups
+  // only — the display row keeps the banner (it's its own screening).
   private val ProgrammePrefix   =
     ("""(?i)^(?:Kino\s+bez\s+barier|""" +
      """Pokaz\s+sensorycznie\s+przyjazny|""" +
-     """Filmowe\s+Poranki|""" +
+     """Filmow[ey]\s+Poran(?:ki|ek)(?:\s+[^:]+)?|""" +
+     """Zimowe\s+Poranki(?:\s+[^:]+)?|""" +
+     """Poranek\s+dla\s+dzieci|""" +
      """Filmowy\s+Klub\s+Seniora|""" +
      """Dyskusyjny\s+Klub\s+Filmowy|""" +
      """Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|""" +

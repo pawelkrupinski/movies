@@ -6275,7 +6275,7 @@ cinemaTitles:      The Amazing Digital Circus: The Last Act
 runtimeMinutes:    93
 releaseYear:       2026
 countries:         USA, Australia
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8150O2R.jpg
+posterUrl:         https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg
 synopsis.length:   712
 cast:              Lizzie Freeman, Michael Kovach, Amanda Hufford, Marissa Lenti, Sean Chiplock, Ashley Nichols
 director:          Gooseworx
@@ -6292,6 +6292,7 @@ filmwebUrl:        https://www.filmweb.pl/film/The+Amazing+Digital+Circus%3A+The
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/the-amazing-digital-circus-the-last-act/8150o2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/the-amazing-digital-circus-the-last-act/8150o2r
+  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/the-amazing-digital-circus-the-last-act-napisy-event-projekt-2572
 cinemaScrapes:
   Cinema City Arkadia / The Amazing Digital Circus: The Last Act / 2026
   Cinema City Bemowo / The Amazing Digital Circus: The Last Act / 2026
@@ -6304,79 +6305,23 @@ cinemaScrapes:
   Cinema City Promenada / The Amazing Digital Circus: The Last Act / 2026
   Cinema City Sadyba / The Amazing Digital Circus: The Last Act / 2026
   Cinema City Wroclavia / The Amazing Digital Circus: The Last Act / 2026
+  Helios Aleja Bielany / The Amazing Digital Circus: The Last Act / —
+  Helios Blue City / The Amazing Digital Circus: The Last Act / —
+  Helios Magnolia Park / The Amazing Digital Circus: The Last Act / —
+  Helios Posnania / The Amazing Digital Circus: The Last Act / —
 showings:
   2026-06-04  Cinema City Kinepolis         17:00 Sala 13 2D/DUB · 17:30 Sala 12 2D/NAP · 17:50 Sala 17 2D/DUB · 19:20 Sala 13 2D/DUB · 19:50 Sala 12 2D/NAP · 20:10 Sala 17 2D/NAP · 22:10 Sala 12 2D/NAP · 22:30 Sala 17 2D/NAP
   2026-06-04  Cinema City Poznań Plaza      17:00 Sala 3 2D/NAP · 17:30 Sala 6 2D/DUB · 19:20 Sala 3 2D/NAP · 19:50 Sala 6 2D/DUB
+  2026-06-04  Helios Posnania               17:00 2D/ORG · 17:30 2D/ORG · 19:00 2D/DUB · 21:00 2D/ORG
   2026-06-05  Cinema City Kinepolis         10:00 Sala 13 2D/DUB · 12:20 Sala 13 2D/DUB · 13:20 Sala 12 2D/NAP · 13:50 Sala 17 2D/DUB · 14:40 Sala 13 2D/DUB · 15:40 Sala 12 2D/NAP · 16:10 Sala 17 2D/DUB · 17:00 Sala 13 2D/DUB · 18:00 Sala 12 2D/NAP · 18:30 Sala 17 2D/NAP · 20:20 Sala 12 2D/NAP · 20:50 Sala 17 2D/NAP
   2026-06-05  Cinema City Poznań Plaza      10:30 Sala 6 2D/DUB · 12:50 Sala 6 2D/DUB · 13:50 Sala 3 2D/NAP · 15:10 Sala 6 2D/DUB · 16:10 Sala 3 2D/NAP · 18:30 Sala 3 2D/NAP
+  2026-06-05  Helios Posnania               17:00 2D/ORG · 19:00 2D/DUB
   2026-06-06  Cinema City Kinepolis         10:00 Sala 13 2D/DUB · 12:20 Sala 13 2D/DUB · 13:20 Sala 12 2D/NAP · 13:50 Sala 17 2D/DUB · 14:40 Sala 13 2D/DUB · 15:40 Sala 12 2D/NAP · 16:10 Sala 17 2D/DUB · 17:00 Sala 13 2D/DUB · 18:00 Sala 12 2D/NAP · 18:30 Sala 17 2D/NAP · 20:20 Sala 12 2D/NAP · 20:50 Sala 17 2D/NAP
   2026-06-06  Cinema City Poznań Plaza      10:30 Sala 6 2D/DUB · 12:50 Sala 6 2D/DUB · 13:50 Sala 3 2D/NAP · 15:10 Sala 6 2D/DUB · 16:10 Sala 3 2D/NAP · 18:30 Sala 3 2D/NAP
+  2026-06-06  Helios Posnania               17:00 2D/DUB
   2026-06-07  Cinema City Kinepolis         10:00 Sala 13 2D/DUB · 12:20 Sala 13 2D/DUB · 13:20 Sala 12 2D/NAP · 13:50 Sala 17 2D/DUB · 14:40 Sala 13 2D/DUB · 15:40 Sala 12 2D/NAP · 16:10 Sala 17 2D/DUB · 17:00 Sala 13 2D/DUB · 18:00 Sala 12 2D/NAP · 18:30 Sala 17 2D/NAP · 20:20 Sala 12 2D/NAP · 20:50 Sala 17 2D/NAP
   2026-06-07  Cinema City Poznań Plaza      10:30 Sala 6 2D/DUB · 12:50 Sala 6 2D/DUB · 13:50 Sala 3 2D/NAP · 15:10 Sala 6 2D/DUB · 16:10 Sala 3 2D/NAP · 18:30 Sala 3 2D/NAP
-
-=== The Amazing Digital Circus: The Last Act - dubbing - Event projekt ===
-displayTitle:      The Amazing Digital Circus: The Last Act - dubbing - Event projekt
-cinemaTitles:      The Amazing Digital Circus: The Last Act - dubbing - Event projekt
-runtimeMinutes:    93
-releaseYear:       —
-countries:         —
-posterUrl:         https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg
-synopsis.length:   —
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
-cinemaFilmUrls:
-  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/the-amazing-digital-circus-the-last-act-dubbing-event-projekt-2571
-cinemaScrapes:
-  Helios Aleja Bielany / The Amazing Digital Circus: The Last Act - dubbing - Event projekt / —
-  Helios Blue City / The Amazing Digital Circus: The Last Act - dubbing - Event projekt / —
-  Helios Magnolia Park / The Amazing Digital Circus: The Last Act - dubbing - Event projekt / —
-  Helios Posnania / The Amazing Digital Circus: The Last Act - dubbing - Event projekt / —
-showings:
-  2026-06-04  Helios Posnania               19:00 2D/DUB
-  2026-06-05  Helios Posnania               19:00 2D/DUB
-  2026-06-06  Helios Posnania               17:00 2D/DUB
   2026-06-07  Helios Posnania               14:00 2D/DUB
-
-=== The Amazing Digital Circus: The Last Act - napisy - Event projekt ===
-displayTitle:      The Amazing Digital Circus: The Last Act - napisy - Event projekt
-cinemaTitles:      The Amazing Digital Circus: The Last Act - napisy - Event projekt
-runtimeMinutes:    93
-releaseYear:       —
-countries:         —
-posterUrl:         https://img.helios.pl/pliki/film/the-amazing-digital-circus-the-last-act/the-amazing-digital-circus-the-last-act-plakat-70943.jpg
-synopsis.length:   —
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
-cinemaFilmUrls:
-  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/the-amazing-digital-circus-the-last-act-napisy-event-projekt-2572
-cinemaScrapes:
-  Helios Aleja Bielany / The Amazing Digital Circus: The Last Act - napisy - Event projekt / —
-  Helios Blue City / The Amazing Digital Circus: The Last Act - napisy - Event projekt / —
-  Helios Magnolia Park / The Amazing Digital Circus: The Last Act - napisy - Event projekt / —
-  Helios Posnania / The Amazing Digital Circus: The Last Act - napisy - Event projekt / —
-showings:
-  2026-06-04  Helios Posnania               17:00 2D/ORG · 17:30 2D/ORG · 21:00 2D/ORG
-  2026-06-05  Helios Posnania               17:00 2D/ORG
 
 === Tom i Jerry: Przygoda w muzeum ===
 displayTitle:      Tom i Jerry: Przygoda w muzeum
