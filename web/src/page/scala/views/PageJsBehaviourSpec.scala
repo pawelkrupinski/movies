@@ -1359,6 +1359,75 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Neighbour-column order matches the committed grid ───────────────────────
+  //
+  // Regression for "the cards I see while dragging reorder when I let go". The
+  // neighbour preview column is a clone of `#film-grid` filtered to the target
+  // day by `applyFiltersForDay`, but that helper only toggled `display` — it
+  // left the cards in the CURRENT day's cloned DOM order. The committed render
+  // (`applyFilters` → `sortByEarliestVisible`) re-sorts the target day by its
+  // own earliest showtime, so the visible order jumped on release. The preview
+  // must show the SAME order the commit lands on.
+
+  "the day-carousel neighbour column" should "show films in the committed (earliest-showtime) order, not the current day's order" in {
+    onPath("/") { page =>
+      // Start on a broad day ('anytime') so the centre grid's DOM order is the
+      // anytime earliest order — generally NOT the same as a single later day's,
+      // which is exactly what makes the reorder-on-release visible.
+      page.eval("document.getElementById('date-filter').value = 'anytime'; onDateChange()")
+      page.waitFor("document.querySelector('#film-grid > .col[data-title]') !== null")
+
+      // A left drag from 'anytime' reveals the NEXT day in the ring, which wraps
+      // to 'today'. Capture which day the mounted neighbour is for so we commit
+      // to the SAME day (otherwise the counts/order wouldn't be comparable).
+      coarsePointer(page)
+      page.eval(synthDrag("pointerdown", 300, 500))
+      page.eval(synthDrag("pointermove", 240, 505))   // dx = -60 → lock + arm (reveals NEXT day)
+      page.eval(synthDrag("pointermove", 120, 505))   // keep dragging left, stay held
+
+      // The NEXT-day neighbour is the `.day-col` to the right of `#view-root`.
+      val neighbourSel =
+        """(() => {
+          |  const root = document.getElementById('view-root');
+          |  if (!root) return null;
+          |  let el = root.nextElementSibling;
+          |  while (el && !el.classList.contains('day-col')) el = el.nextElementSibling;
+          |  return el;
+          |})()""".stripMargin
+      val neighbourOrder = page.evalString(
+        s"""(() => {
+          |  const el = $neighbourSel;
+          |  if (!el) return '';
+          |  return [...el.querySelectorAll('.col[data-title]')]
+          |    .filter(c => c.style.display !== 'none')
+          |    .map(c => c.dataset.title).join('|');
+          |})()""".stripMargin
+      )
+      // Which day the neighbour preview is for = the day after 'anytime' wraps:
+      // read it from the ring so the commit below targets the same day.
+      val neighbourDay = page.evalString(
+        "(() => { const sel = document.getElementById('date-filter');" +
+        "  const ring = window.dayRing ? window.dayRing() : " +
+        "    [...sel.options].map(o => o.value);" +
+        "  const n = ring.length; return ring[((sel.selectedIndex + 1) % n + n) % n]; })()"
+      )
+      // Release below threshold → snap back, leaving the real day unchanged.
+      page.eval(synthDrag("pointerup", 120, 505))
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+
+      // The committed order for that SAME day: select it and read `#film-grid`.
+      page.eval(
+        s"document.getElementById('date-filter').value = ${jsString(neighbourDay)}; applyFilters()"
+      )
+      val committedOrder = visibleTitleOrder(page)
+
+      // Both must be non-empty and identical — the preview can't reorder on
+      // release.
+      committedOrder.nonEmpty shouldBe true
+      neighbourOrder shouldBe committedOrder
+    }
+  }
+
   // ── Single-cinema label suppression ─────────────────────────────────────────
   //
   // `applyFilters()` tags `#film-grid` with class `single-cinema` when at most

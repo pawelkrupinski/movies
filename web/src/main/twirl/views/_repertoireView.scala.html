@@ -240,8 +240,11 @@
   // same way the live `applyFilters` does. Clones carry no INDEX, so this walks
   // the DOM directly. `dayValue` is a `#date-filter` option value
   // (today/tomorrow/week/anytime/YYYY-MM-DD); the predicate matches `applyFilters`'
-  // `dateOk`. No sorting/truncation/URL sync — a neighbour column is a static
-  // preview that only needs the right cards visible at the right scroll offset.
+  // `dateOk`. The visible cards are re-ordered to the SAME earliest-showtime
+  // (or rating) order the commit lands on — otherwise the preview shows the
+  // current day's order and the cards visibly jump on release. No
+  // truncation/URL sync — a neighbour column is a static preview that only
+  // needs the right cards, in the right order, at the right scroll offset.
   function applyFiltersForDay(gridEl, dayValue) {
     if (!gridEl) return;
     const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
@@ -268,13 +271,21 @@
                                              _  => true;
 
     const has = (filter, get) => filter !== null && !filter.some(get);
-    gridEl.querySelectorAll('.col[data-title]').forEach(col => {
+    // The active sort axis, read the same way shared.js's getSortBy does — the
+    // neighbour preview must commit-match, including under 'rating'.
+    const sortBy = (document.getElementById('sort-by')?.value === 'rating') ? 'rating' : 'earliest';
+    // Visible cards with their commit sort key: earliest visible showtime
+    // ("<date>T<HH:MM>", matching applyFilters) + rating + original DOM index.
+    const visible = [];
+    const cols = [...gridEl.querySelectorAll('.col[data-title]')];
+    cols.forEach((col, idx) => {
       const countries = new Set((col.dataset.countries || '').split('|').filter(Boolean));
       const genres    = new Set((col.dataset.genres    || '').split('|').filter(Boolean));
       const directors = new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean));
       const cast      = new Set((col.dataset.cast     || '').split(',').map(s => s.trim()).filter(Boolean));
       const titleLc   = (col.dataset.title || '').toLowerCase();
       let colVisible = false;
+      let colEarliest = null;   // earliest visible "<date>T<HH:MM>" for the sort
       if (!(hidden.has(col.dataset.title) || (query && !titleLc.includes(query))
             || has(countryFilter,  c => countries.has(c))
             || has(genreFilter,    g => genres.has(g))
@@ -297,7 +308,11 @@
                         && (!hasFrom || timeMin < 0 || timeMin >= fromMin)
                         && (roomSet === null || (roomKey && roomSet.has(roomKey)));
                 b.style.display = ok ? '' : 'none';
-                if (ok) cgVisible++;
+                if (ok) {
+                  cgVisible++;
+                  const key = group.dataset.date + 'T' + t;
+                  if (colEarliest === null || key < colEarliest) colEarliest = key;
+                }
               });
               cg.style.display = cgVisible > 0 ? '' : 'none';
               if (cgVisible > 0) groupVisible = true;
@@ -308,7 +323,24 @@
         });
       }
       col.style.display = colVisible ? '' : 'none';
+      if (colVisible) {
+        visible.push({ el: col, earliest: colEarliest || '', rating: parseFloat(col.dataset.rating) || 0, idx });
+      }
     });
+
+    // Re-order the visible cards into the committed order. Mirrors
+    // applyFilters' compareCards: rating biggest-first (earliest tiebreak),
+    // else earliest-showtime ascending, with the original DOM index as the
+    // stable final tiebreak. Without this the preview keeps the CURRENT day's
+    // order and the cards jump on release.
+    visible.sort((a, b) => {
+      if (sortBy === 'rating' && a.rating !== b.rating) return b.rating - a.rating;
+      if (a.earliest !== b.earliest) return a.earliest < b.earliest ? -1 : 1;
+      return a.idx - b.idx;
+    });
+    const frag = document.createDocumentFragment();
+    for (const v of visible) frag.appendChild(v.el);
+    gridEl.appendChild(frag);
   }
 
   // Entry points shared.js drives at boot (`bootView`).

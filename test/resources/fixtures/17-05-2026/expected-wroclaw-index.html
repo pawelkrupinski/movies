@@ -25416,13 +25416,17 @@ dayValue === 'week' ? d => d >= today && d <= in7Days :
 isSpecific ? d => d === dayValue :
 _ => true;
 const has = (filter, get) => filter !== null && !filter.some(get);
-gridEl.querySelectorAll('.col[data-title]').forEach(col => {
+const sortBy = (document.getElementById('sort-by')?.value === 'rating') ? 'rating' : 'earliest';
+const visible = [];
+const cols = [...gridEl.querySelectorAll('.col[data-title]')];
+cols.forEach((col, idx) => {
 const countries = new Set((col.dataset.countries || '').split('|').filter(Boolean));
 const genres = new Set((col.dataset.genres || '').split('|').filter(Boolean));
 const directors = new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean));
 const cast = new Set((col.dataset.cast || '').split(',').map(s => s.trim()).filter(Boolean));
 const titleLc = (col.dataset.title || '').toLowerCase();
 let colVisible = false;
+let colEarliest = null;
 if (!(hidden.has(col.dataset.title) || (query && !titleLc.includes(query))
 || has(countryFilter, c => countries.has(c))
 || has(genreFilter, g => genres.has(g))
@@ -25445,7 +25449,11 @@ const ok = (!hasFmt || badgeFormatMatch(formats, fmtTokens))
 && (!hasFrom || timeMin < 0 || timeMin >= fromMin)
 && (roomSet === null || (roomKey && roomSet.has(roomKey)));
 b.style.display = ok ? '' : 'none';
-if (ok) cgVisible++;
+if (ok) {
+cgVisible++;
+const key = group.dataset.date + 'T' + t;
+if (colEarliest === null || key < colEarliest) colEarliest = key;
+}
 });
 cg.style.display = cgVisible > 0 ? '' : 'none';
 if (cgVisible > 0) groupVisible = true;
@@ -25456,7 +25464,18 @@ if (groupVisible) colVisible = true;
 });
 }
 col.style.display = colVisible ? '' : 'none';
+if (colVisible) {
+visible.push({ el: col, earliest: colEarliest || '', rating: parseFloat(col.dataset.rating) || 0, idx });
+}
 });
+visible.sort((a, b) => {
+if (sortBy === 'rating' && a.rating !== b.rating) return b.rating - a.rating;
+if (a.earliest !== b.earliest) return a.earliest < b.earliest ? -1 : 1;
+return a.idx - b.idx;
+});
+const frag = document.createDocumentFragment();
+for (const v of visible) frag.appendChild(v.el);
+gridEl.appendChild(frag);
 }
 window.buildIndex = buildIndex;
 window.applyFilters = applyFilters;
