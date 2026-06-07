@@ -100,7 +100,10 @@ class CinemaScraperCatalog(
     new UjazdowskiClient(http),
     new CytadelaClient(http),
     new NoveKinoClient(http, "wisla", KinoWisla),
-    new AdaKinoStudyjneClient(http, AdaKinoStudyjne),
+    // biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so route
+    // through `bnFetch` — Zyte's residential egress in prod, the fixture fake
+    // in tests. Same seam as Kino Kameralne below.
+    new AdaKinoStudyjneClient(bnFetch, AdaKinoStudyjne),
   )
 
   private val krakowScrapers: Seq[CinemaScraper] = Seq(
