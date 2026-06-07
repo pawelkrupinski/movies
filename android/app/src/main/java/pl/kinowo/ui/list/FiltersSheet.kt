@@ -55,12 +55,11 @@ import pl.kinowo.ui.theme.TextSecondary
 fun FiltersSheet(
     vm: KinowoViewModel,
     films: List<Film>,
-    showCinemaFilter: Boolean,
     sheetState: SheetState,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        FiltersSheetContent(vm, films, showCinemaFilter)
+        FiltersSheetContent(vm, films)
     }
 }
 
@@ -73,7 +72,6 @@ fun FiltersSheet(
 internal fun FiltersSheetContent(
     vm: KinowoViewModel,
     films: List<Film>,
-    showCinemaFilter: Boolean,
 ) {
     val hidden by vm.hiddenFilms.collectAsState()
     val disabled by vm.disabledCinemas.collectAsState()
@@ -130,9 +128,7 @@ internal fun FiltersSheetContent(
             }
 
             // Kina — collapsible, matching Ukryte filmy and the name filters.
-            // Hidden on the /kina tab, where the cinema pill row pins a single
-            // cinema and this multi-select would only confuse.
-            if (showCinemaFilter && allCinemas.isNotEmpty()) {
+            if (allCinemas.isNotEmpty()) {
                 item(key = "sec_cinemas") {
                     // Scope the badge + master toggle to THIS city's cinemas — a
                     // cinema deselected in another city lingers in the global set

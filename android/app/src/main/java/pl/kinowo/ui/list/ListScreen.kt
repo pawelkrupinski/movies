@@ -3,9 +3,8 @@ package pl.kinowo.ui.list
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,10 +53,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
@@ -67,16 +66,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.take
 import android.content.res.Configuration
 import java.time.LocalDate
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
+import pl.kinowo.filter.wrappedDayIndex
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.TopBarLayout
@@ -124,36 +120,44 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     val refreshScope = rememberCoroutineScope()
     var refreshing by remember { mutableStateOf(false) }
 
-    val pager = rememberPagerState(pageCount = { 2 })
     // Backdrop captured by `Modifier.haze` (the grid) and sampled by the
     // floating search pill's `hazeChild` to blur whatever scrolls under it.
     val hazeState = remember { HazeState() }
     var showFilters by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // There is no tab bar — Filmy / Kina are reached only by swiping the
-    // pager. Two affordances stand in for it (mirroring the iOS app):
-    //  • a momentary centre label naming the screen on arrival, and
+    // The grid has no day tabs — the selected day is changed by swiping the
+    // grid horizontally (left = next day, right = previous, wrapping the
+    // ordered day list). Two affordances stand in for an explicit control
+    // (mirroring the iOS app):
+    //  • a momentary centre label naming the day on each swipe, and
     //  • a once-a-day swipe hint until the user's first-ever swipe.
     var tabLabel by remember { mutableStateOf<String?>(null) }
     var showSwipeHint by remember { mutableStateOf(false) }
 
-    // Flash the destination screen's name on first appear and on each swipe,
-    // then fade it after 0.7 s. Re-keying on currentPage cancels the previous
-    // delay, so back-to-back swipes don't leave a stale label stuck.
-    LaunchedEffect(pager.currentPage) {
-        tabLabel = if (pager.currentPage == 0) "Filmy" else "Kina"
+    // Flash the newly-selected day's label on each swipe, then fade it after
+    // 0.7 s. Re-keying on dateFilter cancels the previous delay, so back-to-back
+    // swipes don't leave a stale label stuck. Skips the very first composition
+    // (no swipe happened — just don't flash on arrival).
+    var seenFirstDay by remember { mutableStateOf(false) }
+    LaunchedEffect(vm.dateFilter) {
+        if (!seenFirstDay) {
+            seenFirstDay = true
+            return@LaunchedEffect
+        }
+        tabLabel = vm.dateFilter.label
         delay(700)
         tabLabel = null
     }
 
-    // The first-ever settled page change is, by definition, a real swipe (no
-    // tabs left to drive it programmatically): retire the hint for good.
-    LaunchedEffect(Unit) {
-        snapshotFlow { pager.currentPage }.drop(1).take(1).collect {
-            showSwipeHint = false
-            vm.markSwiped()
-        }
+    // Step the selected day by [delta] (left swipe = +1, right = -1), wrapping
+    // the ordered day list. The first swipe also retires the once-a-day hint.
+    val onDaySwipe: (Int) -> Unit = { delta ->
+        val presets = DateFilter.presets
+        val current = presets.indexOf(vm.dateFilter).coerceAtLeast(0)
+        vm.dateFilter = presets[wrappedDayIndex(current, delta, presets.size)]
+        showSwipeHint = false
+        vm.markSwiped()
     }
 
     // Surface the swipe hint the moment the first repertoire load lands, gated
@@ -205,10 +209,6 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 }
             }
 
-            if (pager.currentPage == 1) {
-                CinemaChips(vm, films)
-            }
-
             // ── content ───────────────────────────────────────────────────────
             // The search field floats over the grid as a bottom capsule
             // (mirrors the iOS `SearchBar`) rather than taking its own row.
@@ -223,7 +223,16 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                     when {
                         isLoading && films.isEmpty() -> CenteredMessage("Ładowanie repertuaru…")
                         error != null && films.isEmpty() -> ErrorState(error!!) { vm.reload() }
-                        else -> HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
+                        else -> {
+                            val visible = vm.filmsForFilmsTab(films, hidden, disabled)
+                            // Suppress the per-card cinema label when the
+                            // repertoire on show narrows to a single cinema —
+                            // it's the same name on every card. Mirrors the
+                            // Kina-tab section header being dropped under a pin.
+                            val showCinemaHeaders = distinctCinemaCount(visible) > 1
+                            // Horizontal drag steps the day; the LazyVerticalGrid
+                            // keeps its vertical scroll (detectHorizontalDrag only
+                            // claims horizontal pointers).
                             PullToRefreshBox(
                                 isRefreshing = refreshing,
                                 onRefresh = {
@@ -234,19 +243,15 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                     }
                                 },
                             ) {
-                                if (page == 0) {
-                                    FilmsGrid(vm.filmsForFilmsTab(films, hidden, disabled), gridBottomInset, vm.dateFilter, onOpenFilm) { vm.hide(it) }
-                                } else {
-                                    CinemaGrid(
-                                        vm.cinemaSections(films, hidden),
-                                        // A pinned cinema shows only its own section, so the
-                                        // per-cinema header is redundant — the pill already names it.
-                                        showHeaders = vm.pinnedCinema == null,
-                                        bottomInset = gridBottomInset,
-                                        scrollResetKey = vm.dateFilter,
-                                        onOpen = onOpenFilm,
-                                    ) { vm.hide(it) }
-                                }
+                                FilmsGrid(
+                                    films = visible,
+                                    bottomInset = gridBottomInset,
+                                    scrollResetKey = vm.dateFilter,
+                                    showCinemaHeaders = showCinemaHeaders,
+                                    onOpen = onOpenFilm,
+                                    onHide = { vm.hide(it) },
+                                    modifier = Modifier.daySwipe(onDaySwipe),
+                                )
                             }
                         }
                     }
@@ -276,9 +281,6 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
         FiltersSheet(
             vm = vm,
             films = films,
-            // The /kina tab pins one cinema via its pill row, so the multi-select
-            // cinema filter is redundant there — only the Filmy tab shows it.
-            showCinemaFilter = pager.currentPage == 0,
             sheetState = sheetState,
             onDismiss = { showFilters = false },
         )
@@ -301,7 +303,7 @@ private fun TabLabelOverlay(text: String, modifier: Modifier = Modifier) {
 }
 
 // Once-a-day onboarding hint: a swipe icon over one line of copy, telling
-// first-time users they can swipe to the Kina screen.
+// first-time users they can swipe to change the selected day.
 @Composable
 private fun SwipeHintOverlay(modifier: Modifier = Modifier) {
     Surface(modifier = modifier, shape = RoundedCornerShape(20.dp), color = Color.Black.copy(alpha = 0.6f)) {
@@ -316,7 +318,7 @@ private fun SwipeHintOverlay(modifier: Modifier = Modifier) {
                 modifier = Modifier.size(34.dp),
             )
             Text(
-                "Przesuń, aby zobaczyć kina",
+                "Przesuń, aby zmienić dzień",
                 color = Color.White,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
@@ -471,59 +473,38 @@ private fun DatePill(label: String, selected: Boolean, modifier: Modifier = Modi
     }
 }
 
-// Single-cinema selector for the /kina tab: a horizontally scrollable row of
-// pills — "Wszystkie" (no pin → all cinemas) first, then one per cinema.
-// Mirrors iOS `CinemaPillsRow`: pills tile edge-to-edge, their rectangular hit
-// areas touching exactly (zero Row spacing + a tapMargin inside each pill), so
-// there's no dead gap to miss-tap into while the visible capsules keep a gap.
-@Composable
-private fun CinemaChips(vm: KinowoViewModel, films: List<Film>) {
-    val cinemas = remember(films) { vm.allCinemas(films) }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 11.dp, vertical = 5.dp),
-    ) {
-        FilterPill("Wszystkie", selected = vm.pinnedCinema == null) { vm.pinnedCinema = null }
-        for (cinema in cinemas) {
-            FilterPill(
-                title = CinemaSection.pillName(cinema),
-                selected = vm.pinnedCinema == cinema,
-            ) { vm.pinnedCinema = cinema }
-        }
+// Minimum horizontal drag, in pixels, that commits a day change. Below this a
+// drag is treated as an accidental wobble and the day is left unchanged.
+private const val DaySwipeThresholdPx = 60f
+
+// Wires a horizontal drag onto a grid so a left swipe advances the day and a
+// right swipe goes back (the index math + wraparound lives in
+// [wrappedDayIndex]). The accumulated horizontal delta is committed once on
+// drag end, so a single gesture steps exactly one day; vertical scrolling is
+// untouched because `detectHorizontalDragGestures` only claims horizontal
+// pointers. [onSwipe] is called with +1 for a left swipe (next) and -1 for a
+// right swipe (previous).
+private fun Modifier.daySwipe(onSwipe: (Int) -> Unit): Modifier = pointerInput(onSwipe) {
+    var dragX = 0f
+    detectHorizontalDragGestures(
+        onDragStart = { dragX = 0f },
+        onDragEnd = {
+            if (dragX <= -DaySwipeThresholdPx) onSwipe(+1)
+            else if (dragX >= DaySwipeThresholdPx) onSwipe(-1)
+        },
+    ) { change, dragAmount ->
+        change.consume()
+        dragX += dragAmount
     }
 }
 
-// Half the gap between neighbouring pills. It lives as padding *inside* each
-// pill's tap target (with zero Row spacing), so the rectangular hit areas of
-// adjacent pills meet exactly while the visible capsules keep a 2*tapMargin gap.
-private val FilterPillTapMargin = 3.dp
-
-// Shared pill for the date and cinema selector rows: an edge-to-edge capsule
-// with a rectangular tap area, mirroring iOS `CinemaPillsRow`.
-@Composable
-private fun FilterPill(title: String, selected: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) { onClick() }
-            .padding(FilterPillTapMargin),
-    ) {
-        Text(
-            title,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            color = Color.White,
-            modifier = Modifier
-                .clip(CircleShape)
-                .background(if (selected) Brand.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.08f))
-                .padding(horizontal = 10.dp, vertical = 5.dp),
-        )
-    }
+// Distinct cinema names anywhere in the currently-shown films. Drives whether
+// the per-card cinema label is worth showing: with a single cinema on screen
+// it's the same name on every card, so it's suppressed as redundant.
+private fun distinctCinemaCount(films: List<Film>): Int {
+    val seen = HashSet<String>()
+    for (film in films) for (day in film.showings) for (c in day.cinemas) seen.add(c.cinema)
+    return seen.size
 }
 
 // Vertical room the floating search pill occupies at the bottom of the
@@ -568,7 +549,15 @@ internal fun ScrollToTopOnChange(state: LazyGridState, key: Any?) {
 }
 
 @Composable
-private fun FilmsGrid(films: List<Film>, bottomInset: Dp, scrollResetKey: Any?, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
+private fun FilmsGrid(
+    films: List<Film>,
+    bottomInset: Dp,
+    scrollResetKey: Any?,
+    showCinemaHeaders: Boolean,
+    onOpen: (String) -> Unit,
+    onHide: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     if (films.isEmpty()) {
         EmptyState("Brak repertuaru.")
         return
@@ -583,10 +572,10 @@ private fun FilmsGrid(films: List<Film>, bottomInset: Dp, scrollResetKey: Any?, 
         contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = bottomInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
     ) {
         items(films, key = { it.title }) { film ->
-            FilmCard(film, showCinemaHeaders = true, onOpen = { onOpen(film.title) }, onHide = { onHide(film.title) })
+            FilmCard(film, showCinemaHeaders = showCinemaHeaders, onOpen = { onOpen(film.title) }, onHide = { onHide(film.title) })
         }
     }
 }

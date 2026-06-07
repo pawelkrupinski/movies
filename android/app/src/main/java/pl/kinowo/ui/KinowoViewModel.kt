@@ -40,7 +40,6 @@ import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.filter.SortOption
 import pl.kinowo.filter.filteredFor
-import pl.kinowo.filter.groupedByCinema
 import pl.kinowo.filter.sortedFor
 import pl.kinowo.model.Film
 
@@ -107,7 +106,6 @@ class KinowoViewModel(
     var sortBy by mutableStateOf(SortOption.DEFAULT)
     var formatFilter by mutableStateOf(FormatFilter.EMPTY)
     var search by mutableStateOf("")
-    var pinnedCinema by mutableStateOf<String?>(null)
     var excludedCountries by mutableStateOf<Set<String>>(emptySet())
     var excludedGenres by mutableStateOf<Set<String>>(emptySet())
     var excludedDirectors by mutableStateOf<Set<String>>(emptySet())
@@ -141,26 +139,6 @@ class KinowoViewModel(
             excludedDirectors = excludedDirectors,
             excludedCast = excludedCast,
         ).sortedFor(sortBy)
-
-    fun cinemaSections(all: List<Film>, hidden: Set<String>): List<CinemaSection> {
-        // Web's /kina ignores the persistent disabledCinemas set — pinning one
-        // cinema is equivalent to disabling every other; no pin shows all.
-        val disabled = pinnedCinema?.let { pin -> allCinemas(all).toSet() - pin } ?: emptySet()
-        return all.filteredFor(
-            date = dateFilter,
-            format = formatFilter,
-            query = search,
-            hidden = hidden,
-            disabledCinemas = disabled,
-            excludedCountries = excludedCountries,
-            excludedDirectors = excludedDirectors,
-            excludedCast = excludedCast,
-        ).groupedByCinema()
-            // Sort within each cinema: after grouping every film carries only
-            // this cinema's showings, so `earliestShowing` is the per-cinema
-            // nearest slot — the right key for the section's order.
-            .map { it.copy(films = it.films.sortedFor(sortBy)) }
-    }
 
     /** Distinct cinema names anywhere in the payload, sorted by pill name. */
     fun allCinemas(all: List<Film>): List<String> {

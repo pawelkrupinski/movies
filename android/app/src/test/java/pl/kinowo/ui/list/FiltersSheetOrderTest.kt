@@ -61,7 +61,7 @@ class FiltersSheetOrderTest {
     @Test
     fun cityPickerSitsBelowTheFiltersAndAboveTheAccountSection() {
         compose.setContent {
-            FiltersSheetContent(viewModel(), films = emptyList(), showCinemaFilter = true)
+            FiltersSheetContent(viewModel(), films = emptyList())
         }
 
         fun top(text: String) =
@@ -91,7 +91,7 @@ class FiltersSheetOrderTest {
     @Test
     fun cityPickerIsACollapsedDropdown() {
         compose.setContent {
-            FiltersSheetContent(viewModel(), films = emptyList(), showCinemaFilter = true)
+            FiltersSheetContent(viewModel(), films = emptyList())
         }
 
         val list = compose.onNode(hasScrollAction())
