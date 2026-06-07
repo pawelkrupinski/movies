@@ -4,6 +4,7 @@ import com.mongodb.client.model.{IndexOptions => JIndexOptions, UpdateOptions}
 import java.util.concurrent.TimeUnit
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.model.{Filters, Indexes, Updates}
+import org.mongodb.scala.bson.conversions.Bson
 import play.api.Logging
 
 import java.util.concurrent.{ConcurrentHashMap, Executors, ScheduledExecutorService}
@@ -28,11 +29,14 @@ import scala.util.Try
  *    dirty bucket's CUMULATIVE counts via `$set` every `FlushIntervalMs`. A
  *    bucket's hundreds of per-pass records collapse into one write.
  *  - READS are polled, not change-streamed: the serving app does one `find()`
- *    per `PollIntervalMs` instead of reacting to every write. So its uptime cost
- *    is FIXED — one query per interval — no matter how many cities scrape. This
- *    replaced a per-write change stream (UPDATE_LOOKUP) whose full-doc lookups
- *    pegged the serving vCPU at multi-city volume, and it drops the change
- *    stream's replica-set requirement.
+ *    per `PollIntervalMs` instead of reacting to every write, and that `find()`
+ *    is BOUNDED to the recently-changeable buckets (`pollFilter`). So its cost
+ *    scales with the number of services in that small window, not with the full
+ *    24h of retained history — an unbounded poll re-read the whole collection
+ *    every interval and, once every city scraped (so the collection tripled),
+ *    dominated the serving vCPU. This replaced a per-write change stream
+ *    (UPDATE_LOOKUP) whose full-doc lookups pegged the serving vCPU at multi-city
+ *    volume, and it drops the change stream's replica-set requirement.
  */
 class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boolean = false) extends Logging {
   import UptimeMonitor._
@@ -201,10 +205,23 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
 
   // ── Polled reads (serving app) ──────────────────────────────────────────────
 
-  /** Read the current `uptimeBuckets` snapshot and merge it in. One query per
-   *  interval — cost is fixed regardless of how many writes happened since. */
+  /** The poll only needs buckets that can still change. Writes only ever land in
+   *  the CURRENT 5-min slot (see `currentBucket`), so a bucket is frozen once its
+   *  slot closes and its final cumulative count flushes — within
+   *  `BucketDurationMs + FlushIntervalMs` of the slot start. Everything older was
+   *  already loaded by the boot `hydrate` and never changes again, so re-reading
+   *  it every interval is pure waste (it dominated the serving box's CPU once the
+   *  scraper count — hence the collection — grew). Bound the poll to a generous
+   *  recent window; `PollLookbackMs` carries the margin rationale. The
+   *  `{bucket: {$gte}}` range is served by the existing `{bucket:1}` TTL index. */
+  private[services] def pollFilter(nowMs: Long): Bson =
+    Filters.gte("bucket", new java.util.Date(nowMs - PollLookbackMs))
+
+  /** Read the recently-changeable `uptimeBuckets` and merge them in. One bounded
+   *  query per interval — cost scales with the number of services in the window,
+   *  not with the full 24h of retained history. */
   private def poll(c: MongoCollection[Document]): Unit = Try {
-    val docs = Await.result(c.find().toFuture(), 10.seconds)
+    val docs = Await.result(c.find(pollFilter(System.currentTimeMillis())).toFuture(), 10.seconds)
     docs.foreach { doc =>
       for {
         service    <- Option(doc.getString("service"))
@@ -308,8 +325,14 @@ object UptimeMonitor {
   // Dirty buckets flush to Mongo this often (writer side).
   val FlushIntervalMs: Long = 10000L
   // The serving app re-reads the uptimeBuckets snapshot this often (reader side).
-  // Fixed cost — one find() per interval — independent of the scraper fetch rate.
   val PollIntervalMs: Long = 10000L
+  // The poll only fetches buckets newer than this — older ones are frozen (writes
+  // only ever hit the current slot) and were already loaded at boot. Must exceed
+  // a slot + the final flush + slack for a poll delayed while the serving box is
+  // under load: 3 slots (15 min) sits ~9 min past the freeze point. Bounds the
+  // poll to the recent window instead of the full 24h history, so its cost stops
+  // growing with retention (and with the scraper/cinema count behind it).
+  val PollLookbackMs: Long = 3 * BucketDurationMs
 
   def bucketTimestamp(epochMs: Long): Long = epochMs - (epochMs % BucketDurationMs)
 

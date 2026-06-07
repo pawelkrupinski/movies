@@ -187,7 +187,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.history("IMDb").head.errors shouldBe Seq("boom")
   }
 
-  // The poller re-reads the WHOLE uptimeBuckets snapshot every interval, so the
+  // The poller re-reads the recently-changeable buckets every interval, so the
   // same bucket value is applied over and over. Re-applying an unchanged value
   // must NOT fire listeners — otherwise every poll would spam the /uptime SSE
   // with ~one event per bucket regardless of activity.
@@ -205,6 +205,20 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     // A real change (worker recorded more) → fires.
     monitor.applyExternalUpdate("RT", ts, successes = 5, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 2
+  }
+
+  // The poll must NOT re-read the whole 24h collection every interval — that
+  // unbounded find() dominated the serving box's CPU once the scraper (hence
+  // bucket) count grew. Writes only ever hit the current slot, so the poll is
+  // bounded to recently-changeable buckets via a `{bucket: {$gte}}` filter.
+  "the poll query" should "fetch only buckets within the lookback window, not the whole collection" in {
+    val monitor = new UptimeMonitor()
+    val now = 1700000000000L
+    val filterDoc = monitor.pollFilter(now).toBsonDocument()
+
+    // A regression to find()/an empty filter would scan the whole collection.
+    filterDoc.isEmpty shouldBe false
+    filterDoc.getDocument("bucket").getDateTime("$gte").getValue shouldBe (now - UptimeMonitor.PollLookbackMs)
   }
 
   "BucketSnapshot.status" should "be green when all succeed" in {
