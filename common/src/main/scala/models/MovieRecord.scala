@@ -233,7 +233,7 @@ case class MovieRecord(
   /** Cinema-reported original/international title — first non-empty with
    *  Multikino preferred. Separate from `originalTitle` (the TMDB-resolved
    *  production-language title): this is what the cinema's own API exposed,
-   *  used as a fallback hint when `reEnrich` triggers a fresh TMDB search. */
+   *  used as a fallback hint for the TMDB search. */
   def cinemaOriginalTitle: Option[String] =
     prioritizedCinema.iterator.flatMap(_._2.originalTitle).nextOption()
 

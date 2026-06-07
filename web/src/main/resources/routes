@@ -29,11 +29,6 @@ GET     /:city/debug/tune           controllers.MovieController.tune(city: Strin
 # /:city/debug/tune* pages. Same live-CSS-variable approach as
 # /:city/debug/tune; dev-only.
 GET     /:city/debug/tune/film      controllers.MovieController.tuneFilm(city: String)
-# Drop one row from cache+Mongo and re-fetch all upstream sources. Writes
-# incrementally as each stage completes so a debug-page reload shows the row
-# repopulating field-by-field.
-+ nocsrf
-POST    /:city/debug/reenrich       controllers.MovieController.reEnrich(city: String, title: String, year: Option[Int] ?= None)
 # Drop the in-memory positive cache and reload it from Mongo. Not gated by
 # devOnly — usable on a deployed instance to reconcile after out-of-band
 # Mongo edits.

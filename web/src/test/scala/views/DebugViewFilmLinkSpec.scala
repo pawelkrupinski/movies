@@ -29,9 +29,9 @@ class DebugViewFilmLinkSpec extends AnyFlatSpec with Matchers {
     html should not include """href="/poznan/film?title=Belle""""
   }
 
-  it should "POST re-enrich to the city-prefixed route (the bare /debug/reenrich 404s)" in {
+  it should "not render a re-enrich button or fetch (the feature was removed)" in {
     val html = views.html.debug(Seq(wroclawOnly)).body
-    html should include ("fetch('/poznan/debug/reenrich?'")
-    html should not include "fetch('/debug/reenrich?'"
+    html should not include "reenrich"
+    html should not include "↻"
   }
 }

@@ -282,8 +282,8 @@ class CaffeineMovieCache(
    *  organically as they happen. */
   private[services] def clearNegatives(): Unit = negative.invalidateAll()
 
-  /** Drop a row from positive cache + Mongo — used by `reEnrich` to clear the
-   *  row before re-fetching every upstream source. */
+  /** Drop a row from positive cache + Mongo — used by the TMDB stage to clear
+   *  a stale row before re-keying it under a corrected (title, year). */
   private[services] def invalidate(key: CacheKey): Unit = {
     positive.invalidate(key)
     repo.delete(key.cleanTitle, key.year)

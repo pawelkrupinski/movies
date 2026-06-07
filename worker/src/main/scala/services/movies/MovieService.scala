@@ -142,68 +142,14 @@ class MovieService(
    *  been edited out-of-band and the in-memory cache needs to catch up. */
   def rehydrate(): Int = cache.rehydrate()
 
-  /** Manual re-enrich (debug page). Wipes the cached row, then runs the TMDB
-   *  stage on the worker pool — the bus listener picks up `TmdbResolved` and
-   *  chains the IMDb stage; the *Ratings refreshes will re-derive MC / RT /
-   *  Filmweb URLs from the new TMDB id on their next tick.
-   *
-   *  `originalTitle` and `director` are cinema-side hints (sourced from the
-   *  current `ShowtimeCache` by the controller) that feed the same
-   *  director-verification + director-walk path `MovieRecordCreated` uses. Without
-   *  them, the TMDB title search alone can lock in a same-title-different-
-   *  film result, undoing whatever the bus-driven path already corrected.
-   *
-   *  Returns immediately. Tests that want synchronous results call
-   *  `reEnrichSync` instead. */
-  def reEnrich(
-    title:         String,
-    year:          Option[Int],
-    originalTitle: Option[String] = None,
-    director:      Option[String] = None
-  ): Unit = {
-    val key = cache.keyOf(title, year)
-    // Don't delete the row outright — the previous implementation called
-    // `cache.invalidate(key)` here, which dropped the row from positive
-    // cache AND Mongo immediately, leaving a window where /debug,
-    // toSchedules, and the rest of the app saw the film as "gone" until
-    // the async TMDB stage put it back. Worse, if TMDB returned no match
-    // (events, special screenings) or simply took longer than the JS
-    // reload timer to respond, the row stayed gone permanently.
-    //
-    // Instead, atomically strip just the TMDB-derived fields — the row
-    // stays visible while reEnrich is in flight, scrape data + cinema
-    // slots are preserved, and on a TMDB miss the row remains with
-    // cleared TMDB / ratings / URLs (no stale URLs survive from the
-    // previous wrong resolution). The dedicated `*Ratings` classes
-    // re-discover MC / RT / Filmweb URLs from the new tmdbId via the
-    // `TmdbResolved` bus event.
-    cache.putIfPresent(key, existing => existing.copy(
-      tmdbId            = None,
-      imdbId            = None,
-      imdbRating        = None,
-      metascore         = None,
-      metacriticUrl     = None,
-      rottenTomatoes    = None,
-      rottenTomatoesUrl = None,
-      filmwebUrl        = None,
-      filmwebRating     = None,
-      // Drop the TMDB SourceData slot too — synopsis / cast / director
-      // / runtime / countries / poster all came from the wrong film
-      // and shouldn't bleed forward. Cinema slots (per-`Cinema`
-      // entries in `data`) stay intact so showtimes survive the
-      // re-resolve.
-      data              = existing.data - Tmdb
-    ))
-    Future(runTmdbStage(key, originalTitle, director))(using ec)
-    ()
-  }
-
-  /** Same as `reEnrich` but blocks the calling thread and returns the row TMDB
-   *  resolved (or None if TMDB has no hit). Runs the TMDB stage only — callers
-   *  that also want fresh IMDb / Filmweb / Metacritic / Rotten Tomatoes data
-   *  should chain the corresponding `*Ratings.refreshOneSync(title, year)`
-   *  call themselves (see `scripts/EnrichmentBackfill` for the pattern). Does
-   *  NOT publish bus events, so concurrent listeners don't double-fetch. */
+  /** Re-resolve `(title, year)` via the TMDB stage on the calling thread and
+   *  return the row TMDB resolved (or None if TMDB has no hit). Runs the TMDB
+   *  stage only — callers that also want fresh IMDb / Filmweb / Metacritic /
+   *  Rotten Tomatoes data should chain the corresponding
+   *  `*Ratings.refreshOneSync(title, year)` call themselves (see
+   *  `scripts/EnrichmentBackfill` for the pattern). Does NOT publish bus
+   *  events, so concurrent listeners don't double-fetch. Used by the backfill
+   *  scripts and the enrichment test harness. */
   def reEnrichSync(title: String, year: Option[Int]): Option[MovieRecord] =
     runTmdbStageSync(cache.keyOf(title, year)).map(_._2)
 

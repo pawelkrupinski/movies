@@ -62,9 +62,9 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val cache       = new CaffeineMovieCache(new InMemoryMovieRepo())
     val svc   = new MovieService(cache, bus, tmdbStub())
 
-    // The async path goes through `reEnrich` → worker pool → runTmdbStage,
-    // which publishes the event on success.
-    svc.reEnrich("Mortal Kombat II", Some(2026))
+    // The async path goes through `MovieRecordCreated` → scheduleTmdbStage →
+    // worker pool → runTmdbStage, which publishes the event on success.
+    svc.onMovieRecordCreated(MovieRecordCreated("Mortal Kombat II", Some(2026)))
 
     eventually(seen.toSeq shouldBe Seq(TmdbResolved("Mortal Kombat II", Some(2026), "tt17490712")))
   }
@@ -82,7 +82,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val imdbRatings = new ImdbRatings(cache, new ImdbClient(http = deadFetch))
     val svc   = new MovieService(cache, bus, emptyTmdb)
 
-    svc.reEnrich("Unknown Title", None)
+    svc.onMovieRecordCreated(MovieRecordCreated("Unknown Title", None))
 
     // Wait a beat — no event should fire because there's no hit.
     Thread.sleep(200)

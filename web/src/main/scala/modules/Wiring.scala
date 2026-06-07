@@ -56,8 +56,8 @@ trait Wiring {
   lazy val movieRepo: MovieRepo = new MongoMovieRepo(mongoConnection.database, fallbackToOwnInit = false)
   lazy val movieCache: CaffeineMovieCache = new CaffeineMovieCache(movieRepo, eventBus)
 
-  // Reads come straight from the cache; the dev-only debug re-enrich button is a
-  // no-op in the serving process (the worker re-enriches on its continuous pass).
+  // Reads come straight from the cache; enrichment happens in the worker
+  // process on its continuous pass.
   lazy val movieControllerService = new MovieControllerService(movieCache)
 
   def controllerComponents: ControllerComponents

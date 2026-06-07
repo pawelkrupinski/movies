@@ -126,17 +126,10 @@ case class FilmSchedule(
                        )
 
 class MovieControllerService(
-  cache:        MovieCache,
-  // Dev-only debug re-enrich trigger. Enrichment runs in the write process, so
-  // the composition root supplies this: the combined/worker wiring forwards it
-  // to MovieService; the read app leaves it the no-op default (the worker
-  // re-enriches on its own continuous pass).
-  reEnrichHook: (String, Option[Int]) => Unit = (_, _) => ()
+  cache: MovieCache
 ) {
   def debugData(): Seq[StoredMovieRecord] =
     cache.snapshot().sortBy(_.title.toLowerCase)
-
-  def reenrich(title: String, year: Option[Int]): Unit = reEnrichHook(title, year)
 
   def toSchedules(city: City): Seq[FilmSchedule] =
     toSchedules(city, LocalDateTime.now(city.zoneId))
@@ -434,26 +427,6 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
-  /** Drop a single row from cache + Mongo and re-fetch every upstream source
-   * (TMDB, IMDb rating, Filmweb, Metacritic, Rotten Tomatoes). Writes happen
-   * incrementally on the worker pool — the request returns immediately.
-   *
-   * Looks up cinema-side hints (`director`, `originalTitle`) from the live
-   * showtime cache so the re-resolve uses the same signals the bus-driven
-   * `MovieRecordCreated` path uses. Without these, a TMDB title search alone can
-   * re-elect a same-title-different-film hit and silently undo earlier
-   * corrections (e.g. Rialto's "On drive" resolving back to the LEGO F1
-   * doc instead of the Ukrainian war drama whose director the cinema does
-   * report). */
-  def reEnrich(city: String, title: String, year: Option[Int]): Action[AnyContent] = Action {
-    withCity(city) { _ =>
-      devOnly {
-        movieControllerService.reenrich(title, year)
-        NoContent
-      }
-    }
-  }
-
   /** Drop the in-memory positive cache and reload it from Mongo. Available in
    * every mode (unlike the rest of the debug endpoints) so a fly.io instance
    * whose cache drifted from Mongo can be reconciled without a redeploy.
@@ -466,9 +439,9 @@ class MovieController( cc: ControllerComponents,
   }
 
 
-  // All /debug/* endpoints return 404 in production so the cache contents and
-  // the re-enrichment trigger aren't exposed on a deployed instance. Mode
-  // defaults to Dev in `AppLoader` unless APP_MODE=prod is set explicitly.
+  // All /debug/* endpoints return 404 in production so the cache contents
+  // aren't exposed on a deployed instance. Mode defaults to Dev in
+  // `AppLoader` unless APP_MODE=prod is set explicitly.
   private def devOnly(result: => play.api.mvc.Result): play.api.mvc.Result =
     if (environment == Mode.Prod) NotFound("dev-only endpoint") else result
 

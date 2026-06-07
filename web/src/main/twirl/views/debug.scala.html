@@ -46,13 +46,6 @@
       background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 3px;
     }
     .url-cell a:hover { background: #252540; color: #ccc; text-decoration: none; }
-    .reenrich-btn {
-      background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 3px;
-      color: #888; font: 12px monospace; padding: 0 6px; cursor: pointer;
-    }
-    .reenrich-btn:hover { background: #252540; color: #ccc; }
-    .reenrich-btn:disabled { opacity: .4; cursor: default; }
-    tr.reenriching td { opacity: .5; }
     .ratings { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
     .hidden { display: none !important; }
 
@@ -127,7 +120,6 @@
       <th data-key="tmdb"  data-type="num">TMDB id</th>
       <th data-key="imdbR" data-type="num">Ratings</th>
       <th data-key="urls"  data-type="str">Stored URLs</th>
-      <th>↻</th>
     </tr>
   </thead>
   <tbody>
@@ -142,7 +134,6 @@
           data-haystack="@{(title + " " + orig + " " + imdbId).toLowerCase}"
           data-title="@title"
           data-orig="@orig"
-          data-key-year="@year.map(_.toString).getOrElse("")"
           data-year="@e.releaseYear.map(_.toString).getOrElse("")"
           data-imdb="@imdbId"
           data-tmdb="@e.tmdbId.map(_.toString).getOrElse("")"
@@ -180,12 +171,9 @@
             <a href="@u" target="_blank" rel="noopener" title="@u">T@{idx + 1}</a>
           }
         </td>
-        <td>
-          <button class="reenrich-btn" type="button" title="Drop and re-fetch all upstream data">↻</button>
-        </td>
       </tr>
       <tr class="details hidden" data-row-id="r@idx">
-        <td colspan="8">@debugDetails(title, year, e)</td>
+        <td colspan="7">@debugDetails(title, year, e)</td>
       </tr>
       }
       }
@@ -213,14 +201,14 @@
   }
 
   // Toggle details on data-row click. We bail when the click landed
-  // inside an `<a>` or `<button>` so the rating-link / re-enrich-btn
-  // anchors don't pull the row open on their way to their own action
-  // — this used to require an inline `onclick="event.stopPropagation()"`
-  // on every such element (~17 KB of repeated markup on / and /kina
-  // through _ratingBadges, all dropped now).
+  // inside an `<a>` so the rating / id / URL links don't pull the row
+  // open on their way to their own action — this used to require an
+  // inline `onclick="event.stopPropagation()"` on every such element
+  // (~17 KB of repeated markup on / and /kina through _ratingBadges,
+  // all dropped now).
   document.querySelectorAll('#t tbody tr.data').forEach(tr => {
     tr.addEventListener('click', (e) => {
-      if (e.target.closest('a, button')) return;
+      if (e.target.closest('a')) return;
       const details = document.querySelector('#t tbody tr.details[data-row-id="' + tr.dataset.rowId + '"]');
       if (!details) return;
       const expanded = tr.classList.toggle('expanded');
@@ -269,29 +257,6 @@
   }
 
   document.getElementById('q').focus();
-
-  document.querySelectorAll('.reenrich-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const tr = btn.closest('tr');
-      const params = new URLSearchParams();
-      params.set('title', tr.dataset.title);
-      // Re-enrich identifies the row by its cache-key year (which may be
-      // None when the row was created from a no-year scrape and TMDB hasn't
-      // re-keyed yet) — distinct from the resolved year shown in the
-      // visible column.
-      if (tr.dataset.keyYear) params.set('year', tr.dataset.keyYear);
-      btn.disabled = true;
-      tr.classList.add('reenriching');
-      const res = await fetch('/@{city.slug}/debug/reenrich?' + params.toString(), { method: 'POST' });
-      if (!res.ok) {
-        btn.disabled = false;
-        tr.classList.remove('reenriching');
-        alert('Re-enrich failed: HTTP ' + res.status);
-        return;
-      }
-      setTimeout(() => location.reload(), 1500);
-    });
-  });
 </script>
 </body>
 </html>
