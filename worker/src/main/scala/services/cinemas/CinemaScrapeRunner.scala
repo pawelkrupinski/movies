@@ -1,9 +1,9 @@
 package services.cinemas
 
-import models.Cinema
+import models.{Cinema, CinemaMovie}
 import play.api.Logging
 import services.events.{EventBus, MovieRecordCreated}
-import services.movies.MovieCache
+import services.movies.{CacheKey, MovieCache}
 
 /**
  * The per-cinema scrape core: fetch a cinema's current listings, write them
@@ -18,9 +18,11 @@ import services.movies.MovieCache
  */
 class CinemaScrapeRunner(movieCache: MovieCache, bus: EventBus) extends Logging {
 
-  /** Scrape one cinema, record it, publish new-record events. Returns the number
-   *  of entries scraped. Throws on a fetch/record failure — callers handle it. */
-  def run(scraper: CinemaScraper): Int = {
+  /** Scrape one cinema, record it, publish new-record events. Returns the
+   *  recorded rows (movie, canonical key, isNew) so a caller can schedule
+   *  per-film follow-up work (detail enrichment). Throws on a fetch/record
+   *  failure — callers handle it. */
+  def run(scraper: CinemaScraper): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     val cinema: Cinema = scraper.cinema
     val t0     = System.currentTimeMillis()
     val movies = scraper.fetch()
@@ -34,6 +36,6 @@ class CinemaScrapeRunner(movieCache: MovieCache, bus: EventBus) extends Logging 
           key.cleanTitle, key.year, cm.movie.originalTitle,
           if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None))
     }
-    movies.size
+    touched
   }
 }

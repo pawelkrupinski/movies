@@ -3,7 +3,7 @@ package services.tasks
 import models.{Cinema, CinemaMovie, KinoApollo, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{CinemaScrapeRunner, CinemaScraper}
+import services.cinemas.{CinemaScrapeRunner, CinemaScraper, DetailEnricher, FilmDetail}
 import services.events.InProcessEventBus
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
@@ -38,7 +38,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scraper = new FakeScraper(Multikino, movieAt(Multikino))
     val fresh   = new InMemoryFreshnessStore
     fresh.markFresh(ScrapeCinemaHandler.dedupKey(Multikino), FreshnessKind.CinemaScrape)
-    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh)
+    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh, new InMemoryTaskQueue)
     h.handle(task(Multikino)) shouldBe HandlerOutcome.Skipped
     scraper.fetchCount shouldBe 0
   }
@@ -47,14 +47,14 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scraper = new FakeScraper(Multikino, movieAt(Multikino))
     val fresh   = new InMemoryFreshnessStore
     val key     = ScrapeCinemaHandler.dedupKey(Multikino)
-    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh)
+    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh, new InMemoryTaskQueue)
     h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
     scraper.fetchCount shouldBe 1
     fresh.isFresh(key, FreshnessKind.CinemaScrape) shouldBe true
   }
 
   it should "drop a task whose cinema is no longer in the catalogue" in {
-    val h = new ScrapeCinemaHandler(Map.empty, freshRunner(), new InMemoryFreshnessStore)
+    val h = new ScrapeCinemaHandler(Map.empty, freshRunner(), new InMemoryFreshnessStore, new InMemoryTaskQueue)
     h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
   }
 
@@ -62,7 +62,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val scraper = new FakeScraper(Multikino, throw new RuntimeException("HTTP 503 for GET https://x"))
     val fresh   = new InMemoryFreshnessStore
     val key     = ScrapeCinemaHandler.dedupKey(Multikino)
-    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh)
+    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh, new InMemoryTaskQueue)
     h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
     fresh.isFresh(key, FreshnessKind.CinemaScrape) shouldBe false
   }
@@ -92,5 +92,38 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val reaper   = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore)
     reaper.tick() shouldBe 2
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 2L
+  }
+
+  // ── ScrapeCinemaHandler enqueues detail tasks for detail-deferring cinemas ──
+
+  private def movieWithRef(c: Cinema, title: String = "Dune") = Seq(
+    CinemaMovie(Movie(title), c, posterUrl = None, filmUrl = Some(s"http://detail/$title"),
+      synopsis = None, cast = Seq.empty, director = Seq.empty,
+      showtimes = Seq(Showtime(LocalDateTime.now(), Some("https://book"))))
+  )
+
+  it should "enqueue an EnrichDetails task per scraped film for a detail-deferring cinema" in {
+    val scraper  = new FakeScraper(KinoApollo, movieWithRef(KinoApollo))
+    val queue    = new InMemoryTaskQueue
+    val fresh    = new InMemoryFreshnessStore
+    val enricher = new DetailEnricher {
+      val cinema = KinoApollo; val detailGroup = "kino-apollo"
+      def fetchFilmDetail(ref: String) = Some(FilmDetail())
+    }
+    val h = new ScrapeCinemaHandler(
+      Map(ScrapeCinemaHandler.scraperKey(KinoApollo) -> scraper), freshRunner(), fresh, queue,
+      Map(KinoApollo.displayName -> enricher))
+
+    h.handle(task(KinoApollo)) shouldBe HandlerOutcome.Done
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L // one EnrichDetails task
+  }
+
+  it should "not enqueue detail tasks for a cinema without a detail enricher" in {
+    val scraper = new FakeScraper(KinoApollo, movieWithRef(KinoApollo))
+    val queue   = new InMemoryTaskQueue
+    val h = new ScrapeCinemaHandler(
+      Map(ScrapeCinemaHandler.scraperKey(KinoApollo) -> scraper), freshRunner(), new InMemoryFreshnessStore, queue)
+    h.handle(task(KinoApollo)) shouldBe HandlerOutcome.Done
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 0L
   }
 }
