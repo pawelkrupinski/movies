@@ -64,6 +64,7 @@
 
 		DD00000000000000000022 /* RetryBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000022 /* RetryBackoff.swift */; };
 		DD00000000000000000044 /* SwipeHint.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000044 /* SwipeHint.swift */; };
+		DD00000000000000000090 /* DaySwipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000090 /* DaySwipe.swift */; };
 		DD00000000000000000080 /* TopBarLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000080 /* TopBarLayout.swift */; };
 		DD00000000000000000036 /* FormatTokenFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000036 /* FormatTokenFilter.swift */; };
 		DD00000000000000000050 /* PosterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000050 /* PosterStore.swift */; };
@@ -143,6 +144,7 @@
 
 		CC00000000000000000022 /* RetryBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryBackoff.swift; sourceTree = "<group>"; };
 		CC00000000000000000044 /* SwipeHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeHint.swift; sourceTree = "<group>"; };
+		CC00000000000000000090 /* DaySwipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaySwipe.swift; sourceTree = "<group>"; };
 		CC00000000000000000080 /* TopBarLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopBarLayout.swift; sourceTree = "<group>"; };
 		CC00000000000000000036 /* FormatTokenFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatTokenFilter.swift; sourceTree = "<group>"; };
 		CC00000000000000000050 /* PosterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterStore.swift; sourceTree = "<group>"; };
@@ -230,6 +232,7 @@
 				CC00000000000000000022 /* RetryBackoff.swift */,
 				CC00000000000000000044 /* SwipeHint.swift */,
 				CC00000000000000000080 /* TopBarLayout.swift */,
+				CC00000000000000000090 /* DaySwipe.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -447,6 +450,7 @@
 				DD00000000000000000022 /* RetryBackoff.swift in Sources */,
 				DD00000000000000000044 /* SwipeHint.swift in Sources */,
 				DD00000000000000000080 /* TopBarLayout.swift in Sources */,
+				DD00000000000000000090 /* DaySwipe.swift in Sources */,
 				DD00000000000000000036 /* FormatTokenFilter.swift in Sources */,
 				DD00000000000000000050 /* PosterStore.swift in Sources */,
 				DD00000000000000000051 /* CachedAsyncImage.swift in Sources */,

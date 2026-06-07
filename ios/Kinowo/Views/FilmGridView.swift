@@ -43,10 +43,26 @@ private struct EmptyRepertoireView: View {
 
 struct FilmGridView: View {
     let films: [Film]
+    /// Forwarded to each `FilmCardView` → `ShowingsView`: when false, the
+    /// per-card cinema label is dropped (e.g. when only one cinema is in
+    /// view, so naming it on every card is redundant).
+    var showCinemaHeaders: Bool = true
     /// Picking a different day (or any change to this token) snaps the grid
     /// back to the top. Defaults to a constant so previews / callers that
     /// don't drive a reset opt out cleanly.
     var scrollResetToken: AnyHashable = AnyHashable(0)
+    /// A paged `TabView` lays its scroll view a fixed 17pt above its
+    /// container, so a grid hosted in one adds that back to its top inset.
+    /// The single-page films screen hosts the grid directly in a VStack and
+    /// passes false, so it doesn't over-pad. Defaults true for callers that
+    /// still live inside a paged TabView (the tuning screen).
+    var pagedInTabView: Bool = true
+
+    private var topInset: CGFloat {
+        // 10pt breathing gap below the bar; plus the paged overflow when the
+        // grid sits inside a paged TabView.
+        (pagedInTabView ? pagedTabViewTopOverflow : 0) + 10
+    }
 
     var body: some View {
         if films.isEmpty {
@@ -64,17 +80,16 @@ struct FilmGridView: View {
                             // handler, so the NavigationLink only fires
                             // on the gaps between them.
                             NavigationLink(value: film) {
-                                FilmCardView(film: film)
+                                FilmCardView(film: film, showCinemaHeaders: showCinemaHeaders)
                             }
                             .buttonStyle(.plain)
                             .accessibilityIdentifier(A11y.FilmGrid.cell)
                         }
                     }
                     .padding(.horizontal, 12)
-                    // Clear the paged TabView's fixed top overflow, then a 10pt
-                    // breathing gap so the first poster row rests just below the
-                    // bar instead of tucking under it.
-                    .padding(.top, pagedTabViewTopOverflow + 10)
+                    // First poster row rests just below the bar instead of
+                    // tucking under it (see `topInset`).
+                    .padding(.top, topInset)
                     .padding(.bottom, 70)
                     .id(gridTopAnchorID)
                 }

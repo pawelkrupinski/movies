@@ -51,12 +51,10 @@ enum A11y {
 
     enum CinemaPage {
         static let sectionHeader = "cinema.section.header"
-        static let pill          = "cinema.pill"
     }
 
-    enum TabOverlay {
-        static let filmy     = "tab.label.filmy"
-        static let kina      = "tab.label.kina"
+    enum DayOverlay {
+        static let label = "day.label"
     }
 
     enum SwipeHint {

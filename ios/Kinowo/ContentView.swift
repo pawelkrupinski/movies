@@ -24,15 +24,6 @@ struct ContentView: View {
     @State private var excludedCast: Set<String> = []
     @State private var search: String = ""
     @State private var sortOption: SortOption = .earliest
-    /// Active tab — swipe-left/right on the TabView flips between
-    /// `.films` (`/`) and `.cinemas` (`/kina`). Each writes a brief
-    /// label overlay so the user knows which screen they landed on
-    /// when there's no other visual cue (no tab bar, just swipe).
-    @State private var tab: Tab = .films
-    /// Kina-tab cinema pin. Equivalent to the web's `_kinaPinned` —
-    /// single-cinema filter that ignores Filtry's persistent
-    /// `disabledCinemas`. `nil` = show all cinemas.
-    @State private var pinnedCinema: String? = nil
     @State private var showFilters: Bool = false
     @FocusState private var searchFocused: Bool
 
@@ -43,8 +34,10 @@ struct ContentView: View {
     /// as the floating bottom pill. See `TopBarLayout`.
     private var searchInline: Bool { TopBarLayout.searchInline(width: viewportWidth) }
 
-    @State private var tabLabel: String? = nil
-    @State private var tabLabelTask: Task<Void, Never>?
+    /// Brief day-name label flashed mid-screen on each swipe-driven day change
+    /// (and on launch), so the user gets feedback on which day they landed on.
+    @State private var dayLabel: String? = nil
+    @State private var dayLabelTask: Task<Void, Never>?
 
     /// Once-a-day swipe onboarding hint (see `SwipeHint`). Evaluated once per
     /// appearance, the moment the first repertoire load lands.
@@ -59,13 +52,27 @@ struct ContentView: View {
     @State private var citySwitchSuggestion: City.CitySwitchSuggestion?
     @StateObject private var locationResolver = LocationCityResolver()
 
-    enum Tab: Hashable { case films, cinemas }
+    /// Index of the currently-selected day pill within `DateFilter.presets`
+    /// (the ordered list the date pills show), or 0 when the active filter
+    /// isn't one of the presets. The day-swipe steps this index.
+    private var selectedDayIndex: Int {
+        DateFilter.presets.firstIndex(of: dateFilter) ?? 0
+    }
 
-    private func tabLabel(for tab: Tab) -> String {
-        switch tab {
-        case .films:      return "Filmy"
-        case .cinemas:    return "Kina"
-        }
+    /// Step the selected day by `delta` (swipe left = +1 = next day, swipe
+    /// right = -1 = previous), wrapping around the preset list. The wrap math
+    /// lives in the pure `wrappedDayIndex` so it's unit-tested.
+    private func changeDay(by delta: Int) {
+        let next = wrappedDayIndex(
+            current: selectedDayIndex, delta: delta, count: DateFilter.presets.count)
+        let target = DateFilter.presets[next]
+        withAnimation(.easeInOut(duration: 0.2)) { dateFilter = target }
+        showDayLabel(target.label)
+        // First-ever swipe retires the onboarding hint for good. `markSwiped()`
+        // is idempotent, so running it on every swipe is harmless.
+        swipeHintTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.2)) { showSwipeHint = false }
+        prefs.markSwiped()
     }
 
     var body: some View {
@@ -159,8 +166,7 @@ struct ContentView: View {
                         allCountries: allCountries,
                         allGenres: allGenres,
                         allDirectors: allDirectors,
-                        allCast: allCast,
-                        showCinemaSection: tab == .films
+                        allCast: allCast
                     )
                 }
         }
@@ -172,15 +178,15 @@ struct ContentView: View {
         .id(vSizeClass)
         // Overlay on the NavigationStack so the label aligns to the
         // device's screen centre, not the safe-area-inset content area.
-        // The hint takes precedence over the momentary tab label so the two
+        // The hint takes precedence over the momentary day label so the two
         // pills never stack on top of each other.
         .overlay {
             if showSwipeHint {
                 SwipeHintOverlay()
                     .allowsHitTesting(false)
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
-            } else if let label = tabLabel {
-                TabLabelOverlay(text: label)
+            } else if let label = dayLabel {
+                DayLabelOverlay(text: label)
                     .allowsHitTesting(false)
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
@@ -231,11 +237,6 @@ struct ContentView: View {
             if !isEmpty { maybeShowSwipeHint() }
         }
         .onAppear {
-            // Briefly name the starting tab so the user sees the same
-            // label-on-arrival affordance the swipe-driven changes get.
-            // Idempotent — running on every appear is fine; the task
-            // cancels the previous fade-out cleanly.
-            showTabLabel(tabLabel(for: tab))
             Task { await maybeSuggestCitySwitch() }
         }
         .onChange(of: scenePhase) { phase in
@@ -293,63 +294,39 @@ struct ContentView: View {
         } else if let error = store.error, store.films.isEmpty {
             errorState(error)
         } else {
-            TabView(selection: $tab) {
-                FilmGridView(films: filmsForFilmsTab,
-                             scrollResetToken: AnyHashable(dateFilter))
-                    .refreshable { await store.reload() }
-                    .tag(Tab.films)
-                cinemasPage
-                    .tag(Tab.cinemas)
-            }
-            // `.page(indexDisplayMode: .never)` gives horizontal swipe
-            // between pages without the dot indicator at the bottom —
-            // the floating Filmy / Kina label is the only "where am I"
-            // affordance.
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            // Ignore only bottom/horizontal — NOT the top. The TabView sits
-            // below the bar in ContentView's VStack, so its paged scroll view
-            // (and pan gesture) starts at the bar's bottom edge, never reaching
-            // up under the pill row to steal the day-pill taps. Ignoring `.top`
-            // here would let the paged scroll view span the full height again,
-            // putting its gesture back under the pills. Bottom/horizontal are
-            // ignored so pages run edge-to-edge and under the floating search
-            // pill; the grids pin their own content inset (see FilmGridView) so
-            // the first row still rests a clear gap below the bar.
-            .ignoresSafeArea(edges: [.bottom, .horizontal])
-            // Resolves NavigationLink(value: Film) from both grids to
-            // the per-film detail screen, the iOS counterpart of
-            // /film?title=… on the web.
-            .navigationDestination(for: Film.self) { film in
-                FilmDetailView(film: film)
-            }
-            .onChange(of: tab) { new in
-                showTabLabel(tabLabel(for: new))
-                // First-ever swipe retires the onboarding hint for good.
-                // `markSwiped()` is idempotent, so running it on every swipe
-                // is harmless.
-                swipeHintTask?.cancel()
-                withAnimation(.easeInOut(duration: 0.2)) { showSwipeHint = false }
-                prefs.markSwiped()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var cinemasPage: some View {
-        CinemaSectionedGridView(
-            sections: filmsForCinemasTab.groupedByCinema(),
-            // A pinned cinema is already named by its pill, so drop the
-            // now-redundant per-section header; "Wszystkie" keeps them.
-            showSectionHeaders: pinnedCinema == nil,
-            scrollResetToken: AnyHashable(dateFilter),
-            header: {
-                CinemaPillsRow(
-                    allCinemas: allCinemas,
-                    pinnedCinema: $pinnedCinema
+            FilmGridView(films: filmsForFilmsTab,
+                         showCinemaHeaders: showCinemaHeaders,
+                         scrollResetToken: AnyHashable(dateFilter),
+                         // The grid sits directly in ContentView's VStack now
+                         // (no paged TabView), so it doesn't need the 17pt
+                         // paged-scroll-view overflow compensation.
+                         pagedInTabView: false)
+                .refreshable { await store.reload() }
+                // The day-swipe gesture replaces the old TabView paging swipe:
+                // drag left → next day, drag right → previous day, wrapping the
+                // date-pill list. `minimumDistance` keeps it from firing on a
+                // tap or a tiny twitch, and the `width > |height|` check below
+                // ignores vertical scroll drags so the grid still scrolls
+                // freely. The grid's own ScrollView keeps its vertical pan.
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 30)
+                        .onEnded { value in
+                            let dx = value.translation.width
+                            guard abs(dx) > abs(value.translation.height),
+                                  abs(dx) > 50 else { return }
+                            // Swipe left (negative dx) → next day (+1);
+                            // swipe right (positive dx) → previous day (-1).
+                            changeDay(by: dx < 0 ? 1 : -1)
+                        }
                 )
-            }
-        )
-        .refreshable { await store.reload() }
+                .ignoresSafeArea(edges: [.bottom, .horizontal])
+                // Resolves NavigationLink(value: Film) from the grid to the
+                // per-film detail screen, the iOS counterpart of
+                // /film?title=… on the web.
+                .navigationDestination(for: Film.self) { film in
+                    FilmDetailView(film: film)
+                }
+        }
     }
 
     private var loadingState: some View {
@@ -377,8 +354,8 @@ struct ContentView: View {
     }
 
     // Sorted, de-duplicated cinema names that appear at least once
-    // somewhere in `store.films`. Drives the Kina list in FiltersSheet,
-    // the "Wszystkie kina" master toggle, and the Kina-tab pill row.
+    // somewhere in `store.films`. Drives the Kina list in FiltersSheet
+    // and the "Wszystkie kina" master toggle.
     private var allCinemas: [String] {
         var seen = Set<String>()
         var out: [String] = []
@@ -442,40 +419,35 @@ struct ContentView: View {
         .sorted(by: sortOption)
     }
 
-    private var filmsForCinemasTab: [Film] {
-        // Web's `/kina` ignores `disabledCinemas` localStorage — the
-        // pill row is the single source of cinema-truth. Pinning one
-        // cinema is equivalent to disabling every other; no pin
-        // = empty disabled set = show everything.
-        let disabled: Set<String> = {
-            guard let pin = pinnedCinema else { return [] }
-            return Set(allCinemas).subtracting([pin])
-        }()
-        return store.films.filteredFor(
-            date: dateFilter,
-            format: formatFilter,
-            query: search,
-            hidden: prefs.hiddenFilms,
-            disabledCinemas: disabled,
-            excludedCountries: excludedCountries,
-            excludedGenres: excludedGenres,
-            excludedDirectors: excludedDirectors,
-            excludedCast: excludedCast
-        )
-        .sorted(by: sortOption)
+    /// Distinct cinemas that actually appear in the currently filtered film
+    /// list (after the user's per-cinema Filtry selection). When this is ≤ 1
+    /// — the filter has been narrowed to a single cinema, or the city only
+    /// has one — the per-card cinema label is redundant, so it's suppressed.
+    private var selectedCinemaCount: Int {
+        var seen = Set<String>()
+        for film in filmsForFilmsTab {
+            for day in film.showings {
+                for c in day.cinemas { seen.insert(c.cinema) }
+            }
+        }
+        return seen.count
     }
 
-    /// Flash the given label in the middle of the screen for ~0.7 s,
-    /// then fade it out over 0.2 s. Cancels any previous fade-out task
-    /// so back-to-back swipes (Filmy → Kina → Filmy) don't leave the
-    /// label stuck.
-    private func showTabLabel(_ text: String) {
-        tabLabelTask?.cancel()
-        withAnimation(.easeInOut(duration: 0.1)) { tabLabel = text }
-        tabLabelTask = Task { @MainActor in
+    /// Show the per-card cinema label only when more than one cinema is in
+    /// view; a single-cinema listing names the cinema everywhere identically,
+    /// so the label is just noise.
+    private var showCinemaHeaders: Bool { selectedCinemaCount > 1 }
+
+    /// Flash the given day label in the middle of the screen for ~0.7 s,
+    /// then fade it out over 0.2 s. Cancels any previous fade-out task so
+    /// back-to-back swipes don't leave the label stuck.
+    private func showDayLabel(_ text: String) {
+        dayLabelTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.1)) { dayLabel = text }
+        dayLabelTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 700_000_000)
             if Task.isCancelled { return }
-            withAnimation(.easeInOut(duration: 0.2)) { tabLabel = nil }
+            withAnimation(.easeInOut(duration: 0.2)) { dayLabel = nil }
         }
     }
 

@@ -1,10 +1,11 @@
 import Foundation
 
-/// Decides when to surface the "swipe to switch screens" onboarding hint.
+/// Decides when to surface the "swipe to change the day" onboarding hint.
 ///
-/// There is no tab bar — Filmy / Kina are reached only by swiping the pager —
-/// so first-time users get a once-a-day nudge until they discover the gesture.
-/// The rule is shared verbatim with the Android app's `SwipeHint`:
+/// The selected day is changed only by swiping the grid left/right (there's no
+/// other affordance), so first-time users get a once-a-day nudge until they
+/// discover the gesture. The rule is shared verbatim with the Android app's
+/// `SwipeHint`:
 ///
 ///  - never again once the user has swiped at least once, and
 ///  - otherwise at most once per calendar day.

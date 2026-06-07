@@ -301,69 +301,10 @@ struct SearchBar: View {
     }()
 }
 
-/// Single-cinema selector for the /kina screen: a horizontally scrollable
-/// row of pills — "Wszystkie" (no pin → all cinemas) first, then one per
-/// cinema. `pinnedCinema == nil` is "Wszystkie"; tapping a cinema pins it
-/// (equivalent to the web's `_kinaPinned`).
-struct CinemaPillsRow: View {
-    let allCinemas: [String]
-    @Binding var pinnedCinema: String?
-
-    /// Half the gap between neighbouring pills. It lives as padding
-    /// *inside* each pill's tap target (with HStack spacing 0), so the
-    /// rectangular hit areas of adjacent pills meet exactly — no dead gap
-    /// to miss-tap into — while the visible capsules keep a `2 * tapMargin`
-    /// gap between them.
-    private static let tapMargin: CGFloat = 3
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 0) {
-                pill(title: "Wszystkie", isSelected: pinnedCinema == nil) {
-                    pinnedCinema = nil
-                }
-                ForEach(allCinemas, id: \.self) { cinema in
-                    pill(title: CinemaSection.pillName(for: cinema),
-                         isSelected: pinnedCinema == cinema) {
-                        pinnedCinema = cinema
-                    }
-                }
-            }
-            .padding(.horizontal, 11)
-        }
-        .padding(.vertical, 5)
-    }
-
-    private func pill(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 15, weight: .medium))
-                .lineLimit(1)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(
-                    isSelected
-                        ? Color.accentColor.opacity(0.85)
-                        : Color.white.opacity(0.08),
-                    in: Capsule()
-                )
-                .foregroundColor(isSelected ? .white : .primary)
-                // Gap-filling margin + a rectangular hit shape, so the whole
-                // rectangle around the capsule is tappable and the
-                // rectangles of adjacent pills touch exactly (HStack spacing 0).
-                .padding(Self.tapMargin)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(BounceButtonStyle())
-        .accessibilityIdentifier(A11y.CinemaPage.pill)
-    }
-}
-
-// Floating label that names the current tab (Filmy / Kina). Shown on
-// app launch and on every swipe between tabs; fades out after ~0.7 s.
-// Positioned by the caller via `.overlay(alignment: .bottom)` plus
-// padding so it sits clear of the search bar.
-struct TabLabelOverlay: View {
+// Floating label that names the day the user just swiped to (Dziś / Jutro
+// / 7 dni / Wszystkie). Shown on every day-swipe; fades out after ~0.7 s.
+// Positioned by the caller via `.overlay` so it sits centre-screen.
+struct DayLabelOverlay: View {
     let text: String
 
     var body: some View {
@@ -376,27 +317,21 @@ struct TabLabelOverlay: View {
             .overlay(
                 Capsule().strokeBorder(Color.white.opacity(0.12))
             )
-            .accessibilityIdentifier({
-                switch text {
-                case "Filmy":    return A11y.TabOverlay.filmy
-                case "Kina":     return A11y.TabOverlay.kina
-                default:         return A11y.TabOverlay.filmy
-                }
-            }())
+            .accessibilityIdentifier(A11y.DayOverlay.label)
     }
 }
 
 // Once-a-day onboarding hint — a swipe-hand glyph over one line of copy,
-// telling first-time users they can swipe to the Kina screen. Shown
+// telling first-time users they can swipe to change the selected day. Shown
 // centre-screen right after the first repertoire load and retired for good
-// on the user's first-ever swipe. The Android counterpart is the
+// on the user's first-ever day-swipe. The Android counterpart is the
 // `SwipeHintOverlay` composable in ListScreen.kt.
 struct SwipeHintOverlay: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "hand.draw")
                 .font(.system(size: 32, weight: .regular))
-            Text("Przesuń, aby zobaczyć kina")
+            Text("Przesuń, aby zmienić dzień")
                 .font(.system(size: 15, weight: .medium))
         }
         .foregroundStyle(.primary)
@@ -458,7 +393,6 @@ struct FiltersSheet: View {
     let allGenres: [(name: String, count: Int)]
     let allDirectors: [(name: String, count: Int)]
     let allCast: [(name: String, count: Int)]
-    var showCinemaSection: Bool = true
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
@@ -497,7 +431,7 @@ struct FiltersSheet: View {
                     }
                 }
 
-                if showCinemaSection && !allCinemas.isEmpty {
+                if !allCinemas.isEmpty {
                     Section("Kina") {
                         Toggle("Wszystkie kina", isOn: Binding(
                             get: { prefs.allCinemasSelected(in: allCinemas) },
