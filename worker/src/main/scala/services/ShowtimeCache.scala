@@ -1,12 +1,11 @@
 package services
 
 import play.api.Logging
-import services.cinemas.CinemaScraper
+import services.cinemas.{CinemaScrapeRunner, CinemaScraper}
 import services.movies.MovieCache
-import services.events.{EventBus, MovieRecordCreated}
+import services.events.EventBus
 import tools.DaemonExecutors
 
-import java.io.IOException
 import java.util.concurrent.{TimeUnit, TimeoutException}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
@@ -32,6 +31,7 @@ class ShowtimeCache(
   passTimeout: FiniteDuration = 30.minutes
 ) extends Stoppable with Logging {
 
+  private val runner = new CinemaScrapeRunner(movieCache, bus)
   private val scheduler = DaemonExecutors.scheduler("showtime-cache-refresh")
   // Brief breather between back-to-back passes — essentially "start the next one
   // as soon as this finishes" without a hot loop.
@@ -97,47 +97,20 @@ class ShowtimeCache(
   }
 
   // Network/HTTP errors from external cinema sites — expected and not actionable.
-  // Log at WARN (invisible to Sentry) instead of ERROR.
-  private[services] def isTransientHttpError(e: Throwable): Boolean = e match {
-    case _: IOException       => true  // timeouts, SSL, connection errors
-    case _: TimeoutException  => true  // Future timeouts
-    case e: RuntimeException  =>
-      val msg = Option(e.getMessage).getOrElse("")
-      // "HTTP <code> for <method> <url>"          — RealHttpFetch.checkStatus
-      // "All N backends failed for <verb> <url>"  — FallbackHttpFetch.tryEach
-      msg.startsWith("HTTP ") ||
-        (msg.startsWith("All ") && msg.contains(" backends failed for "))
-    case _                    => false
-  }
+  // Log at WARN (invisible to Sentry) instead of ERROR. Delegates to the shared
+  // classifier (also used by the queue-driven ScrapeCinemaHandler).
+  private[services] def isTransientHttpError(e: Throwable): Boolean =
+    services.cinemas.ScrapeErrors.isTransientHttpError(e)
 
   private def refreshOne(scraper: CinemaScraper): Unit = {
     val cinema = scraper.cinema
     logger.debug(s"Refreshing ${cinema.displayName}")
-    val t0     = System.currentTimeMillis()
-    try {
-      val movies  = scraper.fetch()
-      val elapsed = System.currentTimeMillis() - t0
-      // Publish against the *canonical* CacheKey that recordCinemaScrape
-      // actually wrote each slot to — when the redirect absorbed this
-      // scrape's (title, year) into an existing sibling row, the bus event
-      // names the sibling's key so the TMDB stage doesn't run a second
-      // time for a phantom row.
-      //
-      // Suppress the event when this (cinema, raw title, raw year) tuple
-      // has already been scraped onto this row: every downstream listener
-      // is idempotent (re-checking state before doing work), so a steady-
-      // state tick where nothing changed would dispatch hundreds of no-op
-      // events per 5-minute interval. Listeners still get fresh events
-      // when a cinema reports a new title spelling, a year correction, or
-      // when a brand new film shows up.
-      val touched     = movieCache.recordCinemaScrape(cinema, movies)
-      val publishable = touched.count(_._3)
-      logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms ($publishable new)")
-      touched.foreach { case (cm, key, isNew) =>
-        if (isNew)
-          bus.publish(MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None))
-      }
-    } catch {
+    val t0 = System.currentTimeMillis()
+    // The fetch→record→publish core (incl. canonical-key publishing and the
+    // suppress-no-op-events logic) lives in CinemaScrapeRunner, shared with the
+    // queue-driven ScrapeCinemaHandler. Here we just classify a failure.
+    try runner.run(scraper)
+    catch {
       case e: Exception =>
         val elapsed = System.currentTimeMillis() - t0
         if (isTransientHttpError(e))

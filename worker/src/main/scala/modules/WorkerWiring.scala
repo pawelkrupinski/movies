@@ -6,7 +6,9 @@ import services.{MongoConnection, ShowtimeCache, Stoppable, UptimeMonitor}
 import services.cinemas._
 import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
+import services.freshness.{FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, UnscreenedCleanup}
+import services.tasks.{MongoTaskQueue, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskWorker}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
 /**
@@ -121,6 +123,32 @@ class WorkerWiring {
     cinemaScrapers, eventBus, movieCache, showtimeFetchEc
   )
 
+  // ── Task queue (scrape scheduling) ──────────────────────────────────────────
+  // When enabled, cinema scraping is driven by a durable Mongo task queue instead
+  // of ShowtimeCache's continuous loop: a reaper enqueues each cinema at most once
+  // per 15-min freshness window, and the worker scrapes it (skipping if a
+  // concurrent run already refreshed it). Enrichment still flows through the bus
+  // exactly as before — only the scrape *scheduling* changes here. Off by default
+  // until cut over; KINOWO_QUEUE_SCRAPING=true flips it.
+  protected def queueScraping: Boolean =
+    Env.get("KINOWO_QUEUE_SCRAPING").exists(v => v == "true" || v == "1")
+
+  lazy val taskQueue: TaskQueue = new MongoTaskQueue(mongoConnection.database)
+  lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
+  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus)
+  lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
+    cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
+    cinemaScrapeRunner, freshnessStore
+  )
+  // The worker dispatches scrapes onto the same sub-capped budget the old loop
+  // used, so a backlog can't peg the box.
+  lazy val taskWorker = new TaskWorker(
+    taskQueue, Seq(scrapeCinemaHandler),
+    backgroundBudget.ec("task-worker", scrapeConcurrency),
+    pollInterval = scala.concurrent.duration.DurationInt(5).seconds
+  )
+  lazy val scrapeReaper = new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore)
+
   // Subscribe BEFORE start() so the bus's first MovieRecordCreated events reach
   // the enrichment handlers. (See the original monolith comment block for the
   // full event-cascade rationale — the wiring is unchanged.)
@@ -152,7 +180,12 @@ class WorkerWiring {
     filmwebRatings.start()
     unscreenedCleanup.start()
     kinoMuzaSynopsisRefresher.start()
-    showtimeCache.start()
+    if (queueScraping) {
+      taskWorker.start()
+      scrapeReaper.start()
+    } else {
+      showtimeCache.start()
+    }
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). */
@@ -162,7 +195,14 @@ class WorkerWiring {
   )
 
   def stop(): Unit = {
-    showtimeCache.stop()
+    if (queueScraping) {
+      scrapeReaper.stop()
+      taskWorker.stop()
+      taskQueue.close()
+      freshnessStore.close()
+    } else {
+      showtimeCache.stop()
+    }
     cascadeDrainOrder.foreach(_.stop())
     unscreenedCleanup.stop()
     kinoMuzaSynopsisRefresher.stop()
