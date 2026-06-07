@@ -547,7 +547,7 @@ internal fun ScrollToTopOnChange(state: LazyGridState, key: Any?) {
 }
 
 @Composable
-private fun FilmsGrid(
+internal fun FilmsGrid(
     films: List<Film>,
     state: LazyGridState,
     bottomInset: Dp,
@@ -557,7 +557,12 @@ private fun FilmsGrid(
     modifier: Modifier = Modifier,
 ) {
     if (films.isEmpty()) {
-        EmptyState("Brak repertuaru.")
+        // Apply the column modifier so the empty state fills exactly its own
+        // carousel column and centres within it. Without it the bare
+        // fillMaxSize() has no width box and its placement leaks from the
+        // neighbour columns' content — jamming the message against the screen
+        // edge on days whose neighbour is full.
+        EmptyState("Brak repertuaru.", modifier)
         return
     }
     // Grid items map 1:1 to films, so the URL list lines up with item indices.
@@ -631,9 +636,9 @@ private fun CenteredMessage(text: String) {
 }
 
 @Composable
-private fun EmptyState(text: String) {
+private fun EmptyState(text: String, modifier: Modifier = Modifier) {
     Column(
-        Modifier.fillMaxSize(),
+        modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
