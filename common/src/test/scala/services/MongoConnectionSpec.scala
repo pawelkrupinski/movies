@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 
 /**
  * The boot-failure contract: with `required = true` (production), a missing
@@ -44,6 +45,25 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     val conn = new MongoConnection(uri = Some(MalformedUri), dbName = "kinowo", required = false)
     conn.database shouldBe None
     conn.close()
+  }
+
+  // Wire compression: the payload over the wire is uncompressed BSON, so on a
+  // slow link (the local flyctl tunnel, or the prod boot hydrate) transfer
+  // bytes dominate. We default to zlib — built into the JDK, no extra
+  // dependency — unless the URI explicitly chose its own compressors.
+  private val ValidUri = "mongodb://user:pass@127.0.0.1:27017/kinowo?authSource=kinowo"
+
+  "MongoConnection.clientSettings" should "default to zlib wire compression when the URI names none" in {
+    val names = MongoConnection.clientSettings(ValidUri).getCompressorList.asScala.map(_.getName)
+    names should contain ("zlib")
+  }
+
+  it should "respect compressors the URI specifies rather than forcing zlib" in {
+    val names = MongoConnection
+      .clientSettings(ValidUri + "&compressors=snappy")
+      .getCompressorList.asScala.map(_.getName)
+    names should contain ("snappy")
+    names should not contain "zlib"
   }
 
   // The mode/opt-out → required policy used by Wiring.

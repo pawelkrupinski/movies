@@ -1,6 +1,7 @@
 package services
 
-import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
+import com.mongodb.{ConnectionString, MongoCompressor}
+import org.mongodb.scala.{MongoClient, MongoClientSettings, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
 import tools.Env
 
@@ -74,7 +75,7 @@ class MongoConnection(
         (None, None)
       case Some(connectionString) =>
         Try {
-          val client = MongoClient(connectionString)
+          val client = MongoClient(MongoConnection.clientSettings(connectionString))
           val db     = client.getDatabase(dbName)
           // Touch the database to surface connectivity errors at boot
           // (same `countDocuments`-against-a-known-collection probe the
@@ -137,4 +138,20 @@ object MongoConnection {
       Env.get("MONGODB_DB").getOrElse("kinowo"),
       required,
       parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")))
+
+  /** Driver settings for a connection string, defaulting wire compression to
+   *  zlib. The wire payload is uncompressed BSON regardless of WiredTiger's
+   *  on-disk snappy, so on a slow link transfer bytes dominate query time —
+   *  the local `flyctl proxy` hop and the prod boot hydrate both pull the
+   *  whole `movies` collection. Measured: zlib shrinks that ~6.6x (4.4MB →
+   *  0.65MB), turning a ~36s tunnel hydrate into ~5s. zlib is built into the
+   *  JDK (no extra dependency); we only force it when the URI hasn't already
+   *  named its own `compressors=`, so an explicit choice (e.g. zstd) wins. */
+  private[services] def clientSettings(connectionString: String): MongoClientSettings = {
+    val cs      = new ConnectionString(connectionString)
+    val builder = MongoClientSettings.builder().applyConnectionString(cs)
+    if (cs.getCompressorList == null || cs.getCompressorList.isEmpty)
+      builder.compressorList(java.util.List.of(MongoCompressor.createZlibCompressor()))
+    builder.build()
+  }
 }
