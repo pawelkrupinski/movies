@@ -104,6 +104,8 @@ case object Ujazdowski extends Cinema("Kino U-jazdowski", "U-jazdowski")
 
 case object KinoCytadela extends Cinema("Kino Cytadela", "Cytadela")
 
+case object KinoAlternatywy extends Cinema("Kino Alternatywy", "Alternatywy")   // Ursynowskie Centrum Kultury — own site
+
 // ── Kraków ───────────────────────────────────────────────────────────────────
 
 case object CinemaCityBonarka extends Cinema("Cinema City Bonarka", "Bonarka")
@@ -556,7 +558,7 @@ object Cinema {
 
   val wroclaw: Seq[Cinema] = Seq(CinemaCityWroclavia, CinemaCityKorona, MultikinoPasazGrunwaldzki, HeliosMagnolia, HeliosAlejaBielany, KinoNoweHoryzonty, DolnoslaskieCentrumFilmowe, KinoAstra, KinoDyskusyjnyKlubFilmowyPolitechnika)
 
-  val warszawa: Seq[Cinema] = Seq(CinemaCityArkadia, CinemaCityBemowo, CinemaCityGaleriaPolnocna, CinemaCityJanki, CinemaCityMokotow, CinemaCityPromenada, CinemaCitySadyba, MultikinoZloteTarasy, MultikinoMlociny, MultikinoReduta, MultikinoTargowek, MultikinoWolaPark, HeliosBlueCity, KinoMuranow, KinoLuna, KinoElektronik, KinoIluzjon, KinoGram, KinoKultura, KinoAmondo, KinoNaBoku, KinoGlebocka66, Kinomuzeum, KinoSwit, KinoKepa, StacjaFalenica, SluzewskiDomKultury, KinoAtlantic, Kinoteka, Ujazdowski, KinoCytadela, KinoWisla, AdaKinoStudyjne, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha, KinoPlanetariumCentrumNaukiKopernik)
+  val warszawa: Seq[Cinema] = Seq(CinemaCityArkadia, CinemaCityBemowo, CinemaCityGaleriaPolnocna, CinemaCityJanki, CinemaCityMokotow, CinemaCityPromenada, CinemaCitySadyba, MultikinoZloteTarasy, MultikinoMlociny, MultikinoReduta, MultikinoTargowek, MultikinoWolaPark, HeliosBlueCity, KinoMuranow, KinoLuna, KinoElektronik, KinoIluzjon, KinoGram, KinoKultura, KinoAmondo, KinoNaBoku, KinoGlebocka66, Kinomuzeum, KinoSwit, KinoKepa, StacjaFalenica, SluzewskiDomKultury, KinoAtlantic, Kinoteka, Ujazdowski, KinoCytadela, KinoWisla, AdaKinoStudyjne, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha, KinoPlanetariumCentrumNaukiKopernik, KinoAlternatywy)
 
   /** Kraków venues. Cinema City has three multiplexes here (Bonarka,
    *  Kazimierz, Zakopianka — Zakopianka also houses the city's only IMAX);

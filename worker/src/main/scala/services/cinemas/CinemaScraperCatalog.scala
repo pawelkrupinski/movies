@@ -104,6 +104,7 @@ class CinemaScraperCatalog(
     // through `bnFetch` — Zyte's residential egress in prod, the fixture fake
     // in tests. Same seam as Kino Kameralne below.
     new AdaKinoStudyjneClient(bnFetch, AdaKinoStudyjne),
+    new AlternatywyClient(http),
   )
 
   private val krakowScrapers: Seq[CinemaScraper] = Seq(
