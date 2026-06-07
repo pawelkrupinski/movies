@@ -17,14 +17,17 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import pl.kinowo.TestData
+import pl.kinowo.model.Film
+import pl.kinowo.model.Showtime
+import pl.kinowo.ui.common.ShowtimeChipTestTag
 import pl.kinowo.ui.common.filmShareUrl
 
 /**
- * Long-pressing a [FilmCard] opens a share menu — Udostępnij (system share
- * sheet) and Skopiuj link (clipboard) — mirroring iOS `FilmCardView`'s
- * `.contextMenu`. Before this menu existed the long-press copied the link
- * outright, so the "Udostępnij" item asserted here did not appear; a plain tap
- * still opens the detail screen and shows no menu.
+ * Long-pressing a [FilmCard]'s poster opens a share menu — Udostępnij (system
+ * share sheet) and Skopiuj link (clipboard) — mirroring iOS `FilmCardView`'s
+ * `.contextMenu`. The menu lives on the poster, NOT the whole card, so it
+ * doesn't swallow the showtime chips' own long-press (the room tooltip); a
+ * plain tap anywhere still opens the detail screen and shows no menu.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -35,23 +38,61 @@ class FilmCardShareMenuTest {
 
     private val film = TestData.film(title = "Diuna: Część druga", days = emptyList())
 
-    private fun render(onOpen: () -> Unit = {}) {
+    /** A card carrying one room-bearing showtime, for the chip long-press test. */
+    private val filmWithRoom = TestData.film(
+        title = "Diuna: Część druga",
+        days = listOf(
+            TestData.day(
+                "Dziś",
+                listOf(
+                    TestData.cinema(
+                        "Kino Pod Baranami",
+                        listOf(Showtime(time = "18:30", format = "2D NAP", room = "Sala 8")),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    private fun render(film: Film = this.film, onOpen: () -> Unit = {}) {
         compose.setContent {
             FilmCard(film = film, showCinemaHeaders = true, onOpen = onOpen, onHide = {})
         }
     }
 
     @Test
-    fun longPressOpensShareMenu() {
+    fun longPressOnPosterOpensShareMenu() {
         var opened = false
         render(onOpen = { opened = true })
 
-        compose.onNodeWithTag(FilmCardTestTag).performTouchInput { longClick() }
+        compose.onNodeWithTag(FilmCardPosterTestTag).performTouchInput { longClick() }
         compose.waitForIdle()
 
         compose.onNodeWithText("Udostępnij").assertExists()
         compose.onNodeWithText("Skopiuj link").assertExists()
         assertFalse("long-press must not open the detail screen", opened)
+    }
+
+    /**
+     * Regression: long-pressing a showtime chip must reveal the room tooltip,
+     * NOT the share menu. A card-wide long-press (the previous wiring) fired the
+     * share menu on top of the chip's own long-press, hiding the room — this
+     * pins the share gesture to the poster so the chip is left free.
+     */
+    @Test
+    fun longPressOnShowtimeChipDoesNotOpenShareMenu() {
+        var opened = false
+        render(film = filmWithRoom, onOpen = { opened = true })
+
+        // The chip's tag is a merged descendant of the card's clickable, so the
+        // finder must read the unmerged tree.
+        compose.onNodeWithTag(ShowtimeChipTestTag, useUnmergedTree = true)
+            .performTouchInput { longClick() }
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Udostępnij").assertDoesNotExist()
+        compose.onNodeWithText("Skopiuj link").assertDoesNotExist()
+        assertFalse("long-press on a chip must not open the detail screen", opened)
     }
 
     @Test
@@ -70,7 +111,7 @@ class FilmCardShareMenuTest {
     fun copyMenuItemCopiesTheCanonicalLink() {
         render()
 
-        compose.onNodeWithTag(FilmCardTestTag).performTouchInput { longClick() }
+        compose.onNodeWithTag(FilmCardPosterTestTag).performTouchInput { longClick() }
         compose.waitForIdle()
         compose.onNodeWithText("Skopiuj link").performClick()
         compose.waitForIdle()

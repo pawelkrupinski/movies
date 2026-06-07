@@ -263,20 +263,23 @@ private struct ShowtimeBadge: View {
         }
     }
 
+    // Deliberately large and lifted well above the pill: the tooltip pops on a
+    // press-and-hold, so the finger is parked right on the pill. A big bubble
+    // floated ~52 pt up stays readable around the thumb.
     @ViewBuilder
     private func roomTooltip(_ room: String) -> some View {
         Text(room)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundColor(Color(white: 0.85))
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background(Color(red: 0.055, green: 0.055, blue: 0.118), in: RoundedRectangle(cornerRadius: 4))
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(Color(white: 0.92))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(Color(red: 0.055, green: 0.055, blue: 0.118), in: RoundedRectangle(cornerRadius: 8))
             .overlay(
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: 8)
                     .stroke(Color(red: 0.23, green: 0.23, blue: 0.43), lineWidth: 1)
             )
             .fixedSize()
-            .offset(y: -27)
+            .offset(y: -52)
             .transition(.opacity)
             .allowsHitTesting(false)
             .zIndex(1)

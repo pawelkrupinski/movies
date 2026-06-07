@@ -59,6 +59,7 @@
 		DD00000000000000000202 /* CityGateButtonSizeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000202 /* CityGateButtonSizeUITests.swift */; };
 		DD00000000000000000203 /* DayChangeScrollResetUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000203 /* DayChangeScrollResetUITests.swift */; };
 		DD00000000000000000204 /* PosterFullScreenUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000204 /* PosterFullScreenUITests.swift */; };
+		DD00000000000000000205 /* CardShareMenuUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000205 /* CardShareMenuUITests.swift */; };
 		DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001B /* AccessibilityIdentifiers.swift */; };
 
 		DD00000000000000000022 /* RetryBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000022 /* RetryBackoff.swift */; };
@@ -138,6 +139,7 @@
 		CC00000000000000000202 /* CityGateButtonSizeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityGateButtonSizeUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000203 /* DayChangeScrollResetUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayChangeScrollResetUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000204 /* PosterFullScreenUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterFullScreenUITests.swift; sourceTree = "<group>"; };
+		CC00000000000000000205 /* CardShareMenuUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardShareMenuUITests.swift; sourceTree = "<group>"; };
 
 		CC00000000000000000022 /* RetryBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryBackoff.swift; sourceTree = "<group>"; };
 		CC00000000000000000044 /* SwipeHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeHint.swift; sourceTree = "<group>"; };
@@ -307,6 +309,7 @@
 				CC00000000000000000202 /* CityGateButtonSizeUITests.swift */,
 				CC00000000000000000203 /* DayChangeScrollResetUITests.swift */,
 				CC00000000000000000204 /* PosterFullScreenUITests.swift */,
+				CC00000000000000000205 /* CardShareMenuUITests.swift */,
 			);
 			path = KinowoUITests;
 			sourceTree = "<group>";
@@ -471,6 +474,7 @@
 				DD00000000000000000202 /* CityGateButtonSizeUITests.swift in Sources */,
 				DD00000000000000000203 /* DayChangeScrollResetUITests.swift in Sources */,
 				DD00000000000000000204 /* PosterFullScreenUITests.swift in Sources */,
+				DD00000000000000000205 /* CardShareMenuUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

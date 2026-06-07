@@ -15,7 +15,25 @@ struct FilmCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // The poster owns the long-press share menu, NOT the whole card:
+            // a card-wide `.contextMenu` swallows the showtime pills' own
+            // long-press (their room tooltip), because both hold-gestures live
+            // in the same subtree and the context menu wins. Scoping it to the
+            // poster leaves the pills free. iOS has no address bar to copy from,
+            // so this menu is where the canonical `/film?title=…` URL surfaces —
+            // Udostępnij opens the system sheet, Skopiuj link drops it on the
+            // pasteboard.
             PosterView(film: film)
+                .contextMenu {
+                    ShareLink(item: FilmShareLink.url(forTitle: film.title), subject: Text(film.title)) {
+                        Label("Udostępnij", systemImage: "square.and.arrow.up")
+                    }
+                    Button {
+                        UIPasteboard.general.string = FilmShareLink.url(forTitle: film.title).absoluteString
+                    } label: {
+                        Label("Skopiuj link", systemImage: "link")
+                    }
+                }
             VStack(alignment: .leading, spacing: spacing.sectionSpacing) {
                 Text(film.title)
                     .font(.system(size: 14, weight: .semibold))
@@ -48,20 +66,6 @@ struct FilmCardView: View {
         }
         .background(Color(red: 0.12, green: 0.12, blue: 0.18))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        // Long-press the card for its share link. iOS has no
-        // address bar to copy from, so the context menu is where the
-        // canonical `/film?title=…` URL surfaces — Share opens the
-        // system sheet, Skopiuj link drops it straight on the pasteboard.
-        .contextMenu {
-            ShareLink(item: FilmShareLink.url(forTitle: film.title), subject: Text(film.title)) {
-                Label("Udostępnij", systemImage: "square.and.arrow.up")
-            }
-            Button {
-                UIPasteboard.general.string = FilmShareLink.url(forTitle: film.title).absoluteString
-            } label: {
-                Label("Skopiuj link", systemImage: "link")
-            }
-        }
     }
 }
 

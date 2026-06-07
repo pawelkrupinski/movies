@@ -46,8 +46,11 @@ import pl.kinowo.ui.common.layoutWidthDp
 import pl.kinowo.ui.common.shareFilm
 import pl.kinowo.ui.theme.CardSurface
 
-/** Test tag on the whole card, so the share-menu test can long-press it. */
+/** Test tag on the whole card, so the tap-to-open test can click it. */
 internal const val FilmCardTestTag = "film-card"
+
+/** Test tag on the poster, which owns the long-press share menu. */
+internal const val FilmCardPosterTestTag = "film-card-poster"
 
 /**
  * One film card in the grid: 2:3 poster (with a hide button), then title +
@@ -74,13 +77,16 @@ fun FilmCard(
     Surface(
         color = CardSurface,
         shape = RoundedCornerShape(12.dp),
-        // Tap opens the detail screen; long-press opens a share menu
-        // (Udostępnij / Skopiuj link), mirroring iOS `FilmCardView`'s
-        // `.contextMenu`. The showtime chips keep their own long-press (room
-        // tooltip) — that gesture lives on the inner chip, see `ShowtimeChip`.
+        // A tap anywhere opens the detail screen. Long-press is deliberately a
+        // no-op at the card level: the share menu lives on the POSTER and the
+        // room tooltip on each showtime CHIP (both below). A card-wide
+        // onLongClick would (a) swallow the chip's room tooltip and (b) — were
+        // it a plain `clickable` instead — a long-press-then-release would
+        // register as a tap and open the detail screen out from under the
+        // chip's hold. combinedClickable separates the two so neither happens.
         modifier = modifier.fillMaxWidth().testTag(FilmCardTestTag).combinedClickable(
             onClick = onOpen,
-            onLongClick = { menuExpanded = true },
+            onLongClick = {},
         ),
     ) {
         Column {
@@ -90,7 +96,17 @@ fun FilmCard(
                 onShare = { shareFilm(context, film.title) },
                 onCopy = { copyFilmLink(context, film.title) },
             )
-            Box {
+            // The poster owns the long-press → share menu (Udostępnij / Skopiuj
+            // link), mirroring iOS `FilmCardView`, where the `.contextMenu` now
+            // sits on `PosterView`. A tap still opens the detail screen.
+            Box(
+                modifier = Modifier
+                    .testTag(FilmCardPosterTestTag)
+                    .combinedClickable(
+                        onClick = onOpen,
+                        onLongClick = { menuExpanded = true },
+                    ),
+            ) {
                 PosterImage(
                     chain = film.posterChain,
                     contentDescription = film.title,

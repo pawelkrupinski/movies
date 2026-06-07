@@ -240,23 +240,28 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
             }
         }
         if (holding && room != null) {
-            RoomTooltip(room, Modifier.align(Alignment.TopCenter).offset(y = (-30).dp).zIndex(1f))
+            // Floated well clear of the pill (and the finger holding it) so the
+            // thumb doesn't obscure the room name — see RoomTooltip's size.
+            RoomTooltip(room, Modifier.align(Alignment.TopCenter).offset(y = (-58).dp).zIndex(1f))
         }
     }
 }
 
 @Composable
 private fun RoomTooltip(room: String, modifier: Modifier = Modifier) {
+    // Deliberately large: the tooltip pops on a press-and-hold, so the thumb is
+    // parked right on the pill. A big bubble lifted ~58dp above the pill stays
+    // readable around the finger; the 16sp text + roomy padding carry it.
     Text(
         text = room,
         color = RoomTooltipText,
-        fontSize = 10.sp,
-        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.SemiBold,
         modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(RoomTooltipBackground)
-            .border(1.dp, RoomTooltipBorder, RoundedCornerShape(4.dp))
-            .padding(horizontal = 7.dp, vertical = 3.dp),
+            .border(1.dp, RoomTooltipBorder, RoundedCornerShape(8.dp))
+            .padding(horizontal = 14.dp, vertical = 9.dp),
     )
 }
 
