@@ -52,22 +52,10 @@ struct ContentView: View {
     @State private var citySwitchSuggestion: City.CitySwitchSuggestion?
     @StateObject private var locationResolver = LocationCityResolver()
 
-    /// Index of the currently-selected day pill within `DateFilter.presets`
-    /// (the ordered list the date pills show), or 0 when the active filter
-    /// isn't one of the presets. The day-swipe steps this index.
-    private var selectedDayIndex: Int {
-        DateFilter.presets.firstIndex(of: dateFilter) ?? 0
-    }
-
-    /// Step the selected day by `delta` (swipe left = +1 = next day, swipe
-    /// right = -1 = previous), wrapping around the preset list. The wrap math
-    /// lives in the pure `wrappedDayIndex` so it's unit-tested.
-    private func changeDay(by delta: Int) {
-        let next = wrappedDayIndex(
-            current: selectedDayIndex, delta: delta, count: DateFilter.presets.count)
-        let target = DateFilter.presets[next]
-        withAnimation(.easeInOut(duration: 0.2)) { dateFilter = target }
-        showDayLabel(target.label)
+    /// Run after the carousel commits a day change (it has already advanced
+    /// `dateFilter`): flash the new day's name and retire the onboarding hint.
+    private func didChangeDay() {
+        showDayLabel(dateFilter.label)
         // First-ever swipe retires the onboarding hint for good. `markSwiped()`
         // is idempotent, so running it on every swipe is harmless.
         swipeHintTask?.cancel()
@@ -294,38 +282,18 @@ struct ContentView: View {
         } else if let error = store.error, store.films.isEmpty {
             errorState(error)
         } else {
-            FilmGridView(films: filmsForFilmsTab,
-                         showCinemaHeaders: showCinemaHeaders,
-                         scrollResetToken: AnyHashable(dateFilter),
-                         // The grid sits directly in ContentView's VStack now
-                         // (no paged TabView), so it doesn't need the 17pt
-                         // paged-scroll-view overflow compensation.
-                         pagedInTabView: false)
-                .refreshable { await store.reload() }
-                // The day-swipe gesture replaces the old TabView paging swipe:
-                // drag left → next day, drag right → previous day, wrapping the
-                // date-pill list. `minimumDistance` keeps it from firing on a
-                // tap or a tiny twitch, and the `width > |height|` check below
-                // ignores vertical scroll drags so the grid still scrolls
-                // freely. The grid's own ScrollView keeps its vertical pan.
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 30)
-                        .onEnded { value in
-                            let dx = value.translation.width
-                            guard abs(dx) > abs(value.translation.height),
-                                  abs(dx) > 50 else { return }
-                            // Swipe left (negative dx) → next day (+1);
-                            // swipe right (positive dx) → previous day (-1).
-                            changeDay(by: dx < 0 ? 1 : -1)
-                        }
-                )
-                .ignoresSafeArea(edges: [.bottom, .horizontal])
-                // Resolves NavigationLink(value: Film) from the grid to the
-                // per-film detail screen, the iOS counterpart of
-                // /film?title=… on the web.
-                .navigationDestination(for: Film.self) { film in
-                    FilmDetailView(film: film)
-                }
+            // Finger-following, wrap-around day carousel replaces the old paged
+            // TabView (Filmy / Kina): drag the grid and the adjacent day slides
+            // in 1:1; release past a threshold commits to that day. The
+            // neighbours share the current pane's vertical scroll, so the
+            // revealed day is already scrolled to the same Y. See `DayCarousel`.
+            DayCarousel(
+                dateFilter: $dateFilter,
+                films: { films(for: $0) },
+                showCinemaHeaders: showCinemaHeaders,
+                onCommit: didChangeDay
+            )
+            .refreshable { await store.reload() }
         }
     }
 
@@ -404,9 +372,12 @@ struct ContentView: View {
             || !excludedCast.isEmpty
     }
 
-    private var filmsForFilmsTab: [Film] {
+    /// The filtered, sorted film list for a given day filter. Generalises the
+    /// old single-day `filmsForFilmsTab` so `DayCarousel` can populate all three
+    /// of its panes (previous / current / next day) from the same rule.
+    private func films(for date: DateFilter) -> [Film] {
         store.films.filteredFor(
-            date: dateFilter,
+            date: date,
             format: formatFilter,
             query: search,
             hidden: prefs.hiddenFilms,
@@ -425,7 +396,7 @@ struct ContentView: View {
     /// has one — the per-card cinema label is redundant, so it's suppressed.
     private var selectedCinemaCount: Int {
         var seen = Set<String>()
-        for film in filmsForFilmsTab {
+        for film in films(for: dateFilter) {
             for day in film.showings {
                 for c in day.cinemas { seen.insert(c.cinema) }
             }

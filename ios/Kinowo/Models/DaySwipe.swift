@@ -16,3 +16,21 @@ func wrappedDayIndex(current: Int, delta: Int, count: Int) -> Int {
     let raw = (current + delta) % count
     return raw >= 0 ? raw : raw + count
 }
+
+extension DateFilter {
+    /// The preset one step to the left in the date-pill order — the carousel's
+    /// "previous" pane. Wraps `Dziś → Wszystkie`. Falls back to `self` when the
+    /// active filter isn't one of the four presets (e.g. a `.specific` date), so
+    /// a non-preset selection never silently jumps to a preset.
+    var previousPreset: DateFilter { steppedPreset(by: -1) }
+
+    /// The preset one step to the right — the carousel's "next" pane. Wraps
+    /// `Wszystkie → Dziś`. Falls back to `self` for non-preset filters.
+    var nextPreset: DateFilter { steppedPreset(by: +1) }
+
+    private func steppedPreset(by delta: Int) -> DateFilter {
+        let presets = DateFilter.presets
+        guard let i = presets.firstIndex(of: self) else { return self }
+        return presets[wrappedDayIndex(current: i, delta: delta, count: presets.count)]
+    }
+}

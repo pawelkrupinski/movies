@@ -36,4 +36,35 @@ final class DaySwipeTests: XCTestCase {
     func testEmptyListReturnsCurrent() {
         XCTAssertEqual(wrappedDayIndex(current: 0, delta: 1, count: 0), 0)
     }
+
+    // MARK: – DateFilter prev/next presets (carousel neighbours)
+
+    func testNextPresetStepsRightThroughPresets() {
+        // presets: [today, tomorrow, week, anytime]
+        XCTAssertEqual(DateFilter.today.nextPreset, .tomorrow)
+        XCTAssertEqual(DateFilter.tomorrow.nextPreset, .week)
+        XCTAssertEqual(DateFilter.week.nextPreset, .anytime)
+    }
+
+    func testNextPresetWrapsFromAnytimeToToday() {
+        XCTAssertEqual(DateFilter.anytime.nextPreset, .today)
+    }
+
+    func testPreviousPresetStepsLeftThroughPresets() {
+        XCTAssertEqual(DateFilter.anytime.previousPreset, .week)
+        XCTAssertEqual(DateFilter.week.previousPreset, .tomorrow)
+        XCTAssertEqual(DateFilter.tomorrow.previousPreset, .today)
+    }
+
+    func testPreviousPresetWrapsFromTodayToAnytime() {
+        XCTAssertEqual(DateFilter.today.previousPreset, .anytime)
+    }
+
+    func testNonPresetFilterStaysPut() {
+        // A specific date isn't on the pill row, so the carousel must not
+        // navigate it away to a preset.
+        let specific = DateFilter.specific("2026-06-08")
+        XCTAssertEqual(specific.nextPreset, specific)
+        XCTAssertEqual(specific.previousPreset, specific)
+    }
 }

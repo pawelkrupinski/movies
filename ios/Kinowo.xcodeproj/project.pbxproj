@@ -24,6 +24,7 @@
 		DD00000000000000000009 /* HTMLDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000009 /* HTMLDecoding.swift */; };
 		DD0000000000000000000A /* UserPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000A /* UserPreferences.swift */; };
 		DD0000000000000000000B /* FilmGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000B /* FilmGridView.swift */; };
+		DD000000000000000000F0 /* DayCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000000000000000000F0 /* DayCarousel.swift */; };
 		DD0000000000000000000C /* FilmCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000C /* FilmCardView.swift */; };
 		DD0000000000000000000D /* ShowingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000D /* ShowingsView.swift */; };
 		DD0000000000000000000E /* RatingBadgesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000E /* RatingBadgesView.swift */; };
@@ -104,6 +105,7 @@
 		CC00000000000000000009 /* HTMLDecoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLDecoding.swift; sourceTree = "<group>"; };
 		CC0000000000000000000A /* UserPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferences.swift; sourceTree = "<group>"; };
 		CC0000000000000000000B /* FilmGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmGridView.swift; sourceTree = "<group>"; };
+		CC000000000000000000F0 /* DayCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayCarousel.swift; sourceTree = "<group>"; };
 		CC0000000000000000000C /* FilmCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmCardView.swift; sourceTree = "<group>"; };
 		CC0000000000000000000D /* ShowingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowingsView.swift; sourceTree = "<group>"; };
 		CC0000000000000000000E /* RatingBadgesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingBadgesView.swift; sourceTree = "<group>"; };
@@ -276,6 +278,7 @@
 			children = (
 				CC00000000000000000301 /* CityGate.swift */,
 				CC0000000000000000000B /* FilmGridView.swift */,
+				CC000000000000000000F0 /* DayCarousel.swift */,
 				CC0000000000000000000C /* FilmCardView.swift */,
 				CC00000000000000000018 /* FilmDetailView.swift */,
 				CC0000000000000000000D /* ShowingsView.swift */,
@@ -424,6 +427,7 @@
 				DD00000000000000000009 /* HTMLDecoding.swift in Sources */,
 				DD0000000000000000000A /* UserPreferences.swift in Sources */,
 				DD0000000000000000000B /* FilmGridView.swift in Sources */,
+				DD000000000000000000F0 /* DayCarousel.swift in Sources */,
 				DD0000000000000000000C /* FilmCardView.swift in Sources */,
 				DD0000000000000000000D /* ShowingsView.swift in Sources */,
 				DD0000000000000000000E /* RatingBadgesView.swift in Sources */,
