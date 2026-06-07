@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie, Helios, HeliosAlejaBielany, HeliosAlfa, HeliosBiala, HeliosBlueCity, HeliosBydgoszcz, HeliosForum, HeliosJurowiecka, HeliosKatowice, HeliosKielce, HeliosLodz, HeliosMagnolia, HeliosMetropolia, HeliosOutletPark, HeliosRadom, HeliosRiviera, HeliosRzeszow, HeliosSosnowiec, HeliosSzczecin, Movie, Showtime}
+import models.{Cinema, CinemaMovie, Helios, HeliosAlejaBielany, HeliosAlfa, HeliosBiala, HeliosBielskoBiala, HeliosBlueCity, HeliosBydgoszcz, HeliosDabrowaGornicza, HeliosForum, HeliosGorzow, HeliosJeleniaGora, HeliosJurowiecka, HeliosKalisz, HeliosKatowice, HeliosKielce, HeliosKonin, HeliosKoszalin, HeliosLegnica, HeliosLodz, HeliosMagnolia, HeliosMetropolia, HeliosNowySacz, HeliosOlsztyn, HeliosOpoleKarolinka, HeliosOpoleSolaris, HeliosOutletPark, HeliosPlock, HeliosPrzemysl, HeliosRadom, HeliosRiviera, HeliosRzeszow, HeliosSosnowiec, HeliosSzczecin, Movie, Showtime}
 import play.api.libs.json._
 
 import java.time.LocalDateTime
@@ -40,13 +40,33 @@ object HeliosNuxt {
   val Biala        = HeliosCinema(HeliosBiala,        "bialystok", "kino-helios-biala",         "d516a0dd-b0ab-4e15-85b2-0286eaf6dde6")
   val Jurowiecka   = HeliosCinema(HeliosJurowiecka,   "bialystok", "kino-helios-jurowiecka",    "5c699a45-d219-4f4e-90f4-4aac0ca44a88")
   val Bydgoszcz    = HeliosCinema(HeliosBydgoszcz,    "bydgoszcz","kino-helios",                "8acb28a0-2e4b-4beb-a13a-bb97e17085cc")
-  val Katowice     = HeliosCinema(HeliosKatowice,     "katowice", "kino-helios",                "6f3ef265-ef99-48e9-84f4-ed862badb756")
+  // Katowice's REST sourceId is KATOWICE Libero (b661164e…). The old value
+  // 6f3ef265… is in fact Olsztyn Galeria Aura — a copy-paste that silently fed
+  // Katowice's room/format/synopsis enrichment (and restOnly films) from Olsztyn.
+  val Katowice     = HeliosCinema(HeliosKatowice,     "katowice", "kino-helios",                "b661164e-04d4-41af-bdca-0f9a745c3898")
   val Szczecin     = HeliosCinema(HeliosSzczecin,     "szczecin", "kino-helios-chr-kupiec",     "3e60a454-c438-4c9b-b24f-7c6feff3b5ed")
   val SzczecinOutletPark = HeliosCinema(HeliosOutletPark, "szczecin", "helios-outlet-park",     "b898bbed-7ab6-428f-a57b-26d6b6e6a04b")
   val Radom        = HeliosCinema(HeliosRadom,        "radom",    "kino-helios-radom",          "287fc8f4-7bee-49b4-afcd-b22b52e520b9")
   val Sosnowiec    = HeliosCinema(HeliosSosnowiec,    "sosnowiec","kino-helios-sosnowiec",      "880f2a3a-e9e8-447c-95ca-72c49ca38a1e")
   val Kielce       = HeliosCinema(HeliosKielce,       "kielce",   "kino-helios",                "d01162e6-31a4-41b9-97cd-1ef7707522fe")
   val Rzeszow      = HeliosCinema(HeliosRzeszow,      "rzeszow",  "kino-helios-galeria",        "409eac78-9718-4fa3-b590-d1e1fb60892d")
+
+  // New mid-size-city venues. citySlug/cinemaSlug verified to render a NUXT
+  // repertoire page; sourceId verified against restapi.helios.pl/api/cinema.
+  val Olsztyn      = HeliosCinema(HeliosOlsztyn,      "olsztyn",  "kino-helios",                "6f3ef265-ef99-48e9-84f4-ed862badb756")
+  val BielskoBiala = HeliosCinema(HeliosBielskoBiala, "bielsko-biala", "kino-helios",           "cb932ba4-3dfd-4946-b3fd-1687603f78f7")
+  val OpoleKarolinka = HeliosCinema(HeliosOpoleKarolinka, "opole", "kino-helios-karolinka",     "ec0ba789-c70b-42e7-8adf-8c9595888672")
+  val OpoleSolaris = HeliosCinema(HeliosOpoleSolaris, "opole",    "kino-helios-solaris",        "d01e6010-d098-4899-951b-a7b7208df75a")
+  val Gorzow       = HeliosCinema(HeliosGorzow,       "gorzow-wielkopolski", "kino-helios",     "6f51c391-4d6d-4aeb-bf78-6c61b676865f")
+  val Koszalin     = HeliosCinema(HeliosKoszalin,     "koszalin", "kino-helios-galeria-emka",   "4b58d474-bf12-405f-b76d-f1f88cae2b07")
+  val Kalisz       = HeliosCinema(HeliosKalisz,       "kalisz",   "kino-helios",                "99d1a365-3dad-4c9b-a9e9-6e6177630708")
+  val Legnica      = HeliosCinema(HeliosLegnica,      "legnica",  "kino-helios",                "34b23726-7c53-483b-a0e5-13dfca6075ba")
+  val Plock        = HeliosCinema(HeliosPlock,        "plock",    "kino-helios",                "4623d4a3-d0be-49d8-82d8-ef16a67a848c")
+  val DabrowaGornicza = HeliosCinema(HeliosDabrowaGornicza, "dabrowa-gornicza", "kino-helios",  "d61fc6d9-bac1-44f0-a34a-00868e694c9b")
+  val NowySacz     = HeliosCinema(HeliosNowySacz,     "nowy-sacz", "kino-helios",               "223cd021-5821-481a-9d04-31511fb44042")
+  val JeleniaGora  = HeliosCinema(HeliosJeleniaGora,  "jelenia-gora", "kino-helios",            "88c70097-4f24-49b5-bd35-c752e3543d4e")
+  val Przemysl     = HeliosCinema(HeliosPrzemysl,     "przemysl", "kino-helios",                "19a14011-0e44-43cd-9d12-8e8a16e9d744")
+  val Konin        = HeliosCinema(HeliosKonin,        "konin",    "kino-helios",                "0fe6ba65-dc83-49c1-8f01-bef8675b9927")
 
   // Strip event/promo suffixes so that "Diabeł ubiera się u Prady 2 - KNT"
   // collapses to the canonical "Diabeł ubiera się u Prady 2".

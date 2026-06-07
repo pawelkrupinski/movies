@@ -234,6 +234,34 @@ class CinemaScraperCatalog(
     new KinoRomaClient(http, KinoRoma, today),
   )
 
+  // ── New mid-size cities — national-chain branches only ──────────────────────
+  // Multikino codes verified against multikino.pl's cinema-list API, Cinema City
+  // ids against cinema-city.pl's data-api-service, Helios sourceIds/slugs against
+  // restapi.helios.pl. Each city's local independent screen, where one exists,
+  // joins later as a bespoke scraper.
+  private val olsztynScrapers      = Seq(new HeliosClient(http, HeliosNuxt.Olsztyn, today), new MultikinoClient(mkFetch, "0036", MultikinoOlsztyn))
+  private val bielskoBialaScrapers = Seq(new HeliosClient(http, HeliosNuxt.BielskoBiala, today), new CinemaCityScraper(cinemaCityClient, "1088", CinemaCityBielskoBiala))
+  private val opoleScrapers        = Seq(new HeliosClient(http, HeliosNuxt.OpoleKarolinka, today), new HeliosClient(http, HeliosNuxt.OpoleSolaris, today))
+  private val rybnikScrapers       = Seq(new MultikinoClient(mkFetch, "0014", MultikinoRybnik), new CinemaCityScraper(cinemaCityClient, "1082", CinemaCityRybnik))
+  private val gorzowScrapers       = Seq(new HeliosClient(http, HeliosNuxt.Gorzow, today), new MultikinoClient(mkFetch, "0047", MultikinoGorzow))
+  private val elblagScrapers       = Seq(new MultikinoClient(mkFetch, "0037", MultikinoElblag), new CinemaCityScraper(cinemaCityClient, "1099", CinemaCityElblag))
+  private val koszalinScrapers     = Seq(new HeliosClient(http, HeliosNuxt.Koszalin, today), new MultikinoClient(mkFetch, "0015", MultikinoKoszalin))
+  private val kaliszScrapers       = Seq(new HeliosClient(http, HeliosNuxt.Kalisz, today), new MultikinoClient(mkFetch, "0042", MultikinoKalisz))
+  private val zielonaGoraScrapers  = Seq(new CinemaCityScraper(cinemaCityClient, "1087", CinemaCityZielonaGora))
+  private val tychyScrapers        = Seq(new MultikinoClient(mkFetch, "0053", MultikinoTychy))
+  private val walbrzychScrapers    = Seq(new CinemaCityScraper(cinemaCityClient, "1091", CinemaCityWalbrzych))
+  private val tarnowScrapers       = Seq(new MultikinoClient(mkFetch, "0050", MultikinoTarnow))
+  private val wloclawekScrapers    = Seq(new MultikinoClient(mkFetch, "0008", MultikinoWloclawek))
+  private val legnicaScrapers      = Seq(new HeliosClient(http, HeliosNuxt.Legnica, today))
+  private val plockScrapers        = Seq(new HeliosClient(http, HeliosNuxt.Plock, today))
+  private val bytomScrapers        = Seq(new CinemaCityScraper(cinemaCityClient, "1092", CinemaCityBytom))
+  private val dabrowaGorniczaScrapers = Seq(new HeliosClient(http, HeliosNuxt.DabrowaGornicza, today))
+  private val nowySaczScrapers     = Seq(new HeliosClient(http, HeliosNuxt.NowySacz, today))
+  private val slupskScrapers       = Seq(new MultikinoClient(mkFetch, "0030", MultikinoSlupsk))
+  private val jeleniaGoraScrapers  = Seq(new HeliosClient(http, HeliosNuxt.JeleniaGora, today))
+  private val przemyslScrapers     = Seq(new HeliosClient(http, HeliosNuxt.Przemysl, today))
+  private val koninScrapers        = Seq(new HeliosClient(http, HeliosNuxt.Konin, today))
+
   /** Raw scrapers grouped by city slug — same slugs `City.slug` uses, so a
    *  caller can scope by city without re-spelling the membership. */
   val byCity: Map[String, Seq[CinemaScraper]] = Map(
@@ -256,6 +284,28 @@ class CinemaScraperCatalog(
     "rzeszow"    -> rzeszowScrapers,
     "gliwice"    -> gliwiceScrapers,
     "zabrze"     -> zabrzeScrapers,
+    "olsztyn"    -> olsztynScrapers,
+    "bielsko-biala" -> bielskoBialaScrapers,
+    "opole"      -> opoleScrapers,
+    "rybnik"     -> rybnikScrapers,
+    "gorzow-wielkopolski" -> gorzowScrapers,
+    "elblag"     -> elblagScrapers,
+    "koszalin"   -> koszalinScrapers,
+    "kalisz"     -> kaliszScrapers,
+    "zielona-gora" -> zielonaGoraScrapers,
+    "tychy"      -> tychyScrapers,
+    "walbrzych"  -> walbrzychScrapers,
+    "tarnow"     -> tarnowScrapers,
+    "wloclawek"  -> wloclawekScrapers,
+    "legnica"    -> legnicaScrapers,
+    "plock"      -> plockScrapers,
+    "bytom"      -> bytomScrapers,
+    "dabrowa-gornicza" -> dabrowaGorniczaScrapers,
+    "nowy-sacz"  -> nowySaczScrapers,
+    "slupsk"     -> slupskScrapers,
+    "jelenia-gora" -> jeleniaGoraScrapers,
+    "przemysl"   -> przemyslScrapers,
+    "konin"      -> koninScrapers,
   )
 
   /** Every raw scraper across every city, in city order. */

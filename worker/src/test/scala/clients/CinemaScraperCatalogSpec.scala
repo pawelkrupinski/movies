@@ -34,4 +34,16 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoKameralne)
   }
+
+  // A `Cinema` that's modelled (so it shows on the web/in a city) but has no
+  // scraper is silently never populated — the city renders empty forever. This
+  // also catches a `City.slug` ↔ `byCity` key mismatch: `catalog.all` resolves
+  // scrapers by `c.slug`, so a typo drops that city's cinemas out of `all`.
+  it should "wire a scraper for every modelled cinema" in {
+    val scraped  = catalog.all.map(_.cinema).toSet
+    val modelled = models.Cinema.all.toSet
+    withClue(s"modelled but unscraped: ${(modelled diff scraped).map(_.displayName).toSeq.sorted}") {
+      (modelled diff scraped) shouldBe empty
+    }
+  }
 }

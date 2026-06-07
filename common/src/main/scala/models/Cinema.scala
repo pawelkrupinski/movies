@@ -286,6 +286,63 @@ case object KinoAmok        extends Cinema("Kino Amok", "Amok")
 // Zabrze
 case object KinoRoma        extends Cinema("Kino Roma", "Roma")
 
+// ── New mid-size cities — national-chain branches only (chains-first sweep) ────
+// Each city's independent/art-house screen, where one exists, lands later as a
+// bespoke scraper. IDs verified live against each chain's own cinema-list API.
+
+// Olsztyn
+case object HeliosOlsztyn    extends Cinema("Helios Olsztyn", "Helios")
+case object MultikinoOlsztyn extends Cinema("Multikino Olsztyn", "Multikino")
+// Bielsko-Biała
+case object HeliosBielskoBiala     extends Cinema("Helios Bielsko-Biała", "Helios")
+case object CinemaCityBielskoBiala extends Cinema("Cinema City Bielsko-Biała", "Cinema City")
+// Opole
+case object HeliosOpoleKarolinka extends Cinema("Helios Karolinka", "Karolinka")
+case object HeliosOpoleSolaris   extends Cinema("Helios Solaris", "Solaris")
+// Rybnik
+case object MultikinoRybnik  extends Cinema("Multikino Rybnik", "Multikino")
+case object CinemaCityRybnik extends Cinema("Cinema City Rybnik", "Cinema City")
+// Gorzów Wielkopolski
+case object HeliosGorzow    extends Cinema("Helios Gorzów Wielkopolski", "Helios")
+case object MultikinoGorzow extends Cinema("Multikino Gorzów Wielkopolski", "Multikino")
+// Elbląg
+case object MultikinoElblag  extends Cinema("Multikino Elbląg", "Multikino")
+case object CinemaCityElblag extends Cinema("Cinema City Elbląg", "Cinema City")
+// Koszalin
+case object HeliosKoszalin    extends Cinema("Helios Koszalin", "Helios")
+case object MultikinoKoszalin extends Cinema("Multikino Koszalin", "Multikino")
+// Kalisz
+case object HeliosKalisz    extends Cinema("Helios Kalisz", "Helios")
+case object MultikinoKalisz extends Cinema("Multikino Kalisz", "Multikino")
+// Zielona Góra
+case object CinemaCityZielonaGora extends Cinema("Cinema City Zielona Góra", "Cinema City")
+// Tychy
+case object MultikinoTychy extends Cinema("Multikino Tychy", "Multikino")
+// Wałbrzych
+case object CinemaCityWalbrzych extends Cinema("Cinema City Wałbrzych", "Cinema City")
+// Tarnów
+case object MultikinoTarnow extends Cinema("Multikino Tarnów", "Multikino")
+// Włocławek
+case object MultikinoWloclawek extends Cinema("Multikino Włocławek", "Multikino")
+// Legnica
+case object HeliosLegnica extends Cinema("Helios Legnica", "Helios")
+// Płock
+case object HeliosPlock extends Cinema("Helios Płock", "Helios")
+// Bytom
+case object CinemaCityBytom extends Cinema("Cinema City Bytom", "Cinema City")
+// Dąbrowa Górnicza
+case object HeliosDabrowaGornicza extends Cinema("Helios Dąbrowa Górnicza", "Helios")
+// Nowy Sącz
+case object HeliosNowySacz extends Cinema("Helios Nowy Sącz", "Helios")
+// Słupsk
+case object MultikinoSlupsk extends Cinema("Multikino Słupsk", "Multikino")
+// Jelenia Góra
+case object HeliosJeleniaGora extends Cinema("Helios Jelenia Góra", "Helios")
+// Przemyśl
+case object HeliosPrzemysl extends Cinema("Helios Przemyśl", "Helios")
+// Konin
+case object HeliosKonin extends Cinema("Helios Konin", "Helios")
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -474,6 +531,31 @@ object Cinema {
 
   val zabrze: Seq[Cinema] = Seq(MultikinoZabrze, KinoRoma)
 
+  // New chains-first cities. Each holds only its national-chain branches for now;
+  // a local independent screen, where one exists, joins later as a bespoke scraper.
+  val olsztyn: Seq[Cinema]      = Seq(HeliosOlsztyn, MultikinoOlsztyn)
+  val bielskoBiala: Seq[Cinema] = Seq(HeliosBielskoBiala, CinemaCityBielskoBiala)
+  val opole: Seq[Cinema]        = Seq(HeliosOpoleKarolinka, HeliosOpoleSolaris)
+  val rybnik: Seq[Cinema]       = Seq(MultikinoRybnik, CinemaCityRybnik)
+  val gorzow: Seq[Cinema]       = Seq(HeliosGorzow, MultikinoGorzow)
+  val elblag: Seq[Cinema]       = Seq(MultikinoElblag, CinemaCityElblag)
+  val koszalin: Seq[Cinema]     = Seq(HeliosKoszalin, MultikinoKoszalin)
+  val kalisz: Seq[Cinema]       = Seq(HeliosKalisz, MultikinoKalisz)
+  val zielonaGora: Seq[Cinema]  = Seq(CinemaCityZielonaGora)
+  val tychy: Seq[Cinema]        = Seq(MultikinoTychy)
+  val walbrzych: Seq[Cinema]    = Seq(CinemaCityWalbrzych)
+  val tarnow: Seq[Cinema]       = Seq(MultikinoTarnow)
+  val wloclawek: Seq[Cinema]    = Seq(MultikinoWloclawek)
+  val legnica: Seq[Cinema]      = Seq(HeliosLegnica)
+  val plock: Seq[Cinema]        = Seq(HeliosPlock)
+  val bytom: Seq[Cinema]        = Seq(CinemaCityBytom)
+  val dabrowaGornicza: Seq[Cinema] = Seq(HeliosDabrowaGornicza)
+  val nowySacz: Seq[Cinema]     = Seq(HeliosNowySacz)
+  val slupsk: Seq[Cinema]       = Seq(MultikinoSlupsk)
+  val jeleniaGora: Seq[Cinema]  = Seq(HeliosJeleniaGora)
+  val przemysl: Seq[Cinema]     = Seq(HeliosPrzemysl)
+  val konin: Seq[Cinema]        = Seq(HeliosKonin)
+
   /** Every city's venues in page order, paired with the city's display label.
    *  Single source of truth for `all` and for the uptime page's per-city
    *  grouping — add a city here and both pick it up. */
@@ -497,6 +579,28 @@ object Cinema {
     "Rzeszów"     -> rzeszow,
     "Gliwice"     -> gliwice,
     "Zabrze"      -> zabrze,
+    "Olsztyn"     -> olsztyn,
+    "Bielsko-Biała" -> bielskoBiala,
+    "Opole"       -> opole,
+    "Rybnik"      -> rybnik,
+    "Gorzów Wielkopolski" -> gorzow,
+    "Elbląg"      -> elblag,
+    "Koszalin"    -> koszalin,
+    "Kalisz"      -> kalisz,
+    "Zielona Góra" -> zielonaGora,
+    "Tychy"       -> tychy,
+    "Wałbrzych"   -> walbrzych,
+    "Tarnów"      -> tarnow,
+    "Włocławek"   -> wloclawek,
+    "Legnica"     -> legnica,
+    "Płock"       -> plock,
+    "Bytom"       -> bytom,
+    "Dąbrowa Górnicza" -> dabrowaGornicza,
+    "Nowy Sącz"   -> nowySacz,
+    "Słupsk"      -> slupsk,
+    "Jelenia Góra" -> jeleniaGora,
+    "Przemyśl"    -> przemysl,
+    "Konin"       -> konin,
   )
 
   val all: Seq[Cinema] = byCity.flatMap(_._2)

@@ -224,10 +224,235 @@ case object Zabrze extends City(
   val cinemas: Seq[Cinema] = Cinema.zabrze
 }
 
+// ── New mid-size cities (national-chain coverage) ─────────────────────────────
+
+case object Olsztyn extends City(
+  slug   = "olsztyn",
+  labels = CityLabels(nominative = "Olsztyn", genitivePlural = "olsztyńskich", locative = "Olsztynie"),
+  lat    = 53.7784,
+  lon    = 20.4801,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.olsztyn
+}
+
+case object BielskoBiala extends City(
+  slug   = "bielsko-biala",
+  labels = CityLabels(nominative = "Bielsko-Biała", genitivePlural = "bielskich", locative = "Bielsku-Białej"),
+  lat    = 49.8224,
+  lon    = 19.0584,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.bielskoBiala
+}
+
+case object Opole extends City(
+  slug   = "opole",
+  labels = CityLabels(nominative = "Opole", genitivePlural = "opolskich", locative = "Opolu"),
+  lat    = 50.6751,
+  lon    = 17.9213,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.opole
+}
+
+case object Rybnik extends City(
+  slug   = "rybnik",
+  labels = CityLabels(nominative = "Rybnik", genitivePlural = "rybnickich", locative = "Rybniku"),
+  lat    = 50.0971,
+  lon    = 18.5416,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.rybnik
+}
+
+case object GorzowWielkopolski extends City(
+  slug   = "gorzow-wielkopolski",
+  labels = CityLabels(nominative = "Gorzów Wielkopolski", genitivePlural = "gorzowskich", locative = "Gorzowie Wielkopolskim"),
+  lat    = 52.7368,
+  lon    = 15.2288,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.gorzow
+}
+
+case object Elblag extends City(
+  slug   = "elblag",
+  labels = CityLabels(nominative = "Elbląg", genitivePlural = "elbląskich", locative = "Elblągu"),
+  lat    = 54.1522,
+  lon    = 19.4088,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.elblag
+}
+
+case object Koszalin extends City(
+  slug   = "koszalin",
+  labels = CityLabels(nominative = "Koszalin", genitivePlural = "koszalińskich", locative = "Koszalinie"),
+  lat    = 54.1943,
+  lon    = 16.1722,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.koszalin
+}
+
+case object Kalisz extends City(
+  slug   = "kalisz",
+  labels = CityLabels(nominative = "Kalisz", genitivePlural = "kaliskich", locative = "Kaliszu"),
+  lat    = 51.7611,
+  lon    = 18.0911,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.kalisz
+}
+
+case object ZielonaGora extends City(
+  slug   = "zielona-gora",
+  labels = CityLabels(nominative = "Zielona Góra", genitivePlural = "zielonogórskich", locative = "Zielonej Górze"),
+  lat    = 51.9356,
+  lon    = 15.5062,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.zielonaGora
+}
+
+case object Tychy extends City(
+  slug   = "tychy",
+  labels = CityLabels(nominative = "Tychy", genitivePlural = "tyskich", locative = "Tychach"),
+  lat    = 50.1357,
+  lon    = 18.9985,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.tychy
+}
+
+case object Walbrzych extends City(
+  slug   = "walbrzych",
+  labels = CityLabels(nominative = "Wałbrzych", genitivePlural = "wałbrzyskich", locative = "Wałbrzychu"),
+  lat    = 50.7714,
+  lon    = 16.2845,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.walbrzych
+}
+
+case object Tarnow extends City(
+  slug   = "tarnow",
+  labels = CityLabels(nominative = "Tarnów", genitivePlural = "tarnowskich", locative = "Tarnowie"),
+  lat    = 50.0121,
+  lon    = 20.9858,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.tarnow
+}
+
+case object Wloclawek extends City(
+  slug   = "wloclawek",
+  labels = CityLabels(nominative = "Włocławek", genitivePlural = "włocławskich", locative = "Włocławku"),
+  lat    = 52.6483,
+  lon    = 19.0677,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.wloclawek
+}
+
+case object Legnica extends City(
+  slug   = "legnica",
+  labels = CityLabels(nominative = "Legnica", genitivePlural = "legnickich", locative = "Legnicy"),
+  lat    = 51.2070,
+  lon    = 16.1619,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.legnica
+}
+
+case object Plock extends City(
+  slug   = "plock",
+  labels = CityLabels(nominative = "Płock", genitivePlural = "płockich", locative = "Płocku"),
+  lat    = 52.5468,
+  lon    = 19.7064,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.plock
+}
+
+case object Bytom extends City(
+  slug   = "bytom",
+  labels = CityLabels(nominative = "Bytom", genitivePlural = "bytomskich", locative = "Bytomiu"),
+  lat    = 50.3483,
+  lon    = 18.9157,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.bytom
+}
+
+case object DabrowaGornicza extends City(
+  slug   = "dabrowa-gornicza",
+  labels = CityLabels(nominative = "Dąbrowa Górnicza", genitivePlural = "dąbrowskich", locative = "Dąbrowie Górniczej"),
+  lat    = 50.3219,
+  lon    = 19.1876,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.dabrowaGornicza
+}
+
+case object NowySacz extends City(
+  slug   = "nowy-sacz",
+  labels = CityLabels(nominative = "Nowy Sącz", genitivePlural = "nowosądeckich", locative = "Nowym Sączu"),
+  lat    = 49.6175,
+  lon    = 20.7154,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.nowySacz
+}
+
+case object Slupsk extends City(
+  slug   = "slupsk",
+  labels = CityLabels(nominative = "Słupsk", genitivePlural = "słupskich", locative = "Słupsku"),
+  lat    = 54.4641,
+  lon    = 17.0287,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.slupsk
+}
+
+case object JeleniaGora extends City(
+  slug   = "jelenia-gora",
+  labels = CityLabels(nominative = "Jelenia Góra", genitivePlural = "jeleniogórskich", locative = "Jeleniej Górze"),
+  lat    = 50.9044,
+  lon    = 15.7197,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.jeleniaGora
+}
+
+case object Przemysl extends City(
+  slug   = "przemysl",
+  labels = CityLabels(nominative = "Przemyśl", genitivePlural = "przemyskich", locative = "Przemyślu"),
+  lat    = 49.7838,
+  lon    = 22.7677,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.przemysl
+}
+
+case object Konin extends City(
+  slug   = "konin",
+  labels = CityLabels(nominative = "Konin", genitivePlural = "konińskich", locative = "Koninie"),
+  lat    = 52.2230,
+  lon    = 18.2511,
+  zoneId = ZoneId.of("Europe/Warsaw"),
+) {
+  val cinemas: Seq[Cinema] = Cinema.konin
+}
+
 object City {
   val all: Seq[City] = Seq(
     Poznan, Wroclaw, Warszawa, Krakow, Lodz, Katowice, Szczecin, Bialystok, Trojmiasto, Bydgoszcz, Lublin,
     Czestochowa, Radom, Sosnowiec, Torun, Kielce, Rzeszow, Gliwice, Zabrze,
+    Olsztyn, BielskoBiala, Opole, Rybnik, GorzowWielkopolski, Elblag, Koszalin, Kalisz, ZielonaGora, Tychy,
+    Walbrzych, Tarnow, Wloclawek, Legnica, Plock, Bytom, DabrowaGornicza, NowySacz, Slupsk, JeleniaGora,
+    Przemysl, Konin,
   )
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 
