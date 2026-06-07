@@ -161,12 +161,13 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
 
     val ts = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
     monitor.applyExternalUpdate("TMDB", ts,
-      successes = 7, failures = 2, durationSumMs = 1400L, durationCount = 7, errors = Seq("HTTP 503"))
+      successes = 7, failures = 2, zeroes = 1, durationSumMs = 1400L, durationCount = 7, errors = Seq("HTTP 503"))
 
     val h = monitor.history("TMDB")
     h should have size 1
     h.head.successes shouldBe 7
     h.head.failures shouldBe 2
+    h.head.zeroes shouldBe 1
     h.head.errors shouldBe Seq("HTTP 503")
     monitor.averageMsTotal("TMDB") shouldBe Some(200L)
     monitor.services should contain ("TMDB")
@@ -179,8 +180,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   it should "replace (not add to) the bucket's counts when applied repeatedly" in {
     val monitor = new UptimeMonitor()
     val ts = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
-    monitor.applyExternalUpdate("IMDb", ts, successes = 3, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
-    monitor.applyExternalUpdate("IMDb", ts, successes = 5, failures = 1, durationSumMs = 0L, durationCount = 0, errors = Seq("boom"))
+    monitor.applyExternalUpdate("IMDb", ts, successes = 3, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.applyExternalUpdate("IMDb", ts, successes = 5, failures = 1, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq("boom"))
 
     monitor.history("IMDb").head.successes shouldBe 5
     monitor.history("IMDb").head.failures shouldBe 1
@@ -197,14 +198,17 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.addListener((_, _) => notifications += 1)
     val ts = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
 
-    monitor.applyExternalUpdate("RT", ts, successes = 4, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.applyExternalUpdate("RT", ts, successes = 4, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 1
     // Same snapshot again (next poll, no new worker activity) → no listener fire.
-    monitor.applyExternalUpdate("RT", ts, successes = 4, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.applyExternalUpdate("RT", ts, successes = 4, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 1
     // A real change (worker recorded more) → fires.
-    monitor.applyExternalUpdate("RT", ts, successes = 5, failures = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.applyExternalUpdate("RT", ts, successes = 5, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 2
+    // A change confined to the zeroes dimension also counts as a change → fires.
+    monitor.applyExternalUpdate("RT", ts, successes = 5, failures = 0, zeroes = 1, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    notifications shouldBe 3
   }
 
   // The poll must NOT re-read the whole 24h collection every interval — that
@@ -232,18 +236,42 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   "BucketSnapshot.status" should "be green when all succeed" in {
-    UptimeMonitor.BucketSnapshot(0, successes = 5, failures = 0, Seq.empty).status shouldBe "green"
+    UptimeMonitor.BucketSnapshot(0, successes = 5, failures = 0, zeroes = 0, Seq.empty).status shouldBe "green"
   }
 
   it should "be red when all fail" in {
-    UptimeMonitor.BucketSnapshot(0, successes = 0, failures = 3, Seq("err")).status shouldBe "red"
+    UptimeMonitor.BucketSnapshot(0, successes = 0, failures = 3, zeroes = 0, Seq("err")).status shouldBe "red"
   }
 
   it should "be yellow when mixed" in {
-    UptimeMonitor.BucketSnapshot(0, successes = 2, failures = 1, Seq("err")).status shouldBe "yellow"
+    UptimeMonitor.BucketSnapshot(0, successes = 2, failures = 1, zeroes = 0, Seq("err")).status shouldBe "yellow"
   }
 
   it should "be empty when no data" in {
-    UptimeMonitor.BucketSnapshot(0, successes = 0, failures = 0, Seq.empty).status shouldBe "empty"
+    UptimeMonitor.BucketSnapshot(0, successes = 0, failures = 0, zeroes = 0, Seq.empty).status shouldBe "empty"
+  }
+
+  it should "be zero when only empty-handed calls, no failures and no successes" in {
+    UptimeMonitor.BucketSnapshot(0, successes = 0, failures = 0, zeroes = 2, Seq.empty).status shouldBe "zero"
+  }
+
+  it should "stay green when a real success and an empty call share a slot" in {
+    UptimeMonitor.BucketSnapshot(0, successes = 1, failures = 0, zeroes = 1, Seq.empty).status shouldBe "green"
+  }
+
+  it should "be yellow when a failure and an empty call share a slot" in {
+    UptimeMonitor.BucketSnapshot(0, successes = 0, failures = 1, zeroes = 1, Seq("err")).status shouldBe "yellow"
+  }
+
+  "recordEmpty" should "increment the zeroes dimension and surface a zero-status bucket" in {
+    val monitor = new UptimeMonitor()
+    monitor.recordEmpty("svc", 42L)
+    val bucket = monitor.history("svc").head
+    bucket.zeroes    shouldBe 1
+    bucket.successes shouldBe 0
+    bucket.failures  shouldBe 0
+    bucket.status    shouldBe "zero"
+    // The empty round-trip still timed, so its latency feeds the average.
+    monitor.averageMsTotal("svc") shouldBe Some(42L)
   }
 }

@@ -38,11 +38,11 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
   /** One rendered bar, with its bucket window stamped in Warsaw time. Shared by
    *  the full-page render and the live SSE feed so both label a bucket the same. */
   private def barData(service: String, bucketTs: Long, status: String,
-                      successes: Int, failures: Int, errors: Seq[String]): BarData = {
+                      successes: Int, failures: Int, zeroes: Int, errors: Seq[String]): BarData = {
     val from = Instant.ofEpochMilli(bucketTs)
     val to   = Instant.ofEpochMilli(bucketTs + BucketDurationMs)
     BarData(service, bucketTs, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
-      status, successes, failures, errors)
+      status, successes, failures, zeroes, errors)
   }
 
   def index: Action[AnyContent] = Action {
@@ -55,8 +55,8 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
       val history = monitor.history(serviceName).map(b => b.timestamp -> b).toMap
       slots.map { ts =>
         history.get(ts) match {
-          case Some(b) => barData(serviceName, ts, b.status, b.successes, b.failures, b.errors)
-          case None    => barData(serviceName, ts, "empty", 0, 0, Seq.empty)
+          case Some(b) => barData(serviceName, ts, b.status, b.successes, b.failures, b.zeroes, b.errors)
+          case None    => barData(serviceName, ts, "empty", 0, 0, 0, Seq.empty)
         }
       }
     }
@@ -88,7 +88,7 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
 
     val listener: BucketListener = { (service, snapshot) =>
       queue.offer(barData(service, snapshot.timestamp, snapshot.status,
-        snapshot.successes, snapshot.failures, snapshot.errors))
+        snapshot.successes, snapshot.failures, snapshot.zeroes, snapshot.errors))
       ()
     }
     monitor.addListener(listener)
@@ -132,6 +132,7 @@ case class BarData(
   status: String,
   successes: Int,
   failures: Int,
+  zeroes: Int,
   errors: Seq[String]
 )
 
@@ -145,6 +146,7 @@ object BarData {
     "status"    -> b.status,
     "successes" -> b.successes,
     "failures"  -> b.failures,
+    "zeroes"    -> b.zeroes,
     "errors"    -> b.errors
   )
 }

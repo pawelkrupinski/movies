@@ -103,6 +103,21 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
     notifyListeners(service, bucket)
   }
 
+  /** Record a call that completed without error but came back empty-handed —
+   *  for a cinema scrape, the page loaded and parsed yet yielded zero
+   *  screenings. That's neither a success (we got no data) nor a failure (the
+   *  upstream didn't error), so it gets its own dimension and surfaces as a
+   *  white "no screenings" bar. The round-trip was real, so its latency still
+   *  counts toward the average. */
+  def recordEmpty(service: String, durationMs: Long): Unit = {
+    val bucket = currentBucket(service)
+    bucket.zeroes.incrementAndGet()
+    bucket.durationSumMs.addAndGet(durationMs)
+    bucket.durationCount.incrementAndGet()
+    bucket.dirty.set(true)
+    notifyListeners(service, bucket)
+  }
+
   /** Average duration (ms) of timed successful calls for `service` within the
    *  last hour, or None when nothing was timed in that window. */
   def averageMs1h(service: String): Option[Long] = averageMs(service, Some(60 * 60 * 1000L))
@@ -138,7 +153,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
     val buckets = data.get(service)
     if (buckets == null) Seq.empty
     else buckets.values().asScala.toSeq.map(b =>
-      BucketSnapshot(b.timestamp, b.successes.get(), b.failures.get(), b.errors.asScala.toSeq)
+      BucketSnapshot(b.timestamp, b.successes.get(), b.failures.get(), b.zeroes.get(), b.errors.asScala.toSeq)
     )
   }
 
@@ -167,7 +182,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
       buckets.values().forEach { b =>
         if (b.dirty.getAndSet(false))
           out += BucketWrite(service, b.timestamp,
-            b.successes.get(), b.failures.get(),
+            b.successes.get(), b.failures.get(), b.zeroes.get(),
             b.durationSumMs.get(), b.durationCount.get(),
             b.errors.asScala.toList)
       }
@@ -192,6 +207,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
       Updates.combine(
         Updates.set("successes", bw.successes),
         Updates.set("failures", bw.failures),
+        Updates.set("zeroes", bw.zeroes),
         Updates.set("durationSumMs", bw.durationSumMs),
         Updates.set("durationCount", bw.durationCount),
         Updates.set("errors", bw.errors.asJava)
@@ -237,6 +253,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
             service, bucketDate.getTime,
             doc.getInteger("successes", 0),
             doc.getInteger("failures", 0),
+            doc.getInteger("zeroes", 0),
             Try(doc.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L),
             doc.getInteger("durationCount", 0),
             Try(doc.getList("errors", classOf[String])).toOption.fold(Seq.empty[String])(_.asScala.toSeq)
@@ -247,7 +264,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
 
   private def notifyListeners(service: String, bucket: Bucket): Unit =
     if (!listeners.isEmpty) {
-      val snap = BucketSnapshot(bucket.timestamp, bucket.successes.get(), bucket.failures.get(), bucket.errors.asScala.toSeq)
+      val snap = BucketSnapshot(bucket.timestamp, bucket.successes.get(), bucket.failures.get(), bucket.zeroes.get(), bucket.errors.asScala.toSeq)
       listeners.forEach(f => Try(f(service, snap)))
     }
 
@@ -264,6 +281,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         val bucket = buckets.computeIfAbsent(ts, t => Bucket(t))
         bucket.successes.addAndGet(doc.getInteger("successes", 0))
         bucket.failures.addAndGet(doc.getInteger("failures", 0))
+        bucket.zeroes.addAndGet(doc.getInteger("zeroes", 0))
         bucket.durationSumMs.addAndGet(Try(doc.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L))
         bucket.durationCount.addAndGet(doc.getInteger("durationCount", 0))
         Try(doc.getList("errors", classOf[String])).toOption.foreach { errs =>
@@ -283,7 +301,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
    *  Package-private: the only callers are the poller and its test. */
   private[services] def applyExternalUpdate(
     service: String, bucketTs: Long,
-    successes: Int, failures: Int,
+    successes: Int, failures: Int, zeroes: Int,
     durationSumMs: Long, durationCount: Int,
     errors: Seq[String]
   ): Unit = {
@@ -294,11 +312,13 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
     val changed =
       bucket.successes.get() != successes ||
       bucket.failures.get() != failures ||
+      bucket.zeroes.get() != zeroes ||
       bucket.durationSumMs.get() != durationSumMs ||
       bucket.durationCount.get() != durationCount ||
       bucket.errors.asScala.toSeq != cappedErrors
     bucket.successes.set(successes)
     bucket.failures.set(failures)
+    bucket.zeroes.set(zeroes)
     bucket.durationSumMs.set(durationSumMs)
     bucket.durationCount.set(durationCount)
     bucket.errors.clear()
@@ -343,6 +363,10 @@ object UptimeMonitor {
   case class Bucket(timestamp: Long) {
     val successes = new AtomicInteger(0)
     val failures  = new AtomicInteger(0)
+    // Calls that returned without error but empty-handed (a scrape that parsed
+    // cleanly yet found zero screenings). Tracked apart from successes/failures
+    // so the bucket can surface as a white "no screenings" bar.
+    val zeroes    = new AtomicInteger(0)
     val errors    = new java.util.concurrent.ConcurrentLinkedQueue[String]()
     // Timing of *successful* calls: total ms and how many were timed. Kept
     // separate from `successes` so untimed successes (e.g. browser img events)
@@ -357,16 +381,20 @@ object UptimeMonitor {
   /** A bucket's cumulative counts captured for one flush. */
   case class BucketWrite(
     service: String, bucketTs: Long,
-    successes: Int, failures: Int,
+    successes: Int, failures: Int, zeroes: Int,
     durationSumMs: Long, durationCount: Int,
     errors: List[String]
   )
 
-  case class BucketSnapshot(timestamp: Long, successes: Int, failures: Int, errors: Seq[String]) {
+  case class BucketSnapshot(timestamp: Long, successes: Int, failures: Int, zeroes: Int, errors: Seq[String]) {
+    // Precedence: a failure dominates (red/yellow); a real success means green
+    // even alongside a zero-result call in the same slot; only when every
+    // non-failed call came back empty does the slot read "zero" (white). An
+    // untouched slot is "empty" (no data).
     def status: String =
-      if (successes + failures == 0) "empty"
-      else if (failures == 0) "green"
-      else if (successes == 0) "red"
-      else "yellow"
+      if (successes + failures + zeroes == 0) "empty"
+      else if (failures > 0) (if (successes > 0 || zeroes > 0) "yellow" else "red")
+      else if (successes > 0) "green"
+      else "zero"
   }
 }

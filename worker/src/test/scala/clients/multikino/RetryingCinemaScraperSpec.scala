@@ -24,6 +24,21 @@ class RetryingCinemaScraperSpec extends AnyFlatSpec with Matchers {
     )
   )
 
+  // A movie the cinema page surfaced but with no showtimes — that's still zero
+  // screenings, same as an empty result.
+  private val NoShowtimes: Seq[CinemaMovie] = Seq(
+    CinemaMovie(
+      movie     = Movie("X"),
+      cinema    = Multikino,
+      posterUrl = None,
+      filmUrl   = None,
+      synopsis  = None,
+      cast      = Seq.empty,
+      director  = Seq.empty,
+      showtimes = Seq.empty
+    )
+  )
+
   private def scriptedScraper(plan: List[Either[Throwable, Seq[CinemaMovie]]]): CinemaScraper = new CinemaScraper {
     private var remaining = plan
     val cinema: Cinema    = Multikino
@@ -90,5 +105,38 @@ class RetryingCinemaScraperSpec extends AnyFlatSpec with Matchers {
     val bucket = monitor.history(Multikino.displayName).head
     bucket.successes shouldBe 0
     bucket.failures  shouldBe 3
+  }
+
+  it should "record an empty (not a success) when the scrape returns no movies" in {
+    val monitor = new UptimeMonitor()
+    val s = new RetryingCinemaScraper(scriptedScraper(List(Right(Seq.empty))), monitor, initialBackoff = 1.millis)
+    s.fetch() shouldBe empty
+    val bucket = monitor.history(Multikino.displayName).head
+    bucket.successes shouldBe 0
+    bucket.zeroes    shouldBe 1
+    bucket.status    shouldBe "zero"
+  }
+
+  it should "record an empty when movies come back with zero showtimes" in {
+    val monitor = new UptimeMonitor()
+    val s = new RetryingCinemaScraper(scriptedScraper(List(Right(NoShowtimes))), monitor, initialBackoff = 1.millis)
+    s.fetch() shouldBe NoShowtimes
+    val bucket = monitor.history(Multikino.displayName).head
+    bucket.successes shouldBe 0
+    bucket.zeroes    shouldBe 1
+  }
+
+  it should "still record a success when the final retry yields screenings, counting the empty intermediate as a failure only" in {
+    val monitor = new UptimeMonitor()
+    val s = new RetryingCinemaScraper(
+      scriptedScraper(List(Left(new RuntimeException("blip")), Right(OneMovie))),
+      monitor,
+      initialBackoff = 1.millis
+    )
+    s.fetch() shouldBe OneMovie
+    val bucket = monitor.history(Multikino.displayName).head
+    bucket.successes shouldBe 1
+    bucket.zeroes    shouldBe 0
+    bucket.failures  shouldBe 1
   }
 }

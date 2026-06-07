@@ -75,4 +75,22 @@ class UptimeStreamSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll 
     (updates.head \ "service").as[String] shouldBe "TMDB"
     (updates.head \ "status").as[String] shouldBe "red"
   }
+
+  // The white "no screenings" bar is driven entirely by the BarData JSON the
+  // feed pushes: a scrape that came back empty must surface as status "zero"
+  // with a non-zero `zeroes` count, never green.
+  it should "surface an empty scrape as a zero-status bar in the JSON frame" in {
+    val monitor = new UptimeMonitor()
+    val collecting = controller(monitor).eventSource().takeWithin(1.second).runWith(Sink.seq)
+
+    Thread.sleep(100)
+    monitor.recordEmpty("Multikino Stary Browar", 120L)
+
+    val frames = Await.result(collecting, 3.seconds)
+    val updates = frames.flatMap(f => Json.parse(f.stripPrefix("data: ").trim).as[List[JsObject]])
+    updates should have size 1
+    (updates.head \ "status").as[String] shouldBe "zero"
+    (updates.head \ "zeroes").as[Int] shouldBe 1
+    (updates.head \ "successes").as[Int] shouldBe 0
+  }
 }
