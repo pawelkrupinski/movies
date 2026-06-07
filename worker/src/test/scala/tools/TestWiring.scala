@@ -46,11 +46,12 @@ trait TestWiring extends WorkerWiring {
   override def tmdbMaxRetries: Int = 0
 
   // Don't retry cinema scrapes in fixture replay: a missing fixture is permanent,
-  // so 3× backoff per fixture-less cinema just multiplies fixture-server boot
-  // time (FixtureServerMain scrapes the whole 40+-city catalogue; the retry
-  // churn was pushing boot past CI's 300s port-file ceiling → iOS/Android
-  // LocalServer "never wrote a port file").
-  override def scrapeMaxAttempts: Int = 1
+  // so backoff per fixture-less cinema just multiplies fixture-server boot time
+  // (FixtureServerMain scrapes the whole 40+-city catalogue; the retry churn was
+  // pushing boot past CI's 300s port-file ceiling → iOS/Android LocalServer
+  // "never wrote a port file"). The ceiling clamps EVERY cinema's own
+  // `maxFetchAttempts` down to a single no-retry attempt.
+  override def scrapeAttemptCeiling: Int = 1
 
   /** Synchronously force one title all the way through the enrichment cascade:
    *  TMDB resolve → IMDb id recovery → the four `*Ratings.refreshOneSync` URL

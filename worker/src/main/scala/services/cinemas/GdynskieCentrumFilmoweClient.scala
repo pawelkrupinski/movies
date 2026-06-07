@@ -5,7 +5,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import tools.HttpFetch
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -37,6 +37,18 @@ class GdynskieCentrumFilmoweClient(http: HttpFetch, override val cinema: Cinema)
   import GdynskieCentrumFilmoweClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+
+  // gcf.org.pl's WordPress origin flaps: ~10–25% of requests come back HTTP 500,
+  // independent of our request shape (headers, UA, IP — confirmed by an A/B probe
+  // that saw the same rate from an unrelated address). The 500s fast-fail in
+  // ~0.6s (vs ~4.5s for a real render) and cluster into short bad windows. The
+  // default 3 attempts (sleeping 1s+2s) sometimes all land inside one such window
+  // and the cinema drops out of the cache for that tick (a red uptime bar). More
+  // attempts are nearly free here — each failure is a sub-second fast-fail — and
+  // the longer 1s/2s/4s/8s backoff span crosses the bad windows, so the scrape
+  // recovers within the tick instead of dropping. (The wrapper still records each
+  // failed attempt, so the upstream's true flakiness stays visible as yellow.)
+  override val maxFetchAttempts: Int = 5
 
   def fetch(): Seq[CinemaMovie] = {
     val html = http.get(RepertoireUrl)

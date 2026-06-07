@@ -31,6 +31,20 @@ trait CinemaScraper {
   def cinema: Cinema
   def fetch(): Seq[CinemaMovie]
   def scrapeHosts: Set[String]
+
+  /** How many times the production wrapper (`RetryingCinemaScraper`) attempts
+   *  this cinema before giving up on a tick. The default 3 suits a normal
+   *  upstream — one transient blip per refresh recovers on a retry. A cinema
+   *  whose origin *flaps* (frequent but CHEAP, fast-failing errors) overrides
+   *  this higher: extra independent attempts cost almost nothing when each
+   *  failure returns in well under a second, and together they span enough
+   *  wall-clock to ride out the upstream's bad windows so the cinema doesn't
+   *  drop out of the cache. Don't raise it for upstreams that fail *slowly*
+   *  (sockets that hang to the 30s request timeout) — there each extra attempt
+   *  is a 30s tax on the tick. `WorkerWiring` clamps this to its attempt
+   *  ceiling, so the fixture-replay test wiring can still force a single
+   *  no-retry attempt for every cinema. */
+  def maxFetchAttempts: Int = 3
 }
 
 object CinemaScraper {
