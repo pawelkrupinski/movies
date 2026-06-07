@@ -78,11 +78,17 @@ test.describe('day-swipe', () => {
     const box = (await page.locator('#film-grid').boundingBox())!;
     const y = box.y + Math.min(box.height / 2, 120);
     const x0 = box.x + box.width * 0.5;
+    // The drag must be sub-threshold by BOTH commit paths on EVERY viewport:
+    // distance (< COMMIT_FRACTION·width) AND flick (< FLICK_MIN_PX = 24px, since
+    // synthetic CDP moves fire fast → high velocity). A width-relative distance
+    // flick-commits on a wide landscape grid (15% of width > 24px), so use a
+    // fixed ~18px: past the ~10px deadzone (it arms) but under the flick floor.
+    const subDx = 18;
     const client = await page.context().newCDPSession(page);
     await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y }] });
     for (let i = 1; i <= 6; i++) {
       await client.send('Input.dispatchTouchEvent',
-        { type: 'touchMove', touchPoints: [{ x: x0 - (box.width * 0.15 * i) / 6, y }] });
+        { type: 'touchMove', touchPoints: [{ x: x0 - (subDx * i) / 6, y }] });
     }
     await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await client.detach();
@@ -94,7 +100,9 @@ test.describe('day-swipe', () => {
     // off-viewport); a horizontal drag across most of the width commits.
     await page.evaluate(() => window.scrollTo(0, 300));
     const vw = page.viewportSize()!.width;
-    const yMid = 380;
+    // Viewport-centre y so the touch lands on the grid in landscape too — a
+    // fixed 380 sits below a short landscape viewport and would miss.
+    const yMid = Math.round(page.viewportSize()!.height / 2);
     const c2 = await page.context().newCDPSession(page);
     await c2.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: vw * 0.85, y: yMid }] });
     for (let i = 1; i <= 12; i++) {
