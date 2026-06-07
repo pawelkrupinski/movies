@@ -1244,6 +1244,121 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Day carousel (three-column slide) ───────────────────────────────────────
+  //
+  // The films grid is the centre column of a prev|current|next carousel inside
+  // `#day-track`. A swipe (and the arrow buttons / Left-Right keys / the
+  // `#date-filter` dropdown) slides the track to reveal a neighbour day's grid —
+  // a clone of `#film-grid` filtered to that day — then commits the day change
+  // and scrolls to top. These assert the structural contract the gesture relies
+  // on: the neighbour is mounted + visible mid-drag at the SAME scroll offset as
+  // the centre, a committed change resets scroll, and all four entry points run
+  // the SAME animated slide (the track gets `.day-track--armed` and lands on the
+  // right day with `?date=` updated).
+
+  "the day carousel" should "mount the neighbour column at the same scroll offset mid-drag" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      coarsePointer(page)
+      page.eval("document.getElementById('date-filter').value = 'anytime'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+
+      // Scroll down so a naive (non-shared-scroll) neighbour would sit at a
+      // different vertical offset than the centre.
+      page.eval("window.scrollTo(0, 400)")
+
+      // Begin a synthetic finger drag: down, then a horizontal move past the
+      // deadzone so the handler locks the axis and arms the carousel.
+      page.eval(synthDrag("pointerdown", 300, 500))
+      page.eval(synthDrag("pointermove", 240, 505))   // dx = -60 → lock + arm
+      page.eval(synthDrag("pointermove", 180, 505))   // keep dragging left
+
+      // A neighbour `.day-col` is mounted in the track and actually painted.
+      page.evalInt("document.querySelectorAll('#day-track > .day-col').length") should be >= 1
+      page.evalBool(
+        "[...document.querySelectorAll('#day-track > .day-col')].some(c => c.offsetParent !== null && c.querySelector('.col[data-title]'))"
+      ) shouldBe true
+
+      // Synced vertical scroll: the revealed neighbour's top equals the centre
+      // grid's top — both are top-aligned in the same flex row sharing the
+      // page's single scroll, so the offset matches even after scrolling.
+      val sameTop = page.evalBool(
+        """(() => {
+          |  const root = document.getElementById('view-root');
+          |  const cols = [...document.querySelectorAll('#day-track > .day-col')]
+          |    .filter(c => c.querySelector('.col[data-title]'));
+          |  if (!root || cols.length === 0) return false;
+          |  const rt = root.getBoundingClientRect().top;
+          |  return cols.some(c => Math.abs(c.getBoundingClientRect().top - rt) < 1);
+          |})()""".stripMargin
+      )
+      sameTop shouldBe true
+
+      // Release below the commit threshold → snap back, leaving scroll untouched.
+      page.eval(synthDrag("pointerup", 180, 505))
+    }
+  }
+
+  it should "scroll to top on a committed day change but leave scroll alone on snap-back" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      coarsePointer(page)
+      page.eval("document.getElementById('date-filter').value = 'anytime'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+
+      // Sub-threshold drag → snap-back: scroll position is preserved.
+      page.eval("window.scrollTo(0, 300)")
+      page.eval(synthDrag("pointerdown", 300, 500))
+      page.eval(synthDrag("pointermove", 285, 505))   // tiny dx → no commit
+      page.eval(synthDrag("pointerup",   285, 505))
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalInt("Math.round(window.scrollY)") shouldBe 300
+
+      // A committed day change (via the unified animateToDay) scrolls to top.
+      page.eval("window.scrollTo(0, 300)")
+      page.eval("window.animateToDay('tomorrow')")
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalInt("Math.round(window.scrollY)") shouldBe 0
+      page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
+    }
+  }
+
+  it should "run the animated slide from the arrow button" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+
+      // Click the next-day arrow; while the slide is in flight the track is
+      // armed (neighbour mounted, parked transform set).
+      page.eval("window.stepDate(1)")
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+      page.evalInt("document.querySelectorAll('#day-track > .day-col').length") should be >= 1
+
+      // It settles on the next day with `?date=` reflecting it.
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
+      page.evalBool("new URL(location.href).searchParams.get('date') === 'tomorrow'") shouldBe true
+    }
+  }
+
+  it should "run the animated slide from a dropdown change" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+
+      // Multi-step jump today → anytime: the dropdown moves first, then a SINGLE
+      // slide carries the target day's column into view (the track is armed).
+      page.eval(
+        "const s = document.getElementById('date-filter'); s.value = 'anytime'; onDateSelect()"
+      )
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
+      page.evalBool("new URL(location.href).searchParams.get('date') === 'anytime'") shouldBe true
+    }
+  }
+
   // ── Single-cinema label suppression ─────────────────────────────────────────
   //
   // `applyFilters()` tags `#film-grid` with class `single-cinema` when at most
@@ -2077,4 +2192,42 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  escaping. */
   private def jsString(s: String): String =
     play.api.libs.json.JsString(s).toString
+
+  /** Force `prefers-reduced-motion: no-preference` so the carousel takes its
+   *  animated slide path (not the reduced-motion instant-commit shortcut)
+   *  regardless of the runner's OS/headless defaults — the slide-in-flight
+   *  assertions need the transition to actually run. */
+  private def enableSlideAnimation(page: CdpPage): Unit =
+    page.send("Emulation.setEmulatedMedia", play.api.libs.json.Json.obj(
+      "features" -> play.api.libs.json.Json.arr(
+        play.api.libs.json.Json.obj("name" -> "prefers-reduced-motion", "value" -> "no-preference")
+      )
+    ))
+
+  /** Make the swipe handlers — gated on `matchMedia('(pointer: coarse)')` —
+   *  engage. Enabling CDP touch emulation flips the page's pointer media query
+   *  to coarse reliably across headless Chrome on macOS/Linux (the
+   *  `setDeviceMetricsOverride mobile:true` width path is flaky for this; see
+   *  the mobile-navbar test note), which the `mobile:true` device-metrics
+   *  override alone does not guarantee. */
+  private def coarsePointer(page: CdpPage): Unit = {
+    page.send("Emulation.setTouchEmulationEnabled", play.api.libs.json.Json.obj(
+      "enabled" -> true, "maxTouchPoints" -> 5
+    ))
+    page.setViewport(380, 800)
+    require(
+      page.evalBool("matchMedia('(pointer: coarse)').matches"),
+      "expected a coarse pointer after touch emulation — swipe handlers are gated on it"
+    )
+  }
+
+  /** Dispatch a synthetic touch `PointerEvent` of `kind` at (`x`,`y`) on the
+   *  document — drives the production `pointerdown`/`pointermove`/`pointerup`
+   *  carousel handlers (which arm + translate `#day-track`) without needing real
+   *  CDP touch injection. `pointerType:'touch'` clears the handlers'
+   *  mouse-skip + coarse-pointer gates. */
+  private def synthDrag(kind: String, x: Int, y: Int): String =
+    s"""document.dispatchEvent(new PointerEvent('$kind', {
+       |  pointerType: 'touch', isPrimary: true, clientX: $x, clientY: $y, bubbles: true, cancelable: true
+       |}))""".stripMargin
 }

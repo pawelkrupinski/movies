@@ -959,14 +959,33 @@
     }
   }
 
-  /* ── Day-swipe (shared.js) ─────────────────────────────────────────────────
-     `#view-pager` holds the `<main id="view-root">` grid. A horizontal swipe
-     translates the grid to step the selected day; shared.js drives the
-     transform inline. `overflow-x: clip` hides the grid as it slides off-screen
-     without creating a scroll container (so it can't add a phantom vertical
-     scrollbar the way `overflow-x: hidden` would). */
+  /* ── Day carousel (shared.js) ──────────────────────────────────────────────
+     `#view-pager` is the carousel viewport; `#day-track` is a flex row of
+     full-viewport-width day columns. The real grid (`<main id="view-root">`)
+     is the centre column and is always present; shared.js mounts a prev + next
+     column (each a clone of `#film-grid` filtered to that neighbouring day)
+     only for the duration of a slide, then translates `#day-track` to reveal
+     them. `overflow-x: clip` hides the off-screen columns without creating a
+     scroll container (so it can't add a phantom vertical scrollbar the way
+     `overflow-x: hidden` would).
+
+     The columns sit in NORMAL block flow inside the flex row — no inner
+     `overflow`, so all three share the page's single vertical scroll. The
+     revealed neighbour therefore lines up at the same `scrollY` offset for
+     free. While neighbours are mounted (`.day-track--armed`) the track is
+     parked at `-100vw` so the centre column stays in view; shared.js sets the
+     live `translateX` inline on top of that during a drag. */
   #view-pager { position: relative; overflow-x: clip; }
-  #view-pager > main { will-change: transform; }
+  #day-track { display: flex; align-items: flex-start; will-change: transform; }
+  /* Each column is exactly the viewport width so a neighbour reveals from the
+     screen edge. The centre `#view-root` is `flex: 1` when alone (no clones)
+     so the page is unchanged at rest; the explicit width kicks in only once
+     the track is armed and all three columns are siblings. */
+  #day-track > .day-col,
+  #day-track > #view-root { flex: 0 0 100vw; width: 100vw; max-width: 100vw; }
+  #day-track:not(.day-track--armed) > #view-root { flex: 0 0 100%; width: 100%; max-width: 100%; }
+  /* Parked one column to the left so the centre is centred while armed. */
+  #day-track.day-track--armed { transform: translateX(-100vw); }
   /* Claim horizontal gestures over the grid for the swipe-to-switch handler:
      it lets the browser keep vertical scrolling but stops it treating a
      horizontal drag as a (non-existent) horizontal scroll and cancelling the
