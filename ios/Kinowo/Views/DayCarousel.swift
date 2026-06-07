@@ -27,6 +27,13 @@ import SwiftUI
 /// snap-back the scroll stays put.
 struct DayCarousel: View {
     @Binding var dateFilter: DateFilter
+    /// Live day-pill highlight PREVIEW (owned by ContentView). While a drag is
+    /// past the commit threshold this holds the day a release would commit to,
+    /// so the pill row flips to it mid-drag; `nil` means "highlight the real
+    /// `dateFilter`". This is highlight-only — the grid, scroll and committed
+    /// selection never move until release. Set on every `.onChanged`, cleared on
+    /// `.onEnded` (both commit and snap-back) so it can't leave a stale preview.
+    @Binding var previewFilter: DateFilter?
     /// Films for a given day filter — generalises ContentView's
     /// `filmsForFilmsTab` so each of the three panes can be populated.
     let films: (DateFilter) -> [Film]
@@ -127,7 +134,34 @@ struct DayCarousel: View {
                 guard abs(value.translation.width) > abs(value.translation.height) else { return }
                 state = value.translation.width
             }
+            .onChanged { value in
+                // Live-preview the day a release WOULD commit to, so the pill
+                // flips exactly where the carousel would (the same
+                // `commitFraction` distance threshold) and flips back if the
+                // drag returns under it. Highlight only — nothing here moves the
+                // grid, scroll, or `dateFilter`. Predominantly-vertical drags
+                // leave the preview cleared (no horizontal intent yet).
+                guard abs(value.translation.width) > abs(value.translation.height) else {
+                    if previewFilter != nil { previewFilter = nil }
+                    return
+                }
+                let preview = previewDayFilter(
+                    dragTranslation: value.translation.width,
+                    viewportWidth: width,
+                    current: dateFilter,
+                    commitFraction: commitFraction
+                )
+                // Store nil when the preview equals the real day so the pill
+                // highlights `dateFilter` directly (and the binding stays clean).
+                let next: DateFilter? = preview == dateFilter ? nil : preview
+                if previewFilter != next { previewFilter = next }
+            }
             .onEnded { value in
+                // The gesture is over: drop the highlight preview on every exit
+                // path (commit, snap-back, or vertical no-op) so the pill never
+                // sticks on a previewed day. A commit sets `dateFilter` below, so
+                // clearing here lands the highlight back on the real selection.
+                previewFilter = nil
                 guard width > 0,
                       abs(value.translation.width) > abs(value.translation.height)
                 else { return }

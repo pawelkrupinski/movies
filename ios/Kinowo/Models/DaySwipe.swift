@@ -1,4 +1,10 @@
+#if canImport(CoreGraphics)
+import CoreGraphics
+#else
+// `CoreGraphics` isn't on Linux, but Foundation re-exports `CGFloat` there —
+// enough for this pure-logic file to build under `swift test` CI.
 import Foundation
+#endif
 
 /// Horizontal-swipe day navigation math, factored out of the view so it's
 /// unit-testable. A swipe left advances to the next day (`delta = +1`), a
@@ -33,4 +39,29 @@ extension DateFilter {
         guard let i = presets.firstIndex(of: self) else { return self }
         return presets[wrappedDayIndex(current: i, delta: delta, count: presets.count)]
     }
+}
+
+/// The day a release *would* commit to, given the current live drag — used to
+/// preview the highlighted day pill mid-drag without actually changing the
+/// selection. Mirrors the carousel's distance-based commit rule exactly: the
+/// pill flips the moment the drag passes `viewportWidth * commitFraction` (the
+/// same constant a release uses), and flips back to `current` if the drag
+/// returns under it.
+///
+/// Returns `current` when the carousel isn't laid out yet (`viewportWidth <= 0`)
+/// or the drag hasn't passed the threshold. Past it, a drag left
+/// (`dragTranslation < 0`) previews the NEXT day and a drag right the PREVIOUS —
+/// matching the carousel's commit direction. The flick shortcut a release also
+/// honours can't be previewed (it depends on release velocity, unknown
+/// mid-drag), so the preview tracks the distance threshold only.
+func previewDayFilter(
+    dragTranslation: CGFloat,
+    viewportWidth: CGFloat,
+    current: DateFilter,
+    commitFraction: CGFloat
+) -> DateFilter {
+    guard viewportWidth > 0,
+          abs(dragTranslation) > viewportWidth * commitFraction
+    else { return current }
+    return dragTranslation < 0 ? current.nextPreset : current.previousPreset
 }

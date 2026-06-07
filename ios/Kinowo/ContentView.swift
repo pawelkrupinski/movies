@@ -17,6 +17,11 @@ struct ContentView: View {
     @Environment(\.verticalSizeClass) private var vSizeClass
 
     @State private var dateFilter: DateFilter = .today
+    /// Live day the pill HIGHLIGHTS while a carousel drag is past the commit
+    /// threshold — a preview only, set/cleared by `DayCarousel` mid-drag. The
+    /// committed selection (`dateFilter`, grid content, scroll) never moves
+    /// until release; `previewFilter ?? dateFilter` is what the pill row paints.
+    @State private var previewFilter: DateFilter? = nil
     @State private var formatFilter: FormatFilter = .empty
     @State private var excludedCountries: Set<String> = []
     @State private var excludedGenres: Set<String> = []
@@ -81,6 +86,7 @@ struct ContentView: View {
                 // bar) read as solid app-background.
                 TopBar(
                     dateFilter: $dateFilter,
+                    highlightedFilter: previewFilter ?? dateFilter,
                     search: $search,
                     searchFocused: $searchFocused,
                     searchInline: searchInline,
@@ -289,6 +295,7 @@ struct ContentView: View {
             // revealed day is already scrolled to the same Y. See `DayCarousel`.
             DayCarousel(
                 dateFilter: $dateFilter,
+                previewFilter: $previewFilter,
                 films: { films(for: $0) },
                 showCinemaHeaders: showCinemaHeaders,
                 onCommit: didChangeDay

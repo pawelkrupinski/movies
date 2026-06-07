@@ -20,6 +20,11 @@ import UIKit
 // size that has to fit the smallest screen.
 struct TopBar: View {
     @Binding var dateFilter: DateFilter
+    /// The day to HIGHLIGHT — `previewFilter ?? dateFilter` from ContentView, so
+    /// the pill can show the day a carousel drag would commit to mid-drag while
+    /// `dateFilter` (the real selection) stays put until release. Taps still set
+    /// `dateFilter`; this only drives which pill paints as selected.
+    let highlightedFilter: DateFilter
     @Binding var search: String
     @FocusState.Binding var searchFocused: Bool
     let searchInline: Bool
@@ -35,7 +40,7 @@ struct TopBar: View {
         HStack(spacing: 6 * s) {
             Text("🎬")
                 .font(.system(size: 24 * s))
-            DatePillsRow(dateFilter: $dateFilter, scale: s)
+            DatePillsRow(dateFilter: $dateFilter, highlightedFilter: highlightedFilter, scale: s)
                 .frame(maxWidth: .infinity)
             if searchInline {
                 // Cap the field so it stays a comfortable type-into width
@@ -118,6 +123,10 @@ struct TopBar: View {
 // width.
 struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
+    /// Which pill paints as selected — `previewFilter ?? dateFilter`. Taps still
+    /// write `dateFilter`; this only drives the highlight so a carousel drag can
+    /// preview the day it would commit to without moving the real selection.
+    let highlightedFilter: DateFilter
     let scale: CGFloat
 
     /// Width offered to the row, measured from the full-width frame below so it
@@ -175,7 +184,8 @@ struct DatePillsRow: View {
     }
 
     private func pill(_ f: DateFilter) -> some View {
-        Button {
+        let isHighlighted = highlightedFilter == f
+        return Button {
             dateFilter = f
         } label: {
             Text(f.label)
@@ -185,17 +195,17 @@ struct DatePillsRow: View {
                 .padding(.horizontal, horizontalPadding)
                 .padding(.vertical, 7 * scale)
                 .background(
-                    dateFilter == f
+                    isHighlighted
                         ? Color.accentColor.opacity(0.85)
                         : Color.clear,
                     in: Capsule()
                 )
-                .foregroundColor(dateFilter == f ? .white : .primary)
+                .foregroundColor(isHighlighted ? .white : .primary)
         }
         .buttonStyle(.plain)
         .fixedSize(horizontal: !equalWidth, vertical: false)
         .accessibilityIdentifier(Self.accessibilityId(for: f))
-        .accessibilityAddTraits(dateFilter == f ? .isSelected : [])
+        .accessibilityAddTraits(isHighlighted ? .isSelected : [])
     }
 
     private static func accessibilityId(for f: DateFilter) -> String {
