@@ -290,6 +290,21 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     apiQuery("Filmowe Poranki: Świnka Peppa, cz. 2") shouldBe "Świnka Peppa, cz. 2"
   }
 
+  it should "strip the kids-morning programme in its other spellings (singular, seasonal, subtitled)" in {
+    // Same programme, different banners cinemas actually ship. All strip down
+    // to the film for upstream lookups; the display row keeps the banner.
+    apiQuery("Filmowe Poranki - Miraculous: Biedronka i Czarny Kot") shouldBe "Biedronka i Czarny Kot"
+    apiQuery("Filmowy Poranek: Tomek i Przyjaciele")                 shouldBe "Tomek i Przyjaciele"
+    apiQuery("Filmowy Poranek - Tomek i Przyjaciele: Wielki wyścig") shouldBe "Wielki wyścig"
+    apiQuery("Poranek dla dzieci: Pszczółka Maja")                   shouldBe "Pszczółka Maja"
+    apiQuery("Zimowe Poranki z Bobem Budowniczym: Śnieżna przygoda") shouldBe "Śnieżna przygoda"
+    // searchTitle (the cache-key boundary) keeps the banner — separate row.
+    searchTitle("Filmowe Poranki - Miraculous: Biedronka i Czarny Kot") shouldBe
+      "Filmowe Poranki - Miraculous: Biedronka i Czarny Kot"
+    // A real film whose own title carries a colon must NOT be eaten by the banner.
+    apiQuery("Top Gun: Maverick") shouldBe "Top Gun: Maverick"
+  }
+
   it should "strip the 'Filmowe spotkania z psychoanalizą:' prefix (Rialto themed screening)" in {
     apiQuery("Filmowe spotkania z psychoanalizą: dobry chłopiec") shouldBe "dobry chłopiec"
   }
