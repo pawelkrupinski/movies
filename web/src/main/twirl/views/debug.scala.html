@@ -148,7 +148,11 @@
           data-tmdb="@e.tmdbId.map(_.toString).getOrElse("")"
           data-imdbR="@e.imdbRating.map(_.toString).getOrElse("")"
           data-urls="@{Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten.mkString(" ")}">
-        <td class="title"><a href="@FilmHref(e.displayTitle(title))">@title</a></td>
+        @* The debug table is the global corpus, but /film is city-scoped — link
+           into a city the film actually plays in, not this page's own city
+           (which would 404 for any out-of-city row). Falls back to the page
+           city for a stored row with no live showtimes anywhere. *@
+        <td class="title"><a href="@FilmHref(e.displayTitle(title), e.cities.headOption.getOrElse(city))">@title</a></td>
         <td class="orig">@if(orig.nonEmpty) { @orig } else { <span class="miss">—</span> }</td>
         <td class="year">@e.releaseYear.map(_.toString).getOrElse("—")</td>
         <td class="id">
@@ -278,7 +282,7 @@
       if (tr.dataset.keyYear) params.set('year', tr.dataset.keyYear);
       btn.disabled = true;
       tr.classList.add('reenriching');
-      const res = await fetch('/debug/reenrich?' + params.toString(), { method: 'POST' });
+      const res = await fetch('/@{city.slug}/debug/reenrich?' + params.toString(), { method: 'POST' });
       if (!res.ok) {
         btn.disabled = false;
         tr.classList.remove('reenriching');

@@ -80,6 +80,13 @@ case class MovieRecord(
    *  this record. Empty when no cinema is scraping. */
   def cinemaTitles: Set[String] = cinemaData.values.flatMap(_.title).toSet
 
+  /** Cities whose cinemas currently screen this film, in `City.all` order.
+   *  Empty when no listed cinema maps to a city (a stored row with no live
+   *  showtimes). The debug page lists the global corpus but the /film page is
+   *  city-scoped, so it deep-links each row via the first of these — picking
+   *  the page's own city would 404 for any film not playing there. */
+  def cities: Seq[City] = City.all.filter(c => cinemaData.keySet.exists(c.cinemaSet.contains))
+
   // ── Merged top-level values derived from `data` ──────────────────────────
   //
   // Two flavours of merge:

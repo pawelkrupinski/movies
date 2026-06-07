@@ -458,6 +458,15 @@ object City {
   )
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 
+  /** Reverse lookup: which city a cinema belongs to. Each cinema appears in
+   *  exactly one city's `cinemas` list, so the map is unambiguous. Used by
+   *  `MovieRecord.cities` to deep-link the (global) debug corpus into a city
+   *  whose cinemas actually screen the film. */
+  private lazy val cinemaToCity: Map[Cinema, City] =
+    all.flatMap(c => c.cinemas.map(_ -> c)).toMap
+
+  def forCinema(cinema: Cinema): Option[City] = cinemaToCity.get(cinema)
+
   /** [[all]] ordered alphabetically by display name under Polish collation, so
    *  the UI city pickers read A→Z with `Ł` after `L`, `Ó` after `O`, etc.
    *  rather than dumping the diacritic letters at the end (code-point order).
