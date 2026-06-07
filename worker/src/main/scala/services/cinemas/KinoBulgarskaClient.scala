@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
+class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")), deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
 
   val cinema: Cinema = KinoBulgarska
   private val PageUrl = "http://kinobulgarska19.pl/repertuar"
@@ -67,20 +67,31 @@ class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl)
 
+  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
+  // the per-film detail-page URL) and the detail is filled in later by an
+  // EnrichDetails task via `fetchFilmDetail` — so a scrape pass doesn't block on
+  // N detail-page round-trips. When off (default), it enriches inline as before.
   def fetch(): Seq[CinemaMovie] = {
-    val movies     = parseHtml(http.get(PageUrl))
-    val trailerByUrl = fetchTrailers(movies.flatMap(_.filmUrl).distinct)
-    movies.map(cm => cm.copy(trailerUrl = cm.filmUrl.flatMap(trailerByUrl.get).flatten))
+    val bare = parseHtml(http.get(PageUrl))
+    if (deferDetail) bare else enrichInline(bare)
   }
 
-  /** Fetch every film's detail page in parallel and pluck the trailer URL.
-   *  Failures (404, network, missing fixture) leave that URL absent from
-   *  the result map — the row keeps its None trailer, the rest of the
-   *  movie is unaffected. */
-  private def fetchTrailers(urls: Seq[String]): Map[String, Option[String]] =
-    ParallelDetailFetch("kino-bulgarska-trailers", urls, 1.minute) { url =>
-      Try(http.get(url)).toOption.flatMap(parseTrailer)
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val metas = ParallelDetailFetch("kino-bulgarska-trailers", urls, 1.minute)(u => fetchFilmDetail(u))
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
     }
+  }
+
+  override val detailGroup: String = "kino-bulgarska"
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's filmUrl. None on a fetch failure so the task stays stale and is
+   *  retried by the next scrape rather than recording an empty result as fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(http.get(ref)).toOption.flatMap(parseTrailer).map(url => FilmDetail(trailerUrl = Some(url)))
 
   /** Trailer URL parsed from a Bulgarska film page. Returns the canonical
    *  `youtube.com/watch?v=ID` form when the iframe holds a YouTube video;

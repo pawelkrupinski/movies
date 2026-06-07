@@ -2,8 +2,8 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import tools.{HttpFetch, ParallelDetailFetch}
+import org.jsoup.nodes.{Document, Element}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.format.DateTimeFormatter
 import scala.concurrent.duration._
@@ -15,8 +15,20 @@ import scala.util.Try
  * film (title, runtime + director, poster) linking to `/filmy/<slug>/`, whose
  * "Dostępne terminy" table holds the screenings (absolute DD.MM.YYYY date +
  * time + a systembiletowy booking link) and the full synopsis.
+ *
+ * Two-phase fetch: the repertoire listing yields one entry per film with title,
+ * runtime, director, poster, and the per-film detail-page URL stored in
+ * `filmUrl`. The detail page is fetched per film for showtimes (always) and
+ * for synopsis + trailerUrl (inline only). When `deferDetail` is true,
+ * `fetch()` returns bare movies (showtimes populated, synopsis/trailerUrl
+ * absent) and the detail is filled in later by an `EnrichDetails` task via
+ * `fetchFilmDetail` — so a scrape pass doesn't block on extra per-film fetches.
  */
-class FalenicaClient(http: HttpFetch) extends CinemaScraper {
+class FalenicaClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+
+  // Static film detail pages cached across passes; the repertoire listing keeps
+  // the live `http` since its showtimes change every pass.
+  private val detailHttp = new CachingDetailFetch(http)
 
   val cinema: Cinema = StacjaFalenica
 
@@ -29,6 +41,10 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
+  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
+  // the per-film detail-page URL, but without synopsis or trailerUrl) and the
+  // enrichment fields are filled in later by an EnrichDetails task via
+  // `fetchFilmDetail`. When off (default), it enriches inline as before.
   def fetch(): Seq[CinemaMovie] = {
     val films = Jsoup.parse(http.get(ListingUrl)).select("article.filmy").asScala.toSeq.flatMap(parseListItem)
       .filterNot(_.slug.contains("__trashed")).distinctBy(_.slug)
@@ -37,7 +53,7 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper {
       Try(http.get(url)).toOption.map(Jsoup.parse)
     }
 
-    films.flatMap { f =>
+    val bare = films.flatMap { f =>
       val detail    = pages.getOrElse(f.slug, None)
       val showtimes = detail.toSeq.flatMap(parseShowtimes).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
       if (showtimes.isEmpty) None
@@ -46,17 +62,42 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper {
         cinema    = cinema,
         posterUrl = f.poster,
         filmUrl   = Some(s"$BaseUrl/filmy/${f.slug}/"),
-        synopsis  = detail.flatMap(d => Option(d.selectFirst("div.section.tresc"))).map(_.text.trim).filter(_.length > 20),
+        synopsis  = None,
         cast      = Seq.empty,
         director  = f.director,
         showtimes = showtimes,
-        // The detail page's WordPress `[video]` block holds the YouTube
-        // trailer as `<source type="video/youtube" src="…watch?v=…">`.
-        trailerUrl = detail.toSeq.flatMap(d => d.select("video source[src], iframe[src]").asScala)
-                       .map(_.attr("src")).filter(_.nonEmpty).flatMap(ScraperParse.canonicalTrailer).headOption
+        trailerUrl = None
       ))
     }
+    if (deferDetail) bare else enrichInline(bare)
   }
+
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val metas = ParallelDetailFetch("falenica-enrichment", urls, 1.minute)(u => fetchFilmDetail(u))
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
+    }
+  }
+
+  override val detailGroup: String = "falenica"
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's filmUrl. Provides synopsis and trailerUrl from the detail page.
+   *  None on a fetch failure so the task stays stale and is retried by the next
+   *  scrape rather than recording an empty result as fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map { html =>
+      val doc = Jsoup.parse(html)
+      FilmDetail(
+        synopsis   = Option(doc.selectFirst("div.section.tresc")).map(_.text.trim).filter(_.length > 20),
+        // The detail page's WordPress `[video]` block holds the YouTube
+        // trailer as `<source type="video/youtube" src="…watch?v=…">`.
+        trailerUrl = doc.select("video source[src], iframe[src]").asScala
+                       .map(_.attr("src")).filter(_.nonEmpty).flatMap(ScraperParse.canonicalTrailer).headOption
+      )
+    }
 
   private def parseListItem(art: Element): Option[Film] =
     Option(art.selectFirst("h2.repe_title a")).flatMap { a =>
