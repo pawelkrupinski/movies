@@ -98,18 +98,20 @@ class FiltersSheetOrderTest {
         list.performScrollToNode(hasText("Miasto"))
 
         // Default city (Poznań) shows on the collapsed button; other cities are
-        // hidden until the dropdown opens.
+        // hidden until the dropdown opens. Białystok sorts first in the
+        // alphabetical picker, so it's the one reliably composed at the top of
+        // the opened menu (Wrocław would now be near the bottom, off-screen).
         compose.onNodeWithText("Poznań").assertIsDisplayed()
-        compose.onNodeWithText("Wrocław").assertDoesNotExist()
+        compose.onNodeWithText("Białystok").assertDoesNotExist()
 
         // Tapping the button opens the menu, revealing the other cities.
         compose.onNodeWithText("Poznań").performClick()
-        compose.onNodeWithText("Wrocław").assertIsDisplayed()
+        compose.onNodeWithText("Białystok").assertIsDisplayed()
 
         // Picking a city fires onPick (setCity + close), so the menu collapses
         // again — the revealed items disappear.
-        compose.onNodeWithText("Wrocław").performClick()
+        compose.onNodeWithText("Białystok").performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Wrocław").assertDoesNotExist()
+        compose.onNodeWithText("Białystok").assertDoesNotExist()
     }
 }
