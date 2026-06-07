@@ -70,7 +70,7 @@ class CinemaScraperCatalog(
     new CinemaCityScraper(cinemaCityClient, "1078", CinemaCityPoznanPlaza),
     new CinemaCityScraper(cinemaCityClient, "1081", CinemaCityKinepolis),
     kinoMuzaClient,
-    new KinoBulgarskaClient(http, today),
+    new KinoBulgarskaClient(http, today, deferDetail = deferDetail),
     new KinoApolloClient(http, deferDetail),
     new RialtoClient(http, deferDetail),
   )
@@ -111,7 +111,7 @@ class CinemaScraperCatalog(
     new KinomuzeumClient(http, today, deferDetail = deferDetail),
     new SwitClient(http),
     new PromKepaClient(http),
-    new FalenicaClient(http),
+    new FalenicaClient(http, deferDetail),
     new SdkClient(http),
     new NoveKinoClient(http, "atlantic", KinoAtlantic),
     new KinotekaClient(http, deferDetail),
