@@ -65,7 +65,7 @@ class CinemaScraperCatalog(
   private val poznanScrapers: Seq[CinemaScraper] = Seq(
     new MultikinoClient(mkFetch),
     new CharlieMonroeClient(http),
-    new KinoPalacoweClient(http),
+    new KinoPalacoweClient(http, deferDetail),
     helios(HeliosNuxt.Poznan),
     new CinemaCityScraper(cinemaCityClient, "1078", CinemaCityPoznanPlaza),
     new CinemaCityScraper(cinemaCityClient, "1081", CinemaCityKinepolis),
@@ -82,7 +82,7 @@ class CinemaScraperCatalog(
     helios(HeliosNuxt.Magnolia),
     helios(HeliosNuxt.AlejaBielany),
     new NoweHoryzontyClient(http, today),
-    new DcfClient(http),
+    new DcfClient(http, deferDetail),
   )
 
   private val warszawaScrapers: Seq[CinemaScraper] = Seq(
@@ -114,9 +114,9 @@ class CinemaScraperCatalog(
     new FalenicaClient(http),
     new SdkClient(http),
     new NoveKinoClient(http, "atlantic", KinoAtlantic),
-    new KinotekaClient(http),
+    new KinotekaClient(http, deferDetail),
     new UjazdowskiClient(http),
-    new CytadelaClient(http),
+    new CytadelaClient(http, deferDetail),
     new NoveKinoClient(http, "wisla", KinoWisla),
     // biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so route
     // through `bnFetch` — Zyte's residential egress in prod, the fixture fake
