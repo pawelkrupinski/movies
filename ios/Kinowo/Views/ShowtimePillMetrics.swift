@@ -82,13 +82,11 @@ enum ShowtimePillMetrics {
     }
 
     /// Width available to one card's showings `FlowLayout` on a phone of
-    /// the given logical screen width. Mirrors `FilmGridView`'s two-column
-    /// portrait layout (see `FilmGridMetrics`): the grid's 12 pt horizontal
-    /// padding + 12 pt spacing between the two columns give a card of
-    /// `(screen − 36) / 2`, clamped to the `[160, 220]` column bounds;
-    /// `FilmCardView`'s `.padding(12)` then takes 24 pt off the inside. The
-    /// two-pills-per-row guarantee is held against portrait (two columns),
-    /// the binding case. Pure arithmetic so the fit test
+    /// the given logical screen width. Mirrors `FilmGridView`'s adaptive
+    /// `GridItem`: the grid's 12 pt horizontal padding + 12 pt spacing
+    /// between the two columns give a card of `(screen − 36) / 2`, clamped
+    /// to the `[160, 220]` adaptive bounds; `FilmCardView`'s `.padding(12)`
+    /// then takes 24 pt off the inside. Pure arithmetic so the fit test
     /// can sweep it across every iPhone width — keep it the single source
     /// of this derivation (don't re-spell `(screen − 36) / 2` elsewhere).
     static func cardShowingsWidth(screenWidth: CGFloat) -> CGFloat {

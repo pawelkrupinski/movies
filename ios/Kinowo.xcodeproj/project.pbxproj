@@ -31,7 +31,6 @@
 		DD00000000000000000011 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000011 /* FlowLayout.swift */; };
 		DD00000000000000000099 /* ShowtimePillMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000099 /* ShowtimePillMetrics.swift */; };
 		DD00000000000000000098 /* RatingBadgeMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000098 /* RatingBadgeMetrics.swift */; };
-		DD00000000000000000304 /* FilmGridMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000304 /* FilmGridMetrics.swift */; };
 		DD00000000000000000097 /* ShowtimePillStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000097 /* ShowtimePillStyle.swift */; };
 		DD00000000000000000200 /* CardSpacingStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000200 /* CardSpacingStyle.swift */; };
 		DD00000000000000000210 /* CinemaHeaderStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000210 /* CinemaHeaderStyle.swift */; };
@@ -60,6 +59,7 @@
 		DD00000000000000000203 /* DayChangeScrollResetUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000203 /* DayChangeScrollResetUITests.swift */; };
 		DD00000000000000000204 /* PosterFullScreenUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000204 /* PosterFullScreenUITests.swift */; };
 		DD00000000000000000205 /* CardShareMenuUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000205 /* CardShareMenuUITests.swift */; };
+		DD00000000000000000305 /* RotationColumnsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000305 /* RotationColumnsUITests.swift */; };
 		DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001B /* AccessibilityIdentifiers.swift */; };
 
 		DD00000000000000000022 /* RetryBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000022 /* RetryBackoff.swift */; };
@@ -110,7 +110,6 @@
 		CC00000000000000000011 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		CC00000000000000000099 /* ShowtimePillMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimePillMetrics.swift; sourceTree = "<group>"; };
 		CC00000000000000000098 /* RatingBadgeMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingBadgeMetrics.swift; sourceTree = "<group>"; };
-		CC00000000000000000304 /* FilmGridMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmGridMetrics.swift; sourceTree = "<group>"; };
 		CC00000000000000000097 /* ShowtimePillStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimePillStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000200 /* CardSpacingStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSpacingStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000210 /* CinemaHeaderStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaHeaderStyle.swift; sourceTree = "<group>"; };
@@ -140,6 +139,7 @@
 		CC00000000000000000203 /* DayChangeScrollResetUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayChangeScrollResetUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000204 /* PosterFullScreenUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterFullScreenUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000205 /* CardShareMenuUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardShareMenuUITests.swift; sourceTree = "<group>"; };
+		CC00000000000000000305 /* RotationColumnsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotationColumnsUITests.swift; sourceTree = "<group>"; };
 
 		CC00000000000000000022 /* RetryBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryBackoff.swift; sourceTree = "<group>"; };
 		CC00000000000000000044 /* SwipeHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeHint.swift; sourceTree = "<group>"; };
@@ -281,7 +281,6 @@
 				CC00000000000000000011 /* FlowLayout.swift */,
 				CC00000000000000000099 /* ShowtimePillMetrics.swift */,
 				CC00000000000000000098 /* RatingBadgeMetrics.swift */,
-				CC00000000000000000304 /* FilmGridMetrics.swift */,
 				CC00000000000000000097 /* ShowtimePillStyle.swift */,
 				CC00000000000000000200 /* CardSpacingStyle.swift */,
 				CC00000000000000000210 /* CinemaHeaderStyle.swift */,
@@ -310,6 +309,7 @@
 				CC00000000000000000203 /* DayChangeScrollResetUITests.swift */,
 				CC00000000000000000204 /* PosterFullScreenUITests.swift */,
 				CC00000000000000000205 /* CardShareMenuUITests.swift */,
+				CC00000000000000000305 /* RotationColumnsUITests.swift */,
 			);
 			path = KinowoUITests;
 			sourceTree = "<group>";
@@ -428,7 +428,6 @@
 				DD00000000000000000011 /* FlowLayout.swift in Sources */,
 				DD00000000000000000099 /* ShowtimePillMetrics.swift in Sources */,
 				DD00000000000000000098 /* RatingBadgeMetrics.swift in Sources */,
-				DD00000000000000000304 /* FilmGridMetrics.swift in Sources */,
 				DD00000000000000000097 /* ShowtimePillStyle.swift in Sources */,
 				DD00000000000000000200 /* CardSpacingStyle.swift in Sources */,
 				DD00000000000000000210 /* CinemaHeaderStyle.swift in Sources */,
@@ -475,6 +474,7 @@
 				DD00000000000000000203 /* DayChangeScrollResetUITests.swift in Sources */,
 				DD00000000000000000204 /* PosterFullScreenUITests.swift in Sources */,
 				DD00000000000000000205 /* CardShareMenuUITests.swift in Sources */,
+				DD00000000000000000305 /* RotationColumnsUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

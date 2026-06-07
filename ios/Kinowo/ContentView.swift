@@ -6,6 +6,15 @@ struct ContentView: View {
     @EnvironmentObject var prefs: UserPreferences
     @EnvironmentObject var authService: AuthService
     @Environment(\.scenePhase) private var scenePhase
+    /// iPhone portrait is `.regular` height, landscape `.compact` — so this
+    /// flips on every portrait⇄landscape rotation. It's resolved from the
+    /// UIKit trait collection, NOT from SwiftUI's layout pass, so it stays
+    /// correct even when the layout cache goes stale after a rotation. Keying
+    /// the root view's `.id` on it forces a full re-layout against the real
+    /// window size — without it, a landscape⇄portrait flip can leave the whole
+    /// hierarchy (TopBar, grids, every GeometryReader) stuck reporting the old
+    /// orientation's width, so the grid overflows the portrait screen.
+    @Environment(\.verticalSizeClass) private var vSizeClass
 
     @State private var dateFilter: DateFilter = .today
     @State private var formatFilter: FormatFilter = .empty
@@ -155,6 +164,12 @@ struct ContentView: View {
                     )
                 }
         }
+        // Force a full re-layout on every portrait⇄landscape rotation. After a
+        // rotation the SwiftUI hierarchy can stay stuck reporting the previous
+        // orientation's width (the grid then overflows the portrait screen,
+        // "zoomed-in"); rebuilding on the trait-derived size class re-resolves
+        // every GeometryReader against the real window. See `vSizeClass`.
+        .id(vSizeClass)
         // Overlay on the NavigationStack so the label aligns to the
         // device's screen centre, not the safe-area-inset content area.
         // The hint takes precedence over the momentary tab label so the two
@@ -280,8 +295,7 @@ struct ContentView: View {
         } else {
             TabView(selection: $tab) {
                 FilmGridView(films: filmsForFilmsTab,
-                             scrollResetToken: AnyHashable(dateFilter),
-                             containerWidth: viewportWidth)
+                             scrollResetToken: AnyHashable(dateFilter))
                     .refreshable { await store.reload() }
                     .tag(Tab.films)
                 cinemasPage
@@ -302,17 +316,6 @@ struct ContentView: View {
             // pill; the grids pin their own content inset (see FilmGridView) so
             // the first row still rests a clear gap below the bar.
             .ignoresSafeArea(edges: [.bottom, .horizontal])
-            // Recreate the paged TabView whenever the column count changes —
-            // i.e. on a portrait⇄landscape rotation. A paged TabView
-            // (UIPageViewController) can keep a stale scroll-view frame across
-            // rotation, leaving the grid laid out at the previous orientation's
-            // width ("zoomed-in", >2 columns in portrait, unrecoverable without
-            // a relaunch — a known SwiftUI issue). Keying its identity on the
-            // window-derived column count forces a fresh page scroll view sized
-            // to the current geometry. Placed BEFORE navigationDestination so a
-            // pushed detail screen isn't torn down by the rebuild; the count is
-            // stable within an orientation, so there are no spurious rebuilds.
-            .id(FilmGridMetrics.columnCount(forWidth: viewportWidth))
             // Resolves NavigationLink(value: Film) from both grids to
             // the per-film detail screen, the iOS counterpart of
             // /film?title=… on the web.
@@ -339,7 +342,6 @@ struct ContentView: View {
             // now-redundant per-section header; "Wszystkie" keeps them.
             showSectionHeaders: pinnedCinema == nil,
             scrollResetToken: AnyHashable(dateFilter),
-            containerWidth: viewportWidth,
             header: {
                 CinemaPillsRow(
                     allCinemas: allCinemas,

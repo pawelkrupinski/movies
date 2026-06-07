@@ -1,22 +1,8 @@
 import SwiftUI
 
-/// The grid's columns for a given container width. The column COUNT comes
-/// from `FilmGridMetrics` (a pure function of the authoritative window width)
-/// rather than from `GridItem(.adaptive:)`, which reads the enclosing paged
-/// `TabView`'s scroll-view width — and that width can lag a portrait⇄landscape
-/// rotation, stranding the grid at the previous orientation's column count
-/// ("zoomed-in", >2 columns in portrait). The flexible bounds match the old
-/// `.adaptive(minimum: 160, maximum: 220)` so each individual column renders
-/// exactly as before; only the count is now computed up front.
-private func gridColumns(forWidth width: CGFloat) -> [GridItem] {
-    Array(
-        repeating: GridItem(
-            .flexible(minimum: FilmGridMetrics.minColumnWidth,
-                      maximum: FilmGridMetrics.maxColumnWidth),
-            spacing: FilmGridMetrics.columnSpacing, alignment: .top),
-        count: FilmGridMetrics.columnCount(forWidth: width)
-    )
-}
+private let gridColumns = [
+    GridItem(.adaptive(minimum: 160, maximum: 220), spacing: 12, alignment: .top)
+]
 
 /// A paged `TabView` (UIPageViewController) lays its scroll view a fixed 17pt
 /// ABOVE the top of the container it's given — verified identical on iPhone
@@ -61,11 +47,6 @@ struct FilmGridView: View {
     /// back to the top. Defaults to a constant so previews / callers that
     /// don't drive a reset opt out cleanly.
     var scrollResetToken: AnyHashable = AnyHashable(0)
-    /// Authoritative window width, measured outside the paged `TabView` (see
-    /// `ContentView.viewportWidth`). Drives the column count so portrait stays
-    /// two columns across rotations. Defaults to the launch screen width for
-    /// previews / the tuning screen.
-    var containerWidth: CGFloat = UIScreen.main.bounds.width
 
     var body: some View {
         if films.isEmpty {
@@ -73,7 +54,7 @@ struct FilmGridView: View {
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVGrid(columns: gridColumns(forWidth: containerWidth), alignment: .leading, spacing: 12) {
+                    LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
                         ForEach(films) { film in
                             // Whole-card tap navigates to /film. Inner
                             // Buttons (⭐/✕ on the poster, ★ on showtime
@@ -120,20 +101,15 @@ struct CinemaSectionedGridView<Header: View>: View {
     /// different day) snaps the grid back to the top. Constant by default so
     /// the tuning screen / previews opt out.
     let scrollResetToken: AnyHashable
-    /// See `FilmGridView.containerWidth` — the authoritative window width that
-    /// drives the column count so portrait stays two columns across rotations.
-    let containerWidth: CGFloat
     let header: () -> Header
     @Environment(\.cinemaHeaderStyle) private var headerStyle
 
     init(sections: [CinemaSection], showSectionHeaders: Bool = true,
          scrollResetToken: AnyHashable = AnyHashable(0),
-         containerWidth: CGFloat = UIScreen.main.bounds.width,
          @ViewBuilder header: @escaping () -> Header = { EmptyView() }) {
         self.sections = sections
         self.showSectionHeaders = showSectionHeaders
         self.scrollResetToken = scrollResetToken
-        self.containerWidth = containerWidth
         self.header = header
     }
 
@@ -152,7 +128,7 @@ struct CinemaSectionedGridView<Header: View>: View {
                                     if showSectionHeaders {
                                         sectionHeader(CinemaSection.pillName(for: section.cinema))
                                     }
-                                    LazyVGrid(columns: gridColumns(forWidth: containerWidth), alignment: .leading, spacing: 12) {
+                                    LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
                                         ForEach(section.films) { film in
                                             NavigationLink(value: film) {
                                                 FilmCardView(film: film, showCinemaHeaders: false)
