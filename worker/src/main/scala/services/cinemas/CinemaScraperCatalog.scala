@@ -1,9 +1,10 @@
 package services.cinemas
 
 import models._
-import tools.HttpFetch
+import tools.{CachingDetailFetch, HttpFetch}
 
 import java.time.{LocalDate, ZoneId}
+import scala.concurrent.duration._
 
 /**
  * The single place that constructs every cinema's live scraper and groups them
@@ -40,15 +41,26 @@ class CinemaScraperCatalog(
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) =
     this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today)
 
+  // Per-film detail bodies are static between passes and IDENTICAL across a
+  // chain's locations, so each chain shares ONE 6h CachingDetailFetch: a film's
+  // detail (Helios `/api/movie/{id}`, Cinema City film page) is fetched once per
+  // chain per 6h instead of once per location per pass. Live listing/screening
+  // fetches stay on `http`.
+  private val ChainDetailTtl = 6.hours
+  private val heliosDetailHttp:     HttpFetch = new CachingDetailFetch(http, ChainDetailTtl)
+  private val cinemaCityDetailHttp: HttpFetch = new CachingDetailFetch(http, ChainDetailTtl)
+  private def helios(cfg: HeliosCinema): HeliosClient =
+    new HeliosClient(http, cfg, today, Some(heliosDetailHttp))
+
   // Shared per-source helper clients the scrapers below reuse.
-  val cinemaCityClient: CinemaCityClient = new CinemaCityClient(http)
+  val cinemaCityClient: CinemaCityClient = new CinemaCityClient(http, Some(cinemaCityDetailHttp))
   val kinoMuzaClient:   KinoMuzaClient   = new KinoMuzaClient(http, today)
 
   private val poznanScrapers: Seq[CinemaScraper] = Seq(
     new MultikinoClient(mkFetch),
     new CharlieMonroeClient(http),
     new KinoPalacoweClient(http),
-    new HeliosClient(http, today = today),
+    helios(HeliosNuxt.Poznan),
     new CinemaCityScraper(cinemaCityClient, "1078", CinemaCityPoznanPlaza),
     new CinemaCityScraper(cinemaCityClient, "1081", CinemaCityKinepolis),
     kinoMuzaClient,
@@ -61,8 +73,8 @@ class CinemaScraperCatalog(
     new CinemaCityScraper(cinemaCityClient, "1097", CinemaCityWroclavia),
     new CinemaCityScraper(cinemaCityClient, "1067", CinemaCityKorona),
     new MultikinoClient(mkFetch, "0010", MultikinoPasazGrunwaldzki),
-    new HeliosClient(http, HeliosNuxt.Magnolia, today),
-    new HeliosClient(http, HeliosNuxt.AlejaBielany, today),
+    helios(HeliosNuxt.Magnolia),
+    helios(HeliosNuxt.AlejaBielany),
     new NoweHoryzontyClient(http, today),
     new DcfClient(http),
   )
@@ -80,7 +92,7 @@ class CinemaScraperCatalog(
     new MultikinoClient(mkFetch, "0052", MultikinoReduta),
     new MultikinoClient(mkFetch, "0024", MultikinoTargowek),
     new MultikinoClient(mkFetch, "0025", MultikinoWolaPark),
-    new HeliosClient(http, HeliosNuxt.BlueCity, today),
+    helios(HeliosNuxt.BlueCity),
     new MuranowClient(http, today),
     new Bilety24Client(http, "https://kinoluna.bilety24.pl", KinoLuna),
     new Bilety24Client(http, "https://kinoelektronik.pl", KinoElektronik, "/"),
@@ -125,7 +137,7 @@ class CinemaScraperCatalog(
   private val lodzScrapers: Seq[CinemaScraper] = Seq(
     new CinemaCityScraper(cinemaCityClient, "1080", CinemaCityManufaktura),
     new MultikinoClient(mkFetch, "0023", MultikinoLodz),
-    new HeliosClient(http, HeliosNuxt.Lodz, today),
+    helios(HeliosNuxt.Lodz),
     new CharlieClient(http, KinoCharlie),
     new KinematografLodzClient(http, KinematografLodz, today),
     new NckfClient(http, Nckf, today),
@@ -136,7 +148,7 @@ class CinemaScraperCatalog(
     new CinemaCityScraper(cinemaCityClient, "1065", CinemaCityPunkt44),
     new CinemaCityScraper(cinemaCityClient, "1079", CinemaCitySilesia),
     new MultikinoClient(mkFetch, "0035", MultikinoKatowice),
-    new HeliosClient(http, HeliosNuxt.Katowice, today),
+    helios(HeliosNuxt.Katowice),
     // Silesia Film's art-house trio, all Bilety24-hosted: listing at `/repertuar/`
     // linking per-film `/wydarzenie/?id=N` pages, so they reuse the shared Bilety24Client.
     new Bilety24Client(http, "https://kinokosmos.bilety24.pl", KinoKosmos),
@@ -145,25 +157,25 @@ class CinemaScraperCatalog(
   )
 
   private val szczecinScrapers: Seq[CinemaScraper] = Seq(
-    new HeliosClient(http, HeliosNuxt.Szczecin, today),
+    helios(HeliosNuxt.Szczecin),
     new MultikinoClient(mkFetch, "0007", MultikinoSzczecin),
     new PionierClient(http, KinoPionier),
-    new HeliosClient(http, HeliosNuxt.SzczecinOutletPark, today),
+    helios(HeliosNuxt.SzczecinOutletPark),
     new KinoZamekClient(http, KinoZamekSzczecin, today),
   )
 
   private val bialystokScrapers: Seq[CinemaScraper] = Seq(
-    new HeliosClient(http, HeliosNuxt.Alfa, today),
-    new HeliosClient(http, HeliosNuxt.Biala, today),
-    new HeliosClient(http, HeliosNuxt.Jurowiecka, today),
+    helios(HeliosNuxt.Alfa),
+    helios(HeliosNuxt.Biala),
+    helios(HeliosNuxt.Jurowiecka),
     new KinoForumClient(http, today),
   )
 
   private val trojmiastoScrapers: Seq[CinemaScraper] = Seq(
     new MultikinoClient(mkFetch, "0004", MultikinoGdansk),
-    new HeliosClient(http, HeliosNuxt.Metropolia, today),
-    new HeliosClient(http, HeliosNuxt.Forum, today),
-    new HeliosClient(http, HeliosNuxt.Riviera, today),
+    helios(HeliosNuxt.Metropolia),
+    helios(HeliosNuxt.Forum),
+    helios(HeliosNuxt.Riviera),
     new KinoSpektrumClient(http, KinoSpektrum),
     // biletyna.pl 403s our datacenter IP, so route through `bnFetch` — Zyte's
     // residential egress in production, the fixture fake in tests. See
@@ -180,7 +192,7 @@ class CinemaScraperCatalog(
   private val bydgoszczScrapers: Seq[CinemaScraper] = Seq(
     new CinemaCityScraper(cinemaCityClient, "1086", CinemaCityBydgoszcz),
     new MultikinoClient(mkFetch, "0006", MultikinoBydgoszcz),
-    new HeliosClient(http, HeliosNuxt.Bydgoszcz, today),
+    helios(HeliosNuxt.Bydgoszcz),
     new KinoOrzelClient(http, KinoOrzel),
   )
 
@@ -201,13 +213,13 @@ class CinemaScraperCatalog(
   )
 
   private val radomScrapers: Seq[CinemaScraper] = Seq(
-    new HeliosClient(http, HeliosNuxt.Radom, today),
+    helios(HeliosNuxt.Radom),
     new MultikinoClient(mkFetch, "0026", MultikinoRadom),
     new McswElektrowniaCinemaClient(http, McswElektrowniaCinema, today),
   )
 
   private val sosnowiecScrapers: Seq[CinemaScraper] = Seq(
-    new HeliosClient(http, HeliosNuxt.Sosnowiec, today),
+    helios(HeliosNuxt.Sosnowiec),
     new CinemaCityScraper(cinemaCityClient, "1083", CinemaCitySosnowiec),
   )
 
@@ -218,14 +230,14 @@ class CinemaScraperCatalog(
   )
 
   private val kielceScrapers: Seq[CinemaScraper] = Seq(
-    new HeliosClient(http, HeliosNuxt.Kielce, today),
+    helios(HeliosNuxt.Kielce),
     new MultikinoClient(mkFetch, "0029", MultikinoKielce),
     new KinoFenomenClient(http, KinoFenomen),
     new KinoMoskwaClient(http, KinoMoskwa, today),
   )
 
   private val rzeszowScrapers: Seq[CinemaScraper] = Seq(
-    new HeliosClient(http, HeliosNuxt.Rzeszow, today),
+    helios(HeliosNuxt.Rzeszow),
     new MultikinoClient(mkFetch, "0028", MultikinoRzeszow),
     new KinoZorzaClient(http, KinoZorza),
     new KinoZaRogiemCafeClient(http, KinoZaRogiemCafe, today),
@@ -247,33 +259,33 @@ class CinemaScraperCatalog(
   // shared platform client: FilmwebShowtimesClient (Filmweb's seances JSON, by
   // internal cinema id — verified to return non-empty seances), Bilety24Client
   // (a bilety24.pl venue), or NoveKinoClient.
-  private val olsztynScrapers      = Seq(new HeliosClient(http, HeliosNuxt.Olsztyn, today), new MultikinoClient(mkFetch, "0036", MultikinoOlsztyn), new FilmwebShowtimesClient(http, 1527, KinoAwangarda2, today = today))
-  private val bielskoBialaScrapers = Seq(new HeliosClient(http, HeliosNuxt.BielskoBiala, today), new CinemaCityScraper(cinemaCityClient, "1088", CinemaCityBielskoBiala), new FilmwebShowtimesClient(http, 3044, KinoKreska, today = today))
-  private val opoleScrapers        = Seq(new HeliosClient(http, HeliosNuxt.OpoleKarolinka, today), new HeliosClient(http, HeliosNuxt.OpoleSolaris, today), new FilmwebShowtimesClient(http, 1716, KinoMeduza, today = today))
+  private val olsztynScrapers      = Seq(helios(HeliosNuxt.Olsztyn), new MultikinoClient(mkFetch, "0036", MultikinoOlsztyn), new FilmwebShowtimesClient(http, 1527, KinoAwangarda2, today = today))
+  private val bielskoBialaScrapers = Seq(helios(HeliosNuxt.BielskoBiala), new CinemaCityScraper(cinemaCityClient, "1088", CinemaCityBielskoBiala), new FilmwebShowtimesClient(http, 3044, KinoKreska, today = today))
+  private val opoleScrapers        = Seq(helios(HeliosNuxt.OpoleKarolinka), helios(HeliosNuxt.OpoleSolaris), new FilmwebShowtimesClient(http, 1716, KinoMeduza, today = today))
   private val rybnikScrapers       = Seq(new MultikinoClient(mkFetch, "0014", MultikinoRybnik), new CinemaCityScraper(cinemaCityClient, "1082", CinemaCityRybnik))
-  private val gorzowScrapers       = Seq(new HeliosClient(http, HeliosNuxt.Gorzow, today), new MultikinoClient(mkFetch, "0047", MultikinoGorzow), new FilmwebShowtimesClient(http, 609, Kino60Krzesel, today = today))
+  private val gorzowScrapers       = Seq(helios(HeliosNuxt.Gorzow), new MultikinoClient(mkFetch, "0047", MultikinoGorzow), new FilmwebShowtimesClient(http, 609, Kino60Krzesel, today = today))
   private val elblagScrapers       = Seq(new MultikinoClient(mkFetch, "0037", MultikinoElblag), new CinemaCityScraper(cinemaCityClient, "1099", CinemaCityElblag))
-  private val koszalinScrapers     = Seq(new HeliosClient(http, HeliosNuxt.Koszalin, today), new MultikinoClient(mkFetch, "0015", MultikinoKoszalin), new FilmwebShowtimesClient(http, 280, KinoKryterium, today = today))
-  private val kaliszScrapers       = Seq(new HeliosClient(http, HeliosNuxt.Kalisz, today), new MultikinoClient(mkFetch, "0042", MultikinoKalisz))
+  private val koszalinScrapers     = Seq(helios(HeliosNuxt.Koszalin), new MultikinoClient(mkFetch, "0015", MultikinoKoszalin), new FilmwebShowtimesClient(http, 280, KinoKryterium, today = today))
+  private val kaliszScrapers       = Seq(helios(HeliosNuxt.Kalisz), new MultikinoClient(mkFetch, "0042", MultikinoKalisz))
   private val zielonaGoraScrapers  = Seq(new CinemaCityScraper(cinemaCityClient, "1087", CinemaCityZielonaGora))
   private val tychyScrapers        = Seq(new MultikinoClient(mkFetch, "0053", MultikinoTychy))
   private val walbrzychScrapers    = Seq(new CinemaCityScraper(cinemaCityClient, "1091", CinemaCityWalbrzych), new Bilety24Client(http, "https://kino-apollo.bilety24.pl", KinoApolloWalbrzych))
   private val tarnowScrapers       = Seq(new MultikinoClient(mkFetch, "0050", MultikinoTarnow), new FilmwebShowtimesClient(http, 438, KinoMillenium, today = today))
   private val wloclawekScrapers    = Seq(new MultikinoClient(mkFetch, "0008", MultikinoWloclawek))
-  private val legnicaScrapers      = Seq(new HeliosClient(http, HeliosNuxt.Legnica, today), new Bilety24Client(http, "https://kino-piast.bilety24.pl", KinoPiast))
-  private val plockScrapers        = Seq(new HeliosClient(http, HeliosNuxt.Plock, today), new NoveKinoClient(http, "przedwiosnie", KinoPrzedwiosnie))
+  private val legnicaScrapers      = Seq(helios(HeliosNuxt.Legnica), new Bilety24Client(http, "https://kino-piast.bilety24.pl", KinoPiast))
+  private val plockScrapers        = Seq(helios(HeliosNuxt.Plock), new NoveKinoClient(http, "przedwiosnie", KinoPrzedwiosnie))
   private val bytomScrapers        = Seq(new CinemaCityScraper(cinemaCityClient, "1092", CinemaCityBytom))
-  private val dabrowaGorniczaScrapers = Seq(new HeliosClient(http, HeliosNuxt.DabrowaGornicza, today), new FilmwebShowtimesClient(http, 1140, KinoKadr, today = today))
-  private val nowySaczScrapers     = Seq(new HeliosClient(http, HeliosNuxt.NowySacz, today), new FilmwebShowtimesClient(http, 171, KinoSokol, today = today))
+  private val dabrowaGorniczaScrapers = Seq(helios(HeliosNuxt.DabrowaGornicza), new FilmwebShowtimesClient(http, 1140, KinoKadr, today = today))
+  private val nowySaczScrapers     = Seq(helios(HeliosNuxt.NowySacz), new FilmwebShowtimesClient(http, 171, KinoSokol, today = today))
   private val slupskScrapers       = Seq(new MultikinoClient(mkFetch, "0030", MultikinoSlupsk), new FilmwebShowtimesClient(http, 447, KinoRejs, today = today))
-  private val jeleniaGoraScrapers  = Seq(new HeliosClient(http, HeliosNuxt.JeleniaGora, today), new Bilety24Client(http, "https://kino-lot.bilety24.pl", KinoLot))
-  private val przemyslScrapers     = Seq(new HeliosClient(http, HeliosNuxt.Przemysl, today))
+  private val jeleniaGoraScrapers  = Seq(helios(HeliosNuxt.JeleniaGora), new Bilety24Client(http, "https://kino-lot.bilety24.pl", KinoLot))
+  private val przemyslScrapers     = Seq(helios(HeliosNuxt.Przemysl))
   // Konin + its catchment: Helios via the chain client, Oskard via Bilety24, and
   // the remaining independents Filmweb serves by internal cinema id (verified
   // non-empty seances 2026-06). Września's Kino Trójka (1698) is intentionally
   // not wired.
   private val koninScrapers        = Seq(
-    new HeliosClient(http, HeliosNuxt.Konin, today),
+    helios(HeliosNuxt.Konin),
     new Bilety24Client(http, "https://ckis-konin.bilety24.pl", KinoOskard),
     new FilmwebShowtimesClient(http, 2405, KinoZacheta,  today = today),   // Kleczew
     new FilmwebShowtimesClient(http, 1526, KinoNadWarta, today = today),   // Koło
