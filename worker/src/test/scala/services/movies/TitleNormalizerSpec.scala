@@ -232,10 +232,11 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
   "searchTitle" should "leave the 'Kino bez barier:' programme prefix AND the trailing accessibility tag intact (cache-key boundary)" in {
     // Cache key must differ from a plain "Freak Show" row (or a DKF "Arco"
     // row from the same cinema) so both rows live — each with its own
-    // filmUrl + showtimes. apiQuery handles the stripping for the external
-    // lookups below. `PlusSuffix` is scoped to NOT cross into parens, so the
-    // " + CC + PJM)" inside the accessibility tag survives the strip — the
-    // user-facing displayTitle then reads as the cinema reported it.
+    // filmUrl + showtimes. The programme prefix, the accessibility tag, and
+    // the "+ <event>" suffix are all apiQuery-only strippers, so none of them
+    // touch this title here — the user-facing displayTitle then reads as the
+    // cinema reported it. apiQuery handles the stripping for the external
+    // lookups below.
     searchTitle("Kino bez barier: Freak Show (AD + CC + PJM)") shouldBe
       "Kino bez barier: Freak Show (AD + CC + PJM)"
   }
@@ -248,10 +249,17 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
       "Cinema Italia Oggi: La Grande Bellezza"
   }
 
-  it should "still strip a bare bilingual ' + Title' suffix outside of parens" in {
-    // Sanity check: the PlusSuffix tightening must not break the original
-    // intent — stripping a tacked-on bilingual postfix when it stands alone.
-    searchTitle("Tytuł A + Title B") shouldBe "Tytuł A"
+  it should "keep a ' + <event>' screening suffix (cache-key boundary → separate row)" in {
+    // "Ojczyzna + spotkanie z producentką Ewą Puszczyńską" is a screening with
+    // an associated event (a producer Q&A). The event differentiates it, so it
+    // stays its OWN cache row separate from the plain "Ojczyzna" — same
+    // treatment as a programme prefix. Folding both onto one slot dropped one
+    // screening's showtimes and flipped isNew every pass (the recurring
+    // "Refreshed Kino Kultura: … (2 new)" worker log). apiQuery strips it for
+    // upstream lookups so both rows still enrich off the bare base title.
+    searchTitle("Ojczyzna + spotkanie z producentką Ewą Puszczyńską") shouldBe
+      "Ojczyzna + spotkanie z producentką Ewą Puszczyńską"
+    searchTitle("Tytuł A + Title B") shouldBe "Tytuł A + Title B"
   }
 
   it should "leave 'Orwell: 2 + 2 = 5' alone (the suffix must start with a letter)" in {
@@ -323,5 +331,12 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
   it should "still apply searchTitle's decoration strippers (anniversary etc.)" in {
     apiQuery("Top Gun 40th Anniversary") shouldBe "Top Gun"
+  }
+
+  it should "strip the ' + <event>' screening suffix so the event screening enriches off the base film" in {
+    // The cache keeps "Ojczyzna + spotkanie…" as its own row (see searchTitle
+    // above); the external resolvers must still query the bare "Ojczyzna" so
+    // the event screening shares the plain film's tmdbId / ratings / URLs.
+    apiQuery("Ojczyzna + spotkanie z producentką Ewą Puszczyńską") shouldBe "Ojczyzna"
   }
 }

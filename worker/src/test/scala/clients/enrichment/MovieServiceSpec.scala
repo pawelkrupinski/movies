@@ -109,8 +109,14 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     MovieService.searchTitle("Bez znieczulenia / Rough Treatment (1978)") shouldBe "Bez znieczulenia"
   }
 
-  it should "strip a ' + prelekcja…' event suffix" in {
+  it should "keep a ' + prelekcja…' event suffix on the cache-key title but strip it for upstream lookups" in {
+    // The "+ <event>" suffix marks a screening with an associated event (a
+    // lecture + meeting), so it stays its own cache row separate from the
+    // plain film — only the external-API query drops it so both rows enrich
+    // off the same base title. See TitleNormalizerSpec for the full rationale.
     MovieService.searchTitle("Znaki Pana Śliwki + prelekcja i spotkanie z Damianem Dudkiem") shouldBe
+      "Znaki Pana Śliwki + prelekcja i spotkanie z Damianem Dudkiem"
+    MovieService.apiQuery("Znaki Pana Śliwki + prelekcja i spotkanie z Damianem Dudkiem") shouldBe
       "Znaki Pana Śliwki"
   }
 

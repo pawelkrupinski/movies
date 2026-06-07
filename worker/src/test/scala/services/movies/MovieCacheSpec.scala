@@ -568,6 +568,37 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     back.head._3 shouldBe false
   }
 
+  // Kino Kultura lists a film both plainly ("Ojczyzna") and as a screening
+  // with an associated producer Q&A ("Ojczyzna + spotkanie z producentką Ewą
+  // Puszczyńską"). The "+ <event>" suffix marks a distinct screening, so the
+  // two are SEPARATE cache rows (each aggregating its own showtimes) that
+  // share only their upstream enrichment — exactly the ProgrammePrefix /
+  // AccessibilityTag treatment. Before the fix both collapsed onto one slot
+  // (searchTitle stripped the suffix): each pass they overwrote each other's
+  // showtimes and flipped isNew, the recurring "Refreshed Kino Kultura: …
+  // (2 new)" worker log.
+  it should "keep a '+ event' screening as its own row and not churn isNew on repeat passes" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
+    def pass() = cache.recordCinemaScrape(KinoKultura, Seq(
+      cinemaMovie("Ojczyzna", KinoKultura, None, showtimes = Seq(showtime("2026-06-08T18:00"))),
+      cinemaMovie("Ojczyzna + spotkanie z producentką Ewą Puszczyńską", KinoKultura, None,
+                  showtimes = Seq(showtime("2026-06-09T20:00")))
+    ))
+
+    val first = pass()
+    first should have size 2
+    first.map(_._3) shouldBe Seq(true, true)   // both genuinely new on first scrape
+
+    // Two distinct rows, each holding only its own screening's showtimes.
+    val plain = cache.get(cache.keyOf("Ojczyzna", None)).get
+    val event = cache.get(cache.keyOf("Ojczyzna + spotkanie z producentką Ewą Puszczyńską", None)).get
+    plain.cinemaData(KinoKultura).showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.parse("2026-06-08T18:00"))
+    event.cinemaData(KinoKultura).showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.parse("2026-06-09T20:00"))
+
+    // Steady state: same two screenings reported again → no "(2 new)" churn.
+    pass().map(_._3) shouldBe Seq(false, false)
+  }
+
   it should "create a new record when no matching row exists yet" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepo())
     cache.recordCinemaScrape(Multikino, Seq(
