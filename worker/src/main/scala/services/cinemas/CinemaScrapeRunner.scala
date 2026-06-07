@@ -1,0 +1,39 @@
+package services.cinemas
+
+import models.Cinema
+import play.api.Logging
+import services.events.{EventBus, MovieRecordCreated}
+import services.movies.MovieCache
+
+/**
+ * The per-cinema scrape core: fetch a cinema's current listings, write them
+ * through `MovieCache`, and publish a `MovieRecordCreated` for each genuinely new
+ * (cinema, title, year) so the enrichment cascade picks it up.
+ *
+ * Shared by both schedulers so the "what happens for one cinema" rule lives in
+ * one place: the legacy continuous-loop `ShowtimeCache` and the queue-driven
+ * `ScrapeCinemaHandler` both call this. It deliberately does NOT catch scrape
+ * failures — each caller decides what a failure means (the loop logs and moves
+ * on; the handler logs and lets the reaper retry).
+ */
+class CinemaScrapeRunner(movieCache: MovieCache, bus: EventBus) extends Logging {
+
+  /** Scrape one cinema, record it, publish new-record events. Returns the number
+   *  of entries scraped. Throws on a fetch/record failure — callers handle it. */
+  def run(scraper: CinemaScraper): Int = {
+    val cinema: Cinema = scraper.cinema
+    val t0     = System.currentTimeMillis()
+    val movies = scraper.fetch()
+    val touched     = movieCache.recordCinemaScrape(cinema, movies)
+    val publishable = touched.count(_._3)
+    val elapsed     = System.currentTimeMillis() - t0
+    logger.info(s"Refreshed ${cinema.displayName}: ${movies.size} entries in ${elapsed}ms ($publishable new)")
+    touched.foreach { case (cm, key, isNew) =>
+      if (isNew)
+        bus.publish(MovieRecordCreated(
+          key.cleanTitle, key.year, cm.movie.originalTitle,
+          if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None))
+    }
+    movies.size
+  }
+}
