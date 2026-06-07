@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.KinoKijowClient
 
-import java.time.{LocalDate, LocalDateTime, YearMonth}
+import java.time.{LocalDate, LocalDateTime}
 
 /** Replays the recorded `kupbilet.kijow.pl/MSI/mvc/pl?sort=Date&date=2026-06`
  *  page (07-06-2026 capture) through the client. The page covers June 2026;

@@ -25,6 +25,9 @@ ThisBuild / scalaVersion := "3.8.4"
 ThisBuild / scalacOptions ++= Seq(
   "-feature",
   "-Wunused:imports",
+  // Warnings are errors: a warning must be fixed (or explicitly silenced via a
+  // `-Wconf` rule below), never merged. Keeps the build warning-clean over time.
+  "-Werror",
   // Scala 3.8.4 caps `-java-output-version` at 21 (higher values are rejected).
   // JRE 25 loads Java 21 class files unchanged: build on JDK 25, emit 21, run 25.
   "-java-output-version", "21",

@@ -48,18 +48,18 @@ object AdaKinoStudyjneClient {
   private val IsoDtFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX")
 
   private[cinemas] def parseHtml(html: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val doc   = Jsoup.parse(html)
-    val block = doc.select("script[type=application/ld+json]").asScala
+    val doc = Jsoup.parse(html)
+    doc.select("script[type=application/ld+json]").asScala
       .map(_.data())
       .find(d => d.contains("\"@type\":\"Place\"") || d.contains("ScreeningEvent"))
-      .getOrElse(return Seq.empty)
-
-    parseJson(block, cinema)
+      .map(parseJson(_, cinema))
+      .getOrElse(Seq.empty)
   }
 
   private[cinemas] def parseJson(json: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val root  = Try(Json.parse(json)).getOrElse(return Seq.empty)
-    val events = (root \ "events").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+    val events = Try(Json.parse(json)).toOption
+      .flatMap(root => (root \ "events").asOpt[JsArray])
+      .map(_.value.toSeq).getOrElse(Seq.empty)
 
     // One entry per individual screening — group by title.
     val rawSlots: Seq[(String, Option[String], Option[String], LocalDateTime)] =

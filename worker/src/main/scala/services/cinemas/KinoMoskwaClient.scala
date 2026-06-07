@@ -118,20 +118,18 @@ object KinoMoskwaClient {
     }
 
   private def parseEvent(eventDiv: Element, date: LocalDate): Seq[RawSlot] = {
-    val rawTitle = Option(eventDiv.selectFirst("h3.event-title"))
-      .map(_.text.trim)
-      .filter(_.nonEmpty)
-      .getOrElse(return Seq.empty)
-
-    val title = OrdinalPat.replaceFirstIn(rawTitle, "")
-
-    val shortdesc = Option(eventDiv.selectFirst("div.shortdesc.description"))
-      .getOrElse(return Seq.empty)
-
-    TimeRoomPat.findAllMatchIn(shortdesc.text).map { m =>
-      val time = ScraperParse.parseHHmm(m.group(1)).getOrElse(return Seq.empty)
-      val room = if (m.group(2) == "S") "Sala Studyjna" else "Sala Moskwa"
-      RawSlot(title, LocalDateTime.of(date, time), room)
-    }.toSeq
+    val parsed = for {
+      rawTitle  <- Option(eventDiv.selectFirst("h3.event-title")).map(_.text.trim).filter(_.nonEmpty)
+      shortdesc <- Option(eventDiv.selectFirst("div.shortdesc.description"))
+    } yield {
+      val title = OrdinalPat.replaceFirstIn(rawTitle, "")
+      TimeRoomPat.findAllMatchIn(shortdesc.text).flatMap { m =>
+        ScraperParse.parseHHmm(m.group(1)).map { time =>
+          val room = if (m.group(2) == "S") "Sala Studyjna" else "Sala Moskwa"
+          RawSlot(title, LocalDateTime.of(date, time), room)
+        }
+      }.toSeq
+    }
+    parsed.getOrElse(Seq.empty)
   }
 }
