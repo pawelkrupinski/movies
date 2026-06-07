@@ -47,16 +47,25 @@ class TeatrZiemiRybnickiejClient(http: HttpFetch) extends CinemaScraper {
     detailUrls.flatMap(byUrl.get).flatten
   }
 
-  /** Absolute, de-duplicated detail-page URLs for every film tile in the
-   *  listing, in document order. A film with several upcoming dates appears in
-   *  the listing once per date but links to a single detail page (which lists
-   *  all its dates), so de-duplication keeps us from fetching it twice. */
+  /** Absolute, de-duplicated detail-page URLs for the film tiles we keep, in
+   *  document order. A film with several upcoming dates appears in the listing
+   *  once per date but links to a single detail page (which lists all its
+   *  dates), so de-duplication keeps us from fetching it twice.
+   *
+   *  The "kino nie tylko dla seniora" programme — a senior matinée series whose
+   *  tile carries that label in its `.info` — is excluded; the "dkf ekran" (and
+   *  any other) film programmes are kept. Filtering here means we never fetch
+   *  the dropped detail pages. */
   def parseListing(html: String): Seq[String] =
     Jsoup.parse(html).select("div.events-list a.item[href]").asScala
+      .filterNot(tile => isSeniorScreening(Option(tile.selectFirst(".info")).map(_.text()).getOrElse("")))
       .map(a => absolute(a.attr("href")))
       .filter(_.nonEmpty)
       .distinct
       .toSeq
+
+  private def isSeniorScreening(programme: String): Boolean =
+    programme.toLowerCase.contains("kino nie tylko")
 
   /** A single film's detail page → a `CinemaMovie`, or `None` when it carries
    *  no title or no parseable showtime (so we never emit an empty row).
