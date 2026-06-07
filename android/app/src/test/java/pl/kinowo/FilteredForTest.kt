@@ -56,6 +56,42 @@ class FilteredForTest {
     }
 
     @Test
+    fun dateTomorrowKeepsTomorrowShowings() {
+        // Bug 2 probe: "Jutro" wrongly showed "Brak repertuaru." while tomorrow
+        // genuinely had repertoire. Run a fixture with tomorrow showings through
+        // the real filter and assert it is NON-EMPTY and dated to tomorrow only.
+        val result = fixture().filteredFor(
+            date = DateFilter.Tomorrow, format = FormatFilter.EMPTY, query = "",
+            hidden = emptySet(), disabledCinemas = emptySet(), now = now,
+        )
+        assertEquals(listOf("Mandalorian and Grogu", "Title3"), result.map { it.title }.sorted())
+        for (f in result) {
+            assertEquals(listOf(tomorrow), f.showings.map { it.date })
+        }
+    }
+
+    @Test
+    fun tomorrowFilterUsesProvidedNowAtMidnightBoundary() {
+        // A pinned clock at 23:50 today must still match tomorrow's date (date
+        // matching is in Warsaw wall-clock, not UTC — guards a midnight/timezone
+        // boundary regression).
+        val fixedTomorrow = "2020-06-16"
+        val lateNightNow = warsawInstant(2020, 6, 15, 23, 50)
+
+        val films = listOf(
+            film("A", listOf(day("2020-06-15", listOf(cinema("X", listOf(slot("18:00"))))))),
+            film("B", listOf(day(fixedTomorrow, listOf(cinema("X", listOf(slot("19:00"))))))),
+        )
+
+        val filtered = films.filteredFor(
+            date = DateFilter.Tomorrow, format = FormatFilter.EMPTY, query = "",
+            hidden = emptySet(), disabledCinemas = emptySet(), now = lateNightNow,
+        )
+        assertEquals(listOf("B"), filtered.map { it.title })
+        assertEquals(listOf(fixedTomorrow), filtered[0].showings.map { it.date })
+    }
+
+    @Test
     fun queryMatchesCaseInsensitiveSubstring() {
         val result = fixture().filteredFor(
             date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "Mand",
