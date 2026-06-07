@@ -2575,8 +2575,8 @@ cinemaScrapes:
 showings:
   2026-06-16  Kino Pałacowe                 11:00 Sala 1 - Kinowa
 
-=== Kino bez barier: Freak Show (AD + CC + PJM) ===
-displayTitle:      Kino bez barier: Freak Show (AD + CC + PJM)
+=== Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie ===
+displayTitle:      Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie
 cinemaTitles:      Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie
 runtimeMinutes:    75
 releaseYear:       2026
