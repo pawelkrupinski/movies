@@ -34,6 +34,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -325,7 +326,19 @@ private fun CollapsibleSection(
 @Composable
 private fun CitySection(vm: KinowoViewModel) {
     val selected by vm.selectedCity.collectAsState()
-    val current = Cities.allSorted.firstOrNull { it.slug == selected } ?: Cities.DEFAULT
+    // Drive the drum from local state, committed synchronously as you spin.
+    // setCity persists asynchronously and selectedCity only re-emits after the
+    // round-trip (which also re-fetches the repertoire and recomposes the
+    // sheet); binding `value` straight to the flow made the drum flip old→new
+    // for a frame and visibly shake on every pick. Sync back only when the city
+    // changes from elsewhere (nearest-city pick, switch suggestion).
+    var current by remember {
+        mutableStateOf(Cities.allSorted.firstOrNull { it.slug == selected } ?: Cities.DEFAULT)
+    }
+    LaunchedEffect(selected) {
+        val external = Cities.allSorted.firstOrNull { it.slug == selected }
+        if (external != null && external != current) current = external
+    }
     FilterSectionLabel("Miasto")
     ListItemPicker(
         modifier = Modifier.fillMaxWidth(),
@@ -334,7 +347,7 @@ private fun CitySection(vm: KinowoViewModel) {
         label = { it.name },
         dividersColor = MaterialTheme.colorScheme.outlineVariant,
         textStyle = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-        onValueChange = { vm.setCity(it.slug) },
+        onValueChange = { current = it; vm.setCity(it.slug) },
     )
 }
 
