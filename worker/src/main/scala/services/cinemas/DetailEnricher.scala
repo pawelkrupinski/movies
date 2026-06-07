@@ -20,39 +20,45 @@ case class FilmDetail(
   posterUrl:      Option[String] = None,
   trailerUrl:     Option[String] = None
 ) {
-  /** Merge these detail fields into an existing cinema `SourceData` slot,
-   *  preserving the slot's showtimes/title/filmUrl and never overwriting a
-   *  present value with an empty one. Used by the deferred (queue) path. */
+  // Both merges treat the LISTING/bare values as authoritative and let the
+  // detail only FILL GAPS (a present listing value is never replaced by a detail
+  // one). For every field except poster the bare movie is empty, so this is
+  // identical to "detail fills it in"; for poster it preserves the cinema's own
+  // listing poster (which several clients prefer over the detail-page poster) —
+  // matching the pre-split per-client merges.
+
+  /** Fill gaps in an existing cinema `SourceData` slot from these detail fields,
+   *  preserving the slot's showtimes/title/filmUrl. Used by the deferred (queue)
+   *  path. */
   def mergeInto(slot: SourceData): SourceData = slot.copy(
-    synopsis       = synopsis.orElse(slot.synopsis),
-    cast           = if (cast.nonEmpty) cast else slot.cast,
-    director       = if (director.nonEmpty) director else slot.director,
-    runtimeMinutes = runtimeMinutes.orElse(slot.runtimeMinutes),
-    releaseYear    = releaseYear.orElse(slot.releaseYear),
-    originalTitle  = originalTitle.orElse(slot.originalTitle),
-    countries      = if (countries.nonEmpty) countries else slot.countries,
-    genres         = if (genres.nonEmpty) genres else slot.genres,
-    posterUrl      = posterUrl.orElse(slot.posterUrl),
-    trailerUrl     = trailerUrl.orElse(slot.trailerUrl)
+    synopsis       = slot.synopsis.orElse(synopsis),
+    cast           = if (slot.cast.nonEmpty) slot.cast else cast,
+    director       = if (slot.director.nonEmpty) slot.director else director,
+    runtimeMinutes = slot.runtimeMinutes.orElse(runtimeMinutes),
+    releaseYear    = slot.releaseYear.orElse(releaseYear),
+    originalTitle  = slot.originalTitle.orElse(originalTitle),
+    countries      = if (slot.countries.nonEmpty) slot.countries else countries,
+    genres         = if (slot.genres.nonEmpty) slot.genres else genres,
+    posterUrl      = slot.posterUrl.orElse(posterUrl),
+    trailerUrl     = slot.trailerUrl.orElse(trailerUrl)
   )
 
-  /** Merge these detail fields into a bare `CinemaMovie`, non-destructively
-   *  (never replace a present listing value with an empty detail one). Used by
-   *  the inline path so every client's "merge detail onto the movie" rule lives
-   *  here rather than being re-spelled per client. */
+  /** Fill gaps in a bare `CinemaMovie` from these detail fields. Used by the
+   *  inline path so every client's "merge detail onto the movie" rule lives here
+   *  rather than being re-spelled per client. */
   def applyTo(cm: CinemaMovie): CinemaMovie = cm.copy(
     movie = cm.movie.copy(
-      runtimeMinutes = runtimeMinutes.orElse(cm.movie.runtimeMinutes),
-      releaseYear    = releaseYear.orElse(cm.movie.releaseYear),
-      originalTitle  = originalTitle.orElse(cm.movie.originalTitle),
-      countries      = if (countries.nonEmpty) countries else cm.movie.countries,
-      genres         = if (genres.nonEmpty) genres else cm.movie.genres
+      runtimeMinutes = cm.movie.runtimeMinutes.orElse(runtimeMinutes),
+      releaseYear    = cm.movie.releaseYear.orElse(releaseYear),
+      originalTitle  = cm.movie.originalTitle.orElse(originalTitle),
+      countries      = if (cm.movie.countries.nonEmpty) cm.movie.countries else countries,
+      genres         = if (cm.movie.genres.nonEmpty) cm.movie.genres else genres
     ),
-    synopsis   = synopsis.orElse(cm.synopsis),
-    cast       = if (cast.nonEmpty) cast else cm.cast,
-    director   = if (director.nonEmpty) director else cm.director,
-    posterUrl  = posterUrl.orElse(cm.posterUrl),
-    trailerUrl = trailerUrl.orElse(cm.trailerUrl)
+    synopsis   = cm.synopsis.orElse(synopsis),
+    cast       = if (cm.cast.nonEmpty) cm.cast else cast,
+    director   = if (cm.director.nonEmpty) cm.director else director,
+    posterUrl  = cm.posterUrl.orElse(posterUrl),
+    trailerUrl = cm.trailerUrl.orElse(trailerUrl)
   )
 }
 

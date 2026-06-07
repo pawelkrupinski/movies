@@ -3,7 +3,7 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
@@ -17,7 +17,11 @@ import scala.util.Try
  * booking). Per-film detail pages add year / countries / director / synopsis.
  * Section headers omit the year, so `today` supplies it.
  */
-class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
+class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")), deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+
+  // Static detail pages cached across passes; the listing keeps the live `http`
+  // since its showtimes change every pass.
+  private val detailHttp = new CachingDetailFetch(http)
 
   val cinema: Cinema = Kinomuzeum
 
@@ -30,7 +34,16 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
+  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
+  // the per-film detail-page URL) and the detail is filled in later by an
+  // EnrichDetails task via `fetchFilmDetail` — so a scrape pass doesn't block on
+  // N detail-page round-trips. When off (default), it enriches inline as before.
   def fetch(): Seq[CinemaMovie] = {
+    val bare = fetchBare()
+    if (deferDetail) bare else enrichInline(bare)
+  }
+
+  private def fetchBare(): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(http.get(ListingUrl))
 
     var date: Option[LocalDate] = None
@@ -42,36 +55,59 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
     // A film can recur under several slugs (a plain screening + a "+ spotkanie"
     // event), all with the same title — group by title so each is one row.
     val byTitle = slots.groupBy(_.title)
-    val details = ParallelDetailFetch.keyed("kinomuzeum-details", byTitle.values.map(_.head.slug).toSeq.distinct.filter(_.nonEmpty), 1.minute)(s => s"$BaseUrl/wydarzenia/$s") { url =>
-      Try(http.get(url)).toOption.map(KinomuzeumClient.parseDetail).getOrElse(KinomuzeumClient.Detail.empty)
-    }
-
-    byTitle.toSeq.flatMap { case (title, group) =>
-      val primary    = group.head
-      val slug       = primary.slug
-      val showtimes  = group.distinctBy(s => (s.dateTime, s.booking)).sortBy(_.dateTime)
-                         .map(s => Showtime(s.dateTime, s.booking, None, Nil))
+    byTitle.toSeq.flatMap { case (_, group) =>
+      val primary   = group.head
+      val slug      = primary.slug
+      val showtimes = group.distinctBy(s => (s.dateTime, s.booking)).sortBy(_.dateTime)
+                        .map(s => Showtime(s.dateTime, s.booking, None, Nil))
       if (showtimes.isEmpty) None
-      else {
-        val d = details.getOrElse(slug, KinomuzeumClient.Detail.empty)
-        Some(CinemaMovie(
-          movie     = Movie(
-            title          = primary.title,
-            runtimeMinutes = primary.runtime.orElse(d.runtime),
-            releaseYear    = d.year,
-            countries      = d.countries
-          ),
-          cinema    = cinema,
-          posterUrl = group.flatMap(_.poster).headOption.orElse(d.poster),
-          filmUrl   = if (slug.nonEmpty) Some(s"$BaseUrl/wydarzenia/$slug") else None,
-          synopsis  = d.synopsis,
-          cast      = Seq.empty,
-          director  = d.director,
-          showtimes = showtimes
-        ))
-      }
+      else Some(CinemaMovie(
+        movie     = Movie(
+          title          = primary.title,
+          runtimeMinutes = primary.runtime
+        ),
+        cinema    = cinema,
+        posterUrl = group.flatMap(_.poster).headOption,
+        filmUrl   = if (slug.nonEmpty) Some(s"$BaseUrl/wydarzenia/$slug") else None,
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = showtimes
+      ))
     }
   }
+
+  // Inline path: fetch each film's detail in parallel through the same
+  // `fetchFilmDetail` the deferred path uses, then merge non-destructively. One
+  // detail code path for both modes.
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val metas = ParallelDetailFetch("kinomuzeum-details", urls, 1.minute)(u => fetchFilmDetail(u))
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
+    }
+  }
+
+  override val detailGroup: String = "kinomuzeum"
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's filmUrl (e.g. `https://artmuseum.pl/wydarzenia/<slug>`). None on
+   *  fetch failure so the task stays stale and is retried rather than recording
+   *  an empty result as fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map { html =>
+      val d = KinomuzeumClient.parseDetail(html)
+      FilmDetail(
+        synopsis       = d.synopsis,
+        cast           = Seq.empty,
+        director       = d.director,
+        runtimeMinutes = d.runtime,
+        releaseYear    = d.year,
+        countries      = d.countries,
+        posterUrl      = d.poster
+      )
+    }
 
   private def cardSlot(titleEl: Element, date: LocalDate): Option[RawSlot] = {
     val link  = Option(titleEl.selectFirst("a[href*=/wydarzenia/]"))
