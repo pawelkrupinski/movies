@@ -8,9 +8,14 @@ import java.time.{LocalDate, LocalDateTime}
 import scala.concurrent.duration._
 import scala.util.Try
 
-class CinemaCityClient(http: HttpFetch) {
+class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
 
   private val BaseApiUrl = CinemaCityClient.BaseApiUrl
+  // Per-film detail-page fetch path. Defaults to `http`; the composition root
+  // injects ONE CachingDetailFetch shared across every Cinema City location, so a
+  // film's detail page is fetched once per chain per TTL instead of once per
+  // location per pass. The live day-listing fetch stays on `http`.
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
   private val FarFuture  = "2027-01-01"
 
   def fetch(cinemaId: String, cinema: Cinema): Seq[CinemaMovie] = {
@@ -97,7 +102,7 @@ class CinemaCityClient(http: HttpFetch) {
     val linkById    = detailLinks.toMap
     val detailsByFilmId: Map[String, CinemaCityClient.Details] =
       ParallelDetailFetch.keyed("cinema-city-details", detailLinks.map(_._1), 1.minute)(id => linkById(id)) { url =>
-        Try(http.get(url)).toOption.map(CinemaCityClient.parseDetails).getOrElse(CinemaCityClient.Details.empty)
+        Try(detailFetch.get(url)).toOption.map(CinemaCityClient.parseDetails).getOrElse(CinemaCityClient.Details.empty)
       }
     allFilms.foreach { case (id, info) =>
       detailsByFilmId.get(id).filter(_.countries.nonEmpty)

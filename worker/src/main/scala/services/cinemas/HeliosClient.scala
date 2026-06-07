@@ -18,10 +18,17 @@ import scala.util.Try
 class HeliosClient(
   http:  HttpFetch    = HeliosFetch,
   cfg:   HeliosCinema = HeliosNuxt.Poznan,
-  today: LocalDate    = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: LocalDate    = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  // Per-film detail (`/api/movie/{id}`) + screen-name fetch path. Defaults to
+  // `http`; the composition root injects ONE CachingDetailFetch shared across
+  // every Helios location, so a film's detail body is fetched once per chain per
+  // TTL instead of once per location per pass. Live screening/page fetches that
+  // carry volatile showtimes stay on `http`.
+  detailHttp: Option[HttpFetch] = None
 ) extends CinemaScraper {
 
   override val cinema: Cinema = cfg.cinema
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   private val sourceId   = cfg.sourceId
   private val PageUrl     = cfg.pageUrl
@@ -176,9 +183,11 @@ class HeliosClient(
       }
     }
 
+  // Detail bodies (movie metadata, screen names) go through `detailFetch` so the
+  // shared chain cache dedups them across locations and passes.
   private def fetchBodies(label: String, ids: Seq[String])(urlFor: String => String): Map[String, String] =
     ParallelDetailFetch.keyed(label, ids, 1.minute)(urlFor) { url =>
-      Try(http.get(url)).toOption
+      Try(detailFetch.get(url)).toOption
     }.collect { case (id, Some(body)) => id -> body }
 
   // ── REST enrichment of NUXT movies ────────────────────────────────────────
