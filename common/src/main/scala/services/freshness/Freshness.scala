@@ -1,0 +1,51 @@
+package services.freshness
+
+import scala.concurrent.duration._
+
+/** The kinds of network-touching work whose recency we track so a scheduler can
+ *  skip it when it was done recently enough. Each kind owns a short `label` that
+ *  prefixes its [[FreshnessStore]] key (e.g. `imdb|<docId>`), so the label must
+ *  stay stable — it's the on-disk key shape, not just a display string. */
+sealed trait FreshnessKind { def label: String }
+
+object FreshnessKind {
+  case object CinemaScrape  extends FreshnessKind { val label = "scrape"  }
+  case object DetailEnrich  extends FreshnessKind { val label = "detail"  }
+  case object TmdbResolve   extends FreshnessKind { val label = "tmdb"    }
+  case object ImdbRating    extends FreshnessKind { val label = "imdb"    }
+  case object FilmwebRating extends FreshnessKind { val label = "fw"      }
+  case object RtRating      extends FreshnessKind { val label = "rt"      }
+  case object McRating      extends FreshnessKind { val label = "mc"      }
+
+  val all: Seq[FreshnessKind] =
+    Seq(CinemaScrape, DetailEnrich, TmdbResolve, ImdbRating, FilmwebRating, RtRating, McRating)
+
+  def byLabel(s: String): Option[FreshnessKind] = all.find(_.label == s)
+}
+
+/**
+ * How long each kind of work stays "fresh" — i.e. how long after doing it we may
+ * skip redoing it. A `None` TTL means **permanent**: once recorded it never goes
+ * stale (TMDB resolution is effectively immutable once found; rows still missing
+ * a resolution are retried by a separate missing-id reaper, not by re-resolving
+ * resolved rows).
+ *
+ * Values match the cadence the worker ran before the queue existed: the four
+ * rating sources were re-fetched on a 4h periodic walk, so their TTL is 4h —
+ * the difference is that the walk is now *gated* (a row refreshed inside the
+ * window is skipped instead of re-fetched unconditionally). Scrape (15min) and
+ * detail enrichment (6h) are new freshness windows the queue introduces.
+ */
+object Freshness {
+  import FreshnessKind._
+
+  def ttlFor(kind: FreshnessKind): Option[FiniteDuration] = kind match {
+    case CinemaScrape  => Some(15.minutes)
+    case DetailEnrich  => Some(6.hours)
+    case ImdbRating    => Some(4.hours)
+    case FilmwebRating => Some(4.hours)
+    case RtRating      => Some(4.hours)
+    case McRating      => Some(4.hours)
+    case TmdbResolve   => None // permanent — see the missing-id reaper
+  }
+}

@@ -1,0 +1,116 @@
+package services.freshness
+
+import com.mongodb.client.model.UpdateOptions
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
+import org.mongodb.scala.model.{Filters, Updates}
+import play.api.Logging
+
+import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.util.Try
+
+/**
+ * Records when each unit of network-touching work (a cinema scrape, a movie's
+ * detail fetch, a rating refresh) last completed, keyed by a caller-chosen
+ * string. A scheduler reads [[isFresh]] before enqueuing or doing work and skips
+ * it when it was done inside the kind's TTL.
+ *
+ * The TTL/skip logic lives here as a default method so both the real store and
+ * the test fake share it by construction — they differ only in *where* the
+ * timestamps are kept. Keys are the canonical dedup strings the producers build,
+ * e.g. `scrape|<cinema>`, `detail|<chain>|<docId>`, `imdb|<docId>`.
+ */
+trait FreshnessStore {
+  /** When `key` was last marked fresh, or None if never. */
+  def lastFetchedAt(key: String): Option[Instant]
+
+  /** Record that the work behind `key` (of the given `kind`) just completed.
+   *  Call only on SUCCESS, so a failed fetch stays stale and retries. */
+  def markFresh(key: String, kind: FreshnessKind, at: Instant = Instant.now()): Unit
+
+  /** True when `key` was marked fresh within `kind`'s TTL — so the work may be
+   *  skipped. A permanent kind (None TTL) is fresh whenever any timestamp
+   *  exists; an unknown key is always stale. */
+  final def isFresh(key: String, kind: FreshnessKind, now: Instant = Instant.now()): Boolean =
+    lastFetchedAt(key) match {
+      case None => false
+      case Some(t) =>
+        Freshness.ttlFor(kind) match {
+          case None      => true
+          case Some(ttl) => t.isAfter(now.minusMillis(ttl.toMillis))
+        }
+    }
+
+  def close(): Unit = ()
+}
+
+/** In-memory `FreshnessStore` for tests and Mongo-less local dev. */
+class InMemoryFreshnessStore extends FreshnessStore {
+  private val stamps = new ConcurrentHashMap[String, Instant]()
+  override def lastFetchedAt(key: String): Option[Instant] = Option(stamps.get(key))
+  override def markFresh(key: String, kind: FreshnessKind, at: Instant): Unit = { stamps.put(key, at); () }
+}
+
+/**
+ * Mongo-backed `FreshnessStore`, collection `freshness` with documents
+ * `{ _id: <key>, kind: <label>, lastFetchedAt: ISODate }`.
+ *
+ * Reads are served from an in-memory mirror, not Mongo: the enrichment reaper
+ * checks freshness for every cached row × every rating kind on each tick, which
+ * would otherwise be hundreds of `findOne`s per tick. The mirror is hydrated
+ * once at boot (in a daemon thread, the `UptimeMonitor` idiom) and kept current
+ * by `markFresh` writing through to both the map and Mongo. Persisting to Mongo
+ * means a worker restart doesn't forget what was fresh and re-fetch everything.
+ *
+ * Single-writer by design (one worker process). A `null` db disables
+ * persistence — the mirror still works, it just doesn't survive a restart.
+ */
+class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessStore with Logging {
+  private val mirror = new ConcurrentHashMap[String, Instant]()
+  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("freshness"))
+
+  coll.foreach { c =>
+    val t = new Thread(() => hydrate(c), "freshness-init")
+    t.setDaemon(true)
+    t.start()
+  }
+
+  override def lastFetchedAt(key: String): Option[Instant] = Option(mirror.get(key))
+
+  override def markFresh(key: String, kind: FreshnessKind, at: Instant): Unit = {
+    mirror.put(key, at)
+    coll.foreach { c =>
+      // Best-effort, fire-and-forget: a write failure must never break the
+      // caller's work loop. The mirror already has the value; the next restart
+      // just won't see this stamp. Synchronous build at .subscribe can throw on
+      // a closed client (shutdown race), so wrap in Try like UptimeMonitor.
+      Try {
+        c.updateOne(
+          Filters.eq("_id", key),
+          Updates.combine(
+            Updates.set("kind", kind.label),
+            Updates.set("lastFetchedAt", new java.util.Date(at.toEpochMilli))
+          ),
+          new UpdateOptions().upsert(true)
+        ).subscribe(
+          (_: org.mongodb.scala.result.UpdateResult) => (),
+          (ex: Throwable) => logger.debug(s"Freshness write failed for $key: ${ex.getMessage}")
+        )
+      }.recover { case ex => logger.debug(s"Freshness write failed for $key: ${ex.getMessage}") }
+    }
+  }
+
+  private def hydrate(c: MongoCollection[Document]): Unit = Try {
+    val docs = Await.result(c.find().toFuture(), 10.seconds)
+    var count = 0
+    docs.foreach { doc =>
+      for {
+        key  <- Option(doc.getString("_id"))
+        date <- Option(doc.getDate("lastFetchedAt"))
+      } { mirror.put(key, Instant.ofEpochMilli(date.getTime)); count += 1 }
+    }
+    if (count > 0) logger.info(s"Hydrated $count freshness stamp(s) from Mongo.")
+  }.recover { case ex => logger.warn(s"Freshness hydrate failed: ${ex.getMessage}") }
+}
