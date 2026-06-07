@@ -316,24 +316,26 @@ private fun CollapsibleSection(
 }
 
 /**
- * Miasto — the active city. A dropdown of [Cities.all], mirroring the iOS
- * FiltersBar city Picker rather than a horizontal segmented row (which doesn't
- * fit 19 cities). Picking persists the choice (and re-fetches that city's
- * repertoire). Independent of login — it's just a city switch.
+ * Miasto — the active city, as a scrolling wheel/drum (chargemap
+ * ListItemPicker) over [Cities.allSorted]. The drum centres on the active city
+ * and exposes its alphabetical neighbours inline; spinning it persists the
+ * choice (and re-fetches that city's repertoire). Independent of login — it's
+ * just a city switch.
  */
 @Composable
 private fun CitySection(vm: KinowoViewModel) {
     val selected by vm.selectedCity.collectAsState()
-    var expanded by remember { mutableStateOf(false) }
-    val label = Cities.all.firstOrNull { it.slug == selected }?.name ?: Cities.DEFAULT.name
+    val current = Cities.allSorted.firstOrNull { it.slug == selected } ?: Cities.DEFAULT
     FilterSectionLabel("Miasto")
-    Dropdown(
-        label = label,
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        items = Cities.allSorted.map { it.name to it.slug },
+    ListItemPicker(
         modifier = Modifier.fillMaxWidth(),
-    ) { slug -> vm.setCity(slug); expanded = false }
+        value = current,
+        list = Cities.allSorted,
+        label = { it.name },
+        dividersColor = MaterialTheme.colorScheme.outlineVariant,
+        textStyle = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+        onValueChange = { vm.setCity(it.slug) },
+    )
 }
 
 @Composable
@@ -375,62 +377,33 @@ private fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Uni
 }
 
 /**
- * Od godziny — scrolling drum pickers (chargemap ListItemPicker) for the hour
- * and minute floor, replacing the old pair of dropdowns. The hour drum leads
- * with "Dowolna" (no floor); the minute drum only appears once a real hour is
- * picked. The value lists, labels, and the "clear the minute when Dowolna is
- * chosen" rule live in [FromHourWheel] so they're unit-tested without the UI
- * (FromHourWheelTest).
+ * Od godziny — the hour and minute floor as a pair of (window-centred)
+ * dropdowns. The hour leads with "Dowolna" (no floor); the minute dropdown only
+ * appears once a real hour is picked, and choosing "Dowolna" clears the minute.
  */
 @Composable
 private fun FromHourRow(filter: FormatFilter, onChange: (FormatFilter) -> Unit) {
-    val dividers = MaterialTheme.colorScheme.outlineVariant
-    val textStyle = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.onSurface)
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ListItemPicker(
-            modifier = Modifier.width(112.dp),
-            value = filter.fromHour,
-            list = FromHourWheel.hours,
-            label = FromHourWheel::hourLabel,
-            dividersColor = dividers,
-            textStyle = textStyle,
-            onValueChange = { onChange(FromHourWheel.withHour(filter, it)) },
-        )
+    val hours = listOf(-1) + (0..23).toList()
+    var hourExpanded by remember { mutableStateOf(false) }
+    var minExpanded by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Dropdown(
+            label = if (filter.fromHour < 0) "Dowolna" else "%02d".format(filter.fromHour),
+            expanded = hourExpanded,
+            onExpandedChange = { hourExpanded = it },
+            items = hours.map { (if (it < 0) "Dowolna" else "%02d".format(it)) to it },
+            modifier = Modifier.weight(1f),
+        ) { onChange(filter.copy(fromHour = it, fromMinute = if (it < 0) 0 else filter.fromMinute)); hourExpanded = false }
         if (filter.fromHour >= 0) {
-            ListItemPicker(
-                modifier = Modifier.width(112.dp),
-                value = filter.fromMinute,
-                list = FromHourWheel.minutes,
-                label = FromHourWheel::minuteLabel,
-                dividersColor = dividers,
-                textStyle = textStyle,
-                onValueChange = { onChange(filter.copy(fromMinute = it)) },
-            )
+            Dropdown(
+                label = "%02d".format(filter.fromMinute),
+                expanded = minExpanded,
+                onExpandedChange = { minExpanded = it },
+                items = listOf(0, 15, 30, 45).map { "%02d".format(it) to it },
+                modifier = Modifier.weight(1f),
+            ) { onChange(filter.copy(fromMinute = it)); minExpanded = false }
         }
     }
-}
-
-/**
- * The value lists, labels, and selection rules behind the [FromHourRow] drums.
- * The hour list leads with the -1 "Dowolna" (no-floor) sentinel; choosing it
- * also clears the minute floor. The minute list steps in quarters. Pure, so
- * it's unit-tested directly.
- */
-internal object FromHourWheel {
-    val hours: List<Int> = listOf(-1) + (0..23).toList()
-    val minutes: List<Int> = listOf(0, 15, 30, 45)
-
-    fun hourLabel(hour: Int): String = if (hour < 0) "Dowolna" else "%02d".format(hour)
-
-    fun minuteLabel(minute: Int): String = "%02d".format(minute)
-
-    /** Picking an hour; "Dowolna" (no floor) also resets the minute to 0. */
-    fun withHour(filter: FormatFilter, hour: Int): FormatFilter =
-        filter.copy(fromHour = hour, fromMinute = if (hour < 0) 0 else filter.fromMinute)
 }
 
 @Composable

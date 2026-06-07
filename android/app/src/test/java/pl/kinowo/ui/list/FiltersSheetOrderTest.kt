@@ -23,6 +23,7 @@ import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
+import pl.kinowo.model.Cities
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.net.KinowoApi
@@ -83,54 +84,50 @@ class FiltersSheetOrderTest {
     }
 
     /**
-     * The city picker is a collapsed dropdown (matching iOS), not a row that
-     * lays every city out at once: only the active city shows until tapped,
-     * tapping reveals the rest, and picking one switches the city. Fails on the
-     * old SegmentedChoice, where every city button is composed up front.
+     * The city picker is a scrolling wheel/drum (chargemap ListItemPicker), not
+     * a collapsed dropdown: it centres on the active city AND renders its
+     * alphabetical neighbour inline, with no tap-to-open. A dropdown would
+     * compose only the active city until tapped, so the neighbour assertion
+     * fails on the old collapsed-button picker.
      */
     @Test
-    fun cityPickerIsACollapsedDropdown() {
+    fun cityPickerIsAWheelDrum() {
         compose.setContent {
             FiltersSheetContent(viewModel(), films = emptyList())
         }
 
-        val list = compose.onNode(hasScrollAction())
-        list.performScrollToNode(hasText("Miasto"))
+        // Scroll the active city (the drum's centre) into view.
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(Cities.DEFAULT.name))
 
-        // Default city (Poznań) shows on the collapsed button; other cities are
-        // hidden until the dropdown opens. Białystok sorts first in the
-        // alphabetical picker, so it's the one reliably composed at the top of
-        // the opened menu (Wrocław would now be near the bottom, off-screen).
-        compose.onNodeWithText("Poznań").assertIsDisplayed()
-        compose.onNodeWithText("Białystok").assertDoesNotExist()
+        // The drum below/above row is the active city's alphabetical neighbour
+        // in the (Polish-collated) picker list — composed only because this is a
+        // wheel, never by a collapsed dropdown.
+        val centreIndex = Cities.allSorted.indexOfFirst { it.slug == Cities.DEFAULT.slug }
+        val neighbour = Cities.allSorted[centreIndex + 1].name
 
-        // Tapping the button opens the menu, revealing the other cities.
-        compose.onNodeWithText("Poznań").performClick()
-        compose.onNodeWithText("Białystok").assertIsDisplayed()
-
-        // Picking a city fires onPick (setCity + close), so the menu collapses
-        // again — the revealed items disappear.
-        compose.onNodeWithText("Białystok").performClick()
-        compose.waitForIdle()
-        compose.onNodeWithText("Białystok").assertDoesNotExist()
+        compose.onNodeWithText(Cities.DEFAULT.name).assertIsDisplayed()
+        compose.onNodeWithText(neighbour).assertExists()
     }
 
     /**
-     * Od godziny is a scrolling drum (chargemap ListItemPicker), not a pair of
-     * dropdowns: the hour drum renders its current value's label ("Dowolna" at
-     * the default no-floor state) inline once scrolled into view. Fails if the
-     * wheel picker stops composing or the section regresses to a button.
+     * Od godziny stays a pair of (window-centred) dropdowns: the hour shows
+     * "Dowolna" collapsed, and tapping it opens the menu with the hour options.
+     * Guards the shared [Dropdown] component the city picker no longer uses.
      */
     @Test
-    fun odGodzinyShowsTheHourDrum() {
+    fun hourPickerIsACollapsedDropdown() {
         compose.setContent {
             FiltersSheetContent(viewModel(), films = emptyList())
         }
 
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Od godziny"))
 
-        // The drum centres on the stored hour (-1 → "Dowolna"); the label is a
-        // real Text node, unlike the old collapsed dropdown button.
+        // Collapsed: the hour button reads "Dowolna"; the hour options are
+        // hidden until tapped.
         compose.onNodeWithText("Dowolna").assertIsDisplayed()
+        compose.onNodeWithText("06").assertDoesNotExist()
+
+        compose.onNodeWithText("Dowolna").performClick()
+        compose.onNodeWithText("06").assertExists()
     }
 }
