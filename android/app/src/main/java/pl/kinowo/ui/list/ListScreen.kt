@@ -3,7 +3,6 @@ package pl.kinowo.ui.list
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,7 +55,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
@@ -72,7 +70,6 @@ import android.content.res.Configuration
 import java.time.LocalDate
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
-import pl.kinowo.filter.wrappedDayIndex
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.TopBarLayout
@@ -150,15 +147,19 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
         tabLabel = null
     }
 
-    // Step the selected day by [delta] (left swipe = +1, right = -1), wrapping
-    // the ordered day list. The first swipe also retires the once-a-day hint.
-    val onDaySwipe: (Int) -> Unit = { delta ->
-        val presets = DateFilter.presets
-        val current = presets.indexOf(vm.dateFilter).coerceAtLeast(0)
-        vm.dateFilter = presets[wrappedDayIndex(current, delta, presets.size)]
+    // Commit a swiped-to day as the new selection. Wraparound is already applied
+    // by the carousel (it hands back the actual neighbour preset). The first
+    // committed swipe also retires the once-a-day hint.
+    val onCommitDay: (DateFilter) -> Unit = { day ->
+        vm.dateFilter = day
         showSwipeHint = false
         vm.markSwiped()
     }
+
+    // The centre column's vertical scroll, hoisted so the revealed neighbours can
+    // mirror it during a drag and so ScrollToTopOnChange can ease it to the top
+    // after a committed day flip.
+    val sharedScroll = rememberLazyGridState()
 
     // Surface the swipe hint the moment the first repertoire load lands, gated
     // to once per calendar day until the first swipe. The decision reads
@@ -223,34 +224,43 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                     when {
                         isLoading && films.isEmpty() -> CenteredMessage("Ładowanie repertuaru…")
                         error != null && films.isEmpty() -> ErrorState(error!!) { vm.reload() }
-                        else -> {
-                            val visible = vm.filmsForFilmsTab(films, hidden, disabled)
-                            // Suppress the per-card cinema label when the
-                            // repertoire on show narrows to a single cinema —
-                            // it's the same name on every card. Mirrors the
-                            // Kina-tab section header being dropped under a pin.
-                            val showCinemaHeaders = distinctCinemaCount(visible) > 1
-                            // Horizontal drag steps the day; the LazyVerticalGrid
-                            // keeps its vertical scroll (detectHorizontalDrag only
-                            // claims horizontal pointers).
-                            PullToRefreshBox(
-                                isRefreshing = refreshing,
-                                onRefresh = {
-                                    refreshing = true
-                                    refreshScope.launch {
-                                        vm.reload().join()
-                                        refreshing = false
-                                    }
-                                },
-                            ) {
+                        else -> PullToRefreshBox(
+                            isRefreshing = refreshing,
+                            onRefresh = {
+                                refreshing = true
+                                refreshScope.launch {
+                                    vm.reload().join()
+                                    refreshing = false
+                                }
+                            },
+                        ) {
+                            // A finger-following carousel: the selected day's grid
+                            // is centred; dragging horizontally reveals the wrap-
+                            // around prev/next day and commits it on release. The
+                            // revealed neighbour mirrors the centre's vertical
+                            // scroll during the drag.
+                            DayCarousel(
+                                current = vm.dateFilter,
+                                sharedScroll = sharedScroll,
+                                onCommitDay = onCommitDay,
+                            ) { day, state, columnModifier ->
+                                val visible = vm.filmsFor(day, films, hidden, disabled)
+                                // Suppress the per-card cinema label when the
+                                // repertoire on show narrows to a single cinema —
+                                // it's the same name on every card.
+                                val showCinemaHeaders = distinctCinemaCount(visible) > 1
+                                // Only the centre column eases to the top on a day
+                                // change; the neighbours track scroll via the
+                                // carousel's mirror, so they must not self-reset.
+                                if (day == vm.dateFilter) ScrollToTopOnChange(state, vm.dateFilter)
                                 FilmsGrid(
                                     films = visible,
+                                    state = state,
                                     bottomInset = gridBottomInset,
-                                    scrollResetKey = vm.dateFilter,
                                     showCinemaHeaders = showCinemaHeaders,
                                     onOpen = onOpenFilm,
                                     onHide = { vm.hide(it) },
-                                    modifier = Modifier.daySwipe(onDaySwipe),
+                                    modifier = columnModifier,
                                 )
                             }
                         }
@@ -473,31 +483,6 @@ private fun DatePill(label: String, selected: Boolean, modifier: Modifier = Modi
     }
 }
 
-// Minimum horizontal drag, in pixels, that commits a day change. Below this a
-// drag is treated as an accidental wobble and the day is left unchanged.
-private const val DaySwipeThresholdPx = 60f
-
-// Wires a horizontal drag onto a grid so a left swipe advances the day and a
-// right swipe goes back (the index math + wraparound lives in
-// [wrappedDayIndex]). The accumulated horizontal delta is committed once on
-// drag end, so a single gesture steps exactly one day; vertical scrolling is
-// untouched because `detectHorizontalDragGestures` only claims horizontal
-// pointers. [onSwipe] is called with +1 for a left swipe (next) and -1 for a
-// right swipe (previous).
-private fun Modifier.daySwipe(onSwipe: (Int) -> Unit): Modifier = pointerInput(onSwipe) {
-    var dragX = 0f
-    detectHorizontalDragGestures(
-        onDragStart = { dragX = 0f },
-        onDragEnd = {
-            if (dragX <= -DaySwipeThresholdPx) onSwipe(+1)
-            else if (dragX >= DaySwipeThresholdPx) onSwipe(-1)
-        },
-    ) { change, dragAmount ->
-        change.consume()
-        dragX += dragAmount
-    }
-}
-
 // Distinct cinema names anywhere in the currently-shown films. Drives whether
 // the per-card cinema label is worth showing: with a single cinema on screen
 // it's the same name on every card, so it's suppressed as redundant.
@@ -551,8 +536,8 @@ internal fun ScrollToTopOnChange(state: LazyGridState, key: Any?) {
 @Composable
 private fun FilmsGrid(
     films: List<Film>,
+    state: LazyGridState,
     bottomInset: Dp,
-    scrollResetKey: Any?,
     showCinemaHeaders: Boolean,
     onOpen: (String) -> Unit,
     onHide: (String) -> Unit,
@@ -562,13 +547,11 @@ private fun FilmsGrid(
         EmptyState("Brak repertuaru.")
         return
     }
-    val gridState = rememberLazyGridState()
-    ScrollToTopOnChange(gridState, scrollResetKey)
     // Grid items map 1:1 to films, so the URL list lines up with item indices.
-    PosterPrefetch(remember(films) { films.map { it.posterChain.firstOrNull().orEmpty() } }, gridState)
+    PosterPrefetch(remember(films) { films.map { it.posterChain.firstOrNull().orEmpty() } }, state)
     LazyVerticalGrid(
         columns = posterGridCells(),
-        state = gridState,
+        state = state,
         contentPadding = PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = bottomInset),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),

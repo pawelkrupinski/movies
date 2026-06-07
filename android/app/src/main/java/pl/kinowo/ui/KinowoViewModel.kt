@@ -128,8 +128,15 @@ class KinowoViewModel(
     // call site is what makes Compose recompute the grid when a film is hidden
     // or a cinema toggled. Reading `.value` here would be invisible to Compose.
     fun filmsForFilmsTab(all: List<Film>, hidden: Set<String>, disabled: Set<String>): List<Film> =
+        filmsFor(dateFilter, all, hidden, disabled)
+
+    // The day-swipe carousel needs the listing for an ARBITRARY day preset (the
+    // revealed prev/next neighbour), not just the selected one — so the date is
+    // an explicit parameter here. [filmsForFilmsTab] is the special case of the
+    // currently-selected day.
+    fun filmsFor(date: DateFilter, all: List<Film>, hidden: Set<String>, disabled: Set<String>): List<Film> =
         all.filteredFor(
-            date = dateFilter,
+            date = date,
             format = formatFilter,
             query = search,
             hidden = hidden,
