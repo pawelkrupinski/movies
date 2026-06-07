@@ -56,8 +56,11 @@ class KinoZamekClient(
     val nextMonth = thisMonth.plusMonths(1)
 
     val slots = Seq(thisMonth, nextMonth).flatMap { ym =>
-      val url  = monthUrl(ym)
-      val html = Try(http.get(url)).getOrElse("")
+      // Don't swallow a fetch failure here. A timeout / 5xx from the MSI host
+      // must propagate so `RetryingCinemaScraper` retries and a persistent
+      // failure surfaces as a red uptime error — not a silent, swallowed zero
+      // recorded as a successful "0 showtimes" scrape (white on the uptime bar).
+      val html = http.get(monthUrl(ym))
       if (html.isEmpty) Seq.empty
       else {
         val allSlots = MsiScraper.parseMonthWithYear(html, ym, MsiBaseUrl, cleanTitle)
@@ -85,8 +88,17 @@ object KinoZamekClient {
   val ListingUrl     = s"$ListingBaseUrl/wydarzenia/kino/"
   val MsiBaseUrl     = "https://bilety.zamek.szczecin.pl"
 
+  /**
+   * Date-scoped MSI month page.  We hit `/MSI/mvc/pl` directly rather than the
+   * bare `/MSI` path: `/MSI?…` 301-redirects to `/MSI/?…` which then 302-redirects
+   * to a bare `/MSI/mvc/pl` — dropping the `date` query param in the process, so
+   * the redirect-following client always landed on the unscoped default page and
+   * never actually fetched the requested month (next-month showtimes were silently
+   * lost).  The direct `/MSI/mvc/pl?…&date=…` URL — the same shape every other MSI
+   * cinema uses — returns the correct month in a single hop.
+   */
   def monthUrl(ym: YearMonth): String =
-    s"$MsiBaseUrl/MSI?sort=Name&date=${ym.getYear}-${"%02d".format(ym.getMonthValue)}"
+    s"$MsiBaseUrl/MSI/mvc/pl?sort=Name&date=${ym.getYear}-${"%02d".format(ym.getMonthValue)}"
 
   private val SlugPat = """/wydarzenie/kino/([^/]+)/""".r
 

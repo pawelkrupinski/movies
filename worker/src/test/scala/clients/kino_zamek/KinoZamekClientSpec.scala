@@ -7,16 +7,14 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.KinoZamekClient
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.{LocalDate, LocalDateTime, YearMonth}
 
-/** Replays the recorded `bilety.zamek.szczecin.pl/MSI?sort=Name&date=2026-06`
+/** Replays the recorded `bilety.zamek.szczecin.pl/MSI/mvc/pl?sort=Name&date=2026-06`
  *  (showtime data) and `zamek.szczecin.pl/wydarzenia/kino/` (film allow-list)
  *  fixtures through the client.  `today` is pinned to 2026-06-07. */
 class KinoZamekClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http   = new FakeHttpFetch("kino-zamek")
-  // TODO: replace `KinoZamekSzczecin` with the real `KinoZamekSzczecin` case object
-  // once it has been added to Cinema.scala and City.scala.
   private val client = new KinoZamekClient(http, KinoZamekSzczecin, today = LocalDate.of(2026, 6, 7))
 
   "KinoZamekClient" should "return a non-empty film list" in {
@@ -50,5 +48,27 @@ class KinoZamekClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val movies = client.fetch()
     val film = movies.find(_.movie.title.toLowerCase.startsWith("viridiana")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 19, 0))
+  }
+
+  it should "build the date-scoped /MSI/mvc/pl month URL, not the param-dropping /MSI redirect" in {
+    // `/MSI?…&date=…` 301→302 redirects to a bare `/MSI/mvc/pl`, dropping the
+    // `date` param, so the month was never actually selected. Hit `/MSI/mvc/pl`
+    // directly — the shape every other MSI cinema uses — to scope the month.
+    KinoZamekClient.monthUrl(YearMonth.of(2026, 6)) shouldBe
+      "https://bilety.zamek.szczecin.pl/MSI/mvc/pl?sort=Name&date=2026-06"
+  }
+
+  it should "propagate an MSI fetch failure instead of swallowing it into an empty list" in {
+    // A timeout / 5xx on the MSI host must surface — so RetryingCinemaScraper
+    // retries and the uptime bar goes red — rather than being swallowed into a
+    // silent "0 showtimes" success (white on the bar, empty errors array).
+    val msiDown = new FakeHttpFetch("kino-zamek") {
+      override def get(url: String): String =
+        if (url.contains("bilety.zamek.szczecin.pl"))
+          throw new RuntimeException(s"HTTP 503 for GET $url")
+        else super.get(url)
+    }
+    val failing = new KinoZamekClient(msiDown, KinoZamekSzczecin, today = LocalDate.of(2026, 6, 7))
+    a[RuntimeException] should be thrownBy failing.fetch()
   }
 }

@@ -11,9 +11,9 @@ import scala.util.Try
  * Shared parsing logic for the MSI ticketing platform used by several Polish
  * art-house / repertoire cinemas (Cinema1 Gdańsk, Zamek Szczecin, and others).
  *
- * The month URL `<base>/MSI/mvc/pl?sort=Name&date=YYYY-MM` (Cinema1) or
- * `<base>/MSI?sort=Name&date=YYYY-MM` (Zamek) renders every screening in the
- * given calendar month on a single server-side HTML page.  No JavaScript
+ * The month URL `<base>/MSI/mvc/pl?sort=Name&date=YYYY-MM` (Cinema1, Zamek, …)
+ * renders every screening in the given calendar month on a single server-side
+ * HTML page.  No JavaScript
  * execution required; all dates and times are in the document.
  *
  * Page structure per film:
