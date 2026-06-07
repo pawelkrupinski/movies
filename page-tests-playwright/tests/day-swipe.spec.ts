@@ -77,23 +77,25 @@ test.describe('day-swipe', () => {
         { type: 'touchMove', touchPoints: [{ x: x0 - (box.width * 0.3 * i) / 8, y }] });
     }
 
-    // A neighbour `.day-col` is mounted, painted, and carries cards.
-    const mounted = await page.evaluate(() =>
+    // A neighbour `.day-col` is mounted, painted, and carries cards. Poll
+    // rather than read once: the carousel arms + mounts the neighbour on a
+    // rAF after the touch moves land, so an immediate read races that frame
+    // and flakes on slower CI engines (the touch is still held, so once
+    // mounted it stays mounted until touchEnd below).
+    await expect.poll(() => page.evaluate(() =>
       [...document.querySelectorAll<HTMLElement>('#day-track > .day-col')]
-        .some(c => c.offsetParent !== null && !!c.querySelector('.col[data-title]')));
-    expect(mounted).toBe(true);
+        .some(c => c.offsetParent !== null && !!c.querySelector('.col[data-title]')))).toBe(true);
 
     // Synced vertical scroll: the revealed neighbour's top matches the centre
     // grid's top — both top-aligned in the same flex row sharing the page's
     // single scroll, so the offset lines up even after scrolling down.
-    const sameTop = await page.evaluate(() => {
+    await expect.poll(() => page.evaluate(() => {
       const root = document.getElementById('view-root')!;
       const cols = [...document.querySelectorAll<HTMLElement>('#day-track > .day-col')]
         .filter(c => c.querySelector('.col[data-title]'));
       const rt = root.getBoundingClientRect().top;
       return cols.some(c => Math.abs(c.getBoundingClientRect().top - rt) < 1);
-    });
-    expect(sameTop).toBe(true);
+    })).toBe(true);
 
     // Release below the commit threshold (the drag was only 30% < 40%) → snap
     // back; clean up the session.

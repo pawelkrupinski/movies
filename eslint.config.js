@@ -42,6 +42,7 @@ module.exports = [
         // From the per-page inline `<script>` block.
         IS_FAVOURITES_PAGE: 'readonly',
         applyFilters: 'readonly',
+        applyFiltersForDay: 'readonly',
         buildIndex: 'readonly',
       },
     },
