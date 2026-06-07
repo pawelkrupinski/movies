@@ -241,27 +241,30 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
         }
         if (holding && room != null) {
             // Floated well clear of the pill (and the finger holding it) so the
-            // thumb doesn't obscure the room name — see RoomTooltip's size.
-            RoomTooltip(room, Modifier.align(Alignment.TopCenter).offset(y = (-58).dp).zIndex(1f))
+            // thumb doesn't obscure the room name — see RoomTooltip's size. The
+            // bubble is now ~3× taller, so it's lifted further to keep its bottom
+            // edge above the held finger.
+            RoomTooltip(room, Modifier.align(Alignment.TopCenter).offset(y = (-124).dp).zIndex(1f))
         }
     }
 }
 
 @Composable
 private fun RoomTooltip(room: String, modifier: Modifier = Modifier) {
-    // Deliberately large: the tooltip pops on a press-and-hold, so the thumb is
-    // parked right on the pill. A big bubble lifted ~58dp above the pill stays
-    // readable around the finger; the 16sp text + roomy padding carry it.
+    // Deliberately huge: the tooltip pops on a press-and-hold, so the thumb is
+    // parked right on the pill. A big bubble lifted well above the pill stays
+    // readable around the finger; the 48sp text (3× the pill) + roomy padding
+    // carry it. Size pinned by RoomTooltipSizeTest.
     Text(
         text = room,
         color = RoomTooltipText,
-        fontSize = 16.sp,
+        fontSize = 48.sp,
         fontWeight = FontWeight.SemiBold,
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(RoomTooltipBackground)
-            .border(1.dp, RoomTooltipBorder, RoundedCornerShape(8.dp))
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            .border(1.dp, RoomTooltipBorder, RoundedCornerShape(12.dp))
+            .padding(horizontal = 20.dp, vertical = 12.dp),
     )
 }
 
