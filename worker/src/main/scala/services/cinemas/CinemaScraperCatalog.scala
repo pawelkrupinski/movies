@@ -100,6 +100,7 @@ class CinemaScraperCatalog(
     new UjazdowskiClient(http),
     new CytadelaClient(http),
     new NoveKinoClient(http, "wisla", KinoWisla),
+    new AdaKinoStudyjneClient(http, AdaKinoStudyjne),
   )
 
   private val krakowScrapers: Seq[CinemaScraper] = Seq(
@@ -170,6 +171,7 @@ class CinemaScraperCatalog(
     new KinoZakClient(http, KinoZak),
     new KinoPortClient(http, KinoPort),
     new Cinema1Client(http, Cinema1Gdansk, today),
+    new GdynskieCentrumFilmoweClient(http, GdynskieCentrumFilmowe),
   )
 
   private val bydgoszczScrapers: Seq[CinemaScraper] = Seq(
@@ -185,6 +187,7 @@ class CinemaScraperCatalog(
     new MultikinoClient(mkFetch, "0034", MultikinoLublin),
     new KinoBajkaClient(http, KinoBajka),
     new Bilety24Client(http, "https://ck-lublin.bilety24.pl", KinoCkLublin),
+    new KinoCskClient(http, KinoCskLublin),
   )
 
   private val czestochowaScrapers: Seq[CinemaScraper] = Seq(

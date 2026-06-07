@@ -286,6 +286,11 @@ case object KinoAmok        extends Cinema("Kino Amok", "Amok")
 // Zabrze
 case object KinoRoma        extends Cinema("Kino Roma", "Roma")
 
+// ── More art-house / independents (previously-skipped, now implemented) ───────
+case object AdaKinoStudyjne      extends Cinema("ADA Kino Studyjne", "ADA")
+case object GdynskieCentrumFilmowe extends Cinema("Gdyńskie Centrum Filmowe", "GCF")
+case object KinoCskLublin        extends Cinema("Kino CSK Lublin", "CSK")
+
 // ── New mid-size cities — national-chain branches only (chains-first sweep) ────
 // Each city's independent/art-house screen, where one exists, lands later as a
 // bespoke scraper. IDs verified live against each chain's own cinema-list API.
@@ -403,6 +408,7 @@ object Cinema {
     Ujazdowski,
     KinoCytadela,
     KinoWisla,
+    AdaKinoStudyjne,
   )
 
   /** Kraków venues. Cinema City has three multiplexes here (Bonarka,
@@ -490,6 +496,7 @@ object Cinema {
     KinoZak,
     KinoPort,
     Cinema1Gdansk,
+    GdynskieCentrumFilmowe,
   )
 
   /** Bydgoszcz venues. All three national chains have one multiplex each
@@ -513,6 +520,7 @@ object Cinema {
     MultikinoLublin,
     KinoBajka,
     KinoCkLublin,
+    KinoCskLublin,
   )
 
   val czestochowa: Seq[Cinema] = Seq(CinemaCityCzestochowaJurajska, CinemaCityCzestochowaWolnosc, OkfIluzja)
