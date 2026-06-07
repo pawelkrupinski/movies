@@ -3,7 +3,7 @@ package services.cinemas
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
@@ -17,8 +17,19 @@ import scala.util.Try
  * Richer metadata (runtime, director, full country list, synopsis) lives on the
  * per-film `/filmy/info/<id>/<slug>.html` page. Listing dates are absolute
  * day + Polish month name with no year, so `today` is injected for the year.
+ *
+ * Two-phase fetch: the repertoire page yields one row per (film, showtime) with
+ * title, time, poster, and the per-film detail-page URL stored in `filmUrl`.
+ * The detail page is then fetched per unique film for the metadata the listing
+ * doesn't expose — runtime, director, countries, synopsis, original title.
+ * When `deferDetail` is true, `fetch()` returns bare movies and the detail is
+ * filled in later by an `EnrichDetails` task via `fetchFilmDetail`.
  */
-class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
+class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")), deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+
+  // Static film detail pages cached across passes; the repertoire listing keeps
+  // the live `http` since its showtimes change every pass.
+  private val detailHttp = new CachingDetailFetch(http)
 
   val cinema: Cinema = KinoIluzjon
 
@@ -32,7 +43,16 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
+  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
+  // the per-film detail-page URL) and the detail is filled in later by an
+  // EnrichDetails task via `fetchFilmDetail` — so a scrape pass doesn't block on
+  // N detail-page round-trips. When off (default), it enriches inline as before.
   def fetch(): Seq[CinemaMovie] = {
+    val bare = fetchBare()
+    if (deferDetail) bare else enrichInline(bare)
+  }
+
+  private def fetchBare(): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(http.get(ListingUrl))
 
     // h3 date headers and screening rows in document order; fold to attach each
@@ -44,36 +64,56 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
     }
 
     val byFilm = slots.groupBy(_.filmId)
-    val details: Map[String, IluzjonClient.Detail] =
-      ParallelDetailFetch.keyed("iluzjon-details", byFilm.keys.toSeq, 1.minute)(id => byFilm(id).head.detailPath) { url =>
-        Try(http.get(url)).toOption.map(IluzjonClient.parseDetail).getOrElse(IluzjonClient.Detail.empty)
-      }
-
-    byFilm.toSeq.flatMap { case (filmId, group) =>
-      val primary    = group.head
-      val showtimes  = group.distinctBy(s => (s.dateTime, s.booking)).sortBy(_.dateTime)
-                         .map(s => Showtime(s.dateTime, s.booking, s.room, Nil))
-      val d = details.getOrElse(filmId, IluzjonClient.Detail.empty)
+    byFilm.toSeq.flatMap { case (_, group) =>
+      val primary   = group.head
+      val showtimes = group.distinctBy(s => (s.dateTime, s.booking)).sortBy(_.dateTime)
+                       .map(s => Showtime(s.dateTime, s.booking, s.room, Nil))
       if (showtimes.isEmpty) None
       else Some(CinemaMovie(
-        movie     = Movie(
-          title          = primary.title,
-          runtimeMinutes = d.runtimeMinutes,
-          releaseYear    = d.year,
-          countries      = d.countries,
-          genres         = Seq.empty,
-          originalTitle  = d.originalTitle
-        ),
+        movie     = Movie(title = primary.title),
         cinema    = cinema,
-        posterUrl = primary.poster.orElse(d.poster),
+        posterUrl = primary.poster,
         filmUrl   = Some(primary.detailPath),
-        synopsis  = d.synopsis,
-        cast      = d.cast,
-        director  = d.director,
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
         showtimes = showtimes
       ))
     }
   }
+
+  // Inline path: fetch each film's detail in parallel through the same
+  // `fetchFilmDetail` the deferred path uses, then merge non-destructively. One
+  // detail code path for both modes.
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val metas = ParallelDetailFetch("iluzjon-details", urls, 1.minute)(u => fetchFilmDetail(u))
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
+    }
+  }
+
+  override val detailGroup: String = "iluzjon"
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's filmUrl (e.g. `https://www.iluzjon.fn.org.pl/filmy/info/<id>/<slug>.html`).
+   *  None on fetch failure so the task stays stale and is retried rather than
+   *  recording an empty result as fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map { html =>
+      val d = IluzjonClient.parseDetail(html)
+      FilmDetail(
+        synopsis       = d.synopsis,
+        cast           = d.cast,
+        director       = d.director,
+        runtimeMinutes = d.runtimeMinutes,
+        releaseYear    = d.year,
+        originalTitle  = d.originalTitle,
+        countries      = d.countries,
+        posterUrl      = d.poster
+      )
+    }
 
   private def rowSlot(row: Element, date: LocalDate): Option[RawSlot] =
     Option(row.selectFirst("span.hour a")).flatMap { link =>

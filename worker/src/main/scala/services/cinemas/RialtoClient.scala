@@ -2,14 +2,18 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class RialtoClient(http: HttpFetch) extends CinemaScraper {
+class RialtoClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+
+  // Static event/detail pages cached across passes; the repertoire listing keeps
+  // the live `http` since its showtimes change every pass.
+  private val detailHttp = new CachingDetailFetch(http)
 
   val cinema: Cinema = Rialto
   private val RepertoireUrl = "https://www.kinorialto.poznan.pl/repertuar/"
@@ -56,7 +60,22 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl, BaseUrl)
 
+  // When deferDetail is on, fetch() returns BARE movies (showtimes + listing
+  // metadata + the per-event detail-page URL) and genres/detail are filled in
+  // later by an EnrichDetails task via `fetchFilmDetail` — so a scrape pass
+  // doesn't block on N detail-page round-trips for enrichment. When off
+  // (default), it enriches inline as before.
+  //
+  // NOTE: Rialto showtimes are ONLY available on the event detail page (not
+  // the repertoire listing), so event pages are always fetched inline for
+  // showtimes regardless of deferDetail. The deferral skips a second
+  // `fetchFilmDetail` pass on top of that first fetch.
   def fetch(): Seq[CinemaMovie] = {
+    val bare = fetchBare()
+    if (deferDetail) bare else enrichInline(bare)
+  }
+
+  private def fetchBare(): Seq[CinemaMovie] = {
     val filmEntries = parseRepertoire(http.get(RepertoireUrl))
 
     val eventDataByUrl: Map[String, Option[EventData]] =
@@ -86,6 +105,65 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper {
       }
       .toSeq
   }
+
+  // Inline path: fetch each film's detail in parallel through the same
+  // `fetchFilmDetail` the deferred path uses, then merge non-destructively.
+  // One detail code path for both modes.
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val metas = ParallelDetailFetch("rialto-details", urls, 1.minute)(u => fetchFilmDetail(u))
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
+    }
+  }
+
+  override val detailGroup: String = "rialto"
+
+  /** Deferred per-event detail fetch — the EnrichDetails task calls this with
+   *  the movie's filmUrl (the event page URL). Parses genres, synopsis,
+   *  director, runtime, year, and countries from the event page. None on
+   *  fetch failure so the task stays stale and is retried rather than
+   *  recording an empty result as fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map { html =>
+      val doc    = Jsoup.parse(html)
+      val genres = parseGenres(html)
+      val synopsisOpt = Option(doc.selectFirst("span.text")).flatMap { span =>
+        val lines   = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
+        val emptyIdx = lines.indexWhere(_.isEmpty)
+        val synLines = if (emptyIdx >= 0) lines.drop(emptyIdx + 1) else Array.empty[String]
+        val synText  = synLines.filter(_.nonEmpty).mkString(" ").trim
+        Option(synText).filter(_.nonEmpty)
+      }
+      val fullText = Option(doc.selectFirst("span.text")).map(_.text()).getOrElse("")
+      val runtime  = RuntimePat.findFirstMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption)
+      val year     = YearPat.findAllMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption
+      val director = Option(doc.selectFirst("span.text")).toSeq.flatMap { span =>
+        val lines = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
+        lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim).filter(_.nonEmpty)
+          .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      }
+      val countries: Seq[String] = Option(doc.selectFirst("span.text")).toSeq.flatMap { span =>
+        val lines = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
+        val countryPat = """(?s)^(.+?)\s*,?\s+(?:19|20)\d{2}\b""".r
+        lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase.startsWith("reż"))
+          .flatMap(l => countryPat.findFirstMatchIn(l).map(_.group(1).trim))
+          .map(_.stripSuffix(",").trim)
+          .filter(_.nonEmpty)
+          .toSeq
+          .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      }
+      FilmDetail(
+        synopsis       = synopsisOpt,
+        cast           = Seq.empty,
+        director       = director,
+        runtimeMinutes = runtime,
+        releaseYear    = year,
+        countries      = countries,
+        genres         = genres
+      )
+    }
 
   private def parseRepertoire(html: String): Seq[FilmEntry] =
     html.split("""<hr class="table-seperator"/>""").toSeq.flatMap { blockHtml =>

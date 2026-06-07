@@ -18,7 +18,7 @@ import scala.util.Try
  * by that slug; the per-film detail page is fetched for runtime / director /
  * year / countries / genres / synopsis, degrading to listing-only on failure.
  */
-class MuranowClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
+class MuranowClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")), deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
 
   // Static film node pages cached across passes; the calendar listing keeps the
   // live `http` since its showtimes change every pass.
@@ -33,7 +33,16 @@ class MuranowClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
+  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
+  // the per-film detail-page URL) and the detail is filled in later by an
+  // EnrichDetails task via `fetchFilmDetail` — so a scrape pass doesn't block on
+  // N detail-page round-trips. When off (default), it enriches inline as before.
   def fetch(): Seq[CinemaMovie] = {
+    val bare = fetchBare()
+    if (deferDetail) bare else enrichInline(bare)
+  }
+
+  private def fetchBare(): Seq[CinemaMovie] = {
     val doc  = Jsoup.parse(http.get(RepertoireUrl))
     val year = MuranowClient.yearFromLabel(Option(doc.selectFirst("p.calendar-seance-full__month-label")).map(_.text).getOrElse(""), today.getYear)
 
@@ -61,39 +70,59 @@ class MuranowClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
       }
     }
 
-    val bySlug  = slots.groupBy(_.slug)
-    val details = ParallelDetailFetch.keyed("muranow-details", bySlug.keys.toSeq.filter(_.startsWith("/")), 1.minute)(slug => BaseUrl + slug) { url =>
-      Try(detailHttp.get(url)).toOption.map(MuranowClient.parseDetail).getOrElse(MuranowClient.Detail.empty)
-    }
-
+    val bySlug = slots.groupBy(_.slug)
     bySlug.toSeq.flatMap { case (slug, group) =>
-      val primary = group.head
+      val primary   = group.head
       val showtimes = group.distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
                         .map(s => Showtime(s.dateTime, s.bookingUrl, None, Nil))
       if (showtimes.isEmpty) None
-      else {
-        val d = details.getOrElse(slug, MuranowClient.Detail.empty)
-        Some(CinemaMovie(
-          movie     = Movie(
-            title          = primary.title,
-            runtimeMinutes = d.runtimeMinutes,
-            releaseYear    = d.year,
-            countries      = d.countries,
-            genres         = d.genres,
-            originalTitle  = d.originalTitle
-          ),
-          cinema    = cinema,
-          posterUrl = group.flatMap(_.poster).headOption,
-          filmUrl   = if (slug.startsWith("/")) Some(BaseUrl + slug) else None,
-          synopsis  = d.synopsis,
-          cast      = d.cast,
-          director  = d.director,
-          showtimes = showtimes,
-          trailerUrl = d.trailer
-        ))
-      }
+      else Some(CinemaMovie(
+        movie      = Movie(title = primary.title),
+        cinema     = cinema,
+        posterUrl  = group.flatMap(_.poster).headOption,
+        filmUrl    = if (slug.startsWith("/")) Some(BaseUrl + slug) else None,
+        synopsis   = None,
+        cast       = Seq.empty,
+        director   = Seq.empty,
+        showtimes  = showtimes,
+        trailerUrl = None
+      ))
     }
   }
+
+  // Inline path: fetch each film's detail in parallel through the same
+  // `fetchFilmDetail` the deferred path uses, then merge non-destructively. One
+  // detail code path for both modes.
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val metas = ParallelDetailFetch("muranow-details", urls, 1.minute)(u => fetchFilmDetail(u))
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
+    }
+  }
+
+  override val detailGroup: String = "muranow"
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's filmUrl (e.g. `https://kinomuranow.pl/film/<slug>`). None on fetch
+   *  failure so the task stays stale and is retried rather than recording an
+   *  empty result as fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map { html =>
+      val d = MuranowClient.parseDetail(html)
+      FilmDetail(
+        synopsis       = d.synopsis,
+        cast           = d.cast,
+        director       = d.director,
+        runtimeMinutes = d.runtimeMinutes,
+        releaseYear    = d.year,
+        originalTitle  = d.originalTitle,
+        countries      = d.countries,
+        genres         = d.genres,
+        trailerUrl     = d.trailer
+      )
+    }
 
   private def abs(href: String): String = if (href.startsWith("http")) href else BaseUrl + href
 }
