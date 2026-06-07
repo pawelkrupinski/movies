@@ -132,6 +132,7 @@ fun ShowtimeTuningScreen() {
                         sections = ShowtimeTuningData.sections,
                         showHeaders = true,
                         bottomInset = 120.dp,
+                        scrollResetKey = null,
                         onOpen = {},
                         onHide = {},
                     )

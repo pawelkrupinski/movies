@@ -279,7 +279,7 @@ struct ContentView: View {
             errorState(error)
         } else {
             TabView(selection: $tab) {
-                FilmGridView(films: filmsForFilmsTab)
+                FilmGridView(films: filmsForFilmsTab, scrollResetToken: AnyHashable(dateFilter))
                     .refreshable { await store.reload() }
                     .tag(Tab.films)
                 cinemasPage
@@ -325,6 +325,7 @@ struct ContentView: View {
             // A pinned cinema is already named by its pill, so drop the
             // now-redundant per-section header; "Wszystkie" keeps them.
             showSectionHeaders: pinnedCinema == nil,
+            scrollResetToken: AnyHashable(dateFilter),
             header: {
                 CinemaPillsRow(
                     allCinemas: allCinemas,

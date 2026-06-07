@@ -103,12 +103,12 @@ class TuningStylesTest {
                 Row {
                     Box(Modifier.width(180.dp)) {
                         CompositionLocalProvider(LocalCinemaHeaderStyle provides CinemaHeaderStyle(fontSize = 24.sp)) {
-                            CinemaGrid(sectionFor("KinoX"), showHeaders = true, bottomInset = 0.dp, onOpen = {}, onHide = {})
+                            CinemaGrid(sectionFor("KinoX"), showHeaders = true, bottomInset = 0.dp, scrollResetKey = null, onOpen = {}, onHide = {})
                         }
                     }
                     Box(Modifier.width(180.dp)) {
                         CompositionLocalProvider(LocalCinemaHeaderStyle provides CinemaHeaderStyle()) {
-                            CinemaGrid(sectionFor("KinoX"), showHeaders = true, bottomInset = 0.dp, onOpen = {}, onHide = {})
+                            CinemaGrid(sectionFor("KinoX"), showHeaders = true, bottomInset = 0.dp, scrollResetKey = null, onOpen = {}, onHide = {})
                         }
                     }
                 }

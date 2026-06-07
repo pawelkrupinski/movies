@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -234,7 +235,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                 },
                             ) {
                                 if (page == 0) {
-                                    FilmsGrid(vm.filmsForFilmsTab(films, hidden, disabled), gridBottomInset, onOpenFilm) { vm.hide(it) }
+                                    FilmsGrid(vm.filmsForFilmsTab(films, hidden, disabled), gridBottomInset, vm.dateFilter, onOpenFilm) { vm.hide(it) }
                                 } else {
                                     CinemaGrid(
                                         vm.cinemaSections(films, hidden),
@@ -242,6 +243,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                         // per-cinema header is redundant — the pill already names it.
                                         showHeaders = vm.pinnedCinema == null,
                                         bottomInset = gridBottomInset,
+                                        scrollResetKey = vm.dateFilter,
                                         onOpen = onOpenFilm,
                                     ) { vm.hide(it) }
                                 }
@@ -546,13 +548,33 @@ internal fun posterGridColumns(landscape: Boolean, layoutWidthDp: Int): GridCell
     if (!landscape) GridCells.Fixed(2)
     else GridCells.Adaptive(minSize = PosterGridMetrics.cardColumnDp(layoutWidthDp).dp)
 
+/**
+ * Snap [state] back to the first item whenever [key] changes — so picking a
+ * different day drops the user at the top of the new day's list instead of
+ * stranding them mid-scroll on the previous day's rows. The first composition
+ * is a no-op (the grid already starts at the top), which also preserves a
+ * scroll position restored across a config change.
+ */
 @Composable
-private fun FilmsGrid(films: List<Film>, bottomInset: Dp, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
+internal fun ScrollToTopOnChange(state: LazyGridState, key: Any?) {
+    var seenFirst by remember { mutableStateOf(false) }
+    LaunchedEffect(key) {
+        if (!seenFirst) {
+            seenFirst = true
+        } else {
+            state.scrollToItem(0)
+        }
+    }
+}
+
+@Composable
+private fun FilmsGrid(films: List<Film>, bottomInset: Dp, scrollResetKey: Any?, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
     if (films.isEmpty()) {
         EmptyState("Brak repertuaru.")
         return
     }
     val gridState = rememberLazyGridState()
+    ScrollToTopOnChange(gridState, scrollResetKey)
     // Grid items map 1:1 to films, so the URL list lines up with item indices.
     PosterPrefetch(remember(films) { films.map { it.posterChain.firstOrNull().orEmpty() } }, gridState)
     LazyVerticalGrid(
@@ -570,12 +592,13 @@ private fun FilmsGrid(films: List<Film>, bottomInset: Dp, onOpen: (String) -> Un
 }
 
 @Composable
-internal fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, bottomInset: Dp, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
+internal fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, bottomInset: Dp, scrollResetKey: Any?, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
     if (sections.isEmpty()) {
         EmptyState("Brak repertuaru.")
         return
     }
     val gridState = rememberLazyGridState()
+    ScrollToTopOnChange(gridState, scrollResetKey)
     // Mirror the grid's item order: a blank slot for each section header,
     // then one poster URL per film, so indices line up with the grid.
     val posterUrls = remember(sections) {
