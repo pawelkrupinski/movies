@@ -27,6 +27,17 @@ enum A11y {
         static let cell = "filmgrid.cell"
     }
 
+    /// Per-film detail screen.
+    enum FilmDetail {
+        /// The header poster — tap or long-press opens the full-screen viewer.
+        static let poster      = "filmdetail.poster"
+        /// The full-screen poster cover, present only while it's shown.
+        static let fullScreen  = "filmdetail.poster.fullscreen"
+        /// The close button on the full-screen cover (always an accessibility
+        /// element, so it's the reliable existence probe for the cover).
+        static let closeButton = "filmdetail.poster.close"
+    }
+
     enum FiltersSheet {
         static let root            = "filters.sheet"
         static let cinemaSection   = "filters.cinema"

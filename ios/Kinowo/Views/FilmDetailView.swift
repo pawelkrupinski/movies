@@ -19,6 +19,7 @@ struct FilmDetailView: View {
     @EnvironmentObject var details: DetailsStore
     @Environment(\.filmDetailStyle) private var style
     @State private var playingTrailerIndex: Int? = nil
+    @State private var showFullScreenPoster = false
 
     var body: some View {
         ScrollView {
@@ -34,6 +35,15 @@ struct FilmDetailView: View {
         }
         .ignoresSafeArea(edges: [.bottom, .horizontal])
         .background(Color(red: 0.067, green: 0.067, blue: 0.067).ignoresSafeArea())
+        .fullScreenCover(isPresented: $showFullScreenPoster) {
+            if let primary = film.posterURL {
+                FullScreenPosterView(
+                    primary: primary,
+                    fallbacks: film.fallbackPosterURLs,
+                    onClose: { showFullScreenPoster = false }
+                )
+            }
+        }
         .navigationTitle(film.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -60,9 +70,19 @@ struct FilmDetailView: View {
         // arrival. 2:3 aspect carries the height; no maxHeight cap.
         let width = Self.listingCardPosterWidth
         HStack(alignment: .top, spacing: 16) {
-            poster
-                .frame(width: width, height: width * 1.5)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+            // A Button (not a bare tap gesture) so the poster is always a
+            // queryable accessibility element — even while the AsyncImage is
+            // still loading its placeholder — and VoiceOver announces it.
+            // The long-press is the platform-conventional "peek"; the tap the
+            // obvious one. Both open the same full-screen cover.
+            Button { openFullScreenPoster() } label: {
+                poster
+                    .frame(width: width, height: width * 1.5)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(A11y.FilmDetail.poster)
+            .simultaneousGesture(LongPressGesture().onEnded { _ in openFullScreenPoster() })
             VStack(alignment: .leading, spacing: style.headerColumnSpacing) {
                 Text(film.title)
                     .font(.system(size: style.titleFontSize, weight: style.titleWeight))
@@ -106,6 +126,12 @@ struct FilmDetailView: View {
         let screenWidth = UIScreen.main.bounds.width
         let columnWidth = (screenWidth - 24 - 12) / 2
         return min(220, max(160, columnWidth))
+    }
+
+    /// Open the full-screen viewer — no-op when the film has no poster, so the
+    /// button is a dead tap rather than presenting an empty cover.
+    private func openFullScreenPoster() {
+        if film.posterURL != nil { showFullScreenPoster = true }
     }
 
     @ViewBuilder
@@ -292,6 +318,75 @@ private struct DetailPosterImage<NoPoster: View>: View {
                 noPoster()
             }
         }
+    }
+}
+
+/// Full-screen poster viewer presented from `FilmDetailView` on a tap or
+/// long-press of the header poster. Black backdrop, the whole poster shown
+/// (fit), pinch-to-zoom and drag-to-pan up to 4×, dismissed by a tap on the
+/// backdrop or the close button. Reuses `DetailPosterImage` so the
+/// fallback-walking logic lives in one place. Mirrors the Android
+/// `FullScreenPoster`.
+private struct FullScreenPosterView: View {
+    let primary: URL
+    let fallbacks: [URL]
+    let onClose: () -> Void
+
+    @State private var scale: CGFloat = 1
+    @State private var lastScale: CGFloat = 1
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+                .accessibilityIdentifier(A11y.FilmDetail.fullScreen)
+
+            DetailPosterImage(primary: primary, fallbacks: fallbacks, noPoster: { EmptyView() })
+                .scaleEffect(scale)
+                .offset(offset)
+                .gesture(
+                    MagnificationGesture()
+                        .onChanged { scale = min(4, max(1, lastScale * $0)) }
+                        .onEnded { _ in
+                            lastScale = scale
+                            // Snap back to centre once the user pinches all the
+                            // way out — a panned-then-shrunk poster shouldn't
+                            // get stranded off-screen.
+                            if scale <= 1 { withAnimation { offset = .zero; lastOffset = .zero } }
+                        }
+                )
+                .simultaneousGesture(
+                    DragGesture()
+                        .onChanged { value in
+                            guard scale > 1 else { return }
+                            offset = CGSize(width: lastOffset.width + value.translation.width,
+                                            height: lastOffset.height + value.translation.height)
+                        }
+                        .onEnded { _ in lastOffset = offset }
+                )
+
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(Color.black.opacity(0.5), in: Circle())
+                    }
+                    .accessibilityIdentifier(A11y.FilmDetail.closeButton)
+                    .padding(.top, 8)
+                    .padding(.trailing, 16)
+                }
+                Spacer()
+            }
+        }
+        // A tap anywhere on the backdrop dismisses; the close Button and the
+        // zoom/pan gestures take their touches first.
+        .contentShape(Rectangle())
+        .onTapGesture { onClose() }
     }
 }
 
