@@ -43,7 +43,7 @@ fun CityChoiceScreen(onPick: (City) -> Unit) {
             color = TextSecondary,
             modifier = Modifier.padding(top = 6.dp, bottom = 20.dp),
         )
-        for (city in Cities.all) {
+        for (city in Cities.allSorted) {
             TallFilledButton(city.name) { onPick(city) }
         }
     }

@@ -1,6 +1,8 @@
 package models
 
+import java.text.Collator
 import java.time.ZoneId
+import java.util.Locale
 
 /** The Polish name of a city in the grammatical forms the templates need:
  *  nominative ("Poznań"), genitive plural for "…skich kin" ("poznańskich"),
@@ -455,6 +457,16 @@ object City {
     Przemysl, Konin,
   )
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
+
+  /** [[all]] ordered alphabetically by display name under Polish collation, so
+   *  the UI city pickers read A→Z with `Ł` after `L`, `Ó` after `O`, etc.
+   *  rather than dumping the diacritic letters at the end (code-point order).
+   *  This is the list every *UI* picker iterates; [[all]] keeps its hand-tuned
+   *  order for `default`/`allJson`/nearest-city use, where order is semantic. */
+  val allSorted: Seq[City] = {
+    val collator = Collator.getInstance(Locale.forLanguageTag("pl-PL"))
+    all.sortWith((a, b) => collator.compare(a.labels.nominative, b.labels.nominative) < 0)
+  }
 
   /** Compact JSON array of every city for the client (web `ALL_CITIES`,
    *  consumed by the geolocation/nearest-city picker + the filter switch).

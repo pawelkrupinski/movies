@@ -138,7 +138,7 @@ struct CityChoiceView: View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(City.all, id: \.slug) { city in
+                    ForEach(City.allSorted, id: \.slug) { city in
                         Button {
                             choose(city)
                         } label: {

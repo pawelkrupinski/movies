@@ -520,7 +520,7 @@ struct FiltersSheet: View {
                             details.use(citySlug: slug)
                         }
                     )) {
-                        ForEach(City.all, id: \.slug) { city in
+                        ForEach(City.allSorted, id: \.slug) { city in
                             Text(city.name).tag(city.slug)
                         }
                     }

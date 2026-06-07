@@ -18,7 +18,7 @@ class LandingController(cc: ControllerComponents) extends AbstractController(cc)
   def index(): Action[AnyContent] = Action { request =>
     request.cookies.get("city").map(_.value).flatMap(City.bySlug) match {
       case Some(c) => Redirect(s"/${c.slug}/")
-      case None    => Ok(views.html.landing(City.all))
+      case None    => Ok(views.html.landing(City.allSorted))
     }
   }
 }

@@ -150,7 +150,7 @@
       @if(models.City.all.sizeIs > 1) {
         <div class="panel-section-label">Miasto</div>
         <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
-          @for(c <- models.City.all) {
+          @for(c <- models.City.allSorted) {
             <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
           }
         </select>

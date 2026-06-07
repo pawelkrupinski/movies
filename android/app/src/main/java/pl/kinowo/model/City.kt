@@ -73,6 +73,18 @@ object Cities {
         City("konin", "Konin", 52.2230, 18.2511),
     )
 
+    /**
+     * [all] ordered alphabetically by display name under Polish collation, so
+     * the UI city pickers read A→Z with `Ł` after `L`, `Ó` after `O`, etc.
+     * rather than dumping the diacritic letters at the end (code-point order).
+     * This is the list the pickers iterate; [all] keeps its hand-tuned order
+     * for [DEFAULT] and the nearest-city pick, where order is semantic.
+     */
+    val allSorted: List<City> = run {
+        val collator = java.text.Collator.getInstance(java.util.Locale("pl", "PL"))
+        all.sortedWith(compareBy(collator) { it.name })
+    }
+
     val DEFAULT: City = all.first()
 
     /**

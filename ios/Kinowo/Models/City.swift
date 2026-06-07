@@ -65,6 +65,15 @@ struct City: Codable, Hashable {
         City(slug: "konin", name: "Konin", lat: 52.2230, lon: 18.2511),
     ]
 
+    /// [all] ordered alphabetically by display name under Polish collation, so
+    /// the UI city pickers read A→Z with `Ł` after `L`, `Ó` after `O`, etc.
+    /// rather than dumping the diacritic letters at the end. This is the list
+    /// the pickers iterate; [all] keeps its hand-tuned order for `default` and
+    /// the nearest-city pick, where order is semantic.
+    static let allSorted: [City] = all.sorted {
+        $0.name.compare($1.name, options: .caseInsensitive, range: nil, locale: Locale(identifier: "pl_PL")) == .orderedAscending
+    }
+
     /// Fallback when no fix is available and the user hasn't chosen.
     static let `default` = all[0]
 

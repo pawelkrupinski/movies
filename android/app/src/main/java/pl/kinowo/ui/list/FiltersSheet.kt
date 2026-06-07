@@ -317,7 +317,7 @@ private fun CitySection(vm: KinowoViewModel) {
         label = label,
         expanded = expanded,
         onExpandedChange = { expanded = it },
-        items = Cities.all.map { it.name to it.slug },
+        items = Cities.allSorted.map { it.name to it.slug },
         modifier = Modifier.fillMaxWidth(),
     ) { slug -> vm.setCity(slug); expanded = false }
 }

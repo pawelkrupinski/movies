@@ -70,6 +70,29 @@ final class CityTests: XCTestCase {
         ])
     }
 
+    func testAllSortedIsAlphabeticalUnderPolishCollation() {
+        // Same cities as `all`, just reordered for the UI pickers.
+        XCTAssertEqual(Set(City.allSorted.map(\.slug)), Set(City.all.map(\.slug)))
+        XCTAssertEqual(City.allSorted.map(\.slug), [
+            "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "czestochowa",
+            "dabrowa-gornicza", "elblag", "gliwice", "gorzow-wielkopolski", "jelenia-gora",
+            "kalisz", "katowice", "kielce", "konin", "koszalin", "krakow",
+            "legnica", "lublin", "lodz", "nowy-sacz", "olsztyn", "opole",
+            "plock", "poznan", "przemysl", "radom", "rybnik", "rzeszow",
+            "slupsk", "sosnowiec", "szczecin", "tarnow", "torun", "trojmiasto",
+            "tychy", "walbrzych", "warszawa", "wloclawek", "wroclaw", "zabrze",
+            "zielona-gora",
+        ])
+    }
+
+    func testAllSortedCollatesLAfterLNotAtTheEnd() {
+        // Polish-collation discriminator: a naive code-point sort puts "Łódź"
+        // (Ł = U+0141) after every ASCII-initial name, i.e. near the very end.
+        let slugs = City.allSorted.map(\.slug)
+        XCTAssertEqual(slugs.firstIndex(of: "lodz"), slugs.firstIndex(of: "lublin").map { $0 + 1 })
+        XCTAssertLessThan(slugs.firstIndex(of: "lodz")!, slugs.firstIndex(of: "zabrze")!)
+    }
+
     // ── cinema pill names (full map mirrors web Cinema.pillMap) ────
 
     func testPillNameShortensCinemasBeyondPoznan() {

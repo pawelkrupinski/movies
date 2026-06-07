@@ -65,6 +65,34 @@ class CitiesTest {
     }
 
     @Test
+    fun allSortedIsAlphabeticalUnderPolishCollation() {
+        // Same cities as `all`, just reordered for the UI pickers.
+        assertEquals(Cities.all.map { it.slug }.toSet(), Cities.allSorted.map { it.slug }.toSet())
+        assertEquals(
+            listOf(
+                "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "czestochowa",
+                "dabrowa-gornicza", "elblag", "gliwice", "gorzow-wielkopolski", "jelenia-gora",
+                "kalisz", "katowice", "kielce", "konin", "koszalin", "krakow",
+                "legnica", "lublin", "lodz", "nowy-sacz", "olsztyn", "opole",
+                "plock", "poznan", "przemysl", "radom", "rybnik", "rzeszow",
+                "slupsk", "sosnowiec", "szczecin", "tarnow", "torun", "trojmiasto",
+                "tychy", "walbrzych", "warszawa", "wloclawek", "wroclaw", "zabrze",
+                "zielona-gora",
+            ),
+            Cities.allSorted.map { it.slug },
+        )
+    }
+
+    @Test
+    fun allSortedCollatesLAfterLNotAtTheEnd() {
+        // Polish-collation discriminator: a naive code-point sort puts "Łódź"
+        // (Ł = U+0141) after every ASCII-initial name, i.e. near the very end.
+        val slugs = Cities.allSorted.map { it.slug }
+        assertEquals(slugs.indexOf("lublin") + 1, slugs.indexOf("lodz"))
+        assert(slugs.indexOf("lodz") < slugs.indexOf("zabrze"))
+    }
+
+    @Test
     fun returnsNullWhenFartherThan100km() {
         // Open Baltic, ~150 km north of Trójmiasto (its nearest served city) —
         // out of range of every supported city.

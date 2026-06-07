@@ -35,6 +35,30 @@ class CitySpec extends AnyFlatSpec with Matchers {
     Poznan.labels.locative shouldBe "Poznaniu"
   }
 
+  "City.allSorted" should "list every city alphabetically under Polish collation" in {
+    // Same cities as `all`, just reordered — nothing dropped or duplicated.
+    City.allSorted should contain theSameElementsAs City.all
+
+    City.allSorted.map(_.slug) shouldBe Seq(
+      "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "czestochowa",
+      "dabrowa-gornicza", "elblag", "gliwice", "gorzow-wielkopolski", "jelenia-gora",
+      "kalisz", "katowice", "kielce", "konin", "koszalin", "krakow",
+      "legnica", "lublin", "lodz", "nowy-sacz", "olsztyn", "opole",
+      "plock", "poznan", "przemysl", "radom", "rybnik", "rzeszow",
+      "slupsk", "sosnowiec", "szczecin", "tarnow", "torun", "trojmiasto",
+      "tychy", "walbrzych", "warszawa", "wloclawek", "wroclaw", "zabrze",
+      "zielona-gora",
+    )
+  }
+
+  it should "collate Ł after L (Łódź follows Lublin), not dump it at the end" in {
+    // The Polish-collation discriminator: a naive code-point sort puts "Łódź"
+    // (Ł = U+0141) after every ASCII-initial name, i.e. near the very end.
+    val slugs = City.allSorted.map(_.slug)
+    slugs.indexOf("lodz") shouldBe slugs.indexOf("lublin") + 1
+    slugs.indexOf("lodz") should be < slugs.indexOf("zabrze")
+  }
+
   "City.allJson" should "emit a slug/name/lat/lon object per city for the clients" in {
     val json = City.allJson
     json should include(""""slug":"poznan"""")
