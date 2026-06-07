@@ -214,6 +214,46 @@ How:
 If the response is trivial or the client is a thin pass-through, write
 a smaller unit test instead — but don't skip testing the client.
 
+## Never leave uncommitted changes stranded — and don't work in the root checkout
+
+This repo is worked by many agents in parallel. The root checkout
+(`/Users/pawel/projects/movies`, branch `main`) is shared and must end
+every session **clean** (`git status --porcelain` empty). Uncommitted
+WIP left in a working tree is the single most expensive mess this repo
+hits: it strands work on a stale base, blocks the next agent's
+`git rebase`/`pull`, and gets silently swept or lost. One session found
+**92 files of uncommitted WIP sitting directly on the `main` checkout**
+(a coherent "drop two cinemas" task that was never committed), plus a
+half-dozen abandoned worktrees each carrying dirty, never-committed
+feature work (mobile day-carousel, tuning screens) — all at risk of
+being pruned away.
+
+Rules:
+
+- **Do your work in your own worktree, never in the root/`main`
+  checkout.** `git worktree add -b <branch> <path> origin/main`. The
+  root checkout is for orchestration/inspection only — never edit
+  production files there. (See the standing worktree-per-change rule.)
+- **Never finish or yield a turn with a dirty tree you own.** Before you
+  consider a task done — and before you hand off, pause, or could be
+  terminated — either **commit** your changes (preferred; see the commit
+  gate below) or, if genuinely not ready to commit, **stash with a
+  descriptive label** (`git stash push -u -m "<what + why>"`) so the work
+  is named and recoverable rather than a nameless dirty diff. A bare,
+  unlabelled dirty tree is the failure mode.
+- **An interrupted/exploratory task still owes a checkpoint.** If you
+  must stop mid-task, commit a WIP commit on your *own branch*
+  (`wip: <state>`) or stash-with-label. Don't leave the next agent — or
+  your future self — to reverse-engineer what an orphaned 90-file diff
+  was trying to do.
+- **Don't strand work on a stale base.** If `git status` shows your
+  worktree is behind `origin/main`, rebase before you pile more on;
+  don't accumulate uncommitted edits against an old `main` that a
+  rebase will then have to untangle.
+- **Touch only what's yours.** If the tree holds dirty files you didn't
+  create, leave them — they're a co-agent's WIP. Surface them; don't
+  `git add -A`, commit, stash, or discard them.
+
 ## Commit at every stable state
 
 After each self-contained change reaches a stable state — production
