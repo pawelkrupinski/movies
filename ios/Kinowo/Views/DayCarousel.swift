@@ -53,6 +53,16 @@ struct DayCarousel: View {
     /// the current pane's ScrollView; mirrored read-only by the neighbours so
     /// the revealed day sits at the same Y.
     @State private var sharedScrollY: CGFloat = 0
+    /// True while a predominantly-horizontal carousel drag is in flight. The
+    /// drag is a `.simultaneousGesture`, so without this the card's
+    /// `NavigationLink` ALSO recognises the swipe as a tap — a swipe-to-change-day
+    /// that starts on a card would push that film's detail over the grid (the
+    /// cards "slide in then disappear" behind a film page the user never opened).
+    /// While it's true the interactive pane is `.disabled`, so a horizontal swipe
+    /// can't trigger a card tap; it's cleared one runloop hop AFTER the gesture
+    /// ends so the touch-up that would fire the link is still suppressed.
+    /// Guarded by DaySwipeCardsVisibleUITests.
+    @State private var horizontalDragActive = false
 
     /// Fraction of the width past which a release commits to the neighbour.
     private let commitFraction: CGFloat = 0.3
@@ -106,6 +116,9 @@ struct DayCarousel: View {
             scrollOffsetReporter: { sharedScrollY = $0 }
         )
         .frame(width: width, height: height, alignment: .top)
+        // Block card taps while a horizontal swipe is in flight, so the swipe
+        // changes the day without also opening the film under the finger.
+        .disabled(horizontalDragActive)
     }
 
     /// A read-only neighbour pane: the same grid content with no ScrollView,
@@ -145,6 +158,9 @@ struct DayCarousel: View {
                     if previewFilter != nil { previewFilter = nil }
                     return
                 }
+                // A horizontal swipe is underway — suppress card taps so it can't
+                // also open the film under the finger.
+                if !horizontalDragActive { horizontalDragActive = true }
                 let preview = previewDayFilter(
                     dragTranslation: value.translation.width,
                     viewportWidth: width,
@@ -162,6 +178,11 @@ struct DayCarousel: View {
                 // sticks on a previewed day. A commit sets `dateFilter` below, so
                 // clearing here lands the highlight back on the real selection.
                 previewFilter = nil
+                // Re-enable card taps, but only AFTER this touch-up has been
+                // delivered — clearing it synchronously here would let the same
+                // touch-up still reach the (re-enabled) NavigationLink and open
+                // the film. The async hop lets the suppressed tap lapse first.
+                DispatchQueue.main.async { horizontalDragActive = false }
                 guard width > 0,
                       abs(value.translation.width) > abs(value.translation.height)
                 else { return }

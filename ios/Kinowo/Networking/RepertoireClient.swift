@@ -152,22 +152,31 @@ extension RepertoireStore {
                 countries: ["Polska"],
                 directors: [],
                 cast: [],
+                // Today AND tomorrow, so the carousel's neighbour day is
+                // populated too: a swipe can commit to a day that actually has
+                // cards, so the "did the next day's cards land on screen" path is
+                // exercised (DaySwipeCardsVisibleUITests). A today-only fixture
+                // left every neighbour empty.
                 showings: [
-                    // Dated today so the default "Dziś" filter shows it at
-                    // launch, with the day's last slot so `pruneStaleShowings`
-                    // keeps it.
-                    DayShowings(
-                        date: DateFilter.iso(Date()),
-                        label: "Dziś",
-                        cinemas: [
-                            CinemaShowings(
-                                cinema: "Kino", cinemaURL: nil,
-                                showtimes: [Showtime(time: "23:59", format: "2D", room: nil, bookingURL: nil)]
-                            )
-                        ]
-                    )
+                    fixtureDay(offsetDays: 0, label: "Dziś"),
+                    fixtureDay(offsetDays: 1, label: "Jutro")
                 ]
             )
         }
+    }
+
+    /// One fixture day, `offsetDays` from now, carrying a single late slot so it
+    /// survives `pruneStaleShowings`.
+    private static func fixtureDay(offsetDays: Int, label: String) -> DayShowings {
+        DayShowings(
+            date: DateFilter.iso(Date().addingTimeInterval(Double(offsetDays) * 86_400)),
+            label: label,
+            cinemas: [
+                CinemaShowings(
+                    cinema: "Kino", cinemaURL: nil,
+                    showtimes: [Showtime(time: "23:59", format: "2D", room: nil, bookingURL: nil)]
+                )
+            ]
+        )
     }
 }
