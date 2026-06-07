@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 import scala.concurrent.duration._
 import scala.util.Try
 
-class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
+class KinoPalacoweClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
 
   val cinema: Cinema = KinoPalacowe
   private val BaseUrl = "https://kinopalacowe.pl"
@@ -54,9 +54,6 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
   )
 
   private val EmptyMeta = FilmMeta(Seq.empty, Seq.empty, None, None, Seq.empty, None)
-
-  private def fetchFilmMeta(filmUrl: String): FilmMeta =
-    Try(detailHttp.get(filmUrl)).toOption.flatMap(parseFilmMeta).getOrElse(EmptyMeta)
 
   private def parseFilmMeta(html: String): Option[FilmMeta] = {
     val trailer = parseTrailer(html)
@@ -113,38 +110,63 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
+  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster +
+  // the per-film detail-page URL) and the detail is filled in later by an
+  // EnrichDetails task via `fetchFilmDetail` — so a scrape pass doesn't block on
+  // N detail-page round-trips. When off (default), it enriches inline as before.
   def fetch(): Seq[CinemaMovie] = {
-    val entries = fetchAllEntries()
+    val bare = parseBare(fetchAllEntries())
+    if (deferDetail) bare else enrichInline(bare)
+  }
 
-    val metaByUrl: Map[String, FilmMeta] =
-      ParallelDetailFetch("kino-palacowe-meta", entries.flatMap(_.filmUrl).distinct, 2.minutes)(fetchFilmMeta)
-
+  private def parseBare(entries: Seq[ScreeningEntry]): Seq[CinemaMovie] =
     entries
       .groupBy(_.movieTitle)
       .toSeq
       .map { case (title, group) =>
         val sorted = group.sortBy(_.dateTime)
         val first  = sorted.head
-        val meta   = first.filmUrl.flatMap(metaByUrl.get).getOrElse(EmptyMeta)
         CinemaMovie(
-          movie     = Movie(
-            title          = title,
-            runtimeMinutes = meta.runtime,
-            releaseYear    = meta.releaseYear,
-            countries      = meta.countries,
-            genres         = meta.genres
-          ),
+          movie     = Movie(title = title),
           cinema    = KinoPalacowe,
           posterUrl = first.posterUrl,
           filmUrl   = first.filmUrl,
           synopsis   = first.synopsis,
           cast       = Seq.empty,
-          director   = meta.director,
+          director   = Seq.empty,
           showtimes  = sorted.map(entry => Showtime(entry.dateTime, entry.bookingUrl, entry.room)),
-          trailerUrl = meta.trailerUrl
+          trailerUrl = None
         )
       }
+
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val metas = ParallelDetailFetch("kino-palacowe-meta", urls, 2.minutes)(u => fetchFilmDetail(u))
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
+    }
   }
+
+  override val detailGroup: String = "kino-palacowe"
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's filmUrl. None on a fetch failure so the task stays stale and is
+   *  retried by the next scrape rather than recording an empty result as fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.flatMap(parseFilmMeta).map { meta =>
+      FilmDetail(
+        synopsis       = None,
+        cast           = Seq.empty,
+        director       = meta.director,
+        runtimeMinutes = meta.runtime,
+        releaseYear    = meta.releaseYear,
+        countries      = meta.countries,
+        genres         = meta.genres,
+        posterUrl      = None,
+        trailerUrl     = meta.trailerUrl
+      )
+    }
 
   private def fetchAllEntries(): Seq[ScreeningEntry] = {
     var entries = Seq.empty[ScreeningEntry]

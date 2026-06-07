@@ -116,22 +116,9 @@ class KinoApolloClient(http: HttpFetch, deferDetail: Boolean = false) extends Ci
     if (urls.isEmpty) movies
     else {
       val metas = ParallelDetailFetch("kino-apollo-details", urls, 1.minute)(u => fetchFilmDetail(u))
-      movies.map { m =>
-        m.filmUrl.flatMap(metas.get).flatten match {
-          case Some(d) => merge(m, d)
-          case None    => m
-        }
-      }
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
     }
   }
-
-  private def merge(m: CinemaMovie, d: FilmDetail): CinemaMovie = m.copy(
-    movie      = m.movie.copy(runtimeMinutes = d.runtimeMinutes, countries = d.countries, genres = d.genres),
-    synopsis   = d.synopsis.orElse(m.synopsis),
-    director   = if (d.director.nonEmpty) d.director else m.director,
-    cast       = if (d.cast.nonEmpty) d.cast else m.cast,
-    trailerUrl = d.trailerUrl.orElse(m.trailerUrl)
-  )
 
   override val detailGroup: String = "kino-apollo"
 
