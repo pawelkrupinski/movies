@@ -120,30 +120,30 @@ test.describe('day-swipe', () => {
     expect(await page.evaluate(() => Math.round(window.scrollY))).toBe(0);
   });
 
-  test('Left/Right keys and a day pill all run the animated slide', async ({ page }) => {
+  test('Left/Right keys and a day pill change the day through the carousel', async ({ page }) => {
     // The ‹ › arrows are hidden on portrait phones (where this swipe spec runs),
     // so this covers the OTHER entry points that share the slide: the keyboard
     // and a pill tap. The arrow path is exercised by date-stepper.spec on
-    // desktop, where the arrows are shown.
-    const armed = (page: Page) =>
-      page.evaluate(() => document.getElementById('day-track')!.classList.contains('day-track--armed'));
+    // desktop, and the in-flight `.day-track--armed` arming is asserted
+    // deterministically in PageJsBehaviourSpec — here we assert the committed
+    // OUTCOME (the day changed + settled), which isn't racy against the ~220ms
+    // slide the way reading the transient armed class right after a click is.
 
-    // Right / Left keyboard.
+    // Right / Left keyboard step one day each.
     await startOn(page, 'today');
     await page.keyboard.press('ArrowRight');
-    expect(await armed(page)).toBe(true);
-    await expect.poll(() => settled(page)).toBe(true);
     await expect.poll(() => dayIndex(page)).toBe(1);
-    await page.keyboard.press('ArrowLeft');
     await expect.poll(() => settled(page)).toBe(true);
+    await page.keyboard.press('ArrowLeft');
     await expect.poll(() => dayIndex(page)).toBe(0);
+    await expect.poll(() => settled(page)).toBe(true);
 
-    // Day pill (multi-step jump today → anytime: one slide).
+    // Tapping a pill jumps straight to that day and reflects it in the URL.
     await startOn(page, 'today');
     await page.locator('.day-pill[data-day="anytime"]').click();
-    expect(await armed(page)).toBe(true);
     await expect.poll(() => settled(page)).toBe(true);
-    expect(await page.evaluate(() =>
-      new URL(location.href).searchParams.get('date'))).toBe('anytime');
+    await expect
+      .poll(() => page.evaluate(() => new URL(location.href).searchParams.get('date')))
+      .toBe('anytime');
   });
 });
