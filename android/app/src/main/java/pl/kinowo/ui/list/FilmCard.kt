@@ -13,15 +13,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,7 +43,11 @@ import pl.kinowo.ui.common.Showings
 import pl.kinowo.ui.common.ShowtimeChipMetrics
 import pl.kinowo.ui.common.copyFilmLink
 import pl.kinowo.ui.common.layoutWidthDp
+import pl.kinowo.ui.common.shareFilm
 import pl.kinowo.ui.theme.CardSurface
+
+/** Test tag on the whole card, so the share-menu test can long-press it. */
+internal const val FilmCardTestTag = "film-card"
 
 /**
  * One film card in the grid: 2:3 poster (with a hide button), then title +
@@ -57,17 +70,26 @@ fun FilmCard(
     // in lockstep with the chips (layoutWidthDp, so landscape matches portrait —
     // see ShowtimeChipMetrics). scale == 1f at the 360 dp floor.
     val s = ShowtimeChipMetrics.scale(layoutWidthDp())
+    var menuExpanded by remember { mutableStateOf(false) }
     Surface(
         color = CardSurface,
         shape = RoundedCornerShape(12.dp),
-        // Tap opens the detail screen; long-press copies the canonical
-        // `/film?title=…` link (there's no address bar to copy from on mobile).
-        modifier = modifier.fillMaxWidth().combinedClickable(
+        // Tap opens the detail screen; long-press opens a share menu
+        // (Udostępnij / Skopiuj link), mirroring iOS `FilmCardView`'s
+        // `.contextMenu`. The showtime chips keep their own long-press (room
+        // tooltip) — that gesture lives on the inner chip, see `ShowtimeChip`.
+        modifier = modifier.fillMaxWidth().testTag(FilmCardTestTag).combinedClickable(
             onClick = onOpen,
-            onLongClick = { copyFilmLink(context, film.title) },
+            onLongClick = { menuExpanded = true },
         ),
     ) {
         Column {
+            ShareMenu(
+                expanded = menuExpanded,
+                onDismiss = { menuExpanded = false },
+                onShare = { shareFilm(context, film.title) },
+                onCopy = { copyFilmLink(context, film.title) },
+            )
             Box {
                 PosterImage(
                     chain = film.posterChain,
@@ -121,5 +143,32 @@ fun FilmCard(
                 )
             }
         }
+    }
+}
+
+/**
+ * The card's long-press menu: share the film's public link via the system
+ * sheet, or copy it to the clipboard. Mirrors the two actions iOS offers in
+ * `FilmCardView`'s `.contextMenu`. Each action dismisses the menu first so the
+ * launched chooser / clipboard toast isn't fighting the popup.
+ */
+@Composable
+private fun ShareMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    onShare: () -> Unit,
+    onCopy: () -> Unit,
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        DropdownMenuItem(
+            text = { Text("Udostępnij") },
+            leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
+            onClick = { onDismiss(); onShare() },
+        )
+        DropdownMenuItem(
+            text = { Text("Skopiuj link") },
+            leadingIcon = { Icon(Icons.Filled.Link, contentDescription = null) },
+            onClick = { onDismiss(); onCopy() },
+        )
     }
 }
