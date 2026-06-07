@@ -1,9 +1,11 @@
 package pl.kinowo.ui.list
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import okhttp3.OkHttpClient
@@ -78,5 +80,36 @@ class FiltersSheetOrderTest {
         list.performScrollToNode(hasText("Zaloguj się"))
         assertTrue("Miasto must sit above the account / sign-in section",
             top("Miasto") < top("Zaloguj się"))
+    }
+
+    /**
+     * The city picker is a collapsed dropdown (matching iOS), not a row that
+     * lays every city out at once: only the active city shows until tapped,
+     * tapping reveals the rest, and picking one switches the city. Fails on the
+     * old SegmentedChoice, where every city button is composed up front.
+     */
+    @Test
+    fun cityPickerIsACollapsedDropdown() {
+        compose.setContent {
+            FiltersSheetContent(viewModel(), films = emptyList(), showCinemaFilter = true)
+        }
+
+        val list = compose.onNode(hasScrollAction())
+        list.performScrollToNode(hasText("Miasto"))
+
+        // Default city (Poznań) shows on the collapsed button; other cities are
+        // hidden until the dropdown opens.
+        compose.onNodeWithText("Poznań").assertIsDisplayed()
+        compose.onNodeWithText("Wrocław").assertDoesNotExist()
+
+        // Tapping the button opens the menu, revealing the other cities.
+        compose.onNodeWithText("Poznań").performClick()
+        compose.onNodeWithText("Wrocław").assertIsDisplayed()
+
+        // Picking a city fires onPick (setCity + close), so the menu collapses
+        // again — the revealed items disappear.
+        compose.onNodeWithText("Wrocław").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Wrocław").assertDoesNotExist()
     }
 }

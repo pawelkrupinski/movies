@@ -306,18 +306,24 @@ private fun CollapsibleSection(
 }
 
 /**
- * Miasto — the active city. Mirrors the other top-of-sheet axes: a label over a
- * segmented choice of [Cities.all]. Tapping persists the pick (and re-fetches
- * that city's repertoire). Independent of login — it's just a city switch.
+ * Miasto — the active city. A dropdown of [Cities.all], mirroring the iOS
+ * FiltersBar city Picker rather than a horizontal segmented row (which doesn't
+ * fit 19 cities). Picking persists the choice (and re-fetches that city's
+ * repertoire). Independent of login — it's just a city switch.
  */
 @Composable
 private fun CitySection(vm: KinowoViewModel) {
     val selected by vm.selectedCity.collectAsState()
+    var expanded by remember { mutableStateOf(false) }
+    val label = Cities.all.firstOrNull { it.slug == selected }?.name ?: Cities.DEFAULT.name
     FilterSectionLabel("Miasto")
-    SegmentedChoice<String?>(
-        options = Cities.all.map { it.name to it.slug },
-        selected = selected,
-    ) { slug -> if (slug != null) vm.setCity(slug) }
+    Dropdown(
+        label = label,
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        items = Cities.all.map { it.name to it.slug },
+        modifier = Modifier.fillMaxWidth(),
+    ) { slug -> vm.setCity(slug); expanded = false }
 }
 
 @Composable
