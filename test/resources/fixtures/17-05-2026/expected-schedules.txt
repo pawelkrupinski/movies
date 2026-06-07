@@ -5992,10 +5992,10 @@ originalTitle:     Scary Movie
 imdbRating:        6.3
 metascore:         48
 rottenTomatoes:    52
-filmwebRating:     6.30401
+filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/scary-movie
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/scary_movie
-filmwebUrl:        https://www.filmweb.pl/film/Straszny+film-2000-1416
+filmwebUrl:        https://www.filmweb.pl/film/Straszny+film-2026-10084281
 cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/straszny-film/8117s2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/straszny-film/8117s2r
@@ -6214,10 +6214,10 @@ originalTitle:     Así es la vida...
 imdbRating:        6.3
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     7.09091
+filmwebRating:     —
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/such_is_life
-filmwebUrl:        https://www.filmweb.pl/film/Takie+jest+%C5%BCycie-2000-126481
+filmwebUrl:        https://www.filmweb.pl/film/Takie+jest+%C5%BCycie-2025-10102549
 cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/takie-jest-zycie/
 cinemaScrapes:
@@ -7206,10 +7206,10 @@ originalTitle:     大红灯笼高高挂
 imdbRating:        8.1
 metascore:         —
 rottenTomatoes:    97
-filmwebRating:     —
+filmwebRating:     7.82599
 metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/raise_the_red_lantern_1991
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Zawie%C5%9Bcie+czerwone+latarnie-1991-31273
 cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/cykl-kultowa-klasyka-zawiescie-czerwone-latarnie/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14419-zawiescie-czerwone-latarnie/

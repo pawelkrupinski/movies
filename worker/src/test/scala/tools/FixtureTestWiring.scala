@@ -37,19 +37,31 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
    *  production does so one missing-fixture cinema can't take down the
    *  whole tick. Shared across specs that exercise the fixture end-to-end. */
   def runOneScrapeTick(): Unit = {
+    // TWO phases, on purpose. Production publishes MovieRecordCreated inline as
+    // each cinema is recorded, so async enrichment for a film can start while a
+    // LATER cinema in the same tick is still merging into that same cache row —
+    // the enrichment write (e.g. TMDB cast) then races the scrape-merge,
+    // making whole-corpus snapshots (PageSnapshotSpec, FilmScheduleEndToEndSpec)
+    // non-deterministic. Tests don't need that interleaving: record EVERY
+    // cinema first so each row reaches its final scraped shape, THEN publish all
+    // the create events so enrichment runs against settled rows. Combined with
+    // tmdbMaxRetries=0 and the full cascade drain, this makes the rendered
+    // corpus deterministic run-to-run.
+    val created = collection.mutable.ListBuffer.empty[MovieRecordCreated]
     cinemaScrapers.foreach { scraper =>
       val cinema = scraper.cinema
       try {
-        val movies = scraper.fetch()
+        val movies  = scraper.fetch()
         val touched = movieCache.recordCinemaScrape(cinema, movies)
         touched.foreach { case (cm, key, isNew) =>
           if (isNew)
-            eventBus.publish(MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None))
+            created += MovieRecordCreated(key.cleanTitle, key.year, cm.movie.originalTitle, if (cm.director.nonEmpty) Some(cm.director.mkString(", ")) else None)
         }
       } catch {
         case _: Exception => () // mirror ShowtimeCache.refreshOne's catch
       }
     }
+    created.foreach(eventBus.publish)
   }
 
   /** Convenience: scrape every cinema once, drain the cascade, then run
