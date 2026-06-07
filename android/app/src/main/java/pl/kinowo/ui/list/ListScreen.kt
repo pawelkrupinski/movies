@@ -156,6 +156,15 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
         vm.markSwiped()
     }
 
+    // Which day pill is highlighted. At rest it tracks vm.dateFilter; during a
+    // drag the carousel flips it (via onPreviewDay) to the day a release would
+    // commit to, the moment the drag crosses the commit threshold — a highlight-
+    // only PREVIEW that leaves the selection, grid, and scroll untouched. Kept
+    // in sync with vm.dateFilter so a pill TAP (which sets vm.dateFilter) and a
+    // committed swipe both land the highlight on the new day with no flicker.
+    var previewDay by remember { mutableStateOf(vm.dateFilter) }
+    LaunchedEffect(vm.dateFilter) { previewDay = vm.dateFilter }
+
     // The centre column's vertical scroll, hoisted so the revealed neighbours can
     // mirror it during a drag and so ScrollToTopOnChange can ease it to the top
     // after a committed day flip.
@@ -197,7 +206,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 // The date pills always spread to fill the row; on wide screens
                 // the inline search field sits between them and Filtry, capped
                 // at a fixed width rather than eating the leftover space.
-                DatePills(vm, wide)
+                DatePills(vm, wide, highlighted = previewDay)
                 if (wide) {
                     InlineSearchField(value = vm.search, onValueChange = { vm.search = it })
                 }
@@ -243,6 +252,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                 current = vm.dateFilter,
                                 sharedScroll = sharedScroll,
                                 onCommitDay = onCommitDay,
+                                onPreviewDay = { previewDay = it },
                             ) { day, state, columnModifier ->
                                 val visible = vm.filmsFor(day, films, hidden, disabled)
                                 // Suppress the per-card cinema label when the
@@ -448,13 +458,16 @@ private fun RowScope.SearchFieldContent(value: String, onValueChange: (String) -
 // Jutro / 7 dni) get weight while "Wszystkie" keeps its intrinsic width, so
 // the row still fits beside the 🎬 mark and Filtry icon without a separate
 // strip or horizontal scrolling. See TopBarLayout.datePillFillsRow.
+// [highlighted] drives which pill reads as selected — it tracks vm.dateFilter at
+// rest but flips to the swipe-preview day mid-drag (see ListScreen.previewDay).
+// A TAP still sets vm.dateFilter directly, which becomes the new highlight.
 @Composable
-private fun RowScope.DatePills(vm: KinowoViewModel, wide: Boolean) {
+private fun RowScope.DatePills(vm: KinowoViewModel, wide: Boolean, highlighted: DateFilter) {
     for (preset in DateFilter.presets) {
         val fills = TopBarLayout.datePillFillsRow(preset == DateFilter.Anytime, wide)
         DatePill(
             label = preset.label,
-            selected = vm.dateFilter == preset,
+            selected = highlighted == preset,
             modifier = if (fills) Modifier.weight(1f) else Modifier,
         ) { vm.dateFilter = preset }
     }

@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
 import pl.kinowo.filter.DateFilter
+import pl.kinowo.filter.previewDayIndex
 import pl.kinowo.filter.wrappedDayIndex
 
 // Fraction of the container width a drag must cross to commit a day change.
@@ -59,6 +60,13 @@ private const val SettleDurationMs = 220
  *   [ScrollToTopOnChange] can animate it to the top after a committed day flip.
  * @param onCommitDay called once, with the newly-selected preset, the instant a
  *   swipe commits (after the slide animation, before the strip recentres).
+ * @param onPreviewDay called continuously during a drag with the day a release
+ *   would commit to RIGHT NOW — the current day until the drag crosses
+ *   [CommitFraction], the neighbour past it, flipping back if the drag retreats.
+ *   Lets the caller live-highlight the day pill without touching the selection,
+ *   grid, or scroll. Also fired on drag end/abort with the resolved day so the
+ *   highlight never stays stale. Defaults to a no-op for callers that don't
+ *   surface a preview.
  * @param dayColumn renders one day's grid: given its preset, the [LazyGridState]
  *   to drive it, and a [Modifier] to apply, it lays out a full-width column.
  */
@@ -68,6 +76,7 @@ fun DayCarousel(
     sharedScroll: LazyGridState,
     onCommitDay: (DateFilter) -> Unit,
     modifier: Modifier = Modifier,
+    onPreviewDay: (DateFilter) -> Unit = {},
     dayColumn: @Composable (day: DateFilter, state: LazyGridState, modifier: Modifier) -> Unit,
 ) {
     val presets = DateFilter.presets
@@ -113,6 +122,10 @@ fun DayCarousel(
     // centre column). Guarded by [isSettling] so no drag can race the swap.
     fun commit(day: DateFilter, target: Float) {
         isSettling = true
+        // Land the pill highlight on the committed day immediately, so it never
+        // lingers on a stale value while the slide animation plays out and so it
+        // matches the selection the upstream onCommitDay sets (no flicker).
+        onPreviewDay(day)
         scope.launch {
             dragOffset.animateTo(target, tween(SettleDurationMs))
             onCommitDay(day)
@@ -138,7 +151,23 @@ fun DayCarousel(
                     onHorizontalDrag = { change, amount ->
                         if (isSettling) return@detectHorizontalDragGestures
                         change.consume()
-                        scope.launch { dragOffset.snapTo(dragOffset.value + amount) }
+                        val next = dragOffset.value + amount
+                        scope.launch { dragOffset.snapTo(next) }
+                        // Live pill PREVIEW: highlight the day a release would
+                        // commit to right now (current until the drag crosses
+                        // CommitFraction, the neighbour past it, flipping back if
+                        // it retreats). Selection/grid/scroll are untouched.
+                        onPreviewDay(
+                            presets[
+                                previewDayIndex(
+                                    dragOffsetPx = next,
+                                    widthPx = containerWidthPx.toFloat(),
+                                    currentIndex = currentIdx,
+                                    count = presets.size,
+                                    commitFraction = CommitFraction,
+                                )
+                            ],
+                        )
                     },
                     onDragEnd = {
                         if (isSettling) return@detectHorizontalDragGestures
@@ -147,8 +176,12 @@ fun DayCarousel(
                         when {
                             dragOffset.value <= -width * CommitFraction -> commit(next, -width)
                             dragOffset.value >= width * CommitFraction -> commit(prev, width)
-                            // Abort: ease back to the current day, scroll untouched.
-                            else -> scope.launch { dragOffset.animateTo(0f, tween(SettleDurationMs)) }
+                            // Abort: ease back to the current day, scroll untouched,
+                            // and snap the pill highlight back to the current day.
+                            else -> {
+                                onPreviewDay(current)
+                                scope.launch { dragOffset.animateTo(0f, tween(SettleDurationMs)) }
+                            }
                         }
                     },
                 )
