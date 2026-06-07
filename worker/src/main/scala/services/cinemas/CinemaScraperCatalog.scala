@@ -35,7 +35,11 @@ class CinemaScraperCatalog(
   // Required (no default) because the secondary diagnostic ctor below already
   // carries defaults, and Scala allows only one overloaded ctor to do so; the
   // secondary passes false (inline detail).
-  deferDetail: Boolean
+  deferDetail: Boolean,
+  // Builds the per-chain detail-page cache (Helios / Cinema City). The worker
+  // injects a Mongo-backed cache so chain detail is deduped across servers; the
+  // diagnostic ctor + tests default to the in-process CachingDetailFetch.
+  chainDetailCache: (HttpFetch, FiniteDuration) => HttpFetch
 ) {
 
   /** Diagnostic ctor: the Zyte-routed fetches (Multikino's API, biletyna's venue
@@ -45,7 +49,8 @@ class CinemaScraperCatalog(
    *  `WorkerWiring` uses the primary ctor to inject its (possibly
    *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) =
-    this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today, false)
+    this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today, false,
+      (h, ttl) => new CachingDetailFetch(h, ttl))
 
   // Per-film detail bodies are static between passes and IDENTICAL across a
   // chain's locations, so each chain shares ONE 6h CachingDetailFetch: a film's
@@ -53,8 +58,8 @@ class CinemaScraperCatalog(
   // chain per 6h instead of once per location per pass. Live listing/screening
   // fetches stay on `http`.
   private val ChainDetailTtl = 6.hours
-  private val heliosDetailHttp:     HttpFetch = new CachingDetailFetch(http, ChainDetailTtl)
-  private val cinemaCityDetailHttp: HttpFetch = new CachingDetailFetch(http, ChainDetailTtl)
+  private val heliosDetailHttp:     HttpFetch = chainDetailCache(http, ChainDetailTtl)
+  private val cinemaCityDetailHttp: HttpFetch = chainDetailCache(http, ChainDetailTtl)
   private def helios(cfg: HeliosCinema): HeliosClient =
     new HeliosClient(http, cfg, today, Some(heliosDetailHttp))
 

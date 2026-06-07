@@ -6,6 +6,7 @@ import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.CinemaScraperCatalog
+import _root_.tools.CachingDetailFetch
 
 import java.time.LocalDate
 
@@ -29,7 +30,8 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
    *  fixture-less fake so a leaked fetch onto the shared path throws. */
   private def catalogWithBiletyna(fixtureDir: String): CinemaScraperCatalog =
     new CinemaScraperCatalog(
-      http, mkFetch = http, bnFetch = new FakeHttpFetch(fixtureDir), today = LocalDate.of(2026, 6, 6), deferDetail = false
+      http, mkFetch = http, bnFetch = new FakeHttpFetch(fixtureDir), today = LocalDate.of(2026, 6, 6),
+      deferDetail = false, chainDetailCache = (h, ttl) => new CachingDetailFetch(h, ttl)
     )
 
   "CinemaScraperCatalog" should "route Kino Kameralne through the injected biletyna seam, not the shared http" in {
