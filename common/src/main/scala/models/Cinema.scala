@@ -371,6 +371,15 @@ case object KinoApolloWalbrzych extends Cinema("Kino Apollo Wałbrzych", "Apollo
 case object KinoPiast           extends Cinema("Kino Piast", "Piast")               // Legnica — bilety24 (DCF)
 case object KinoLot             extends Cinema("Kino Lot", "Lot")                   // Jelenia Góra — bilety24 (DCF)
 case object KinoPrzedwiosnie    extends Cinema("Kino Przedwiośnie", "Przedwiośnie")  // Płock — novekino
+// Konin catchment: the remaining venues Filmweb lists under its Konin showtimes
+// page, each in a nearby town. Helios Konin (chain client) and Kino Oskard
+// (Bilety24, above) are already covered; Września's Kino Trójka is excluded.
+case object KinoZacheta         extends Cinema("Kino Zachęta", "Zachęta")            // Kleczew — filmweb
+case object KinoNadWarta        extends Cinema("Kino nad Wartą", "nad Wartą")        // Koło — filmweb
+case object KinoHel             extends Cinema("Kino Hel", "Hel")                   // Pleszew — filmweb
+case object KinoSokolnia        extends Cinema("Kino Sokolnia", "Sokolnia")          // Słupca — filmweb
+case object KinoTur             extends Cinema("Kino Tur", "Tur")                   // Turek — filmweb
+case object KinoMok             extends Cinema("Kino MOK", "MOK")                   // Zagórów — filmweb
 
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
@@ -587,7 +596,7 @@ object Cinema {
   val slupsk: Seq[Cinema]       = Seq(MultikinoSlupsk, KinoRejs)
   val jeleniaGora: Seq[Cinema]  = Seq(HeliosJeleniaGora, KinoLot)
   val przemysl: Seq[Cinema]     = Seq(HeliosPrzemysl)
-  val konin: Seq[Cinema]        = Seq(HeliosKonin, KinoOskard)
+  val konin: Seq[Cinema]        = Seq(HeliosKonin, KinoOskard, KinoZacheta, KinoNadWarta, KinoHel, KinoSokolnia, KinoTur, KinoMok)
 
   /** Every city's venues in page order, paired with the city's display label.
    *  Single source of truth for `all` and for the uptime page's per-city

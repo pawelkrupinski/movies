@@ -264,7 +264,20 @@ class CinemaScraperCatalog(
   private val slupskScrapers       = Seq(new MultikinoClient(mkFetch, "0030", MultikinoSlupsk), new FilmwebShowtimesClient(http, 447, KinoRejs, today = today))
   private val jeleniaGoraScrapers  = Seq(new HeliosClient(http, HeliosNuxt.JeleniaGora, today), new Bilety24Client(http, "https://kino-lot.bilety24.pl", KinoLot))
   private val przemyslScrapers     = Seq(new HeliosClient(http, HeliosNuxt.Przemysl, today))
-  private val koninScrapers        = Seq(new HeliosClient(http, HeliosNuxt.Konin, today), new Bilety24Client(http, "https://ckis-konin.bilety24.pl", KinoOskard))
+  // Konin + its catchment: Helios via the chain client, Oskard via Bilety24, and
+  // the remaining independents Filmweb serves by internal cinema id (verified
+  // non-empty seances 2026-06). Września's Kino Trójka (1698) is intentionally
+  // not wired.
+  private val koninScrapers        = Seq(
+    new HeliosClient(http, HeliosNuxt.Konin, today),
+    new Bilety24Client(http, "https://ckis-konin.bilety24.pl", KinoOskard),
+    new FilmwebShowtimesClient(http, 2405, KinoZacheta,  today = today),   // Kleczew
+    new FilmwebShowtimesClient(http, 1526, KinoNadWarta, today = today),   // Koło
+    new FilmwebShowtimesClient(http, 2417, KinoHel,      today = today),   // Pleszew
+    new FilmwebShowtimesClient(http, 1694, KinoSokolnia, today = today),   // Słupca
+    new FilmwebShowtimesClient(http, 1523, KinoTur,      today = today),   // Turek
+    new FilmwebShowtimesClient(http, 1851, KinoMok,      today = today),   // Zagórów
+  )
 
   /** Raw scrapers grouped by city slug — same slugs `City.slug` uses, so a
    *  caller can scope by city without re-spelling the membership. */
