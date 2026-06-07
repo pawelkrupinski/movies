@@ -29,7 +29,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
    *  fixture-less fake so a leaked fetch onto the shared path throws. */
   private def catalogWithBiletyna(fixtureDir: String): CinemaScraperCatalog =
     new CinemaScraperCatalog(
-      http, mkFetch = http, bnFetch = new FakeHttpFetch(fixtureDir), today = LocalDate.of(2026, 6, 6)
+      http, mkFetch = http, bnFetch = new FakeHttpFetch(fixtureDir), today = LocalDate.of(2026, 6, 6), deferDetail = false
     )
 
   "CinemaScraperCatalog" should "route Kino Kameralne through the injected biletyna seam, not the shared http" in {

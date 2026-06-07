@@ -47,8 +47,16 @@ class WorkerWiring {
   lazy val multikinoFetch: HttpFetch = MultikinoClient.fetchFor(httoFetch)
   // biletyna.pl 403s our datacenter IP; route Kino Kameralne through Zyte.
   lazy val biletynaFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch)
-  lazy val cinemaScraperCatalog = new CinemaScraperCatalog(httoFetch, multikinoFetch, biletynaFetch, heliosToday)
+  lazy val cinemaScraperCatalog = new CinemaScraperCatalog(httoFetch, multikinoFetch, biletynaFetch, heliosToday, deferDetail)
   def kinoMuzaClient: KinoMuzaClient = cinemaScraperCatalog.kinoMuzaClient
+
+  // When true, cinemas that implement DetailEnricher scrape BARE and their
+  // per-film detail is fetched via EnrichDetails queue tasks (deduped per
+  // (group, film), multi-server-safe) instead of inline in fetch(). Independent
+  // of KINOWO_QUEUE_SCRAPING: detail enrichment is queue-based in either scrape
+  // mode. Off by default so prod is unchanged until cutover.
+  protected def deferDetail: Boolean =
+    Env.get("KINOWO_DEFERRED_DETAIL").exists(v => v == "true" || v == "1")
 
   // Scrape every modelled city by default; KINOWO_SCRAPE_CITIES (comma-separated
   // slugs) only NARROWS the set, e.g. to shed load if the worker throttles/OOMs.
@@ -120,7 +128,7 @@ class WorkerWiring {
   lazy val showtimeFetchEc = backgroundBudget.ec("showtime-fetch", scrapeConcurrency)
 
   lazy val showtimeCache = new ShowtimeCache(
-    cinemaScrapers, eventBus, movieCache, showtimeFetchEc
+    cinemaScrapers, eventBus, movieCache, showtimeFetchEc, runner = Some(cinemaScrapeRunner)
   )
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────
@@ -135,18 +143,25 @@ class WorkerWiring {
 
   lazy val taskQueue: TaskQueue = new MongoTaskQueue(mongoConnection.database)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
-  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus)
 
-  // Cinemas that defer their per-film detail (implement DetailEnricher). Their
-  // scrape returns bare movies; ScrapeCinemaHandler enqueues EnrichDetails tasks
-  // (deduped per detailGroup+film) and EnrichDetailsHandler fills the detail in.
+  // Cinemas that defer their per-film detail (implement DetailEnricher), wired
+  // only when deferDetail is on — otherwise empty, so the runner enqueues nothing
+  // and clients enrich inline. Keyed by cinema for the producer (scrape →
+  // enqueue) and by detailGroup for the handler (task → fetch).
   lazy val detailEnrichers: Seq[DetailEnricher] =
-    cinemaScraperCatalog.all.collect { case de: DetailEnricher => de }
+    if (deferDetail) cinemaScraperCatalog.all.collect { case de: DetailEnricher => de } else Nil
+
+  // The shared scrape core: record + publish + (when deferDetail) enqueue detail
+  // tasks. Injected into BOTH ShowtimeCache and ScrapeCinemaHandler so detail
+  // enrichment is queue-based regardless of which scrape scheduler runs.
+  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(
+    movieCache, eventBus, taskQueue, freshnessStore,
+    detailEnrichers.map(de => de.cinema.displayName -> de).toMap
+  )
 
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
-    cinemaScrapeRunner, freshnessStore, taskQueue,
-    detailEnrichers.map(de => de.cinema.displayName -> de).toMap
+    cinemaScrapeRunner, freshnessStore
   )
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore
@@ -191,12 +206,10 @@ class WorkerWiring {
     filmwebRatings.start()
     unscreenedCleanup.start()
     kinoMuzaSynopsisRefresher.start()
-    if (queueScraping) {
-      taskWorker.start()
-      scrapeReaper.start()
-    } else {
-      showtimeCache.start()
-    }
+    // The task worker runs whenever there's queue work: queue-driven scraping
+    // and/or deferred detail enrichment.
+    if (queueScraping || deferDetail) taskWorker.start()
+    if (queueScraping) scrapeReaper.start() else showtimeCache.start()
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). */
@@ -206,13 +219,11 @@ class WorkerWiring {
   )
 
   def stop(): Unit = {
-    if (queueScraping) {
-      scrapeReaper.stop()
+    if (queueScraping) scrapeReaper.stop() else showtimeCache.stop()
+    if (queueScraping || deferDetail) {
       taskWorker.stop()
       taskQueue.close()
       freshnessStore.close()
-    } else {
-      showtimeCache.stop()
     }
     cascadeDrainOrder.foreach(_.stop())
     unscreenedCleanup.stop()
