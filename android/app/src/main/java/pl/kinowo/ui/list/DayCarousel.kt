@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
@@ -19,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.pointerInput
@@ -155,8 +158,26 @@ fun DayCarousel(
         // width is known, so each column can be pinned to the container width.
         if (containerWidthPx > 0) {
             val widthDp: Dp = with(LocalDensity.current) { containerWidthPx.toDp() }
+            // The strip is three container-widths wide and slid one width left so
+            // the centre column sits in view. Pin the Row's width to 3× explicitly:
+            // the parent Box is only ONE width wide, so without this the Row inherits
+            // a single-width max constraint and hands the first (prev) column the
+            // whole budget, leaving the centre + next columns measured at WIDTH 0 —
+            // the centre grid then composes nothing at rest and cards only appear
+            // mid-drag when the offset drags a neighbour in. The Box's clipToBounds
+            // hides the overflow; the offset places the centre at [0, width].
             Row(
                 Modifier
+                    // Let the strip grow to three container-widths even though the
+                    // parent Box is only one wide, and ANCHOR the overflow at the
+                    // start edge (the default would CENTRE the overflow, shifting the
+                    // whole strip left by one width). Without unbounded width the Row
+                    // inherits a single-width max and the first column eats the whole
+                    // budget, leaving the centre + next columns measured at WIDTH 0 —
+                    // the centre grid then composes nothing at rest and cards only
+                    // appear mid-drag as a neighbour slides in.
+                    .wrapContentWidth(align = Alignment.Start, unbounded = true)
+                    .requiredWidth(widthDp * 3)
                     .fillMaxHeight()
                     .offset { IntOffset(x = (-containerWidthPx + dragOffset.value).toInt(), y = 0) },
             ) {
