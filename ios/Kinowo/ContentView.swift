@@ -279,7 +279,9 @@ struct ContentView: View {
             errorState(error)
         } else {
             TabView(selection: $tab) {
-                FilmGridView(films: filmsForFilmsTab, scrollResetToken: AnyHashable(dateFilter))
+                FilmGridView(films: filmsForFilmsTab,
+                             scrollResetToken: AnyHashable(dateFilter),
+                             containerWidth: viewportWidth)
                     .refreshable { await store.reload() }
                     .tag(Tab.films)
                 cinemasPage
@@ -300,6 +302,17 @@ struct ContentView: View {
             // pill; the grids pin their own content inset (see FilmGridView) so
             // the first row still rests a clear gap below the bar.
             .ignoresSafeArea(edges: [.bottom, .horizontal])
+            // Recreate the paged TabView whenever the column count changes —
+            // i.e. on a portrait⇄landscape rotation. A paged TabView
+            // (UIPageViewController) can keep a stale scroll-view frame across
+            // rotation, leaving the grid laid out at the previous orientation's
+            // width ("zoomed-in", >2 columns in portrait, unrecoverable without
+            // a relaunch — a known SwiftUI issue). Keying its identity on the
+            // window-derived column count forces a fresh page scroll view sized
+            // to the current geometry. Placed BEFORE navigationDestination so a
+            // pushed detail screen isn't torn down by the rebuild; the count is
+            // stable within an orientation, so there are no spurious rebuilds.
+            .id(FilmGridMetrics.columnCount(forWidth: viewportWidth))
             // Resolves NavigationLink(value: Film) from both grids to
             // the per-film detail screen, the iOS counterpart of
             // /film?title=… on the web.
@@ -326,6 +339,7 @@ struct ContentView: View {
             // now-redundant per-section header; "Wszystkie" keeps them.
             showSectionHeaders: pinnedCinema == nil,
             scrollResetToken: AnyHashable(dateFilter),
+            containerWidth: viewportWidth,
             header: {
                 CinemaPillsRow(
                     allCinemas: allCinemas,
