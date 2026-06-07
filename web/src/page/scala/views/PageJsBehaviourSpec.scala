@@ -199,7 +199,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       // Pin the date filter to 'anytime' so the assertion below depends
       // ONLY on the search input. The page's default `<select>` value
-      // is "Dziś" (today, the first <option>), which makes
+      // is "Dzisiaj" (today, the first <option>), which makes
       // visibility a function of the browser's wall-clock — a card
       // whose last showing is on the fixture's 2026-05-21 falls out
       // of the visible set once the wall clock passes that date. The
@@ -296,7 +296,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  /** Switch the date filter to "Wszystkie" (anytime) and re-run
+  /** Switch the date filter to "Kiedykolwiek" (anytime) and re-run
    *  `applyFilters()` so the visible-card set no longer depends on the
    *  browser's wall-clock relative to the fixture's recorded dates. */
   private def pinDateFilterAnytime(page: CdpPage): Unit =
@@ -355,16 +355,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // `getBoundingClientRect()` on each navbar item to assert the
   // physical layout matches the spec:
   //
-  //   row 1: [logo+tabs] … [search] [auth]
-  //   row 2: …             [date  ] [filtry]
+  //   one row: [logo+tabs] … [search] [day pills] [filtry] [auth]
   //
   // Why this test exists: the orders + `margin-left: auto` + the
-  // 100%-wide `.navbar-row-break` are subtle — easy to break with an
-  // unrelated edit. Asserting on rendered geometry catches a regression
+  // `flex-wrap: nowrap` single-row layout are subtle — easy to break with
+  // an unrelated edit. Asserting on rendered geometry catches a regression
   // that snapshot diffs alone wouldn't (the markup can look fine but
   // the visual layout flips).
 
-  "the mobile navbar (≤ 575 px)" should "place search to the left of auth on row 1, date to the left of filtry on row 2" in {
+  "the mobile navbar (≤ 575 px)" should "keep search, day pills, filtry and auth on one row in that order" in {
     onPath("/") { page =>
       // 500 × 896 — widest mobile viewport (below the 576 px breakpoint
       // where the mobile media-query stops applying). Picked because
@@ -415,18 +414,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val (filtryTop, filtryLeft) = rect(".navbar-filtry")
 
       val viewportWidth = page.evalInt("window.innerWidth")
-      // Row 1: search and auth share the same top. Allow a 4 px
-      // tolerance for sub-pixel alignment + line-height variance.
+      // One row: search, day pills, filtry and auth all share the same top
+      // (4 px tolerance for sub-pixel + line-height variance), laid out
+      // left-to-right: search → day pills → filtry → auth.
       withClue(s"viewport=$viewportWidth search=($searchTop,$searchLeft) auth=($authTop,$authLeft) date=($dateTop,$dateLeft) filtry=($filtryTop,$filtryLeft) ") {
         viewportWidth shouldBe 500
         math.abs(searchTop - authTop) should be < 4.0
-        searchLeft should be < authLeft
+        math.abs(dateTop   - authTop) should be < 4.0
+        math.abs(filtryTop - authTop) should be < 4.0
+        searchLeft should be < dateLeft
+        dateLeft   should be < filtryLeft
+        filtryLeft should be < authLeft
       }
-
-      // Row 2: date on left, filtry flush right, both at the same top.
-      math.abs(dateTop - filtryTop) should be < 4.0
-      dateTop should be > authTop
-      dateLeft should be < filtryLeft
 
       // Filtry button truncation — pile on every active filter the
       // navbar can carry, watch the label balloon, and confirm the
@@ -472,11 +471,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // Sweeps the navbar-bearing listing page (`/`) through seven
   // phone-class viewports and asserts two structural invariants:
   //
-  //   1. The navbar wraps to at most 2 rows. Visible flex children of
+  //   1. The navbar stays on ONE row. Visible flex children of
   //      `.navbar` are bucketed by their `getBoundingClientRect().top`;
-  //      the distinct bucket count = the row count. ≤ 2 means the
-  //      `<div class="navbar-row-break">` is still doing its job and
-  //      no element is overflowing its row.
+  //      the distinct bucket count = the row count. Exactly 1 means
+  //      `flex-wrap: nowrap` held and nothing wrapped or overflowed.
   //
   //   2. No child extends past the navbar's right edge. Catches the
   //      case where a long label (e.g. a Filtry button decorated with
@@ -497,17 +495,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // small tablet portrait; 575 = the @@media breakpoint top, where the
   // mobile rules hand back to the desktop defaults.
   //
-  // iPhone SE 1st gen (320 px CSS, released 2016, EOL 2018) is
-  // intentionally NOT in the list — at that width the row 1 cluster
-  // (logo + 3 nav-tabs + search input + Zaloguj-się pill) is just
-  // wider than the content area regardless of font scale, so the
-  // layout wraps to 3 rows. Apple's narrowest currently-supported
-  // device is iPhone SE 2/3 at 375 px; accept this as the design's
-  // narrow limit.
-  private val MobileViewports = Seq(360, 375, 390, 412, 430, 540, 575)
+  // 320 px (iPhone SE 1st gen) is included: the single-row navbar fits
+  // even there because the search input is dropped ≤ 480 px, leaving the
+  // logo, day pills + arrows, Filtry and auth to share the one row.
+  private val MobileViewports = Seq(320, 360, 375, 390, 412, 430, 540, 575)
 
   for (path <- Seq("/")) {
-    s"the mobile navbar on $path" should "wrap to ≤ 2 rows with zero horizontal overflow at every common phone width" in {
+    s"the mobile navbar on $path" should "stay on one row with zero horizontal overflow at every common phone width" in {
       onPath(path) { page =>
         pinDeterministicFont(page)
         // beforeAll renders the corpus with `oauthProviders = Set.empty`,
@@ -605,7 +599,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         info(s"$path layout sweep:\n$table")
 
         withClue(s"$path layout sweep:\n$table\n") {
-          all (measured.map(_.rows))     should be <= 2
+          all (measured.map(_.rows))     shouldBe 1
           all (measured.map(_.overflow)) shouldBe 0
           // Scale boundary: 1.0 at the 575 px breakpoint top. At the
           // narrow end the analytic floor is 0.85 at viewport ≤ 320,
@@ -824,10 +818,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   //   1920 = Full-HD desktop (the most common single-monitor width)
   //
   // Asserts:
-  //   1. The navbar fits in ONE row. Desktop CSS removes the
-  //      `.navbar-row-break` flex item so all the navbar children
-  //      sit in line; if a wide label or new entry overflows onto a
-  //      second row, that's a regression.
+  //   1. The navbar fits in ONE row. `flex-wrap: nowrap` keeps all the
+  //      navbar children in line; if a wide label or new entry overflows
+  //      past the row, that's a regression.
   //   2. Zero horizontal overflow on the document. `scrollWidth >
   //      innerWidth` produces a horizontal scrollbar, which is always
   //      a desktop bug.
@@ -1202,6 +1195,328 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       anytime should be > 0
       today should be <= week
       week should be <= anytime
+    }
+  }
+
+  // ── Day-stepping wrap (horizontal swipe) ────────────────────────────────────
+  //
+  // A horizontal swipe steps the selected day via `window.stepDateWrap(dir)`
+  // (dir = +1 next, -1 previous), wrapping the `#date-filter` option list with
+  // modulo arithmetic — last → first on +1, first → last on -1 — then
+  // re-rendering through `onDateChange()` → `applyFilters()`. The clamping
+  // `stepDate` (arrow buttons / keys) is exercised separately; this asserts the
+  // wrap-around the swipe relies on.
+
+  "the day-stepping wrap" should "advance the date selector and wrap last → first on stepDateWrap(+1)" in {
+    onPath("/") { page =>
+      val optionCount = page.evalInt("document.getElementById('date-filter').options.length")
+      optionCount should be > 1
+
+      // From index 0, stepping forward through every option lands back on 0
+      // (the modulo wrap), and each intermediate step advances by one.
+      page.eval("document.getElementById('date-filter').selectedIndex = 0; window.stepDateWrap(1)")
+      page.evalInt("document.getElementById('date-filter').selectedIndex") shouldBe 1
+
+      // Drive to the last option, then one more step wraps to index 0.
+      page.eval(
+        s"document.getElementById('date-filter').selectedIndex = ${optionCount - 1}; window.stepDateWrap(1)"
+      )
+      page.evalInt("document.getElementById('date-filter').selectedIndex") shouldBe 0
+
+      // The wrap re-rendered the grid via onDateChange → applyFilters: the
+      // current day ('today', index 0 after the wrap) shows at least one card.
+      visibleCardCount(page) should be > 0
+    }
+  }
+
+  it should "wrap first → last on stepDateWrap(-1)" in {
+    onPath("/") { page =>
+      val optionCount = page.evalInt("document.getElementById('date-filter').options.length")
+      page.eval("document.getElementById('date-filter').selectedIndex = 0; window.stepDateWrap(-1)")
+      page.evalInt("document.getElementById('date-filter').selectedIndex") shouldBe (optionCount - 1)
+    }
+  }
+
+  // ── Day carousel (three-column slide) ───────────────────────────────────────
+  //
+  // The films grid is the centre column of a prev|current|next carousel inside
+  // `#day-track`. A swipe (and the arrow buttons / Left-Right keys / the
+  // `#date-filter` dropdown) slides the track to reveal a neighbour day's grid —
+  // a clone of `#film-grid` filtered to that day — then commits the day change
+  // and scrolls to top. These assert the structural contract the gesture relies
+  // on: the neighbour is mounted + visible mid-drag at the SAME scroll offset as
+  // the centre, a committed change resets scroll, and all four entry points run
+  // the SAME animated slide (the track gets `.day-track--armed` and lands on the
+  // right day with `?date=` updated).
+
+  "the day carousel" should "mount the neighbour column at the same scroll offset mid-drag" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      coarsePointer(page)
+      page.eval("document.getElementById('date-filter').value = 'anytime'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+
+      // Scroll down so a naive (non-shared-scroll) neighbour would sit at a
+      // different vertical offset than the centre.
+      page.eval("window.scrollTo(0, 400)")
+
+      // Begin a synthetic finger drag: down, then a horizontal move past the
+      // deadzone so the handler locks the axis and arms the carousel.
+      page.eval(synthDrag("pointerdown", 300, 500))
+      page.eval(synthDrag("pointermove", 240, 505))   // dx = -60 → lock + arm
+      page.eval(synthDrag("pointermove", 180, 505))   // keep dragging left
+
+      // A neighbour `.day-col` is mounted in the track and actually painted.
+      page.evalInt("document.querySelectorAll('#day-track > .day-col').length") should be >= 1
+      page.evalBool(
+        "[...document.querySelectorAll('#day-track > .day-col')].some(c => c.offsetParent !== null && c.querySelector('.col[data-title]'))"
+      ) shouldBe true
+
+      // Synced vertical scroll: the revealed neighbour's top equals the centre
+      // grid's top — both are top-aligned in the same flex row sharing the
+      // page's single scroll, so the offset matches even after scrolling.
+      val sameTop = page.evalBool(
+        """(() => {
+          |  const root = document.getElementById('view-root');
+          |  const cols = [...document.querySelectorAll('#day-track > .day-col')]
+          |    .filter(c => c.querySelector('.col[data-title]'));
+          |  if (!root || cols.length === 0) return false;
+          |  const rt = root.getBoundingClientRect().top;
+          |  return cols.some(c => Math.abs(c.getBoundingClientRect().top - rt) < 1);
+          |})()""".stripMargin
+      )
+      sameTop shouldBe true
+
+      // Release below the commit threshold → snap back, leaving scroll untouched.
+      page.eval(synthDrag("pointerup", 180, 505))
+    }
+  }
+
+  it should "scroll to top on a committed day change but leave scroll alone on snap-back" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      coarsePointer(page)
+      page.eval("document.getElementById('date-filter').value = 'anytime'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+
+      // Sub-threshold drag → snap-back: scroll position is preserved.
+      page.eval("window.scrollTo(0, 300)")
+      page.eval(synthDrag("pointerdown", 300, 500))
+      page.eval(synthDrag("pointermove", 285, 505))   // tiny dx → no commit
+      page.eval(synthDrag("pointerup",   285, 505))
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalInt("Math.round(window.scrollY)") shouldBe 300
+
+      // A committed day change (via the unified animateToDay) scrolls to top.
+      page.eval("window.scrollTo(0, 300)")
+      page.eval("window.animateToDay('tomorrow')")
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalInt("Math.round(window.scrollY)") shouldBe 0
+      page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
+    }
+  }
+
+  it should "run the animated slide from the arrow button" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+
+      // Click the next-day arrow; while the slide is in flight the track is
+      // armed (neighbour mounted, parked transform set).
+      page.eval("window.stepDate(1)")
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+      page.evalInt("document.querySelectorAll('#day-track > .day-col').length") should be >= 1
+
+      // It settles on the next day with `?date=` reflecting it.
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
+      page.evalBool("new URL(location.href).searchParams.get('date') === 'tomorrow'") shouldBe true
+    }
+  }
+
+  it should "run the animated slide from a dropdown change" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+
+      // Multi-step jump today → anytime: the dropdown moves first, then a SINGLE
+      // slide carries the target day's column into view (the track is armed).
+      page.eval(
+        "const s = document.getElementById('date-filter'); s.value = 'anytime'; onDateSelect()"
+      )
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
+      page.evalBool("new URL(location.href).searchParams.get('date') === 'anytime'") shouldBe true
+    }
+  }
+
+  // ── Dropdown slide direction follows the option-list order, not wrap ─────────
+  //
+  // A dropdown pick is a LINEAR list choice: the target's position in the option
+  // list (today, tomorrow, week, anytime, …, with 'anytime' LAST) decides the
+  // slide direction — AFTER the current option → enter from the right (next),
+  // BEFORE it → enter from the left (prev). This differs from the wrap-shortest
+  // direction the arrows/keyboard/swipe use, and the two disagree at the ends:
+  // today → anytime is the longest forward jump but wrap-shortest would slide it
+  // LEFT (the short way back round the ring). The dropdown must still go right.
+
+  it should "enter from the right when the dropdown target is after the current option" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+
+      // today → anytime (last option). Linear: AFTER → right/next. Wrap-shortest
+      // would have gone left, so this side assertion FAILS before the fix.
+      page.eval(
+        "const s = document.getElementById('date-filter'); s.value = 'anytime'; onDateSelect()"
+      )
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+      armedSlideSide(page) shouldBe "next"
+
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
+    }
+  }
+
+  it should "enter from the left when the dropdown target is before the current option" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      page.eval("document.getElementById('date-filter').value = 'anytime'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+
+      // anytime (last) → today (first). Linear: BEFORE → left/prev. Wrap-shortest
+      // would have gone right, so this side assertion FAILS before the fix.
+      page.eval(
+        "const s = document.getElementById('date-filter'); s.value = 'today'; onDateSelect()"
+      )
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+      armedSlideSide(page) shouldBe "prev"
+
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalString("document.getElementById('date-filter').value") shouldBe "today"
+    }
+  }
+
+  // ── Neighbour-column order matches the committed grid ───────────────────────
+  //
+  // Regression for "the cards I see while dragging reorder when I let go". The
+  // neighbour preview column is a clone of `#film-grid` filtered to the target
+  // day by `applyFiltersForDay`, but that helper only toggled `display` — it
+  // left the cards in the CURRENT day's cloned DOM order. The committed render
+  // (`applyFilters` → `sortByEarliestVisible`) re-sorts the target day by its
+  // own earliest showtime, so the visible order jumped on release. The preview
+  // must show the SAME order the commit lands on.
+
+  "the day-carousel neighbour column" should "show films in the committed (earliest-showtime) order, not the current day's order" in {
+    onPath("/") { page =>
+      // Start on a broad day ('anytime') so the centre grid's DOM order is the
+      // anytime earliest order — generally NOT the same as a single later day's,
+      // which is exactly what makes the reorder-on-release visible.
+      page.eval("document.getElementById('date-filter').value = 'anytime'; onDateChange()")
+      page.waitFor("document.querySelector('#film-grid > .col[data-title]') !== null")
+
+      // A left drag from 'anytime' reveals the NEXT day in the ring, which wraps
+      // to 'today'. Capture which day the mounted neighbour is for so we commit
+      // to the SAME day (otherwise the counts/order wouldn't be comparable).
+      coarsePointer(page)
+      page.eval(synthDrag("pointerdown", 300, 500))
+      page.eval(synthDrag("pointermove", 240, 505))   // dx = -60 → lock + arm (reveals NEXT day)
+      page.eval(synthDrag("pointermove", 120, 505))   // keep dragging left, stay held
+
+      // The NEXT-day neighbour is the `.day-col` to the right of `#view-root`.
+      val neighbourSel =
+        """(() => {
+          |  const root = document.getElementById('view-root');
+          |  if (!root) return null;
+          |  let el = root.nextElementSibling;
+          |  while (el && !el.classList.contains('day-col')) el = el.nextElementSibling;
+          |  return el;
+          |})()""".stripMargin
+      val neighbourOrder = page.evalString(
+        s"""(() => {
+          |  const el = $neighbourSel;
+          |  if (!el) return '';
+          |  return [...el.querySelectorAll('.col[data-title]')]
+          |    .filter(c => c.style.display !== 'none')
+          |    .map(c => c.dataset.title).join('|');
+          |})()""".stripMargin
+      )
+      // Which day the neighbour preview is for = the day after 'anytime' wraps:
+      // read it from the ring so the commit below targets the same day.
+      val neighbourDay = page.evalString(
+        "(() => { const sel = document.getElementById('date-filter');" +
+        "  const ring = window.dayRing ? window.dayRing() : " +
+        "    [...sel.options].map(o => o.value);" +
+        "  const n = ring.length; return ring[((sel.selectedIndex + 1) % n + n) % n]; })()"
+      )
+      // Release below threshold → snap back, leaving the real day unchanged.
+      page.eval(synthDrag("pointerup", 120, 505))
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+
+      // The committed order for that SAME day: select it and read `#film-grid`.
+      page.eval(
+        s"document.getElementById('date-filter').value = ${jsString(neighbourDay)}; applyFilters()"
+      )
+      val committedOrder = visibleTitleOrder(page)
+
+      // Both must be non-empty and identical — the preview can't reorder on
+      // release.
+      committedOrder.nonEmpty shouldBe true
+      neighbourOrder shouldBe committedOrder
+    }
+  }
+
+  // ── Day-filter pills (the visible day picker) ────────────────────────────────
+  //
+  // The four presets render as a `.day-pill` row driving a visually-hidden
+  // `#date-filter` <select> — the state source every filter/carousel helper
+  // reads. `pickDay(value)` moves the select (and slides the grid); `syncDayPills`
+  // mirrors the committed day back onto the pills. These assert that round-trip.
+
+  "the day pills" should "mark exactly the active day and move the select + URL when tapped" in {
+    onPath("/") { page =>
+      // The pill highlight moves eagerly, but the URL only updates once the
+      // slide commits — wait on the committed `?date=` as the settle signal.
+      page.eval("pickDay('anytime')")
+      page.waitFor("new URL(location.href).searchParams.get('date') === 'anytime'", timeoutMs = 2000)
+
+      // The matching pill is the only `.active`, and carries aria-selected.
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "anytime"
+      page.evalInt("document.querySelectorAll('.day-pill.active').length") shouldBe 1
+      page.evalString(
+        "document.querySelector('.day-pill[data-day=\"anytime\"]').getAttribute('aria-selected')") shouldBe "true"
+      page.evalString(
+        "document.querySelector('.day-pill[data-day=\"today\"]').getAttribute('aria-selected')") shouldBe "false"
+      page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
+
+      // Back to 'today' strips ?date (today is the default) and moves the highlight.
+      page.eval("pickDay('today')")
+      page.waitFor("new URL(location.href).searchParams.get('date') === null", timeoutMs = 2000)
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "today"
+    }
+  }
+
+  it should "follow the active day when it changes via the ‹ › arrows" in {
+    onPath("/") { page =>
+      page.eval("pickDay('today')")
+      page.waitFor("document.getElementById('date-filter').value === 'today'", timeoutMs = 2000)
+      // The › arrow steps to the next preset; the pill highlight tracks it.
+      page.eval("stepDate(1)")
+      page.waitFor("document.getElementById('date-filter').value === 'tomorrow'", timeoutMs = 2000)
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"
+    }
+  }
+
+  "the day-filter select" should "be present but visually hidden — the pills are the visible control" in {
+    onPath("/") { page =>
+      page.evalBool("document.getElementById('date-filter') !== null") shouldBe true
+      // visually-hidden collapses it to ~1px; it is not a visible dropdown.
+      page.evalInt(
+        "Math.round(document.getElementById('date-filter').getBoundingClientRect().width)") should be <= 2
+      page.evalInt("document.querySelectorAll('.day-pill').length") shouldBe 4
     }
   }
 
@@ -1994,6 +2309,28 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       "  .filter(c => c.style.display !== 'none').map(c => c.dataset.title).join('|')"
     )
 
+  /** While a directed slide is armed, `animateToDay` mounts the TARGET day's
+   *  populated `.day-col` on just one flank of `#view-root` (the other flank is
+   *  an empty spacer) — the right/next side for `dir > 0`, the left/prev side
+   *  for `dir < 0`. Returns "next" or "prev" for whichever side holds the
+   *  populated column, or "" if neither is populated (no slide in flight). This
+   *  is the deterministic read of the slide direction the dropdown picked. */
+  private def armedSlideSide(page: CdpPage): String =
+    page.evalString(
+      """(() => {
+        |  const root = document.getElementById('view-root');
+        |  if (!root) return '';
+        |  const popOn = (dirProp) => {
+        |    let el = root[dirProp];
+        |    while (el && !el.classList.contains('day-col')) el = el[dirProp];
+        |    return !!(el && el.querySelector('.col[data-title]'));
+        |  };
+        |  if (popOn('nextElementSibling'))     return 'next';
+        |  if (popOn('previousElementSibling')) return 'prev';
+        |  return '';
+        |})()""".stripMargin
+    )
+
   private def firstVisibleTitle(page: CdpPage): String =
     page.evalString(
       "(() => { const cols = [...document.querySelectorAll('.col[data-title]')];" +
@@ -2038,4 +2375,42 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  escaping. */
   private def jsString(s: String): String =
     play.api.libs.json.JsString(s).toString
+
+  /** Force `prefers-reduced-motion: no-preference` so the carousel takes its
+   *  animated slide path (not the reduced-motion instant-commit shortcut)
+   *  regardless of the runner's OS/headless defaults — the slide-in-flight
+   *  assertions need the transition to actually run. */
+  private def enableSlideAnimation(page: CdpPage): Unit =
+    page.send("Emulation.setEmulatedMedia", play.api.libs.json.Json.obj(
+      "features" -> play.api.libs.json.Json.arr(
+        play.api.libs.json.Json.obj("name" -> "prefers-reduced-motion", "value" -> "no-preference")
+      )
+    ))
+
+  /** Make the swipe handlers — gated on `matchMedia('(pointer: coarse)')` —
+   *  engage. Enabling CDP touch emulation flips the page's pointer media query
+   *  to coarse reliably across headless Chrome on macOS/Linux (the
+   *  `setDeviceMetricsOverride mobile:true` width path is flaky for this; see
+   *  the mobile-navbar test note), which the `mobile:true` device-metrics
+   *  override alone does not guarantee. */
+  private def coarsePointer(page: CdpPage): Unit = {
+    page.send("Emulation.setTouchEmulationEnabled", play.api.libs.json.Json.obj(
+      "enabled" -> true, "maxTouchPoints" -> 5
+    ))
+    page.setViewport(380, 800)
+    require(
+      page.evalBool("matchMedia('(pointer: coarse)').matches"),
+      "expected a coarse pointer after touch emulation — swipe handlers are gated on it"
+    )
+  }
+
+  /** Dispatch a synthetic touch `PointerEvent` of `kind` at (`x`,`y`) on the
+   *  document — drives the production `pointerdown`/`pointermove`/`pointerup`
+   *  carousel handlers (which arm + translate `#day-track`) without needing real
+   *  CDP touch injection. `pointerType:'touch'` clears the handlers'
+   *  mouse-skip + coarse-pointer gates. */
+  private def synthDrag(kind: String, x: Int, y: Int): String =
+    s"""document.dispatchEvent(new PointerEvent('$kind', {
+       |  pointerType: 'touch', isPrimary: true, clientX: $x, clientY: $y, bubbles: true, cancelable: true
+       |}))""".stripMargin
 }

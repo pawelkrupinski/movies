@@ -11,17 +11,24 @@ import { waitForCards, pinDateFilterAnytime, measureGridRatio } from './helpers'
 
 // ── Shared measurement helpers ──────────────────────────────────────
 
+// The day picker is now a `.day-pill` row (the `#date-filter` <select> is
+// visually-hidden state, not a rendered control). The pills get their own
+// group: they share the controls' HEIGHT but ride a slightly smaller font on
+// mobile (so all four fit the one-row navbar), so they're checked for height
+// uniformity but excluded from the strict font-size equality.
 const NAV_CONTROLS = {
-  text:  ['.nav-tab', '.nav-tab-login', '.refresh-btn', '.auth-name'],
-  glyph: [] as string[],
-  input: ['.search-input', '#date-filter'],
+  text:  ['.nav-tab', '.nav-tab-login', '.refresh-btn:not(.date-nav-btn)', '.auth-name'],
+  glyph: ['.date-nav-btn'],
+  input: ['.search-input'],
+  pill:  ['.day-pill'],
 };
 
 const ALL_CONTROL_SELS = [
   '.nav-tab',
   '.nav-tab-login',
-  '.refresh-btn',
-  '#date-filter',
+  '.refresh-btn:not(.date-nav-btn)',
+  '.date-nav-btn',
+  '.day-pill',
   '.search-input',
 ];
 
@@ -30,7 +37,7 @@ async function measureNavbarControls(page: Page) {
     const nav = document.querySelector('.navbar');
     if (!nav) return { byGroup: {} } as const;
     const byGroup: Record<string, { sel: string; fontPx: number; heightPx: number }[]> = {
-      text: [], glyph: [], input: [],
+      text: [], glyph: [], input: [], pill: [],
     };
     const isVisible = (el: HTMLElement) =>
       el.offsetParent !== null && el.getBoundingClientRect().height > 0;
@@ -100,7 +107,7 @@ test.describe('navbar uniformity — desktop', () => {
 
   test('all interactive controls share a single height', async ({ page }) => {
     const { byGroup } = await measureNavbarControls(page);
-    const everything = [...byGroup.text, ...byGroup.glyph, ...byGroup.input];
+    const everything = [...byGroup.text, ...byGroup.glyph, ...byGroup.input, ...byGroup.pill];
     expectUniform('desktop control height', everything, 'heightPx', 1);
   });
 });
@@ -118,21 +125,16 @@ test.describe('navbar uniformity — mobile portrait', () => {
 
   test('text controls + inputs share a single font-size', async ({ page }) => {
     const { byGroup } = await measureNavbarControls(page);
-    // `#date-filter` is a native <select>. On the CI Safari engine (Linux
-    // WebKit) its computed font-size is floored to the iOS 16px form-control
-    // minimum and cannot be driven below it from CSS (appearance:none doesn't
-    // lift it either); macOS/iOS WebKit and every other engine honour the
-    // navbar's smaller size. Real users are unaffected — only this engine
-    // reports the floor — so the select is excluded from the strict font
-    // equality (its HEIGHT is still asserted below). Engine-drift, see
-    // navbar-uniformity history.
-    const textAndInputs = [...byGroup.text, ...byGroup.input].filter((m) => m.sel !== '#date-filter');
+    // The day pills are buttons, so (unlike the old <select>) they're free of
+    // the Linux-WebKit 16px form-control font floor and ride the navbar's
+    // scaled font like every other text control.
+    const textAndInputs = [...byGroup.text, ...byGroup.input];
     expectUniform('mobile-portrait text+input font', textAndInputs, 'fontPx', 0.5);
   });
 
   test('all interactive controls share a single height', async ({ page }) => {
     const { byGroup } = await measureNavbarControls(page);
-    const everything = [...byGroup.text, ...byGroup.glyph, ...byGroup.input];
+    const everything = [...byGroup.text, ...byGroup.glyph, ...byGroup.input, ...byGroup.pill];
     expectUniform('mobile-portrait control height', everything, 'heightPx', 1);
   });
 });
@@ -359,48 +361,50 @@ test.describe('avatar pill on a desktop browser narrowed to mobile width', () =>
     await injectAuthMenu(page);
   });
 
-  test('the avatar pill is the same height as the search box at 400px wide', async ({ page }) => {
+  test('the avatar pill is the same height as the navbar controls at 400px wide', async ({ page }) => {
+    // Search is dropped below 480px, so the still-visible day pills are the
+    // reference control the avatar pill must match in height + midline.
     const m = await page.evaluate(() => {
       const nav = document.querySelector('.navbar')!;
       const pill = nav.querySelector('.auth-menu') as HTMLElement | null;
-      const search = nav.querySelector('.search-input') as HTMLElement | null;
+      const ref = nav.querySelector('.day-pill') as HTMLElement | null;
       const img = nav.querySelector('.auth-menu .auth-avatar') as HTMLElement | null;
       if (!pill || !img) return null;
       const pr = pill.getBoundingClientRect();
-      const sr = search ? search.getBoundingClientRect() : null;
+      const rr = ref ? ref.getBoundingClientRect() : null;
       const ir = img.getBoundingClientRect();
       return {
         pillH: pr.height,
-        searchH: sr ? sr.height : -1,
+        refH: rr ? rr.height : -1,
         imgMid: ir.top + ir.height / 2,
         pillMid: pr.top + pr.height / 2,
-        searchMid: sr ? sr.top + sr.height / 2 : null,
+        refMid: rr ? rr.top + rr.height / 2 : null,
         vw: window.innerWidth,
       };
     });
     expect(m, 'auth-menu / avatar not rendered').not.toBeNull();
     expect(m!.vw, 'expected a narrow (mobile-width) viewport').toBeLessThanOrEqual(575);
-    expect(m!.searchH, 'search box should be visible at 400px').toBeGreaterThan(0);
-    // The headline assertion: the pill must NOT stand taller than the search
-    // box. Pre-fix it stayed 35px while search dropped to 28px.
+    expect(m!.refH, 'day pill should be visible at 400px').toBeGreaterThan(0);
+    // The headline assertion: the pill must NOT stand taller than the other
+    // mobile controls. Pre-fix it stayed 35px while they dropped to 28px.
     expect(
-      Math.abs(m!.pillH - m!.searchH),
-      `avatar pill ${m!.pillH.toFixed(1)}px ≠ search ${m!.searchH.toFixed(1)}px at ${m!.vw}px wide`,
+      Math.abs(m!.pillH - m!.refH),
+      `avatar pill ${m!.pillH.toFixed(1)}px ≠ day pill ${m!.refH.toFixed(1)}px at ${m!.vw}px wide`,
     ).toBeLessThanOrEqual(1);
     // …and the avatar stays centred within whatever height the pill is.
     expect(
       Math.abs(m!.imgMid - m!.pillMid),
       `avatar mid ${m!.imgMid.toFixed(1)} not centred in pill mid ${m!.pillMid.toFixed(1)}`,
     ).toBeLessThanOrEqual(1.5);
-    // …and the pill itself shares the search box's MIDLINE. This is the
-    // misalignment the user hit: the pill rode ~1.5px above the search box
-    // because `.navbar-auth` (a block wrapper around an inline-flex pill)
-    // reserved line-height descender space below the pill. A 1px bound; fixed
-    // by `.navbar-auth { display:flex; align-items:center }`.
-    expect(m!.searchMid, 'search not visible at 400px').not.toBeNull();
+    // …and the pill itself shares the control row's MIDLINE. This is the
+    // misalignment the user hit: the pill rode ~1.5px above because
+    // `.navbar-auth` (a block wrapper around an inline-flex pill) reserved
+    // line-height descender space below it. Fixed by
+    // `.navbar-auth { display:flex; align-items:center }`.
+    expect(m!.refMid, 'day pill not visible at 400px').not.toBeNull();
     expect(
-      Math.abs(m!.pillMid - (m!.searchMid as number)),
-      `pill mid ${m!.pillMid.toFixed(1)} not on search mid ${(m!.searchMid as number).toFixed(1)}`,
+      Math.abs(m!.pillMid - (m!.refMid as number)),
+      `pill mid ${m!.pillMid.toFixed(1)} not on control mid ${(m!.refMid as number).toFixed(1)}`,
     ).toBeLessThanOrEqual(1);
   });
 });
@@ -480,16 +484,13 @@ test.describe('navbar uniformity — mobile landscape', () => {
 
   test('text controls + inputs share a single font-size', async ({ page }) => {
     const { byGroup } = await measureNavbarControls(page);
-    // Native <select> `#date-filter` floors to 16px on the CI Linux-WebKit
-    // engine (see the mobile-portrait test for the full rationale) — exclude it
-    // from the strict font equality; its height is still checked below.
-    const textAndInputs = [...byGroup.text, ...byGroup.input].filter((m) => m.sel !== '#date-filter');
+    const textAndInputs = [...byGroup.text, ...byGroup.input];
     expectUniform('mobile-landscape text+input font', textAndInputs, 'fontPx', 0.5);
   });
 
   test('all interactive controls share a single height', async ({ page }) => {
     const { byGroup } = await measureNavbarControls(page);
-    const everything = [...byGroup.text, ...byGroup.glyph, ...byGroup.input];
+    const everything = [...byGroup.text, ...byGroup.glyph, ...byGroup.input, ...byGroup.pill];
     expectUniform('mobile-landscape control height', everything, 'heightPx', 1);
   });
 });
@@ -606,16 +607,14 @@ test.describe('portrait filtry button (360×760)', () => {
   });
 });
 
-// ── Day selector width: full selected label when the row has room ─
+// ── Day pills: all four fit, unclipped, on a common phone ─────────
 //
-// Regression for the day-picker `<select>` being pinned to a fixed
-// `max-width` (6.5rem) on every phone ≤575px, which clipped the
-// selected label ("Następne 7 dni" / "Kiedykolwiek") with an ellipsis
-// even on roomy phones where row 2 had ample space. The cap is now a
-// flex shrink: the select shows its full natural width when there's
-// room and only narrows when the row genuinely overflows.
+// Regression for the pill row overflowing its container and sliding the
+// long "Wszystkie" pill under the Filtry button. The four pills must each
+// render at a non-zero width, stay inside the navbar, and not be internally
+// clipped (scrollWidth ≈ clientWidth) at a typical phone width.
 
-test.describe('day selector width (390×844)', () => {
+test.describe('day pills (390×844)', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test.beforeEach(async ({ page }, testInfo) => {
@@ -624,29 +623,26 @@ test.describe('day selector width (390×844)', () => {
     await waitForCards(page);
   });
 
-  test('selected day label is not clipped when the row has room', async ({ page }) => {
-    const widths = await page.evaluate(() => {
-      const sel = document.getElementById('date-filter') as HTMLSelectElement | null;
-      if (!sel) return null;
-      sel.value = 'week'; // "Następne 7 dni" — the widest static option
-      const rendered = sel.getBoundingClientRect().width;
-      // Reveal the natural (uncapped) width: lift any width constraint
-      // inline and re-measure. If the rendered width is short of this,
-      // the selected label is being clipped.
-      const prevMax = sel.style.maxWidth;
-      const prevW = sel.style.width;
-      sel.style.maxWidth = 'none';
-      sel.style.width = 'max-content';
-      const natural = sel.getBoundingClientRect().width;
-      sel.style.maxWidth = prevMax;
-      sel.style.width = prevW;
-      return { rendered, natural };
+  test('all four day pills are visible, inside the navbar, and not clipped', async ({ page }) => {
+    const pills = await page.evaluate(() => {
+      const navRight = document.querySelector('.navbar')!.getBoundingClientRect().right;
+      return Array.from(document.querySelectorAll('.day-pill')).map((p) => {
+        const el = p as HTMLElement;
+        const b = el.getBoundingClientRect();
+        return {
+          label: el.textContent,
+          width: b.width,
+          withinNav: b.right <= navRight + 0.5,
+          clip: el.scrollWidth - el.clientWidth,
+        };
+      });
     });
-    expect(widths, '#date-filter not found').not.toBeNull();
-    expect(
-      widths!.rendered,
-      `day selector clipped: rendered ${widths!.rendered.toFixed(1)}px < natural ${widths!.natural.toFixed(1)}px`,
-    ).toBeGreaterThanOrEqual(widths!.natural - 1);
+    expect(pills.length, 'expected four day pills').toBe(4);
+    for (const p of pills) {
+      expect(p.width, `pill "${p.label}" has zero width`).toBeGreaterThan(8);
+      expect(p.withinNav, `pill "${p.label}" overflows the navbar`).toBe(true);
+      expect(p.clip, `pill "${p.label}" label is clipped`).toBeLessThanOrEqual(1);
+    }
   });
 });
 
@@ -717,5 +713,34 @@ test.describe('orientation flip: landscape → portrait', () => {
     const after = await measureGridRatio(page);
     expect(after).toBeGreaterThan(0.45);
     expect(after).toBeLessThan(0.55);
+  });
+});
+
+// ── Zoomed landscape: date ›  must not touch / overlap Filtry ────
+
+test.describe('zoomed landscape — date-to-filtry gap', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(
+      !testInfo.project.name.includes('zoomed-landscape'),
+      'zoomed-landscape projects only',
+    );
+    await page.goto('/poznan/');
+    await waitForCards(page);
+  });
+
+  test('date › button does not touch or overlap the Filtry button', async ({ page }) => {
+    const gap = await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('.date-nav-btn')) as HTMLElement[];
+      const stepFwd = btns[btns.length - 1];
+      const filtryBtn = document.getElementById('format-filter-btn');
+      if (!stepFwd || !filtryBtn) return null;
+      return filtryBtn.getBoundingClientRect().left - stepFwd.getBoundingClientRect().right;
+    });
+    expect(gap, 'date-nav-btn / filtry button not found').not.toBeNull();
+    const vp = page.viewportSize()!;
+    expect(
+      gap!,
+      `date›-to-filtry gap is ${gap!.toFixed(1)}px at ${vp.width}×${vp.height}; need ≥ 2px`,
+    ).toBeGreaterThanOrEqual(2);
   });
 });

@@ -150,7 +150,7 @@ async function navbarRowCount(page: Page, tolerance = 6): Promise<number> {
     const tops: number[] = [];
     document.querySelectorAll('nav.navbar > *').forEach((el) => {
       const r = (el as HTMLElement).getBoundingClientRect();
-      // Skip zero-height row-break + hidden elements.
+      // Skip zero-height / hidden elements.
       if (r.height <= 0 || (el as HTMLElement).offsetParent === null && r.height === 0) return;
       tops.push(r.top);
     });

@@ -98,18 +98,25 @@ test.describe('mobile landscape layout', () => {
     expect(search.right).toBeLessThanOrEqual(date.left + 1);
   });
 
-  test('row-break is suppressed (no second navbar row)', async ({ page }) => {
-    // `.navbar-row-break` flips to `display: block` in the
-    // portrait (max-width: 575px) media query to force a hard
-    // wrap. In landscape we want the row-break invisible so the
-    // navbar stays one line. The element is in the DOM either
-    // way; this assertion is on the computed display.
-    const display = await page.evaluate(() => {
-      const el = document.querySelector('.navbar-row-break') as HTMLElement | null;
-      if (!el) return 'missing';
-      return getComputedStyle(el).display;
+  test('the navbar stays on one row (no second navbar row)', async ({ page }) => {
+    // `flex-wrap: nowrap` keeps every navbar control on a single row. The logo
+    // is taller (35px) than the landscape controls (28px), so they centre at
+    // different top edges on the SAME row — assert one row by vertical overlap
+    // (the whole stack fits inside the tallest item's height) rather than by
+    // distinct top edges, which a centred-but-taller logo would trip.
+    const oneRow = await page.evaluate(() => {
+      const nav = document.querySelector('.navbar')!;
+      let minTop = Infinity, maxBottom = -Infinity, maxH = 0;
+      for (const c of Array.from(nav.children)) {
+        const r = c.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+        minTop = Math.min(minTop, r.top);
+        maxBottom = Math.max(maxBottom, r.bottom);
+        maxH = Math.max(maxH, r.height);
+      }
+      return maxBottom - minTop <= maxH + 2;
     });
-    expect(display).toBe('none');
+    expect(oneRow, 'navbar wrapped to a second row').toBe(true);
   });
 
   test('rightmost navbar item is flush with the right edge', async ({ page }) => {

@@ -161,11 +161,11 @@
     </div>
   </div>
 
-  @* Search and date-selector are kept as separate flex items so the
-     mobile layout can place them on different rows — search joins the
-     login pill on row 1; the day stepper rides with Filtry on row 2.
-     On desktop they sit side-by-side as one visual cluster (search
-     `margin-left: auto`, date adjacent with no left margin).
+  @* Search and date-selector are separate flex items sharing ONE navbar row
+     at every width. As the row tightens they degrade in priority order: the
+     "Repertuar kinowy …" title drops first, then the search input shrinks,
+     then the day pills shrink, then the search input drops entirely — see the
+     navbar `@@media` rules in `_sharedStyles`.
 
      Both are hidden on /plan — the picker grid there has its own
      selection axis and the schedule output ignores "show today only" /
@@ -174,8 +174,21 @@
     <div class="navbar-search">
       <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
     </div>
+    @* Day filter: a pill row (the same four presets the iOS/Android apps show)
+       flanked by ‹ › step arrows, plus a visually-hidden `<select>` that stays
+       the single source of truth every filter/carousel helper reads. Clicking a
+       pill, stepping an arrow or swiping the grid all move that select; the
+       pills' `.active` highlight is synced back from it. *@
     <div class="d-flex align-items-stretch navbar-date">
-      <select id="date-filter" class="filter-select" aria-label="Filtruj według daty" onchange="onDateSelect()">
+      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)" aria-label="Poprzedni dzień">&#8249;</button>
+      <div id="day-pills" class="day-pills" role="tablist" aria-label="Filtruj według daty">
+        <button class="day-pill" type="button" role="tab" data-day="today"    onclick="pickDay('today')">Dziś</button>
+        <button class="day-pill" type="button" role="tab" data-day="tomorrow" onclick="pickDay('tomorrow')">Jutro</button>
+        <button class="day-pill" type="button" role="tab" data-day="week"     onclick="pickDay('week')">7 dni</button>
+        <button class="day-pill" type="button" role="tab" data-day="anytime"  onclick="pickDay('anytime')">Wszystkie</button>
+      </div>
+      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)" aria-label="Następny dzień">&#8250;</button>
+      <select id="date-filter" class="visually-hidden" aria-hidden="true" tabindex="-1" onchange="onDateSelect()">
         <option value="today">Dziś</option>
         <option value="tomorrow">Jutro</option>
         <option value="week">7 dni</option>
@@ -183,8 +196,6 @@
       </select>
     </div>
   }
-
-  <div class="navbar-row-break" aria-hidden="true"></div>
 
   @* Auth: own slot so CSS can pin it to the far right on desktop and
      to the row-1 right on mobile (replacing the spot the old Kina

@@ -108,7 +108,11 @@
      first-paint <style>), so the timing risk is gone, but keeping the navbar's
      flex on its own rule means the row is correct regardless of class ordering.
      `justify-content: space-between` preserves what Bootstrap's `.navbar` gave. */
-  .navbar { background: #1a1a2e; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; gap: .4rem; }
+  /* `flex-wrap: nowrap` — the navbar is ONE row at every width. Items degrade
+     by priority instead of wrapping: the city title drops, then the search
+     shrinks, then the day pills shrink, then the search drops (see the mobile
+     `@@media` block below). */
+  .navbar { background: #1a1a2e; display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; position: sticky; top: 0; z-index: 10; gap: .4rem; }
   /* Pin to the unified 35 px navbar height so the logo cluster lines up
      with the (taller) control row even when it holds no 35 px nav-tab —
      since the Filmy tab was dropped the logo is the cluster's only child
@@ -176,7 +180,7 @@
     display: none;
   }
   /* Unified 35 px height across every navbar tappable: nav-tabs,
-     refresh-btn (Filtry / hidden-films flyout),
+     refresh-btn (Filtry / hidden-films flyout), date-nav-btn arrows,
      filter-select, search-input, login pill, auth menu. Tall enough
      to tap reliably on touch (35 is a comfortable middle ground
      between Apple HIG's 44 and the visually-compact 29 the page used
@@ -195,6 +199,35 @@
      `box-sizing: border-box` so the row is uniform regardless of UA. */
   .refresh-btn { background: #3a3a6e; border: none; color: #aad4ff; white-space: nowrap; flex-shrink: 0; height: 35px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; }
   .refresh-btn:hover { background: #5a5a9e; color: #fff; }
+  .date-nav-btn { padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem; touch-action: manipulation; height: 35px; box-sizing: border-box; min-width: 35px; flex-shrink: 0; }
+  /* Day-filter pills — the four presets as a pill row (mirrors the iOS/Android
+     day chips). The active day is a filled accent capsule; the rest are
+     transparent with accent text. The visually-hidden `#date-filter` `<select>`
+     stays the state source every filter/carousel helper reads; `syncDayPills`
+     mirrors its value onto `.active` here. */
+  /* The pill row never shrinks below its labels — pills stay readable; the row
+     fits narrow screens by scaling the pill font/padding down (mobile `@@media`
+     block), not by clipping. */
+  .day-pills { display: flex; align-items: stretch; gap: 4px; flex-shrink: 0; }
+  .day-pill {
+    appearance: none; -webkit-appearance: none; border: none; cursor: pointer;
+    background: transparent; color: #aad4ff;
+    white-space: nowrap; font-size: .875rem; font-weight: 500; line-height: 1;
+    padding: 0 .7rem; height: 35px; border-radius: 999px;
+    box-sizing: border-box; touch-action: manipulation; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .day-pill:hover { background: #3a3a6e; color: #fff; }
+  .day-pill.active { background: #aad4ff; color: #1a1a2e; font-weight: 600; }
+  .day-pill:focus-visible { outline: none; box-shadow: 0 0 0 2px #5a5a9e; }
+  /* Hide an element visually while keeping it for assistive tech + form state —
+     the day-filter `<select>` is the model the pills and carousel read. */
+  .visually-hidden {
+    position: absolute !important; width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0);
+    white-space: nowrap; border: 0;
+  }
   .filter-select {
     background: #3a3a6e;
     color: #aad4ff;
@@ -216,6 +249,11 @@
     padding: .25rem .6rem;
     font-size: .875rem;
     width: 160px;
+    /* `max-width:100%` + `min-width:0` let the input shrink below its 160px
+       preferred width when the single navbar row tightens (priority 2 — search
+       gives way before the day pills) — see the navbar `@@media` rules. */
+    max-width: 100%;
+    min-width: 0;
     min-height: 35px;
   }
   .search-input::placeholder { color: #778; }
@@ -233,6 +271,13 @@
   @@media (min-width: 576px) and (max-width: 1024px) { .search-input:focus { width: 160px; } }
   @@media (max-width: 575px) { .search-input, .search-input:focus { width: 90px; } }
   @@media (max-width: 379px) { .search-input, .search-input:focus { width: 55px; } }
+  /* On portrait phones the four pills + search + Filtry + auth fill the row, so
+     the ‹ › step arrows give up their slot here — the grid still swipes between
+     days (and the arrows stay on tablet/desktop/landscape, where there's room).
+     Priority 4: search itself only drops at the ≤290px emergency breakpoint. */
+  @@media (max-width: 575px) and (orientation: portrait) {
+    .navbar .date-nav-btn { display: none; }
+  }
   /* Row-1 items (logo+tabs 152 px + search 55 px + auth 79 px = 286 px)
      overflow below ~290 px. Hide search so the remaining items
      (152 + 79 = 231 px) fit comfortably. Below 235 px even those
@@ -246,23 +291,6 @@
     .navbar-filtry { max-width: 40% !important; }
   }
 
-  /* `#date-filter` is the day-picker `<select>` (Dziś / Jutro / 7 dni /
-     Wszystkie — the same four presets as the mobile apps). Its natural
-     width is driven by the widest option ("Wszystkie"). On mobile it
-     shares row 2 with Filtry; rather than a fixed
-     `max-width` cap (which clipped the selected label on every phone
-     ≤575px, even roomy ones), the select flex-shrinks — see the
-     `.navbar-date` rule in the portrait block below. It shows its
-     full label when the row has slack and only ellipsizes when the
-     row genuinely overflows.
-
-     Exception, the narrowest phones (≤379px): `flex-shrink` doesn't save
-     row 2 there, because flexbox WRAPS to a new line before it shrinks an
-     item — so a full-width select + a maxed-out Filtry label spill into a
-     3rd row (navbar-overflow test). Cap the select at those widths so the
-     two stay on one row. Roomier phones (390px+, where the day-selector
-     no-clip test lives) keep the uncapped flex-shrink behaviour. */
-  @@media (max-width: 379px) { #date-filter { max-width: 6.5rem; } }
   .hide-btn {
     position: absolute;
     top: 6px; right: 6px;
@@ -660,8 +688,10 @@
      The hidden-films entry point used to be its own navbar pill —
      it now lives inside Filtry as a top row, so there's no
      `.navbar-hidden` slot anymore. */
-  .navbar-search    { order: 1; margin-left: auto; }
-  .navbar-date      { order: 2; }
+  /* Search shrinks first (priority 2) as the single row tightens; the day
+     pills hold their labels (`flex-shrink:0` on `.day-pill`). */
+  .navbar-search    { order: 1; margin-left: auto; min-width: 0; flex-shrink: 8; }
+  .navbar-date      { order: 2; min-width: 0; flex-shrink: 0; }
   .navbar-filtry    { order: 3; }
   /* `display:flex; align-items:center` is load-bearing, not cosmetic: the
      child `.auth-menu` is `display:inline-flex`, so in a plain block wrapper
@@ -673,7 +703,13 @@
      Flex-centring collapses the wrapper to the pill's exact height so the
      pill shares the search box's midline. Locked by navbar-layout.spec.ts. */
   .navbar-auth      { order: 4; display: flex; align-items: center; }
-  .navbar-row-break { display: none; }
+
+  /* Priority 1: the city title ("Repertuar kinowy …") is the first thing to go
+     when the single navbar row tightens — kept only on desktop (≥992, where the
+     grid also widens to 5–6 columns) and dropped below so the search + day pills
+     keep their room. (The ≤575 block hides it too, for the mobile typographic
+     scaling that follows.) */
+  @@media (max-width: 991px) { .navbar-title { display: none; } }
 
   @@media (min-width: 576px) {
     .navbar { padding-top: .25rem; padding-bottom: .25rem; }
@@ -723,6 +759,7 @@
       padding-left:  var(--navbar-px);
       padding-right: var(--navbar-px);
     }
+    .navbar .date-nav-btn { font-size: calc(1.0 * var(--mobile-scale)); min-width: min(22px, 5.5vw); padding: 0; flex-shrink: 0; }
     /* Navbar search + date-filter selects ride the SAME
        `--navbar-fs` as the surrounding tabs and Filtry button so
        every row of the navbar has uniform typography. The broad
@@ -737,37 +774,30 @@
       padding-left:  var(--navbar-px);
       padding-right: var(--navbar-px);
     }
+    /* Priority 1 — the city title is the first thing to go as the row tightens. */
     .navbar-title { display: none; }
-    /* Mobile row-1: [logo+tabs] … [search] [auth] flush right.
-       Mobile row-2: [date]            …    [filtry] flush right.
-       The 100%-wide zero-height `.navbar-row-break` between auth
-       (order 3) and date (order 5) forces a hard wrap regardless of
-       how much horizontal slack row 1 ended up with — without it,
-       date would slide back onto row 1 on any phone wide enough.
-       Row-2 has date flush left (no margin) and filtry flush right
-       (margin-left: auto), with the slack between them.
-       The Filtry button text grows with active filters (e.g.
-       "Filtry (kina 9/10, 2D, NAP, od 18:00)") — capped at a
-       fraction of the row so a long label can't push past the
-       row edge and force the whole button onto a third row. */
-    .navbar-search    { order: 2; margin-left: auto; }
-    .navbar-auth      { order: 3; }
-    .navbar-row-break { display: block; order: 4; width: 100%; flex-shrink: 0; height: 0; margin: 0; padding: 0; }
-    .navbar-date      { order: 5; margin-left: 0; min-width: 0; }
-    /* Let the day `<select>` size to its widest option when row 2 has
-       slack (Filtry's `margin-left:auto` absorbs the slack, so the
-       select keeps its full label). Only when the row overflows — the
-       narrowest phones with a long active-filter Filtry label — does
-       the select give up width first: `min-width:0` + shrink let it
-       ellipsize the selected label so Filtry never wraps to a third
-       row. Replaces the old fixed `max-width` cap that clipped the
-       label unconditionally. */
-    .navbar-date .filter-select { min-width: 0; flex-shrink: 1; text-overflow: ellipsis; }
-    /* Capped at 40% of the row so the date `<select>` (widest option
-       "Wszystkie") still fits alongside on the 500 px CI viewport, where Linux
-       headless Chrome renders the select ~3 % wider than macOS and
-       a 50 % cap tipped the row over and wrapped Filtry. */
-    .navbar-filtry    { order: 6; margin-left: auto; max-width: 40%; min-width: 0; }
+    /* One row, ordered: [logo] … [search] [day pills] [Filtry] [auth].
+       `margin-left:auto` on search pushes the whole control cluster to the
+       right of the logo; from there everything packs together. Shrink priority
+       as the row narrows is expressed through `flex-shrink`: search gives way
+       first and most (priority 2, plus the width steps above), then the day
+       pills shrink their font/padding (priority 3); the day pill ROW itself
+       never shrinks (`.navbar-date` is `flex-shrink:0`) so a pill can't be
+       clipped under Filtry. The ‹ › arrows drop on portrait phones (above) to
+       make room; search itself only drops at the ≤290px emergency breakpoint. */
+    .navbar-search    { order: 2; margin-left: auto; min-width: 0; flex-shrink: 6; }
+    .navbar-date      { order: 3; min-width: 0; flex-shrink: 0; }
+    .navbar-filtry    { order: 4; margin-left: 0; max-width: 45%; min-width: 0; flex-shrink: 1; }
+    .navbar-auth      { order: 5; flex-shrink: 0; }
+    /* Priority 3 — the day pills shrink their font + padding with the viewport
+       so the four-pill row stays narrow enough to fit beside the logo, arrows,
+       Filtry and auth. */
+    .navbar .day-pills { gap: 1px; }
+    .navbar .day-pill {
+      font-size: calc(.82 * var(--mobile-scale));
+      padding-left:  min(calc(.34 * var(--mobile-scale)), 1.3vw);
+      padding-right: min(calc(.34 * var(--mobile-scale)), 1.3vw);
+    }
     #format-filter-btn {
       max-width: 100%;
       overflow: hidden;
@@ -839,6 +869,9 @@
     .navbar .nav-tab,
     .navbar .nav-tab-login,
     .navbar .refresh-btn,
+    .navbar .date-nav-btn,
+    .navbar .btn.date-nav-btn,
+    .navbar .day-pill,
     .navbar .filter-select,
     .navbar .search-input,
     .navbar .auth-menu {
@@ -852,7 +885,6 @@
   @@media (max-height: 500px) and (orientation: landscape) {
     .navbar-title { display: none; }
 
-    .navbar-row-break { display: none; }
     .navbar-search    { order: 1; margin-left: auto; }
     .navbar-date      { order: 2; }
     .navbar-filtry    { order: 3; margin-left: 0; }
@@ -874,15 +906,16 @@
     .navbar .refresh-btn,
     .navbar .auth-name,
     .navbar .filter-select,
+    .navbar .day-pill,
     .navbar .search-input {
       font-size: calc(.8 * var(--mobile-scale));
       padding-left:  5px;
       padding-right: 5px;
     }
+    .navbar .btn.date-nav-btn { font-size: calc(.95 * var(--mobile-scale)); min-width: 0; padding-left: 3px; padding-right: 3px; }
     .navbar .filter-select,
     .navbar .search-input { padding-top: 0; padding-bottom: 0; }
     .navbar-date { align-items: center; flex-shrink: 0; min-width: 0; }
-    .navbar-date .filter-select { min-width: 0; }
 
     .navbar-filtry { min-width: 0; flex-shrink: 0; }
     #format-filter-btn {
@@ -949,6 +982,9 @@
     .navbar .nav-tab,
     .navbar .nav-tab-login,
     .navbar .refresh-btn,
+    .navbar .date-nav-btn,
+    .navbar .btn.date-nav-btn,
+    .navbar .day-pill,
     .navbar .filter-select,
     .navbar .search-input,
     .navbar .auth-menu {
@@ -957,6 +993,85 @@
       max-height: 28px;
       box-sizing: border-box;
     }
+  }
+
+  /* ── Day carousel (shared.js) ──────────────────────────────────────────────
+     `#view-pager` is the carousel viewport; `#day-track` is a flex row of
+     full-viewport-width day columns. The real grid (`<main id="view-root">`)
+     is the centre column and is always present; shared.js mounts a prev + next
+     column (each a clone of `#film-grid` filtered to that neighbouring day)
+     only for the duration of a slide, then translates `#day-track` to reveal
+     them. `overflow-x: clip` hides the off-screen columns without creating a
+     scroll container (so it can't add a phantom vertical scrollbar the way
+     `overflow-x: hidden` would).
+
+     The columns sit in NORMAL block flow inside the flex row — no inner
+     `overflow`, so all three share the page's single vertical scroll. The
+     revealed neighbour therefore lines up at the same `scrollY` offset for
+     free. While neighbours are mounted (`.day-track--armed`) the track is
+     parked at `-100vw` so the centre column stays in view; shared.js sets the
+     live `translateX` inline on top of that during a drag. */
+  #view-pager { position: relative; overflow-x: clip; }
+  #day-track { display: flex; align-items: flex-start; will-change: transform; }
+  /* Each column is exactly the viewport width so a neighbour reveals from the
+     screen edge. The centre `#view-root` is `flex: 1` when alone (no clones)
+     so the page is unchanged at rest; the explicit width kicks in only once
+     the track is armed and all three columns are siblings. */
+  #day-track > .day-col,
+  #day-track > #view-root { flex: 0 0 100vw; width: 100vw; max-width: 100vw; }
+  #day-track:not(.day-track--armed) > #view-root { flex: 0 0 100%; width: 100%; max-width: 100%; }
+  /* Parked one column to the left so the centre is centred while armed. */
+  #day-track.day-track--armed { transform: translateX(-100vw); }
+  /* Claim horizontal gestures over the grid for the swipe-to-switch handler:
+     it lets the browser keep vertical scrolling but stops it treating a
+     horizontal drag as a (non-existent) horizontal scroll and cancelling the
+     pointer stream mid-swipe. `pinch-zoom` is kept in the value so two-finger
+     pinch-to-zoom on the cards still works — only single-finger HORIZONTAL pan
+     is reserved for the swipe (`pan-y pinch-zoom` = everything `manipulation`
+     allows minus `pan-x`). */
+  #view-pager .container-fluid { touch-action: pan-y pinch-zoom; }
+
+  /* First-run swipe hint (phones). shared.js adds `.visible` once per day until
+     the first swipe; base state is `visibility:hidden` so it never intercepts a
+     tap and reads as hidden to assistive tech / tests. Centred near the bottom,
+     above the cards, with a soft frosted pill. */
+  #swipe-hint {
+    position: fixed;
+    left: 50%;
+    bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%) translateY(6px);
+    z-index: 30;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .5rem .9rem;
+    border-radius: 999px;
+    background: rgba(26, 26, 46, 0.92);
+    border: 1px solid #3a3a6e;
+    color: #e8e8f5;
+    font-size: .85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  #swipe-hint.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+  .swipe-hint-arrows {
+    color: #aad4ff;
+    font-weight: 700;
+    letter-spacing: .12em;
+  }
+  @@media (prefers-reduced-motion: reduce) {
+    #swipe-hint { transition: none; }
   }
 
   /* ── Filmy (/) view chrome ─────────────────────────────────────────────────
