@@ -1,6 +1,6 @@
 @import controllers.{BarData, ServiceRow}
 @import play.api.libs.json.Json
-@(cinemas: Seq[ServiceRow], services: Seq[ServiceRow], other: Seq[ServiceRow])
+@(cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow])
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,6 +15,10 @@
       font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase;
       letter-spacing: 1px; margin: 28px 0 10px; padding-bottom: 6px;
       border-bottom: 1px solid #1a1a1a;
+    }
+    h3 {
+      font-size: 11px; font-weight: 600; color: #888;
+      margin: 16px 0 6px;
     }
     .row { display: flex; align-items: center; margin-bottom: 4px; }
     .name {
@@ -74,13 +78,16 @@
 <body>
   <h1>Service Uptime</h1>
 
-  @if(cinemas.isEmpty && services.isEmpty && other.isEmpty) {
+  @if(cinemasByCity.isEmpty && services.isEmpty && other.isEmpty) {
     <p class="empty-msg">No data yet — bars will appear after the first scrape cycle.</p>
   }
 
-  @if(cinemas.nonEmpty) {
+  @if(cinemasByCity.nonEmpty) {
     <h2>Cinemas</h2>
-    @for(s <- cinemas) { @serviceRow(s) }
+    @for((city, rows) <- cinemasByCity) {
+      <h3>@city</h3>
+      @for(s <- rows) { @serviceRow(s) }
+    }
   }
 
   @if(services.nonEmpty) {

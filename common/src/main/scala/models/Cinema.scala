@@ -426,8 +426,32 @@ object Cinema {
 
   val zabrze: Seq[Cinema] = Seq(MultikinoZabrze)
 
-  val all: Seq[Cinema] = poznan ++ wroclaw ++ warszawa ++ krakow ++ lodz ++ katowice ++ szczecin ++ bialystok ++ trojmiasto ++ bydgoszcz ++ lublin ++
-    czestochowa ++ radom ++ sosnowiec ++ torun ++ kielce ++ rzeszow ++ gliwice ++ zabrze
+  /** Every city's venues in page order, paired with the city's display label.
+   *  Single source of truth for `all` and for the uptime page's per-city
+   *  grouping — add a city here and both pick it up. */
+  val byCity: Seq[(String, Seq[Cinema])] = Seq(
+    "Poznań"      -> poznan,
+    "Wrocław"     -> wroclaw,
+    "Warszawa"    -> warszawa,
+    "Kraków"      -> krakow,
+    "Łódź"        -> lodz,
+    "Katowice"    -> katowice,
+    "Szczecin"    -> szczecin,
+    "Białystok"   -> bialystok,
+    "Trójmiasto"  -> trojmiasto,
+    "Bydgoszcz"   -> bydgoszcz,
+    "Lublin"      -> lublin,
+    "Częstochowa" -> czestochowa,
+    "Radom"       -> radom,
+    "Sosnowiec"   -> sosnowiec,
+    "Toruń"       -> torun,
+    "Kielce"      -> kielce,
+    "Rzeszów"     -> rzeszow,
+    "Gliwice"     -> gliwice,
+    "Zabrze"      -> zabrze,
+  )
+
+  val all: Seq[Cinema] = byCity.flatMap(_._2)
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 }
