@@ -1,0 +1,930 @@
+
+<!DOCTYPE html>
+<!--[if IE 6]>
+<html id="ie6" lang="pl-PL">
+<![endif]-->
+<!--[if IE 7]>
+<html id="ie7" lang="pl-PL">
+<![endif]-->
+<!--[if IE 8]>
+<html id="ie8" lang="pl-PL">
+<![endif]-->
+<!--[if !(IE 6) | !(IE 7) | !(IE 8)  ]><!-->
+<html lang="pl-PL">
+<!--<![endif]-->
+<head>
+<meta charset="utf-8" />
+<title>Repertuar | Centrum Sztuki Współczesnej w Toruniu | Centrum Sztuki Współczesnej w Toruniu</title>
+
+<!-- Set the viewport width to device width for mobile -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<link rel="pingback" href="https://csw.torun.pl/xmlrpc.php" />
+
+<!-- Themnific CSS -->
+
+<link href='https://fonts.googleapis.com/css?family=Titillium+Web:400,300,600,700&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Open+Sans:400,600,700&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+
+<link rel='dns-prefetch' href='//s.w.org' />
+<link rel="alternate" type="application/rss+xml" title="Centrum Sztuki Współczesnej w Toruniu &raquo; Kanał z wpisami" href="https://csw.torun.pl/feed/" />
+<link rel="alternate" type="application/rss+xml" title="Centrum Sztuki Współczesnej w Toruniu &raquo; Kanał z komentarzami" href="https://csw.torun.pl/comments/feed/" />
+		<script type="text/javascript">
+			window._wpemojiSettings = {"baseUrl":"https:\/\/s.w.org\/images\/core\/emoji\/12.0.0-1\/72x72\/","ext":".png","svgUrl":"https:\/\/s.w.org\/images\/core\/emoji\/12.0.0-1\/svg\/","svgExt":".svg","source":{"concatemoji":"https:\/\/csw.torun.pl\/wp-includes\/js\/wp-emoji-release.min.js?ver=5.4.19"}};
+			/*! This file is auto-generated */
+			!function(e,a,t){var n,r,o,i=a.createElement("canvas"),p=i.getContext&&i.getContext("2d");function s(e,t){var a=String.fromCharCode;p.clearRect(0,0,i.width,i.height),p.fillText(a.apply(this,e),0,0);e=i.toDataURL();return p.clearRect(0,0,i.width,i.height),p.fillText(a.apply(this,t),0,0),e===i.toDataURL()}function c(e){var t=a.createElement("script");t.src=e,t.defer=t.type="text/javascript",a.getElementsByTagName("head")[0].appendChild(t)}for(o=Array("flag","emoji"),t.supports={everything:!0,everythingExceptFlag:!0},r=0;r<o.length;r++)t.supports[o[r]]=function(e){if(!p||!p.fillText)return!1;switch(p.textBaseline="top",p.font="600 32px Arial",e){case"flag":return s([127987,65039,8205,9895,65039],[127987,65039,8203,9895,65039])?!1:!s([55356,56826,55356,56819],[55356,56826,8203,55356,56819])&&!s([55356,57332,56128,56423,56128,56418,56128,56421,56128,56430,56128,56423,56128,56447],[55356,57332,8203,56128,56423,8203,56128,56418,8203,56128,56421,8203,56128,56430,8203,56128,56423,8203,56128,56447]);case"emoji":return!s([55357,56424,55356,57342,8205,55358,56605,8205,55357,56424,55356,57340],[55357,56424,55356,57342,8203,55358,56605,8203,55357,56424,55356,57340])}return!1}(o[r]),t.supports.everything=t.supports.everything&&t.supports[o[r]],"flag"!==o[r]&&(t.supports.everythingExceptFlag=t.supports.everythingExceptFlag&&t.supports[o[r]]);t.supports.everythingExceptFlag=t.supports.everythingExceptFlag&&!t.supports.flag,t.DOMReady=!1,t.readyCallback=function(){t.DOMReady=!0},t.supports.everything||(n=function(){t.readyCallback()},a.addEventListener?(a.addEventListener("DOMContentLoaded",n,!1),e.addEventListener("load",n,!1)):(e.attachEvent("onload",n),a.attachEvent("onreadystatechange",function(){"complete"===a.readyState&&t.readyCallback()})),(n=t.source||{}).concatemoji?c(n.concatemoji):n.wpemoji&&n.twemoji&&(c(n.twemoji),c(n.wpemoji)))}(window,document,window._wpemojiSettings);
+		</script>
+		<style type="text/css">
+img.wp-smiley,
+img.emoji {
+	display: inline !important;
+	border: none !important;
+	box-shadow: none !important;
+	height: 1em !important;
+	width: 1em !important;
+	margin: 0 .07em !important;
+	vertical-align: -0.1em !important;
+	background: none !important;
+	padding: 0 !important;
+}
+</style>
+	<link rel='stylesheet' id='dpProEventCalendar_headcss-css'  href='https://csw.torun.pl/wp-content/plugins/dpProEventCalendar-new/css/dpProEventCalendar.min.css?ver=3.2.7' type='text/css' media='all' />
+<link rel='stylesheet' id='wp-block-library-css'  href='https://csw.torun.pl/wp-includes/css/dist/block-library/style.min.css?ver=5.4.19' type='text/css' media='all' />
+<link rel='stylesheet' id='document-gallery-css'  href='https://csw.torun.pl/wp-content/plugins/document-gallery/assets/css/style.min.css?ver=4.4.4' type='text/css' media='all' />
+<link rel='stylesheet' id='mailerlite_forms.css-css'  href='https://csw.torun.pl/wp-content/plugins/official-mailerlite-sign-up-forms/assets/css/mailerlite_forms.css?ver=1.7.20' type='text/css' media='all' />
+<link rel='stylesheet' id='default_style-css'  href='https://csw.torun.pl/wp-content/themes/blockmagazine/style.css?ver=5.4.19' type='text/css' media='all' />
+<link rel='stylesheet' id='prettyPhoto-css'  href='https://csw.torun.pl/wp-content/themes/blockmagazine/styles/prettyPhoto.css?ver=5.4.19' type='text/css' media='all' />
+<link rel='stylesheet' id='shortcodes-css'  href='https://csw.torun.pl/wp-content/themes/blockmagazine/functions/css/shortcodes.css?ver=5.4.19' type='text/css' media='all' />
+<link rel='stylesheet' id='fontello-css'  href='https://csw.torun.pl/wp-content/themes/blockmagazine/styles/fontello.css?ver=5.4.19' type='text/css' media='all' />
+<link rel='stylesheet' id='font-awesome.min-css'  href='https://csw.torun.pl/wp-content/themes/blockmagazine/styles/font-awesome.min.css?ver=5.4.19' type='text/css' media='all' />
+<link rel='stylesheet' id='desaturate-css'  href='https://csw.torun.pl/wp-content/themes/blockmagazine/styles/desaturate.css?ver=5.4.19' type='text/css' media='all' />
+<link rel='stylesheet' id='style-custom-css'  href='https://csw.torun.pl/wp-content/themes/blockmagazine/style-custom.css?ver=5.4.19' type='text/css' media='all' />
+<link rel='stylesheet' id='mobile-css'  href='https://csw.torun.pl/wp-content/themes/blockmagazine/style-mobile.css?ver=5.4.19' type='text/css' media='all' />
+		<script type="text/javascript">
+			ajaxurl = typeof(ajaxurl) !== 'string' ? 'https://csw.torun.pl/wp-admin/admin-ajax.php' : ajaxurl;
+		</script>
+		<script type='text/javascript' src='https://csw.torun.pl/wp-includes/js/jquery/jquery.js?ver=1.12.4-wp'></script>
+<script type='text/javascript' src='https://csw.torun.pl/wp-includes/js/jquery/jquery-migrate.min.js?ver=1.4.1'></script>
+<script type='text/javascript' src='https://csw.torun.pl/wp-includes/js/jquery/ui/core.min.js?ver=1.11.4'></script>
+<script type='text/javascript' src='https://csw.torun.pl/wp-includes/js/jquery/ui/widget.min.js?ver=1.11.4'></script>
+<script type='text/javascript' src='https://csw.torun.pl/wp-includes/js/jquery/ui/tabs.min.js?ver=1.11.4'></script>
+<script type='text/javascript' src='https://csw.torun.pl/wp-content/themes/blockmagazine/functions/js/shortcodes.js?ver=1'></script>
+<link rel='https://api.w.org/' href='https://csw.torun.pl/wp-json/' />
+<link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://csw.torun.pl/xmlrpc.php?rsd" />
+<link rel="wlwmanifest" type="application/wlwmanifest+xml" href="https://csw.torun.pl/wp-includes/wlwmanifest.xml" /> 
+<meta name="generator" content="WordPress 5.4.19" />
+<link rel="canonical" href="https://csw.torun.pl/repertuar/" />
+<link rel='shortlink' href='https://csw.torun.pl/?p=4184' />
+<link rel="alternate" type="application/json+oembed" href="https://csw.torun.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fcsw.torun.pl%2Fpec-events%2Fmlodsza-siostra-org-la-petite-derniere-17-edycja-przegladu-nowego-kina-francuskiego%2F" />
+<link rel="alternate" type="text/xml+oembed" href="https://csw.torun.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fcsw.torun.pl%2Fpec-events%2Fmlodsza-siostra-org-la-petite-derniere-17-edycja-przegladu-nowego-kina-francuskiego%2F&#038;format=xml" />
+        <!-- MailerLite Universal -->
+        <script>
+            (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+                .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+                n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
+            (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
+            ml('account', '1277125');
+            ml('enablePopups', true);
+        </script>
+        <!-- End MailerLite Universal -->
+        <!-- Themnific Styling -->
+<style type="text/css">
+body{background-color:#f5f5f5}
+.item_full img{border-color:#f5f5f5 !important}
+
+		#navigation>ul>li,.meta_full span,.body2{background-color:#c3dc20}
+
+		.body3,ul.medpost li.format-quote,#header,.nav-previous a:hover,.nav li ul,ul.social-menu li,.post-previous,.post-next,.searchformhead,.carousel_inn,.postinfo,#hometab,ul.tmnf_slideshow_thumbnails,ul.tmnf_slideshow_thumbnails li a img{background-color:#fff}
+
+		.item .item_inn:after,.Big .item_inn:after{border-color:transparent transparent#fff}
+.flex-caption,#serinfo-nav li.current,.wpcf7-submit,a#navtrigger,.flex-direction-nav .flex-next,.flex-direction-nav .flex-prev,span.ribbon,span.meta_alt,.imgwrap,.page-numbers.current,a.mainbutton,#submit,#comments .navigation a,.contact-form .submit,a.comment-reply-link,.searchSubmit,.scrollTo_top,.nav-previous a,#infscr-loading,.quote img,.aside img,.overrating,.ratingbar,.score{background-color:#c3dc20}
+#main-nav>li>ul:after,#nav>li>ul:after{border-color: transparent transparent #c3dc20 transparent}
+#nav>li.current>a,#servicesbox li:hover h3 i,.section>.container>h2:after,#menu-main-menu>li.current-cat>a,#menu-main-menu>li.current_page_item>a,li.current-cat>a{color:#c3dc20 !important}
+
+		#footer,.item_inn{background-color:#333}
+
+		#footer,.item_inn{color:#ccc}
+
+		#footer .threecol h2,.item_inn p.meta,.item_inn span.meta{color:#ccc !important}
+.ratingblock h2 span.score,.ratingbar,.nav-previous a,.quote p,.quote i,.ribbon_icon i,.scrollTo_top a i,span.meta_alt,.searchSubmit,#serinfo-nav li.current a,.flex-caption,a.mainbutton,#submit,#comments .navigation a,.tagssingle a,.contact-form .submit,.wpcf7-submit,a.comment-reply-link {color:#000 !important}
+.body1 a, a:link, a:visited,.nav>li>ul>li>a,#footer .carousel_inn a {color:#333}
+.entry a,a:hover,.body1 a:hover,#serinfo a:hover,.tagline a,a.slant {color:#6a6b67}
+
+		#footer a,.item_inn a{color:#fff}
+#header,.hrline,.nav li ul,.tab-post,.com_post,.searchformhead,.searchform input.s,.ad300,.pagination,input, textarea,input checkbox,input radio,select, file{border-color:#e3e3e3 !important}
+#footer,.body2,#copyright,#footer .threecol,#footer h2,#footer a,#footer .tab-post,#footer .com_post {border-color:#444 !important}
+body,input, textarea,input checkbox,input radio,select, file {font:400 13px/1.7em Open Sans;color:#666}
+.body2 h2,.body2 h3 {color:}
+h1 {font:800 45px/1.1em Open Sans;color:#000000}h2 {font:700 40px/1.2em Open Sans;color:#000000}h3 {font:600 24px/1.5em Open Sans;color:#4a4a4a}h4,a.mainbutton {font:600 14px/1.5em Open Sans;color:#000000}h5 {font:600 11px/1.5em Open Sans;color:#4a4a4a}h6,p.meta,span.meta {font:600 11px/1.5em Open Sans;color:#4a4a4a}
+#main-nav>li>a,.meta_full span,.meta_full span a {font:600 12px/1em Open Sans;color:#222}#main-nav .loop h4 {font-size:12px}.item_inn h2,#footer .threecol h2,.nav-previous a, .quote p,.carousel_inn h2 {font:600 12px/1.2em Open Sans;color:#000000}.tab-post small a,.taggs a,.ei-slider-thumbs li a {color:#666}
+</style>
+<link rel="shortcut icon" href="http://csw.torun.pl/wp-content/uploads/2015/08/favicon-csw-torun.png"/>
+<!-- Themnific Shortcodes CSS -->
+<link href="https://csw.torun.pl/wp-content/themes/blockmagazine/functions/css/shortcodes.css" rel="stylesheet" type="text/css" />
+
+<style type="text/css" id="custom-background-css">
+body.custom-background { background-color: #ffffff; }
+</style>
+			<style type="text/css" id="wp-custom-css">
+			.default.freshmail {
+	display: none;
+	visibility: hidden;
+}
+#topnav .funding {
+	color: #666666;
+}
+
+#topnav a {
+	color: #666666;
+}		</style>
+		
+<link rel='stylesheet' href="https://csw.torun.pl/wp-content/themes/blockmagazine/styles/jquery.fs.zoomer.css" type='text/css' media='all' />
+
+<script src="https://csw.torun.pl/wp-content/themes/blockmagazine/js/jquery.matchHeight-min.js"></script>
+<script src="https://csw.torun.pl/wp-content/themes/blockmagazine/js/jquery.fs.zoomer.min.js"></script>
+<script src="https://csw.torun.pl/wp-content/themes/blockmagazine/js/jquery.cookie.js"></script>
+    <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+                (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+            m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+        ga('create', 'UA-4368961-1', 'auto');
+        ga('send', 'pageview');
+
+    </script>
+</head>
+
+
+<body class="page-template page-template-page-cinema page-template-page-cinema-php page page-id-4184 custom-background upper">
+    <script type='text/javascript'>
+var src = (('https:' == document.location.protocol) ? 'https://' : 'http://');
+new Image().src = src+'adsearch.adkontekst.pl/deimos/tracking/?tid=34359743150&reid=AKCS4782&expire=5&nc=1580891633713639432888';
+</script>
+
+
+<div id="wrapper">
+
+
+
+
+<a id="navtrigger-sec" href="#">MENU</a>
+
+<div id="topnav" class="container container_alt">
+
+        <p class="funding">DOFINANSOWANO ZE ŚRODKÓW <img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/logo3.png" alt="" /><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/MKIDN.png" alt="" /><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/MARSHALL.png" alt="" /></p>
+
+        <div class="right">
+
+            <a class="newsletter" href="/newsletter">Newsletter</a>
+
+            <span class="separator"></span>
+
+            <a href="http://bip.csw.torun.pl/" target="_blank">BIP</a>
+
+            <span class="separator"></span>
+
+            <ul class="social">
+                <li><a href="https://www.facebook.com/csw.torun" target="_blank"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/icon_facebook.png" alt="" /></a></li>
+                <li><a href="https://twitter.com/coca_torun" target="_blank"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/icon_twitter.png" alt="" /></a></li>
+                <li><a href="https://instagram.com/cswtorun/" target="_blank"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/icon_instagram.png" alt="" /></a></li>
+                <li><a href="https://www.youtube.com/user/ceeswu" target="_blank"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/icon_youtube.png" alt="" /></a></li>
+            </ul>
+
+      <span class="separator"></span>
+
+            <a href="http://en.csw.torun.pl">EN</a>
+
+
+            <span class="separator"></span>
+
+            <form class="searchformhead" method="get" action="https://csw.torun.pl">
+<input type="text" name="s" class="s" size="30" value="Szukaj" onfocus="if (this.value = '') {this.value = '';}" onblur="if (this.value == '') {this.value = 'Szukaj...';}" />
+<button class='searchSubmit' ><i class="fa fa-search"></i></button>
+</form>
+        </div>
+
+</div>
+
+<div id="header">
+
+	<div class="container container_alt">
+
+        <a id="navtrigger" href="#">MENU</a>
+
+        <h1>
+
+
+                <a class="logo left" href="https://csw.torun.pl/">
+
+                    <strong>CENTRUM SZTUKI WSPÓŁCZESNEJ</strong>_W TORUNIU
+
+                </a>
+
+            <a class="right" href="https://csw.torun.pl">
+                <img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/logo2.png" alt="" />
+            </a>
+        </h1>
+
+    		
+	</div>
+
+    <nav id="navigation">
+
+    	<ul id="main-nav" class="nav container container_alt"><li id="menu-item-4060" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/sztuka/">Sztuka</a>
+<ul class="sub-menu">
+	<li id="menu-item-4065" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/sztuka/wystawy/">Wystawy</a>
+	<ul class="sub-menu">
+		<li id="menu-item-10734" class="menu-item menu-item-type-custom menu-item-object-custom"><a href="http://csw.torun.pl/temat/sztuka/wystawy/?type=current">aktualne</a></li>
+		<li id="menu-item-10732" class="menu-item menu-item-type-custom menu-item-object-custom"><a href="http://csw.torun.pl/temat/sztuka/wystawy/?type=archive">archiwum</a></li>
+		<li id="menu-item-10733" class="menu-item menu-item-type-custom menu-item-object-custom"><a href="http://csw.torun.pl/temat/sztuka/wystawy/?type=incoming">nadchodzące</a></li>
+		<li id="menu-item-32243" class="menu-item menu-item-type-custom menu-item-object-custom"><a href="https://zwiedzaj.csw.torun.pl">Zwiedzaj online</a></li>
+	</ul>
+</li>
+	<li id="menu-item-4061" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/sztuka/festiwale/">Festiwale</a>
+	<ul class="sub-menu">
+		<li id="menu-item-4068" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/festiwale/plaster/">Plaster</a></li>
+		<li id="menu-item-4066" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/festiwale/cocart/">CoCArt</a></li>
+		<li id="menu-item-4069" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/festiwale/pole-widzenia/">POLE WIDZENIA</a></li>
+		<li id="menu-item-4067" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/festiwale/kolo-czasu/">KOŁO CZASU</a></li>
+		<li id="menu-item-4070" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/festiwale/tormiar/">TORMIAR</a></li>
+	</ul>
+</li>
+	<li id="menu-item-4063" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/konferencje/">Konferencje</a></li>
+	<li id="menu-item-4064" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/sztuka/projekty/">Projekty</a>
+	<ul class="sub-menu">
+		<li id="menu-item-34806" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/common-ground/">Common Ground</a></li>
+		<li id="menu-item-36250" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/the-key-to-connection/">The Key to Connection</a></li>
+		<li id="menu-item-7113" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/projekty/audioskopia/">audioskopia</a></li>
+		<li id="menu-item-8766" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/dzien-wolnej-sztuki/">Dzień Wolnej Sztuki</a></li>
+		<li id="menu-item-8725" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/galeria-rusz/">Galeria Rusz</a></li>
+		<li id="menu-item-9806" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/projekty/labsen/">Labsen</a></li>
+		<li id="menu-item-7735" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/projekty/locis/">Locis</a></li>
+		<li id="menu-item-9808" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/projekty/pokoj-z-kuchnia/">Pokój z kuchnią</a></li>
+		<li id="menu-item-7115" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/projekty/przeprojekt/">PRZEprojekt</a></li>
+		<li id="menu-item-7738" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/projekty/sluchalnia/">Słuchalnia</a></li>
+		<li id="menu-item-8716" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/projekty/technodrom/">TECHNODROM</a></li>
+		<li id="menu-item-7114" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/projekty/zrob-to-z-nami/">Zrób to z nami</a></li>
+	</ul>
+</li>
+	<li id="menu-item-10735" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children"><a href="/blog/category/sztuka/kolekcja-sztuki-csw/?sort=author">Kolekcja Sztuki CSW</a>
+	<ul class="sub-menu">
+		<li id="menu-item-23624" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/kolekcja-sztuki-csw/blog-kolekcji/">Blog kolekcji</a></li>
+		<li id="menu-item-22699" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/sztuka/kolekcja-sztuki-csw/galeria-kolekcji-csw/">Galeria kolekcji CSW</a></li>
+		<li id="menu-item-5692" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/o-kolekcji-sztuki-csw/">O Kolekcji</a></li>
+		<li id="menu-item-5687" class="menu-item menu-item-type-custom menu-item-object-custom"><a href="/blog/category/sztuka/kolekcja-sztuki-csw/?sort=author">Kolekcja Sztuki CSW</a></li>
+	</ul>
+</li>
+</ul>
+</li>
+<li id="menu-item-4052" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/kino-centrum/">Kino</a>
+<ul class="sub-menu">
+	<li id="menu-item-4191" class="menu-item menu-item-type-custom menu-item-object-custom"><a href="http://csw.torun.pl/?page_id=4184">Repertuar</a></li>
+	<li id="menu-item-17597" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/">Blog CSF</a>
+	<ul class="sub-menu">
+		<li id="menu-item-17600" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/artykuly/">Artykuły</a></li>
+		<li id="menu-item-17621" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/recenzje/">Recenzje</a></li>
+		<li id="menu-item-18025" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/relacje/">Relacje</a></li>
+		<li id="menu-item-19890" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/filmoskop-mlodych/">Filmoskop Młodych</a></li>
+		<li id="menu-item-22750" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/wywiady/">Wywiady</a></li>
+	</ul>
+</li>
+	<li id="menu-item-20292" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/kino-centrum/cykle-edukacyjne/">Cykle edukacyjne</a>
+	<ul class="sub-menu">
+		<li id="menu-item-26449" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/spotkania-filozoficzne/">Spotkania filozoficzne</a></li>
+		<li id="menu-item-21515" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/kalendarz/kino/kino-dla-seniora/">Kino dla seniora</a></li>
+		<li id="menu-item-30186" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/kino/literatura-niemiecka-ekranie/">Literatura niemiecka na ekranie</a></li>
+		<li id="menu-item-34070" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/moda-w-obiektywie/">Moda w obiektywie</a></li>
+		<li id="menu-item-20312" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/kino/anatomia-nienormalnosci-ekranie/">Anatomia (nie)normalności na ekranie</a></li>
+		<li id="menu-item-20392" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/kalendarz/kino/movie-mowi-project/">MOVIE MÓWI PROJECT</a></li>
+		<li id="menu-item-25341" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/stare-kino-mlodzi-polecaja-cykl-edukacyjno-filmowy/">STARE KINO MŁODZI POLECAJĄ</a></li>
+		<li id="menu-item-20319" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/kalendarz/kino/patrzec-zeby-zobaczyc-historia-sztuki-operatorskiej/">Jak patrzeć, żeby zobaczyć. Historia sztuki operatorskiej</a></li>
+		<li id="menu-item-20322" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/kalendarz/kino/a-foreigners-guide-contemporary-polish-cinema/">A Foreigner’s Guide to Contemporary Polish Cinema</a></li>
+		<li id="menu-item-20316" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/kino/muzyka-spotyka-sie-obrazem/">Kiedy muzyka spotyka się z obrazem</a></li>
+		<li id="menu-item-20328" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/kalendarz/kino/lost-in-translation-czyli-wyzwania-potyczki-potkniecia-tlumaczeniu-filmowym/">Lost in translation, czyli wyzwania, potyczki i potknięcia w tłumaczeniu filmowym</a></li>
+	</ul>
+</li>
+	<li id="menu-item-25558" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/kino-centrum/warsztaty/">Warsztaty</a>
+	<ul class="sub-menu">
+		<li id="menu-item-25559" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/filmowe/">Filmowe</a></li>
+		<li id="menu-item-25560" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/kino-centrum/warsztaty/fotograficzne/">Fotograficzne</a></li>
+		<li id="menu-item-29887" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/projekt-na-warsztacie/">Projekt na warsztacie</a></li>
+	</ul>
+</li>
+	<li id="menu-item-4055" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/kino-centrum/wydarzenia/">Wydarzenia</a></li>
+	<li id="menu-item-12179" class="menu-item menu-item-type-custom menu-item-object-custom"><a href="http://csw.torun.pl/kino-centrum/kino-centrum-8667/">Info</a></li>
+	<li id="menu-item-8300" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/kino-centrum/archiwum-kino-centrum/">Archiwum</a></li>
+</ul>
+</li>
+<li id="menu-item-4056" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/centrum-lit/">Centrum Literatury</a>
+<ul class="sub-menu">
+	<li id="menu-item-8266" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/">Aktualności</a></li>
+	<li id="menu-item-54987" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/warsztaty_cnw/">Warsztaty</a></li>
+	<li id="menu-item-56628" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/centrum-lit/warsztaty-grupy-dnw/">Warsztaty dla grup zorganizowanych</a>
+	<ul class="sub-menu">
+		<li id="menu-item-55248" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/sztuka-uzytkowa-warsztaty-dla-grup-zorganizowanych/">SZTUKA UŻYTKOWA – warsztaty dla grup zorganizowanych</a></li>
+		<li id="menu-item-56629" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/sztuka-uzytkowa-warsztaty-dla-grup-zorganizowanych/cykl-3-warsztatow-rozwijajacych-kompetencje-miekkie-dla-mlodziezy/">CYKL 3 WARSZTATÓW ROZWIJAJĄCYCH KOMPETENCJE MIĘKKIE DLA MŁODZIEŻY</a></li>
+	</ul>
+</li>
+	<li id="menu-item-54279" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/cykle-wykladow/">Cykle Wykładów</a>
+	<ul class="sub-menu">
+		<li id="menu-item-54271" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/cykle-wykladow/arcydziela-malarstwa/">Arcydzieła malarstwa</a></li>
+		<li id="menu-item-54272" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/cykle-wykladow/czym-uwodzi-dizajn/">Czym uwodzi dizajn</a></li>
+		<li id="menu-item-24434" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/cykle-wykladow/historia-mody/">Historia mody</a></li>
+		<li id="menu-item-54483" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/cykle-wykladow/lco/">Lekcje czytania obrazu</a></li>
+		<li id="menu-item-56267" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/cykle-wykladow/o-przestrzeni-nieprzeniknionej/">O przestrzeni nieprzeniknionej</a></li>
+		<li id="menu-item-54273" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/cykle-wykladow/wokol-architektury/">Wokół architektury</a></li>
+		<li id="menu-item-54282" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/cykle-wykladow/inne-wyklady/">Inne wykłady</a></li>
+		<li id="menu-item-21370" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/archiwum_cykli/">Archiwum cykli</a></li>
+		<li id="menu-item-4550" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/przestrzen-literatury/">Przestrzeń Literatury</a></li>
+	</ul>
+</li>
+	<li id="menu-item-54284" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/spacery/">Spacery tematyczne</a></li>
+	<li id="menu-item-8267" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children"><a href="#">Czytelnia</a>
+	<ul class="sub-menu">
+		<li id="menu-item-8265" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/czytelnia-info/">Info</a></li>
+		<li id="menu-item-10915" class="menu-item menu-item-type-custom menu-item-object-custom"><a href="http://www.torun-csw.sowwwa.pl/">Katalog Czytelni</a></li>
+	</ul>
+</li>
+	<li id="menu-item-4059" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/centrum-lit/wydawnictwo/">Wydawnictwo</a></li>
+	<li id="menu-item-6786" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children"><a href="#">Księgarnia Sztuki</a>
+	<ul class="sub-menu">
+		<li id="menu-item-5278" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/ksiegarnia-sztuki/">O księgarni</a></li>
+		<li id="menu-item-5283" class="menu-item menu-item-type-custom menu-item-object-custom"><a href="http://ksiegarniasztuki.pl/">e-Księgarnia Sztuki</a></li>
+	</ul>
+</li>
+</ul>
+</li>
+<li id="menu-item-4042" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/edukacja/">Edukacja</a>
+<ul class="sub-menu">
+	<li id="menu-item-4046" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/edukacja/info-edukacja/">Info</a></li>
+	<li id="menu-item-4045" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/edukacja/dla-szkol/">Oferta dla szkół, przedszkoli i innych grup zorganizowanych</a></li>
+	<li id="menu-item-46192" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/dla-indywidualnych-zwiedzajacych/">Oferta dla indywidualnych zwiedzających</a></li>
+	<li id="menu-item-4044" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/edukacja/wydarzenia-dla-dzieci-i-rodzin/">Wydarzenia dla dzieci i rodzin</a></li>
+	<li id="menu-item-4043" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/edukacja/wydarzenia-dla-doroslych/">Wydarzenia dla dorosłych</a></li>
+	<li id="menu-item-51268" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/kosze-edukacyjne/">Kosze edukacyjne</a></li>
+	<li id="menu-item-22691" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/edukacja/wystaw-sie-w-csw/">WYSTAW SIĘ W CSW</a></li>
+	<li id="menu-item-6775" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children"><a href="#">Archiwum projektów</a>
+	<ul class="sub-menu">
+		<li id="menu-item-6776" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/edukacja/projekty-edukacja-archiwalne/">Projekty</a></li>
+		<li id="menu-item-4597" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/edukacja/fotoblog/">Fotoblog</a></li>
+		<li id="menu-item-7112" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/edukacja/publikacje/">Publikacje</a></li>
+	</ul>
+</li>
+</ul>
+</li>
+<li id="menu-item-4156" class="mega menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children"><a href="#">Info</a><div class="sub">	<ul class="loop">
+			<li><div>
+
+    
+       <a href="https://csw.torun.pl/info/godziny-otwarcia-4178/" title="Godziny otwarcia" >
+       
+          <img width="250" height="190" src="https://csw.torun.pl/wp-content/uploads/2015/05/godziny-otwarcia-250x190.jpg" class="grayscale grayscale-fade wp-post-image" alt="" />          
+       </a>
+       
+        
+  <h4><a href="https://csw.torun.pl/info/godziny-otwarcia-4178/" title="Godziny otwarcia">Godziny otwarcia </a></h4>
+  
+  	<p class="meta">
+		19 maja 2015  &bull;
+    
+</div></li>
+			<li><div>
+
+    
+       <a href="https://csw.torun.pl/info/bilety-2-4181/" title="Bilety" >
+       
+          <img width="250" height="190" src="https://csw.torun.pl/wp-content/uploads/2015/05/IMG_7773-250x190.jpg" class="grayscale grayscale-fade wp-post-image" alt="" />          
+       </a>
+       
+        
+  <h4><a href="https://csw.torun.pl/info/bilety-2-4181/" title="Bilety">Bilety </a></h4>
+  
+  	<p class="meta">
+		19 maja 2015  &bull;
+    
+</div></li>
+			<li><div>
+
+    
+       <a href="https://csw.torun.pl/info/kontakt-3-11689/" title="Kontakt" >
+       
+          <img width="250" height="190" src="https://csw.torun.pl/wp-content/uploads/2015/08/150823_166786186677176_100000373861854_408854_7904976_n-250x190.jpg" class="grayscale grayscale-fade wp-post-image" alt="Kontakt" />          
+       </a>
+       
+        
+  <h4><a href="https://csw.torun.pl/info/kontakt-3-11689/" title="Kontakt">Kontakt </a></h4>
+  
+  	<p class="meta">
+		12 sierpnia 2015  &bull;
+    
+</div></li>
+			<li><div>
+
+    
+       <a href="https://csw.torun.pl/info/lokalizacja-4171/" title="Lokalizacja" >
+       
+          <img width="250" height="190" src="https://csw.torun.pl/wp-content/uploads/2015/05/prev_nocne-2-250x190.jpg" class="grayscale grayscale-fade wp-post-image" alt="Budynek CSW nocą" />          
+       </a>
+       
+        
+  <h4><a href="https://csw.torun.pl/info/lokalizacja-4171/" title="Lokalizacja">Lokalizacja </a></h4>
+  
+  	<p class="meta">
+		19 maja 2015  &bull;
+    
+</div></li>
+		</ul>
+    	</div>
+<ul class="sub-menu">
+	<li id="menu-item-9926" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/wynajem/">Wynajem</a></li>
+	<li id="menu-item-12404" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/zapytania-ofertowe/">Zapytania ofertowe</a></li>
+	<li id="menu-item-12186" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/parking/">PARKING</a></li>
+	<li id="menu-item-4051" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children"><a href="https://csw.torun.pl/temat/info/press-room/">Press Room</a>
+	<ul class="sub-menu">
+		<li id="menu-item-10523" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/kontakt-dla-mediow/">Kontakt dla mediów</a></li>
+		<li id="menu-item-10527" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/logo-do-pobrania/">Logo do pobrania</a></li>
+	</ul>
+</li>
+	<li id="menu-item-44750" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/o-csw-pjm/">O CSW – PJM</a></li>
+	<li id="menu-item-38650" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/o-csw-tekst-latwy-do-czytania/">O CSW – tekst łatwy do czytania</a></li>
+	<li id="menu-item-11563" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/historia-csw/">Historia CSW</a></li>
+	<li id="menu-item-38410" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/info/rozbudowa-csw/">Rozbudowa CSW</a></li>
+	<li id="menu-item-8705" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/info/kawiarnia/">Kawiarnia</a></li>
+	<li id="menu-item-9900" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/zespol/">Zespół</a></li>
+	<li id="menu-item-4050" class="menu-item menu-item-type-taxonomy menu-item-object-category"><a href="https://csw.torun.pl/temat/info/partnerzy/">Partnerzy</a></li>
+	<li id="menu-item-55955" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/dofinansowanie/">Dofinansowanie</a></li>
+</ul>
+</li>
+<li id="menu-item-4071" class="menu-item menu-item-type-post_type menu-item-object-page"><a href="https://csw.torun.pl/kalendarz/">Bilety</a></li>
+</ul>
+	  
+    </nav>
+
+</div>
+
+<div class="clearfix"></div>
+
+
+<div id="core" class="container">
+
+	<div id="content" class="full-width">
+    
+		<div class="post-4184 page type-page status-publish hentry">
+        
+        	<h1 class="post entry-title bold border" itemprop="headline">Repertuar</a></h1>
+    
+
+                    <div class="entry">
+                        
+                        <div id="cinema">
+                                                                                                <div class="box">
+                                        <div class="inner">
+                                            <h2>7 czerwca, niedziela</h2>
+                                                                                            <ul class="events">
+                                                                                                            <li>
+                                                            <p class="hour">12:30</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/drzewo-magii-14/">Drzewo magii</a></h3>
+                                                                                                                    </li>
+                                                                                                            <li>
+                                                            <p class="hour">14:45</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/niesamowite-przygody-skarpetek-3-ale-kosmos-9/">Niesamowite przygody skarpetek 3. Ale kosmos!</a></h3>
+                                                                                                                    </li>
+                                                                                                            <li>
+                                                            <p class="hour">16:00</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/drzewo-magii-15/">Drzewo magii</a></h3>
+                                                                                                                    </li>
+                                                                                                            <li>
+                                                            <p class="hour">18:30</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/zawiescie-czerwone-latarnie-2/">Zawieście czerwone latarnie</a></h3>
+                                                                                                                    </li>
+                                                                                                    </ul>
+                                                                                    </div>
+                                    </div>
+                                                                    <div class="box">
+                                        <div class="inner">
+                                            <h2>8 czerwca, poniedziałek</h2>
+                                                                                            <p class="no-events">Brak wydarzeń</p>
+                                                                                    </div>
+                                    </div>
+                                                                    <div class="box">
+                                        <div class="inner">
+                                            <h2>9 czerwca, wtorek</h2>
+                                                                                            <ul class="events">
+                                                                                                            <li>
+                                                            <p class="hour">14:30</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/niesamowite-przygody-skarpetek-3-ale-kosmos-10/">Niesamowite przygody skarpetek 3. Ale kosmos!</a></h3>
+                                                                                                                    </li>
+                                                                                                            <li>
+                                                            <p class="hour">16:00</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/drzewo-magii-16/">Drzewo magii</a></h3>
+                                                                                                                    </li>
+                                                                                                            <li>
+                                                            <p class="hour">18:30</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/zawiescie-czerwone-latarnie-3/">Zawieście czerwone latarnie</a></h3>
+                                                                                                                    </li>
+                                                                                                    </ul>
+                                                                                    </div>
+                                    </div>
+                                                                    <div class="box">
+                                        <div class="inner">
+                                            <h2>10 czerwca, środa</h2>
+                                                                                            <ul class="events">
+                                                                                                            <li>
+                                                            <p class="hour">15:45</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/drzewo-magii-17/">Drzewo magii</a></h3>
+                                                                                                                    </li>
+                                                                                                            <li>
+                                                            <p class="hour">18:00</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/obcy-org-letranger-17-edycja-przegladu-nowego-kina-francuskiego/">Obcy (org. L’Étranger) 17. edycja Przeglądu Nowego Kina Francuskiego</a></h3>
+                                                                                                                    </li>
+                                                                                                    </ul>
+                                                                                    </div>
+                                    </div>
+                                                                    <div class="box">
+                                        <div class="inner">
+                                            <h2>11 czerwca, czwartek</h2>
+                                                                                            <ul class="events">
+                                                                                                            <li>
+                                                            <p class="hour">14:30</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/niesamowite-przygody-skarpetek-3-ale-kosmos-11/">Niesamowite przygody skarpetek 3. Ale kosmos!</a></h3>
+                                                                                                                    </li>
+                                                                                                            <li>
+                                                            <p class="hour">15:45</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/drzewo-magii-18/">Drzewo magii</a></h3>
+                                                                                                                    </li>
+                                                                                                            <li>
+                                                            <p class="hour">18:00</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/guru-org-gourou-17-edycja-przegladu-nowego-kina-francuskiego/">Guru (org. Gourou) 17. edycja Przeglądu Nowego Kina Francuskiego</a></h3>
+                                                                                                                    </li>
+                                                                                                    </ul>
+                                                                                    </div>
+                                    </div>
+                                                                    <div class="box">
+                                        <div class="inner">
+                                            <h2>12 czerwca, piątek</h2>
+                                                                                            <ul class="events">
+                                                                                                            <li>
+                                                            <p class="hour">20:00</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/poczta-glosowa-org-le-repondeur-17-edycja-przegladu-nowego-kina-francuskiego/">Poczta głosowa (org. Le Répondeur) 17. edycja Przeglądu Nowego Kina Francuskiego</a></h3>
+                                                                                                                    </li>
+                                                                                                    </ul>
+                                                                                    </div>
+                                    </div>
+                                                                    <div class="box">
+                                        <div class="inner">
+                                            <h2>13 czerwca, sobota</h2>
+                                                                                            <ul class="events">
+                                                                                                            <li>
+                                                            <p class="hour">18:00</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/wypadek-fortepianowy-org-laccident-de-piano-17-edycja-przegladu-nowego-kina-francuskiego/">Wypadek fortepianowy (org. L'Accident de piano) 17. edycja Przeglądu Nowego Kina Francuskiego</a></h3>
+                                                                                                                    </li>
+                                                                                                            <li>
+                                                            <p class="hour">20:00</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/wielki-luk-org-linconnu-de-la-grande-arche-17-edycja-przegladu-nowego-kina-francuskiego/">Wielki Łuk (org. L'Inconnu de la Grande Arche) 17. edycja Przeglądu Nowego Kina Francuskiego</a></h3>
+                                                                                                                    </li>
+                                                                                                    </ul>
+                                                                                    </div>
+                                    </div>
+                                                                    <div class="box">
+                                        <div class="inner">
+                                            <h2>14 czerwca, niedziela</h2>
+                                                                                            <ul class="events">
+                                                                                                            <li>
+                                                            <p class="hour">18:00</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/nowa-fala-org-nouvelle-vague-17-edycja-przegladu-nowego-kina-francuskiego/">Nowa Fala (org. Nouvelle Vague) 17. edycja Przeglądu Nowego Kina Francuskiego</a></h3>
+                                                                                                                    </li>
+                                                                                                            <li>
+                                                            <p class="hour">20:00</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/winda-na-szafot-org-ascenseur-pour-lechafaud-17-edycja-przegladu-nowego-kina-francuskiego/">Windą na szafot (org. Ascenseur pour l'échafaud) 17. edycja Przeglądu Nowego Kina Francuskiego</a></h3>
+                                                                                                                    </li>
+                                                                                                    </ul>
+                                                                                    </div>
+                                    </div>
+                                                                    <div class="box">
+                                        <div class="inner">
+                                            <h2>15 czerwca, poniedziałek</h2>
+                                                                                            <p class="no-events">Brak wydarzeń</p>
+                                                                                    </div>
+                                    </div>
+                                                                    <div class="box">
+                                        <div class="inner">
+                                            <h2>16 czerwca, wtorek</h2>
+                                                                                            <ul class="events">
+                                                                                                            <li>
+                                                            <p class="hour">18:00</p>
+                                                            <h3><a href="https://csw.torun.pl/pec-events/mlodsza-siostra-org-la-petite-derniere-17-edycja-przegladu-nowego-kina-francuskiego/">Młodsza siostra (org. La Petite Dernière) 17. edycja Przeglądu Nowego Kina Francuskiego</a></h3>
+                                                                                                                    </li>
+                                                                                                    </ul>
+                                                                                    </div>
+                                    </div>
+                                                                                    </div>
+                    </div>
+                        
+            </div>
+    </div>
+
+</div>
+
+
+<div id="footer">
+
+	<div class="container container_alt">
+
+		  
+    
+        	<div class="threecol first"> 
+    
+		<h2 class="widget">Centrum Sztuki Współczesnej Znaki Czasu w Toruniu</h2>			<div class="textwidget"><p>Adres:<br />
+ul. Wały gen. Sikorskiego 13<br />
+87-100 Toruń<br />
+<br />
+Recepcja:<br />
+(od wtorku do niedzieli)<br />
+tel. 56 610 97 18<br />
+<br />
+Sekretariat:<br />
+tel. 56 610 97 00<br />
+fax 56 621 07 24<br />
+<br />
+info@csw.torun.pl<br />
+<br />
+NIP: 956 217 32 42<br />
+REGON: 340174509<br />
+Numer w rejestrze instytucji kultury Gminy Miasta Torunia: 4011-8/10</p>
+</div>
+		<ul class="social">
+            <li><a href="https://www.facebook.com/csw.torun"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/icon_facebook.png" alt="" /></a></li>
+            <li><a href="https://twitter.com/coca_torun"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/icon_twitter.png" alt="" /></a></li>
+            <li><a href="https://instagram.com/cswtorun/"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine//images/icon_instagram.png" alt="" /></a></li>
+            <li><a href="https://www.youtube.com/user/ceeswu"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/icon_youtube.png" alt="" /></a></li>
+        </ul>        
+    </div>
+    
+    
+    <div class="threecol">
+    
+		<h2 class="widget">Mapa strony</h2><div class="menu-menu-stopka-mapa-strony-container"><ul id="menu-menu-stopka-mapa-strony" class="menu"><li id="menu-item-8381" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-8381"><a href="https://csw.torun.pl/temat/sztuka/">Sztuka</a>
+<ul class="sub-menu">
+	<li id="menu-item-8393" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-8393"><a href="https://csw.torun.pl/temat/sztuka/wystawy/">Wystawy</a></li>
+	<li id="menu-item-8389" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-8389"><a href="https://csw.torun.pl/temat/sztuka/festiwale/">Festiwale</a></li>
+	<li id="menu-item-8392" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-8392"><a href="https://csw.torun.pl/temat/sztuka/projekty/">Projekty</a></li>
+	<li id="menu-item-8391" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-8391"><a href="https://csw.torun.pl/temat/sztuka/konferencje/">Konferencje</a></li>
+	<li id="menu-item-8390" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-8390"><a href="https://csw.torun.pl/temat/sztuka/kolekcja-sztuki-csw/">Kolekcja sztuki CSW</a></li>
+</ul>
+</li>
+<li id="menu-item-8382" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-8382"><a href="https://csw.torun.pl/temat/edukacja/">Edukacja</a></li>
+<li id="menu-item-8384" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-8384"><a href="https://csw.torun.pl/temat/kino-centrum/">Kino Centrum</a></li>
+<li id="menu-item-8385" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-8385"><a href="https://csw.torun.pl/temat/centrum-lit/">Centrum Literatury</a>
+<ul class="sub-menu">
+	<li id="menu-item-8386" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-8386"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/">Czytelnia</a></li>
+	<li id="menu-item-22378" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-22378"><a href="http://ksiegarniasztuki.pl/">Księgarnia Sztuki</a></li>
+</ul>
+</li>
+<li id="menu-item-8383" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-8383"><a href="https://csw.torun.pl/temat/info/">Info</a>
+<ul class="sub-menu">
+	<li id="menu-item-44749" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-44749"><a href="https://csw.torun.pl/o-csw-pjm/">O CSW – PJM</a></li>
+	<li id="menu-item-38649" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-38649"><a href="https://csw.torun.pl/o-csw-tekst-latwy-do-czytania/">O CSW – tekst łatwy do czytania</a></li>
+</ul>
+</li>
+<li id="menu-item-8388" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-8388"><a href="http://demo.csw.torun.pl/kalendarz/">Kalendarium</a></li>
+<li id="menu-item-38507" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-38507"><a href="https://deklaracja-dostepnosci.info/deklaracja/jvq40730ch497u5o">Deklaracja dostępności</a></li>
+</ul></div><a href="https://www.gov.pl/web/kultura"><img width="300" height="215" src="https://csw.torun.pl/wp-content/uploads/2020/09/mkidn-300x215.png" class="image wp-image-33084  attachment-medium size-medium" alt="" style="max-width: 100%; height: auto;" srcset="https://csw.torun.pl/wp-content/uploads/2020/09/mkidn-300x215.png 300w, https://csw.torun.pl/wp-content/uploads/2020/09/mkidn.png 307w" sizes="(max-width: 300px) 100vw, 300px" /></a><a href="https://www.torun.pl/"><img width="250" height="150" src="https://csw.torun.pl/wp-content/uploads/2020/09/torun-300x180.png" class="image wp-image-33085  attachment-250x150 size-250x150" alt="" style="max-width: 100%; height: auto;" srcset="https://csw.torun.pl/wp-content/uploads/2020/09/torun-300x180.png 300w, https://csw.torun.pl/wp-content/uploads/2020/09/torun.png 477w" sizes="(max-width: 250px) 100vw, 250px" /></a><a href="https://www.kujawsko-pomorskie.pl/"><img width="170" height="137" src="https://csw.torun.pl/wp-content/uploads/2020/09/KP_podstawowy_inwersja-300x241.png" class="image wp-image-33086  attachment-170x137 size-170x137" alt="" style="max-width: 100%; height: auto;" srcset="https://csw.torun.pl/wp-content/uploads/2020/09/KP_podstawowy_inwersja-300x241.png 300w, https://csw.torun.pl/wp-content/uploads/2020/09/KP_podstawowy_inwersja-1024x824.png 1024w, https://csw.torun.pl/wp-content/uploads/2020/09/KP_podstawowy_inwersja-768x618.png 768w, https://csw.torun.pl/wp-content/uploads/2020/09/KP_podstawowy_inwersja-1536x1236.png 1536w, https://csw.torun.pl/wp-content/uploads/2020/09/KP_podstawowy_inwersja-2048x1648.png 2048w" sizes="(max-width: 170px) 100vw, 170px" /></a><a href="https://www.kujawsko-pomorskie.pl/"><img width="185" height="148" src="https://csw.torun.pl/wp-content/uploads/2020/09/kujpom01-300x240.png" class="image wp-image-33087  attachment-185x148 size-185x148" alt="" style="max-width: 100%; height: auto;" srcset="https://csw.torun.pl/wp-content/uploads/2020/09/kujpom01-300x240.png 300w, https://csw.torun.pl/wp-content/uploads/2020/09/kujpom01.png 360w" sizes="(max-width: 185px) 100vw, 185px" /></a>    	<div class="twinsbox">
+		<h2 class="widget">Znajdź nas na Facebooku</h2>		<iframe src="https://www.facebook.com/plugins/likebox.php?href=https%3A%2F%2Fwww.facebook.com%2Fcsw.torun%2F&amp;width=325&amp;colorscheme=light&amp;show_faces=true&amp;border_color=%23dddddd&amp;stream=false&amp;header=false&amp;height=260" scrolling="no" frameborder="0" style="border-color:#dddddd; padding:-1px; overflow:hidden; width:325px; height: 260px;" allowTransparency="true"></iframe>
+
+				</div>
+        <div class="clearfix"></div>
+		        
+    </div>
+    
+    <div class="threecol"> 
+    
+		<h2 class="widget">Bilety</h2>			<div class="textwidget"><p>Ceny biletów na wystawy:<br />
+<br />
+Standardowe bilety<br />
+Bilet normalny – 15 zł<br />
+Bilet ulgowy – 10 zł<br />
+W każdy czwartek – 5 zł<br />
+<br />
+Bilet normalny na wszystkie wystawy – 35 zł<br />
+Bilet ulgowy na wszystkie wystawy – 25 zł<br />
+<br />
+Ceny biletów kinowych:<br />
+Bilet normalny – 16 zł<br />
+Bilet ulgowy – 14 zł<br />
+<br />
+Więcej informacji w recepcji.<br />
+<br />
+Recepcja:<br />
+tel. 56 610 97 18<br />
+</p>
+<p>Uwaga! Kasa biletowa kończy sprzedaż biletów na wystawy na pół godziny przed zamknięciem wystaw.</p>
+</div>
+		        
+    </div>
+    
+    <div class="threecol"> 
+    
+		<h2 class="widget">Godziny otwarcia</h2>			<div class="textwidget"><p>Godziny otwarcia CSW:<br />
+/ poniedziałek: nieczynne<br />
+/ wtorek – czwartek: 12.00–18.00<br />
+/ piątek: 12.00–20.00<br />
+/ sobota – niedziela: 12.00–19.00<br />
+</b><br />
+Księgarnia Sztuki:<br />
+/ poniedziałek – niedziela: 10.00–18.00<br />
+Z oferty księgarni można korzystać również online:<br />
+https://ksiegarniasztuki.pl/<br />
+</b><br />
+Czytelnia:<br />
+Godziny otwarcia Czytelni:<br />
+/ wtorek – sobota: 12.00–18.00<br />
+/ niedziela – poniedziałek: nieczynne</p>
+</div>
+		        
+    </div>        
+        <div class="clearfix"></div>
+
+        <div id="copyright">
+        
+            <div class="fl">
+            
+				<ul id="menu-footer-menu" class="bottom-menu"><li id="menu-item-3921" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-3921"><a href="https://csw.torun.pl/home/">Strona główna</a></li>
+<li id="menu-item-11553" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11553"><a href="https://csw.torun.pl/nota-prawna/">Nota prawna</a></li>
+<li id="menu-item-11551" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11551"><a href="https://csw.torun.pl/regulamin/">Regulamin</a></li>
+<li id="menu-item-11552" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11552"><a href="https://csw.torun.pl/polityka-prywatnosci/">Polityka prywatności</a></li>
+</ul>                    
+            </div>
+        
+            <div class="fr">
+            
+				                
+                   
+                    
+                                
+            </div>
+                  
+        </div> 
+    
+	</div>
+        
+</div><!-- /#footer  -->
+    
+<div class="scrollTo_top" style="display: block">
+
+    <a title="Scroll to top" href="#">
+    
+    	<i class="fa fa-angle-up"></i> 
+        
+    </a>
+    
+</div>
+
+<script type='text/javascript' src='https://csw.torun.pl/wp-content/plugins/document-gallery/assets/js/gallery.min.js?ver=4.4.4'></script>
+<script type='text/javascript' src='https://csw.torun.pl/wp-content/themes/blockmagazine/js/jquery.hoverIntent.minified.js?ver=5.4.19'></script>
+<script type='text/javascript' src='https://csw.torun.pl/wp-content/themes/blockmagazine/js/jquery.prettyPhoto.js?ver=5.4.19'></script>
+<script type='text/javascript' src='https://csw.torun.pl/wp-content/themes/blockmagazine/js/superfish.js?ver=5.4.19'></script>
+<script type='text/javascript' src='https://csw.torun.pl/wp-content/themes/blockmagazine/js/ownScript.js?ver=5.4.19'></script>
+<script type='text/javascript' src='https://csw.torun.pl/wp-includes/js/wp-embed.min.js?ver=5.4.19'></script>
+
+</div>
+
+<div id="mobile-nav">
+    <div class="menu-menu-glowne-mobile-container"><ul id="menu-menu-glowne-mobile" class="menu"><li id="menu-item-12496" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-12496"><a href="https://csw.torun.pl/temat/sztuka/">Sztuka</a>
+<ul class="sub-menu">
+	<li id="menu-item-12497" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-12497"><a href="https://csw.torun.pl/temat/sztuka/wystawy/">Wystawy</a>
+	<ul class="sub-menu">
+		<li id="menu-item-12498" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12498"><a href="http://csw.torun.pl/temat/sztuka/wystawy/?type=current">aktualne</a></li>
+		<li id="menu-item-12499" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12499"><a href="http://csw.torun.pl/temat/sztuka/wystawy/?type=archive">archiwum</a></li>
+		<li id="menu-item-12500" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12500"><a href="http://csw.torun.pl/temat/sztuka/wystawy/?type=incoming">nadchodzace</a></li>
+		<li id="menu-item-39768" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-39768"><a href="https://zwiedzaj.csw.torun.pl">Zwiedzaj online</a></li>
+	</ul>
+</li>
+	<li id="menu-item-12501" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-12501"><a href="https://csw.torun.pl/temat/sztuka/festiwale/">Festiwale</a>
+	<ul class="sub-menu">
+		<li id="menu-item-12502" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12502"><a href="https://csw.torun.pl/temat/sztuka/festiwale/plaster/">Plaster</a></li>
+		<li id="menu-item-12503" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12503"><a href="https://csw.torun.pl/temat/sztuka/festiwale/cocart/">CoCArt</a></li>
+		<li id="menu-item-12504" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12504"><a href="https://csw.torun.pl/temat/sztuka/festiwale/pole-widzenia/">POLE WIDZENIA</a></li>
+		<li id="menu-item-12505" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12505"><a href="https://csw.torun.pl/temat/sztuka/festiwale/kolo-czasu/">KOŁO CZASU</a></li>
+		<li id="menu-item-12506" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12506"><a href="https://csw.torun.pl/temat/sztuka/festiwale/tormiar/">TORMIAR</a></li>
+	</ul>
+</li>
+	<li id="menu-item-12518" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12518"><a href="https://csw.torun.pl/temat/sztuka/konferencje/">Konferencje</a></li>
+	<li id="menu-item-12519" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-12519"><a href="/blog/category/sztuka/kolekcja-sztuki-csw/?sort=author">Kolekcja Sztuki CSW</a>
+	<ul class="sub-menu">
+		<li id="menu-item-56018" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56018"><a href="https://csw.torun.pl/temat/sztuka/kolekcja-sztuki-csw/blog-kolekcji/">Blog kolekcji</a></li>
+		<li id="menu-item-56023" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56023"><a href="https://csw.torun.pl/temat/sztuka/kolekcja-sztuki-csw/galeria-kolekcji-csw/">Galeria kolekcji CSW</a></li>
+		<li id="menu-item-12520" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-12520"><a href="https://csw.torun.pl/o-kolekcji-sztuki-csw/">O Kolekcji</a></li>
+		<li id="menu-item-12521" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12521"><a href="/blog/category/sztuka/kolekcja-sztuki-csw/?sort=author">Kolekcja Sztuki CSW</a></li>
+	</ul>
+</li>
+</ul>
+</li>
+<li id="menu-item-12522" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-12522"><a href="https://csw.torun.pl/temat/kino-centrum/">Kino Centrum</a>
+<ul class="sub-menu">
+	<li id="menu-item-12523" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12523"><a href="http://csw.torun.pl/?page_id=4184">Repertuar</a></li>
+	<li id="menu-item-56024" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-56024"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/">Blog CSF</a>
+	<ul class="sub-menu">
+		<li id="menu-item-56019" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56019"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/artykuly/">Artykuły</a></li>
+		<li id="menu-item-56020" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56020"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/recenzje/">Recenzje</a></li>
+		<li id="menu-item-56021" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56021"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/relacje/">Relacje</a></li>
+		<li id="menu-item-56022" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56022"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/filmoskop-mlodych/">Filmoskop Młodych</a></li>
+		<li id="menu-item-56025" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56025"><a href="https://csw.torun.pl/temat/kino-centrum/blog-filmoskop-torunski-csf/wywiady/">Wywiady</a></li>
+	</ul>
+</li>
+	<li id="menu-item-56026" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56026"><a href="https://csw.torun.pl/temat/kino-centrum/cykle-edukacyjne/">Cykle edukacyjne</a></li>
+	<li id="menu-item-56028" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56028"><a href="https://csw.torun.pl/temat/kino-centrum/warsztaty/">Warsztaty</a></li>
+	<li id="menu-item-12532" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12532"><a href="https://csw.torun.pl/temat/kino-centrum/wydarzenia/">Wydarzenia</a></li>
+	<li id="menu-item-12533" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12533"><a href="http://csw.torun.pl/kino-centrum/kino-centrum-8667/">Info</a></li>
+</ul>
+</li>
+<li id="menu-item-12534" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-12534"><a href="https://csw.torun.pl/temat/centrum-lit/">Centrum Literatury</a>
+<ul class="sub-menu">
+	<li id="menu-item-12537" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12537"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/">Aktualności</a></li>
+	<li id="menu-item-56034" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56034"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/warsztaty_cnw/">Warsztaty</a></li>
+	<li id="menu-item-56031" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-56031"><a href="https://csw.torun.pl/sztuka-uzytkowa-warsztaty-dla-grup-zorganizowanych/">SZTUKA UŻYTKOWA – warsztaty dla grup zorganizowanych</a></li>
+	<li id="menu-item-56032" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56032"><a href="https://csw.torun.pl/temat/centrum-lit/spacery/">Spacery tematyczne</a></li>
+	<li id="menu-item-56033" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-56033"><a href="https://csw.torun.pl/temat/centrum-lit/czytelnia/cykle-wykladow/">Cykle Wykładów</a></li>
+	<li id="menu-item-12535" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-12535"><a href="#">Czytelnia</a>
+	<ul class="sub-menu">
+		<li id="menu-item-12536" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-12536"><a href="https://csw.torun.pl/czytelnia-info/">Info</a></li>
+		<li id="menu-item-12538" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12538"><a href="http://www.torun-csw.sowwwa.pl/">Katalog Czytelni</a></li>
+	</ul>
+</li>
+	<li id="menu-item-12544" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12544"><a href="https://csw.torun.pl/temat/centrum-lit/wydawnictwo/">Wydawnictwo</a></li>
+	<li id="menu-item-12545" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-12545"><a href="#">Księgarnia Sztuki</a>
+	<ul class="sub-menu">
+		<li id="menu-item-12546" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-12546"><a href="https://csw.torun.pl/ksiegarnia-sztuki/">O księgarni</a></li>
+		<li id="menu-item-12547" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12547"><a href="http://ksiegarniasztuki.pl/">e-Księgarnia Sztuki</a></li>
+	</ul>
+</li>
+</ul>
+</li>
+<li id="menu-item-12548" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-12548"><a href="https://csw.torun.pl/temat/edukacja/">Edukacja</a>
+<ul class="sub-menu">
+	<li id="menu-item-12549" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12549"><a href="https://csw.torun.pl/temat/edukacja/info-edukacja/">Info</a></li>
+	<li id="menu-item-12550" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12550"><a href="https://csw.torun.pl/temat/edukacja/dla-szkol/">Dla przedszkoli, szkół i innych grup zorganizowanych</a></li>
+	<li id="menu-item-12551" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12551"><a href="https://csw.torun.pl/temat/edukacja/wydarzenia-dla-dzieci-i-rodzin/">Wydarzenia dla dzieci i rodzin</a></li>
+	<li id="menu-item-12552" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12552"><a href="https://csw.torun.pl/temat/edukacja/wydarzenia-dla-doroslych/">Wydarzenia dla dorosłych</a></li>
+	<li id="menu-item-12553" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-12553"><a href="#">Projekty</a>
+	<ul class="sub-menu">
+		<li id="menu-item-12554" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12554"><a href="https://csw.torun.pl/temat/edukacja/projekty-edukacja-biezace/">Bieżące</a></li>
+		<li id="menu-item-12555" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12555"><a href="https://csw.torun.pl/temat/edukacja/projekty-edukacja-archiwalne/">Archiwalne</a></li>
+	</ul>
+</li>
+	<li id="menu-item-12556" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12556"><a href="https://csw.torun.pl/temat/edukacja/fotoblog/">Fotoblog</a></li>
+	<li id="menu-item-12557" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12557"><a href="https://csw.torun.pl/temat/edukacja/publikacje/">Publikacje</a></li>
+</ul>
+</li>
+<li id="menu-item-12558" class="mega menu-item menu-item-type-custom menu-item-object-custom menu-item-has-children menu-item-12558"><a href="#">Info</a>
+<ul class="sub-menu">
+	<li id="menu-item-12570" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12570"><a href="http://csw.torun.pl/info/godziny-otwarcia-4178/">Godziny otwarcia</a></li>
+	<li id="menu-item-12571" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12571"><a href="http://csw.torun.pl/bez-kategorii/bilety-2-4181/">Bilety</a></li>
+	<li id="menu-item-12573" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12573"><a href="http://csw.torun.pl/info/lokalizacja-4171/">Lokalizacja</a></li>
+	<li id="menu-item-12572" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-12572"><a href="http://csw.torun.pl/info/kontakt-3-11689/">Kontakt</a></li>
+	<li id="menu-item-12559" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-12559"><a href="https://csw.torun.pl/wynajem/">Wynajem</a></li>
+	<li id="menu-item-12560" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12560"><a href="https://csw.torun.pl/temat/zapytania-ofertowe/">Zapytania ofertowe</a></li>
+	<li id="menu-item-12561" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-12561"><a href="https://csw.torun.pl/parking/">PARKING</a></li>
+	<li id="menu-item-12562" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-12562"><a href="https://csw.torun.pl/temat/info/press-room/">Press Room</a>
+	<ul class="sub-menu">
+		<li id="menu-item-12563" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-12563"><a href="https://csw.torun.pl/kontakt-dla-mediow/">Kontakt dla mediów</a></li>
+		<li id="menu-item-12564" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-12564"><a href="https://csw.torun.pl/logo-do-pobrania/">Logo do pobrania</a></li>
+	</ul>
+</li>
+	<li id="menu-item-44751" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-44751"><a href="https://csw.torun.pl/o-csw-pjm/">O CSW – PJM</a></li>
+	<li id="menu-item-44752" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-44752"><a href="https://csw.torun.pl/o-csw-tekst-latwy-do-czytania/">O CSW – tekst łatwy do czytania</a></li>
+	<li id="menu-item-12565" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-12565"><a href="https://csw.torun.pl/historia-csw/">Historia CSW</a></li>
+	<li id="menu-item-12566" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12566"><a href="https://csw.torun.pl/temat/info/kawiarnia/">Kawiarnia</a></li>
+	<li id="menu-item-12567" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-12567"><a href="https://csw.torun.pl/zespol/">Zespół</a></li>
+	<li id="menu-item-12568" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-12568"><a href="https://csw.torun.pl/temat/info/partnerzy/">Partnerzy</a></li>
+</ul>
+</li>
+<li id="menu-item-12569" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-12569"><a href="https://csw.torun.pl/kalendarz/">Kalendarium</a></li>
+</ul></div>
+    <ul class="menu newsletter">
+        <li><a href="#">Newsletter</a></li>
+    </ul>
+
+    <form class="searchformhead" method="get" action="https://csw.torun.pl">
+<input type="text" name="s" class="s" size="30" value="Szukaj" onfocus="if (this.value = '') {this.value = '';}" onblur="if (this.value == '') {this.value = 'Szukaj...';}" />
+<button class='searchSubmit' ><i class="fa fa-search"></i></button>
+</form>
+    <ul class="social">
+        <li><a href="https://www.facebook.com/csw.torun" target="_blank"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/icon_facebook.png" alt="" /></a></li>
+        <li><a href="https://twitter.com/coca_torun" target="_blank"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/icon_twitter.png" alt="" /></a></li>
+        <li><a href="https://instagram.com/cswtorun/" target="_blank"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/icon_instagram.png" alt="" /></a></li>
+        <li><a href="https://www.youtube.com/user/ceeswu" target="_blank"><img src="https://csw.torun.pl/wp-content/themes/blockmagazine/images/icon_youtube.png" alt="" /></a></li>
+    </ul>
+
+    <p class="funding" style="background: url(https://csw.torun.pl/wp-content/themes/blockmagazine/images/logo3.png) no-repeat 0 50%">Instytucja finansowana ze środków Miasta Toruń</p>
+</div>
+
+    <div id="cookie-alert">
+        <div class="inner">
+            <span>Strona korzysta z plików cookie. Możesz wyłączyć lub określić warunki korzystania z cookie w Twojej przeglądarce lub konfiguracji usługi.</span>
+            <a class="button" href="#">Zgadzam się</a>
+        </div>
+    </div>
+
+</body>
+</html>

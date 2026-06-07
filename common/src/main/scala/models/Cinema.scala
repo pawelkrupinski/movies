@@ -250,6 +250,42 @@ case object CinemaCityGliwice extends Cinema("Cinema City Gliwice", "Cinema City
 
 case object MultikinoZabrze extends Cinema("Multikino Zabrze", "Multikino")
 
+// ── Art-house / independent additions (parity with Filmweb listings) ──────────
+
+// Kraków
+case object KinoPodBaranami extends Cinema("Kino Pod Baranami", "Pod Baranami")
+case object KinoKijow       extends Cinema("Kino Kijów", "Kijów")
+case object KinoKika        extends Cinema("Kino Kika", "Kika")
+case object KinoAgrafka     extends Cinema("Kino Agrafka", "Agrafka")
+case object KinoParadox     extends Cinema("Kino Paradox", "Paradox")
+// Warszawa
+case object KinoWisla       extends Cinema("Kino Wisła", "Wisła")
+// Szczecin
+case object HeliosOutletPark   extends Cinema("Helios Outlet Park", "Outlet Park")
+case object KinoZamekSzczecin  extends Cinema("Kino Zamek", "Zamek")
+// Trójmiasto
+case object Cinema1Gdansk   extends Cinema("Cinema1", "Cinema1")
+// Łódź
+case object KinematografLodz extends Cinema("Kino Kinematograf", "Kinematograf")
+case object Nckf            extends Cinema("Kino NCKF EC1", "NCKF EC1")
+// Lublin
+case object KinoCkLublin    extends Cinema("Kino CK Lublin", "CK")
+// Częstochowa
+case object OkfIluzja       extends Cinema("OKF Iluzja", "OKF Iluzja")
+// Radom
+case object McswElektrowniaCinema extends Cinema("Kino MCSW Elektrownia", "Elektrownia")
+// Toruń
+case object KinoCentrumCsw  extends Cinema("Kino Centrum CSW Toruń", "CSW")
+// Kielce
+case object KinoFenomen     extends Cinema("Kino Fenomen (WDK)", "Fenomen")
+case object KinoMoskwa      extends Cinema("Kino Moskwa", "Moskwa")
+// Rzeszów
+case object KinoZaRogiemCafe extends Cinema("Kino za Rogiem Cafe", "za Rogiem")
+// Gliwice
+case object KinoAmok        extends Cinema("Kino Amok", "Amok")
+// Zabrze
+case object KinoRoma        extends Cinema("Kino Roma", "Roma")
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -309,6 +345,7 @@ object Cinema {
     Kinoteka,
     Ujazdowski,
     KinoCytadela,
+    KinoWisla,
   )
 
   /** Kraków venues. Cinema City has three multiplexes here (Bonarka,
@@ -323,6 +360,11 @@ object Cinema {
     KinoMikro,
     MikroBronowice,
     KinoSfinks,
+    KinoPodBaranami,
+    KinoKijow,
+    KinoKika,
+    KinoAgrafka,
+    KinoParadox,
   )
 
   /** Łódź venues. Three national chains — Cinema City (Manufaktura), Multikino,
@@ -333,6 +375,8 @@ object Cinema {
     MultikinoLodz,
     HeliosLodz,
     KinoCharlie,
+    KinematografLodz,
+    Nckf,
   )
 
   /** Katowice venues. Cinema City has two locations (Punkt 44 and Silesia),
@@ -357,6 +401,8 @@ object Cinema {
     HeliosSzczecin,
     MultikinoSzczecin,
     KinoPionier,
+    HeliosOutletPark,
+    KinoZamekSzczecin,
   )
 
   /** Białystok venues. No Cinema City or Multikino in the city; Helios (HQ'd in
@@ -386,6 +432,7 @@ object Cinema {
     KinoMuzeumGdansk,
     KinoZak,
     KinoPort,
+    Cinema1Gdansk,
   )
 
   /** Bydgoszcz venues. All three national chains have one multiplex each
@@ -408,23 +455,24 @@ object Cinema {
     CinemaCityLublinPlaza,
     MultikinoLublin,
     KinoBajka,
+    KinoCkLublin,
   )
 
-  val czestochowa: Seq[Cinema] = Seq(CinemaCityCzestochowaJurajska, CinemaCityCzestochowaWolnosc)
+  val czestochowa: Seq[Cinema] = Seq(CinemaCityCzestochowaJurajska, CinemaCityCzestochowaWolnosc, OkfIluzja)
 
-  val radom: Seq[Cinema] = Seq(HeliosRadom, MultikinoRadom)
+  val radom: Seq[Cinema] = Seq(HeliosRadom, MultikinoRadom, McswElektrowniaCinema)
 
   val sosnowiec: Seq[Cinema] = Seq(HeliosSosnowiec, CinemaCitySosnowiec)
 
-  val torun: Seq[Cinema] = Seq(CinemaCityTorunCzerwonaDroga, CinemaCityTorunPlaza)
+  val torun: Seq[Cinema] = Seq(CinemaCityTorunCzerwonaDroga, CinemaCityTorunPlaza, KinoCentrumCsw)
 
-  val kielce: Seq[Cinema] = Seq(HeliosKielce, MultikinoKielce)
+  val kielce: Seq[Cinema] = Seq(HeliosKielce, MultikinoKielce, KinoFenomen, KinoMoskwa)
 
-  val rzeszow: Seq[Cinema] = Seq(HeliosRzeszow, MultikinoRzeszow, KinoZorza)
+  val rzeszow: Seq[Cinema] = Seq(HeliosRzeszow, MultikinoRzeszow, KinoZorza, KinoZaRogiemCafe)
 
-  val gliwice: Seq[Cinema] = Seq(CinemaCityGliwice)
+  val gliwice: Seq[Cinema] = Seq(CinemaCityGliwice, KinoAmok)
 
-  val zabrze: Seq[Cinema] = Seq(MultikinoZabrze)
+  val zabrze: Seq[Cinema] = Seq(MultikinoZabrze, KinoRoma)
 
   /** Every city's venues in page order, paired with the city's display label.
    *  Single source of truth for `all` and for the uptime page's per-city

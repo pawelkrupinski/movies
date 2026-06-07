@@ -99,6 +99,7 @@ class CinemaScraperCatalog(
     new KinotekaClient(http),
     new UjazdowskiClient(http),
     new CytadelaClient(http),
+    new NoveKinoClient(http, "wisla", KinoWisla),
   )
 
   private val krakowScrapers: Seq[CinemaScraper] = Seq(
@@ -109,6 +110,11 @@ class CinemaScraperCatalog(
     new KinoMikroClient(http, "Kino Mikro", KinoMikro),
     new KinoMikroClient(http, "Mikro Bronowice", MikroBronowice),
     new KinoSfinksClient(http, KinoSfinks),
+    new KinoPodBaranamiClient(http, KinoPodBaranami, today),
+    new KinoKijowClient(http, KinoKijow, today),
+    new KinoKikaClient(http, KinoKika),
+    new KinoAgrafkaClient(http, KinoAgrafka),
+    new KinoParadoxClient(http, KinoParadox),
   )
 
   private val lodzScrapers: Seq[CinemaScraper] = Seq(
@@ -116,6 +122,8 @@ class CinemaScraperCatalog(
     new MultikinoClient(mkFetch, "0023", MultikinoLodz),
     new HeliosClient(http, HeliosNuxt.Lodz, today),
     new CharlieClient(http, KinoCharlie),
+    new KinematografLodzClient(http, KinematografLodz, today),
+    new NckfClient(http, Nckf, today),
   )
 
   private val katowiceScrapers: Seq[CinemaScraper] = Seq(
@@ -136,6 +144,8 @@ class CinemaScraperCatalog(
     new HeliosClient(http, HeliosNuxt.Szczecin, today),
     new MultikinoClient(mkFetch, "0007", MultikinoSzczecin),
     new PionierClient(http, KinoPionier),
+    new HeliosClient(http, HeliosNuxt.SzczecinOutletPark, today),
+    new KinoZamekClient(http, KinoZamekSzczecin, today),
   )
 
   private val bialystokScrapers: Seq[CinemaScraper] = Seq(
@@ -159,6 +169,7 @@ class CinemaScraperCatalog(
     new KinoMuzeumGdanskClient(http, KinoMuzeumGdansk),
     new KinoZakClient(http, KinoZak),
     new KinoPortClient(http, KinoPort),
+    new Cinema1Client(http, Cinema1Gdansk, today),
   )
 
   private val bydgoszczScrapers: Seq[CinemaScraper] = Seq(
@@ -173,16 +184,19 @@ class CinemaScraperCatalog(
     new CinemaCityScraper(cinemaCityClient, "1084", CinemaCityLublinPlaza),
     new MultikinoClient(mkFetch, "0034", MultikinoLublin),
     new KinoBajkaClient(http, KinoBajka),
+    new Bilety24Client(http, "https://ck-lublin.bilety24.pl", KinoCkLublin),
   )
 
   private val czestochowaScrapers: Seq[CinemaScraper] = Seq(
     new CinemaCityScraper(cinemaCityClient, "1089", CinemaCityCzestochowaJurajska),
     new CinemaCityScraper(cinemaCityClient, "1075", CinemaCityCzestochowaWolnosc),
+    new OkfIluzjaClient(http, OkfIluzja, today),
   )
 
   private val radomScrapers: Seq[CinemaScraper] = Seq(
     new HeliosClient(http, HeliosNuxt.Radom, today),
     new MultikinoClient(mkFetch, "0026", MultikinoRadom),
+    new McswElektrowniaCinemaClient(http, McswElektrowniaCinema, today),
   )
 
   private val sosnowiecScrapers: Seq[CinemaScraper] = Seq(
@@ -193,25 +207,31 @@ class CinemaScraperCatalog(
   private val torunScrapers: Seq[CinemaScraper] = Seq(
     new CinemaCityScraper(cinemaCityClient, "1077", CinemaCityTorunCzerwonaDroga),
     new CinemaCityScraper(cinemaCityClient, "1093", CinemaCityTorunPlaza),
+    new KinoCentrumCswClient(http, KinoCentrumCsw, today),
   )
 
   private val kielceScrapers: Seq[CinemaScraper] = Seq(
     new HeliosClient(http, HeliosNuxt.Kielce, today),
     new MultikinoClient(mkFetch, "0029", MultikinoKielce),
+    new KinoFenomenClient(http, KinoFenomen),
+    new KinoMoskwaClient(http, KinoMoskwa, today),
   )
 
   private val rzeszowScrapers: Seq[CinemaScraper] = Seq(
     new HeliosClient(http, HeliosNuxt.Rzeszow, today),
     new MultikinoClient(mkFetch, "0028", MultikinoRzeszow),
     new KinoZorzaClient(http, KinoZorza),
+    new KinoZaRogiemCafeClient(http, KinoZaRogiemCafe, today),
   )
 
   private val gliwiceScrapers: Seq[CinemaScraper] = Seq(
     new CinemaCityScraper(cinemaCityClient, "1085", CinemaCityGliwice),
+    new KinoAmokClient(http, KinoAmok, today),
   )
 
   private val zabrzeScrapers: Seq[CinemaScraper] = Seq(
     new MultikinoClient(mkFetch, "0003", MultikinoZabrze),
+    new KinoRomaClient(http, KinoRoma, today),
   )
 
   /** Raw scrapers grouped by city slug — same slugs `City.slug` uses, so a

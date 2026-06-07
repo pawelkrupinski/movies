@@ -261,8 +261,8 @@
 <script>
   const IS_LOGGED_IN        = false;
   const HAS_OAUTH_PROVIDERS = false;
-  const ALL_CINEMAS         = ["Cinema City Arkadia","Cinema City Bemowo","Cinema City Galeria Północna","Cinema City Janki","Cinema City Mokotów","Cinema City Promenada","Cinema City Sadyba","Multikino Złote Tarasy","Multikino Młociny","Multikino Reduta","Multikino Targówek","Multikino Wola Park","Helios Blue City","Kino Muranów","Kino Luna","Kino Elektronik","Kino Iluzjon","KinoGram","Kino Kultura","Kino Amondo","Kino na Boku","Kino Głębocka 66","KINOMUZEUM","Kino Świt","Kino Kępa","KINOkawiarnia Stacja Falenica","Służewski Dom Kultury","Kino Atlantic","Kinoteka","Kino U-jazdowski","Kino Cytadela"];
-  const CINEMA_PILLS        = {"Kino Muranów":"Muranów","Cinema City Janki":"Janki","Cinema City Mokotów":"Mokotów","Kino Świt":"Świt","Kino Iluzjon":"Iluzjon","Kino Atlantic":"Atlantic","Kino Elektronik":"Elektronik","Kinoteka":"Kinoteka","Multikino Reduta":"Reduta","Multikino Wola Park":"Wola Park","Cinema City Galeria Północna":"Galeria Północna","Kino Głębocka 66":"Głębocka 66","Multikino Targówek":"Targówek","Kino Kultura":"Kultura","Cinema City Bemowo":"Bemowo","Służewski Dom Kultury":"SDK","Cinema City Promenada":"Promenada","Kino na Boku":"na Boku","Multikino Złote Tarasy":"Złote Tarasy","KinoGram":"KinoGram","Kino U-jazdowski":"U-jazdowski","Helios Blue City":"Blue City","KINOMUZEUM":"Kinomuzeum","Kino Amondo":"Amondo","Multikino Młociny":"Młociny","Cinema City Sadyba":"Sadyba","Kino Kępa":"Kępa","Cinema City Arkadia":"Arkadia","Kino Luna":"Luna","KINOkawiarnia Stacja Falenica":"Stacja Falenica","Kino Cytadela":"Cytadela"};
+  const ALL_CINEMAS         = ["Cinema City Arkadia","Cinema City Bemowo","Cinema City Galeria Północna","Cinema City Janki","Cinema City Mokotów","Cinema City Promenada","Cinema City Sadyba","Multikino Złote Tarasy","Multikino Młociny","Multikino Reduta","Multikino Targówek","Multikino Wola Park","Helios Blue City","Kino Muranów","Kino Luna","Kino Elektronik","Kino Iluzjon","KinoGram","Kino Kultura","Kino Amondo","Kino na Boku","Kino Głębocka 66","KINOMUZEUM","Kino Świt","Kino Kępa","KINOkawiarnia Stacja Falenica","Służewski Dom Kultury","Kino Atlantic","Kinoteka","Kino U-jazdowski","Kino Cytadela","Kino Wisła"];
+  const CINEMA_PILLS        = {"Kino Muranów":"Muranów","Cinema City Janki":"Janki","Cinema City Mokotów":"Mokotów","Kino Świt":"Świt","Kino Iluzjon":"Iluzjon","Kino Elektronik":"Elektronik","Kinoteka":"Kinoteka","Multikino Reduta":"Reduta","Multikino Wola Park":"Wola Park","Cinema City Galeria Północna":"Galeria Północna","Kino Głębocka 66":"Głębocka 66","Multikino Targówek":"Targówek","Kino Kultura":"Kultura","Cinema City Bemowo":"Bemowo","Służewski Dom Kultury":"SDK","Cinema City Promenada":"Promenada","Kino na Boku":"na Boku","Kino Atlantic":"Atlantic","Kino Wisła":"Wisła","Multikino Złote Tarasy":"Złote Tarasy","KinoGram":"KinoGram","Kino U-jazdowski":"U-jazdowski","Helios Blue City":"Blue City","KINOMUZEUM":"Kinomuzeum","Kino Amondo":"Amondo","Multikino Młociny":"Młociny","Cinema City Sadyba":"Sadyba","Kino Kępa":"Kępa","Cinema City Arkadia":"Arkadia","Kino Luna":"Luna","KINOkawiarnia Stacja Falenica":"Stacja Falenica","Kino Cytadela":"Cytadela"};
   const CURRENT_CITY        = "warszawa";
   const ALL_CITIES          = [{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252},{"slug":"wroclaw","name":"Wrocław","lat":51.1079,"lon":17.0385},{"slug":"warszawa","name":"Warszawa","lat":52.2297,"lon":21.0122},{"slug":"krakow","name":"Kraków","lat":50.0647,"lon":19.945},{"slug":"lodz","name":"Łódź","lat":51.7592,"lon":19.456},{"slug":"katowice","name":"Katowice","lat":50.2649,"lon":19.0238},{"slug":"szczecin","name":"Szczecin","lat":53.4285,"lon":14.5528},{"slug":"bialystok","name":"Białystok","lat":53.1325,"lon":23.1688},{"slug":"trojmiasto","name":"Trójmiasto","lat":54.4416,"lon":18.5601},{"slug":"bydgoszcz","name":"Bydgoszcz","lat":53.1235,"lon":18.0084},{"slug":"lublin","name":"Lublin","lat":51.2465,"lon":22.5684},{"slug":"czestochowa","name":"Częstochowa","lat":50.8118,"lon":19.1203},{"slug":"radom","name":"Radom","lat":51.4027,"lon":21.1471},{"slug":"sosnowiec","name":"Sosnowiec","lat":50.2863,"lon":19.1041},{"slug":"torun","name":"Toruń","lat":53.0138,"lon":18.5984},{"slug":"kielce","name":"Kielce","lat":50.8661,"lon":20.6286},{"slug":"rzeszow","name":"Rzeszów","lat":50.0413,"lon":21.999},{"slug":"gliwice","name":"Gliwice","lat":50.2945,"lon":18.6714},{"slug":"zabrze","name":"Zabrze","lat":50.3249,"lon":18.7857}];
 </script>
@@ -22815,16 +22815,16 @@
 
 </div>
 
-<div class="col" data-title="Wartość sentymentalna [napisy PL" data-countries="Szwecja|Francja|Dania|Niemcy|Norwegia" data-rating="8.600" data-genres="Dramat|Komedia" data-director="Joachim Trier" data-cast="Elle Fanning, Stellan Skarsgård, Cory Michael Smith">
+<div class="col" data-title="Wartość sentymentalna [napisy PL + EN]" data-countries="Szwecja|Francja|Dania|Niemcy|Norwegia" data-rating="8.600" data-genres="Dramat|Komedia" data-director="Joachim Trier" data-cast="Elle Fanning, Stellan Skarsgård, Cory Michael Smith">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
-    <a href="/warszawa/film?title=Warto%C5%9B%C4%87%20sentymentalna%20%5Bnapisy%20PL" style="display:block;height:100%">
+    <a href="/warszawa/film?title=Warto%C5%9B%C4%87%20sentymentalna%20%5Bnapisy%20PL%20%2B%20EN%5D" style="display:block;height:100%">
       
       
 
     
-      <img src="https://images.weserv.nl/?url=medstore.kinoteka.pl%2FWartoscSentymentalnaplakatNET.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" alt="Wartość sentymentalna [napisy PL" loading="lazy" data-original-src="https://images.weserv.nl/?url=medstore.kinoteka.pl%2FWartoscSentymentalnaplakatNET.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
+      <img src="https://images.weserv.nl/?url=medstore.kinoteka.pl%2FWartoscSentymentalnaplakatNET.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" alt="Wartość sentymentalna [napisy PL + EN]" loading="lazy" data-original-src="https://images.weserv.nl/?url=medstore.kinoteka.pl%2FWartoscSentymentalnaplakatNET.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
     
     <div class="no-poster" style="display:none">Brak plakatu</div>
   
@@ -22833,7 +22833,7 @@
   </div>
   <div class="card-body">
     <div class="card-title">
-      <a href="/warszawa/film?title=Warto%C5%9B%C4%87%20sentymentalna%20%5Bnapisy%20PL">Wartość sentymentalna [napisy PL</a>
+      <a href="/warszawa/film?title=Warto%C5%9B%C4%87%20sentymentalna%20%5Bnapisy%20PL%20%2B%20EN%5D">Wartość sentymentalna [napisy PL + EN]</a>
   <span class="pill runtime">2h 15min</span>
 
   <span class="pill year">2026</span>
@@ -22993,7 +22993,7 @@
     
   </div>
 
-<a href="/warszawa/film?title=Warto%C5%9B%C4%87%20sentymentalna%20%5Bnapisy%20PL" class="showings-more" style="display:none"></a>
+<a href="/warszawa/film?title=Warto%C5%9B%C4%87%20sentymentalna%20%5Bnapisy%20PL%20%2B%20EN%5D" class="showings-more" style="display:none"></a>
 
 
   
@@ -35917,7 +35917,7 @@
       
 
     
-      <img src="https://images.weserv.nl/?url=www.cinema-city.pl%2Fxmedia-cw%2Frepo%2Ffeats%2Fposters%2F8224S2R.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" alt="Ojczyzna" loading="lazy" data-original-src="https://images.weserv.nl/?url=www.cinema-city.pl%2Fxmedia-cw%2Frepo%2Ffeats%2Fposters%2F8224S2R.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" data-fallbacks="https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/ojczyzna/ojczyzna_plakat_cut.jpg?rev=42d7db29bb304eaf8b5fe2a8dcfa63d7|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F1491%2Fojczyzna-2026-pawlikowski-polski-plakat-694x1000-1779976132.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinomuranow.pl%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fgrid_thumb_wide_semi%2Fpublic%2Fmedia%2Fimages%2Fmovies%2Ffatherland_still_3_agatagrzybowska.jpg%3Fitok%3D9xvOWp7j&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=media.user.com%2Fuploads%2Fj0sawm-kinogram%2Fojczyzna-plakat-1779999294_r7TNIWg.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.kinokultura.pl%2Ffoto%2C20572%2C8500400572f577e26a4d2907451f6f6c%2Cjpg.html&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=api-sf.artmuseum.pl%2Fuploads%2Fthumbs%2F6a1858f116e5a380628168.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" data-original-fallbacks="https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/ojczyzna/ojczyzna_plakat_cut.jpg?rev=42d7db29bb304eaf8b5fe2a8dcfa63d7|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F1491%2Fojczyzna-2026-pawlikowski-polski-plakat-694x1000-1779976132.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinomuranow.pl%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fgrid_thumb_wide_semi%2Fpublic%2Fmedia%2Fimages%2Fmovies%2Ffatherland_still_3_agatagrzybowska.jpg%3Fitok%3D9xvOWp7j&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=media.user.com%2Fuploads%2Fj0sawm-kinogram%2Fojczyzna-plakat-1779999294_r7TNIWg.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.kinokultura.pl%2Ffoto%2C20572%2C8500400572f577e26a4d2907451f6f6c%2Cjpg.html&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=api-sf.artmuseum.pl%2Fuploads%2Fthumbs%2F6a1858f116e5a380628168.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
+      <img src="https://images.weserv.nl/?url=www.cinema-city.pl%2Fxmedia-cw%2Frepo%2Ffeats%2Fposters%2F8224S2R.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" alt="Ojczyzna" loading="lazy" data-original-src="https://images.weserv.nl/?url=www.cinema-city.pl%2Fxmedia-cw%2Frepo%2Ffeats%2Fposters%2F8224S2R.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" data-fallbacks="https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/ojczyzna/ojczyzna_plakat_cut.jpg?rev=42d7db29bb304eaf8b5fe2a8dcfa63d7|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F1491%2Fojczyzna-2026-pawlikowski-polski-plakat-694x1000-1779976132.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinomuranow.pl%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fgrid_thumb_wide_semi%2Fpublic%2Fmedia%2Fimages%2Fmovies%2Ffatherland_still_3_agatagrzybowska.jpg%3Fitok%3D9xvOWp7j&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=media.user.com%2Fuploads%2Fj0sawm-kinogram%2Fojczyzna-plakat-1779999294_r7TNIWg.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.kinokultura.pl%2Ffoto%2C20552%2Ce45cf6bac84d67bc464c44585d5225c7%2Cjpg.html&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=api-sf.artmuseum.pl%2Fuploads%2Fthumbs%2F6a1858f116e5a380628168.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" data-original-fallbacks="https://www.multikino.pl/-/media/multikino/images/film-and-events/2026/ojczyzna/ojczyzna_plakat_cut.jpg?rev=42d7db29bb304eaf8b5fe2a8dcfa63d7|https://images.weserv.nl/?url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F1491%2Fojczyzna-2026-pawlikowski-polski-plakat-694x1000-1779976132.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=kinomuranow.pl%2Fsites%2Fdefault%2Ffiles%2Fstyles%2Fgrid_thumb_wide_semi%2Fpublic%2Fmedia%2Fimages%2Fmovies%2Ffatherland_still_3_agatagrzybowska.jpg%3Fitok%3D9xvOWp7j&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=media.user.com%2Fuploads%2Fj0sawm-kinogram%2Fojczyzna-plakat-1779999294_r7TNIWg.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=www.kinokultura.pl%2Ffoto%2C20552%2Ce45cf6bac84d67bc464c44585d5225c7%2Cjpg.html&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp|https://images.weserv.nl/?url=api-sf.artmuseum.pl%2Fuploads%2Fthumbs%2F6a1858f116e5a380628168.jpg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
     
     <div class="no-poster" style="display:none">Brak plakatu</div>
   
@@ -36092,6 +36092,21 @@
       
     
       
+      <div class="cinema-group" data-cinema="Kino Kultura">
+        
+          <div class="cinema-label">
+             Kino Kultura 
+          </div>
+        
+        <div>
+          
+            <a href="https://rezerwacja.kinokultura.pl/MSI/mvc/pl?sort=Flow&amp;date=2026-06-06&amp;datestart=0" class="badge-time" target="_blank" data-room="Kultura" data-format="" data-time="20:15">20:15</a>
+          
+        </div>
+      </div>
+      
+    
+      
       <div class="cinema-group" data-cinema="Cinema City Mokotów">
         
           <div class="cinema-label">
@@ -36110,6 +36125,21 @@
 
   <div class="date-group" data-date="2026-06-07">
     <div class="date-label">Niedziela 7 czerwca</div>
+    
+      
+      <div class="cinema-group" data-cinema="Kino Kultura">
+        
+          <div class="cinema-label">
+             Kino Kultura 
+          </div>
+        
+        <div>
+          
+            <a href="https://rezerwacja.kinokultura.pl/MSI/mvc/pl?sort=Flow&amp;date=2026-06-07&amp;datestart=0" class="badge-time" target="_blank" data-room="Kultura" data-format="" data-time="17:30">17:30</a>
+          
+        </div>
+      </div>
+      
     
       
       <div class="cinema-group" data-cinema="Kino Muranów">
@@ -36292,6 +36322,21 @@
     <div class="date-label">Środa 10 czerwca</div>
     
       
+      <div class="cinema-group" data-cinema="Kino Kultura">
+        
+          <div class="cinema-label">
+             Kino Kultura 
+          </div>
+        
+        <div>
+          
+            <a href="https://rezerwacja.kinokultura.pl/MSI/mvc/pl?sort=Flow&amp;date=2026-06-10&amp;datestart=0" class="badge-time" target="_blank" data-room="Kultura" data-format="" data-time="18:15">18:15</a>
+          
+        </div>
+      </div>
+      
+    
+      
       <div class="cinema-group" data-cinema="Cinema City Arkadia">
         
           <div class="cinema-label">
@@ -36392,6 +36437,21 @@
     <div class="date-label">Piątek 12 czerwca</div>
     
       
+      <div class="cinema-group" data-cinema="Kino Kultura">
+        
+          <div class="cinema-label">
+             Kino Kultura 
+          </div>
+        
+        <div>
+          
+            <a href="https://rezerwacja.kinokultura.pl/MSI/mvc/pl?sort=Flow&amp;date=2026-06-12&amp;datestart=0" class="badge-time" target="_blank" data-room="Kultura" data-format="" data-time="20:00">20:00</a>
+          
+        </div>
+      </div>
+      
+    
+      
       <div class="cinema-group" data-cinema="KinoGram">
         
           <div class="cinema-label">
@@ -36429,6 +36489,21 @@
       
     
       
+      <div class="cinema-group" data-cinema="Kino Kultura">
+        
+          <div class="cinema-label">
+             Kino Kultura 
+          </div>
+        
+        <div>
+          
+            <a href="https://rezerwacja.kinokultura.pl/MSI/mvc/pl?sort=Flow&amp;date=2026-06-13&amp;datestart=0" class="badge-time" target="_blank" data-room="Kultura" data-format="" data-time="18:00">18:00</a>
+          
+        </div>
+      </div>
+      
+    
+      
       <div class="cinema-group" data-cinema="KINOMUZEUM">
         
           <div class="cinema-label">
@@ -36460,26 +36535,6 @@
             <a href="https://bilety.kinogram.pl/screening/4bf6ab41-f9ca-48cd-900d-a4cd35df779c" class="badge-time" target="_blank" data-format="" data-time="12:45">12:45</a>
           
             <a href="https://bilety.kinogram.pl/screening/f0e24640-2126-4c13-bc13-4a542e9fbb0b" class="badge-time" target="_blank" data-format="" data-time="20:30">20:30</a>
-          
-        </div>
-      </div>
-      
-    
-  </div>
-
-  <div class="date-group" data-date="2026-06-16">
-    <div class="date-label">Wtorek 16 czerwca</div>
-    
-      
-      <div class="cinema-group" data-cinema="Kino Kultura">
-        
-          <div class="cinema-label">
-             Kino Kultura 
-          </div>
-        
-        <div>
-          
-            <a href="https://rezerwacja.kinokultura.pl/MSI/mvc/pl?sort=Flow&amp;date=2026-06-16&amp;datestart=0" class="badge-time" target="_blank" data-room="Rejs" data-format="" data-time="18:30">18:30</a>
           
         </div>
       </div>
@@ -56153,16 +56208,16 @@ Podziemny krąg</a>
 
 </div>
 
-<div class="col" data-title="FILMOTERAPIA W LUNIE | Ojczyzna | seans" data-countries="" data-rating="0.000">
+<div class="col" data-title="FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland" data-countries="" data-rating="0.000">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
-    <a href="/warszawa/film?title=FILMOTERAPIA%20W%20LUNIE%20%7C%20Ojczyzna%20%7C%20seans" style="display:block;height:100%">
+    <a href="/warszawa/film?title=FILMOTERAPIA%20W%20LUNIE%20%7C%20Ojczyzna%20%7C%20seans%20%2B%20rozmowa%20Martyny%20Harland" style="display:block;height:100%">
       
       
 
     
-      <img src="https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" alt="FILMOTERAPIA W LUNIE | Ojczyzna | seans" loading="lazy" data-original-src="https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
+      <img src="https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" alt="FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland" loading="lazy" data-original-src="https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
     
     <div class="no-poster" style="display:none">Brak plakatu</div>
   
@@ -56171,7 +56226,7 @@ Podziemny krąg</a>
   </div>
   <div class="card-body">
     <div class="card-title">
-      <a href="/warszawa/film?title=FILMOTERAPIA%20W%20LUNIE%20%7C%20Ojczyzna%20%7C%20seans">FILMOTERAPIA W LUNIE | Ojczyzna | seans</a>
+      <a href="/warszawa/film?title=FILMOTERAPIA%20W%20LUNIE%20%7C%20Ojczyzna%20%7C%20seans%20%2B%20rozmowa%20Martyny%20Harland">FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland</a>
   <span class="pill runtime">1h 22min</span>
 
     </div>
@@ -56209,7 +56264,7 @@ Podziemny krąg</a>
     
   </div>
 
-<a href="/warszawa/film?title=FILMOTERAPIA%20W%20LUNIE%20%7C%20Ojczyzna%20%7C%20seans" class="showings-more" style="display:none"></a>
+<a href="/warszawa/film?title=FILMOTERAPIA%20W%20LUNIE%20%7C%20Ojczyzna%20%7C%20seans%20%2B%20rozmowa%20Martyny%20Harland" class="showings-more" style="display:none"></a>
 
 
   
@@ -62073,6 +62128,69 @@ Podziemny krąg</a>
   </div>
 
 <a href="/warszawa/film?title=Bracia%20ze%20stali" class="showings-more" style="display:none"></a>
+
+
+  
+  </div>
+</div>
+
+</div>
+
+<div class="col" data-title="Ojczyzna + spotkanie z producentką Ewą Puszczyńską" data-countries="" data-rating="0.000">
+  <div class="card">
+  <div class="poster-wrap">
+    <button type="button" class="hide-btn" title="Ukryj film">✕</button>
+    <a href="/warszawa/film?title=Ojczyzna%20%2B%20spotkanie%20z%20producentk%C4%85%20Ew%C4%85%20Puszczy%C5%84sk%C4%85" style="display:block;height:100%">
+      
+      
+
+    
+      <img src="https://images.weserv.nl/?url=www.kinokultura.pl%2Ffoto%2C20572%2C8500400572f577e26a4d2907451f6f6c%2Cjpg.html&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" alt="Ojczyzna + spotkanie z producentką Ewą Puszczyńską" loading="lazy" data-original-src="https://images.weserv.nl/?url=www.kinokultura.pl%2Ffoto%2C20572%2C8500400572f577e26a4d2907451f6f6c%2Cjpg.html&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
+    
+    <div class="no-poster" style="display:none">Brak plakatu</div>
+  
+
+    </a>
+  </div>
+  <div class="card-body">
+    <div class="card-title">
+      <a href="/warszawa/film?title=Ojczyzna%20%2B%20spotkanie%20z%20producentk%C4%85%20Ew%C4%85%20Puszczy%C5%84sk%C4%85">Ojczyzna + spotkanie z producentką Ewą Puszczyńską</a>
+    </div>
+    
+
+  <div class="ratings">
+    
+    
+    
+    
+  </div>
+
+
+    
+    
+
+
+  <div class="date-group" data-date="2026-06-16">
+    <div class="date-label">Wtorek 16 czerwca</div>
+    
+      
+      <div class="cinema-group" data-cinema="Kino Kultura">
+        
+          <div class="cinema-label">
+             Kino Kultura 
+          </div>
+        
+        <div>
+          
+            <a href="https://rezerwacja.kinokultura.pl/MSI/mvc/pl?sort=Flow&amp;date=2026-06-16&amp;datestart=0" class="badge-time" target="_blank" data-room="Rejs" data-format="" data-time="18:30">18:30</a>
+          
+        </div>
+      </div>
+      
+    
+  </div>
+
+<a href="/warszawa/film?title=Ojczyzna%20%2B%20spotkanie%20z%20producentk%C4%85%20Ew%C4%85%20Puszczy%C5%84sk%C4%85" class="showings-more" style="display:none"></a>
 
 
   
@@ -71128,16 +71246,16 @@ Podziemny krąg</a>
 
 </div>
 
-<div class="col" data-title="LUNATYCY. KINO I ROZMOWA | Ojczyzna | film" data-countries="" data-rating="0.000">
+<div class="col" data-title="LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig" data-countries="" data-rating="0.000">
   <div class="card">
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="Ukryj film">✕</button>
-    <a href="/warszawa/film?title=LUNATYCY.%20KINO%20I%20ROZMOWA%20%7C%20Ojczyzna%20%7C%20film" style="display:block;height:100%">
+    <a href="/warszawa/film?title=LUNATYCY.%20KINO%20I%20ROZMOWA%20%7C%20Ojczyzna%20%7C%20film%20%2B%20spotkanie%20z%20Joann%C4%85%20Kulig" style="display:block;height:100%">
       
       
 
     
-      <img src="https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" alt="LUNATYCY. KINO I ROZMOWA | Ojczyzna | film" loading="lazy" data-original-src="https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
+      <img src="https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" alt="LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig" loading="lazy" data-original-src="https://images.weserv.nl/?url=kinoluna.bilety24.pl%2Fwp-content%2Fuploads%2F2023%2F12%2FPAN-BILET_warsztaty_svg.svg&amp;w=480&amp;h=720&amp;fit=cover&amp;a=attention&amp;output=webp" onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
     
     <div class="no-poster" style="display:none">Brak plakatu</div>
   
@@ -71146,7 +71264,7 @@ Podziemny krąg</a>
   </div>
   <div class="card-body">
     <div class="card-title">
-      <a href="/warszawa/film?title=LUNATYCY.%20KINO%20I%20ROZMOWA%20%7C%20Ojczyzna%20%7C%20film">LUNATYCY. KINO I ROZMOWA | Ojczyzna | film</a>
+      <a href="/warszawa/film?title=LUNATYCY.%20KINO%20I%20ROZMOWA%20%7C%20Ojczyzna%20%7C%20film%20%2B%20spotkanie%20z%20Joann%C4%85%20Kulig">LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig</a>
   <span class="pill runtime">1h 22min</span>
 
     </div>
@@ -71184,7 +71302,7 @@ Podziemny krąg</a>
     
   </div>
 
-<a href="/warszawa/film?title=LUNATYCY.%20KINO%20I%20ROZMOWA%20%7C%20Ojczyzna%20%7C%20film" class="showings-more" style="display:none"></a>
+<a href="/warszawa/film?title=LUNATYCY.%20KINO%20I%20ROZMOWA%20%7C%20Ojczyzna%20%7C%20film%20%2B%20spotkanie%20z%20Joann%C4%85%20Kulig" class="showings-more" style="display:none"></a>
 
 
   

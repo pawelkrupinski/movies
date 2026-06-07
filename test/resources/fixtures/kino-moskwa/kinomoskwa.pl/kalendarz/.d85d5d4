@@ -1,0 +1,413 @@
+﻿﻿<!DOCTYPE html>
+<html lang="pl">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="keywords" content="" />
+	<meta name="description" content="" />
+
+	
+	<title>  Kalendarz</title>
+	
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css" integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous">
+	<script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="crossorigin="anonymous"></script>
+	
+	<link rel="stylesheet" href="http://kinomoskwa.pl/wp-content/themes/prospel/css/style.css" />
+	<link rel="stylesheet" href="http://kinomoskwa.pl/wp-content/themes/prospel/css/custom.css" />
+	<link rel="stylesheet" href="http://kinomoskwa.pl/wp-content/themes/prospel/css/responsive.css" />
+	
+	<script src="/wp-content/themes/prospel/js/script.js"></script>
+
+	<link rel='dns-prefetch' href='//s.w.org' />
+		<script type="text/javascript">
+			window._wpemojiSettings = {"baseUrl":"https:\/\/s.w.org\/images\/core\/emoji\/12.0.0-1\/72x72\/","ext":".png","svgUrl":"https:\/\/s.w.org\/images\/core\/emoji\/12.0.0-1\/svg\/","svgExt":".svg","source":{"concatemoji":"http:\/\/kinomoskwa.pl\/wp-includes\/js\/wp-emoji-release.min.js?ver=5.2.21"}};
+			!function(e,a,t){var n,r,o,i=a.createElement("canvas"),p=i.getContext&&i.getContext("2d");function s(e,t){var a=String.fromCharCode;p.clearRect(0,0,i.width,i.height),p.fillText(a.apply(this,e),0,0);e=i.toDataURL();return p.clearRect(0,0,i.width,i.height),p.fillText(a.apply(this,t),0,0),e===i.toDataURL()}function c(e){var t=a.createElement("script");t.src=e,t.defer=t.type="text/javascript",a.getElementsByTagName("head")[0].appendChild(t)}for(o=Array("flag","emoji"),t.supports={everything:!0,everythingExceptFlag:!0},r=0;r<o.length;r++)t.supports[o[r]]=function(e){if(!p||!p.fillText)return!1;switch(p.textBaseline="top",p.font="600 32px Arial",e){case"flag":return s([55356,56826,55356,56819],[55356,56826,8203,55356,56819])?!1:!s([55356,57332,56128,56423,56128,56418,56128,56421,56128,56430,56128,56423,56128,56447],[55356,57332,8203,56128,56423,8203,56128,56418,8203,56128,56421,8203,56128,56430,8203,56128,56423,8203,56128,56447]);case"emoji":return!s([55357,56424,55356,57342,8205,55358,56605,8205,55357,56424,55356,57340],[55357,56424,55356,57342,8203,55358,56605,8203,55357,56424,55356,57340])}return!1}(o[r]),t.supports.everything=t.supports.everything&&t.supports[o[r]],"flag"!==o[r]&&(t.supports.everythingExceptFlag=t.supports.everythingExceptFlag&&t.supports[o[r]]);t.supports.everythingExceptFlag=t.supports.everythingExceptFlag&&!t.supports.flag,t.DOMReady=!1,t.readyCallback=function(){t.DOMReady=!0},t.supports.everything||(n=function(){t.readyCallback()},a.addEventListener?(a.addEventListener("DOMContentLoaded",n,!1),e.addEventListener("load",n,!1)):(e.attachEvent("onload",n),a.attachEvent("onreadystatechange",function(){"complete"===a.readyState&&t.readyCallback()})),(n=t.source||{}).concatemoji?c(n.concatemoji):n.wpemoji&&n.twemoji&&(c(n.twemoji),c(n.wpemoji)))}(window,document,window._wpemojiSettings);
+		</script>
+		<style type="text/css">
+img.wp-smiley,
+img.emoji {
+	display: inline !important;
+	border: none !important;
+	box-shadow: none !important;
+	height: 1em !important;
+	width: 1em !important;
+	margin: 0 .07em !important;
+	vertical-align: -0.1em !important;
+	background: none !important;
+	padding: 0 !important;
+}
+</style>
+	<link rel='stylesheet' id='wp-block-library-css'  href='http://kinomoskwa.pl/wp-includes/css/dist/block-library/style.min.css?ver=5.2.21' type='text/css' media='all' />
+<link rel='stylesheet' id='dashicons-css'  href='http://kinomoskwa.pl/wp-includes/css/dashicons.min.css?ver=5.2.21' type='text/css' media='all' />
+<link rel='stylesheet' id='my-calendar-reset-css'  href='http://kinomoskwa.pl/wp-content/plugins/my-calendar/css/reset.css?ver=5.2.21' type='text/css' media='all' />
+<link rel='stylesheet' id='my-calendar-style-css'  href='http://kinomoskwa.pl/wp-content/plugins/my-calendar/styles/twentyeighteen.css?ver=5.2.21' type='text/css' media='all' />
+<link rel='stylesheet' id='siteorigin-panels-front-css'  href='http://kinomoskwa.pl/wp-content/plugins/siteorigin-panels/css/front-flex.min.css?ver=2.10.11' type='text/css' media='all' />
+<link rel='stylesheet' id='sow-social-media-buttons-flat-fa8789184b37-css'  href='http://kinomoskwa.pl/wp-content/uploads/siteorigin-widgets/sow-social-media-buttons-flat-fa8789184b37.css?ver=5.2.21' type='text/css' media='all' />
+<link rel='stylesheet' id='newsletter-css'  href='http://kinomoskwa.pl/wp-content/plugins/newsletter/style.css?ver=6.2.2' type='text/css' media='all' />
+<script type='text/javascript' src='http://kinomoskwa.pl/wp-includes/js/jquery/jquery.js?ver=1.12.4-wp'></script>
+<script type='text/javascript' src='http://kinomoskwa.pl/wp-includes/js/jquery/jquery-migrate.min.js?ver=1.4.1'></script>
+<link rel='https://api.w.org/' href='http://kinomoskwa.pl/wp-json/' />
+<link rel="EditURI" type="application/rsd+xml" title="RSD" href="http://kinomoskwa.pl/xmlrpc.php?rsd" />
+<link rel="wlwmanifest" type="application/wlwmanifest+xml" href="http://kinomoskwa.pl/wp-includes/wlwmanifest.xml" /> 
+<link rel="canonical" href="http://kinomoskwa.pl/kalendarz/" />
+<link rel='shortlink' href='http://kinomoskwa.pl/?p=582' />
+<link rel="alternate" type="application/json+oembed" href="http://kinomoskwa.pl/wp-json/oembed/1.0/embed?url=http%3A%2F%2Fkinomoskwa.pl%2Fkalendarz%2F" />
+<link rel="alternate" type="text/xml+oembed" href="http://kinomoskwa.pl/wp-json/oembed/1.0/embed?url=http%3A%2F%2Fkinomoskwa.pl%2Fkalendarz%2F&#038;format=xml" />
+
+<style type="text/css">
+<!--
+/* Styles by My Calendar - Joseph C Dolson http://www.joedolson.com/ */
+
+.mc-event-visible {
+	display: block!important;
+}
+.mc-main {--primary-dark: #313233; --primary-light: #fff; --secondary-light: #fff; --secondary-dark: #000; --highlight-dark: #666; --highlight-light: #efefef; }
+-->
+</style>                <style type="text/css" media="all"
+                       id="siteorigin-panels-layouts-head">/* Layout 582 */ #pgc-582-0-0 { width:100%;width:calc(100% - ( 0 * 30px ) ) } #pl-582 #panel-582-0-0-0 , #pl-582 #panel-582-0-0-1 {  } #pl-582 .so-panel { margin-bottom:30px } #pl-582 .so-panel:last-child { margin-bottom:0px } #pg-582-0.panel-no-style, #pg-582-0.panel-has-style > .panel-row-style { -webkit-align-items:flex-start;align-items:flex-start } @media (max-width:780px){ #pg-582-0.panel-no-style, #pg-582-0.panel-has-style > .panel-row-style { -webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column } #pg-582-0 > .panel-grid-cell , #pg-582-0 > .panel-row-style > .panel-grid-cell { width:100%;margin-right:0 } #pl-582 .panel-grid-cell { padding:0 } #pl-582 .panel-grid .panel-grid-cell-empty { display:none } #pl-582 .panel-grid .panel-grid-cell-mobile-last { margin-bottom:0px }  } </style><link rel="icon" href="http://kinomoskwa.pl/wp-content/uploads/2019/03/favicon-150x150.png" sizes="32x32" />
+<link rel="icon" href="http://kinomoskwa.pl/wp-content/uploads/2019/03/favicon.png" sizes="192x192" />
+<link rel="apple-touch-icon-precomposed" href="http://kinomoskwa.pl/wp-content/uploads/2019/03/favicon.png" />
+<meta name="msapplication-TileImage" content="http://kinomoskwa.pl/wp-content/uploads/2019/03/favicon.png" />
+</head>
+
+<body class="page-template-default page page-id-582 wp-custom-logo siteorigin-panels siteorigin-panels-before-js">
+	<header>
+		<div class="container">
+			<div class="navbar-logo">
+				<h1><a href="http://kinomoskwa.pl/" rel="home"></a><a href="http://kinomoskwa.pl/" class="custom-logo-link" rel="home"><img width="424" height="160" src="http://kinomoskwa.pl/wp-content/uploads/2019/03/logo.png" class="custom-logo" alt="demo3" srcset="http://kinomoskwa.pl/wp-content/uploads/2019/03/logo.png 424w, http://kinomoskwa.pl/wp-content/uploads/2019/03/logo-300x113.png 300w" sizes="(max-width: 424px) 100vw, 424px" /></a></h1>
+			</div>
+			<div class="psl_top">
+				<span>Rezerwacja: <strong>41 344 47 34 lub 519 173 873</strong></span>
+				<a href="https://stowarzyszeniekinstudyjnych.pl/" target="_blank"><img src="/wp-content/uploads/2022/10/SKS.png" /></a>
+				<a href="https://pisf.pl/" target="_blank"><img src="/wp-content/uploads/2022/10/PISF2.png" /></a>
+			</div>
+			<div id="burger-nav"></div>
+			<nav class="navbar-menu"><ul id="menu-menu-glowne" class="menu-ul"><li id="menu-item-33" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-33"><a href="http://kinomoskwa.pl/repertuar/">Repertuar</a></li>
+<li id="menu-item-34" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-34"><a href="http://kinomoskwa.pl/zapowiedzi/">Zapowiedzi</a></li>
+<li id="menu-item-729" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-729"><a href="http://kinomoskwa.pl/cennik/">Cennik</a></li>
+<li id="menu-item-35" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-35"><a href="http://kinomoskwa.pl/oferty-specjalne/">Oferty specjalne</a></li>
+<li id="menu-item-36" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-36"><a href="http://kinomoskwa.pl/oferty-dla-szkol/">Oferty dla szkół</a></li>
+<li id="menu-item-37" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-37"><a href="http://kinomoskwa.pl/oferty-dla-firm/">Oferty dla firm</a></li>
+<li id="menu-item-39" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-39"><a href="http://kinomoskwa.pl/kontakt/">Kontakt</a></li>
+</ul></nav>﻿<form role="search" method="get" id="searchform" action="http://kinomoskwa.pl/">
+	<div><label class="screen-reader-text" for="s"></label>
+		<div class="search-box">
+			<input type="text" value="" name="s" placeholder="Szukaj..." id="s" />
+			<input type="submit" id="searchsubmit" value="Szukaj" />
+		</div>
+	</div>
+</form>		</div>
+		<div class="fixed_button">
+			<a href="mailto:moskwa@kinomoskwa.pl"><img src="/wp-content/uploads/2019/04/letter.png" />Napisz do nas</a>
+		</div>
+	</header>
+<div id="content">
+	<div id="crumbs"><div class="container"><a href="http://kinomoskwa.pl">Home</a>&raquo; <span class="current">Kalendarz</span></div></div><div id="pl-582"  class="panel-layout" ><div id="pg-582-0"  class="panel-grid panel-no-style" ><div id="pgc-582-0-0"  class="panel-grid-cell" ><div id="panel-582-0-0-0" class="so-panel widget widget_my_calendar_mini_widget panel-first-child" data-index="0" >
+<div id="widget-0-0-0" class="mc-main mcjs listjs gridjs minijs ajaxjs mini week widget-0-0-0" aria-live='assertive' aria-atomic='true' aria-relevant='additions'>
+<table class="my-calendar-table">
+<caption class="heading my-calendar-week">Week of cze 11th </caption>
+<thead>
+<tr class='mc-row'>
+<th scope="col" class='day-heading mon'><span aria-hidden="true"><abbr title="Poniedziałek">P</abbr></span><span class="screen-reader-text">poniedziałek</span></th>
+<th scope="col" class='day-heading tues'><span aria-hidden="true"><abbr title="Wtorek">W</abbr></span><span class="screen-reader-text">wtorek</span></th>
+<th scope="col" class='day-heading wed'><span aria-hidden="true"><abbr title="Środa">Ś</abbr></span><span class="screen-reader-text">środa</span></th>
+<th scope="col" class='day-heading thur'><span aria-hidden="true"><abbr title="Czwartek">C</abbr></span><span class="screen-reader-text">czwartek</span></th>
+<th scope="col" class='day-heading fri'><span aria-hidden="true"><abbr title="Piątek">P</abbr></span><span class="screen-reader-text">piątek</span></th>
+<th scope="col" class='weekend-heading sat'><span aria-hidden="true"><abbr title="Sobota">S</abbr></span><span class="screen-reader-text">sobota</span></th>
+<th scope="col" class='weekend-heading sun'><span aria-hidden="true"><abbr title="Niedziela">N</abbr></span><span class="screen-reader-text">niedziela</span></th>
+
+</tr>
+</thead>
+<tbody><td id='mini-2026-06-11'  class='czwartek czw future-day   has-events author1 mcat_repertuar day-with-date'><a href='http://kinomoskwa.pl/kalendarz/?time=day&#038;yr=2026&#038;month=06&#038;dy=11' class='mc-date trigger'><span aria-hidden='true'><small>czw.</small></span><span class='screen-reader-text'>11-06-26</span></a> </td>
+<td id='mini-2026-06-12'  class='pitek pt future-day   has-events author1 mcat_repertuar day-with-date'><a href='http://kinomoskwa.pl/kalendarz/?time=day&#038;yr=2026&#038;month=06&#038;dy=12' class='mc-date trigger'><span aria-hidden='true'><small>pt.</small></span><span class='screen-reader-text'>12-06-26</span></a> </td>
+<td  class='no-events sobota sob future-day weekend  no-events day-with-date'><span class='mc-date no-events'><span aria-hidden='true'><small>sob.</small></span><span class='screen-reader-text'>13-06-26</span></span></td>
+<td  class='no-events niedziela niedz future-day weekend  no-events day-with-date'><span class='mc-date no-events'><span aria-hidden='true'><small>niedz.</small></span><span class='screen-reader-text'>14-06-26</span></span></td>
+
+</tr>
+<tr class='mc-row'><td  class='no-events poniedziaek pon future-day   no-events day-with-date'><span class='mc-date no-events'><span aria-hidden='true'><small>pon.</small></span><span class='screen-reader-text'>15-06-26</span></span></td>
+<td  class='no-events wtorek wt future-day   no-events day-with-date'><span class='mc-date no-events'><span aria-hidden='true'><small>wt.</small></span><span class='screen-reader-text'>16-06-26</span></span></td>
+<td  class='no-events roda r future-day   no-events day-with-date'><span class='mc-date no-events'><span aria-hidden='true'><small>śr.</small></span><span class='screen-reader-text'>17-06-26</span></span></td>
+
+</tbody>
+</table>
+</div></div><div id="panel-582-0-0-1" class="so-panel widget widget_text panel-last-child" data-index="1" >			<div class="textwidget">
+<div id="my-calendar" class="mc-main mcjs listjs gridjs minijs ajaxjs list day my-calendar" aria-live='assertive' aria-atomic='true' aria-relevant='additions'><div class='mcjs list day'>
+				<h3 class='mc-single'>11-06-26</h3>
+				<div id="mc-day" class="czwartek czw future-day has-events author1 mcat_repertuar"><div id='mc_list_11_12715-list' class='mc-mc_list_12715 list-event mc_repertuar future-event vevent mc_rel_repertuar'>
+<span class="summary"><span class="summary screen-reader-text">1. Pokazy grupowe</span></span><div id='mc_list_11_12715-list-details' class='details has-image' role='alert' aria-labelledby='mc_12715-title' itemscope itemtype='http://schema.org/Event'>
+<meta itemprop='name' content='1. Pokazy grupowe' />
+<div class='time-block'><p><span class='event-time'>-</span></p><meta itemprop='endDate' content='2026-06-11T23:59:59'/><meta itemprop="duration" content="PD1TH0M0"/></div><h3 class='event-title summary' id='mc_12715-title'>1. Pokazy grupowe</h3>
+<meta itemprop='image' content='http://kinomoskwa.pl/wp-content/uploads/2021/06/oferta-wakacyjna-e1624189431843.jpg' /><img width="120" height="104" src="http://kinomoskwa.pl/wp-content/uploads/2021/06/oferta-wakacyjna-e1624189431843.jpg" class="mc-image photo wp-post-image" alt="" /><div class='location'></div><div class='shortdesc description'><ul>
+<li>Godziny projekcji:</li>
+<li>8:00-14:30</li>
+</ul>
+<p>* <b>szczegóły oraz zapisy grup pod numerem: 519 173 873</b></p>
+</div><div class='sharing'><p class='mc_details'><a aria-label='Details about 1. Pokazy grupowe' itemprop='url' href='http://kinomoskwa.pl/kalendarz/?mc_id=12715'>Więcej informacji</a></p>
+</div></div><!--end .details--></div><div id='mc_list_11_12675-list' class='mc-mc_list_12675 list-event mc_repertuar future-event vevent mc_rel_repertuar'>
+<span class="summary"><span class="summary screen-reader-text">2. DZIEŃ OBJAWIENIA</span></span><div id='mc_list_11_12675-list-details' class='details no-image' role='alert' aria-labelledby='mc_12675-title' itemscope itemtype='http://schema.org/Event'>
+<meta itemprop='name' content='2. DZIEŃ OBJAWIENIA' />
+<div class='time-block'><p><span class='event-time'>-</span></p><meta itemprop='endDate' content='2026-06-11T23:59:59'/><meta itemprop="duration" content="PD1TH0M0"/></div><h3 class='event-title summary' id='mc_12675-title'>2. DZIEŃ OBJAWIENIA</h3>
+<div class='location'></div><div class='shortdesc description'><ul>
+<li>Godziny projekcji</li>
+<li><a href="https://www.bilety24.pl/kino/organizator/kino-moskwa-1420">13:40/D/</a></li>
+<li><a href="https://www.bilety24.pl/kino/organizator/kino-moskwa-1420">19:00/D/</a></li>
+</ul>
+<p><b> Kliknij w wybraną godzinę, aby kupić bilet. </b><br />
+/D/ - sala duża "Moskwa"<br />
+/S/ - sala mała "Studyjna"</p>
+</div><div class='sharing'><p class='mc_details'><a aria-label='Details about 2. DZIEŃ OBJAWIENIA' itemprop='url' href='http://kinomoskwa.pl/kalendarz/?mc_id=12675'>Więcej informacji</a></p>
+</div></div><!--end .details--></div><div id='mc_list_11_12682-list' class='mc-mc_list_12682 list-event mc_repertuar future-event vevent mc_rel_repertuar'>
+<span class="summary"><span class="summary screen-reader-text">3. POSŁANI</span></span><div id='mc_list_11_12682-list-details' class='details no-image' role='alert' aria-labelledby='mc_12682-title' itemscope itemtype='http://schema.org/Event'>
+<meta itemprop='name' content='3. POSŁANI' />
+<div class='time-block'><p><span class='event-time'>-</span></p><meta itemprop='endDate' content='2026-06-11T23:59:59'/><meta itemprop="duration" content="PD1TH0M0"/></div><h3 class='event-title summary' id='mc_12682-title'>3. POSŁANI</h3>
+<div class='location'></div><div class='shortdesc description'><ul>
+<li>Godziny projekcji</li>
+<li><a href="https://www.bilety24.pl/kino/organizator/kino-moskwa-1420">13:30/S/</a></li>
+</ul>
+<p><b> Kliknij w wybraną godzinę, aby kupić bilet. </b><br />
+/D/ - sala duża "Moskwa"<br />
+/S/ - sala mała "Studyjna"</p>
+</div><div class='sharing'><p class='mc_details'><a aria-label='Details about 3. POSŁANI' itemprop='url' href='http://kinomoskwa.pl/kalendarz/?mc_id=12682'>Więcej informacji</a></p>
+</div></div><!--end .details--></div><div id='mc_list_11_12688-list' class='mc-mc_list_12688 list-event mc_repertuar future-event vevent mc_rel_repertuar'>
+<span class="summary"><span class="summary screen-reader-text">4. DRZEWO MAGII</span></span><div id='mc_list_11_12688-list-details' class='details no-image' role='alert' aria-labelledby='mc_12688-title' itemscope itemtype='http://schema.org/Event'>
+<meta itemprop='name' content='4. DRZEWO MAGII' />
+<div class='time-block'><p><span class='event-time'>-</span></p><meta itemprop='endDate' content='2026-06-11T23:59:59'/><meta itemprop="duration" content="PD1TH0M0"/></div><h3 class='event-title summary' id='mc_12688-title'>4. DRZEWO MAGII</h3>
+<div class='location'></div><div class='shortdesc description'><ul>
+<li>Godziny projekcji</li>
+<li><a href="https://www.bilety24.pl/kino/organizator/kino-moskwa-1420">15:15/S/</a></li>
+</ul>
+<p><b> Kliknij w wybraną godzinę, aby kupić bilet. </b><br />
+/D/ - sala duża "Moskwa"<br />
+/S/ - sala mała "Studyjna"</p>
+</div><div class='sharing'><p class='mc_details'><a aria-label='Details about 4. DRZEWO MAGII' itemprop='url' href='http://kinomoskwa.pl/kalendarz/?mc_id=12688'>Więcej informacji</a></p>
+</div></div><!--end .details--></div><div id='mc_list_11_12696-list' class='mc-mc_list_12696 list-event mc_repertuar future-event vevent mc_rel_repertuar'>
+<span class="summary"><span class="summary screen-reader-text">5. TOM I JERRY: PRZYGODA W MUZEUM</span></span><div id='mc_list_11_12696-list-details' class='details no-image' role='alert' aria-labelledby='mc_12696-title' itemscope itemtype='http://schema.org/Event'>
+<meta itemprop='name' content='5. TOM I JERRY: PRZYGODA W MUZEUM' />
+<div class='time-block'><p><span class='event-time'>-</span></p><meta itemprop='endDate' content='2026-06-11T23:59:59'/><meta itemprop="duration" content="PD1TH0M0"/></div><h3 class='event-title summary' id='mc_12696-title'>5. TOM I JERRY: PRZYGODA W MUZEUM</h3>
+<div class='location'></div><div class='shortdesc description'><ul>
+<li>Godziny projekcji</li>
+<li><a href="https://www.bilety24.pl/kino/organizator/kino-moskwa-1420">17:30/S/</a></li>
+</ul>
+<p><b> Kliknij w wybraną godzinę, aby kupić bilet. </b><br />
+/D/ - sala duża "Moskwa"<br />
+/S/ - sala mała "Studyjna"</p>
+</div><div class='sharing'><p class='mc_details'><a aria-label='Details about 5. TOM I JERRY: PRZYGODA W MUZEUM' itemprop='url' href='http://kinomoskwa.pl/kalendarz/?mc_id=12696'>Więcej informacji</a></p>
+</div></div><!--end .details--></div><div id='mc_list_11_12702-list' class='mc-mc_list_12702 list-event mc_repertuar future-event vevent mc_rel_repertuar'>
+<span class="summary"><span class="summary screen-reader-text">6. DIABEŁ UBIERA SIĘ U PRADY 2</span></span><div id='mc_list_11_12702-list-details' class='details no-image' role='alert' aria-labelledby='mc_12702-title' itemscope itemtype='http://schema.org/Event'>
+<meta itemprop='name' content='6. DIABEŁ UBIERA SIĘ U PRADY 2' />
+<div class='time-block'><p><span class='event-time'>-</span></p><meta itemprop='endDate' content='2026-06-11T23:59:59'/><meta itemprop="duration" content="PD1TH0M0"/></div><h3 class='event-title summary' id='mc_12702-title'>6. DIABEŁ UBIERA SIĘ U PRADY 2</h3>
+<div class='location'></div><div class='shortdesc description'><ul>
+<li>Godziny projekcji</li>
+<li><a href="https://www.bilety24.pl/kino/organizator/kino-moskwa-1420">16:30/D/</a></li>
+</ul>
+<p><b> Kliknij w wybraną godzinę, aby kupić bilet. </b><br />
+/D/ - sala duża "Moskwa"<br />
+/S/ - sala mała "Studyjna"</p>
+</div><div class='sharing'><p class='mc_details'><a aria-label='Details about 6. DIABEŁ UBIERA SIĘ U PRADY 2' itemprop='url' href='http://kinomoskwa.pl/kalendarz/?mc_id=12702'>Więcej informacji</a></p>
+</div></div><!--end .details--></div><div id='mc_list_11_12709-list' class='mc-mc_list_12709 list-event mc_repertuar future-event vevent mc_rel_repertuar'>
+<span class="summary"><span class="summary screen-reader-text">7. ZAWODOWCY</span></span><div id='mc_list_11_12709-list-details' class='details no-image' role='alert' aria-labelledby='mc_12709-title' itemscope itemtype='http://schema.org/Event'>
+<meta itemprop='name' content='7. ZAWODOWCY' />
+<div class='time-block'><p><span class='event-time'>-</span></p><meta itemprop='endDate' content='2026-06-11T23:59:59'/><meta itemprop="duration" content="PD1TH0M0"/></div><h3 class='event-title summary' id='mc_12709-title'>7. ZAWODOWCY</h3>
+<div class='location'></div><div class='shortdesc description'><ul>
+<li>Godziny projekcji</li>
+<li><a href="https://www.bilety24.pl/kino/organizator/kino-moskwa-1420">19:30/S/</a></li>
+</ul>
+<p><b> Kliknij w wybraną godzinę, aby kupić bilet. </b><br />
+/D/ - sala duża "Moskwa"<br />
+/S/ - sala mała "Studyjna"</p>
+</div><div class='sharing'><p class='mc_details'><a aria-label='Details about 7. ZAWODOWCY' itemprop='url' href='http://kinomoskwa.pl/kalendarz/?mc_id=12709'>Więcej informacji</a></p>
+</div></div><!--end .details--></div>
+</div>
+			</div><div class='mc_bottomnav my-calendar-footer'><div class='mc-time'><a href='http://kinomoskwa.pl/kalendarz/?yr=2026&#038;month=6&#038;dy=11&#038;time=month&#038;mcat=all' class='month mcajax'>Miesiąc</a><a href='http://kinomoskwa.pl/kalendarz/?yr=2026&#038;time=week&#038;mcat=all&#038;dy=8&#038;month=06' class='week mcajax'>Tydzień</a><span class='mc-active day'>Dzień</span></div>
+		<div class="my-calendar-nav">
+			<ul>
+				<li class="my-calendar-prev"><a href="http://kinomoskwa.pl/kalendarz/?yr=2026&#038;month=06&#038;dy=10&#038;time=day&#038;mcat=all&#038;cid=my-calendar" rel="nofollow" class="mcajax">Poprzedni</a></li><li class="my-calendar-next"><a href="http://kinomoskwa.pl/kalendarz/?yr=2026&#038;month=06&#038;dy=12&#038;time=day&#038;mcat=all&#038;cid=my-calendar" rel="nofollow" class="mcajax">Następny</a></li>
+			</ul>
+		</div><div class="my-calendar-date-switcher"><form action="http://kinomoskwa.pl/kalendarz/" method="get"><div><input type="hidden" name="cid" value="my-calendar" /><input type="hidden" name="time" value="day" /><input type="hidden" name="mcat" value="all" /> <label class="maybe-hide" for="my-calendar-month">Miesiąc</label> <select id="my-calendar-month" name="month">
+<option value='1'>styczeń</option>
+<option value='2'>luty</option>
+<option value='3'>marzec</option>
+<option value='4'>kwiecień</option>
+<option value='5'>maj</option>
+<option value='6' selected='selected'>czerwiec</option>
+<option value='7'>lipiec</option>
+<option value='8'>sierpień</option>
+<option value='9'>wrzesień</option>
+<option value='10'>październik</option>
+<option value='11'>listopad</option>
+<option value='12'>grudzień</option>
+</select>
+ <label class="maybe-hide" for="my-calendar-day">Dzień</label> <select id="my-calendar-day" name="dy">
+<option value='1'>1</option>
+<option value='2'>2</option>
+<option value='3'>3</option>
+<option value='4'>4</option>
+<option value='5'>5</option>
+<option value='6'>6</option>
+<option value='7'>7</option>
+<option value='8'>8</option>
+<option value='9'>9</option>
+<option value='10'>10</option>
+<option value='11' selected='selected'>11</option>
+<option value='12'>12</option>
+<option value='13'>13</option>
+<option value='14'>14</option>
+<option value='15'>15</option>
+<option value='16'>16</option>
+<option value='17'>17</option>
+<option value='18'>18</option>
+<option value='19'>19</option>
+<option value='20'>20</option>
+<option value='21'>21</option>
+<option value='22'>22</option>
+<option value='23'>23</option>
+<option value='24'>24</option>
+<option value='25'>25</option>
+<option value='26'>26</option>
+<option value='27'>27</option>
+<option value='28'>28</option>
+<option value='29'>29</option>
+<option value='30'>30</option>
+<option value='31'>31</option>
+</select> <label class="maybe-hide" for="my-calendar-year">Rok</label> <select id="my-calendar-year" name="yr">
+<option value="2019">2019</option>
+<option value="2020">2020</option>
+<option value="2021">2021</option>
+<option value="2022">2022</option>
+<option value="2023">2023</option>
+<option value="2024">2024</option>
+<option value="2025">2025</option>
+<option value="2026" selected='selected'>2026</option>
+<option value="2027">2027</option>
+<option value="2028">2028</option>
+<option value="2029">2029</option>
+<option value="2030">2030</option>
+</select> <input type="submit" class="button" value="Idź" /></div></form></div><div class='mc-format'><span class='mc-active list'><span class="maybe-hide">Widok: </span>Lista</span></div><div class="category-key"><h3>Kategorie</h3>
+<ul>
+<li class="cat_repertuar"><a href="http://kinomoskwa.pl/kalendarz/?yr=2026&#038;month=6&#038;dy=11&#038;time=day&#038;mcat=all,1" class="mcajax"><span class="category-color-sample no-icon" style="background:#;"> &nbsp; </span>Repertuar</a></li><li class="cat_zapowiedzi"><a href="http://kinomoskwa.pl/kalendarz/?yr=2026&#038;month=6&#038;dy=11&#038;time=day&#038;mcat=all,2" class="mcajax"><span class="category-color-sample no-icon" style="background:#;"> &nbsp; </span>Zapowiedzi</a></li><li class='all-categories'><a href='http://kinomoskwa.pl/kalendarz/?yr=2026&#038;month=6&#038;dy=11&#038;time=day' class='mcajax'>Wszystkie Kategorie</a></li></ul></div><div class='mc-print'><a href='http://kinomoskwa.pl?yr=2026&#038;month=06&#038;dy=11&#038;time=day&#038;mcat=0&#038;href=http%3A%2F%2Fkinomoskwa.pl%2Fkalendarz%2F&#038;format=list&#038;cid=mc-print-view'>Do druku</a></div>
+
+<div class='mc-export'>
+	<ul>
+	<li class='rss'><a href='http://kinomoskwa.pl/feed/my-calendar-rss/'>RSS</a></li>
+	<li class='ics google'><a href='http://kinomoskwa.pl/feed/my-calendar-google/'>Google</a></li>
+	<li class='ics outlook'><a href='http://kinomoskwa.pl/feed/my-calendar-outlook/'>Outlook</a></li></ul>
+</div>
+
+
+<div class='mc-export'>
+	<ul>
+ <li class='ics google'><a href='http://kinomoskwa.pl/feed/my-calendar-ics/?yr=2026&#038;month=6&#038;dy=11&#038;time=day&#038;mcat=0&#038;format=list&#038;nyr=2026&#038;nmonth=06&#038;export=google'>Google</a></li>
+ <li class='ics outlook'><a href='http://kinomoskwa.pl/feed/my-calendar-ics/?yr=2026&#038;month=6&#038;dy=11&#038;time=day&#038;mcat=0&#038;format=list&#038;nyr=2026&#038;nmonth=06&#038;export=outlook'>Outlook</a></li></ul>
+</div>
+</div>
+</div>
+</div>
+		</div></div></div></div></div>
+
+﻿<footer>
+	<div class="socket">
+		<div class="container">
+			<div class="col-sm-3 footer-column footer-header">
+				<aside id="text-2" class="widget widget_text"><h3 class="widget-title">Godziny pracy kina</h2>
+			<div class="textwidget"><p>Kasa czynna 30 min. przed pierwszym seansem.</p>
+</div>
+		</h3>			</div>
+			<div class="col-sm-3 footer-column">
+				<aside id="nav_menu-2" class="widget widget_nav_menu"><h3 class="widget-title">Kino</h2>
+<div class="menu-kino-stopka-container"><ul id="menu-kino-stopka" class="menu"><li id="menu-item-159" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-159"><a href="http://kinomoskwa.pl/cennik/">Cennik</a></li>
+<li id="menu-item-7548" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-7548"><a href="http://kinomoskwa.pl/beuno-czwartki/">Niebieska Strefa</a></li>
+<li id="menu-item-158" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-158"><a href="http://kinomoskwa.pl/nasze-sale/">Nasze sale</a></li>
+<li id="menu-item-160" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-160"><a href="http://kinomoskwa.pl/mapa-i-dojazd/">Mapa i dojazd</a></li>
+<li id="menu-item-317" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-317"><a href="http://kinomoskwa.pl/reklama/">Reklama</a></li>
+</ul></div></h3>			</div>
+			<div class="col-sm-3 footer-column">
+				<aside id="nav_menu-3" class="widget widget_nav_menu"><h3 class="widget-title">Film</h2>
+<div class="menu-film-stopka-container"><ul id="menu-film-stopka" class="menu"><li id="menu-item-161" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-161"><a href="http://kinomoskwa.pl/repertuar/">Repertuar</a></li>
+<li id="menu-item-162" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-162"><a href="http://kinomoskwa.pl/zapowiedzi/">Zapowiedzi</a></li>
+</ul></div></h3>			</div>
+			<div class="col-sm-3 footer-column">
+				<aside id="nav_menu-4" class="widget widget_nav_menu"><h3 class="widget-title">Oferty</h2>
+<div class="menu-oferty-stopka-container"><ul id="menu-oferty-stopka" class="menu"><li id="menu-item-163" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-163"><a href="http://kinomoskwa.pl/oferty-dla-szkol/">Oferty dla szkół</a></li>
+<li id="menu-item-164" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-164"><a href="http://kinomoskwa.pl/oferty-dla-firm/">Oferty dla firm</a></li>
+<li id="menu-item-165" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-165"><a href="http://kinomoskwa.pl/urodziny-w-kinie/">Urodziny w kinie</a></li>
+<li id="menu-item-171" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-171"><a href="http://kinomoskwa.pl/bilet-dla-ciebie/">Bilet dla Ciebie</a></li>
+</ul></div></h3>			</div>
+			<div class="col-sm-3 footer-column">
+				<aside id="newsletterwidget-2" class="widget widget_newsletterwidget"><h3 class="widget-title">Newsletter</h2>
+Zamów newsletter ju teraz!<div class="tnp tnp-widget"><form method="post" action="http://kinomoskwa.pl/?na=s" onsubmit="return newsletter_check(this)">
+
+<input type="hidden" name="nlang" value="">
+<input type="hidden" name="nr" value="widget">
+<input type='hidden' name='nl[]' value='0'>
+<div class="tnp-field tnp-field-email"><label></label><input class="tnp-email" type="email" name="ne" required></div>
+<div class="tnp-field tnp-field-button"><input class="tnp-submit" type="submit" value="ok" >
+</div>
+</form>
+</div>
+</h3><aside id="sow-social-media-buttons-2" class="widget widget_sow-social-media-buttons"><div class="so-widget-sow-social-media-buttons so-widget-sow-social-media-buttons-flat-720c3f86f38e"><h3 class="widget-title">Facebook</h2>
+
+<div class="social-media-button-container">
+	
+		<a class="ow-button-hover sow-social-media-button-facebook sow-social-media-button" title="Obserwuj nas na Facebooku" aria-label="Obserwuj nas na Facebooku" target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/kinomoskwa" >
+			<span>
+								<span class="sow-icon-fontawesome sow-fab" data-sow-icon="&#xf39e;" ></span>							</span>
+		</a>
+	</div>
+</div></h3><aside id="text-8" class="widget widget_text">			<div class="textwidget"><p>Obserwuj nas na Facebooku</p>
+</div>
+		</h3>			</div>
+			<div class="col-sm-3 footer-column">
+				<aside id="text-7" class="widget widget_text"><h3 class="widget-title">Rezerwacja: 41 344 47 34 lub 519 173 873*</h2>
+			<div class="textwidget"><p>*Rezerwacje prosimy odbierac najpóźniej 20 minut przed rozpoczęciem seansu. Po tym czasie rezerwacje mogą ulec anulowaniu.</p>
+</div>
+		</h3><aside id="nav_menu-5" class="widget widget_nav_menu"><div class="menu-stopka-container"><ul id="menu-stopka" class="menu"><li id="menu-item-180" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-privacy-policy menu-item-180"><a href="http://kinomoskwa.pl/polityka-prywatnosci/">Polityka prywatności</a></li>
+<li id="menu-item-181" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-181"><a href="http://kinomoskwa.pl/zamowienia-publiczne/">Zamówienia publiczne</a></li>
+<li id="menu-item-182" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-182"><a href="http://kinomoskwa.pl/regulamin-widza/">Regulamin widza</a></li>
+</ul></div></h3>			</div>
+		</div>
+	</div>
+	
+	<div id="footer">
+		<div class="container">
+			<div class="copyright">
+				<span>Copyright 2019. All right reserved. |  Created by <strong><a href="http://prospel.net">Prospel</a></strong></span>
+			</div>
+		</div>
+	</div>
+	<link rel='stylesheet' id='sow-social-media-buttons-flat-720c3f86f38e-css'  href='http://kinomoskwa.pl/wp-content/uploads/siteorigin-widgets/sow-social-media-buttons-flat-720c3f86f38e.css?ver=5.2.21' type='text/css' media='all' />
+<link rel='stylesheet' id='siteorigin-widget-icon-font-fontawesome-css'  href='http://kinomoskwa.pl/wp-content/plugins/so-widgets-bundle/icons/fontawesome/style.css?ver=5.2.21' type='text/css' media='all' />
+<script type='text/javascript'>
+/* <![CDATA[ */
+var newsletter = {"messages":{"email_error":"Adres e-mail jest niepoprawny","name_error":"Imi\u0119 jest wymagane","surname_error":"Nazwisko jest wymagane","profile_error":"","privacy_error":"You must accept the privacy policy"},"profile_max":"20"};
+/* ]]> */
+</script>
+<script type='text/javascript' src='http://kinomoskwa.pl/wp-content/plugins/newsletter/subscription/validate.js?ver=6.2.2'></script>
+<script type='text/javascript' src='http://kinomoskwa.pl/wp-includes/js/wp-embed.min.js?ver=5.2.21'></script>
+<script type='text/javascript'>
+/* <![CDATA[ */
+var mcgrid = "true";
+/* ]]> */
+</script>
+<script type='text/javascript' src='http://kinomoskwa.pl/wp-content/plugins/my-calendar/js/mc-grid.js?ver=5.2.21'></script>
+<script type='text/javascript'>
+/* <![CDATA[ */
+var mclist = "true";
+/* ]]> */
+</script>
+<script type='text/javascript' src='http://kinomoskwa.pl/wp-content/plugins/my-calendar/js/mc-list.js?ver=5.2.21'></script>
+<script type='text/javascript'>
+/* <![CDATA[ */
+var mcAjax = "true";
+/* ]]> */
+</script>
+<script type='text/javascript' src='http://kinomoskwa.pl/wp-content/plugins/my-calendar/js/mc-ajax.js?ver=5.2.21'></script>
+<script type='text/javascript'>
+/* <![CDATA[ */
+var my_calendar = {"newWindow":"Opens in new tab"};
+/* ]]> */
+</script>
+<script type='text/javascript' src='http://kinomoskwa.pl/wp-content/plugins/my-calendar/js/mcjs.js?ver=5.2.21'></script>
+<script type="text/javascript">document.body.className = document.body.className.replace("siteorigin-panels-before-js","");</script></footer>
+</body>
+</html>

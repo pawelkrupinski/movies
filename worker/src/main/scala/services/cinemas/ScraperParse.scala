@@ -45,6 +45,38 @@ private[cinemas] object ScraperParse {
       .map(_.text.trim)
       .filter(_.nonEmpty)
 
+  /**
+   * Convert an ALL-CAPS title to sentence case. Lowercases everything, then
+   * uppercases the first character and any letter after `. ` where the
+   * preceding token is a sentence-ending token (digit, or a 4+-letter word).
+   * Keeps "Mavka. Prawdziwy mit" and "90. Urodziny pavarottiego" correct while
+   * leaving Polish abbreviations like "ang." / "reż." untouched. Used by the MSI
+   * scrapers (Cinema1, Kino Zamek, Kino Kijów) whose portals serve ALL-CAPS titles.
+   */
+  def sentenceCase(title: String): String = {
+    if (title.isEmpty) return title
+    val chars = title.toLowerCase.toCharArray
+    chars(0) = chars(0).toUpper
+    var i = 0
+    while (i + 2 < chars.length) {
+      if (chars(i) == '.' && chars(i + 1) == ' ' && precedingTokenEndsSentence(chars, i))
+        chars(i + 2) = chars(i + 2).toUpper
+      i += 1
+    }
+    new String(chars)
+  }
+
+  private def precedingTokenEndsSentence(chars: Array[Char], dotIdx: Int): Boolean = {
+    if (dotIdx == 0) return false
+    val prev = chars(dotIdx - 1)
+    if (prev.isDigit) return true
+    if (!prev.isLetter) return false
+    var len = 0
+    var j = dotIdx - 1
+    while (j >= 0 && chars(j).isLetter) { len += 1; j -= 1 }
+    len >= 4
+  }
+
   /** Canonical `https://www.youtube.com/watch?v=<id>` form for a YouTube
     * embed / watch / `youtu.be` URL; Vimeo URLs pass through unchanged for the
     * view layer's `TrailerEmbed` to reshape, and anything else is dropped. Each
