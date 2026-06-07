@@ -114,4 +114,23 @@ class FiltersSheetOrderTest {
         compose.waitForIdle()
         compose.onNodeWithText("Białystok").assertDoesNotExist()
     }
+
+    /**
+     * Od godziny is a scrolling drum (chargemap ListItemPicker), not a pair of
+     * dropdowns: the hour drum renders its current value's label ("Dowolna" at
+     * the default no-floor state) inline once scrolled into view. Fails if the
+     * wheel picker stops composing or the section regresses to a button.
+     */
+    @Test
+    fun odGodzinyShowsTheHourDrum() {
+        compose.setContent {
+            FiltersSheetContent(viewModel(), films = emptyList())
+        }
+
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Od godziny"))
+
+        // The drum centres on the stored hour (-1 → "Dowolna"); the label is a
+        // real Text node, unlike the old collapsed dropdown button.
+        compose.onNodeWithText("Dowolna").assertIsDisplayed()
+    }
 }
