@@ -53,11 +53,18 @@ class WorkerWiring {
   protected def heliosToday: java.time.LocalDate =
     java.time.LocalDate.now(java.time.ZoneId.of("Europe/Warsaw"))
 
+  // How many times a cinema scrape is attempted before giving up. Production
+  // retries transient site failures (3×, backoff); fixture-replay test wirings
+  // override to 1 — a missing fixture is a PERMANENT miss, so retrying just
+  // multiplies the fixture-server boot time (3× backoff per fixture-less cinema,
+  // which with the full 40+-city catalogue blows past the CI port-file ceiling).
+  protected def scrapeMaxAttempts: Int = 3
+
   lazy val cinemaScrapers: Seq[CinemaScraper] =
     City.all
       .filter(c => scrapeCities(c.slug))
       .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
-      .map(s => new RetryingCinemaScraper(s, uptimeMonitor))
+      .map(s => new RetryingCinemaScraper(s, uptimeMonitor, maxAttempts = scrapeMaxAttempts))
 
   // ── Background concurrency budget ───────────────────────────────────────────
   // Scrape + enrichment + the rating refreshers draw run permits from ONE shared
