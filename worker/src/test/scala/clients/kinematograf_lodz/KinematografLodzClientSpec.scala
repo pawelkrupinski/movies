@@ -45,6 +45,14 @@ class KinematografLodzClientSpec extends AnyFlatSpec with Matchers with OptionVa
       </div>
     </article>
     <article class="cwb-movie-item h-100">
+      <a href="https://muzeumkinematografii.pl/repertuar/rozmowa/"
+         class="cwb-movie-card-link"
+         title="Przejdź do seansu: Klasyk w kinie: Rozmowa (1973)"></a>
+      <div class="cwb-movie-card-info">
+        <div class="date-time"> 08.06.2026 19:00</div>
+      </div>
+    </article>
+    <article class="cwb-movie-item h-100">
       <a href="https://muzeumkinematografii.pl/repertuar/stary-film/"
          class="cwb-movie-card-link"
          title="Przejdź do seansu: Stary Film (2025), reż. Jan Kowalski"></a>
@@ -77,13 +85,23 @@ class KinematografLodzClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   it should "pin a concrete screening: Znaki Pana Śliwki on 2026-06-07 at 14:00" in {
     val movies = client.fetch()
-    val znaki  = movies.find(_.movie.title == "Znaki Pana Śliwki (2025)").value
+    val znaki  = movies.find(_.movie.title == "Znaki Pana Śliwki").value
     znaki.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 14, 0))
   }
 
   it should "strip the 'reż.' director suffix from the title" in {
     val movies = client.fetch()
     movies.map(_.movie.title).exists(_.contains("reż.")) shouldBe false
+  }
+
+  it should "strip the trailing '(YYYY)' release-year suffix from the title" in {
+    val titles = client.fetch().map(_.movie.title)
+    // Director + year stripped down to the bare title.
+    titles should contain("Znaki Pana Śliwki")
+    // Programme prefix kept, only the year stripped.
+    titles should contain("Klasyk w kinie: Rozmowa")
+    // No title retains a trailing "(YYYY)".
+    titles.exists(_.matches(""".*\(\d{4}\)\s*$""")) shouldBe false
   }
 
   it should "drop past screenings (01-01-2026 is before today)" in {

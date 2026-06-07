@@ -60,21 +60,26 @@ object KinematografLodzClient {
 
   private val DateTimePat = """(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2})""".r
   private val DateFmt     = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+  private val YearSuffix  = """\s*\(\d{4}\)\s*$""".r
 
-  /** Strips the `", reż. Director Name"` or `", Director Name"` suffix that
-    * the museum appends to the raw title attribute. Examples:
+  /** Strips the `", reż. Director Name"` / `", Director Name"` director
+    * suffix and the trailing `" (YYYY)"` release-year suffix that the museum
+    * appends to the raw title attribute, leaving the bare title for TMDB to
+    * match. Examples:
     *   "Znaki Pana Śliwki (2025), reż. Urszula Morga, Bartosz Mikołajczyk"
-    *     → "Znaki Pana Śliwki (2025)"
+    *     → "Znaki Pana Śliwki"
     *   "Zawieście czerwone latarnie (1991), Zhang Yimou"
-    *     → "Zawieście czerwone latarnie (1991)"
-    *   "Klasyk w kinie: Rozmowa (1973)" → unchanged
+    *     → "Zawieście czerwone latarnie"
+    *   "Klasyk w kinie: Rozmowa (1973)" → "Klasyk w kinie: Rozmowa"
     */
   private[cinemas] def cleanTitle(raw: String): String = {
     // Strip ", reż. …" (everything from the last comma + "reż." onward).
     val noRez = """,\s*reż\.\s*.+$""".r.replaceFirstIn(raw.trim, "").trim
     // Strip a trailing ", Firstname Lastname" (one comma + exactly two capitalised words)
     // to catch bare foreign director names not preceded by "reż.".
-    """,\s+\p{Lu}\S+\s+\p{Lu}\S+$""".r.replaceFirstIn(noRez, "").trim
+    val noDirector = """,\s+\p{Lu}\S+\s+\p{Lu}\S+$""".r.replaceFirstIn(noRez, "").trim
+    // Strip the trailing " (YYYY)" release-year suffix.
+    YearSuffix.replaceFirstIn(noDirector, "").trim
   }
 
   private[cinemas] def parseHtml(html: String, today: LocalDate, cinema: Cinema): Seq[CinemaMovie] = {
