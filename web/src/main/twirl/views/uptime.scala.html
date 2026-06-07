@@ -150,12 +150,19 @@
 
     document.querySelectorAll('.bar').forEach(attachBarHover);
 
-    // ── SSE live updates ────────────────────────────────────────────────
-    var es = new EventSource('/uptime/stream');
-    es.onmessage = function(ev) {
-      var d = JSON.parse(ev.data);
+    // Index rows by service once so a live update is an O(1) lookup, not a
+    // full-document querySelectorAll per message. As the cinema roster grows,
+    // batch handling stays cheap.
+    var rowsByService = {};
+    document.querySelectorAll('.row[data-service]').forEach(function(row) {
+      var s = row.getAttribute('data-service');
+      (rowsByService[s] = rowsByService[s] || []).push(row);
+    });
+
+    function applyUpdate(d) {
+      var rows = rowsByService[d.service];
+      if (!rows) return;   // a service with no rendered row appears only on reload
       var ts = String(d.bucketTs);
-      var rows = document.querySelectorAll('.row[data-service="' + CSS.escape(d.service) + '"]');
       rows.forEach(function(row) {
         var barsDiv = row.querySelector('.bars');
         var bar = barsDiv.querySelector('.bar[data-ts="' + ts + '"]');
@@ -172,6 +179,15 @@
           if (barsDiv.children.length > 288) barsDiv.removeChild(barsDiv.firstElementChild);
         }
       });
+    }
+
+    // ── SSE live updates ────────────────────────────────────────────────
+    // Each frame is a BATCH of updates (the server coalesces a poll's changes
+    // into one frame), so one parse + one pass applies them all.
+    var es = new EventSource('/uptime/stream');
+    es.onmessage = function(ev) {
+      var batch = JSON.parse(ev.data);
+      batch.forEach(applyUpdate);
     };
   </script>
 </body>

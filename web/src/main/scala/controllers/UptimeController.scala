@@ -11,6 +11,7 @@ import services.UptimeMonitor._
 import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using mat: Materializer) extends AbstractController(cc) {
 
@@ -22,9 +23,27 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
     "TMDB", "IMDb", "Filmweb", "Metacritic", "Rotten Tomatoes"
   )
 
+  // SSE batching: a poll cycle can flip one bucket per active service at once.
+  // Buffer generously (drop oldest under a burst), then coalesce everything that
+  // lands inside BatchWindow into one frame so the page never sees a per-service
+  // message storm. BatchMaxSize caps a single frame; BatchWindow bounds latency.
+  private val StreamBufferSize = 2048
+  private val BatchMaxSize     = 1024
+  private val BatchWindow      = 250.millis
+
   private val warsawZone = ZoneId.of("Europe/Warsaw")
   private val timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(warsawZone)
   private val dateFmt = DateTimeFormatter.ofPattern("d MMM").withZone(warsawZone)
+
+  /** One rendered bar, with its bucket window stamped in Warsaw time. Shared by
+   *  the full-page render and the live SSE feed so both label a bucket the same. */
+  private def barData(service: String, bucketTs: Long, status: String,
+                      successes: Int, failures: Int, errors: Seq[String]): BarData = {
+    val from = Instant.ofEpochMilli(bucketTs)
+    val to   = Instant.ofEpochMilli(bucketTs + BucketDurationMs)
+    BarData(service, bucketTs, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
+      status, successes, failures, errors)
+  }
 
   def index: Action[AnyContent] = Action {
     val now = System.currentTimeMillis()
@@ -35,15 +54,9 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
     def barsFor(serviceName: String): Seq[BarData] = {
       val history = monitor.history(serviceName).map(b => b.timestamp -> b).toMap
       slots.map { ts =>
-        val from = Instant.ofEpochMilli(ts)
-        val to   = Instant.ofEpochMilli(ts + BucketDurationMs)
         history.get(ts) match {
-          case Some(b) =>
-            BarData(serviceName, ts, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
-              b.status, b.successes, b.failures, b.errors)
-          case None =>
-            BarData(serviceName, ts, timeFmt.format(from), timeFmt.format(to), dateFmt.format(from),
-              "empty", 0, 0, Seq.empty)
+          case Some(b) => barData(serviceName, ts, b.status, b.successes, b.failures, b.errors)
+          case None    => barData(serviceName, ts, "empty", 0, 0, Seq.empty)
         }
       }
     }
@@ -60,32 +73,33 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
   }
 
   def stream: Action[AnyContent] = Action {
-    val (queue, source) = Source.queue[String](256, OverflowStrategy.dropHead)
+    Ok.chunked(eventSource()).as("text/event-stream")
+  }
+
+  /** The live `/uptime/stream` feed. One listener per connected browser pushes
+   *  each changed bucket as a `BarData`; `groupedWithin` then coalesces a burst
+   *  into a SINGLE `data: [...]` SSE frame. A worker poll that flips N buckets
+   *  at once therefore costs the page one frame and one DOM pass, not N — so the
+   *  stream's cost stays flat as the cinema roster (and thus N) grows, instead
+   *  of one frame per scraper per poll. */
+  private[controllers] def eventSource(): Source[String, org.apache.pekko.NotUsed] = {
+    val (queue, source) = Source.queue[BarData](StreamBufferSize, OverflowStrategy.dropHead)
       .preMaterialize()
 
     val listener: BucketListener = { (service, snapshot) =>
-      val json = Json.obj(
-        "service"   -> service,
-        "bucketTs"  -> snapshot.timestamp,
-        "timeFrom"  -> timeFmt.format(Instant.ofEpochMilli(snapshot.timestamp)),
-        "timeTo"    -> timeFmt.format(Instant.ofEpochMilli(snapshot.timestamp + BucketDurationMs)),
-        "dateLabel" -> dateFmt.format(Instant.ofEpochMilli(snapshot.timestamp)),
-        "status"    -> snapshot.status,
-        "successes" -> snapshot.successes,
-        "failures"  -> snapshot.failures,
-        "errors"    -> snapshot.errors
-      )
-      queue.offer(s"data: $json\n\n")
+      queue.offer(barData(service, snapshot.timestamp, snapshot.status,
+        snapshot.successes, snapshot.failures, snapshot.errors))
+      ()
     }
-
     monitor.addListener(listener)
 
-    Ok.chunked(
-      source.watchTermination() { (_, done) =>
+    source
+      .groupedWithin(BatchMaxSize, BatchWindow)
+      .map(batch => s"data: ${Json.toJson(batch)}\n\n")
+      .watchTermination() { (_, done) =>
         done.onComplete(_ => monitor.removeListener(listener))(using ExecutionContext.global)
         org.apache.pekko.NotUsed
       }
-    ).as("text/event-stream")
   }
 
   /** Browser-reported image load outcomes. The page's tracker batches
