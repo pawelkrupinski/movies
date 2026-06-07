@@ -139,9 +139,9 @@ class WorkerWiring {
   // When enabled, cinema scraping is driven by a durable Mongo task queue instead
   // of ShowtimeCache's continuous loop: a reaper enqueues each cinema at most once
   // per 15-min freshness window, and the worker scrapes it (skipping if a
-  // concurrent run already refreshed it). Enrichment still flows through the bus
-  // exactly as before — only the scrape *scheduling* changes here. Off by default
-  // until cut over; KINOWO_QUEUE_SCRAPING=true flips it.
+  // concurrent run already refreshed it). This flag changes only the scrape
+  // *scheduling*; detail and rating enrichment are governed by KINOWO_DEFERRED_DETAIL
+  // and KINOWO_QUEUE_ENRICHMENT independently. Off by default until cut over.
   protected def queueScraping: Boolean =
     Env.get("KINOWO_QUEUE_SCRAPING").exists(v => v == "true" || v == "1")
 
