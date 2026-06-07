@@ -2,19 +2,23 @@ package pl.kinowo.ui.list
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -25,6 +29,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,9 +42,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import pl.kinowo.filter.CinemaCityFilter
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.FormatFilter
@@ -395,7 +408,7 @@ private fun <T> Dropdown(
     modifier: Modifier = Modifier,
     onPick: (T) -> Unit,
 ) {
-    androidx.compose.foundation.layout.Box(modifier) {
+    Box(modifier) {
         OutlinedButton(onClick = { onExpandedChange(true) }, modifier = Modifier.fillMaxWidth()) {
             Text(label, modifier = Modifier.weight(1f))
             Icon(
@@ -403,10 +416,65 @@ private fun <T> Dropdown(
                 contentDescription = null,
             )
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
-            items.forEach { (text, value) ->
-                DropdownMenuItem(text = { Text(text) }, onClick = { onPick(value) })
+        if (expanded) {
+            // A plain DropdownMenu anchors to the button's left edge; for the
+            // full-width city picker that reads as "stuck to the left", and the
+            // half-width Od-godziny pickers would sit off to one side. Centre the
+            // menu in the window instead (see WindowCenteredMenuPositionProvider).
+            val gapPx = with(LocalDensity.current) { MenuAnchorGap.roundToPx() }
+            Popup(
+                popupPositionProvider = remember(gapPx) { WindowCenteredMenuPositionProvider(gapPx) },
+                onDismissRequest = { onExpandedChange(false) },
+                properties = PopupProperties(focusable = true),
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.extraSmall,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 3.dp,
+                    shadowElevation = 3.dp,
+                ) {
+                    Column(
+                        Modifier
+                            .padding(vertical = 8.dp)
+                            .width(IntrinsicSize.Max)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        items.forEach { (text, value) ->
+                            DropdownMenuItem(text = { Text(text) }, onClick = { onPick(value) })
+                        }
+                    }
+                }
             }
         }
+    }
+}
+
+private val MenuAnchorGap = 4.dp
+
+/**
+ * Positions a popup horizontally centred in the window, dropping below the
+ * anchor (and flipping above it when there isn't room below). Used by
+ * [Dropdown] so the filter menus open in the middle of the screen rather than
+ * pinned to the anchor's left edge. [calculatePosition] is a pure function of
+ * its geometry inputs, so it's unit-tested directly (WindowCenteredMenuPositionProviderTest).
+ */
+internal class WindowCenteredMenuPositionProvider(
+    private val verticalGapPx: Int,
+) : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ): IntOffset {
+        val x = ((windowSize.width - popupContentSize.width) / 2).coerceAtLeast(0)
+        val below = anchorBounds.bottom + verticalGapPx
+        val y =
+            if (below + popupContentSize.height <= windowSize.height || anchorBounds.top < popupContentSize.height) {
+                below
+            } else {
+                (anchorBounds.top - verticalGapPx - popupContentSize.height).coerceAtLeast(0)
+            }
+        return IntOffset(x, y)
     }
 }
