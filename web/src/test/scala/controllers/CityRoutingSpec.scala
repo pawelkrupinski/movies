@@ -50,8 +50,10 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     status(res) shouldBe OK
     val html = contentAsString(res)
     html should include("Repertuar kinowy Poznań")
-    // Navbar links carry the city prefix.
-    html should include("""href="/poznan/"""")
+    // Film-card links carry the city prefix (the navbar no longer holds a
+    // city-scoped home tab — the film grid's `/{city}/film` links are the
+    // city-prefixed links the page now renders).
+    html should include("""href="/poznan/film""")
     // The lone fixture film is in a Poznań cinema → present.
     html should include("Testowy Film")
   }
@@ -69,7 +71,7 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     status(res) shouldBe OK
     val html = contentAsString(res)
     html should include("Repertuar kinowy Wrocław")
-    html should include("""href="/wroclaw/"""")
+    html should include("""href="/wroclaw/film""")
     html should include("Wrocławski Film")
     html should not include "Testowy Film"   // Poznań
     html should not include "Warszawski Film" // Warszawa
@@ -81,7 +83,7 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     status(res) shouldBe OK
     val html = contentAsString(res)
     html should include("Repertuar kinowy Warszawa")
-    html should include("""href="/warszawa/"""")
+    html should include("""href="/warszawa/film""")
     html should include("Warszawski Film")
     html should not include "Testowy Film"    // Poznań
     html should not include "Wrocławski Film"  // Wrocław
