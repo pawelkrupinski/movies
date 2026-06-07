@@ -37,8 +37,14 @@ fun PosterImage(
     chain: List<String>,
     contentDescription: String?,
     modifier: Modifier = Modifier,
+    // Listing/detail thumbnails crop to fill their 2:3 box; the full-screen
+    // viewer passes Fit so the whole poster shows, letterboxed.
+    contentScale: ContentScale = ContentScale.Crop,
+    // Thumbnails sit on the card surface; the full-screen viewer passes
+    // Transparent so its black backdrop shows through the Fit letterbox bars.
+    background: Color = CardSurface,
 ) {
-    Box(modifier = modifier.background(CardSurface), contentAlignment = Alignment.Center) {
+    Box(modifier = modifier.background(background), contentAlignment = Alignment.Center) {
         if (chain.isEmpty()) {
             PlaceholderGlyph()
             return@Box
@@ -52,7 +58,7 @@ fun PosterImage(
                 .crossfade(false)
                 .build(),
             contentDescription = contentDescription,
-            contentScale = ContentScale.Crop,
+            contentScale = contentScale,
             modifier = Modifier.fillMaxSize(),
             loading = { PlaceholderGlyph() },
             error = {

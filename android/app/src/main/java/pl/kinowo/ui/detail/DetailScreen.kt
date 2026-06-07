@@ -3,8 +3,10 @@ package pl.kinowo.ui.detail
 import android.annotation.SuppressLint
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +36,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
+import pl.kinowo.ui.common.FullScreenPoster
 import pl.kinowo.ui.common.LocalFilmDetailStyle
 import pl.kinowo.ui.common.MetaPills
 import pl.kinowo.ui.common.PosterImage
@@ -60,10 +65,12 @@ import pl.kinowo.ui.theme.CardElevated
 import pl.kinowo.ui.theme.CinemaBlue
 import pl.kinowo.ui.theme.TextSecondary
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
     val style = LocalFilmDetailStyle.current
+    // Whether the poster is currently shown full-screen (tap / long-press on it).
+    var showFullPoster by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -99,10 +106,21 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
         ) {
             // Header: poster + title/ratings.
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val hasPoster = film.posterChain.isNotEmpty()
                 PosterImage(
                     chain = film.posterChain,
                     contentDescription = film.title,
-                    modifier = Modifier.width(150.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)),
+                    modifier = Modifier
+                        .width(150.dp)
+                        .aspectRatio(2f / 3f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .testTag(DetailPosterTag)
+                        // Tap or long-press opens the full-screen viewer.
+                        .combinedClickable(
+                            enabled = hasPoster,
+                            onClick = { showFullPoster = true },
+                            onLongClick = { showFullPoster = true },
+                        ),
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(style.headerSpacing)) {
                     Text(film.title, fontSize = style.titleFontSize, fontWeight = style.titleWeight, color = Color.White)
@@ -169,8 +187,19 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                 }
             }
         }
+
+        if (showFullPoster && film.posterChain.isNotEmpty()) {
+            FullScreenPoster(
+                chain = film.posterChain,
+                contentDescription = film.title,
+                onDismiss = { showFullPoster = false },
+            )
+        }
     }
 }
+
+/** testTag the UI/unit tests use to find the detail-header poster. */
+const val DetailPosterTag = "detailPoster"
 
 @Composable
 private fun MetaBlock(label: String, value: String?) {
