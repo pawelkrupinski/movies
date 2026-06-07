@@ -549,11 +549,11 @@ internal fun posterGridColumns(landscape: Boolean, layoutWidthDp: Int): GridCell
     else GridCells.Adaptive(minSize = PosterGridMetrics.cardColumnDp(layoutWidthDp).dp)
 
 /**
- * Snap [state] back to the first item whenever [key] changes — so picking a
- * different day drops the user at the top of the new day's list instead of
- * stranding them mid-scroll on the previous day's rows. The first composition
- * is a no-op (the grid already starts at the top), which also preserves a
- * scroll position restored across a config change.
+ * Animate [state] back to the first item whenever [key] changes — so picking a
+ * different day quickly scrolls the user up instead of stranding them mid-list
+ * on the previous day's rows (and instead of snapping abruptly to the top). The
+ * first composition is a no-op (the grid already starts at the top), which also
+ * preserves a scroll position restored across a config change.
  */
 @Composable
 internal fun ScrollToTopOnChange(state: LazyGridState, key: Any?) {
@@ -562,7 +562,7 @@ internal fun ScrollToTopOnChange(state: LazyGridState, key: Any?) {
         if (!seenFirst) {
             seenFirst = true
         } else {
-            state.scrollToItem(0)
+            state.animateScrollToItem(0)
         }
     }
 }

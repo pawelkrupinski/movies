@@ -19,12 +19,14 @@ private let pagedTabViewTopOverflow: CGFloat = 17
 private let gridTopAnchorID = "kinowo.grid.top"
 
 private extension View {
-    /// Scroll the enclosing `ScrollViewReader` back to `gridTopAnchorID`
-    /// whenever `token` changes. Shared by both grids so the reset rule lives
-    /// in one place.
+    /// Quickly animate the enclosing `ScrollViewReader` back to `gridTopAnchorID`
+    /// whenever `token` changes — a brief scroll up rather than an abrupt snap.
+    /// Shared by both grids so the reset rule lives in one place.
     func resetsScrollToTop<T: Equatable>(on token: T, using proxy: ScrollViewProxy) -> some View {
         onChange(of: token) { _ in
-            proxy.scrollTo(gridTopAnchorID, anchor: .top)
+            withAnimation(.easeOut(duration: 0.25)) {
+                proxy.scrollTo(gridTopAnchorID, anchor: .top)
+            }
         }
     }
 }
