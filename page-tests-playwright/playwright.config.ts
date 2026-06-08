@@ -109,6 +109,12 @@ export default defineConfig({
   retries: IS_LOCAL_FIXTURE ? 0 : 1,
   timeout: 30_000,
   expect: { timeout: 5_000 },
+  // Keep the git COMMIT metadata in the report, but never capture the git
+  // DIFF: on CI Playwright otherwise runs `git diff` and accumulates its entire
+  // stdout into one string (playwright-core spawnAsync), which overflows
+  // (`RangeError: Invalid string length`) on PRs that touch the multi-hundred-MB
+  // fixture corpus. The diff is useless in the report for fixture changes anyway.
+  captureGitInfo: { commit: true, diff: false },
   // On CI emit a JUnit report (for the inline check-run) and an HTML
   // report (uploaded as a failure artifact) alongside the console list;
   // local runs stay as plain `list`.
