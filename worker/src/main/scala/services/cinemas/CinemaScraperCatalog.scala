@@ -118,11 +118,11 @@ class CinemaScraperCatalog(
     new PromKepaClient(http),
     new FalenicaClient(http, deferDetail),
     new SdkClient(http),
-    new NoveKinoClient(http, "atlantic", KinoAtlantic),
+    new NoveKinoClient(http, "atlantic", KinoAtlantic, deferDetail),
     new KinotekaClient(http, deferDetail),
     new UjazdowskiClient(http),
     new CytadelaClient(http, deferDetail),
-    new NoveKinoClient(http, "wisla", KinoWisla),
+    new NoveKinoClient(http, "wisla", KinoWisla, deferDetail),
     // biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so route
     // through `bnFetch` — Zyte's residential egress in prod, the fixture fake
     // in tests. Same seam as Kino Kameralne below.
@@ -284,7 +284,7 @@ class CinemaScraperCatalog(
   private val tarnowScrapers       = Seq(new MultikinoClient(mkFetch, "0050", MultikinoTarnow), new FilmwebShowtimesClient(http, 438, KinoMillenium, today = today))
   private val wloclawekScrapers    = Seq(new MultikinoClient(mkFetch, "0008", MultikinoWloclawek))
   private val legnicaScrapers      = Seq(helios(HeliosNuxt.Legnica), new Bilety24Client(http, "https://kino-piast.bilety24.pl", KinoPiast))
-  private val plockScrapers        = Seq(helios(HeliosNuxt.Plock), new NoveKinoClient(http, "przedwiosnie", KinoPrzedwiosnie))
+  private val plockScrapers        = Seq(helios(HeliosNuxt.Plock), new NoveKinoClient(http, "przedwiosnie", KinoPrzedwiosnie, deferDetail))
   private val bytomScrapers        = Seq(new CinemaCityScraper(cinemaCityClient, "1092", CinemaCityBytom))
   private val dabrowaGorniczaScrapers = Seq(helios(HeliosNuxt.DabrowaGornicza), new FilmwebShowtimesClient(http, 1140, KinoKadr, today = today))
   private val nowySaczScrapers     = Seq(helios(HeliosNuxt.NowySacz), new FilmwebShowtimesClient(http, 171, KinoSokol, today = today))

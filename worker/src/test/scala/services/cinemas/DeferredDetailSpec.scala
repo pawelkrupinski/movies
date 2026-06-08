@@ -31,7 +31,8 @@ class DeferredDetailSpec extends AnyFlatSpec with Matchers {
     ("Kinomuzeum",    d => new KinomuzeumClient(new FakeHttpFetch("kinomuzeum"), deferDetail = d)),
     ("Falenica",      d => new FalenicaClient(new FakeHttpFetch("kino-falenica"), d)),
     ("Kino Bułgarska",d => new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska"), deferDetail = d)),
-    ("Nowe Horyzonty",d => new NoweHoryzontyClient(new FakeHttpFetch("nowe-horyzonty"), LocalDate.of(2026, 6, 6), deferDetail = d))
+    ("Nowe Horyzonty",d => new NoweHoryzontyClient(new FakeHttpFetch("nowe-horyzonty"), LocalDate.of(2026, 6, 6), deferDetail = d)),
+    ("Nove Kino",     d => new NoveKinoClient(new FakeHttpFetch("kino-atlantic"), "atlantic", models.KinoAtlantic, deferDetail = d))
   )
 
   private def titlesAndShowtimes(ms: Seq[CinemaMovie]) =

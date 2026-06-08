@@ -2,7 +2,7 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -18,10 +18,17 @@ import scala.util.Try
  * (runtime isn't published anywhere — TMDB supplies it). Parameterised by the
  * cinema's URL slug so one client serves any Nove Kino venue.
  */
-class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema) extends CinemaScraper {
+class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+
+  // Static film.php detail pages cached across passes; listing pages stay live.
+  private val detailHttp = new CachingDetailFetch(http)
 
   private val BaseUrl    = "https://www.novekino.pl"
   private val CinemaUrl  = s"$BaseUrl/kina/$slug"
+  // Per-VENUE group: the chain's venues have distinct cinema slots and per-venue
+  // film.php URLs, so each must enqueue/resolve its own detail (a shared group
+  // would collapse to one venue in the handler's group→enricher map).
+  override val detailGroup: String = s"nove-kino-$slug"
   private val DatePat    = """data=(\d{4}-\d{2}-\d{2})""".r
   private val FilmIdPat  = """film\.php\?id=(\d+)""".r
 
@@ -30,7 +37,15 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
+  // When deferDetail is on, fetch() returns BARE movies (showtimes + listing
+  // poster/countries/genres + the film.php detail URL) and the rest is filled
+  // later by an EnrichDetails task via `fetchFilmDetail`; off, it enriches inline.
   def fetch(): Seq[CinemaMovie] = {
+    val bare = fetchBare()
+    if (deferDetail) bare else enrichInline(bare)
+  }
+
+  private def fetchBare(): Seq[CinemaMovie] = {
     val today = http.get(s"$CinemaUrl/repertuar.php")
     val dates = DatePat.findAllMatchIn(today).map(_.group(1)).toSeq.distinct
     val dayPages = ParallelDetailFetch.keyed("nove-kino-days", dates, 1.minute, maxConcurrent = 1)(d => s"$CinemaUrl/repertuar.php?data=$d") { url =>
@@ -42,40 +57,57 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
     // The same film is listed once per presentation variant ("- napisy" /
     // "- dubbing"); group by the cleaned title so it's one row, the variant
     // captured as the showtime format.
-    val byTitle = slots.groupBy(_.title)
-
-    val details = ParallelDetailFetch.keyed("nove-kino-details", byTitle.values.map(_.head.filmId).toSeq.distinct, 1.minute)(id => s"$CinemaUrl/film.php?id=$id") { url =>
-      Try(http.get(url)).toOption.map(NoveKinoClient.parseDetail).getOrElse(NoveKinoClient.Detail.empty)
-    }
-
-    byTitle.toSeq.flatMap { case (_, group) =>
+    slots.groupBy(_.title).toSeq.flatMap { case (_, group) =>
       val primary    = group.head
       val filmId     = primary.filmId
       val showtimes  = group.map(s => Showtime(s.dateTime, s.booking, None, s.format))
                          .distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
       if (showtimes.isEmpty) None
-      else {
-        val d = details.getOrElse(filmId, NoveKinoClient.Detail.empty)
-        Some(CinemaMovie(
-          movie     = Movie(
-            title          = primary.title,
-            runtimeMinutes = None,
-            releaseYear    = d.year,
-            countries      = if (primary.countries.nonEmpty) primary.countries else d.countries,
-            genres         = if (primary.genres.nonEmpty) primary.genres else d.genres
-          ),
-          cinema    = cinema,
-          posterUrl = group.flatMap(_.poster).headOption,
-          filmUrl   = Some(s"$CinemaUrl/film.php?id=$filmId"),
-          synopsis  = d.synopsis,
-          cast      = d.cast,
-          director  = d.director,
-          showtimes = showtimes,
-          trailerUrl = d.trailer
-        ))
-      }
+      else Some(CinemaMovie(
+        movie     = Movie(
+          title     = primary.title,
+          countries = primary.countries,
+          genres    = primary.genres
+        ),
+        cinema    = cinema,
+        posterUrl = group.flatMap(_.poster).headOption,
+        filmUrl   = Some(s"$CinemaUrl/film.php?id=$filmId"),
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = showtimes,
+        trailerUrl = None
+      ))
     }
   }
+
+  // Inline path: fetch each film's detail in parallel through the same
+  // `fetchFilmDetail` the deferred path uses, then merge non-destructively.
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val metas = ParallelDetailFetch("nove-kino-details", urls, 1.minute)(u => fetchFilmDetail(u))
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
+    }
+  }
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's filmUrl (`…/film.php?id=<id>`). None on fetch failure so the task
+   *  stays stale and is retried. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map { html =>
+      val d = NoveKinoClient.parseDetail(html)
+      FilmDetail(
+        synopsis    = d.synopsis,
+        cast        = d.cast,
+        director    = d.director,
+        releaseYear = d.year,
+        countries   = d.countries,
+        genres      = d.genres,
+        trailerUrl  = d.trailer
+      )
+    }
 
   private def parsePage(html: String): Seq[RawSlot] =
     Jsoup.parse(html).select("tr.repertoire-movie-tr").asScala.toSeq.flatMap { row =>
