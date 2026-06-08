@@ -19,6 +19,27 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.snapshot().map(r => (r.title, r.year)) shouldBe Seq(("Drzewo Magii", Some(2024)))
   }
 
+  it should "not write to the repo when putIfPresent produces no change (kills the no-op re-scrape churn)" in {
+    val repo  = new InMemoryMovieRepo()
+    val cache = new CaffeineMovieCache(repo)
+    val key   = cache.keyOf("Dune", Some(2024))
+    cache.put(key, mkEnrichment("tt-dune", rating = Some(8.1)))
+    val writesAfterPut = repo.upserts.size
+
+    // An unchanged re-scrape: the updater returns an identical record — the
+    // per-tick common case for every already-listed film across ~50 cinemas.
+    // Pre-fix it still issued an updateOne (bumping only `updatedAt`), each one
+    // an oplog entry + a change-stream `updateLookup` full-doc read — the
+    // dominant load on the shared-CPU Mongo. It must now be a true no-op.
+    cache.putIfPresent(key, (r: MovieRecord) => r) shouldBe true // row present → still reports success
+    repo.upserts.size shouldBe writesAfterPut                    // ...but NO new write fired
+
+    // A genuine change still writes through.
+    cache.putIfPresent(key, _.copy(imdbRating = Some(9.4))) shouldBe true
+    repo.upserts.size shouldBe writesAfterPut + 1
+    cache.get(key).flatMap(_.imdbRating) shouldBe Some(9.4)
+  }
+
   // rehydrate(): reload from repo. Boot-time hydration goes through the same
   // method, so we cover the on-demand admin-endpoint behaviour here:
   // (a) in-memory rows that aren't in Mongo get dropped, (b) repo-side edits

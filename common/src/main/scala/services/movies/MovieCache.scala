@@ -267,11 +267,21 @@ class CaffeineMovieCache(
         withoutZeroRatings(updater(current))
       }
     })
-    if (updated != null) {
+    if (updated == null) false
+    else if (updated == before.get()) {
+      // No real change — the common case: an unchanged cinema re-scrape tick
+      // re-asserts the same slot. Skip the write entirely. Otherwise it issues
+      // an `updateOne` that bumps only `updatedAt` (see `patchToUpdate`), and
+      // each such no-op write is an oplog entry plus a change-stream
+      // `updateLookup` full-document read per row, per pass — the dominant load
+      // on the shared-CPU Mongo. The row is already in the desired state, so
+      // report success without touching the repo (or firing the change stream).
+      true
+    } else {
       repo.updateIfPresent(key.cleanTitle, key.year, before.get(), updated)
       touch()
       true
-    } else false
+    }
   }
 
   private[services] def markMissing(key: CacheKey): Unit =
