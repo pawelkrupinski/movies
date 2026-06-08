@@ -34,6 +34,7 @@ object RecordGapCinemas {
     // ── Łódź ──
     report("Kinematograf (Łódź)")(new KinematografLodzClient(rec("kinematograf-lodz"), KinematografLodz).fetch().size)
     report("NCKF (Łódź)")(new NckfClient(rec("nckf"), Nckf).fetch().size)
+    report("Kino Spójnia (Aleksandrów)")(new KinoSpojniaClient(rec("kino-spojnia"), KinoSpojnia).fetch().size)
     // ── Lublin ──
     report("Kino CK Lublin")(new Bilety24Client(rec("kino-ck-lublin"), "https://ck-lublin.bilety24.pl", KinoCkLublin).fetch().size)
     // ── Częstochowa / Radom ──

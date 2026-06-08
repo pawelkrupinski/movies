@@ -320,7 +320,7 @@ class CinemaScraperCatalog(
   private val filmwebExtra: Map[String, Seq[CinemaScraper]] = Map(
     "wroclaw" -> Seq(new FilmwebShowtimesClient(http, 2328, KinoAstra, today = today), new FilmwebShowtimesClient(http, 1645, KinoDyskusyjnyKlubFilmowyPolitechnika, today = today)),
     "warszawa" -> Seq(new FilmwebShowtimesClient(http, 2180, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha, today = today), new FilmwebShowtimesClient(http, 2130, KinoPlanetariumCentrumNaukiKopernik, today = today)),
-    "lodz" -> Seq(new FilmwebShowtimesClient(http, 2403, KinoSpojnia, today = today), new FilmwebShowtimesClient(http, 2443, KinoStaryMlyn, today = today)),
+    "lodz" -> Seq(new KinoSpojniaClient(http, KinoSpojnia), new FilmwebShowtimesClient(http, 2443, KinoStaryMlyn, today = today)),
     "katowice" -> Seq(new FilmwebShowtimesClient(http, 388, CinemaCity, today = today), new FilmwebShowtimesClient(http, 352, KinoPatria, today = today)),
     "szczecin" -> Seq(new FilmwebShowtimesClient(http, 117, KinoKawiarnia, today = today), new FilmwebShowtimesClient(http, 2363, KinoPDK, today = today), new FilmwebShowtimesClient(http, 1941, KinoSCK, today = today)),
     "bialystok" -> Seq(new FilmwebShowtimesClient(http, 1659, KinoSokolSokolka, today = today)),
