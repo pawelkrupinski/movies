@@ -72,6 +72,35 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     drainUntil(_.dedupKey == key, "w2").dedupKey shouldBe key
   }
 
+  it should "expose a monitor snapshot listing live active tasks with their state" in {
+    val workKey = s"imdb|it-mon-work-${System.nanoTime()}"
+    queue.enqueue(TaskType.ImdbRating, workKey, Map("title" -> "Heat"), submittedAt = t0)
+    val worked = drainUntil(_.dedupKey == workKey, "mon-w1") // workKey → worked_on, owned by mon-w1
+    // Enqueue the waiting task only AFTER draining, with the newest submittedAt,
+    // so `drainUntil` (which leases every task it passes) can never claim it.
+    val waitKey = s"scrape|it-mon-wait-${System.nanoTime()}"
+    queue.enqueue(TaskType.ScrapeCinema, waitKey, submittedAt = Instant.now())
+
+    val snap = queue.monitor(500)
+    val mine = snap.active.filter(t => t.dedupKey == waitKey || t.dedupKey == workKey)
+    mine.map(_.dedupKey).toSet shouldBe Set(waitKey, workKey)
+
+    val waiting = mine.find(_.dedupKey == waitKey).get
+    waiting.state shouldBe services.tasks.TaskState.Waiting
+    waiting.taskType shouldBe "ScrapeCinema"
+    waiting.workerId shouldBe None
+
+    val workedSummary = mine.find(_.dedupKey == workKey).get
+    workedSummary.state shouldBe services.tasks.TaskState.WorkedOn
+    workedSummary.workerId shouldBe Some("mon-w1")
+    workedSummary.leaseExpiresAt should be (defined)
+    workedSummary.id shouldBe worked.id
+
+    // A tombstoned task is counted but not listed.
+    queue.complete(worked.id, "mon-w1")
+    queue.monitor(500).active.map(_.dedupKey) should not contain workKey
+  }
+
   // Claim repeatedly until the task matching `p` is handed out (other tests'
   // leftovers may be claimed first; harmless — they just lease and stay).
   private def drainUntil(p: services.tasks.Task => Boolean, worker: String, lease: FiniteDuration = 5.minutes) = {

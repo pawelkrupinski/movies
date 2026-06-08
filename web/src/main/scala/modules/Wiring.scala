@@ -1,12 +1,13 @@
 package modules
 
-import controllers.{AuthController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, UptimeController, UserStateController}
+import controllers.{AuthController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
 import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
 import services.events.{EventBus, InProcessEventBus}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo}
+import services.tasks.{MongoTaskQueue, TaskQueue}
 import services.users.{AccountDeletion, CachingUserRepo, CachingUserStateRepo, MongoUserRepo, MongoUserStateRepo, UserRepo, UserStateRepo}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
@@ -60,6 +61,11 @@ trait Wiring {
   // process on its continuous pass.
   lazy val movieControllerService = new MovieControllerService(movieCache)
 
+  // ── Task queue (read-only here) ─────────────────────────────────────────────
+  // The worker owns the queue; this process only reads it for the /tasks monitor
+  // page. Same shared `tasks` collection, no writes originate here.
+  lazy val taskQueue: TaskQueue = new MongoTaskQueue(mongoConnection.database)
+
   def controllerComponents: ControllerComponents
   def environmentMode: Mode
   implicit def materializer: org.apache.pekko.stream.Materializer
@@ -99,6 +105,7 @@ trait Wiring {
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepo, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   lazy val uptimeController = new UptimeController(controllerComponents, uptimeMonitor)(using materializer)
+  lazy val tasksController  = new TasksController(controllerComponents, taskQueue)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepo, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val accountDeletion   = new AccountDeletion(userRepo, userStateRepo)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepo, accountDeletion)

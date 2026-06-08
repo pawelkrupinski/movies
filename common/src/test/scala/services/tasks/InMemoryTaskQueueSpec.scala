@@ -83,4 +83,40 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     q.claim("w1", 5.minutes, t0)
     q.reapExpiredLeases(t0.plusSeconds(60)) shouldBe 0
   }
+
+  "monitor" should "list active tasks oldest-first with their live state, and exclude tombstones" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ScrapeCinema, "scrape|a", submittedAt = t0)
+    q.enqueue(ImdbRating, "imdb|b", submittedAt = t0.plusSeconds(10))
+    q.enqueue(RtRating, "rt|c", submittedAt = t0.plusSeconds(20))
+    // Claim the oldest so it shows as worked_on with a worker + lease; complete one so it tombstones.
+    val claimed = q.claim("w1", 1.minute, t0).get // scrape|a → worked_on
+    q.enqueue(McRating, "mc|d", submittedAt = t0.plusSeconds(30))
+    val toFinish = q.claim("w1", 1.minute, t0).get // imdb|b → worked_on
+    q.complete(toFinish.id, "w1")                   // imdb|b → deleted (tombstone)
+
+    val snap = q.monitor()
+    snap.active.map(_.dedupKey) shouldBe Seq("scrape|a", "rt|c", "mc|d") // oldest-first, no tombstone
+    snap.counts.getOrElse(TaskState.Deleted, 0L) shouldBe 1L            // tombstone counted, not listed
+
+    val head = snap.active.head
+    head.dedupKey shouldBe "scrape|a"
+    head.state shouldBe TaskState.WorkedOn
+    head.workerId shouldBe Some("w1")
+    head.leaseExpiresAt shouldBe Some(t0.plusSeconds(60))
+    head.id shouldBe claimed.id
+
+    val waiting = snap.active(1)
+    waiting.state shouldBe TaskState.Waiting
+    waiting.workerId shouldBe None
+    waiting.leaseExpiresAt shouldBe None
+  }
+
+  it should "cap the listed active tasks at activeLimit while still counting all" in {
+    val q = new InMemoryTaskQueue
+    (1 to 5).foreach(i => q.enqueue(ScrapeCinema, s"scrape|$i", submittedAt = t0.plusSeconds(i.toLong)))
+    val snap = q.monitor(activeLimit = 3)
+    snap.active.map(_.dedupKey) shouldBe Seq("scrape|1", "scrape|2", "scrape|3")
+    snap.counts.getOrElse(TaskState.Waiting, 0L) shouldBe 5L
+  }
 }
