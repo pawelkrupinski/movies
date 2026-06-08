@@ -11,36 +11,41 @@ import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * Kino Kameralne Cafe (Gdańsk, Trójmiasto) — a small arthouse café-cinema. Its
- * own site (`kinokameralnecafe.pl/repertuar/`) is a JS shell embedding a
- * biletyna.pl iframe, so we scrape biletyna directly. The venue page at
- * `biletyna.pl/Gdansk/Kino-Kameralne-Cafe` is server-rendered and — crucially —
+ * Generic client for any cinema ticketed through the biletyna.pl platform. The
+ * venue's place page (`biletyna.pl/<City>/<Venue>`) is server-rendered and
  * carries a single `<script type="application/ld+json">` block: a schema.org
- * `Place` whose `events` array is the full programme as `ScreeningEvent`s.
- *
- * Each event gives us everything we need without a per-film detail fetch:
+ * `Place` whose `events` array is the full programme, one `ScreeningEvent` per
+ * screening. Everything we need is in it — no per-film detail fetch:
  *   - `name`      → film title
  *   - `startDate` → ISO-8601 with offset ("2026-06-06T18:00:00+02:00")
  *   - `url`       → biletyna film page (`/film/<slug>?eid=N#opis`), reused as
  *                   both the film URL and the booking link
  *   - `image`     → poster (`biletyna.pl/file/get/id/N`)
  *
- * biletyna.pl is a shared ticketing platform; the JSON-LD shape here is
- * generic enough that this parser could later back a shared biletyna client,
- * but for now this stays a self-contained per-cinema scraper. Films and
- * café/cultural screenings are all emitted as `ScreeningEvent`s with the same
- * shape, so there's no field to distinguish them on — we keep every screening.
+ * One instance per venue, captured by its `pageUrl` + `cinema`, so adding a
+ * biletyna-hosted cinema is a new catalog line, not a new client (OCP). Known
+ * venues: ADA Kino Studyjne (Warszawa), Kino Kameralne Cafe (Gdańsk) and Kino
+ * Pegaz / WCK (Wodzisław Śląski — previously scraped from Filmweb, which had
+ * silently gone empty for it).
+ *
+ * biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so the catalog
+ * routes these through the `bnFetch` seam — Zyte's residential egress in
+ * production, the fixture fake in tests.
+ *
+ * @param http    HTTP client (the biletyna fetch seam in production).
+ * @param pageUrl The venue's biletyna place page, e.g.
+ *                `https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe`.
+ * @param cinema  The [[Cinema]] source tag attached to every [[CinemaMovie]].
  */
-class KinoKameralneClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
+class BiletynaClient(http: HttpFetch, pageUrl: String, override val cinema: Cinema)
+    extends CinemaScraper {
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoKameralneClient.PageUrl)
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(pageUrl)
 
-  def fetch(): Seq[CinemaMovie] = KinoKameralneClient.parse(http.get(KinoKameralneClient.PageUrl), cinema)
+  def fetch(): Seq[CinemaMovie] = BiletynaClient.parse(http.get(pageUrl), cinema)
 }
 
-object KinoKameralneClient {
-
-  val PageUrl = "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe"
+object BiletynaClient {
 
   // schema.org `startDate` is ISO-8601 with a zone offset; we keep only the
   // wall-clock LocalDateTime (the rest of the app reasons in Warsaw local time).

@@ -129,7 +129,7 @@ class CinemaScraperCatalog(
     // biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so route
     // through `bnFetch` — Zyte's residential egress in prod, the fixture fake
     // in tests. Same seam as Kino Kameralne below.
-    new AdaKinoStudyjneClient(bnFetch, AdaKinoStudyjne),
+    new BiletynaClient(bnFetch, "https://www.biletyna.pl/Warszawa/ADA-Kino-Studyjne", AdaKinoStudyjne),
     new AlternatywyClient(http, today),
   )
 
@@ -194,7 +194,7 @@ class CinemaScraperCatalog(
     // biletyna.pl 403s our datacenter IP, so route through `bnFetch` — Zyte's
     // residential egress in production, the fixture fake in tests. See
     // WorkerWiring.biletynaFetch / ZyteFallback.
-    new KinoKameralneClient(bnFetch, KinoKameralne),
+    new BiletynaClient(bnFetch, "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe", KinoKameralne),
     new KinoIkmClient(http, KinoIkm),
     new KinoMuzeumGdanskClient(http, KinoMuzeumGdansk),
     new KinoZakClient(http, KinoZak),
@@ -336,7 +336,7 @@ class CinemaScraperCatalog(
     "olsztyn" -> Seq(new FilmwebShowtimesClient(http, 2357, KinoCinemaLumiere, today = today), new FilmwebShowtimesClient(http, 2354, KinoIgnacy, today = today), new FilmwebShowtimesClient(http, 2355, KinoNarie, today = today)),
     "bielsko-biala" -> Seq(new FilmwebShowtimesClient(http, 157, KinoJanosik, today = today), new FilmwebShowtimesClient(http, 3248, KinoPckulKino, today = today), new FilmwebShowtimesClient(http, 135, KinoSwitCzechowiceDziedzice, today = today), new FilmwebShowtimesClient(http, 3141, KinoTeatrElektryczny, today = today), new FilmwebShowtimesClient(http, 1490, KinoWislaBrzeszcze, today = today), new FilmwebShowtimesClient(http, 1776, MultikinoCzechowiceDziedzice, today = today)),
     "opole" -> Seq(new FilmwebShowtimesClient(http, 1703, HeliosKedzierzynKozle, today = today), new FilmwebShowtimesClient(http, 2320, KinoBajkaKluczbork, today = today), new FilmwebShowtimesClient(http, 619, KinoChemik, today = today), new FilmwebShowtimesClient(http, 2343, KinoDiana, today = today), new FilmwebShowtimesClient(http, 1681, KinoKrapkowice, today = today), new FilmwebShowtimesClient(http, 431, KinoStudio, today = today), new FilmwebShowtimesClient(http, 1672, KinoTwierdza, today = today)),
-    "rybnik" -> Seq(new FilmwebShowtimesClient(http, 2326, HeliosZory, today = today), new FilmwebShowtimesClient(http, 168, KinoBaltyk, today = today), new FilmwebShowtimesClient(http, 514, KinoCentrum, today = today), new FilmwebShowtimesClient(http, 588, KinoNaStarowce, today = today), new FilmwebShowtimesClient(http, 3148, KinoPegaz, today = today), new TeatrZiemiRybnickiejClient(http)),
+    "rybnik" -> Seq(new FilmwebShowtimesClient(http, 2326, HeliosZory, today = today), new FilmwebShowtimesClient(http, 168, KinoBaltyk, today = today), new FilmwebShowtimesClient(http, 514, KinoCentrum, today = today), new FilmwebShowtimesClient(http, 588, KinoNaStarowce, today = today), new BiletynaClient(bnFetch, "https://biletyna.pl/Wodzislaw-Slaski/Wodzislawskie-Centrum-Kultury", KinoPegaz), new TeatrZiemiRybnickiejClient(http)),
     "elblag" -> Seq(new FilmwebShowtimesClient(http, 1673, HeliosTczew, today = today), new FilmwebShowtimesClient(http, 2352, KinoBaszta, today = today), new MsiClient(http, "https://kinosztumbilety.pl", KinoPowisle, today), new FilmwebShowtimesClient(http, 3131, KinoZulawskiOsrodekKultury, today = today)),
     "koszalin" -> Seq(new FilmwebShowtimesClient(http, 255, KinoBajkaDarlowo, today = today), new FilmwebShowtimesClient(http, 1675, KinoCentrumBialogard, today = today), new FilmwebShowtimesClient(http, 2365, KinoDK, today = today), new MsiClient(http, "https://bilety.goktychowo.pl", KinoGOK, today), new FilmwebShowtimesClient(http, 1864, KinoGoplana, today = today), new FilmwebShowtimesClient(http, 276, KinoWybrzeze, today = today)),
     "kalisz" -> Seq(new FilmwebShowtimesClient(http, 2372, HeliosOstrowWlkp, today = today), new FilmwebShowtimesClient(http, 1513, KinoCentrum3D, today = today), new FilmwebShowtimesClient(http, 1484, KinoEcho, today = today), new FilmwebShowtimesClient(http, 2359, KinoPiastOstrzeszow, today = today), new FilmwebShowtimesClient(http, 1121, KinoPrzedwiosnieKrotoszyn, today = today)),
