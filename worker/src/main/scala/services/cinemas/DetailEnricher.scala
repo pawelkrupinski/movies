@@ -1,12 +1,18 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie, SourceData}
+import models.{Cinema, CinemaMovie, Showtime, SourceData}
 
 /**
  * The per-film detail fields a cinema fetches *separately* from its listing —
  * synopsis, cast, director, runtime, original title, genres, countries, poster,
  * trailer. These are what gets deferred out of `fetch()` and filled in later by
  * an `EnrichDetails` task.
+ *
+ * `showtimes` is normally empty: for the enrichment clients the listing already
+ * carries the showtimes and the detail page only adds content fields. It's
+ * non-empty only for a client whose showtime-bearing fetch is itself deferred
+ * (Rialto, whose event pages ARE the showtimes) — there the bare movie persists
+ * with no showtimes and the detail task contributes them via `mergeInto`.
  */
 case class FilmDetail(
   synopsis:       Option[String] = None,
@@ -18,7 +24,8 @@ case class FilmDetail(
   countries:      Seq[String]    = Seq.empty,
   genres:         Seq[String]    = Seq.empty,
   posterUrl:      Option[String] = None,
-  trailerUrl:     Option[String] = None
+  trailerUrl:     Option[String] = None,
+  showtimes:      Seq[Showtime]  = Seq.empty
 ) {
   // Both merges treat the LISTING/bare values as authoritative and let the
   // detail only FILL GAPS (a present listing value is never replaced by a detail
@@ -40,7 +47,11 @@ case class FilmDetail(
     countries      = if (slot.countries.nonEmpty) slot.countries else countries,
     genres         = if (slot.genres.nonEmpty) slot.genres else genres,
     posterUrl      = slot.posterUrl.orElse(posterUrl),
-    trailerUrl     = slot.trailerUrl.orElse(trailerUrl)
+    trailerUrl     = slot.trailerUrl.orElse(trailerUrl),
+    // Union the slot's showtimes with any the detail contributes (empty for the
+    // enrichment clients; the deferred showtime-bearing case). Dedup on
+    // (dateTime, bookingUrl) and re-sort, the same idiom the clients use.
+    showtimes      = (slot.showtimes ++ showtimes).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
   )
 
   /** Fill gaps in a bare `CinemaMovie` from these detail fields. Used by the

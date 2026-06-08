@@ -50,6 +50,22 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe true
   }
 
+  it should "union showtimes the detail contributes with the slot's, deduped and sorted" in {
+    // The deferred showtime-bearing case (Rialto): the bare slot may already hold
+    // some showtimes; the detail brings more (one duplicate, one new). Result is
+    // the union, deduped on (dateTime, bookingUrl) and sorted.
+    val cache    = seededCache("Dune")
+    val fresh    = new InMemoryFreshnessStore
+    val dupe     = Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book")) // same as the scrape's
+    val fresher  = Showtime(LocalDateTime.of(2026, 6, 7, 20, 30), Some("https://book2"))
+    val enricher = new FakeEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(showtimes = Seq(fresher, dupe))))
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh)
+
+    h.handle(taskFor("kino-apollo", cache, "Dune", enricher)) shouldBe Done
+    val slot = cache.get(cache.keyOf("Dune", None)).flatMap(_.data.get(KinoApollo)).get
+    slot.showtimes.map(_.dateTime) shouldBe Seq(dupe.dateTime, fresher.dateTime) // 2, deduped + sorted
+  }
+
   it should "skip without fetching when the detail is already fresh" in {
     val cache    = seededCache("Dune")
     val fresh    = new InMemoryFreshnessStore
