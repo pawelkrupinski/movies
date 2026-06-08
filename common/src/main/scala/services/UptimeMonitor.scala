@@ -415,6 +415,15 @@ object UptimeMonitor {
 
   def bucketTimestamp(epochMs: Long): Long = epochMs - (epochMs % BucketDurationMs)
 
+  // Per-cinema detail-enrichment health is recorded under a synthetic
+  // "<cinema displayName>|enrichment" service, distinct from the scrape service
+  // (the bare cinema name). The `/uptime` page parses the suffix to render the
+  // enrichment bar grouped under its cinema rather than as a standalone row.
+  val EnrichmentSuffix: String = "|enrichment"
+  def enrichmentService(cinemaDisplayName: String): String = cinemaDisplayName + EnrichmentSuffix
+  def isEnrichmentService(service: String): Boolean = service.endsWith(EnrichmentSuffix)
+  def baseCinemaOf(service: String): String = service.stripSuffix(EnrichmentSuffix)
+
   case class Bucket(timestamp: Long) {
     val successes = new AtomicInteger(0)
     val failures  = new AtomicInteger(0)

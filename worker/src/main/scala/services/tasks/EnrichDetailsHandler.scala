@@ -2,6 +2,7 @@ package services.tasks
 
 import models.Source
 import play.api.Logging
+import services.UptimeMonitor
 import services.cinemas.DetailEnricher
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{CacheKey, MovieCache}
@@ -51,7 +52,8 @@ object EnrichDetailsTasks {
 class EnrichDetailsHandler(
   enrichersByGroup: Map[String, DetailEnricher],
   cache:            MovieCache,
-  freshness:        FreshnessStore
+  freshness:        FreshnessStore,
+  uptime:           UptimeMonitor
 ) extends TaskHandler with Logging {
   import HandlerOutcome._
 
@@ -66,8 +68,14 @@ class EnrichDetailsHandler(
         logger.warn(s"No detail enricher for task $key; dropping.")
         Done
       case Some(enricher) =>
+        // Record this cinema's enrichment health, grouped under it on /uptime: a
+        // resolved detail is a success, an absent/failed fetch a failure (red/
+        // yellow), mirroring how the scrape records against the bare cinema name.
+        val service = UptimeMonitor.enrichmentService(enricher.cinema.displayName)
         enricher.fetchFilmDetail(task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")) match {
-          case None => Done // failed/absent — not marked fresh, the next scrape re-enqueues
+          case None =>
+            uptime.recordFailure(service, s"detail fetch returned nothing for ${task.payload.getOrElse(EnrichDetailsTasks.TitleKey, key)}")
+            Done // failed/absent — not marked fresh, the next scrape re-enqueues
           case Some(detail) =>
             val title = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
             val year  = task.payload.get(EnrichDetailsTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
@@ -77,6 +85,7 @@ class EnrichDetailsHandler(
                 case None       => current // slot dropped between scrape and enrich — leave alone
               })
             freshness.markFresh(key, FreshnessKind.DetailEnrich)
+            uptime.recordSuccess(service)
             Done
         }
     }

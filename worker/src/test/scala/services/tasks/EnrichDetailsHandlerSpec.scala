@@ -3,6 +3,7 @@ package services.tasks
 import models.{CinemaMovie, KinoApollo, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.UptimeMonitor
 import services.cinemas.{DetailEnricher, FakeDetailEnricher, FilmDetail}
 import services.events.InProcessEventBus
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
@@ -30,11 +31,16 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
       EnrichDetailsTasks.payload(enricher, key, "http://ref"), attempts = 1)
   }
 
+  private val EnrichmentService = UptimeMonitor.enrichmentService(KinoApollo.displayName)
+  private def successes(m: UptimeMonitor, service: String) = m.history(service).map(_.successes).sum
+  private def failures(m: UptimeMonitor, service: String)  = m.history(service).map(_.failures).sum
+
   "EnrichDetailsHandler" should "merge fetched detail into the cinema slot, preserving showtimes, and mark fresh" in {
     val cache    = seededCache("Dune")
     val fresh    = new InMemoryFreshnessStore
+    val uptime   = new UptimeMonitor()
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("A great film"), cast = Seq("Zendaya"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
@@ -43,37 +49,42 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     slot.map(_.cast)         shouldBe Some(Seq("Zendaya"))
     slot.map(_.showtimes.size) shouldBe Some(1) // showtimes from the scrape preserved
     fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe true
+    successes(uptime, EnrichmentService) shouldBe 1 // recorded under "<cinema>|enrichment"
   }
 
-  it should "skip without fetching when the detail is already fresh" in {
+  it should "skip without fetching when the detail is already fresh, recording no uptime" in {
     val cache    = seededCache("Dune")
     val fresh    = new InMemoryFreshnessStore
+    val uptime   = new UptimeMonitor()
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("x"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
     fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich)
 
     h.handle(task) shouldBe Skipped
     enricher.calls shouldBe 0
+    uptime.services shouldBe empty // a skip did no work, so nothing recorded
   }
 
   it should "drop a task whose detail group has no enricher" in {
     val cache = seededCache("Dune")
-    val h     = new EnrichDetailsHandler(Map.empty, cache, new InMemoryFreshnessStore)
+    val h     = new EnrichDetailsHandler(Map.empty, cache, new InMemoryFreshnessStore, new UptimeMonitor())
     val task  = taskFor("gone", cache, "Dune", new FakeDetailEnricher(KinoApollo, "gone", None))
     h.handle(task) shouldBe Done
   }
 
-  it should "report Done but stay stale when the fetch yields nothing (so the next scrape retries)" in {
+  it should "record a failure and stay stale when the fetch yields nothing (so the next scrape retries)" in {
     val cache    = seededCache("Dune")
     val fresh    = new InMemoryFreshnessStore
+    val uptime   = new UptimeMonitor()
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", None) // fetch failed/absent
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
     h.handle(task) shouldBe Done
     fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe false
     cache.get(cache.keyOf("Dune", None)).flatMap(_.data.get(KinoApollo)).flatMap(_.synopsis) shouldBe None
+    failures(uptime, EnrichmentService) shouldBe 1 // red/yellow on the enrichment bar
   }
 
   // Requirement: a task with exactly the same definition (enrich a specific film
