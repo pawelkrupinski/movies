@@ -2,7 +2,8 @@ package pl.kinowo.ui.list
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -24,11 +25,14 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import kotlin.math.abs
 import kotlinx.coroutines.launch
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.previewDayIndex
@@ -141,38 +145,68 @@ fun DayCarousel(
             .onSizeChanged { containerWidthPx = it.width }
             .pointerInput(currentIdx, containerWidthPx) {
                 if (containerWidthPx == 0) return@pointerInput
-                detectHorizontalDragGestures(
-                    onDragStart = {
-                        if (!isSettling) {
-                            dragging = true
-                            scope.launch { dragOffset.stop() }
-                        }
-                    },
-                    onHorizontalDrag = { change, amount ->
-                        if (isSettling) return@detectHorizontalDragGestures
-                        change.consume()
-                        val next = dragOffset.value + amount
-                        scope.launch { dragOffset.snapTo(next) }
-                        // Live pill PREVIEW: highlight the day a release would
-                        // commit to right now (current until the drag crosses
-                        // CommitFraction, the neighbour past it, flipping back if
-                        // it retreats). Selection/grid/scroll are untouched.
+                val width = containerWidthPx.toFloat()
+                // Axis-lock the gesture. The day grid is an inner vertical scroller;
+                // by default it wins the gesture in the main pass, so a horizontal
+                // day-swipe with any vertical drift scrolled the list instead of
+                // changing the day (worst at the top, where an up-drift reveals
+                // rows). We arbitrate in the INITIAL pass, which the parent sees
+                // before the grid: once the drag crosses the touch slop, a
+                // horizontal-dominant gesture is CLAIMED for the day-swipe
+                // (consumed, so the grid never scrolls) and a vertical-dominant one
+                // is left untouched for the grid to scroll.
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    if (isSettling) return@awaitEachGesture
+                    val slop = viewConfiguration.touchSlop
+                    var dx = 0f
+                    var dy = 0f
+                    var locked = false
+
+                    // Slide the strip by [amount] px and live-preview the day a
+                    // release would land on (current until the drag crosses
+                    // CommitFraction, the neighbour past it).
+                    fun drag(amount: Float) {
+                        val offset = dragOffset.value + amount
+                        scope.launch { dragOffset.snapTo(offset) }
                         onPreviewDay(
                             presets[
                                 previewDayIndex(
-                                    dragOffsetPx = next,
-                                    widthPx = containerWidthPx.toFloat(),
+                                    dragOffsetPx = offset,
+                                    widthPx = width,
                                     currentIndex = currentIdx,
                                     count = presets.size,
                                     commitFraction = CommitFraction,
                                 )
                             ],
                         )
-                    },
-                    onDragEnd = {
-                        if (isSettling) return@detectHorizontalDragGestures
+                    }
+
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        if (!locked) {
+                            dx += change.positionChange().x
+                            dy += change.positionChange().y
+                            if (abs(dx) < slop && abs(dy) < slop) continue
+                            // Vertical-dominant → leave it for the grid to scroll.
+                            if (abs(dx) <= abs(dy)) return@awaitEachGesture
+                            // Horizontal-dominant → claim the day-swipe.
+                            locked = true
+                            dragging = true
+                            scope.launch { dragOffset.stop() }
+                            change.consume()
+                            drag(dx)
+                        } else {
+                            val amount = change.positionChange().x
+                            change.consume()
+                            if (amount != 0f) drag(amount)
+                        }
+                    }
+
+                    if (locked) {
                         dragging = false
-                        val width = containerWidthPx.toFloat()
                         when {
                             dragOffset.value <= -width * CommitFraction -> commit(next, -width)
                             dragOffset.value >= width * CommitFraction -> commit(prev, width)
@@ -183,8 +217,8 @@ fun DayCarousel(
                                 scope.launch { dragOffset.animateTo(0f, tween(SettleDurationMs)) }
                             }
                         }
-                    },
-                )
+                    }
+                }
             },
     ) {
         // Render the three-column strip (current centred at rest) only once the
