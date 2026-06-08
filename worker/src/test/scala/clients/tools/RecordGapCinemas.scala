@@ -28,7 +28,7 @@ object RecordGapCinemas {
     report("Kino Agrafka")(new KinoAgrafkaClient(rec("kino-agrafka"), KinoAgrafka).fetch().size)
     report("Kino Paradox")(new KinoParadoxClient(rec("kino-paradox"), KinoParadox).fetch().size)
     // ── Trójmiasto / Szczecin ──
-    report("Cinema1 (Gdańsk)")(new Cinema1Client(rec("cinema1"), Cinema1Gdansk).fetch().size)
+    report("Cinema1 (Gdańsk)")(new MsiClient(rec("cinema1"), "https://bilety.cinemaone.pl", Cinema1Gdansk).fetch().size)
     report("Kino Zamek (Szczecin)")(new KinoZamekClient(rec("kino-zamek"), KinoZamekSzczecin).fetch().size)
     report("Helios Outlet Park")(new HeliosClient(rec("helios-outlet-park"), HeliosNuxt.SzczecinOutletPark).fetch().size)
     // ── Łódź ──
@@ -49,5 +49,10 @@ object RecordGapCinemas {
     report("Kino Roma")(new KinoRomaClient(rec("kino-roma"), KinoRoma).fetch().size)
     // ── Warszawa ──
     report("Kino Wisła")(new NoveKinoClient(rec("kino-wisla"), "wisla", KinoWisla).fetch().size)
+    // ── MSI-platform venues Filmweb silently stopped carrying ──
+    report("Kino GOK (Tychowo)")(new MsiClient(rec("kino-gok"), "https://bilety.goktychowo.pl", KinoGOK).fetch().size)
+    report("Kino MOK Nowa Ruda")(new MsiClient(rec("kino-mok-nowa-ruda"), "https://bilety.nowaruda.pl", KinoMOKNowaRuda).fetch().size)
+    report("Kino Warszawa (Przeworsk)")(new MsiClient(rec("kino-warszawa-przeworsk"), "https://bilety-kino.przeworsk.um.gov.pl", KinoWarszawa).fetch().size)
+    report("Kino Powiśle (Sztum)")(new MsiClient(rec("kino-powisle-sztum"), "https://kinosztumbilety.pl", KinoPowisle).fetch().size)
   }
 }
