@@ -218,11 +218,24 @@ class MongoMovieRepo(
     case Some(c) =>
       val id    = docId(title, year)
       val patch = MovieRecordPatch.diff(before, after)
-      val update = patchToUpdate(patch)
-      val opts   = new UpdateOptions().upsert(false)
       Try {
-        val result = Await.result(c.updateOne(Filters.eq("_id", id), update, opts).toFuture(), 10.seconds)
-        result.getMatchedCount > 0
+        // MongoDB update-operator paths treat '.' as a nesting separator, so a
+        // per-source `$set`/`$unset` on `sourceData.<displayName>` is rejected
+        // (code 56, "empty field name") when a source's displayName contains a
+        // dot — e.g. "Helios Ostrów Wlkp.". A full-document write DOES allow
+        // dotted field names, so for those rows fall back to a conditional
+        // replaceOne (still "update only if present"); the common dot-free case
+        // keeps the precise field-level diff that preserves out-of-band edits.
+        val matched =
+          if (patch.data.keysIterator.exists(_.displayName.contains('.'))) {
+            val dto = StoredMovieDto.fromDomain(id, title, year, after, Instant.now())
+            Await.result(c.replaceOne(Filters.eq("_id", id), dto, new ReplaceOptions().upsert(false)).toFuture(), 10.seconds)
+              .getMatchedCount
+          } else {
+            Await.result(c.updateOne(Filters.eq("_id", id), patchToUpdate(patch), new UpdateOptions().upsert(false)).toFuture(), 10.seconds)
+              .getMatchedCount
+          }
+        matched > 0
       }.recover {
         case ex: Throwable if isClusterClosed(ex) => false
         case ex: Throwable =>
