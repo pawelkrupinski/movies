@@ -86,7 +86,7 @@ class CinemaScraperCatalog(
     new MultikinoClient(mkFetch, "0010", MultikinoPasazGrunwaldzki),
     helios(HeliosNuxt.Magnolia),
     helios(HeliosNuxt.AlejaBielany),
-    new NoweHoryzontyClient(http, today),
+    new NoweHoryzontyClient(http, today, deferDetail = deferDetail),
     new DcfClient(http, deferDetail),
   )
 

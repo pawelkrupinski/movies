@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import play.api.libs.json.Json
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId}
@@ -29,9 +29,13 @@ import scala.util.Try
  * countries / genres / director / synopsis. `today` is injected so the day
  * window (and thus the fixture replay) is deterministic.
  */
-class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
+class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")), deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+
+  // Static op.s detail pages cached across passes; day blobs keep the live http.
+  private val detailHttp = new CachingDetailFetch(http)
 
   val cinema: Cinema = KinoNoweHoryzonty
+  override val detailGroup: String = "nowe-horyzonty"
 
   private val BaseUrl     = "https://www.kinonh.pl"
   // A constant forwardback keeps the recorded fixture URL stable between
@@ -49,44 +53,67 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
+  // When deferDetail is on, fetch() returns BARE movies (showtimes + poster + the
+  // per-film op.s detail URL) and the detail is filled later by an EnrichDetails
+  // task via `fetchFilmDetail`; off (default), it enriches inline as before.
   def fetch(): Seq[CinemaMovie] = {
+    val bare = fetchBare()
+    if (deferDetail) bare else enrichInline(bare)
+  }
+
+  private def fetchBare(): Seq[CinemaMovie] = {
     val days     = (0 until WindowDays).map(today.plusDays(_)).toList
     val dayLists = ParallelDetailFetch.keyed("nowe-horyzonty-days", days, 1.minute, maxConcurrent = 1)(dayUrl) { url =>
       Try(http.get(url)).toOption.flatMap(listaHtml)
     }
     val slots = days.flatMap(d => dayLists.getOrElse(d, None).toSeq.flatMap(parseDay(_, d)))
 
-    val byFilm = slots.groupBy(_.filmId)
-    val details: Map[String, NoweHoryzontyClient.Detail] =
-      ParallelDetailFetch.keyed("nowe-horyzonty-details", byFilm.keys.toSeq, 1.minute)(id => s"$BaseUrl/op.s?id=$id") { url =>
-        Try(http.get(url)).toOption.map(NoweHoryzontyClient.parseDetail).getOrElse(NoweHoryzontyClient.Detail.empty)
-      }
-
-    byFilm.toSeq.flatMap { case (filmId, group) =>
+    slots.groupBy(_.filmId).toSeq.flatMap { case (filmId, group) =>
       val primary    = group.head
       val showtimes  = group.distinctBy(_.eventId).sortBy(_.dateTime)
                          .map(s => Showtime(s.dateTime, Some(s.bookingUrl), None, Nil))
-      val d = details.getOrElse(filmId, NoweHoryzontyClient.Detail.empty)
       if (showtimes.isEmpty) None
       else Some(CinemaMovie(
-        movie     = Movie(
-          title          = primary.title,
-          runtimeMinutes = d.runtimeMinutes,
-          releaseYear    = d.year,
-          originalTitle  = d.originalTitle,
-          countries      = d.countries,
-          genres         = d.genres
-        ),
+        movie     = Movie(title = primary.title),
         cinema    = cinema,
-        posterUrl = group.flatMap(_.poster).headOption.orElse(d.poster),
+        posterUrl = group.flatMap(_.poster).headOption,
         filmUrl   = Some(s"$BaseUrl/op.s?id=$filmId"),
-        synopsis  = d.synopsis,
+        synopsis  = None,
         cast      = Seq.empty,
-        director  = d.director,
+        director  = Seq.empty,
         showtimes = showtimes
       ))
     }
   }
+
+  // Inline path: fetch each film's detail in parallel through the same
+  // `fetchFilmDetail` the deferred path uses, then merge non-destructively.
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val metas = ParallelDetailFetch("nowe-horyzonty-details", urls, 1.minute)(u => fetchFilmDetail(u))
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
+    }
+  }
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's filmUrl (`https://www.kinonh.pl/op.s?id=<id>`). None on fetch failure
+   *  so the task stays stale and is retried. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map { html =>
+      val d = NoweHoryzontyClient.parseDetail(html)
+      FilmDetail(
+        synopsis       = d.synopsis,
+        director       = d.director,
+        runtimeMinutes = d.runtimeMinutes,
+        releaseYear    = d.year,
+        originalTitle  = d.originalTitle,
+        countries      = d.countries,
+        genres         = d.genres,
+        posterUrl      = d.poster
+      )
+    }
 
   /** Pull the `lista` HTML blob out of a `rep.json` response. */
   private def listaHtml(body: String): Option[String] =
