@@ -1,6 +1,6 @@
 package integration
 
-import models.{Helios, MovieRecord, Multikino, Source, SourceData, Tmdb}
+import models.{Helios, HeliosOstrowWlkp, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -132,6 +132,27 @@ class MovieRepoIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndA
     e.cinemaData(Helios).filmUrl shouldBe Some("https://example/film")
     // Merged accessor surfaces the only cinema's countries.
     e.countries shouldBe Seq("Polska", "Francja")
+  }
+
+  // Regression: a cinema whose displayName contains a dot ("Helios Ostrów Wlkp.")
+  // can't be written via the per-source `$set sourceData.<name>` diff path —
+  // MongoDB reads the dot as a nesting separator and rejects the update (code 56,
+  // "empty field name"). updateIfPresent must fall back to a full-document replace
+  // so the slot still persists. Fails before the fix (the $set is rejected →
+  // updateIfPresent returns false and nothing is written).
+  it should "persist a per-source slot whose cinema displayName contains a dot" in {
+    val title  = "__integration-test-dotted-cinema__"
+    val year   = Some(1902)
+    val before = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Dotted"))))
+    repo.upsert(title, year, before) // create the row
+    val after = before.copy(data = before.data +
+      (HeliosOstrowWlkp -> SourceData(title = Some("Dotted"), synopsis = Some("from Ostrów"))))
+
+    repo.updateIfPresent(title, year, before, after) shouldBe true
+
+    val found = repo.findAll().find(r => r.title == title && r.year == year)
+    found should not be empty
+    found.get.record.cinemaData.get(HeliosOstrowWlkp).flatMap(_.synopsis) shouldBe Some("from Ostrów")
   }
 
   it should "leave countries empty when a slot was written without them" in {
