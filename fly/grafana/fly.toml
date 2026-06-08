@@ -29,9 +29,11 @@ primary_region = 'arn'
   min_machines_running = 1
 
 [[vm]]
-  # Grafana + unified alerting is comfortable in 512 MB; ~$3-4/mo. CPU is
-  # near-idle (it only fans a handful of PromQL queries every minute).
-  memory = '512mb'
+  # Grafana + unified alerting runs in 256 MB for this single-operator, handful-
+  # of-panels instance; ~$2/mo. CPU is near-idle (it only fans a handful of
+  # PromQL queries every minute). Watch for OOM on the kinowo-grafana memory
+  # panel after a redeploy — bump back to 512mb if it restarts.
+  memory = '256mb'
   cpu_kind = 'shared'
   cpus = 1
 
