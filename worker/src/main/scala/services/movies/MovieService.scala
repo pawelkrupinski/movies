@@ -315,12 +315,22 @@ class MovieService(
         val targetKey =
           if (key.year.isEmpty && enr.releaseYear.isDefined) cache.keyOf(key.cleanTitle, enr.releaseYear)
           else key
-        if (targetKey != key) {
-          logger.debug(s"TMDB stage: re-keying '${key.cleanTitle}' (— → ${enr.releaseYear.get}) — cinemas didn't supply a year.")
-          cache.invalidate(key)
-        }
-        cache.put(targetKey, enr)
-        (targetKey, enr)
+        // When re-keying onto a DIFFERENT key that already holds a row (another
+        // cinema scraped this film WITH a year before TMDB resolved the no-year
+        // one), that target row carries its own cinema slots. `cache.put`
+        // overwrites, so without merging here the target's showtimes are wiped —
+        // an order-dependent data loss (whole films vanished from the listing
+        // when the no-year row's TMDB stage happened to run first). Union the
+        // target's cinema data in, keeping this resolve's enrichment fields.
+        val toWrite =
+          if (targetKey != key) {
+            logger.debug(s"TMDB stage: re-keying '${key.cleanTitle}' (— → ${enr.releaseYear.get}) — cinemas didn't supply a year.")
+            val merged = cache.get(targetKey).map(t => MovieRecordMerge.union(enr, t)).getOrElse(enr)
+            cache.invalidate(key)
+            merged
+          } else enr
+        cache.put(targetKey, toWrite)
+        (targetKey, toWrite)
       }
     }
 
