@@ -18,7 +18,44 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
   private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
   private val FarFuture  = "2027-01-01"
 
-  def fetch(cinemaId: String, cinema: Cinema): Seq[CinemaMovie] = {
+  // When deferDetail is on, return BARE movies (showtimes + listing fields + the
+  // per-film detail-page URL as filmUrl); the per-venue CinemaCityScraper enqueues
+  // an EnrichDetails task that calls `fetchFilmDetail` for countries/genres/
+  // synopsis/cast/director/trailer. When off, enrich inline.
+  def fetch(cinemaId: String, cinema: Cinema, deferDetail: Boolean = false): Seq[CinemaMovie] = {
+    val bare = fetchBare(cinemaId, cinema)
+    if (deferDetail) bare else enrichInline(bare)
+  }
+
+  // Inline path: fetch each film's detail page in parallel through the same
+  // `fetchFilmDetail` the deferred path uses, then merge non-destructively.
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val metas = ParallelDetailFetch("cinema-city-details", urls, 1.minute)(u => fetchFilmDetail(u))
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
+    }
+  }
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's film-page URL (Cinema City's `link`). Goes through the shared
+   *  `detailFetch` so a film's page is fetched once per chain per TTL. None on
+   *  fetch failure so the task stays stale and is retried. */
+  def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailFetch.get(ref)).toOption.map { html =>
+      val d = CinemaCityClient.parseDetails(html)
+      FilmDetail(
+        synopsis   = d.synopsis,
+        cast       = d.cast,
+        director   = d.director,
+        countries  = d.countries,
+        genres     = d.genres,
+        trailerUrl = d.trailerUrl
+      )
+    }
+
+  private def fetchBare(cinemaId: String, cinema: Cinema): Seq[CinemaMovie] = {
     val datesUrl = s"$BaseApiUrl/dates/in-cinema/$cinemaId/until/$FarFuture?attr=&lang=pl_PL"
     val dates: Seq[LocalDate] = Try {
       (Json.parse(http.get(datesUrl)) \ "body" \ "dates")
@@ -36,8 +73,7 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
       posterLink:     Option[String],
       filmLink:       Option[String],
       runtimeMinutes: Option[Int],
-      releaseYear:    Option[Int],
-      countries:      Seq[String]
+      releaseYear:    Option[Int]
     )
 
     val allFilms  = collection.mutable.Map[String, FilmInfo]()
@@ -61,8 +97,7 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
               // (`"releaseYear":"2026"`) — asOpt[Int] silently fails on a
               // String and the field stayed None for every film.
               releaseYear    = (film \ "releaseYear").asOpt[String].flatMap(s => Try(s.toInt).toOption)
-                .orElse((film \ "releaseYear").asOpt[Int]),
-              countries      = Seq.empty   // filled in below from the per-film details page
+                .orElse((film \ "releaseYear").asOpt[Int])
             )
           }
         }
@@ -92,48 +127,32 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
       }
     }
 
-    // Per-film details page fetch — neither country nor cast/director/synopsis
-    // are in the film-events JSON, but the public film page embeds a
-    // `var filmDetails = { ... }` JSON blob with all of them plus the
-    // production-country line. Fetched in parallel; a failed fetch or
-    // missing field leaves the row's content fields empty (the rest of
-    // the row stays usable).
-    val detailLinks = allFilms.toSeq.flatMap { case (id, info) => info.filmLink.map(link => id -> link) }
-    val linkById    = detailLinks.toMap
-    val detailsByFilmId: Map[String, CinemaCityClient.Details] =
-      ParallelDetailFetch.keyed("cinema-city-details", detailLinks.map(_._1), 1.minute)(id => linkById(id)) { url =>
-        Try(detailFetch.get(url)).toOption.map(CinemaCityClient.parseDetails).getOrElse(CinemaCityClient.Details.empty)
-      }
-    allFilms.foreach { case (id, info) =>
-      detailsByFilmId.get(id).filter(_.countries.nonEmpty)
-        .foreach(d => allFilms.update(id, info.copy(countries = d.countries)))
-    }
-
+    // Bare movies: title/runtime/year/poster + the film-page link as filmUrl (the
+    // detail ref). Countries/genres/synopsis/cast/director/trailer are NOT in the
+    // film-events JSON — they come from the per-film page via `fetchFilmDetail`,
+    // inline or deferred.
     allEvents
       .groupBy(_._1)
       .toSeq
       .flatMap { case (filmId, slots) =>
         allFilms.get(filmId).map { info =>
-          val details = detailsByFilmId.getOrElse(filmId, CinemaCityClient.Details.empty)
           CinemaMovie(
             movie       = Movie(
               CinemaCityClient.cleanTitle(info.name),
               info.runtimeMinutes,
-              info.releaseYear,
-              countries = info.countries,
-              genres    = details.genres
+              info.releaseYear
             ),
             cinema      = cinema,
             posterUrl   = info.posterLink,
             filmUrl     = info.filmLink,
-            synopsis    = details.synopsis,
-            cast        = details.cast,
-            director    = details.director,
+            synopsis    = None,
+            cast        = Seq.empty,
+            director    = Seq.empty,
             showtimes   = slots.toSeq.map { case (_, dateTime, bookingUrl, room, format) =>
               Showtime(dateTime, bookingUrl, room, format)
             }.sortBy(_.dateTime),
             externalIds = Map("cc" -> filmId),
-            trailerUrl  = details.trailerUrl
+            trailerUrl  = None
           )
         }
       }

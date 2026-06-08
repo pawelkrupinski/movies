@@ -59,12 +59,23 @@ object CinemaScraper {
  * Adapter for `CinemaCityClient`, whose `fetch(cinemaId, cinema)` serves
  * multiple cinema variants. Each `CinemaCityScraper` instance captures one
  * (cinemaId, cinema) pair.
+ *
+ * It is the per-venue `DetailEnricher`: the shared client does the work, but the
+ * scraper carries this venue's `cinema` slot and a per-venue `detailGroup`, and
+ * delegates `fetchFilmDetail` to the client. A per-venue group (rather than one
+ * shared "cinema-city" group) is required so each venue's slot is enriched — the
+ * handler resolves one enricher per group and a shared group would starve
+ * sibling venues. The film page itself is fetched once per chain (the client's
+ * shared `detailFetch` caches it), so per-venue groups don't multiply HTTP.
  */
 class CinemaCityScraper(
   client:   CinemaCityClient,
   cinemaId: String,
-  val cinema: Cinema
-) extends CinemaScraper {
-  def fetch(): Seq[CinemaMovie] = client.fetch(cinemaId, cinema)
+  val cinema: Cinema,
+  deferDetail: Boolean = false
+) extends CinemaScraper with DetailEnricher {
+  def fetch(): Seq[CinemaMovie] = client.fetch(cinemaId, cinema, deferDetail)
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(CinemaCityClient.BaseApiUrl)
+  override val detailGroup: String = s"cinema-city-$cinemaId"
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] = client.fetchFilmDetail(ref)
 }
