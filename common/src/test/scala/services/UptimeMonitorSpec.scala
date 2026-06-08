@@ -226,13 +226,21 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   }
 
   // Bucket granularity is 15 minutes: two records up to 14 min apart share a
-  // bucket, and the retained window stays 24h (MaxBuckets * BucketDurationMs),
-  // matching the collection's 24h TTL index.
+  // bucket, and the retained window stays 24h (MaxBuckets * BucketDurationMs).
   "bucket granularity" should "span 15 minutes and keep a 24h retained window" in {
     val b0 = UptimeMonitor.bucketTimestamp(1700000000000L)
     UptimeMonitor.bucketTimestamp(b0 + 14 * 60 * 1000L) shouldBe b0
     UptimeMonitor.bucketTimestamp(b0 + 15 * 60 * 1000L) shouldBe (b0 + 15 * 60 * 1000L)
     UptimeMonitor.MaxBuckets.toLong * UptimeMonitor.BucketDurationMs shouldBe 24L * 60 * 60 * 1000L
+  }
+
+  // The persisted-bucket TTL must outlive the 24h display window by exactly one
+  // bucket (15 min) so the OLDEST slot the /uptime page renders isn't expired out
+  // from under it mid-window. Guards against the TTL drifting back to a flat 24h
+  // or MaxBuckets changing without the TTL following.
+  "the bucket TTL" should "outlive the 24h display window by one bucket (24h15m)" in {
+    UptimeMonitor.BucketTtlSeconds shouldBe (UptimeMonitor.MaxBuckets + 1).toLong * (UptimeMonitor.BucketDurationMs / 1000L)
+    UptimeMonitor.BucketTtlSeconds shouldBe (24L * 60 * 60) + (15 * 60) // 87300s
   }
 
   "BucketSnapshot.status" should "be green when all succeed" in {

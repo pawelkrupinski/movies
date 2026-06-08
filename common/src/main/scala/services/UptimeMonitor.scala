@@ -56,15 +56,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
   // hydrate lands, counts merge additively.
   coll.foreach { c =>
     val t = new Thread(() => {
-      Try {
-        Await.result(c.createIndex(
-          Indexes.ascending("bucket"),
-          new JIndexOptions().expireAfter(24L, TimeUnit.HOURS)
-        ).toFuture(), 10.seconds)
-        Await.result(c.createIndex(
-          Indexes.compoundIndex(Indexes.ascending("service"), Indexes.ascending("bucket"))
-        ).toFuture(), 10.seconds)
-      }.recover { case ex => logger.warn(s"Uptime index creation failed: ${ex.getMessage}") }
+      ensureIndexes(c)
       hydrate(c)
       // Schedule background work only AFTER hydrate: flushing absolute cumulative
       // state before the on-disk base is loaded would overwrite Mongo with just
@@ -81,6 +73,36 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
     }, "uptime-monitor-init")
     t.setDaemon(true)
     t.start()
+  }
+
+  /** Create the TTL + compound indexes, and bring an EXISTING bucket-TTL index's
+   *  expiry in line with `BucketTtlSeconds`. Each step is isolated: a TTL change
+   *  makes `createIndex` throw `IndexOptionsConflict` (it can create but never
+   *  ALTER), so that step is expected to fail on an already-indexed collection —
+   *  the `collMod` is what actually applies the new expiry there. Keeping the
+   *  compound index in its own `Try` means the TTL conflict can't skip it. */
+  private def ensureIndexes(c: MongoCollection[Document]): Unit = {
+    Try {
+      Await.result(c.createIndex(
+        Indexes.ascending("bucket"),
+        new JIndexOptions().expireAfter(BucketTtlSeconds, TimeUnit.SECONDS)
+      ).toFuture(), 10.seconds)
+    }.recover { case ex => logger.debug(s"Uptime TTL index not (re)created — collMod will reconcile: ${ex.getMessage}") }
+
+    db.foreach { database =>
+      Try {
+        val collMod = new org.bson.Document("collMod", c.namespace.getCollectionName)
+          .append("index", new org.bson.Document("keyPattern", new org.bson.Document("bucket", 1))
+            .append("expireAfterSeconds", BucketTtlSeconds))
+        Await.result(database.runCommand(collMod).toFuture(), 10.seconds)
+      }.recover { case ex => logger.debug(s"Uptime TTL collMod skipped: ${ex.getMessage}") }
+    }
+
+    Try {
+      Await.result(c.createIndex(
+        Indexes.compoundIndex(Indexes.ascending("service"), Indexes.ascending("bucket"))
+      ).toFuture(), 10.seconds)
+    }.recover { case ex => logger.warn(s"Uptime compound index creation failed: ${ex.getMessage}") }
   }
 
   def addListener(f: BucketListener): Unit = { listeners.add(f); () }
@@ -340,10 +362,16 @@ object UptimeMonitor {
   type BucketListener = (String, BucketSnapshot) => Unit
 
   val BucketDurationMs: Long = 15 * 60 * 1000L
-  // Kept in lock-step with BucketDurationMs so the retained window stays 24h
-  // (matching the collection's 24h TTL index): MaxBuckets * BucketDurationMs = 24h.
+  // Kept in lock-step with BucketDurationMs so the retained window stays 24h:
+  // MaxBuckets * BucketDurationMs = 24h. The collection's TTL is one bucket
+  // LONGER than this (see BucketTtlSeconds) so the oldest displayed slot survives.
   // It bounds both the in-memory cutoff and the /uptime timeline's slot count.
   val MaxBuckets: Int = 96
+  // Persisted buckets live one slot (15 min) longer than the 24h display window
+  // (MaxBuckets * BucketDurationMs). With a flat 24h TTL the OLDEST slot the
+  // /uptime page renders can be deleted out from under it mid-window; the extra
+  // bucket of margin keeps the full timeline populated. 24h15m = 87300s.
+  val BucketTtlSeconds: Long = (MaxBuckets + 1).toLong * BucketDurationMs / 1000L
   val MaxErrorsPerBucket: Int = 10
   // Dirty buckets flush to Mongo this often (writer side).
   val FlushIntervalMs: Long = 10000L

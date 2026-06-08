@@ -18,7 +18,7 @@ import scala.concurrent.duration._
  *  the uptime page's Cinemas/Enrichment sections, so they piled into "Other".
  *  Going forward those hosts are SUPPRESSED at the source (their union is
  *  `CinemaScraperCatalog.scrapeHosts`), but the already-written host docs linger
- *  until the 24h TTL. This deletes them now so "Other" clears immediately.
+ *  until the bucket TTL expires them. This deletes them now so "Other" clears immediately.
  *
  *  We DELETE rather than re-attribute: a host maps many-to-one to cinemas
  *  (`www.bilety24.pl` fronts six venues), so a host row can't be folded into a

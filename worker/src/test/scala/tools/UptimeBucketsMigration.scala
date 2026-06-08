@@ -20,7 +20,7 @@ import scala.util.Try
  *
  *  Why a migration rather than relying on the app's hydrate (which already
  *  sums old docs into 15-min buckets in memory): the stale sub-boundary docs
- *  otherwise linger for the 24h TTL, where the serving app's poll re-applies
+ *  otherwise linger for the bucket TTL, where the serving app's poll re-applies
  *  them with SET semantics (last-write-wins clobber) and a reboot's hydrate
  *  double-counts any slot whose boundary doc was already flushed-merged. This
  *  collapses Mongo to exactly one doc per (service, 15-min slot).
