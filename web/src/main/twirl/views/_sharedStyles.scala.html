@@ -673,18 +673,19 @@
     padding: 2px 6px;
   }
   .anon-nag-toast .anon-nag-close:hover { color: #fff; }
-  /* Desktop layout: tabs on the left; search-date / Filtry / auth as one
+  /* Desktop layout: tabs on the left; date-search / Filtry / auth as one
      right-aligned cluster. `margin-left: auto` on the leftmost member
-     of the right cluster (search) absorbs the empty space between
-     tabs and the cluster. Search + date stay visually adjacent on
-     desktop (consecutive orders, date with no left margin).
+     of the right cluster (the day pills) absorbs the empty space between
+     tabs and the cluster. Day pills + search stay visually adjacent on
+     desktop (consecutive orders, search with no left margin), with the
+     search box to the RIGHT of the pills.
      The hidden-films entry point used to be its own navbar pill —
      it now lives inside Filtry as a top row, so there's no
      `.navbar-hidden` slot anymore. */
   /* Search shrinks first (priority 2) as the single row tightens; the day
      pills hold their labels (`flex-shrink:0` on `.day-pill`). */
-  .navbar-search    { order: 1; margin-left: auto; min-width: 0; flex-shrink: 8; }
-  .navbar-date      { order: 2; min-width: 0; flex-shrink: 0; }
+  .navbar-date      { order: 1; margin-left: auto; min-width: 0; flex-shrink: 0; }
+  .navbar-search    { order: 2; min-width: 0; flex-shrink: 8; }
   .navbar-filtry    { order: 3; }
   /* `display:flex; align-items:center` is load-bearing, not cosmetic: the
      child `.auth-menu` is `display:inline-flex`, so in a plain block wrapper
@@ -768,17 +769,18 @@
     }
     /* Priority 1 — the city title is the first thing to go as the row tightens. */
     .navbar-title { display: none; }
-    /* One row, ordered: [logo] … [search] [day pills] [Filtry] [auth].
-       `margin-left:auto` on search pushes the whole control cluster to the
-       right of the logo; from there everything packs together. Shrink priority
-       as the row narrows is expressed through `flex-shrink`: search gives way
-       first and most (priority 2, plus the width steps above), then the day
-       pills shrink their font/padding (priority 3); the day pill ROW itself
-       never shrinks (`.navbar-date` is `flex-shrink:0`) so a pill can't be
-       clipped under Filtry. The ‹ › arrows drop on portrait phones (above) to
-       make room; search itself only drops at the ≤290px emergency breakpoint. */
-    .navbar-search    { order: 2; margin-left: auto; min-width: 0; flex-shrink: 6; }
-    .navbar-date      { order: 3; min-width: 0; flex-shrink: 0; }
+    /* One row, ordered: [logo] … [day pills] [search] [Filtry] [auth].
+       `margin-left:auto` on the day pills pushes the whole control cluster to
+       the right of the logo; from there everything packs together. Shrink
+       priority as the row narrows is expressed through `flex-shrink`: search
+       gives way first and most (priority 2, plus the width steps above), then
+       the day pills shrink their font/padding (priority 3); the day pill ROW
+       itself never shrinks (`.navbar-date` is `flex-shrink:0`) so a pill can't
+       be clipped under Filtry. The ‹ › arrows drop on portrait phones (above)
+       to make room; search itself only drops at the ≤290px emergency
+       breakpoint. */
+    .navbar-date      { order: 2; margin-left: auto; min-width: 0; flex-shrink: 0; }
+    .navbar-search    { order: 3; min-width: 0; flex-shrink: 6; }
     .navbar-filtry    { order: 4; margin-left: 0; max-width: 45%; min-width: 0; flex-shrink: 1; }
     .navbar-auth      { order: 5; flex-shrink: 0; }
     /* Priority 3 — the day pills shrink their font + padding with the viewport
@@ -875,8 +877,8 @@
   @@media (max-height: 500px) and (orientation: landscape) {
     .navbar-title { display: none; }
 
-    .navbar-search    { order: 1; margin-left: auto; }
-    .navbar-date      { order: 2; }
+    .navbar-date      { order: 1; margin-left: auto; }
+    .navbar-search    { order: 2; }
     .navbar-filtry    { order: 3; margin-left: 0; }
     .navbar-auth      { order: 4; }
 

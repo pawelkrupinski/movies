@@ -644,6 +644,51 @@ test.describe('day pills (390×844)', () => {
   });
 });
 
+// ── Horizontal order: day pills sit to the LEFT of the search box ──
+//
+// The search input lives to the RIGHT of the day-pill row at every width
+// where both are visible (CSS `order` on `.navbar-date` / `.navbar-search`,
+// with `margin-left:auto` on the day pills holding the whole cluster to the
+// right of the logo). Pre-change the search box sat to the LEFT of the pills,
+// so this asserts `search.left >= dayPills.right`: the two never overlap and
+// the search box is entirely past the pill row.
+
+test.describe('navbar order — day pills left of search', () => {
+  for (const [label, viewport] of [
+    ['desktop width', { width: 1280, height: 800 }],
+    ['phone width',   { width: 390,  height: 844 }],
+  ] as const) {
+    test(`search box is to the right of the day pills at ${label}`, async ({ page }, testInfo) => {
+      // Desktop-class (non-emulated, resizable) projects only — they run both
+      // the desktop and the ≤575px layouts as we size them down, without the
+      // mobile-emulation projects' fixed viewports fighting `setViewportSize`.
+      test.skip(!testInfo.project.name.includes('desktop'), 'desktop projects only');
+      await page.setViewportSize(viewport);
+      await page.goto('/poznan/');
+      await waitForCards(page);
+
+      const m = await page.evaluate(() => {
+        const date   = document.querySelector('.navbar-date')   as HTMLElement | null;
+        const search = document.querySelector('.navbar-search') as HTMLElement | null;
+        const visible = (el: HTMLElement | null) =>
+          !!el && el.offsetParent !== null && el.getBoundingClientRect().width > 0;
+        if (!visible(date) || !visible(search)) return null;
+        return {
+          dateRight:   date!.getBoundingClientRect().right,
+          searchLeft:  search!.getBoundingClientRect().left,
+        };
+      });
+      // Both must be on-screen for the order to be meaningful (search drops
+      // out entirely below ~290px, never at these widths).
+      expect(m, 'day pills / search box not both visible').not.toBeNull();
+      expect(
+        m!.searchLeft,
+        `search box left ${m!.searchLeft.toFixed(1)}px should be ≥ day pills right ${m!.dateRight.toFixed(1)}px — search is no longer to the right of the pills`,
+      ).toBeGreaterThanOrEqual(m!.dateRight - 0.5);
+    });
+  }
+});
+
 // ── Orientation flip: grid column transitions ─────────────────────
 
 const PORTRAIT  = { width: 440, height: 956 };

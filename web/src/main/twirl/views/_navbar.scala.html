@@ -2,7 +2,7 @@
 @*
    Navbar layout:
      - Logo + tab links (Debug, dev-only)                       — left
-     - Search + date                                            — right cluster
+     - Date + search                                            — right cluster
      - Hidden-films flyout button (auto-shown when set)        — right cluster
      - Filtry dropdown (includes the cinema picker)            — right cluster
      - Login pill / avatar dropdown                             — far right (desktop)
@@ -161,19 +161,18 @@
     </div>
   </div>
 
-  @* Search and date-selector are separate flex items sharing ONE navbar row
-     at every width. As the row tightens they degrade in priority order: the
-     "Repertuar kinowy …" title drops first, then the search input shrinks,
-     then the day pills shrink, then the search input drops entirely — see the
-     navbar `@@media` rules in `_sharedStyles`.
+  @* Day-selector and search are separate flex items sharing ONE navbar row
+     at every width, with the day pills to the LEFT and the search box to
+     their right (CSS `order` on `.navbar-date` / `.navbar-search`). As the
+     row tightens they degrade in priority order: the "Repertuar kinowy …"
+     title drops first, then the search input shrinks, then the day pills
+     shrink, then the search input drops entirely — see the navbar `@@media`
+     rules in `_sharedStyles`.
 
      Both are hidden on /plan — the picker grid there has its own
      selection axis and the schedule output ignores "show today only" /
      free-text search semantics that these controls express. *@
   @if(activePage != "plan") {
-    <div class="navbar-search">
-      <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
-    </div>
     @* Day filter: a pill row (the same four presets the iOS/Android apps show)
        plus a visually-hidden `<select>` that stays the single source of truth
        every filter/carousel helper reads. Clicking a pill, pressing the
@@ -192,6 +191,9 @@
         <option value="week">7 dni</option>
         <option value="anytime">Wszystkie</option>
       </select>
+    </div>
+    <div class="navbar-search">
+      <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
     </div>
   }
 

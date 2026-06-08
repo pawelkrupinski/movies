@@ -351,7 +351,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // `getBoundingClientRect()` on each navbar item to assert the
   // physical layout matches the spec:
   //
-  //   one row: [logo+tabs] … [search] [day pills] [filtry] [auth]
+  //   one row: [logo+tabs] … [day pills] [search] [filtry] [auth]
   //
   // Why this test exists: the orders + `margin-left: auto` + the
   // `flex-wrap: nowrap` single-row layout are subtle — easy to break with
@@ -359,7 +359,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // that snapshot diffs alone wouldn't (the markup can look fine but
   // the visual layout flips).
 
-  "the mobile navbar (≤ 575 px)" should "keep search, day pills, filtry and auth on one row in that order" in {
+  "the mobile navbar (≤ 575 px)" should "keep day pills, search, filtry and auth on one row in that order" in {
     onPath("/") { page =>
       // 500 × 896 — widest mobile viewport (below the 576 px breakpoint
       // where the mobile media-query stops applying). Picked because
@@ -410,16 +410,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val (filtryTop, filtryLeft) = rect(".navbar-filtry")
 
       val viewportWidth = page.evalInt("window.innerWidth")
-      // One row: search, day pills, filtry and auth all share the same top
+      // One row: day pills, search, filtry and auth all share the same top
       // (4 px tolerance for sub-pixel + line-height variance), laid out
-      // left-to-right: search → day pills → filtry → auth.
+      // left-to-right: day pills → search → filtry → auth.
       withClue(s"viewport=$viewportWidth search=($searchTop,$searchLeft) auth=($authTop,$authLeft) date=($dateTop,$dateLeft) filtry=($filtryTop,$filtryLeft) ") {
         viewportWidth shouldBe 500
         math.abs(searchTop - authTop) should be < 4.0
         math.abs(dateTop   - authTop) should be < 4.0
         math.abs(filtryTop - authTop) should be < 4.0
-        searchLeft should be < dateLeft
-        dateLeft   should be < filtryLeft
+        dateLeft   should be < searchLeft
+        searchLeft should be < filtryLeft
         filtryLeft should be < authLeft
       }
 
