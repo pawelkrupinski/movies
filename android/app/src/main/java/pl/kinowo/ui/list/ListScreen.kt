@@ -541,9 +541,13 @@ internal fun posterGridColumns(landscape: Boolean, layoutWidthDp: Int): GridCell
 /**
  * Animate [state] back to the first item whenever [key] changes — so picking a
  * different day quickly scrolls the user up instead of stranding them mid-list
- * on the previous day's rows (and instead of snapping abruptly to the top). The
- * first composition is a no-op (the grid already starts at the top), which also
- * preserves a scroll position restored across a config change.
+ * on the previous day's rows (and instead of snapping abruptly to the top).
+ *
+ * Only fires when the first item is NOT already visible (the user has scrolled
+ * down past it). When item 0 is on screen the column is "at the top" and is left
+ * untouched — even a few px of offset is preserved, so a day-swipe at the top
+ * doesn't snap that offset to 0, which reads as the column scrolling when it's
+ * already at the top. The first composition is likewise a no-op.
  */
 @Composable
 internal fun ScrollToTopOnChange(state: LazyGridState, key: Any?) {
@@ -551,7 +555,7 @@ internal fun ScrollToTopOnChange(state: LazyGridState, key: Any?) {
     LaunchedEffect(key) {
         if (!seenFirst) {
             seenFirst = true
-        } else {
+        } else if (state.firstVisibleItemIndex != 0) {
             state.animateScrollToItem(0)
         }
     }

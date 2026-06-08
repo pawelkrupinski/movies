@@ -66,6 +66,42 @@ class ScrollToTopOnChangeTest {
     }
 
     @Test
+    fun keyChangeWhileFirstItemVisibleDoesNotScroll() {
+        // The column is at the top of the list (item 0 visible) but nudged a few
+        // px — the resting state a day-swipe lands in, since the carousel mirror
+        // carries the offset into the new day. A day change must NOT snap that
+        // offset to 0: the user reads that as the column scrolling even though
+        // they're already at the top (no vertical drift involved).
+        var key by mutableStateOf("today")
+        lateinit var state: LazyGridState
+        compose.setContent {
+            state = rememberLazyGridState(initialFirstVisibleItemScrollOffset = 30)
+            ScrollToTopOnChange(state, key)
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(1),
+                state = state,
+                modifier = Modifier.height(200.dp).testTag("grid"),
+            ) {
+                items((0 until 100).toList()) { Text("row $it", Modifier.height(50.dp)) }
+            }
+        }
+        compose.runOnIdle {
+            assertEquals(0, state.firstVisibleItemIndex)
+            assertEquals(30, state.firstVisibleItemScrollOffset)
+        }
+
+        key = "tomorrow"
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertEquals(0, state.firstVisibleItemIndex)
+            assertEquals(
+                "item 0 already visible → a day change must not scroll the column",
+                30, state.firstVisibleItemScrollOffset,
+            )
+        }
+    }
+
+    @Test
     fun unchangedKeyLeavesScrollAlone() {
         val (state, setKey) = renderGrid("today")
         compose.onNodeWithTag("grid").performScrollToIndex(40)
