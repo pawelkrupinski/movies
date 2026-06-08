@@ -25,10 +25,15 @@ case object Filmweb extends Source { val displayName: String = "Filmweb" }
 object Source {
   /** All known sources, ordered for derived-accessor priority: Multikino
    *  first (preserves the old `prioritizedShowings` behaviour), then the rest
-   *  of `Cinema.all`, then the external enrichment sources. */
+   *  of `Cinema.all`, then the network-level chain detail sources (synthetic
+   *  cinemas that aren't in `Cinema.all`/`byCity` — see `CinemaCityChain`),
+   *  then the external enrichment sources. The chain sources rank after the
+   *  physical venues so a venue's own value still wins, and must appear here so
+   *  `priority`/`byDisplayName` cover them (the latter resolves Mongo slot keys
+   *  on read). */
   val all: Seq[Source] = {
     val cinemasPrioritized = Multikino +: Cinema.all.filterNot(_ == Multikino)
-    cinemasPrioritized ++ Seq(Tmdb, Imdb, Filmweb)
+    cinemasPrioritized ++ Seq(CinemaCityChain) ++ Seq(Tmdb, Imdb, Filmweb)
   }
 
   /** Stable priority index for ordering source slots. Lower = preferred. */

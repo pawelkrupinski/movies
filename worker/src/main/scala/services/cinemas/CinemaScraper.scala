@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie}
+import models.{Cinema, CinemaCityChain, CinemaMovie, Source}
 
 import java.net.URI
 
@@ -60,13 +60,15 @@ object CinemaScraper {
  * multiple cinema variants. Each `CinemaCityScraper` instance captures one
  * (cinemaId, cinema) pair.
  *
- * It is the per-venue `DetailEnricher`: the shared client does the work, but the
- * scraper carries this venue's `cinema` slot and a per-venue `detailGroup`, and
- * delegates `fetchFilmDetail` to the client. A per-venue group (rather than one
- * shared "cinema-city" group) is required so each venue's slot is enriched — the
- * handler resolves one enricher per group and a shared group would starve
- * sibling venues. The film page itself is fetched once per chain (the client's
- * shared `detailFetch` caches it), so per-venue groups don't multiply HTTP.
+ * It is the per-venue `DetailEnricher` for the *listing* side (this venue's
+ * showtimes + `filmUrl`), but the per-film detail is shared chain-wide: every
+ * venue uses one `"cinema-city"` `detailGroup` (so a film is fetched + parsed
+ * once per network per freshness window — the queue's unique index + freshness
+ * drop the sibling venues' duplicate schedules) and writes the result into a
+ * single `CinemaCityChain` network source rather than each venue's own slot.
+ * `MovieRecord`'s merged accessors are film-level, so one shared slot surfaces
+ * the synopsis/cast/genres at every venue. Enrichment health reports once as
+ * "Globalne: Cinema City" instead of one row per venue.
  */
 class CinemaCityScraper(
   client:   CinemaCityClient,
@@ -76,6 +78,8 @@ class CinemaCityScraper(
 ) extends CinemaScraper with DetailEnricher {
   def fetch(): Seq[CinemaMovie] = client.fetch(cinemaId, cinema, deferDetail)
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(CinemaCityClient.BaseApiUrl)
-  override val detailGroup: String = s"cinema-city-$cinemaId"
+  override val detailGroup: String = "cinema-city"
+  override def detailTarget: Source = CinemaCityChain
+  override def enrichmentServiceOverride: Option[String] = Some("Globalne: Cinema City")
   override def fetchFilmDetail(ref: String): Option[FilmDetail] = client.fetchFilmDetail(ref)
 }

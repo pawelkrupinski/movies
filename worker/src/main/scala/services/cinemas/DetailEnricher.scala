@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie, SourceData}
+import models.{Cinema, CinemaMovie, Source, SourceData}
 
 /**
  * The per-film detail fields a cinema fetches *separately* from its listing —
@@ -74,11 +74,23 @@ case class FilmDetail(
  *
  * `detailGroup` is the dedup/freshness scope: a standalone cinema uses its own
  * id, a chain uses the chain name so all its locations share one detail fetch
- * per film. `cinema` is the `SourceData` slot the fetched detail is written to.
+ * per film. `detailTarget` is the `SourceData` slot the fetched detail is
+ * written to — by default the cinema's own slot, but a chain redirects it to a
+ * single network-level source so the detail is stored once and shared across
+ * every venue via `MovieRecord`'s film-level merged accessors.
  */
 trait DetailEnricher {
   def cinema: Cinema
   def detailGroup: String
+  /** The `SourceData` slot the fetched detail is merged into. Defaults to this
+   *  cinema's own slot (1:1 case); a chain overrides it to a shared network
+   *  source so all its venues read one detail fetch. */
+  def detailTarget: Source = cinema
+  /** Override the /uptime enrichment-health service name. None → the per-cinema
+   *  `"<cinema>|enrichment"` sub-row (the default). A chain sets a single
+   *  network-level name so it reports one global entry instead of one per
+   *  venue. */
+  def enrichmentServiceOverride: Option[String] = None
   /** Fetch + parse one film's detail by the reference the listing scrape left on
    *  the movie (its `filmUrl`). None on failure/absence, so the task stays
    *  stale and is retried rather than recording an empty result as fresh. */

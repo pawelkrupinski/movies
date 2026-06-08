@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.Source
+import models.SourceData
 import play.api.Logging
 import services.UptimeMonitor
 import services.cinemas.DetailEnricher
@@ -42,8 +42,10 @@ object EnrichDetailsTasks {
 
 /**
  * Handles an `EnrichDetails` task: fetch one film's detail (once per
- * `(detailGroup, film)` per 6h) and merge it into that cinema's `SourceData`
- * slot, preserving the slot's showtimes.
+ * `(detailGroup, film)` per 6h) and merge it into the enricher's `detailTarget`
+ * `SourceData` slot, preserving anything already in that slot (e.g. a cinema
+ * slot's showtimes). A 1:1 cinema targets its own slot; a chain targets a
+ * shared network source, so one fetch serves every venue.
  *
  * Freshness-gated: skips if the detail was fetched inside the window. A failed
  * fetch (`fetchFilmDetail` → None) is reported `Done` without marking fresh, so
@@ -68,22 +70,25 @@ class EnrichDetailsHandler(
         logger.warn(s"No detail enricher for task $key; dropping.")
         Done
       case Some(enricher) =>
-        // Record this cinema's enrichment health, grouped under it on /uptime: a
-        // resolved detail is a success, an absent/failed fetch a failure (red/
-        // yellow), mirroring how the scrape records against the bare cinema name.
-        val service = UptimeMonitor.enrichmentService(enricher.cinema.displayName)
+        // Record enrichment health on /uptime: a resolved detail is a success, an
+        // absent/failed fetch a failure (red/yellow). A 1:1 cinema records under
+        // its own "<cinema>|enrichment" sub-row; a chain overrides this to a
+        // single network-level service (e.g. "Globalne: Cinema City").
+        val service = enricher.enrichmentServiceOverride
+          .getOrElse(UptimeMonitor.enrichmentService(enricher.cinema.displayName))
         enricher.fetchFilmDetail(task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")) match {
           case None =>
             uptime.recordFailure(service, s"detail fetch returned nothing for ${task.payload.getOrElse(EnrichDetailsTasks.TitleKey, key)}")
             Done // failed/absent — not marked fresh, the next scrape re-enqueues
           case Some(detail) =>
-            val title = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
-            val year  = task.payload.get(EnrichDetailsTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
+            val title  = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
+            val year   = task.payload.get(EnrichDetailsTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
+            val target = enricher.detailTarget
+            // Merge into the target slot, creating it if absent: a chain's network
+            // source has no slot from a listing scrape, so it must be added here;
+            // a 1:1 cinema's slot already exists, so this preserves its showtimes.
             cache.putIfPresent(cache.keyOf(title, year), current =>
-              current.data.get(enricher.cinema) match {
-                case Some(slot) => current.copy(data = current.data + ((enricher.cinema: Source) -> detail.mergeInto(slot)))
-                case None       => current // slot dropped between scrape and enrich — leave alone
-              })
+              current.copy(data = current.data + (target -> detail.mergeInto(current.data.getOrElse(target, SourceData())))))
             freshness.markFresh(key, FreshnessKind.DetailEnrich)
             uptime.recordSuccess(service)
             Done

@@ -538,6 +538,19 @@ case object KinoIkar extends Cinema("Kino Ikar", "Ikar")   // Jarosław — film
 case object KinoNaBiegunach extends Cinema("Kino Na Biegunach", "Na Biegunach")   // Jarosław — filmweb 2172
 case object KinoSDK extends Cinema("Kino SDK", "SDK")   // Sanok — filmweb 2118
 
+// ── Network-level detail sources ──────────────────────────────────────────────
+// Not a physical venue: a synthetic source that holds the per-film detail
+// (synopsis/cast/director/genres/countries/trailer) a chain fetches ONCE per
+// network and shares across all its locations, instead of each venue enriching
+// its own slot. The venue slots keep their showtimes + filmUrl; the chain slot
+// supplies the detail, picked up by `MovieRecord`'s film-level merged accessors.
+// It extends `Cinema` so the genre fallback (`cinemaData`, a type-match) sees it,
+// and is registered in `Source.all` (for `Source.priority` + Mongo-key lookup) —
+// but deliberately NOT in `Cinema.all` / `byCity`, so the per-city/venue
+// invariants hold and it never renders as a venue row. See `CinemaCityScraper` /
+// `EnrichDetailsHandler`.
+case object CinemaCityChain extends Cinema("Cinema City", "Cinema City")
+
 
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the

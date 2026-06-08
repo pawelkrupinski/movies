@@ -45,4 +45,13 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val (cinemasByCity, _, _) = controller.groupRows(Set(cinema), fakeRow)
     cinemasByCity.flatMap(_._2).find(_.name == cinema).get.enrichment shouldBe None
   }
+
+  // Cinema City fetches each film's detail once per network and records its
+  // health as a single "Globalne: Cinema City" entry — a standalone enrichment
+  // service, not a per-venue sub-row and not adrift in "Other".
+  it should "list a network-level Globalne: … enrichment as a standalone enrichment service" in {
+    val (_, services, other) = controller.groupRows(Set("Globalne: Cinema City", "Some Other Service"), fakeRow)
+    services.map(_.name) should contain("Globalne: Cinema City")
+    other.map(_.name)    should not contain "Globalne: Cinema City"
+  }
 }

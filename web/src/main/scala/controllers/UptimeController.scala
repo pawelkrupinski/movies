@@ -19,8 +19,12 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
   // "Cinemas" header automatically — no edit needed when a cinema is added.
   private val cinemaNames = Cinema.all.map(_.displayName)
 
+  // External enrichment sources plus network-level (chain-wide) detail health.
+  // Cinema City fetches each film's detail once per network and records it here
+  // as one "Globalne: …" entry instead of one "<venue>|enrichment" sub-row per
+  // venue (see EnrichDetailsHandler / CinemaCityScraper.enrichmentServiceOverride).
   private val enrichmentNames = Seq(
-    "TMDB", "IMDb", "Filmweb", "Metacritic", "Rotten Tomatoes"
+    "TMDB", "IMDb", "Filmweb", "Metacritic", "Rotten Tomatoes", "Globalne: Cinema City"
   )
 
   // SSE batching: a poll cycle can flip one bucket per active service at once.

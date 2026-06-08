@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.{CinemaMovie, KinoApollo, Movie, Showtime}
+import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, KinoApollo, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.UptimeMonitor
@@ -50,6 +50,42 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     slot.map(_.showtimes.size) shouldBe Some(1) // showtimes from the scrape preserved
     fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe true
     successes(uptime, EnrichmentService) shouldBe 1 // recorded under "<cinema>|enrichment"
+  }
+
+  it should "write a chain enricher's detail into its shared network source, leaving venue slots untouched, so every venue shows it" in {
+    // Two Cinema City venues scrape the same film (bare: showtimes only, no detail).
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepo(), new InProcessEventBus())
+    def bareAt(venue: models.Cinema) = CinemaMovie(Movie("Dune"), venue, posterUrl = None,
+      filmUrl = Some("http://ref"), synopsis = None, cast = Seq.empty, director = Seq.empty,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
+    cache.recordCinemaScrape(CinemaCityPoznanPlaza, Seq(bareAt(CinemaCityPoznanPlaza)))
+    cache.recordCinemaScrape(CinemaCityKinepolis, Seq(bareAt(CinemaCityKinepolis)))
+
+    val fresh    = new InMemoryFreshnessStore
+    val uptime   = new UptimeMonitor()
+    val detail   = FilmDetail(synopsis = Some("Spice must flow"), cast = Seq("Zendaya"), genres = Seq("Sci-Fi"))
+    // A chain enricher: one shared group, detail written to the CinemaCityChain
+    // network source, health under one global name.
+    val enricher = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", Some(detail),
+      target = Some(CinemaCityChain), uptimeOverride = Some("Globalne: Cinema City"))
+    val h        = new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, fresh, uptime)
+    val task     = taskFor("cinema-city", cache, "Dune", enricher)
+
+    h.handle(task) shouldBe Done
+    val record = cache.get(cache.keyOf("Dune", None)).get
+    // Detail landed in the shared network slot (created on demand — no venue scrapes it).
+    record.data.get(CinemaCityChain).flatMap(_.synopsis) shouldBe Some("Spice must flow")
+    record.data.get(CinemaCityChain).map(_.genres)       shouldBe Some(Seq("Sci-Fi"))
+    // Venue slots keep their showtimes and gained no detail of their own.
+    record.data.get(CinemaCityPoznanPlaza).map(_.showtimes.size) shouldBe Some(1)
+    record.data.get(CinemaCityPoznanPlaza).flatMap(_.synopsis)   shouldBe None
+    record.data.get(CinemaCityKinepolis).flatMap(_.synopsis)     shouldBe None
+    // Film-level merged accessors surface the shared detail for the whole row.
+    record.synopsis shouldBe Some("Spice must flow")
+    record.genres   shouldBe Seq("Sci-Fi")
+    // Health recorded once under the global name, not per venue.
+    successes(uptime, "Globalne: Cinema City") shouldBe 1
+    uptime.services should not contain UptimeMonitor.enrichmentService(CinemaCityPoznanPlaza.displayName)
   }
 
   it should "skip without fetching when the detail is already fresh, recording no uptime" in {
