@@ -60,13 +60,14 @@ test.describe('mobile landscape layout', () => {
     }
   });
 
-  test('date selector sits immediately left of Filtry', async ({ page }) => {
-    // The whole point of the landscape contract: the user can
-    // reach the date stepper without jumping cross-screen — it
-    // hugs the Filtry pill. Same row, date.right ≤ filtry.left,
-    // and search (the only other neighbour at this width) sits
-    // further left. Auth may have wrapped onto a second row on
-    // narrower viewports — irrelevant to this check.
+  test('search sits immediately left of Filtry, day pills further left', async ({ page }) => {
+    // The whole point of the landscape contract: the right cluster
+    // packs together as day pills → search → Filtry on one row, so
+    // the user reaches every control without jumping cross-screen.
+    // Same row, search.right ≤ filtry.left, and the day pills (the
+    // only other neighbour at this width) sit further left, outside
+    // the search→Filtry band. Auth may have wrapped onto a second
+    // row on narrower viewports — irrelevant to this check.
     const layout = await page.evaluate(() => {
       const r = (el: Element | null) => {
         if (!el) return null;
@@ -89,13 +90,12 @@ test.describe('mobile landscape layout', () => {
     >;
 
     // Same row.
-    expect(Math.abs(date.top - filtry.top)).toBeLessThan(12);
-    // Date is to the left of Filtry.
-    expect(date.right).toBeLessThanOrEqual(filtry.left + 1);
-    // Adjacent — nothing in the navbar sits between date.right
-    // and filtry.left. Search must be OUTSIDE that horizontal
-    // band: search.right ≤ date.left (further left).
-    expect(search.right).toBeLessThanOrEqual(date.left + 1);
+    expect(Math.abs(search.top - filtry.top)).toBeLessThan(12);
+    // Search is immediately to the left of Filtry.
+    expect(search.right).toBeLessThanOrEqual(filtry.left + 1);
+    // The day pills sit further left, outside the search→Filtry
+    // band: date.right ≤ search.left.
+    expect(date.right).toBeLessThanOrEqual(search.left + 1);
   });
 
   test('the navbar stays on one row (no second navbar row)', async ({ page }) => {
@@ -121,8 +121,8 @@ test.describe('mobile landscape layout', () => {
 
   test('rightmost navbar item is flush with the right edge', async ({ page }) => {
     // On wide landscape viewports (≥ 700 px), margin-left:auto on
-    // .navbar-search absorbs remaining space and pushes the
-    // search+date+filtry+auth cluster to the right edge. On narrow
+    // .navbar-date absorbs remaining space and pushes the
+    // date+search+filtry+auth cluster to the right edge. On narrow
     // zoomed-landscape viewports (< 600 px) the items fill the row
     // naturally, so there's no slack — the cluster sits flush-right
     // simply because it spans the full width. Either way, the
