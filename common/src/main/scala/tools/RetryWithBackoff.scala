@@ -23,10 +23,11 @@ import scala.util.control.NonFatal
  * interrupts pass through immediately rather than being papered over with
  * another attempt.
  *
- * `onAttempt` fires once per attempt with the outcome — used by callers
- * that want per-attempt observability (uptime monitor records each
- * attempt, not just the final result, so a green-after-2-retries bucket
- * still shows yellow for the failed first attempts).
+ * `onAttempt` fires once per attempt with the outcome (and an `isFinal`
+ * flag on failures) — for callers that want per-attempt observability.
+ * The cinema uptime monitor uses it to record only the final outcome:
+ * a recovered-within-the-tick scrape is a success, only an exhausted one
+ * is a failure.
  *
  * Note: there's also `integration.RetryWithBackoff` in `it/scala`, which
  * is *budget*-based (give up after N seconds total). Different semantics,

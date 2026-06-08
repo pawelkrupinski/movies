@@ -26,11 +26,14 @@ import scala.concurrent.duration._
  * fetches that normally take 1–10s and rarely need more than one retry
  * to recover.
  *
- * Each attempt is recorded against the `UptimeMonitor` under
- * `cinema.displayName`. A scrape that succeeds on attempt 2 records
- * 1 failure + 1 success in the bucket — the yellow bar reflects the
- * real reliability of the upstream, not just the final post-retry
- * outcome.
+ * The scrape's *outcome* is recorded against the `UptimeMonitor` under
+ * `cinema.displayName`: a scrape that recovers within the tick — even
+ * after several failed attempts — records a single success (a green
+ * bar), because the cache got its data. Only a scrape that exhausts
+ * every attempt records a failure (a red bar), because that's the tick
+ * where the cinema actually dropped out. Intermediate blips a retry
+ * recovers from are transient noise, not an outage, so they don't stamp
+ * a yellow bar.
  *
  * The final, non-throwing attempt is classified by its *result*: a
  * fetch that parsed cleanly but yielded zero screenings is recorded as
@@ -51,9 +54,11 @@ class RetryingCinemaScraper(
   def scrapeHosts: Set[String] = delegate.scrapeHosts
 
   def fetch(): Seq[CinemaMovie] = {
-    // Failures are recorded per-attempt (so retries show their true cost), but
-    // the winning attempt is classified after we can see its result — splitting
-    // success from empty. Stash that attempt's latency to record either way.
+    // Only the *final*, exhausted attempt records a failure — that's the tick the
+    // cinema actually dropped from the cache (a red bar). A non-final failure that
+    // a later retry recovers from is transient noise, not an outage, so it's
+    // ignored. The winning attempt is classified after we can see its result —
+    // splitting success from empty. Stash that attempt's latency to record either way.
     var successMs = 0L
     val result = RetryWithBackoff(
       label          = s"${cinema.displayName} fetch",
@@ -61,9 +66,10 @@ class RetryingCinemaScraper(
       initialBackoff = initialBackoff,
       onAttempt = {
         case AttemptOutcome.Success(_, durationMs) => successMs = durationMs
-        case AttemptOutcome.Failure(_, t, _, _) =>
+        case AttemptOutcome.Failure(_, t, isFinal, _) if isFinal =>
           val msg = s"${t.getClass.getSimpleName}: ${Option(t.getMessage).getOrElse("")}".take(200)
           monitor.recordFailure(cinema.displayName, msg)
+        case _: AttemptOutcome.Failure => // recovered by a later retry — not an uptime failure
       }
     ) {
       delegate.fetch()

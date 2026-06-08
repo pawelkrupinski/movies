@@ -79,7 +79,7 @@ class RetryingCinemaScraperSpec extends AnyFlatSpec with Matchers {
     intercept[RuntimeException] { s.fetch() }.getMessage shouldBe "down"
   }
 
-  it should "record each retry attempt against the monitor (failures + final success)" in {
+  it should "record only a success (green, no yellow) when a retry recovers within the tick" in {
     val monitor = new UptimeMonitor()
     val s = new RetryingCinemaScraper(
       scriptedScraper(List(Left(new RuntimeException("blip")), Right(OneMovie))),
@@ -89,11 +89,12 @@ class RetryingCinemaScraperSpec extends AnyFlatSpec with Matchers {
     s.fetch() shouldBe OneMovie
     val bucket = monitor.history(Multikino.displayName).head
     bucket.successes shouldBe 1
-    bucket.failures  shouldBe 1
-    bucket.errors.head should include ("blip")
+    bucket.failures  shouldBe 0           // the recovered blip is noise, not an uptime failure
+    bucket.errors    shouldBe empty
+    bucket.status    shouldBe "green"
   }
 
-  it should "record all attempts as failures when every retry fails" in {
+  it should "record a single failure (red) only when every retry is exhausted" in {
     val monitor = new UptimeMonitor()
     val s = new RetryingCinemaScraper(
       scriptedScraper(List.fill(3)(Left(new RuntimeException("down")))),
@@ -104,7 +105,9 @@ class RetryingCinemaScraperSpec extends AnyFlatSpec with Matchers {
     intercept[RuntimeException] { s.fetch() }
     val bucket = monitor.history(Multikino.displayName).head
     bucket.successes shouldBe 0
-    bucket.failures  shouldBe 3
+    bucket.failures  shouldBe 1           // only the final, exhausted attempt — not all three
+    bucket.errors.head should include ("down")
+    bucket.status    shouldBe "red"
   }
 
   it should "record an empty (not a success) when the scrape returns no movies" in {
@@ -124,19 +127,5 @@ class RetryingCinemaScraperSpec extends AnyFlatSpec with Matchers {
     val bucket = monitor.history(Multikino.displayName).head
     bucket.successes shouldBe 0
     bucket.zeroes    shouldBe 1
-  }
-
-  it should "still record a success when the final retry yields screenings, counting the empty intermediate as a failure only" in {
-    val monitor = new UptimeMonitor()
-    val s = new RetryingCinemaScraper(
-      scriptedScraper(List(Left(new RuntimeException("blip")), Right(OneMovie))),
-      monitor,
-      initialBackoff = 1.millis
-    )
-    s.fetch() shouldBe OneMovie
-    val bucket = monitor.history(Multikino.displayName).head
-    bucket.successes shouldBe 1
-    bucket.zeroes    shouldBe 0
-    bucket.failures  shouldBe 1
   }
 }

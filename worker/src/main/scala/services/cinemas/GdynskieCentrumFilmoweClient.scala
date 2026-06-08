@@ -46,8 +46,9 @@ class GdynskieCentrumFilmoweClient(http: HttpFetch, override val cinema: Cinema)
   // and the cinema drops out of the cache for that tick (a red uptime bar). More
   // attempts are nearly free here — each failure is a sub-second fast-fail — and
   // the longer 1s/2s/4s/8s backoff span crosses the bad windows, so the scrape
-  // recovers within the tick instead of dropping. (The wrapper still records each
-  // failed attempt, so the upstream's true flakiness stays visible as yellow.)
+  // recovers within the tick instead of dropping. A recovered tick records a clean
+  // green bar (RetryingCinemaScraper only flags the *final*, exhausted attempt), so
+  // these sub-second blips no longer surface as uptime noise.
   override val maxFetchAttempts: Int = 5
 
   def fetch(): Seq[CinemaMovie] = {
