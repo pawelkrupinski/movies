@@ -18,19 +18,9 @@ private let pagedTabViewTopOverflow: CGFloat = 17
 /// stranded mid-scroll on the previous day's rows.
 private let gridTopAnchorID = "kinowo.grid.top"
 
-/// Carries the current pane's vertical scroll offset (points scrolled down,
-/// ≥ 0) up to `DayCarousel`, which mirrors it onto the neighbour panes so the
-/// revealed day appears scrolled in lockstep. Reduce keeps the first reported
-/// value per frame.
-private struct ScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {}
-}
-
 private extension View {
     /// Quickly animate the enclosing `ScrollViewReader` back to `gridTopAnchorID`
     /// whenever `token` changes — a brief scroll up rather than an abrupt snap.
-    /// Shared by both grids so the reset rule lives in one place.
     func resetsScrollToTop<T: Equatable>(on token: T, using proxy: ScrollViewProxy) -> some View {
         onChange(of: token) { _ in
             withAnimation(.easeOut(duration: 0.25)) {
@@ -66,15 +56,6 @@ struct FilmGridView: View {
     /// passes false, so it doesn't over-pad. Defaults true for callers that
     /// still live inside a paged TabView (the tuning screen).
     var pagedInTabView: Bool = true
-    /// Set by `DayCarousel` on the current (interactive) pane: called with the
-    /// live vertical scroll offset so the carousel can mirror it onto the
-    /// neighbour panes. `nil` for ordinary callers.
-    var scrollOffsetReporter: ((CGFloat) -> Void)? = nil
-    /// Set by `DayCarousel` on a neighbour (mirror) pane: renders the grid as a
-    /// non-scrolling, read-only column translated up by this many points, so it
-    /// tracks the current pane's scroll during a drag. `nil` for the normal
-    /// interactive grid.
-    var mirroredOffset: CGFloat? = nil
 
     private var topInset: CGFloat {
         // 10pt breathing gap below the bar; plus the paged overflow when the
@@ -85,16 +66,12 @@ struct FilmGridView: View {
     var body: some View {
         if films.isEmpty {
             EmptyRepertoireView()
-        } else if let mirroredOffset {
-            mirrorGrid(offsetY: mirroredOffset)
         } else {
             interactiveGrid()
         }
     }
 
-    /// The film cards laid out in the production grid. Shared by the interactive
-    /// ScrollView and the carousel's read-only mirror panes so both render an
-    /// identical column.
+    /// The film cards laid out in the production grid.
     private var gridContent: some View {
         LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
             ForEach(films) { film in
@@ -121,38 +98,12 @@ struct FilmGridView: View {
             ScrollView {
                 gridContent
                     .id(gridTopAnchorID)
-                    // Report the live scroll offset (distance scrolled down,
-                    // ≥ 0) so the carousel can mirror it onto neighbour panes.
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: ScrollOffsetKey.self,
-                                value: -geo.frame(in: .named(scrollSpace)).minY
-                            )
-                        }
-                    )
-            }
-            .coordinateSpace(name: scrollSpace)
-            .onPreferenceChange(ScrollOffsetKey.self) { y in
-                scrollOffsetReporter?(max(0, y))
             }
             .scrollDismissesKeyboard(.immediately)
             .modifier(ScrollClipDisabledIfAvailable())
             .resetsScrollToTop(on: scrollResetToken, using: proxy)
         }
     }
-
-    /// Read-only neighbour: the same column with no ScrollView, translated up by
-    /// the shared scroll offset so it mirrors the current day's vertical
-    /// position. Pinned to the top so the offset reads against row one.
-    private func mirrorGrid(offsetY: CGFloat) -> some View {
-        gridContent
-            .offset(y: -offsetY)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .allowsHitTesting(false)
-    }
-
-    private let scrollSpace = "kinowo.grid.scroll"
 }
 
 /// Kina-tab layout: one section per cinema, each section holding the

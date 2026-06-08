@@ -9,10 +9,11 @@ import XCTest
 /// live repertoire (empty late at night). The titles are deterministic, so we
 /// can read which film sits at the top.
 ///
-/// Before the fix the grid's `ScrollView` kept its scroll offset across a
-/// day change, so after scrolling down and switching day the top film was a
-/// mid-list one. With `FilmGridView.scrollResetToken` driven by the date, the
-/// switch snaps back to row one.
+/// The day pages live in a native paged `TabView`. Each page's
+/// `FilmGridView.scrollResetToken` is keyed on the selected day, so switching
+/// day snaps the grid back to row one. We read the TOP **on-screen** card
+/// (never `firstMatch` — the pager keeps the neighbour day's page mounted
+/// off-screen, so `firstMatch` can grab a card that isn't visible).
 final class DayChangeScrollResetUITests: XCTestCase {
     var app: XCUIApplication!
 
@@ -31,14 +32,14 @@ final class DayChangeScrollResetUITests: XCTestCase {
         let confirm = app.buttons[A11y.CityGate.confirmButton]
         XCTAssertTrue(confirm.waitForExistence(timeout: 15), "City-confirm screen never showed")
         confirm.tap()
-        XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30), "Grid never mounted")
+        XCTAssertTrue(anyCard().waitForExistence(timeout: 30), "Grid never mounted")
     }
 
     override func tearDownWithError() throws { app = nil }
 
     func testSelectingDifferentDayScrollsBackToTop() throws {
         // Fixture lays out "Film 1" first, so the top of the list is Film 1.
-        let topLabel = firstFilmCard().label
+        let topLabel = try XCTUnwrap(topOnScreenCardLabel(), "No on-screen card at launch")
         XCTAssertTrue(topLabel.contains("Film 1"), "Expected the grid to open on Film 1, got '\(topLabel)'")
 
         // Scroll deep into the list so the top film is recycled away.
@@ -49,24 +50,49 @@ final class DayChangeScrollResetUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.4) // let the lazy grid settle
         }
         XCTAssertNotEqual(
-            firstFilmCard().label, topLabel,
+            topOnScreenCardLabel(), topLabel,
             "The grid didn't actually scroll — the reset assertion below would be meaningless")
 
         // Pick a different day. The list must jump back to Film 1 at the top.
         app.buttons[A11y.TopBar.datePillAnytime].tap()
 
-        let backAtTop = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label CONTAINS %@", "Film 1"),
-            object: firstFilmCard())
+        let backAtTop = expectation(description: "top on-screen card is Film 1 again")
+        let poll = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { t in
+            if self.topOnScreenCardLabel()?.contains("Film 1") == true {
+                t.invalidate()
+                backAtTop.fulfill()
+            }
+        }
+        defer { poll.invalidate() }
         XCTAssertEqual(
             XCTWaiter.wait(for: [backAtTop], timeout: 5), .completed,
-            "After choosing a different day the grid stayed scrolled (top film was "
-            + "'\(firstFilmCard().label)') instead of resetting to Film 1")
+            "After choosing a different day the grid stayed scrolled (top on-screen "
+            + "film was '\(topOnScreenCardLabel() ?? "nil")') instead of resetting to Film 1")
     }
 
-    private func firstFilmCard() -> XCUIElement {
+    // MARK: - Helpers
+
+    private func anyCard() -> XCUIElement {
         app.descendants(matching: .any)
             .matching(identifier: A11y.FilmGrid.cell)
             .firstMatch
+    }
+
+    /// The label of the topmost card that is actually ON SCREEN — smallest `minY`
+    /// among cards whose frame intersects the window and whose origin sits within
+    /// the screen's horizontal bounds (so the off-screen neighbour page's cards,
+    /// parked at minX ≈ ±screenWidth, are ignored).
+    private func topOnScreenCardLabel() -> String? {
+        let screen = app.windows.firstMatch.frame
+        let cards = app.descendants(matching: .any)
+            .matching(identifier: A11y.FilmGrid.cell)
+            .allElementsBoundByIndex
+        let onScreen = cards.filter { c in
+            let f = c.frame
+            return f.width > 1 && f.height > 1
+                && f.minX >= screen.minX - 1 && f.minX < screen.maxX
+                && screen.intersects(f)
+        }
+        return onScreen.min(by: { $0.frame.minY < $1.frame.minY })?.label
     }
 }

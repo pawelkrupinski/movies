@@ -1,12 +1,12 @@
 import XCTest
 
-/// Regression guard for the user-reported carousel bug: "when I swipe to another
-/// day the cards slide in from the side but then disappear." The cause is a
-/// horizontal swipe that STARTS on a film card: `DayCarousel` attaches its drag
-/// as a `.simultaneousGesture`, so the card's `NavigationLink` ALSO recognises
-/// the swipe — the gesture both changes the day AND pushes that film's detail
-/// screen over the grid, so the cards vanish behind a film page the user never
-/// meant to open.
+/// Regression guard: a horizontal swipe that STARTS on a film card must change
+/// the day without opening that film. With the native paged `TabView` the page
+/// scroll view's pan gesture claims the horizontal drag before the card's
+/// `NavigationLink` can read it as a tap — but this test pins that down so a
+/// future gesture change (or a return to a `.simultaneousGesture` carousel,
+/// which DID double-fire and push the film detail over the grid) can't
+/// regress it.
 ///
 /// A swipe-to-change-day must change the day, keep us on the listing, and show
 /// the new day's cards — never open a film. This drives a real left-swipe that

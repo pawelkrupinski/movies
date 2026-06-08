@@ -17,11 +17,6 @@ struct ContentView: View {
     @Environment(\.verticalSizeClass) private var vSizeClass
 
     @State private var dateFilter: DateFilter = .today
-    /// Live day the pill HIGHLIGHTS while a carousel drag is past the commit
-    /// threshold — a preview only, set/cleared by `DayCarousel` mid-drag. The
-    /// committed selection (`dateFilter`, grid content, scroll) never moves
-    /// until release; `previewFilter ?? dateFilter` is what the pill row paints.
-    @State private var previewFilter: DateFilter? = nil
     @State private var formatFilter: FormatFilter = .empty
     @State private var excludedCountries: Set<String> = []
     @State private var excludedGenres: Set<String> = []
@@ -86,7 +81,6 @@ struct ContentView: View {
                 // bar) read as solid app-background.
                 TopBar(
                     dateFilter: $dateFilter,
-                    highlightedFilter: previewFilter ?? dateFilter,
                     search: $search,
                     searchFocused: $searchFocused,
                     searchInline: searchInline,
@@ -288,19 +282,47 @@ struct ContentView: View {
         } else if let error = store.error, store.films.isEmpty {
             errorState(error)
         } else {
-            // Finger-following, wrap-around day carousel replaces the old paged
-            // TabView (Filmy / Kina): drag the grid and the adjacent day slides
-            // in 1:1; release past a threshold commits to that day. The
-            // neighbours share the current pane's vertical scroll, so the
-            // revealed day is already scrolled to the same Y. See `DayCarousel`.
-            DayCarousel(
-                dateFilter: $dateFilter,
-                previewFilter: $previewFilter,
-                films: { films(for: $0) },
-                showCinemaHeaders: showCinemaHeaders,
-                onCommit: didChangeDay
-            )
-            .refreshable { await store.reload() }
+            // One native paged `TabView` page per day preset (Dziś / Jutro /
+            // 7 dni / Wszystkie); a horizontal swipe pages between them. This
+            // restores the hardware-smooth `UIPageViewController` swipe the app
+            // had with the old Filmy / Kina tabs. The hand-rolled carousel that
+            // briefly replaced it re-filtered the whole repertoire and rebuilt
+            // three grids on every drag frame (`@GestureState` invalidates the
+            // body per touch-move), which dropped frames and felt choppy. The
+            // trade-off of going back to the native pager is no wrap-around and
+            // no mid-drag day-pill preview (the carousel's extras).
+            //
+            // Every page's `scrollResetToken` is keyed on the *selected* day, so
+            // changing day (swipe or pill tap) snaps each grid back to row one —
+            // preserving the "land at the top of the new day" behaviour the
+            // single grid had (guarded by DayChangeScrollResetUITests), rather
+            // than stranding the user mid-scroll on the day they swiped to.
+            TabView(selection: $dateFilter) {
+                ForEach(DateFilter.presets, id: \.self) { preset in
+                    FilmGridView(films: films(for: preset),
+                                 showCinemaHeaders: showCinemaHeaders,
+                                 scrollResetToken: AnyHashable(dateFilter))
+                        .refreshable { await store.reload() }
+                        .tag(preset)
+                }
+            }
+            // `.page(indexDisplayMode: .never)` gives the horizontal swipe with
+            // no dot indicator — the date-pill row is the "which day" affordance.
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            // Ignore only bottom/horizontal — NOT the top: the TabView sits below
+            // the bar in the VStack, so its paged scroll view (and pan gesture)
+            // starts at the bar's bottom edge and never reaches up under the pill
+            // row to steal the day-pill taps. See ContentView's VStack comment.
+            .ignoresSafeArea(edges: [.bottom, .horizontal])
+            // Resolve NavigationLink(value: Film) from the grids to the per-film
+            // detail screen — the container owns the destination so the push
+            // survives a page change.
+            .navigationDestination(for: Film.self) { film in
+                FilmDetailView(film: film)
+            }
+            // Flash the day name and retire the swipe hint whenever the day
+            // changes — by a swipe OR a date-pill tap (both move this selection).
+            .onChange(of: dateFilter) { _ in didChangeDay() }
         }
     }
 
@@ -379,9 +401,8 @@ struct ContentView: View {
             || !excludedCast.isEmpty
     }
 
-    /// The filtered, sorted film list for a given day filter. Generalises the
-    /// old single-day `filmsForFilmsTab` so `DayCarousel` can populate all three
-    /// of its panes (previous / current / next day) from the same rule.
+    /// The filtered, sorted film list for a given day filter — one call per
+    /// `TabView` page (one per `DateFilter` preset), all from the same rule.
     private func films(for date: DateFilter) -> [Film] {
         store.films.filteredFor(
             date: date,

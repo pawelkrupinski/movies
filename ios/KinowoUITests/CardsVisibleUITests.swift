@@ -2,22 +2,19 @@ import XCTest
 
 /// Regression guard for "the film cards stopped showing on the main grid".
 ///
-/// Commit c17d6cb9 ("iOS: finger-following day carousel with synced scroll")
-/// replaced the paged `TabView` with `DayCarousel` — a `GeometryReader` hosting
-/// a 3-pane `HStack` of `FilmGridView`s parked at `offset(x: -width)` so the
-/// CENTRE pane is the one visible at rest. The centre pane is the interactive
-/// `FilmGridView` (a bare `ScrollView` with only `.frame(width:)`); the two
-/// neighbour panes are read-only mirrors forced to `.frame(maxHeight: .infinity)`.
-/// Under that combination the CENTRE pane's `ScrollView` collapsed to ~0 height
-/// inside the `HStack`, so at rest the grid was blank — only the off-screen
-/// mirror panes still carried cards.
+/// The day pages live in a native paged `TabView`, which keeps the adjacent
+/// day's `FilmGridView` mounted off-screen (a `UIPageViewController` pre-loads
+/// its neighbours). So the accessibility tree always carries cards that are NOT
+/// on screen — their frames sit at x ≈ ±screenWidth. (The same off-screen-card
+/// hazard came up in an even worse form under the short-lived `DayCarousel`,
+/// whose collapsed centre pane once rendered blank while only its off-screen
+/// mirror panes carried cards.)
 ///
 /// `RepertoireLaunchUITests`/`InitialGapUITests` proved insufficient: a naive
 /// `app.cells.firstMatch` / `…firstMatch` happily grabs a card that is *present*
-/// in the accessibility tree but parked off-screen in the previous-day mirror
-/// pane (its frame sits at x ≈ -screenWidth). This test pins the stronger
-/// invariant the regression actually broke: at launch at least one film card
-/// must occupy a real, ON-SCREEN, hittable frame.
+/// in the accessibility tree but parked off-screen in a neighbour day's page.
+/// This test pins the stronger invariant: at launch at least one film card must
+/// occupy a real, ON-SCREEN, hittable frame.
 ///
 /// Driven warm (`KINOWO_UITEST_FIXTURE=1`) so a synthetic fixture mounts a dense
 /// grid at first paint regardless of the live repertoire / hour.
@@ -45,17 +42,16 @@ final class CardsVisibleUITests: XCTestCase {
     }
 
     /// At least one poster card must land ON SCREEN, occupy a real frame, and be
-    /// hittable. The carousel parks the centre pane at `offset(x: -width)`; the
-    /// previous-day mirror pane lives at x ≈ -screenWidth, so its cards are in
-    /// the tree but off the left edge. We deliberately ignore those and require
-    /// a card whose frame intersects the on-screen region — the exact thing the
-    /// collapsed centre pane stopped producing.
+    /// hittable. The paged `TabView` keeps the neighbour day's page mounted at
+    /// x ≈ ±screenWidth, so its cards are in the tree but off the edge. We
+    /// deliberately ignore those and require a card whose frame intersects the
+    /// on-screen region — the current day's grid must actually be visible.
     func testAtLeastOneCardIsVisibleAndHittableAtLaunch() throws {
-        // Wait until *some* card mounts (any pane), then look for an on-screen one.
+        // Wait until *some* card mounts (any page), then look for an on-screen one.
         XCTAssertTrue(
             anyCard().waitForExistence(timeout: 30),
             "Grid never mounted — no film card in the tree at all")
-        // Let the first-frame carousel layout settle.
+        // Let the first-frame paged layout settle.
         Thread.sleep(forTimeInterval: 1.5)
 
         let screen = app.windows.firstMatch.frame
@@ -63,8 +59,8 @@ final class CardsVisibleUITests: XCTestCase {
 
         XCTAssertNotNil(
             onScreen,
-            "No film card landed on screen — every card is off-screen (the centre "
-            + "carousel pane rendered blank and only the mirror panes carry cards). "
+            "No film card landed on screen — every card is off-screen (the current "
+            + "day's page rendered blank and only neighbour pages carry cards). "
             + "Screen \(screen); card frames: \(allCardFrames())")
 
         guard let card = onScreen else { return }
@@ -91,14 +87,14 @@ final class CardsVisibleUITests: XCTestCase {
     }
 
     /// The first card whose frame sits within the visible screen bounds (a real,
-    /// non-zero, on-screen frame) — i.e. a card in the CENTRE pane, not an
-    /// off-screen mirror.
+    /// non-zero, on-screen frame) — i.e. a card on the current day's page, not an
+    /// off-screen neighbour page.
     private func onScreenCard(in screen: CGRect) -> XCUIElement? {
         allCards().first { c in
             let f = c.frame
             guard f.width > 1, f.height > 1 else { return false }
             // Must overlap the screen horizontally with its origin on-screen:
-            // mirror cards sit at minX ≈ -screenWidth (left) or ≈ +screenWidth.
+            // neighbour-page cards sit at minX ≈ -screenWidth (left) or ≈ +screenWidth.
             return f.minX >= screen.minX - 1
                 && f.minX < screen.maxX
                 && screen.intersects(f)

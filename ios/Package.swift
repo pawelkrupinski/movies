@@ -68,7 +68,6 @@ let package = Package(
                 "Views/CardSpacingStyle.swift",
                 "Views/CinemaHeaderStyle.swift",
                 "Views/CityGate.swift",
-                "Views/DayCarousel.swift",
                 "Views/FilmCardView.swift",
                 "Views/FilmDetailStyle.swift",
                 "Views/FilmDetailView.swift",

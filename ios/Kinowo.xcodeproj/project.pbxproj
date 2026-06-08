@@ -24,7 +24,6 @@
 		DD00000000000000000009 /* HTMLDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000009 /* HTMLDecoding.swift */; };
 		DD0000000000000000000A /* UserPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000A /* UserPreferences.swift */; };
 		DD0000000000000000000B /* FilmGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000B /* FilmGridView.swift */; };
-		DD000000000000000000F0 /* DayCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000000000000000000F0 /* DayCarousel.swift */; };
 		DD0000000000000000000C /* FilmCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000C /* FilmCardView.swift */; };
 		DD0000000000000000000D /* ShowingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000D /* ShowingsView.swift */; };
 		DD0000000000000000000E /* RatingBadgesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000E /* RatingBadgesView.swift */; };
@@ -67,7 +66,6 @@
 
 		DD00000000000000000022 /* RetryBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000022 /* RetryBackoff.swift */; };
 		DD00000000000000000044 /* SwipeHint.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000044 /* SwipeHint.swift */; };
-		DD00000000000000000090 /* DaySwipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000090 /* DaySwipe.swift */; };
 		DD00000000000000000080 /* TopBarLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000080 /* TopBarLayout.swift */; };
 		DD00000000000000000036 /* FormatTokenFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000036 /* FormatTokenFilter.swift */; };
 		DD00000000000000000050 /* PosterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000050 /* PosterStore.swift */; };
@@ -107,7 +105,6 @@
 		CC00000000000000000009 /* HTMLDecoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLDecoding.swift; sourceTree = "<group>"; };
 		CC0000000000000000000A /* UserPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferences.swift; sourceTree = "<group>"; };
 		CC0000000000000000000B /* FilmGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmGridView.swift; sourceTree = "<group>"; };
-		CC000000000000000000F0 /* DayCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayCarousel.swift; sourceTree = "<group>"; };
 		CC0000000000000000000C /* FilmCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmCardView.swift; sourceTree = "<group>"; };
 		CC0000000000000000000D /* ShowingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowingsView.swift; sourceTree = "<group>"; };
 		CC0000000000000000000E /* RatingBadgesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingBadgesView.swift; sourceTree = "<group>"; };
@@ -150,7 +147,6 @@
 
 		CC00000000000000000022 /* RetryBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryBackoff.swift; sourceTree = "<group>"; };
 		CC00000000000000000044 /* SwipeHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeHint.swift; sourceTree = "<group>"; };
-		CC00000000000000000090 /* DaySwipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaySwipe.swift; sourceTree = "<group>"; };
 		CC00000000000000000080 /* TopBarLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopBarLayout.swift; sourceTree = "<group>"; };
 		CC00000000000000000036 /* FormatTokenFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatTokenFilter.swift; sourceTree = "<group>"; };
 		CC00000000000000000050 /* PosterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterStore.swift; sourceTree = "<group>"; };
@@ -238,7 +234,6 @@
 				CC00000000000000000022 /* RetryBackoff.swift */,
 				CC00000000000000000044 /* SwipeHint.swift */,
 				CC00000000000000000080 /* TopBarLayout.swift */,
-				CC00000000000000000090 /* DaySwipe.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -282,7 +277,6 @@
 			children = (
 				CC00000000000000000301 /* CityGate.swift */,
 				CC0000000000000000000B /* FilmGridView.swift */,
-				CC000000000000000000F0 /* DayCarousel.swift */,
 				CC0000000000000000000C /* FilmCardView.swift */,
 				CC00000000000000000018 /* FilmDetailView.swift */,
 				CC0000000000000000000D /* ShowingsView.swift */,
@@ -433,7 +427,6 @@
 				DD00000000000000000009 /* HTMLDecoding.swift in Sources */,
 				DD0000000000000000000A /* UserPreferences.swift in Sources */,
 				DD0000000000000000000B /* FilmGridView.swift in Sources */,
-				DD000000000000000000F0 /* DayCarousel.swift in Sources */,
 				DD0000000000000000000C /* FilmCardView.swift in Sources */,
 				DD0000000000000000000D /* ShowingsView.swift in Sources */,
 				DD0000000000000000000E /* RatingBadgesView.swift in Sources */,
@@ -460,7 +453,6 @@
 				DD00000000000000000022 /* RetryBackoff.swift in Sources */,
 				DD00000000000000000044 /* SwipeHint.swift in Sources */,
 				DD00000000000000000080 /* TopBarLayout.swift in Sources */,
-				DD00000000000000000090 /* DaySwipe.swift in Sources */,
 				DD00000000000000000036 /* FormatTokenFilter.swift in Sources */,
 				DD00000000000000000050 /* PosterStore.swift in Sources */,
 				DD00000000000000000051 /* CachedAsyncImage.swift in Sources */,
