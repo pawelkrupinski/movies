@@ -1533,6 +1533,54 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  it should "preview the destination day mid-drag — flip past the commit boundary, return when dragged back" in {
+    onPath("/") { page =>
+      coarsePointer(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "today"
+
+      // Commit boundary is 40% of the pager width; viewport is 380px wide.
+      val threshold = page.evalInt("Math.round(document.getElementById('view-pager').offsetWidth * 0.4)")
+
+      page.eval(synthDrag("pointerdown", 300, 500))
+      page.eval(synthDrag("pointermove", 240, 505))   // dx = -60 → lock + arm, still under the boundary
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "today"
+
+      // Drag left well past the boundary → the highlight previews the next day.
+      page.eval(synthDrag("pointermove", 300 - (threshold + 40), 505))
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"
+      page.evalInt("document.querySelectorAll('.day-pill.active').length") shouldBe 1
+
+      // Ease back under the boundary → the highlight returns to the current day.
+      page.eval(synthDrag("pointermove", 290, 505))   // dx = -10
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "today"
+
+      // Releasing under the boundary snaps back, leaving the current day highlighted.
+      page.eval(synthDrag("pointerup", 290, 505))
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "today"
+    }
+  }
+
+  it should "leave the previewed day highlighted after a committed swipe" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      coarsePointer(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+
+      val threshold = page.evalInt("Math.round(document.getElementById('view-pager').offsetWidth * 0.4)")
+      page.eval(synthDrag("pointerdown", 300, 500))
+      page.eval(synthDrag("pointermove", 240, 505))
+      page.eval(synthDrag("pointermove", 300 - (threshold + 40), 505))   // past the boundary → previews tomorrow
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"
+      page.eval(synthDrag("pointerup", 300 - (threshold + 40), 505))     // commit
+
+      page.waitFor("document.getElementById('date-filter').value === 'tomorrow'", timeoutMs = 2000)
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"
+    }
+  }
+
   "the day-filter select" should "be present but visually hidden — the pills are the visible control" in {
     onPath("/") { page =>
       page.evalBool("document.getElementById('date-filter') !== null") shouldBe true

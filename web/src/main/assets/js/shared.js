@@ -1072,14 +1072,19 @@
   // `.active` + `aria-selected` on the matching pill, clear the rest. Called on
   // boot and after every committed day change (via `onDateChange`), plus
   // eagerly on a pill tap so the highlight moves before the slide commits.
-  function syncDayPills() {
-    const sel = document.getElementById('date-filter');
-    if (!sel) return;
+  // Set `.active` + `aria-selected` on the pill matching `value`, clear the rest.
+  function highlightDayPill(value) {
     document.querySelectorAll('#day-pills .day-pill').forEach(p => {
-      const on = p.dataset.day === sel.value;
+      const on = p.dataset.day === value;
       p.classList.toggle('active', on);
       p.setAttribute('aria-selected', on ? 'true' : 'false');
     });
+  }
+
+  function syncDayPills() {
+    const sel = document.getElementById('date-filter');
+    if (!sel) return;
+    highlightDayPill(sel.value);
   }
   window.syncDayPills = syncDayPills;
 
@@ -1739,6 +1744,20 @@
     if (track) track.style.transform = 'translateX(calc(-100vw + ' + dx + 'px))';
   }
 
+  // While a finger drag is in flight, move the day-pill highlight to the day a
+  // release RIGHT NOW would land on: past the commit boundary → the neighbour
+  // we'd swipe to (finger left → next, right → prev), otherwise back to the
+  // current day. Distance-only, matching the boundary the finger feels — the
+  // grid's `#date-filter` stays put until the swipe actually commits, so this is
+  // a pure preview of the pending decision. Mirrors the old filmy/kina tab
+  // swipe, where the tab indicator flipped the moment you crossed the snap line.
+  function previewDayPillForDrag(dx) {
+    const sel = document.getElementById('date-filter');
+    if (!sel) return;
+    const past = Math.abs(dx) > pagerWidth() * COMMIT_FRACTION;
+    highlightDayPill(past ? (neighborDay(dx < 0 ? 1 : -1) || sel.value) : sel.value);
+  }
+
   // ── Unified day-change slide ────────────────────────────────────────────────
 
   // Commit the day change once a slide has carried the target column into view:
@@ -1827,6 +1846,7 @@
     const dayDir = dir === 'left' ? 1 : -1;   // swipe-left → next day
     const target = neighborDay(dayDir);
     if (target == null) { unmountNeighbors(); return; }
+    highlightDayPill(target);   // keep the pill on the target through the slide (covers a sub-threshold flick)
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       commitDay(target);
       return;
@@ -1839,6 +1859,7 @@
   function snapBack() {
     const track = dayTrack();
     if (!track) return;
+    syncDayPills();   // the drag may have previewed a neighbour — return the highlight to the real day
     const ms = swipeAnimMs();
     track.style.transition = 'transform ' + ms + 'ms ease';
     setTrack(0);
@@ -1903,8 +1924,9 @@
     _drag.lastDx = dx;
     _drag.lastT = e.timeStamp;
     // The track follows the finger 1:1 (on top of the parked -100vw), revealing
-    // the neighbour day's column from whichever edge the finger pulls in.
-    if (_drag.armed) setTrack(dx);
+    // the neighbour day's column from whichever edge the finger pulls in; the
+    // pill highlight previews the day a release would land on.
+    if (_drag.armed) { setTrack(dx); previewDayPillForDrag(dx); }
   }, { passive: true });
 
   // Decision happens ONLY when the finger lifts (or the gesture cancels): step
