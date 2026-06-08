@@ -5,7 +5,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -18,7 +18,7 @@ import scala.util.Try
  * by that slug; the per-film detail page is fetched for runtime / director /
  * year / countries / genres / synopsis, degrading to listing-only on failure.
  */
-class MuranowClient(http: HttpFetch) extends CinemaScraper {
+class MuranowClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
 
   // Static film node pages cached across passes; the calendar listing keeps the
   // live `http` since its showtimes change every pass.
@@ -35,7 +35,7 @@ class MuranowClient(http: HttpFetch) extends CinemaScraper {
 
   def fetch(): Seq[CinemaMovie] = {
     val doc  = Jsoup.parse(http.get(RepertoireUrl))
-    val year = MuranowClient.yearFromLabel(Option(doc.selectFirst("p.calendar-seance-full__month-label")).map(_.text).getOrElse(""))
+    val year = MuranowClient.yearFromLabel(Option(doc.selectFirst("p.calendar-seance-full__month-label")).map(_.text).getOrElse(""), today.getYear)
 
     val slots = doc.select("div.calendar-seance-full__day--filled").asScala.toSeq.flatMap { day =>
       MuranowClient.dayDate(day, year) match {
@@ -102,8 +102,8 @@ object MuranowClient {
 
   private val YearPat = """\b(20\d{2})\b""".r
 
-  def yearFromLabel(label: String): Int =
-    YearPat.findFirstMatchIn(label).map(_.group(1).toInt).getOrElse(java.time.LocalDate.now().getYear)
+  def yearFromLabel(label: String, fallbackYear: Int = LocalDate.now(ZoneId.of("Europe/Warsaw")).getYear): Int =
+    YearPat.findFirstMatchIn(label).map(_.group(1).toInt).getOrElse(fallbackYear)
 
   def slugOf(href: String): Option[String] =
     """(/film/[^?#"']+)""".r.findFirstMatchIn(href).map(_.group(1))

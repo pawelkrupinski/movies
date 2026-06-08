@@ -5,11 +5,11 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import tools.HttpFetch
 
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
-class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
+class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
 
   val cinema: Cinema = KinoMuza
   private val RepertoireUrl = "https://www.kinomuza.pl/repertuar/"
@@ -17,7 +17,6 @@ class KinoMuzaClient(http: HttpFetch) extends CinemaScraper {
   private def parseDate(ddMM: String): Option[LocalDate] =
     Try {
       val parts     = ddMM.trim.split("\\.")
-      val today     = LocalDate.now()
       val candidate = LocalDate.of(today.getYear, parts(1).toInt, parts(0).toInt)
       // Only roll forward when the date is *substantially* in the past —
       // matches `KinoBulgarskaClient`'s rule. A 2-day-old listing (the

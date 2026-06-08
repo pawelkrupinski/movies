@@ -5,7 +5,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.{Element, TextNode}
 import tools.HttpFetch
 
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -31,11 +31,12 @@ import scala.util.Try
  * page is a film screening — even the free exhibition-tie-in screenings carry a
  * real film title — so we keep them all.
  */
-class KinoPortClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
+class KinoPortClient(http: HttpFetch, override val cinema: Cinema,
+                     today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoPortClient.PageUrl)
 
-  def fetch(): Seq[CinemaMovie] = KinoPortClient.parse(http.get(KinoPortClient.PageUrl), cinema)
+  def fetch(): Seq[CinemaMovie] = KinoPortClient.parse(http.get(KinoPortClient.PageUrl), cinema, today.getYear)
 }
 
 object KinoPortClient {
@@ -51,9 +52,10 @@ object KinoPortClient {
 
   private case class RawSlot(title: String, dateTime: LocalDateTime, bookingUrl: Option[String])
 
-  def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
+  def parse(html: String, cinema: Cinema,
+            fallbackYear: Int = LocalDate.now(ZoneId.of("Europe/Warsaw")).getYear): Seq[CinemaMovie] = {
     val doc  = Jsoup.parse(html)
-    val year = canonicalYear(doc)
+    val year = canonicalYear(doc, fallbackYear)
     val link = canonicalUrl(doc)
 
     val slots = doc.select(".entry-content p, .entry-content > div p").asScala.toSeq match {
@@ -145,8 +147,8 @@ object KinoPortClient {
 
   /** Four-digit year from the canonical / og:url URL; falls back to the current
    *  Warsaw year when the page carries no datable URL. */
-  private def canonicalYear(doc: org.jsoup.nodes.Document): Int =
+  private def canonicalYear(doc: org.jsoup.nodes.Document, fallbackYear: Int): Int =
     canonicalUrl(doc)
       .flatMap(u => YearInUrl.findFirstMatchIn(u).map(_.group(1).toInt))
-      .getOrElse(java.time.LocalDate.now(java.time.ZoneId.of("Europe/Warsaw")).getYear)
+      .getOrElse(fallbackYear)
 }

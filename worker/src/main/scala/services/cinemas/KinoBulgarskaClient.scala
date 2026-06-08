@@ -5,12 +5,12 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import tools.{HttpFetch, ParallelDetailFetch}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
+class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
 
   val cinema: Cinema = KinoBulgarska
   private val PageUrl = "http://kinobulgarska19.pl/repertuar"
@@ -30,7 +30,6 @@ class KinoBulgarskaClient(http: HttpFetch) extends CinemaScraper {
     DatePat.findFirstMatchIn(text).flatMap { m =>
       ScraperParse.PolishMonths.get(m.group(2)).map { month =>
         val day       = m.group(1).toInt
-        val today     = LocalDate.now()
         val candidate = LocalDate.of(today.getYear, month, day)
         // Cinema dates in the page have no year. Roll forward to next year
         // only when the parsed date is *substantially* in the past —

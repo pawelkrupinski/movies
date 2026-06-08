@@ -42,7 +42,7 @@ class CinemaScraperCatalog(
 
   // Shared per-source helper clients the scrapers below reuse.
   val cinemaCityClient: CinemaCityClient = new CinemaCityClient(http)
-  val kinoMuzaClient:   KinoMuzaClient   = new KinoMuzaClient(http)
+  val kinoMuzaClient:   KinoMuzaClient   = new KinoMuzaClient(http, today)
 
   private val poznanScrapers: Seq[CinemaScraper] = Seq(
     new MultikinoClient(mkFetch),
@@ -52,7 +52,7 @@ class CinemaScraperCatalog(
     new CinemaCityScraper(cinemaCityClient, "1078", CinemaCityPoznanPlaza),
     new CinemaCityScraper(cinemaCityClient, "1081", CinemaCityKinepolis),
     kinoMuzaClient,
-    new KinoBulgarskaClient(http),
+    new KinoBulgarskaClient(http, today),
     new KinoApolloClient(http),
     new RialtoClient(http),
   )
@@ -63,7 +63,7 @@ class CinemaScraperCatalog(
     new MultikinoClient(mkFetch, "0010", MultikinoPasazGrunwaldzki),
     new HeliosClient(http, HeliosNuxt.Magnolia, today),
     new HeliosClient(http, HeliosNuxt.AlejaBielany, today),
-    new NoweHoryzontyClient(http),
+    new NoweHoryzontyClient(http, today),
     new DcfClient(http),
   )
 
@@ -81,16 +81,16 @@ class CinemaScraperCatalog(
     new MultikinoClient(mkFetch, "0024", MultikinoTargowek),
     new MultikinoClient(mkFetch, "0025", MultikinoWolaPark),
     new HeliosClient(http, HeliosNuxt.BlueCity, today),
-    new MuranowClient(http),
+    new MuranowClient(http, today),
     new Bilety24Client(http, "https://kinoluna.bilety24.pl", KinoLuna),
     new Bilety24Client(http, "https://kinoelektronik.pl", KinoElektronik, "/"),
-    new IluzjonClient(http),
+    new IluzjonClient(http, today),
     new KinoGramClient(http),
     new KinoKulturaClient(http),
     new AmondoClient(http),
-    new BokClient(http, "kino-na-boku", KinoNaBoku),
-    new BokClient(http, "kino-glebocka-66", KinoGlebocka66),
-    new KinomuzeumClient(http),
+    new BokClient(http, "kino-na-boku", KinoNaBoku, today),
+    new BokClient(http, "kino-glebocka-66", KinoGlebocka66, today),
+    new KinomuzeumClient(http, today),
     new SwitClient(http),
     new PromKepaClient(http),
     new FalenicaClient(http),
@@ -104,7 +104,7 @@ class CinemaScraperCatalog(
     // through `bnFetch` — Zyte's residential egress in prod, the fixture fake
     // in tests. Same seam as Kino Kameralne below.
     new AdaKinoStudyjneClient(bnFetch, AdaKinoStudyjne),
-    new AlternatywyClient(http),
+    new AlternatywyClient(http, today),
   )
 
   private val krakowScrapers: Seq[CinemaScraper] = Seq(
@@ -172,7 +172,7 @@ class CinemaScraperCatalog(
     new KinoIkmClient(http, KinoIkm),
     new KinoMuzeumGdanskClient(http, KinoMuzeumGdansk),
     new KinoZakClient(http, KinoZak),
-    new KinoPortClient(http, KinoPort),
+    new KinoPortClient(http, KinoPort, today),
     new Cinema1Client(http, Cinema1Gdansk, today),
     new GdynskieCentrumFilmoweClient(http, GdynskieCentrumFilmowe),
   )
