@@ -169,15 +169,10 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     LaunchedEffect(vm.dateFilter) { previewDay = vm.dateFilter }
 
     // The centre column's vertical scroll, hoisted so the revealed neighbours can
-    // mirror it during a drag — a swipe lands the user at the same place in the
-    // new day (the mirror carries the offset over), so it must NOT reset on a
-    // swipe. Only a date-PILL tap eases it back to the top, via [pillResetToken].
+    // mirror it during a drag (the new day slides in showing the same rows) and
+    // so ScrollToTopOnChange can then ease it back to the top once the day flip
+    // commits — a no-op when already at the top, so an at-top swipe never janks.
     val sharedScroll = rememberLazyGridState()
-
-    // Bumped on every date-pill TAP (not on a swipe). Keys ScrollToTopOnChange so
-    // tapping a day jumps the list to the top, while swiping between days keeps
-    // the scroll position — otherwise the carousel's scroll-mirror is pointless.
-    var pillResetToken by remember { mutableStateOf(0) }
 
     // Surface the swipe hint the moment the first repertoire load lands, gated
     // to once per calendar day until the first swipe. The decision reads
@@ -215,7 +210,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 // The date pills always spread to fill the row; on wide screens
                 // the inline search field sits between them and Filtry, capped
                 // at a fixed width rather than eating the leftover space.
-                DatePills(wide, highlighted = previewDay, onSelect = { vm.dateFilter = it; pillResetToken++ })
+                DatePills(wide, highlighted = previewDay, onSelect = { vm.dateFilter = it })
                 if (wide) {
                     InlineSearchField(value = vm.search, onValueChange = { vm.search = it })
                 }
@@ -268,12 +263,12 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                 // repertoire on show narrows to a single cinema —
                                 // it's the same name on every card.
                                 val showCinemaHeaders = distinctCinemaCount(visible) > 1
-                                // Only the centre column eases to the top, and only
-                                // on a date-PILL tap (pillResetToken) — a swipe keeps
-                                // the scroll the mirror carried into the new day. The
-                                // neighbours track scroll via the mirror, so they
-                                // must not self-reset.
-                                if (day == vm.dateFilter) ScrollToTopOnChange(state, pillResetToken)
+                                // Only the centre column eases to the top on a day
+                                // change (swipe OR pill tap): the new day rolls back
+                                // up from whatever scroll the mirror carried in, a
+                                // no-op when already at the top. The neighbours track
+                                // scroll via the mirror, so they must not self-reset.
+                                if (day == vm.dateFilter) ScrollToTopOnChange(state, vm.dateFilter)
                                 FilmsGrid(
                                     films = visible,
                                     state = state,
