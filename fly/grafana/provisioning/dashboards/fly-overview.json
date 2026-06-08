@@ -76,13 +76,16 @@
     },
     {
       "id": 5,
-      "title": "HTTP p95 latency (s)",
+      "title": "HTTP latency (s)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
       "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "histogram_quantile(0.95, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "histogram_quantile(0.99, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))", "legendFormat": "{{app}} p99" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))", "legendFormat": "{{app}} p95" },
+        { "refId": "C", "expr": "histogram_quantile(0.75, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))", "legendFormat": "{{app}} p75" },
+        { "refId": "D", "expr": "histogram_quantile(0.50, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))", "legendFormat": "{{app}} p50" }
       ]
     },
     {
