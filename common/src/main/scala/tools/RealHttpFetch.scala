@@ -17,16 +17,17 @@ class RealHttpFetch extends HttpFetch with Logging {
   // thread that nobody noticed. The recording script can't: one stuck
   // request blocks `fullySyncOne`'s sequential loop and the rest of the
   // 200+ rows never run.
-  // Connect timeout bounds only the TCP handshake — a live host completes it
-  // in well under a second, so 5s is generous headroom. Keeping it low matters
-  // for the fan-out scrapers: ParallelDetailFetch runs just 2 fetches at once,
-  // so a dead/refusing host that hangs the connect pins HALF the budget for the
-  // whole timeout. At 10s a couple of unreachable detail URLs stalled a wave for
-  // 10s each (most of Kinoteka's ~57s scrape); at 5s the slot is freed twice as
-  // fast to fetch the films that *are* reachable. The request timeout below is
-  // separate — it bounds reading the response, where a slow upstream legitimately
-  // needs longer — so trimming connect doesn't cut off slow-but-alive servers.
-  private val ConnectTimeout = Duration.ofSeconds(5)
+  // The connect timeout (for HTTPS this bounds the TCP handshake AND the TLS
+  // handshake — the JVM throws HttpConnectTimeoutException if either runs over).
+  // A live host completes both in well under a second, so 5s is generous
+  // headroom. Keeping it low matters for the fan-out scrapers:
+  // ParallelDetailFetch runs just 2 fetches at once, so a dead/refusing host
+  // that hangs the connect pins HALF the budget for the whole timeout. At 10s a
+  // couple of unreachable detail URLs stalled a wave for 10s each (most of
+  // Kinoteka's ~57s scrape); at 5s the slot is freed twice as fast to fetch the
+  // films that *are* reachable. The request timeout below is separate — it
+  // bounds reading the response, where a slow upstream legitimately needs longer
+  // — so trimming connect doesn't cut off slow-but-alive servers.
   private val RequestTimeout = Duration.ofSeconds(30)
 
   // `CookieManager` makes the client a well-behaved HTTP citizen: any
@@ -35,10 +36,10 @@ class RealHttpFetch extends HttpFetch with Logging {
   // depends on it — the homepage hands out a session cookie that the
   // API call must carry — and other clients are unaffected (cookies
   // are domain-scoped, and the APIs we talk to are otherwise stateless).
-  private val underlying = HttpClient.newBuilder()
+  private def buildClient(connectTimeout: Duration): HttpClient = HttpClient.newBuilder()
     .version(HttpClient.Version.HTTP_1_1)
     .followRedirects(HttpClient.Redirect.NORMAL)
-    .connectTimeout(ConnectTimeout)
+    .connectTimeout(connectTimeout)
     // Trust the JDK defaults PLUS the Certum root that OpenJDK's cacerts omits,
     // so the Certum-rooted cinema sites (Kinomuzeum/artmuseum.pl, Kino
     // Muranów/kinomuranow.pl, sdk.waw.pl) stop failing PKIX path building. See
@@ -47,23 +48,35 @@ class RealHttpFetch extends HttpFetch with Logging {
     .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
     .build()
 
+  private val underlying   = buildClient(RealHttpFetch.DefaultConnectTimeout)
+  // A second client with a much longer connect budget for the handful of hosts
+  // whose TLS handshake is pathologically slow (see RealHttpFetch.isSlowTlsHost).
+  private val slowTlsClient = buildClient(RealHttpFetch.SlowTlsConnectTimeout)
+
+  /** Pick the client by host: the slow-TLS hosts get the long connect budget,
+   *  everything else keeps the tight 5s. Package-private so the spec can assert
+   *  the routing (the actual slow-handshake behaviour needs a real server and
+   *  can't be reached in a unit test). */
+  private[tools] def clientFor(url: String): HttpClient =
+    if (RealHttpFetch.isSlowTlsHost(url)) slowTlsClient else underlying
+
   override def get(url: String): String = get(url, Map.empty)
 
   /** Raw wire bytes (gunzipped, NOT charset-decoded) so a caller can pick the
    *  right charset itself. See [[HttpFetch.getBytes]] — only the charset-quirky
    *  scrapers (Kino Charlie) use this; everyone else gets the UTF-8 `get`. */
   override def getBytes(url: String): Array[Byte] = {
-    val resp = underlying.send(buildRequest(url, Map.empty), HttpResponse.BodyHandlers.ofByteArray())
+    val resp = clientFor(url).send(buildRequest(url, Map.empty), HttpResponse.BodyHandlers.ofByteArray())
     val code = resp.statusCode()
     if (code >= 200 && code < 300) Gunzip.decode(resp.body())
     else throw new RuntimeException(s"HTTP $code for GET $url")
   }
 
   override def get(url: String, headers: Map[String, String]): String =
-    sendLogged("GET", url, underlying.send(buildRequest(url, headers), HttpResponse.BodyHandlers.ofByteArray()))
+    sendLogged("GET", url, clientFor(url).send(buildRequest(url, headers), HttpResponse.BodyHandlers.ofByteArray()))
 
   override def getAsync(url: String): CompletableFuture[String] =
-    underlying.sendAsync(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray())
+    clientFor(url).sendAsync(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray())
       .handle[String] { (response, throwable) =>
         if (throwable != null) {
           logFailure("GET", url, unwrap(throwable))
@@ -83,7 +96,7 @@ class RealHttpFetch extends HttpFetch with Logging {
       .header("Accept-Encoding", "gzip")
       .POST(HttpRequest.BodyPublishers.ofString(body))
       .build()
-    sendLogged("POST", url, underlying.send(req, HttpResponse.BodyHandlers.ofByteArray()))
+    sendLogged("POST", url, clientFor(url).send(req, HttpResponse.BodyHandlers.ofByteArray()))
   }
 
   // ── Logging hooks ─────────────────────────────────────────────────────────
@@ -164,4 +177,36 @@ class RealHttpFetch extends HttpFetch with Logging {
   }
 
   protected def decorateBuilder(builder: HttpRequest.Builder, url: String): HttpRequest.Builder = builder
+}
+
+object RealHttpFetch {
+
+  /** The tight default: a live host's TCP+TLS handshake finishes in well under a
+   *  second, so 5s frees a stalled fan-out slot fast. See the comment on the
+   *  client builder for why low matters. */
+  val DefaultConnectTimeout: Duration = Duration.ofSeconds(5)
+
+  /** The long budget for the slow-TLS hosts below. Sized above the worst
+   *  handshake we measured (~27s) with headroom; the response read is bounded
+   *  separately by RequestTimeout, so this only stretches the connect phase. */
+  val SlowTlsConnectTimeout: Duration = Duration.ofSeconds(40)
+
+  /** Hosts whose TLS handshake is pathologically slow — the TCP connect lands
+   *  instantly but the handshake itself takes 20-30s (the server's own latency,
+   *  reproducible with curl/openssl, not our cert path). Under the 5s default
+   *  every fetch died with HttpConnectTimeoutException, leaving the cinema
+   *  perpetually red on /uptime even though the page returns HTTP 200 when given
+   *  enough time:
+   *    - iluzjon.fn.org.pl — Kino Iluzjon (Filmoteka Narodowa, Warszawa).
+   *  Matched by exact host or a dotted sub-domain (so www.iluzjon.fn.org.pl
+   *  matches, an unrelated *.fn.org.pl does not). */
+  private val SlowTlsHostSuffixes: Set[String] = Set("iluzjon.fn.org.pl")
+
+  def isSlowTlsHost(url: String): Boolean =
+    // Swallow a malformed URL here so routing never changes failure semantics —
+    // the subsequent buildRequest's own URI.create throws it the same way.
+    scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.exists { host =>
+      val h = host.toLowerCase
+      SlowTlsHostSuffixes.exists(s => h == s || h.endsWith("." + s))
+    }
 }
