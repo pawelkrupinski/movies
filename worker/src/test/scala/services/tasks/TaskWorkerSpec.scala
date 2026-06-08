@@ -115,4 +115,16 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers {
     q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 1L
     q.countByState().getOrElse(TaskState.WorkedOn, 0L) shouldBe 0L
   }
+
+  "backoffMillis" should "ramp exponentially from pollInterval and cap at maxIdleInterval" in {
+    // A quiet pool must stop polling the shared Mongo every few seconds; the idle
+    // sleep doubles per consecutive empty claim and caps, so the floor decays.
+    val w = new TaskWorker(new InMemoryTaskQueue, Seq.empty,
+      pollInterval = 5.seconds, maxIdleInterval = 30.seconds, poolSize = 1)
+    w.backoffMillis(1) shouldBe 5000L   // first idle → base
+    w.backoffMillis(2) shouldBe 10000L  // ×2
+    w.backoffMillis(3) shouldBe 20000L  // ×4
+    w.backoffMillis(4) shouldBe 30000L  // ×8 = 40s, capped at 30s
+    w.backoffMillis(50) shouldBe 30000L // stays capped, no overflow
+  }
 }

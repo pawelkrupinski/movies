@@ -1,6 +1,6 @@
 package services.tasks
 
-import com.mongodb.MongoWriteException
+import com.mongodb.{MongoWriteException, WriteConcern}
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.BsonString
@@ -40,10 +40,26 @@ import scala.util.Try
  * duplicate-key error is caught as `Duplicate` (the `MongoLock` idiom).
  *
  * Blocking `.toFuture()` throughout — callers are daemon worker/reaper threads.
+ *
+ * Writes use a relaxed `{w:1, j:false}` write concern ([[MongoTaskQueue.QueueWriteConcern]]):
+ * the queue is ephemeral bookkeeping, not a system of record, so paying the
+ * journal-fsync + majority wait on every claim/complete/release/reap/enqueue is
+ * wasted cost — on the shared-cpu Mongo it was the dominant per-op latency (the
+ * `waitForWriteConcernDurationMillis` in the slow-op log). An ack lost to a crash
+ * inside the ~100ms journal window self-heals: a lost `claim` leaves the task
+ * waiting, a lost `complete` leaves a `worked_on` task whose lease the reaper
+ * returns, and every handler is freshness-gated + idempotent so the re-run is a
+ * `Skipped`. Atomic, multi-machine-safe claiming is unaffected — it comes from
+ * `findOneAndUpdate` on the primary, not from the write concern.
  */
 class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = "tasks") extends TaskQueue with Logging {
+  import MongoTaskQueue.QueueWriteConcern
 
-  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(collectionName))
+  private val coll: Option[MongoCollection[Document]] =
+    db.map(_.getCollection(collectionName).withWriteConcern(QueueWriteConcern))
+
+  /** The effective write concern of the `tasks` collection — for diagnostics/tests. */
+  def collectionWriteConcern: Option[WriteConcern] = coll.map(_.writeConcern)
 
   coll.foreach { c =>
     val t = new Thread(() => createIndexes(c), "tasks-init")
@@ -224,4 +240,11 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       attempts = doc.getInteger("attempts", 0)
     )
   }
+}
+
+object MongoTaskQueue {
+  /** `{w:1, j:false}` — ack on primary apply, no journal-fsync/majority wait. The
+   *  queue is recoverable bookkeeping, so the durability trade buys back the
+   *  per-op cost that dominated the shared-cpu Mongo's load. See the class doc. */
+  val QueueWriteConcern: WriteConcern = WriteConcern.W1.withJournal(false)
 }

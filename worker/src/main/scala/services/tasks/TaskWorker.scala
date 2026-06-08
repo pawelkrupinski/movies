@@ -51,7 +51,9 @@ class TaskWorker(
   handlers:          Seq[TaskHandler],
   processingTimeout: FiniteDuration = 5.minutes,
   pollInterval:      FiniteDuration = 2.seconds,
-  poolSize:          Int            = 4
+  poolSize:          Int            = 4,
+  maxIdleInterval:   FiniteDuration = 30.seconds,
+  reapInterval:      FiniteDuration = 30.seconds
 ) extends Stoppable with Logging {
   import HandlerOutcome._
   import TaskWorker._
@@ -71,8 +73,11 @@ class TaskWorker(
 
   def start(): Unit = {
     running.set(true)
+    // Leases run `processingTimeout` (5min), so reaping every `reapInterval`
+    // (30s) is ample — a far cheaper cadence than polling, and it keeps the
+    // every-tick `updateMany` off the shared Mongo's commit path most of the time.
     reaper.scheduleWithFixedDelay(
-      () => Try(queue.reapExpiredLeases()), pollInterval.toMillis, pollInterval.toMillis, TimeUnit.MILLISECONDS)
+      () => Try(queue.reapExpiredLeases()), reapInterval.toMillis, reapInterval.toMillis, TimeUnit.MILLISECONDS)
     (0 until poolSize).foreach { i =>
       val id = s"$baseId-$i"
       val t  = new Thread(() => runLoop(id), s"task-worker-$i")
@@ -80,18 +85,41 @@ class TaskWorker(
       t.start()
       workers += t
     }
-    logger.info(s"TaskWorker started ($poolSize worker(s) $baseId-0..${poolSize - 1}, ${byType.size} handler(s), poll ${pollInterval.toSeconds}s).")
+    logger.info(s"TaskWorker started ($poolSize worker(s) $baseId-0..${poolSize - 1}, ${byType.size} handler(s), poll ${pollInterval.toSeconds}s, reap ${reapInterval.toSeconds}s).")
   }
 
-  /** One worker slot: claim a task, run it to completion, claim the next. Sleeps
-   *  `pollInterval` only when idle or when the task returned to the queue. */
-  private def runLoop(workerId: String): Unit =
+  /** One worker slot: claim a task, run it to completion, claim the next.
+   *
+   *  When there's work it loops at full speed (claim → run → claim). When idle it
+   *  backs off exponentially from `pollInterval` up to `maxIdleInterval`, so a
+   *  quiet pool stops hammering the shared Mongo with empty `claim`s every few
+   *  seconds — that constant floor is what denied the shared-cpu box the idle
+   *  time to rebuild CPU credits. A returned (rescheduled/failed) task backs off
+   *  one `pollInterval`, not the full ramp, so a transient failure retries soon. */
+  private def runLoop(workerId: String): Unit = {
+    var idleStreak = 0
     while (running.get()) {
-      val result = Try(claimAndRun(workerId)).getOrElse(PollResult.Idle)
-      if (result != PollResult.Completed && running.get())
-        try Thread.sleep(pollInterval.toMillis)
-        catch { case _: InterruptedException => Thread.currentThread().interrupt() }
+      Try(claimAndRun(workerId)).getOrElse(PollResult.Idle) match {
+        case PollResult.Completed => idleStreak = 0 // got work — claim the next immediately
+        case PollResult.Returned  => idleStreak = 0; sleepFor(pollInterval.toMillis)
+        case PollResult.Idle      => idleStreak += 1; sleepFor(backoffMillis(idleStreak))
+      }
     }
+  }
+
+  /** Sleep, honouring a stop interrupt. */
+  private def sleepFor(ms: Long): Unit =
+    if (running.get())
+      try Thread.sleep(ms)
+      catch { case _: InterruptedException => Thread.currentThread().interrupt() }
+
+  /** Idle back-off: `pollInterval` doubled per consecutive empty claim, capped at
+   *  `maxIdleInterval`. Pure + package-private so the ramp is unit-testable. */
+  private[tasks] def backoffMillis(idleStreak: Int): Long = {
+    val base  = pollInterval.toMillis
+    val shift = math.min(math.max(idleStreak - 1, 0), 30) // guard the bit-shift
+    math.min(base << shift, maxIdleInterval.toMillis)
+  }
 
   /** Claim a single waiting task for `workerId` and run its handler to
    *  completion — one task, then return. Package-private so tests can drive a

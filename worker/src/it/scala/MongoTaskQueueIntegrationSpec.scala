@@ -37,7 +37,11 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
   private val t0 = Instant.parse("2026-06-07T12:00:00Z")
 
-  "MongoTaskQueue" should "add a task then dedup a second with the same key while active" in {
+  "MongoTaskQueue" should "use a relaxed {w:1, j:false} write concern to keep journal-fsync waits off the shared Mongo" in {
+    queue.collectionWriteConcern shouldBe Some(com.mongodb.WriteConcern.W1.withJournal(false))
+  }
+
+  it should "add a task then dedup a second with the same key while active" in {
     val key = s"scrape|it-dedup-${System.nanoTime()}"
     queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0) shouldBe EnqueueResult.Added
     queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0) shouldBe EnqueueResult.Duplicate

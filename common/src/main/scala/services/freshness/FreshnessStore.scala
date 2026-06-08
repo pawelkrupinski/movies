@@ -69,7 +69,11 @@ class InMemoryFreshnessStore extends FreshnessStore {
  */
 class MongoFreshnessStore(db: Option[MongoDatabase] = None) extends FreshnessStore with Logging {
   private val mirror = new ConcurrentHashMap[String, Instant]()
-  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("freshness"))
+  // Relaxed `{w:1, j:false}` like the task queue: freshness stamps are a cache
+  // (a lost write just means a redundant re-fetch later), so the journal/majority
+  // wait per stamp is wasted cost on the shared-cpu Mongo. Reuse the queue's concern.
+  private val coll: Option[MongoCollection[Document]] =
+    db.map(_.getCollection("freshness").withWriteConcern(services.tasks.MongoTaskQueue.QueueWriteConcern))
 
   coll.foreach { c =>
     val t = new Thread(() => hydrate(c), "freshness-init")
