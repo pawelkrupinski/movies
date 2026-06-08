@@ -31,11 +31,11 @@ import java.util.concurrent.CountDownLatch
  */
 object FixtureServerMain {
 
-  // Fixture corpus is anchored at the `17-05-2026` snapshot, same as
+  // Fixture corpus is anchored at the `08-06-2026` snapshot, same as
   // `PageJsBehaviourSpec`. `now` lives at midnight that day so the
   // controller's "future-only" filter doesn't drop showings before any
   // test sees them — independent of the wall-clock when CI runs.
-  private val now = LocalDateTime.of(2026, 5, 17, 0, 0)
+  private val now = LocalDateTime.of(2026, 6, 8, 0, 0)
 
   def main(args: Array[String]): Unit = {
     val portFile = args.headOption.map(Paths.get(_)).getOrElse {
@@ -43,8 +43,8 @@ object FixtureServerMain {
       sys.exit(1)
     }
 
-    System.err.println("[FixtureServerMain] booting FixtureTestWiring(\"17-05-2026\")…")
-    val wiring = new FixtureTestWiring("17-05-2026")
+    System.err.println("[FixtureServerMain] booting FixtureTestWiring(\"08-06-2026\")…")
+    val wiring = new FixtureTestWiring("08-06-2026")
     wiring.bootStartup()
 
     // The read transform is the web app's, built directly from the

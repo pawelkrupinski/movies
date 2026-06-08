@@ -54,7 +54,14 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  */
 object RecordAllDataToFixture extends TestWiring {
   override lazy val movieRepo = new InMemoryMovieRepo()
-  override lazy val httoFetch = new RecordingHttpFetch("17-05-2026", new RealHttpFetch())
+  override lazy val httoFetch = new RecordingHttpFetch("08-06-2026", new RealHttpFetch())
+  // TestWiring stubs the TMDB key to "test-api-key" (fine for replay, where the
+  // fixture filename strips api_key). But RECORDING fires the real request, so
+  // it needs the real key from the environment — otherwise every TMDB search
+  // 401s and no enrichment is captured. The recorded filename is still
+  // key-agnostic (RecordingHttpFetch strips api_key), so replay is unaffected.
+  override lazy val tmdbClient: clients.TmdbClient =
+    new clients.TmdbClient(httoFetch, apiKey = sys.env.get("TMDB_API_KEY"))
 
   def main(args: Array[String]): Unit = {
   // 1. Production-shape pass: every cinema scrape fires, every bus event

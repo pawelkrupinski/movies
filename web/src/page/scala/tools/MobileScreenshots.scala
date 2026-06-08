@@ -36,7 +36,7 @@ object MobileScreenshots {
    *  screenshot only captures the viewport at this height. */
   private val ViewportHeight: Int = 900
 
-  private val now = LocalDateTime.of(2026, 5, 17, 0, 0)
+  private val now = LocalDateTime.of(2026, 6, 8, 0, 0)
 
   def main(args: Array[String]): Unit = {
     val outDir: Path = if (args.nonEmpty) Paths.get(args(0))
@@ -49,7 +49,7 @@ object MobileScreenshots {
     }
 
     try {
-      val wiring = new FixtureTestWiring("17-05-2026")
+      val wiring = new FixtureTestWiring("08-06-2026")
       wiring.bootStartup()
       val svc = new controllers.MovieControllerService(wiring.movieCache)
       implicit val city: models.City = Poznan

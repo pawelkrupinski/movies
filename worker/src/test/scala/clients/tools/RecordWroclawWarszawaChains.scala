@@ -8,7 +8,7 @@ import scala.util.Try
 
 /**
  * Records the Wrocław + Warszawa national-chain scrapes (Cinema City, Multikino,
- * Helios) into the shared `17-05-2026` end-to-end corpus, so the full wired
+ * Helios) into the shared `08-06-2026` end-to-end corpus, so the full wired
  * `cinemaScrapers` list has fixtures for every cinema. Additive only — these
  * cinemas' URLs don't collide with the Poznań fixtures already there, so
  * existing fixtures (and the page snapshots that depend on them) are untouched.
@@ -17,7 +17,7 @@ import scala.util.Try
  */
 object RecordWroclawWarszawaChains {
   def main(args: Array[String]): Unit = {
-    val rec = new RecordingHttpFetch("17-05-2026", new RealHttpFetch())
+    val rec = new RecordingHttpFetch("08-06-2026", new RealHttpFetch())
 
     val cc = new CinemaCityClient(rec)
     val cinemaCity = Seq(

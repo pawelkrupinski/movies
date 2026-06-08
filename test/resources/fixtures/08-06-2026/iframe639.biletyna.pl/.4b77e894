@@ -1,0 +1,2680 @@
+<!DOCTYPE html>  <script>
+    window.bnkInpostGeowidgetToken = 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJzQlpXVzFNZzVlQnpDYU1XU3JvTlBjRWFveFpXcW9Ua2FuZVB3X291LWxvIn0.eyJleHAiOjIwODA3NDUyNzYsImlhdCI6MTc2NTM4NTI3NiwianRpIjoiZjNkMWUyNTEtNGNiNS00YmFlLTk0ZjMtNWI3OTdhYWYxZWNkIiwiaXNzIjoiaHR0cHM6Ly9sb2dpbi5pbnBvc3QucGwvYXV0aC9yZWFsbXMvZXh0ZXJuYWwiLCJzdWIiOiJmOjEyNDc1MDUxLTFjMDMtNGU1OS1iYTBjLTJiNDU2OTVlZjUzNTprVzdLOV94UW5oT3oyc1A5OGM5UlZvbG0xQ2tNOXgweGM2a3Q3dlhESFl3IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoic2hpcHgiLCJzZXNzaW9uX3N0YXRlIjoiY2U3ZDIyYWYtZDU2Zi00ODRkLWI3ZDItMDM1ZDAyOTRhMTlkIiwic2NvcGUiOiJvcGVuaWQgYXBpOmFwaXBvaW50cyIsInNpZCI6ImNlN2QyMmFmLWQ1NmYtNDg0ZC1iN2QyLTAzNWQwMjk0YTE5ZCIsImFsbG93ZWRfcmVmZXJyZXJzIjoiIiwidXVpZCI6IjAxZmM4MzEyLTc0ZmQtNDQ0My04YzJjLWE4NzNjMmJmMDYxYiJ9.ogKGuiU9Eoc-u268I63rY-5XOg9afAiaYZo1YHQmiZjKaK89OKJ17tZKniTHOFqr_DjQb8HQOAiIF7fe-ZhTttbVbT0Vul7C5q6BOXUtwbY8I_MA3bLga9cdcFL4c1JsAr4SWJHuZHJcHb4bP1R12Wbcba3Po3Zd00pCDBOFic2MVuEtaRo0O7QH19uiIWfaVTkEjdvpafqj4vqewpiUIlUZhSnJfU_yfoDnJjewjhMaQ-GDbAeyWKgyeJSCBM0oPJBmqOCMjkBqr0u2LKw4GNKCziYy-9nLrm1XM_sz12kggbLCxlz0jIX427l1Eld689BqbITKQCb6OFaCFfPVEQ';
+  </script>
+  <script>
+    window.bnkInpostGeowidgetConfig = {
+      token: window.bnkInpostGeowidgetToken,
+      cssUrl: 'https://geowidget.inpost.pl/inpost-geowidget.css',
+      jsUrl: 'https://geowidget.inpost.pl/inpost-geowidget.js'
+    };
+  </script>
+<!DOCTYPE html>
+<html lang="pl-PL">
+<head>
+  <script>
+    var get_filter = [];
+  </script>
+  <link rel="stylesheet" type="text/css" href="/fonts/montserrat/font.css?v=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Google Tag Manager -->
+      <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+                new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-5JPX6BJ');</script>
+    <!-- End Google Tag Manager -->
+
+  <script type="text/javascript">
+      var bnk_sid = '81f4ffc6ca55def5ddb293505a20043e';
+      var site_language = 'pl';
+                  var BNK_context = {"theme_name":"iframe","page_metadata":{}};
+  </script>
+  <!-- start of webpack files -->
+<script  type="text/javascript" src="/dist/shared/js/app-e96e9bea-02c43ad04cfe9ee600d7.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-1fd18a3a-f104719d1f026406bb4c.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-4684ec84-108c91715aef5ac46328.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-a189ee2e-53e0252bc81bdf150930.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-d9cd5f2e-0d887d203f70e1b30b7b.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-a6481472-fab9bc86de8895243900.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-9585abe4-b68ad806b0366ed599c7.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-67028aca-85d1f291f881caf21139.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-daddcf13-9f0ae2a3e368a3641ea2.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-1f88bf92-28e82aba4a60b913e42a.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-65cb2941-479bed98bbcddaa5bae1.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-e883c8fb-58219e901c0ba8971bbc.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-da221d79-9b73866b619591a3c3a3.js"></script>
+<script  type="text/javascript" src="/dist/shared/js/app-1199201b-fc86c4ee29a77a906b3e.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/rxjs.vendor-abab9e4bf3a490327a6c.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/moment.vendor-9e25310042aca09cb34e.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/moment-range.vendor-fa85da4acb75537a5380.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/jquery.vendor-c2be2383022f6e9b642b.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/rxjs.ecdc5b47e7.vendor-f52ac0500ead39bd8bfb.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/tslib.vendor-bdb3cab83566982fecd0.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/bootstrap-sass.vendor-d1c62770c481728be2e4.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/js-cookie.vendor-b612e527b3ce4b6de72f.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/rxjs.b928308be6.vendor-b2c7cd1497d718e79de3.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/rxjs.673bb9f1b1.vendor-66d8538355b20ed768db.js"></script>
+<script  type="text/javascript" src="/dist/shared/vendors/rxjs.a598e4f2af.vendor-824281a6f5e894446067.js"></script>
+<script  type="text/javascript" src="/dist/iframe/js/app-9ab01e81e77c9294da4c.js"></script>
+<link rel="preload" href="/dist/shared/css/app-3574871a-2517cbcc2c6006951eba.css" as="style">
+<link rel="stylesheet" type="text/css" href="/dist/shared/css/app-3574871a-2517cbcc2c6006951eba.css"/>
+<link rel="preload" href="/dist/iframe/css/app-b8d532859e0a2a052fe9.css" as="style">
+<link rel="stylesheet" type="text/css" href="/dist/iframe/css/app-b8d532859e0a2a052fe9.css"/>
+<!-- end of webpack files -->
+  <title>biletyna.pl</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" >
+<meta charset="UTF-8"><script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.0/jquery-ui.min.js"></script>
+<script src="/js/gnp.js?ver=1.0"></script>
+<script src="/lib/easyXDM.min.js"></script><link href="https://biletyna.pl" rel="canonical" >      <link rel="apple-touch-icon" sizes="180x180" href="/gfx/favicon/biletyna/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/gfx/favicon/biletyna/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/gfx/favicon/biletyna/favicon-16x16.png">
+    <link rel="manifest" href="/gfx/favicon/biletyna/site.webmanifest?ver=1.1">
+    <link rel="mask-icon" href="/gfx/favicon/biletyna/safari-pinned-tab.svg" color="#ae347a">
+    <link rel="shortcut icon" href="/gfx/favicon/biletyna/favicon.ico">
+    <meta name="apple-mobile-web-app-title" content="Biletyna.pl">
+    <meta name="application-name" content="Biletyna.pl">
+    <meta name="msapplication-TileColor" content="#ae347a">
+    <meta name="msapplication-config" content="/gfx/favicon/biletyna/browserconfig.xml?ver=1.1">
+    <meta name="theme-color" content="#ae347a">
+    <meta name="Author" content="biletyna.pl" />
+  <meta property="fb:app_id" content="178433258981904"/>
+  <meta property="fb:admins" content="100000669639818" />
+
+  <meta name="google-site-verification" content="dw9NZ8jh0MLPUjF-hNBtWegCSFUBOYQNRFMON3qyqsA" />
+  <meta name="msvalidate.01" content="E3F633C1890A1EE8824259D085D0A07C" />
+  
+      <!-- Facebook start -->
+      <div id="fb-root"></div>
+      <script>
+        window.fbAsyncInit = function() {
+          // init the FB JS SDK
+          FB.init({
+            appId      : "178433258981904",                    // App ID from the app dashboard
+            status     : true,                                 // Check Facebook Login status
+            xfbml      : true                                  // Look for social plugins on the page
+          });
+
+          // Additional initialization code such as adding Event Listeners goes here
+          FB.Event.subscribe("comment.create", function(response) {
+            //console.log(response);
+            out = $.ajax({ url: response.href+"/fbupdate/1" });
+            //console.log(out);
+          });
+        };
+
+        // Load the SDK asynchronously
+        (function(){
+           if (document.getElementById("facebook-jssdk")) {return;}
+           var firstScriptElement = document.getElementsByTagName("script")[0];
+           var facebookJS = document.createElement("script"); 
+           facebookJS.id = "facebook-jssdk";
+           facebookJS.src = "//connect.facebook.net/pl_PL/all.js";
+           // Insert the Facebook JS SDK into the DOM
+           firstScriptElement.parentNode.insertBefore(facebookJS, firstScriptElement);
+         }());
+      </script>
+      <!-- Facebook end -->
+    
+  
+  <link rel="stylesheet" href="/lib/jq-fancybox/jquery.fancybox.css?v=2.1.5" type="text/css" media="screen" />
+  <script type="text/javascript" src="/lib/jq-fancybox/jquery.fancybox.pack.js?v=2.1.5"></script>
+  <script type='text/javascript'>
+      $(document).ready(function() {
+          // fancybox
+          // TODO: Fix this workaround
+          if (typeof $(".fancybox").fancybox !== 'function') {
+              return;
+          }
+          $(".fancybox").fancybox({
+              type : 'image' // to zmusza rowniez linki bez rozszerzen .jpg lub innych do bycia traktowane jak obrazki
+          });
+      });
+  </script>
+
+      <script type='text/javascript'>
+        var googletag = googletag || {};
+        googletag.cmd = googletag.cmd || [];
+        (function() {
+            var gads = document.createElement('script');
+            gads.async = true;
+            gads.type = 'text/javascript';
+            var useSSL = 'https:' == document.location.protocol;
+            gads.src = (useSSL ? 'https:' : 'http:') +
+                '//www.googletagservices.com/tag/js/gpt.js';
+            var node = document.getElementsByTagName('script')[0];
+            node.parentNode.insertBefore(gads, node);
+        })();
+    </script>
+  
+  
+  
+  
+  <script>
+      $(document).ready(function() {
+          if(self !== top){
+              // iframe is embedded
+              $('body').addClass('B-iframe-embedded');
+          }
+      });
+  </script>
+
+  <style>
+      :root {
+          --iframe--accent: #C31013;
+          --iframe--accent-contra: #fff;
+          --iframe--secondary: #626262;
+          --iframe--secondary-contra: #fff;
+          --iframe--box-background: #fff;
+          --iframe--main-background: transparent;
+
+          /*TODO: update in sql main-background*/
+                                    --iframe--main-background: #f2f2f2;
+                      
+                        --iframe--btn-disabled-color: rgb(150, 150, 150);
+              --iframe--form-input-background: #f2f2f2;
+              --iframe--dark-color-ratio: 0%;
+              --iframe--box-background-darker: rgba(0, 0, 0, 0.06);
+          
+          --iframe--text-color: #333;
+          --iframe--subtext-color: hsla(0, 0%, var(--iframe--dark-color-ratio), 0.6);
+          --iframe--box-border-radius: 5px;
+          --iframe--button-border-radius: 20px;
+
+          --iframe--header-background: #333;
+          --iframe--header-font-color: #999;
+      }
+  </style>
+  </head>
+<body id="bnk-iframe" class="ifid-639 " data-current_view="if-all">
+<!--  reset svg icons file cache  -->
+<svg display="none"><use href="/gfx/bnk-icons.svg?v=1.3#icon-bag"></use></svg>
+
+  <!-- Google Tag Manager (noscript) -->
+      <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5JPX6BJ"
+                      height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+      <script type="text/javascript">
+        var _gaq = _gaq || [];
+        _gaq.push(['_setAccount', 'UA-2380619-6']);
+        _gaq.push(['_setDomainName', 'biletyna.pl']);
+        _gaq.push(['_trackPageview']);
+    </script>
+  
+  <div id="B-iframe__header" class="B-iframe--outside">
+      </div>
+
+  <div class="B-under-nav">
+    <div class="container">
+      <nav class="B-nav gray-bcg" aria-label="Główna nawigacja">
+                  <a href="/">
+            <p class="B-nav__title">Bilety</p>
+          </a>
+                <div id="main-search-bar" class="B-nav__search header-search dark-grey-font search-bar">
+          <i id="close-search-bar" class="icon-svg close"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-cancel"></use></svg></i>
+          <header-search
+            form-action="/?display=events"
+            :auto-focus="false"
+            search-endpoint="searchIframe"
+          >
+            <input id="main_search" value="" type="text" name="q" role="search" autocomplete="off">
+            <i class="icon-svg search-icon"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-wyszukaj"></use></svg></i>
+            <div slot="inputs">
+              <input type="hidden" name="display" value="events">
+                          </div>
+          </header-search>
+        </div>
+        <div class="B-flex">
+          <div id="show-search-bar" class="B-nav__icon visible-xxs">
+            <a href="#">
+              <i class="icon-svg filter-icon"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-wyszukaj"></use></svg></i>
+            </a>
+          </div>
+          <div class="B-nav__icon cart-button">
+            <a href="#" role="button" aria-label="Zobacz koszyk">
+              <i class="icon-svg" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-bag"></use></svg></i>
+              <span class="indicator"></span>
+            </a>
+          </div>
+          <div class="B-nav__icon dropdown">
+            <button class="icon-svg dropdown-toggle"
+                    id="optionsMenuButton"
+                    aria-label="Menu opcji"
+                    data-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                    aria-controls="optionsMenu"
+            >
+              <i aria-hidden="true" class="icon-svg"><svg aria-hidden="true" class="svg-icon"><use href="/gfx/bnk-icons.svg#mobile-app-menu"></use></svg></i>
+            </button>
+            <ul id="optionsMenu" aria-labelledby="optionsMenuButton" role="menu" class="dropdown-menu accessibility">
+              <li role="none" class="dropdown-header">Przydatne linki</li>
+              <li role="none">
+                <a role="menuitem" href="/order/status">
+                  <i aria-hidden="true" class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-bilety"></use></svg></i>
+                  <span>Sprawdź rezerwację</span>
+                </a>
+              </li>
+              <li role="none">
+                <a role="menuitem" href="/static/regulamin">
+                  <i aria-hidden="true" class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-www"></use></svg></i>
+                  <span>Regulamin</span>
+                </a>
+              </li>
+              <li role="none">
+                <a role="menuitem" href="/static/deklaracja-dostepnosci">
+                  <i aria-hidden="true" class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-info"></use></svg></i>
+                  <span>Deklaracja dostępności</span>
+                </a>
+              </li>
+              <li role="none" class="dropdown-header">Ustawienia</li>
+              <li role="none" title="100%">
+                <button role="menuitem" class="accessibility-font active" data-font_size="1">
+                  <i aria-hidden="true" class="icon-svg">A</i><span>Powiększenie 100%</span>
+                </button>
+              </li>
+              <li role="none" title="120%">
+                <button role="menuitem" class="accessibility-font" data-font_size="1.2">
+                  <i aria-hidden="true" class="icon-svg">A+</i><span>Powiększenie 120%</span>
+                </button>
+              </li>
+              <li role="none" title="130%">
+                <button role="menuitem" class="accessibility-font" data-font_size="1.3">
+                  <i aria-hidden="true" class="icon-svg">A++</i><span>Powiększenie 130%</span>
+                </button>
+              </li>
+              <li role="none" title="Wysoki kontrast">
+                <button role="menuitem" class="accessibility-negative-colors">
+                  <i aria-hidden="true" class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-adjust"></use></svg></i>
+                  <span>Wysoki kontrast</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div class="B-nav__icon dropdown">
+            <button class="icon-svg dropdown-toggle B-text-transform--uppercase"
+                    id="languageMenuButton"
+                    aria-label="Wybierz język"
+                    data-toggle="dropdown"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                    aria-controls="optionsMenu"
+            >
+              pl            </button>
+            <ul id="languageMenu" aria-labelledby="languageMenuButton" role="menu" class="dropdown-menu language">
+              <li role="none">
+                <a href="?lang=pl"
+                   type="button"
+                   role="menuitem"
+                   class="accessibility-language"
+                   data-language="pl"
+                  <span>PL - polski</span>
+                </a>
+              </li>
+              <li role="none">
+                <a href="?lang=en"
+                   type="button"
+                   role="menuitem"
+                   class="accessibility-language"
+                   data-language="en"
+                  <span>EN - English</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </div>
+    <div class="container">
+      <div class="B-breadcrumbs-border">
+        <nav aria-label="Breadcrumbs">
+  <ol class="breadcrumbs">
+                  <li aria-current="page">
+          <span class="text-ellipsis nolink">
+            <strong>Strona główna</strong>
+          </span>
+        </li>
+              <li aria-hidden="true" class="breadcrumbs__chevron">
+          <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#mobile-app-chevron-left"></use></svg></i>
+        </li>
+      </ol>
+</nav>
+      </div>
+    </div>
+  </div>
+
+  <div id="wrapper" class="override">
+    
+<div class="container">
+  <h1 class="B-page-heading B-mb-30 B-mb-10@xs">Lista wydarzeń</h1>
+
+
+<div class="B-flex B-flex--wrap@sm">
+      
+<script>
+</script>
+<section id="course-list">
+    <div class="flex-display filters-box">
+      <div class="hidden-xs hidden-sm">
+        <nav id="course-filters">
+          <header>
+            <h2>Filtry</h2>
+                      </header>
+          <form class="event-filters__from" method="get" action="/">
+            <input type="hidden" name="display" value="events">
+            <input type="hidden" name="a" value="">
+            <input type="hidden" name="h" value="">
+            <input type="hidden" name="q" value="">
+
+            <div class="filter-btns tags">
+                          </div>
+
+                          <fieldset>
+                <legend>Miasto</legend>
+                <div class="form-row B-flex B-flex--align-items-center">
+                  <div class="search-city">
+                    <label for="city_name" class="sr-only">
+                      Miasto                    </label>
+                    <input
+                        id="city_name"
+                        type="text"
+                        data-target="#city_id"
+                        placeholder="Wpisz nazwę miasta"
+                        value=""
+                        autocomplete="off"
+                    >
+                    <input
+                        type="hidden"
+                        id="city_id"
+                        name="ct"
+                        value=""
+                    >
+                  </div>
+                  <button
+                      class="filter-reset"
+                      aria-label="Zresetuj filtr: miasto"
+                  >
+                    <i class="icon-svg" aria-hidden="true">
+                      <svg class="svg-icon">
+                        <use href="/gfx/bnk-icons.svg#icon-cancel"></use>
+                      </svg>
+                    </i>
+                  </button>
+                </div>
+              </fieldset>
+                        <fieldset>
+              <legend id="legend-date">Data</legend>
+              <div class="form-row B-flex B-flex--align-items-center">
+                <label id="lbl-from" style="width: 35px" for="date-from">
+                  od                </label>
+                <input
+                    id="date-from"
+                    type="date"
+                    name="df"
+                    aria-labelledby="legend-date lbl-from"
+                    value=""
+                    min="2026-06-08"
+                    max=""
+                >
+                <button
+                    class="filter-reset"
+                    aria-label="Zresetuj filtr: data od"
+                >
+                  <i class="icon-svg" aria-hidden="true">
+                    <svg class="svg-icon">
+                      <use href="/gfx/bnk-icons.svg#icon-cancel"></use>
+                    </svg>
+                  </i>
+                </button>
+              </div>
+              <div class="form-row B-flex B-flex--align-items-center B-mt-10">
+                <label id="lbl-to" style="width: 35px" for="date-to">
+                  do                </label>
+                <input
+                    id="date-to"
+                    type="date"
+                    name="dt"
+                    aria-labelledby="legend-date lbl-to"
+                    value=""
+                    min="2026-06-08"
+                >
+                <button
+                    class="filter-reset"
+                    aria-label="Zresetuj filtr: data do"
+                >
+                  <i class="icon-svg" aria-hidden="true">
+                    <svg class="svg-icon">
+                      <use href="/gfx/bnk-icons.svg#icon-cancel"></use>
+                    </svg>
+                  </i>
+                </button>
+              </div>
+            </fieldset>
+          </form>
+        </nav>
+      </div>
+      <div>
+        <div>
+                  </div>
+      </div>
+    </div>
+  </form>
+  <!-- Users Modal -->
+  <div class="modal fade" id="course_filters_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog modal-base override" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Zamknij modal"><span aria-hidden="true">×</span></button>
+          <div class="modal-title">
+            <h3 id="myModalLabel">Filtrowanie wydarzeń</h3>
+          </div>
+        </div>
+        <div class="modal-body scrollbar-bnk">
+        </div>
+        <div class="modal-footer flex-display">
+          <div class="modal-btns text-right">
+            <button class="go-back" data-dismiss="modal">
+              Zamknij            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+</section>
+    <div style="width: 100%; position: relative">
+                <div class="visible-xs visible-sm B-mt-15" style="text-align: center">
+        <button
+            id="show-course-filters"
+            class="B-btn B-btn--accent B-btn--small"
+            data-toggle="modal"
+            data-target="#course_filters_modal"
+            aria-controls="course_filters_modal"
+            aria-haspopup="dialog"
+            aria-label="Otwórz okno z filtrowania wydarzeń"
+        >
+            <i class="fas fa-filter" aria-hidden="true"></i>
+            Filtruj wydarzenia        </button>
+      </div>
+              <ul class="B-toolbar">
+      <li style="margin-top: -1px;" title="Widok listy" class="active">
+        <a href="/?display=events"
+           aria-label="Widok listy"
+           class="B-toolbar__icon"
+           aria-current="page"        >
+          <i aria-hidden="true" class="icon-svg">
+            <svg class="svg-icon">
+              <use href="/gfx/bnk-icons.svg#icon-bars"></use>
+            </svg>
+          </i>
+        </a>
+      </li>
+      <li title="Widok kafelkowy" class="">
+        <a href="/?display=artists"
+           aria-label="Widok kafelkowy"
+           class="B-toolbar__icon"
+                   >
+          <i aria-hidden="true" class="icon-svg">
+            <svg class="svg-icon">
+              <use href="/gfx/bnk-icons.svg#icon-thumbnails"></use>
+            </svg>
+          </i>
+        </a>
+      </li>
+    </ul>
+
+          
+<style>
+    @media (max-width: 767px) {
+        .B-flex-column-xs {
+            flex-direction: column;
+        }
+        #course-list {
+            margin: 0;
+        }
+    }
+</style>
+
+  <div class="small_title B-sticky-element">
+    <p>Czerwiec 2026</p>
+  </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/363525/filename/f3570f376a3b1cde95e14b0055761d1c.png" alt="„Milcząca przyjaciółka” | reżyseria: Ildikó Enyedi | Francja, Niemcy, Węgry 2025">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">08.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">16:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/363525/filename/f3570f376a3b1cde95e14b0055761d1c.png" alt="„Milcząca przyjaciółka” | reżyseria: Ildikó Enyedi | Francja, Niemcy, Węgry 2025">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61572">
+                      „Milcząca przyjaciółka” | reżyseria: Ildikó Enyedi | Francja, Niemcy, Węgry 2025 (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671678"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/365110/filename/e530faf6be61824836153ed0bb61a9e2.jpg" alt="Orły Republiki">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">08.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">19:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/365110/filename/e530faf6be61824836153ed0bb61a9e2.jpg" alt="Orły Republiki">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62195">
+                      Orły Republiki (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671639"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg" alt="Człowiek z marmuru">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">09.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">18:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg" alt="Człowiek z marmuru">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/58925">
+                      „Człowiek z marmuru” (2D/oryginalny)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/670556"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/368803/filename/e47cea749dc09e05af98abbf2315223e.jpg" alt="Mikey i Nicky (1976)">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">10.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">16:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/368803/filename/e47cea749dc09e05af98abbf2315223e.jpg" alt="Mikey i Nicky (1976)">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61553">
+                      Mikey i Nicky (1976) (2D/oryginalny)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->  <div class="stars-fun accent-font">
+                  <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+              <span class="stars-info">1</span>
+  </div>
+<!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>228</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671666"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/353884/filename/f965bb2c2520de3e70677972abc5ff51.jpg" alt="Wolność po włosku">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">10.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">18:15</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/353884/filename/f965bb2c2520de3e70677972abc5ff51.jpg" alt="Wolność po włosku">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/60625">
+                      Wolność po włosku (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_417d18adabc1c0eec8366ddae555d73f -->  <div class="stars-fun accent-font">
+                  <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-polowa"></use></svg></i>
+              <span class="stars-info">1</span>
+  </div>
+<!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_417d18adabc1c0eec8366ddae555d73f -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671626"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg" alt="Matador">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">11.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">18:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg" alt="Matador">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62438">
+                      Matador (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/670554"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">13.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">15:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61998">
+                      Podziemny krąg (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671680"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/365109/filename/a7b3aa1fcf34dbdd0f07ebe33888a2b0.jpg" alt="Kumotry">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">13.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">17:45</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/365109/filename/a7b3aa1fcf34dbdd0f07ebe33888a2b0.jpg" alt="Kumotry">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62194">
+                      Kumotry (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671692"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">13.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">19:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61998">
+                      Podziemny krąg (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671685"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/365109/filename/a7b3aa1fcf34dbdd0f07ebe33888a2b0.jpg" alt="Kumotry">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">14.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">15:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/365109/filename/a7b3aa1fcf34dbdd0f07ebe33888a2b0.jpg" alt="Kumotry">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62194">
+                      Kumotry (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671693"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">14.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">16:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61998">
+                      Podziemny krąg (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671686"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">14.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">19:15</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61998">
+                      Podziemny krąg (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671688"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">15.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">15:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61998">
+                      Podziemny krąg (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671689"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/365109/filename/a7b3aa1fcf34dbdd0f07ebe33888a2b0.jpg" alt="Kumotry">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">15.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">17:45</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/365109/filename/a7b3aa1fcf34dbdd0f07ebe33888a2b0.jpg" alt="Kumotry">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62194">
+                      Kumotry (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671694"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">15.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">19:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/363183/filename/23126fcee62f21d2bce83590ae457320.jpg" alt="Podziemny krąg">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61998">
+                      Podziemny krąg (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671690"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/353884/filename/f965bb2c2520de3e70677972abc5ff51.jpg" alt="Wolność po włosku">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">17.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">16:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/353884/filename/f965bb2c2520de3e70677972abc5ff51.jpg" alt="Wolność po włosku">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/60625">
+                      Wolność po włosku (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_417d18adabc1c0eec8366ddae555d73f -->  <div class="stars-fun accent-font">
+                  <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-polowa"></use></svg></i>
+              <span class="stars-info">1</span>
+  </div>
+<!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_417d18adabc1c0eec8366ddae555d73f -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671630"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/368803/filename/e47cea749dc09e05af98abbf2315223e.jpg" alt="Mikey i Nicky (1976)">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">17.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">18:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/368803/filename/e47cea749dc09e05af98abbf2315223e.jpg" alt="Mikey i Nicky (1976)">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61553">
+                      Mikey i Nicky (1976) (2D/oryginalny)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->  <div class="stars-fun accent-font">
+                  <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+              <span class="stars-info">1</span>
+  </div>
+<!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671668"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg" alt="Prawo pożądania">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">18.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">18:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg" alt="Prawo pożądania">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62439">
+                      Prawo pożądania (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/670623"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/364783/filename/cbd65525f04104d169794bf1db0eeac4.jpeg" alt="Sny o słoniach">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">19.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">15:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/364783/filename/cbd65525f04104d169794bf1db0eeac4.jpeg" alt="Sny o słoniach">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62152">
+                      Sny o słoniach (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671696"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/364790/filename/0a5078d865cb6f282aa301ad8fafbe42.jpg" alt="Czytając Lolitę w Teheranie">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">19.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">17:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/364790/filename/0a5078d865cb6f282aa301ad8fafbe42.jpg" alt="Czytając Lolitę w Teheranie">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62156">
+                      Czytając Lolitę w Teheranie (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671701"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/364783/filename/cbd65525f04104d169794bf1db0eeac4.jpeg" alt="Sny o słoniach">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">19.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">19:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/364783/filename/cbd65525f04104d169794bf1db0eeac4.jpeg" alt="Sny o słoniach">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62152">
+                      Sny o słoniach (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671697"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/364783/filename/cbd65525f04104d169794bf1db0eeac4.jpeg" alt="Sny o słoniach">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">22.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">15:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/364783/filename/cbd65525f04104d169794bf1db0eeac4.jpeg" alt="Sny o słoniach">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62152">
+                      Sny o słoniach (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671698"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/364790/filename/0a5078d865cb6f282aa301ad8fafbe42.jpg" alt="Czytając Lolitę w Teheranie">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">22.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">17:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/364790/filename/0a5078d865cb6f282aa301ad8fafbe42.jpg" alt="Czytając Lolitę w Teheranie">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62156">
+                      Czytając Lolitę w Teheranie (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671702"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/364783/filename/cbd65525f04104d169794bf1db0eeac4.jpeg" alt="Sny o słoniach">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">22.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">19:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/364783/filename/cbd65525f04104d169794bf1db0eeac4.jpeg" alt="Sny o słoniach">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62152">
+                      Sny o słoniach (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671699"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/342597/filename/9de1e826f0cf3e7a9f272c94e38ab08c.jpg" alt="Wartość sentymentalna">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">23.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">18:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/342597/filename/9de1e826f0cf3e7a9f272c94e38ab08c.jpg" alt="Wartość sentymentalna">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/57079">
+                      Wartość sentymentalna (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_751538f2550bb51810bbfe08757532cf -->  <div class="stars-fun accent-font">
+                  <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-polowa"></use></svg></i>
+              <span class="stars-info">22</span>
+  </div>
+<!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_751538f2550bb51810bbfe08757532cf -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/670557"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/368803/filename/e47cea749dc09e05af98abbf2315223e.jpg" alt="Mikey i Nicky (1976)">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">24.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">16:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/368803/filename/e47cea749dc09e05af98abbf2315223e.jpg" alt="Mikey i Nicky (1976)">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61553">
+                      Mikey i Nicky (1976) (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->  <div class="stars-fun accent-font">
+                  <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+              <span class="stars-info">1</span>
+  </div>
+<!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671669"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/353884/filename/f965bb2c2520de3e70677972abc5ff51.jpg" alt="Wolność po włosku">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">24.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">18:15</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/353884/filename/f965bb2c2520de3e70677972abc5ff51.jpg" alt="Wolność po włosku">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/60625">
+                      Wolność po włosku (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_417d18adabc1c0eec8366ddae555d73f -->  <div class="stars-fun accent-font">
+                  <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-polowa"></use></svg></i>
+              <span class="stars-info">1</span>
+  </div>
+<!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_417d18adabc1c0eec8366ddae555d73f -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671632"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg" alt="Kobiety na skraju załamania nerwowego">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">25.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">18:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg" alt="Kobiety na skraju załamania nerwowego">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62440">
+                      Kobiety na skraju załamania nerwowego (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/670555"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/356010/filename/0bf9350cdc89ac970ae3ca28150ccf12.jpg" alt="Drugie życie">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">26.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">15:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/356010/filename/0bf9350cdc89ac970ae3ca28150ccf12.jpg" alt="Drugie życie">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61211">
+                      Drugie życie (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->  <div class="stars-fun accent-font">
+                  <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+              <span class="stars-info">1</span>
+  </div>
+<!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671703"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/364790/filename/0a5078d865cb6f282aa301ad8fafbe42.jpg" alt="Czytając Lolitę w Teheranie">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">26.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">17:45</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/364790/filename/0a5078d865cb6f282aa301ad8fafbe42.jpg" alt="Czytając Lolitę w Teheranie">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62156">
+                      Czytając Lolitę w Teheranie (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671707"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/356010/filename/0bf9350cdc89ac970ae3ca28150ccf12.jpg" alt="Drugie życie">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">26.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">19:45</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/356010/filename/0bf9350cdc89ac970ae3ca28150ccf12.jpg" alt="Drugie życie">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61211">
+                      Drugie życie (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->  <div class="stars-fun accent-font">
+                  <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+              <span class="stars-info">1</span>
+  </div>
+<!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671704"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/356010/filename/0bf9350cdc89ac970ae3ca28150ccf12.jpg" alt="Drugie życie">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">29.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">15:30</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/356010/filename/0bf9350cdc89ac970ae3ca28150ccf12.jpg" alt="Drugie życie">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61211">
+                      Drugie życie (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->  <div class="stars-fun accent-font">
+                  <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+              <span class="stars-info">1</span>
+  </div>
+<!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671705"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/364790/filename/0a5078d865cb6f282aa301ad8fafbe42.jpg" alt="Czytając Lolitę w Teheranie">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">29.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">17:45</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/364790/filename/0a5078d865cb6f282aa301ad8fafbe42.jpg" alt="Czytając Lolitę w Teheranie">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62156">
+                      Czytając Lolitę w Teheranie (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671708"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/356010/filename/0bf9350cdc89ac970ae3ca28150ccf12.jpg" alt="Drugie życie">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">29.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">19:45</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/356010/filename/0bf9350cdc89ac970ae3ca28150ccf12.jpg" alt="Drugie życie">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/61211">
+                      Drugie życie (2D/napisy)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->  <div class="stars-fun accent-font">
+                  <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+                        <i class="icon-svg"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-gwiazda-pelna"></use></svg></i>
+              <span class="stars-info">1</span>
+  </div>
+<!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_ce49bd28fa222080295e42e12701000f -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/671706"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+      <div class="iframe_all B-flex B-flex--justify-content-space-between B-flex-column-xs">
+
+      
+      <div class="B-flex B-flex--align-items-start B-flex--justify-content-space-between@xs B-flex--direction-row@xs">
+                  <div class="B-event__poster visible-xs B-mr-10">
+                                      <img class="img-responsive" src="/file/get/w/260/id/367748/filename/1c9785da1a9a70ea1d1b81647f2d9e80.png" alt="Salto">
+                      </div>
+                
+        <div class="B-flex B-flex--direction-column-reverse@md B-flex--basis-100@md B-flex--align-items-baseline@md B-flex--align-items-center">
+          
+          <div class="event_data event-date icon_color B-flex B-flex--direction-column B-flex--direction-row@xs B-flex--justify-content-flex-start@xs B-flex--justify-content-center">
+            <div>
+                              <span class="B-font-weight--bold">30.06.2026</span><br class="hidden-xs">
+                <span class="B-m-0 B-text--nowrap">
+                  <span class="B-font-weight--light">godz. </span>
+                  <span class="B-font-weight--bold">18:00</span>
+                </span>
+                            </p>
+            </div>
+          </div>
+
+                      <div class="B-event__poster hidden-xs B-mr-10 B-mt-5 B-mb-5">
+                                            <img class="img-responsive" src="/file/get/w/260/id/367748/filename/1c9785da1a9a70ea1d1b81647f2d9e80.png" alt="Salto">
+                          </div>
+                    
+          <div class="event_data icon_color">
+            <div>
+                              <div class="iframe_all_event_title">
+                  <p>
+                    <a href="/artist/view/id/62466">
+                      RETROSPEKTYWA: Tadeusz Konwicki ,,Salto&quot; (2D/oryginalny)                    </a>
+                  </p>
+                  <p class="B-font-weight--light B-font-size--small B-pt-5 B-pb-5">
+                                     </p>
+                  <!-- generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 --><!-- end generated 2026-06-08 07:13:09 partial_cache_id: partial_cache_d2689e8f9c93f656492ce7e4bc77d642 -->                  
+                </div>
+                <div class="iframe_all_event_title">
+                  <a href="/?display=events&ct=15">
+                    Kielce</a>,
+                  <a href="/?display=events&h=9485">
+                    Wojewódzki Dom Kultury - sala teatralna                  </a>
+                </div>
+                          </div>
+          </div>
+                  </div>
+      </div>
+                      <div class="event_btn B-flex B-flex--direction-row@xs B-flex--justify-content-space-between">
+              <p class="event-free-places">
+                <span>dostępne bilety:</span>
+                <strong>229</strong>
+              </p>
+                              <a style="min-width: 130px;" class="B-btn B-btn--accent "
+             href="/event/view/id/670855"
+                      >
+            kup bilet          </a>
+        </div>
+    </div>
+          <nav aria-label="Paginacja" class="B-p-0">
+    <ul class="B-flex B-flex--justify-content-center B-flex--wrap">
+    <!-- Previous page link -->
+          <li class="btns btns-group paginator B-flex" aria-disabled="true">
+        <span class="disabled">
+          <i class="icon-svg B-btn__icon" aria-hidden="true">
+            <svg class="svg-icon">
+              <use href="/gfx/bnk-icons.svg#icon-strzalka-lewa"></use>
+            </svg>
+          </i>
+          <span class="hidden-xs">Poprzednia</span>
+        </span>
+      </li>
+          <!-- Numbered page links -->
+          <li class="btns btns-group paginator B-flex">
+        <a
+        aria-current="page" class="active akcent_color"        rel="prev"        href="/?display=events&page=1"
+        >
+          <span>1</span>
+        </a>
+      </li>
+        <!-- Next page link -->
+          <li class="btns btns-group paginator B-flex" aria-disabled="true">
+        <span class="disabled">
+          <span class="hidden-xs">Następna</span>
+          <i class="icon-svg B-btn__icon" aria-hidden="true">
+            <svg class="svg-icon">
+              <use href="/gfx/bnk-icons.svg#icon-strzalka-prawa"></use>
+            </svg>
+          </i>
+        </span>
+      </li>
+      </ul>
+</nav>
+      </div>
+</div>
+</div>
+
+      </div>
+
+  <button id="go-site-up" class="rotate-icon rotate-up B-btn B-btn--accent B-btn--circle B-btn--small" aria-label="Przejdź na górę strony">
+    <i class="icon-svg B-btn__icon" aria-hidden="true"><svg class="svg-icon"><use href="/gfx/bnk-icons.svg#icon-strzalka-lewa"></use></svg></i>
+  </button>
+
+  <footer class="B-footer">
+          system dostarczany przez &copy; <a href="https://biletyna.pl" target="_blank">biletyna.pl</a> 2006-2026      </footer>
+
+  <div id="B-iframe__footer" class="B-iframe--outside">
+      </div>
+
+      <script type="text/javascript">
+        (function() {
+            var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+            ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+        })();
+    </script>
+  <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"d28505d171ac4e3ea04a59b48da26733","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>

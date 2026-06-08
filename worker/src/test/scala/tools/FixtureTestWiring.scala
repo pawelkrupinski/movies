@@ -9,7 +9,7 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   override lazy val movieRepo = new InMemoryMovieRepo()
 
   // Pin Helios's REST date to the fixture's capture day when the `fixture` dir
-  // is named `dd-MM-yyyy` (e.g. "17-05-2026"). Helios bakes the date window into
+  // is named `dd-MM-yyyy` (e.g. "08-06-2026"). Helios bakes the date window into
   // its `/screening` + `/event` URLs; without this the live `LocalDate.now`
   // makes those URLs miss the recorded fixtures, dropping Helios room/format
   // enrichment and breaking the whole-corpus snapshot on every day after

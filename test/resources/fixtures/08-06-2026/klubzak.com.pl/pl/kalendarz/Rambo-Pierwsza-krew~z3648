@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html class="no-js" lang="pl">
+<head>
+
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KDKB7JC');</script>
+<!-- End Google Tag Manager -->
+
+
+
+    <meta charset="utf-8"/>
+    <meta http-equiv="x-ua-compatible" content="ie=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1"/>
+
+
+        
+    
+                    
+                    
+        
+
+    
+        <title>Rambo: Pierwsza krew :: Klub Żak</title>
+    <meta name="description" content="" />
+
+
+            <link rel="canonical" href="/pl/kalendarz/Rambo-Pierwsza-krew~z3648"/>
+    
+    
+        <link href="/cache-buster-1632312811/static/zak/dist/app.css" media="screen" rel="stylesheet" type="text/css" />
+<link href="/cache-buster-1655894827/static/zak/dist/overwrite.css" media="screen" rel="stylesheet" type="text/css" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/static/zak/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/zak/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/zak/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+</head>
+<body data-font-wcag="0">
+
+
+
+
+<header>
+    <div class="container">
+        <div class="d-flex justify-content-center top-row">
+                        <a class="logo" href="/pl">
+                                                                            
+                                                                
+                    <img src="/_default_upload_bucket/logo.svg" alt="Logo"/>
+                            </a>
+                        <div class="right-corner">
+                                                                                                            
+                                                                            
+                        <img src="/_default_upload_bucket/image-thumb__1086__zak_nav_snippet_institute_logo_thumbnail/gdansk-herb.webp" class="d-none d-xl-block" alt="Logo Gdańsk"/>
+                                        <input class="d-xl-none menu-btn" type="checkbox" id="menu-btn"/>
+                    <label class="d-xl-none menu-icon menu-icon-js" for="menu-btn">
+                        <span class="navicon"></span>
+                    </label>
+                            </div>
+        </div>
+        <div class="d-none d-xl-flex justify-content-between bottom-row bottom-border">
+                        <ul class="d-flex wcag-controls">
+                <li><a href="#" onclick="changeFont(2)" class="wcag-bigger">A+</a></li>
+                <li><a href="#" onclick="changeFont(1)" class="wcag-smaller">A-</a></li>
+                <li><a href="#" onclick="turnColor()" class="wcag-color"> <span class="icon-eye image-norm"></span>
+                        <span class="icon-eye_wcag image-wcag"></span> </a></li>
+            </ul>
+                        <nav class="main-nav d-flex">
+                <ul>
+                                                                        <li>
+                                <a href="/pl/o-nas/Deklaracja-dostepnosci~s2034" type="internal">Dostępność</a>
+                                                                                                                                </li>
+                                                                                                <li>
+                                <a href="#" type="internal">O Klubie Żak</a>
+                                                                    <ul class="submenu submenu-js">
+                                                                                                            <li>
+                                            <a href="/pl/o-nas" type="internal">Instytucja</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/o-nas/zespol" type="internal">Zespół</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/o-nas/kawiarnia" type="internal">Kawiarnia</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/o-nas/historia" type="internal">Historia</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/o-nas/archiwum" type="internal">Archiwum</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/o-nas/wynajem" type="internal">Wynajem</a>
+                                        </li>
+                                                                                                        </ul>
+                                                            </li>
+                                                                                                <li>
+                                <a href="#" type="internal">Festiwale i przeglądy</a>
+                                                                    <ul class="submenu submenu-js">
+                                                                                                            <li>
+                                            <a href="/pl/kalendarz/Gdanski-Festiwal-Tanca~pr1365" type="internal">Gdański Festiwal Tańca</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/kalendarz/Festiwal-Jazz-Jantar~pr1366" type="internal">Festiwal Jazz Jantar</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/kalendarz/Dyskusyjny-Klub-Filmowy~pr3435" >Dyskusyjny Klub Filmowy</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/kalendarz/Edukacja-filmowa~pr1415" type="internal">Edukacja filmowa</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/kalendarz/Przeglad-Nowego-Kina-Francuskiego-2026-w-Kinie-Zak~pr1469" type="internal">Przeglądy filmowe</a>
+                                        </li>
+                                                                                                        </ul>
+                                                            </li>
+                                                                                                <li>
+                                <a href="#" type="internal">Informacje</a>
+                                                                    <ul class="submenu submenu-js">
+                                                                                                            <li>
+                                            <a href="/pl/o-nas/Regulamin-porzadkowy-Klubu-Zak~s2033" type="internal">Regulamin Klubu Żak</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/dokument-o-ochronie-maloletnich" type="internal">Standardy ochrony małoletnich</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/o-nas/Polityka-prywatnosci-i-RODO~s2035" type="internal">Polityka prywatności i RODO</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/kariera" type="internal">Praca i inne ogłoszenia</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/projektowanie-uniwersalne-kultury" type="internal">Projektowanie Uniwersalne Kultury</a>
+                                        </li>
+                                                                                                        </ul>
+                                                            </li>
+                                                                                                <li>
+                                <a href="https://tickets.klubzak.com.pl/" target="_blank" type="internal">Sklep</a>
+                                                                    <ul class="submenu submenu-js">
+                                                                                                            <li>
+                                            <a href="/pl/regulamin-sklepu" type="internal">Regulamin sklepu</a>
+                                        </li>
+                                                                                                        </ul>
+                                                            </li>
+                                                                                                <li>
+                                <a href="/pl/przyjaciele" type="internal">Przyjaciele</a>
+                                                                                                                                </li>
+                                                                                                <li>
+                                <a href="/pl/kontakt" type="internal">Kontakt</a>
+                                                                                                                                </li>
+                                                                                                <li>
+                                <a href="#" type="internal">BIP</a>
+                                                                    <ul class="submenu submenu-js">
+                                                                                                            <li>
+                                            <a href="/pl/bip" type="internal">Informacje</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/regulamin-klubu" type="internal">Statut i regulamin organizacyjny</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/zamowienia-publiczne" type="internal">Zamówienia publiczne</a>
+                                        </li>
+                                                                            <li>
+                                            <a href="/pl/program-kadencyjny-klubu" type="internal">Program kadencyjny 2024-2027</a>
+                                        </li>
+                                                                                                        </ul>
+                                                            </li>
+                                                            </ul>
+            </nav>
+            <div class="nav-end">
+                <ul class="socials">
+                                            <li class="search-button">
+                            <a href="#" class="js-search-bar desktop">
+                                <span class="icon-search image-norm"></span>
+                                <span class="icon-search_wcag image-wcag"></span>
+                            </a>
+                            <form class="navbar-search-form js-search-bar-form desktop" method="get" action="/pl/szukaj">
+                                <input class="navbar-search-input" name="phrase" type="text" placeholder="Wyszukaj">
+                                <button class="navbar-search-submit" type="submit"></button>
+                            </form>
+                        </li>
+                                                    <li>
+                                <a href="https://www.facebook.com/klubzak">
+                                    <span class="icon-fb image-norm"></span>
+                                    <span class="icon-fb_wcag image-wcag"></span>
+                                </a>
+                            </li>
+                                                                            <li>
+                                <a href="https://www.instagram.com/klubzak/">
+                                    <span class="icon-instagram image-norm"></span>
+                                    <span class="icon-instagram_wcag image-wcag"></span>
+                                </a>
+                            </li>
+                                                                            <li>
+                                <a href="https://www.youtube.com/channel/UCRZgsb-WBxxa8nvTHqciOWQ">
+                                    <span class="icon-youtube image-norm"></span>
+                                    <span class="icon-youtube_wcag image-wcag"></span>
+                                </a>
+                            </li>
+                                                            </ul>
+                <ul class="langs">
+                                                                        <li>
+                                <a href="/en/calendar" >
+                                    EN
+                                </a>
+                            </li>
+                                                    <li>
+                                <a href="/pl/kalendarz"  class="active">
+                                    PL
+                                </a>
+                            </li>
+                                                            </ul>
+            </div>
+        </div>
+    </div>
+</header>
+<nav id="mobile-nav" class="mobile-nav mobile-nav-js d-block d-xl-none">
+    <div class="row menu-top">
+        <ul class="col-12 col-sm-4 d-flex wcag-controls">
+            <li><a href="#" onclick="changeFont(2)" class="wcag-bigger">A+</a></li>
+            <li><a href="#" onclick="changeFont(1)" class="wcag-smaller">A-</a></li>
+            <li><a href="#" onclick="turnColor()" class="wcag-color"> <span class="icon-eye_w"></span> </a></li>
+        </ul>
+        <ul class="col-12 col-sm-5 socials">
+            <li><a href="https://www.facebook.com/klubzak"> <span class="icon-fb_w"></span> </a></li>
+            <li><a href="https://www.instagram.com/klubzak/"> <span class="icon-instagram_w"></span> </a></li>
+            <li><a href="https://www.youtube.com/channel/UCRZgsb-WBxxa8nvTHqciOWQ"> <span class="icon-youtube_w"></span> </a></li>
+        </ul>
+        <ul class="col-12 col-sm-3 langs">
+                                                <li>
+                        <a href="/en/calendar" >
+                            EN
+                        </a>
+                    </li>
+                                    <li>
+                        <a href="/pl/kalendarz"  class="active">
+                            PL
+                        </a>
+                    </li>
+                                        <li class="search-button">
+                <a href="#" class="js-search-bar mobile">
+                    <span class="icon-search_w"></span>
+                </a>
+            </li>
+        </ul>
+    </div>
+    <div class="search-bar-form-mobile search-button js-search-bar-form mobile">
+        <form class="navbar-search-form visible" action="#">
+            <input class="navbar-search-input" type="text" placeholder="Wyszukaj">
+            <button class="navbar-search-submit" type="submit"></button>
+        </form>
+    </div>
+    <div class="menu-wrapper">
+        <ul class="menu">
+                                                <li >
+                        <a href="/pl/o-nas/Deklaracja-dostepnosci~s2034" type="internal">Dostępność</a>
+                                                                                                    </li>
+                                    <li class="has-submenu has-submenu-js">
+                        <a href="#" type="internal">O Klubie Żak</a>
+                                                <span class="fake-submenu-btn submenu-watcher-js"></span>
+                        <ul class="submenu submenu-js">
+                                                                                        <li>
+                                    <a href="/pl/o-nas" type="internal">Instytucja</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/o-nas/zespol" type="internal">Zespół</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/o-nas/kawiarnia" type="internal">Kawiarnia</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/o-nas/historia" type="internal">Historia</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/o-nas/archiwum" type="internal">Archiwum</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/o-nas/wynajem" type="internal">Wynajem</a>
+                                </li>
+                                                                                </ul>
+                                            </li>
+                                    <li class="has-submenu has-submenu-js">
+                        <a href="#" type="internal">Festiwale i przeglądy</a>
+                                                <span class="fake-submenu-btn submenu-watcher-js"></span>
+                        <ul class="submenu submenu-js">
+                                                                                        <li>
+                                    <a href="/pl/kalendarz/Gdanski-Festiwal-Tanca~pr1365" type="internal">Gdański Festiwal Tańca</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/kalendarz/Festiwal-Jazz-Jantar~pr1366" type="internal">Festiwal Jazz Jantar</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/kalendarz/Dyskusyjny-Klub-Filmowy~pr3435" >Dyskusyjny Klub Filmowy</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/kalendarz/Edukacja-filmowa~pr1415" type="internal">Edukacja filmowa</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/kalendarz/Przeglad-Nowego-Kina-Francuskiego-2026-w-Kinie-Zak~pr1469" type="internal">Przeglądy filmowe</a>
+                                </li>
+                                                                                </ul>
+                                            </li>
+                                    <li class="has-submenu has-submenu-js">
+                        <a href="#" type="internal">Informacje</a>
+                                                <span class="fake-submenu-btn submenu-watcher-js"></span>
+                        <ul class="submenu submenu-js">
+                                                                                        <li>
+                                    <a href="/pl/o-nas/Regulamin-porzadkowy-Klubu-Zak~s2033" type="internal">Regulamin Klubu Żak</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/dokument-o-ochronie-maloletnich" type="internal">Standardy ochrony małoletnich</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/o-nas/Polityka-prywatnosci-i-RODO~s2035" type="internal">Polityka prywatności i RODO</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/kariera" type="internal">Praca i inne ogłoszenia</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/projektowanie-uniwersalne-kultury" type="internal">Projektowanie Uniwersalne Kultury</a>
+                                </li>
+                                                                                </ul>
+                                            </li>
+                                    <li class="has-submenu has-submenu-js">
+                        <a href="https://tickets.klubzak.com.pl/" target="_blank" type="internal">Sklep</a>
+                                                <span class="fake-submenu-btn submenu-watcher-js"></span>
+                        <ul class="submenu submenu-js">
+                                                                                        <li>
+                                    <a href="/pl/regulamin-sklepu" type="internal">Regulamin sklepu</a>
+                                </li>
+                                                                                </ul>
+                                            </li>
+                                    <li >
+                        <a href="/pl/przyjaciele" type="internal">Przyjaciele</a>
+                                                                                                    </li>
+                                    <li >
+                        <a href="/pl/kontakt" type="internal">Kontakt</a>
+                                                                                                    </li>
+                                    <li class="has-submenu has-submenu-js">
+                        <a href="#" type="internal">BIP</a>
+                                                <span class="fake-submenu-btn submenu-watcher-js"></span>
+                        <ul class="submenu submenu-js">
+                                                                                        <li>
+                                    <a href="/pl/bip" type="internal">Informacje</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/regulamin-klubu" type="internal">Statut i regulamin organizacyjny</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/zamowienia-publiczne" type="internal">Zamówienia publiczne</a>
+                                </li>
+                                                            <li>
+                                    <a href="/pl/program-kadencyjny-klubu" type="internal">Program kadencyjny 2024-2027</a>
+                                </li>
+                                                                                </ul>
+                                            </li>
+                                    </ul>
+    </div>
+</nav>
+
+
+            <section class="event container">
+    <div class="row">
+        <div class="col-xl-12">
+            <h2>First Blood - Ted. Kotcheff - USA - 1982 - 93 min.</h2>
+            <h1>Rambo: Pierwsza krew</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="event-header row">
+                <div class="date date-left col-3 col-md-2">
+                                              <h5 class="date-info date-range">
+                              <span class="from">
+                                Od
+                              </span>
+                              <span class="day">
+                                24
+                              </span>
+                              <span class="month">
+                                                                                                Lip
+                              </span>
+                              <br />
+                              <span class="to">
+                                Do
+                              </span>
+                              <span class="day">
+                                26
+                              </span>
+                              <span class="month">
+                                                                                                Lip
+                              </span>
+                          </h5>
+                                    </div>
+                <div class="info col-9 col-md-10 col-xl-5">
+                    <h3>Seanse</h3>
+                    24-26 lipca o 20:00
+                </div>
+                <div class="info col-5 d-none d-xl-block">
+                    <h3>Miejsce</h3>
+                    Sala kinowa
+                </div>
+            </div>
+            <div class="splited-box short d-xl-none">
+                <div class="row">
+                    <div class="col-3 col-md-2">
+                        <span class="sb-header">Miejsce</span>
+                    </div>
+                    <div class="col-9 col-md-10">
+                        <div class="sb-content">
+                            <p>
+                                Sala kinowa
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="splited-box">
+                <div class="row">
+                    <div class="col-3 col-md-2">
+                        <span class="sb-header">
+                                                            Bilety
+                                                    </span>
+                    </div>
+                    <div class="col-9 col-md-10">
+                        <div class="sb-content">
+                            <p><strong>20 zł</strong>&nbsp;- normalne<br />
+<strong>18 zł </strong>– na Kartę Do Kultury<br />
+<strong>16 zł </strong>– ulgowy&nbsp;dla studentów, uczniów, seniorów<br />
+<strong>12 zł </strong>– na Kartę Dużej Rodziny</p>
+
+<p><strong>TANIE KINO: 14 zł - Poniedziałki dla wszystkich, środy dla seniorów, piątki dla studentów</strong></p>
+
+                                                            <a href="https://tickets.klubzak.com.pl/"
+                                   target=""
+                                    
+                                   class="btn btn-default">
+                                    KUP BILET
+                                </a>
+                                                    </div>
+                    </div>
+                </div>
+            </div>
+                    <div class="splited-box">
+                <div class="row">
+                    <div class="col-3 col-md-2">
+                        <span class="sb-header">O filmie</span>
+                    </div>
+                    <div class="col-9 col-md-10">
+                        <div class="sb-content">
+                            <p><span style="color:#16a085"><span style="font-size:16px"><em><strong>Rambo: Pierwsza krew / First Blood</strong></em></span></span><br />
+reż.&nbsp;Ted. Kotcheff – obsada: Sylvester Stallone, Richard Crenna – USA – 1982 – 93 min.&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>Weteran wojny w Wietnamie, John J. Rambo (Sylvester Stallone), dociera do miasteczka Hope w stanie Waszyngton, by odnaleźć dawnego przyjaciela. Miejscowy szeryf (Brian Dennehy) uznaje go za przybłędę i próbuje zmusić do opuszczenia miasta. Gdy Rambo odmawia, przedstawiciele policji zaczynają się nad nim znęcać. Mężczyzna ucieka w miejsce, w którym potrafi walczyć najlepiej – do otaczającego miasteczko lasu. Od tej pory to policja będzie dla niego zwierzyną.</p>
+
+<p>&nbsp;</p>
+
+<p>Kultowy film Teda Kotcheffa pozwolił Sylvestrowi Stallone wspiąć się na szczyt listy największych gwiazd Hollywood, a ponadto doczekał się czterech kontynuacji i tysięcy nawiązań w popkulturze. Często zapomina się jednak, że „Rambo: Pierwsza krew” to nie tylko doskonały film akcji, ale przede wszystkim arcydzieło kina antywojennego mierzące się z problemem stresu pourazowego i bezlitośnie rozdrapujące ranę, którą dla amerykańskiego społeczeństwa była zakończona niedawno wojna w Wietnamie.&nbsp;<br />
+&nbsp;</p>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+                                <div class="d-none d-lg-block">
+                                                                            <div class="splited-box">
+                            <div class="row">
+                                <div class="col-3 col-md-2">
+                                    <span class="sb-header">
+                                        Informacje
+                                    </span>
+                                </div>
+                                <div class="col-9 col-md-10">
+                                    <div class="sb-content">
+                                        <p>Zakupione bilety i karnety nie podlegają zwrotom.<br /> <br /> Bilety ulgowe i zniżkowe są w sprzedaży wyłącznie w kasie Klubu Żak za okazaniem przed zakupem biletu ważnej legitymacji, Karty, Karnetu (1 bilet na 1 legitymację / 1 Kartę / 1 Karnet). Ulgowe bilety przysługują wyłącznie studentom studiów stacjonarnych i niestacjonarnych (licencjackich i magisterskich, do 26 roku życia), uczniom oraz emerytom i rencistom – za okazaniem aktualnej, właściwej legitymacji.&nbsp;<br /> <br /> Niewykorzystane limity wejść na dany karnet po upływie terminu ważności przepadają. Wszystkie ceny zawierają podatek VAT.<br /> <br /> Zasady rezerwacji<br /> Rezerwacje: kasa@klubzak.com.pl. Potwierdzone rezerwacje na koncerty, spektakle, filmy należy odebrać w ciągu 3 dni od dnia potwierdzenia rezerwacji (nieopłacone w terminie rezerwacje są anulowane). Nie przyjmujemy rezerwacji na ostatnie 20 miejsc na dany koncert/przedstawienie/ seans filmowy.<br /> Zarezerwowane bilety są sprzedawane w cenie obowiązującej w dniu faktycznego wykupienia zarezerwowanych biletów.</p> 
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                                    
+                                                            <div class="splited-box">
+                            <div class="row">
+                                <div class="col-3 col-md-2">
+                                <span class="sb-header">
+                                    Kasa biletowa
+                                </span>
+                                </div>
+                                <div class="col-9 col-md-10">
+                                    <div class="sb-content">
+                                        <p>Kasa czynna od 15:00 do 21:00, w soboty i niedziele od 16:00 lub 30 minut przed pierwszym seansem.<br /> Kontakt: tel. 58 344 05 73 w.117 (w godz. pracy kasy), kasa@klubzak.com.pl</p> 
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                                                </div>
+        </div>
+        <div class="col-lg-5 media-col ">
+                            <img src="/Klub%20%C5%BBak/wydarzenia/kino/2026/5/rambo2.webp" class="img" alt="" />
+                                                    <div class="video">
+                    
+                </div>
+                    </div>
+        <div class="col-lg-7 d-lg-none">
+                                        <div class="splited-box">
+                    <div class="row">
+                        <div class="col-3 col-md-2">
+                            <span class="sb-header">Informacje</span>
+                        </div>
+                        <div class="col-9 col-md-10">
+                            <div class="sb-content">
+                                <p>Zakupione bilety i karnety nie podlegają zwrotom.<br /> <br /> Bilety ulgowe i zniżkowe są w sprzedaży wyłącznie w kasie Klubu Żak za okazaniem przed zakupem biletu ważnej legitymacji, Karty, Karnetu (1 bilet na 1 legitymację / 1 Kartę / 1 Karnet). Ulgowe bilety przysługują wyłącznie studentom studiów stacjonarnych i niestacjonarnych (licencjackich i magisterskich, do 26 roku życia), uczniom oraz emerytom i rencistom – za okazaniem aktualnej, właściwej legitymacji.&nbsp;<br /> <br /> Niewykorzystane limity wejść na dany karnet po upływie terminu ważności przepadają. Wszystkie ceny zawierają podatek VAT.<br /> <br /> Zasady rezerwacji<br /> Rezerwacje: kasa@klubzak.com.pl. Potwierdzone rezerwacje na koncerty, spektakle, filmy należy odebrać w ciągu 3 dni od dnia potwierdzenia rezerwacji (nieopłacone w terminie rezerwacje są anulowane). Nie przyjmujemy rezerwacji na ostatnie 20 miejsc na dany koncert/przedstawienie/ seans filmowy.<br /> Zarezerwowane bilety są sprzedawane w cenie obowiązującej w dniu faktycznego wykupienia zarezerwowanych biletów.</p> 
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                        <div class="splited-box">
+                    <div class="row">
+                        <div class="col-3 col-md-2">
+                            <span class="sb-header">Kasa biletowa</span>
+                        </div>
+                        <div class="col-9 col-md-10">
+                            <div class="sb-content">
+                                <p>Kasa czynna od 15:00 do 21:00, w soboty i niedziele od 16:00 lub 30 minut przed pierwszym seansem.<br /> Kontakt: tel. 58 344 05 73 w.117 (w godz. pracy kasy), kasa@klubzak.com.pl</p> 
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                    </div>
+    </div>
+    
+</section>
+    
+
+<footer>
+    <div class="top-row">
+        <div class="container">
+            <div class="row mx-0 justify-content-center">
+                <div class="col-6 col-lg">
+                    <h6>
+                                                    <a href="#"
+                               target="">
+                                O Klubie Żak
+                            </a>
+                                            </h6>
+                    <ul>
+                                                                                    <li><a href="/pl/o-nas"> Instytucja </a></li>
+                                                                                                                <li><a href="/pl/o-nas/zespol"> Zespół </a></li>
+                                                                                                                <li><a href="/pl/o-nas/kawiarnia"> Kawiarnia </a></li>
+                                                                                                                <li><a href="/pl/o-nas/historia"> Historia </a></li>
+                                                                                                                <li><a href="/pl/o-nas/archiwum"> Archiwum </a></li>
+                                                                                                                <li><a href="/pl/o-nas/wynajem"> Wynajem </a></li>
+                                                                        </ul>
+                </div>
+                <div class="col-6 col-lg">
+                    <h6>
+                                                    <a href="#"
+                               target="">
+                                Festiwale i przeglądy
+                            </a>
+                                            </h6>
+                                        <ul>
+                                                        <li>
+                                    <a href="/pl/kalendarz/Gdanski-Festiwal-Tanca~pr1365">Gdański Festiwal Tańca</a>
+                                </li>
+                                                        <li>
+                                    <a href="/pl/kalendarz/Festiwal-Jazz-Jantar~pr1366">Festiwal Jazz Jantar </a>
+                                </li>
+                                                        <li>
+                                    <a href="/pl/kalendarz/Edukacja-filmowa~pr1415">Edukacja filmowa</a>
+                                </li>
+                                                        <li>
+                                    <a href="/pl/kalendarz/Przeglad-Nowego-Kina-Francuskiego-2026-w-Kinie-Zak~pr1469">Przegląd Nowego Kina Francuskiego 2026 w Kinie Żak</a>
+                                </li>
+                                                        <li>
+                                    <a href="/pl/kalendarz/Dyskusyjny-Klub-Filmowy~pr3435">Dyskusyjny Klub Filmowy</a>
+                                </li>
+                                            </ul>
+                                        <ul>
+                                            </ul>
+                </div>
+                <div class="col-6 col-lg">
+                    <h6>
+                                                    <a href="#"
+                               target="">
+                                Informacje
+                            </a>
+                                            </h6>
+                    <ul>
+                                                                                    <li><a href="/pl/regulamin-klubu"> Regulamin Klubu Żak </a></li>
+                                                                                                                <li><a href="/pl/deklaracja-dostepnosci"> Dostępność </a></li>
+                                                                                                                <li><a href="/pl/polityka-prywatnosci"> Polityka prywatności i RODO </a></li>
+                                                                                                                <li><a href=""> Praca i inne ogłoszenia </a></li>
+                                                                        </ul>
+                </div>
+                <div class="col-6 col-lg">
+                    <h6>
+                                                    <a href="https://tickets.klubzak.com.pl/"
+                               target="_blank">
+                                Sklep
+                            </a>
+                                            </h6>
+                    <ul>
+                                                                                    <li><a href="/pl/regulamin-sklepu"> Regulamin sklepu </a></li>
+                                                                        </ul>
+                </div>
+                <div class="col-6 col-lg">
+                    <h6>
+                                                    <a href="/pl/przyjaciele"
+                               target="">
+                                Przyjaciele
+                            </a>
+                                            </h6>
+                    <ul>
+                                                    <li><a href="">  </a></li>
+                                            </ul>
+                    <nav>
+                        <ul>
+                                                                                                <li><a href="/pl/kalendarz"> Kalendarz </a></li>
+                                                                                                                                <li><a href="/pl/kontakt"> Kontakt </a></li>
+                                                                                                                                <li><a href="/pl/bip"> BIP </a></li>
+                                                                                    </ul>
+                    </nav>
+                </div>
+                <div class="col-6 col-lg">
+                    <h6>
+                                                    
+                                            </h6>
+                                            <address>
+                            Kasa klubu:<br/>
+                            <a href="58 344 05 73 w.117" type="internal">58 344 05 73 w.117</a><br/>
+                            <a href="kasa@klubzak.com.pl" target="_blank" type="internal">kasa@klubzak.com.pl</a>
+                        </address>
+                                            <address>
+                            Kawiarnia<br/>
+                            <a href="58 344 05 73 w.152" type="internal">58 344 05 73 w.152</a><br/>
+                            <a href="kawiarnia@klubzak.com.pl" target="_blank" type="internal">kawiarnia@klubzak.com.pl</a>
+                        </address>
+                                            <address>
+                            Sekretariat<br/>
+                            <a href="58 344 05 73 w.110" type="internal">58 344 05 73 w.110</a><br/>
+                            <a href="kz.sekretariat@klubzak.com.pl" target="_blank">kz.sekretariat@klubzak.com.pl</a>
+                        </address>
+                                    </div>
+            </div>
+        </div>
+    </div>
+    <div class="bottom-row">
+        <div class="container text-right"> Developed by <a href="https://lemonmind.com/">LemonMind.com</a></div>
+    </div>
+</footer>
+
+
+<script>
+    const months = [
+        "Styczeń",
+        "Luty",
+        "Marzec",
+        "Kwiecień",
+        "Maj",
+        "Czerwiec",
+        "Lipiec",
+        "Sierpień",
+        "Wrzesień",
+        "Październik",
+        "Listopad",
+        "Grudzień",
+    ];
+
+    const daysName = [
+        "Nie",
+        "Pon",
+        "Wt",
+        "Śr",
+        "Czw",
+        "Pią",
+        "Sob",
+    ];
+</script>
+<script src="/cache-buster-1632312810/static/zak/dist/app.js"></script>
+<script src="/cache-buster-1632312810/static/zak/dist/calendar.js"></script>
+<script src="/cache-buster-1632312810/static/zak/dist/eventfilters.js"></script>
+<script src="/cache-buster-1641385658/static/zak/dist/whcookies.js"></script>
+
+
+
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KDKB7JC"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+</body>
+
+</html>
