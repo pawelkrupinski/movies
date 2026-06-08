@@ -1101,8 +1101,8 @@
   // THIS, not from the dropdown's already-moved index.
   let _appliedDay = null;
 
-  // Arrow buttons (‹ ›) and the Left/Right keys: step one day and slide there
-  // like a swipe. Clamps at the ends (no wrap) — same reach the dropdown gives.
+  // The Left/Right keys: step one day and slide there like a swipe. Clamps at
+  // the ends (no wrap) — same reach the dropdown gives.
   function stepDate(dir) {
     const sel  = document.getElementById('date-filter');
     if (!sel) return;

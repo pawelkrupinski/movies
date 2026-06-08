@@ -1312,13 +1312,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "run the animated slide from the arrow button" in {
+  it should "run the animated slide from a keyboard day-step" in {
     onPath("/") { page =>
       enableSlideAnimation(page)
       page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
 
-      // Click the next-day arrow; while the slide is in flight the track is
-      // armed (neighbour mounted, parked transform set).
+      // Step to the next day (the Left/Right key path); while the slide is in
+      // flight the track is armed (neighbour mounted, parked transform set).
       page.eval("window.stepDate(1)")
       page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
       page.evalInt("document.querySelectorAll('#day-track > .day-col').length") should be >= 1
@@ -1495,11 +1495,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "follow the active day when it changes via the ‹ › arrows" in {
+  it should "follow the active day when it changes via a keyboard day-step" in {
     onPath("/") { page =>
       page.eval("pickDay('today')")
       page.waitFor("document.getElementById('date-filter').value === 'today'", timeoutMs = 2000)
-      // The › arrow steps to the next preset; the pill highlight tracks it.
+      // A keyboard step moves to the next preset; the pill highlight tracks it.
       page.eval("stepDate(1)")
       page.waitFor("document.getElementById('date-filter').value === 'tomorrow'", timeoutMs = 2000)
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"

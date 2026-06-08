@@ -175,19 +175,17 @@
       <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
     </div>
     @* Day filter: a pill row (the same four presets the iOS/Android apps show)
-       flanked by ‹ › step arrows, plus a visually-hidden `<select>` that stays
-       the single source of truth every filter/carousel helper reads. Clicking a
-       pill, stepping an arrow or swiping the grid all move that select; the
-       pills' `.active` highlight is synced back from it. *@
+       plus a visually-hidden `<select>` that stays the single source of truth
+       every filter/carousel helper reads. Clicking a pill, pressing the
+       Left/Right keys or swiping the grid all move that select; the pills'
+       `.active` highlight is synced back from it. *@
     <div class="d-flex align-items-stretch navbar-date">
-      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(-1)" aria-label="Poprzedni dzień">&#8249;</button>
       <div id="day-pills" class="day-pills" role="tablist" aria-label="Filtruj według daty">
         <button class="day-pill" type="button" role="tab" data-day="today"    onclick="pickDay('today')">Dziś</button>
         <button class="day-pill" type="button" role="tab" data-day="tomorrow" onclick="pickDay('tomorrow')">Jutro</button>
         <button class="day-pill" type="button" role="tab" data-day="week"     onclick="pickDay('week')">7 dni</button>
         <button class="day-pill" type="button" role="tab" data-day="anytime"  onclick="pickDay('anytime')">Wszystkie</button>
       </div>
-      <button class="btn refresh-btn date-nav-btn" onclick="stepDate(1)" aria-label="Następny dzień">&#8250;</button>
       <select id="date-filter" class="visually-hidden" aria-hidden="true" tabindex="-1" onchange="onDateSelect()">
         <option value="today">Dziś</option>
         <option value="tomorrow">Jutro</option>

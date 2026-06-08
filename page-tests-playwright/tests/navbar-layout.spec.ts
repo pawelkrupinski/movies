@@ -17,8 +17,7 @@ import { waitForCards, pinDateFilterAnytime, measureGridRatio } from './helpers'
 // mobile (so all four fit the one-row navbar), so they're checked for height
 // uniformity but excluded from the strict font-size equality.
 const NAV_CONTROLS = {
-  text:  ['.nav-tab', '.nav-tab-login', '.refresh-btn:not(.date-nav-btn)', '.auth-name'],
-  glyph: ['.date-nav-btn'],
+  text:  ['.nav-tab', '.nav-tab-login', '.refresh-btn', '.auth-name'],
   input: ['.search-input'],
   pill:  ['.day-pill'],
 };
@@ -26,8 +25,7 @@ const NAV_CONTROLS = {
 const ALL_CONTROL_SELS = [
   '.nav-tab',
   '.nav-tab-login',
-  '.refresh-btn:not(.date-nav-btn)',
-  '.date-nav-btn',
+  '.refresh-btn',
   '.day-pill',
   '.search-input',
 ];
@@ -37,7 +35,7 @@ async function measureNavbarControls(page: Page) {
     const nav = document.querySelector('.navbar');
     if (!nav) return { byGroup: {} } as const;
     const byGroup: Record<string, { sel: string; fontPx: number; heightPx: number }[]> = {
-      text: [], glyph: [], input: [], pill: [],
+      text: [], input: [], pill: [],
     };
     const isVisible = (el: HTMLElement) =>
       el.offsetParent !== null && el.getBoundingClientRect().height > 0;
@@ -107,7 +105,7 @@ test.describe('navbar uniformity — desktop', () => {
 
   test('all interactive controls share a single height', async ({ page }) => {
     const { byGroup } = await measureNavbarControls(page);
-    const everything = [...byGroup.text, ...byGroup.glyph, ...byGroup.input, ...byGroup.pill];
+    const everything = [...byGroup.text, ...byGroup.input, ...byGroup.pill];
     expectUniform('desktop control height', everything, 'heightPx', 1);
   });
 });
@@ -134,7 +132,7 @@ test.describe('navbar uniformity — mobile portrait', () => {
 
   test('all interactive controls share a single height', async ({ page }) => {
     const { byGroup } = await measureNavbarControls(page);
-    const everything = [...byGroup.text, ...byGroup.glyph, ...byGroup.input, ...byGroup.pill];
+    const everything = [...byGroup.text, ...byGroup.input, ...byGroup.pill];
     expectUniform('mobile-portrait control height', everything, 'heightPx', 1);
   });
 });
@@ -490,7 +488,7 @@ test.describe('navbar uniformity — mobile landscape', () => {
 
   test('all interactive controls share a single height', async ({ page }) => {
     const { byGroup } = await measureNavbarControls(page);
-    const everything = [...byGroup.text, ...byGroup.glyph, ...byGroup.input, ...byGroup.pill];
+    const everything = [...byGroup.text, ...byGroup.input, ...byGroup.pill];
     expectUniform('mobile-landscape control height', everything, 'heightPx', 1);
   });
 });
@@ -713,34 +711,5 @@ test.describe('orientation flip: landscape → portrait', () => {
     const after = await measureGridRatio(page);
     expect(after).toBeGreaterThan(0.45);
     expect(after).toBeLessThan(0.55);
-  });
-});
-
-// ── Zoomed landscape: date ›  must not touch / overlap Filtry ────
-
-test.describe('zoomed landscape — date-to-filtry gap', () => {
-  test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(
-      !testInfo.project.name.includes('zoomed-landscape'),
-      'zoomed-landscape projects only',
-    );
-    await page.goto('/poznan/');
-    await waitForCards(page);
-  });
-
-  test('date › button does not touch or overlap the Filtry button', async ({ page }) => {
-    const gap = await page.evaluate(() => {
-      const btns = Array.from(document.querySelectorAll('.date-nav-btn')) as HTMLElement[];
-      const stepFwd = btns[btns.length - 1];
-      const filtryBtn = document.getElementById('format-filter-btn');
-      if (!stepFwd || !filtryBtn) return null;
-      return filtryBtn.getBoundingClientRect().left - stepFwd.getBoundingClientRect().right;
-    });
-    expect(gap, 'date-nav-btn / filtry button not found').not.toBeNull();
-    const vp = page.viewportSize()!;
-    expect(
-      gap!,
-      `date›-to-filtry gap is ${gap!.toFixed(1)}px at ${vp.width}×${vp.height}; need ≥ 2px`,
-    ).toBeGreaterThanOrEqual(2);
   });
 });
