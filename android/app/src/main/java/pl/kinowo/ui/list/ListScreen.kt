@@ -1,5 +1,6 @@
 package pl.kinowo.ui.list
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -168,9 +169,15 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     LaunchedEffect(vm.dateFilter) { previewDay = vm.dateFilter }
 
     // The centre column's vertical scroll, hoisted so the revealed neighbours can
-    // mirror it during a drag and so ScrollToTopOnChange can ease it to the top
-    // after a committed day flip.
+    // mirror it during a drag — a swipe lands the user at the same place in the
+    // new day (the mirror carries the offset over), so it must NOT reset on a
+    // swipe. Only a date-PILL tap eases it back to the top, via [pillResetToken].
     val sharedScroll = rememberLazyGridState()
+
+    // Bumped on every date-pill TAP (not on a swipe). Keys ScrollToTopOnChange so
+    // tapping a day jumps the list to the top, while swiping between days keeps
+    // the scroll position — otherwise the carousel's scroll-mirror is pointless.
+    var pillResetToken by remember { mutableStateOf(0) }
 
     // Surface the swipe hint the moment the first repertoire load lands, gated
     // to once per calendar day until the first swipe. The decision reads
@@ -208,7 +215,7 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 // The date pills always spread to fill the row; on wide screens
                 // the inline search field sits between them and Filtry, capped
                 // at a fixed width rather than eating the leftover space.
-                DatePills(vm, wide, highlighted = previewDay)
+                DatePills(wide, highlighted = previewDay, onSelect = { vm.dateFilter = it; pillResetToken++ })
                 if (wide) {
                     InlineSearchField(value = vm.search, onValueChange = { vm.search = it })
                 }
@@ -261,10 +268,12 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                 // repertoire on show narrows to a single cinema —
                                 // it's the same name on every card.
                                 val showCinemaHeaders = distinctCinemaCount(visible) > 1
-                                // Only the centre column eases to the top on a day
-                                // change; the neighbours track scroll via the
-                                // carousel's mirror, so they must not self-reset.
-                                if (day == vm.dateFilter) ScrollToTopOnChange(state, vm.dateFilter)
+                                // Only the centre column eases to the top, and only
+                                // on a date-PILL tap (pillResetToken) — a swipe keeps
+                                // the scroll the mirror carried into the new day. The
+                                // neighbours track scroll via the mirror, so they
+                                // must not self-reset.
+                                if (day == vm.dateFilter) ScrollToTopOnChange(state, pillResetToken)
                                 FilmsGrid(
                                     films = visible,
                                     state = state,
@@ -298,6 +307,11 @@ fun ListScreen(vm: KinowoViewModel, onOpenFilm: (String) -> Unit) {
             tabLabel?.let { TabLabelOverlay(it, Modifier.align(Alignment.Center)) }
         }
     }
+
+    // System back closes the Filtry sheet (the user's "wyjść" gesture). The bare
+    // ModalBottomSheet doesn't intercept back in this window config, so layer an
+    // explicit handler over showFilters — see FilterSheetBackDismissTest.
+    BackHandler(enabled = showFilters) { showFilters = false }
 
     if (showFilters) {
         FiltersSheet(
@@ -464,14 +478,14 @@ private fun RowScope.SearchFieldContent(value: String, onValueChange: (String) -
 // rest but flips to the swipe-preview day mid-drag (see ListScreen.previewDay).
 // A TAP still sets vm.dateFilter directly, which becomes the new highlight.
 @Composable
-private fun RowScope.DatePills(vm: KinowoViewModel, wide: Boolean, highlighted: DateFilter) {
+private fun RowScope.DatePills(wide: Boolean, highlighted: DateFilter, onSelect: (DateFilter) -> Unit) {
     for (preset in DateFilter.presets) {
         val fills = TopBarLayout.datePillFillsRow(preset == DateFilter.Anytime, wide)
         DatePill(
             label = preset.label,
             selected = highlighted == preset,
             modifier = if (fills) Modifier.weight(1f) else Modifier,
-        ) { vm.dateFilter = preset }
+        ) { onSelect(preset) }
     }
 }
 

@@ -6,6 +6,8 @@ import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,6 +57,28 @@ class DetailScreenPosterTest {
         compose.onNodeWithTag(FullScreenPosterTag).assertExists()
 
         compose.onNodeWithTag(FullScreenPosterTag).performTouchInput { click() }
+        compose.onNodeWithTag(FullScreenPosterTag).assertDoesNotExist()
+    }
+
+    @Test
+    fun swipingUpDismissesViewer() {
+        compose.setContent { DetailScreen(film, details = null, onBack = {}) }
+
+        compose.onNodeWithTag(DetailPosterTag).performClick()
+        compose.onNodeWithTag(FullScreenPosterTag).assertExists()
+
+        compose.onNodeWithTag(FullScreenPosterTag).performTouchInput { swipeUp() }
+        compose.onNodeWithTag(FullScreenPosterTag).assertDoesNotExist()
+    }
+
+    @Test
+    fun swipingDownDismissesViewer() {
+        compose.setContent { DetailScreen(film, details = null, onBack = {}) }
+
+        compose.onNodeWithTag(DetailPosterTag).performClick()
+        compose.onNodeWithTag(FullScreenPosterTag).assertExists()
+
+        compose.onNodeWithTag(FullScreenPosterTag).performTouchInput { swipeDown() }
         compose.onNodeWithTag(FullScreenPosterTag).assertDoesNotExist()
     }
 

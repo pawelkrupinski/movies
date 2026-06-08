@@ -31,12 +31,15 @@ import pl.kinowo.filter.DateFilter
 /**
  * Off-device Robolectric checks of the day-swipe carousel: a horizontal swipe
  * steps the selected day among [DateFilter.presets] (wrapping at both ends), a
- * drag too short to cross the commit threshold leaves the day unchanged, and a
- * committed swipe drops the new day's centre grid back to the top.
+ * drag too short to cross the commit threshold leaves the day unchanged, a
+ * committed swipe KEEPS the scroll position (the mirror carries it into the new
+ * day), and a date-PILL tap drops the new day's grid back to the top.
  *
  * The carousel is generic over what each column renders, so these tests feed it
  * plain test grids and observe the committed [DateFilter] (and the centre
- * column's scroll) directly — the gesture logic is what's under test.
+ * column's scroll) directly — the gesture logic is what's under test. The
+ * harness mirrors ListScreen's scroll-reset wiring: ScrollToTopOnChange is keyed
+ * on a pill-tap token, NOT on the committed day, so a swipe never resets it.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -52,10 +55,17 @@ class DayCarouselTest {
 
     // Renders the carousel starting on [start]; returns a getter for the
     // currently-committed day and the centre column's scroll state.
-    private class Harness(val day: () -> DateFilter, val centerScroll: () -> LazyGridState)
+    private class Harness(
+        val day: () -> DateFilter,
+        val centerScroll: () -> LazyGridState,
+        val tapPill: (DateFilter) -> Unit,
+    )
 
     private fun render(start: DateFilter): Harness {
         var current by mutableStateOf(start)
+        // Mirrors ListScreen.pillResetToken: bumped only on a date-pill tap, never
+        // on a swipe-commit, so the scroll-reset fires for taps but not swipes.
+        var pillResetToken by mutableStateOf(0)
         lateinit var sharedScroll: LazyGridState
         compose.setContent {
             sharedScroll = rememberLazyGridState()
@@ -65,10 +75,11 @@ class DayCarouselTest {
                 onCommitDay = { current = it },
                 modifier = Modifier.testTag("dayCarousel"),
             ) { day, state, columnModifier ->
-                // Mirror ListScreen: only the centre column resets to the top on a
-                // committed day flip, and it carries the tag the scroll test drives.
+                // Mirror ListScreen: only the centre column resets to the top, and
+                // only on a pill tap (pillResetToken) — a swipe keeps the scroll the
+                // mirror carried over. The centre grid carries the tag below.
                 val isCenter = day == current
-                if (isCenter) ScrollToTopOnChange(state, current)
+                if (isCenter) ScrollToTopOnChange(state, pillResetToken)
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(1),
                     state = state,
@@ -82,7 +93,7 @@ class DayCarouselTest {
         }
         // The carousel only lays out its strip once it has measured a width; the
         // touch target is the whole carousel box.
-        return Harness({ current }, { sharedScroll })
+        return Harness({ current }, { sharedScroll }, { current = it; pillResetToken++ })
     }
 
     @Test
@@ -113,15 +124,32 @@ class DayCarouselTest {
     }
 
     @Test
-    fun committedSwipeScrollsNewDayToTop() {
+    fun committedSwipePreservesScroll() {
         val h = render(today)
-        // Scroll the centre column down, then swipe to a new day: it must land
-        // back at the top (ScrollToTopOnChange fires on the committed day flip).
-        // The centre column is the 2nd of three; its grid carries the tag below.
+        // Scroll the centre column down, then swipe to a new day: the scroll the
+        // mirror carried over must survive — the user lands at the same place in
+        // the new day, NOT bounced back to the top. The centre column is the 2nd
+        // of three; its grid carries the tag below.
         compose.onNodeWithTag("centerGrid").performScrollToIndex(40)
         compose.runOnIdle { assertEquals(40, h.centerScroll().firstVisibleItemIndex) }
 
         compose.onNodeWithTag("dayCarousel").performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertEquals(tomorrow, h.day())
+            assertEquals(40, h.centerScroll().firstVisibleItemIndex)
+        }
+    }
+
+    @Test
+    fun pillTapScrollsNewDayToTop() {
+        val h = render(today)
+        // A date-PILL tap (unlike a swipe) drops the list back to the top, so the
+        // user starts the freshly-picked day at its first row.
+        compose.onNodeWithTag("centerGrid").performScrollToIndex(40)
+        compose.runOnIdle { assertEquals(40, h.centerScroll().firstVisibleItemIndex) }
+
+        compose.runOnIdle { h.tapPill(tomorrow) }
         compose.waitForIdle()
         compose.runOnIdle {
             assertEquals(tomorrow, h.day())

@@ -2,6 +2,7 @@ package pl.kinowo.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
@@ -27,6 +28,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import kotlin.math.abs
 import androidx.compose.ui.window.DialogProperties
 
 /** testTag the UI/unit tests use to find the open viewer. */
@@ -35,9 +37,10 @@ const val FullScreenPosterTag = "fullScreenPoster"
 /**
  * Full-screen poster viewer: a black-backdrop dialog showing the whole poster
  * (Fit, letterboxed), pinch-to-zoom and pan up to 5×, dismissed by a tap on the
- * backdrop, the close button, or the system back gesture. Opened from the detail
- * screen by tapping or long-pressing the header poster. Reuses [PosterImage] so
- * the fallback-chain logic stays in one place. Mirrors the iOS full-screen cover.
+ * backdrop, the close button, a swipe up or down (while not zoomed in), or the
+ * system back gesture. Opened from the detail screen by tapping or long-pressing
+ * the header poster. Reuses [PosterImage] so the fallback-chain logic stays in
+ * one place. Mirrors the iOS full-screen cover.
  */
 @Composable
 fun FullScreenPoster(
@@ -64,7 +67,26 @@ fun FullScreenPoster(
                 .testTag(FullScreenPosterTag)
                 // Tap anywhere on the backdrop to dismiss.
                 .pointerInput(Unit) { detectTapGestures(onTap = { onDismiss() }) }
-                .transformable(transform),
+                .transformable(transform)
+                // Swipe up or down to flick the poster away — but only at rest
+                // (scale == 1×). While zoomed in, a vertical drag pans instead, so
+                // the detector is keyed off the zoom state and steps aside above 1×.
+                // Placed AFTER transformable so it wins the single-finger vertical
+                // drag in the main pass (transformable would otherwise consume it
+                // as a pan before this detector could claim it for dismissal).
+                .pointerInput(scale <= 1f) {
+                    if (scale > 1f) return@pointerInput
+                    val dismissPx = 80.dp.toPx()
+                    var dragged = 0f
+                    detectVerticalDragGestures(
+                        onDragStart = { dragged = 0f },
+                        onDragEnd = { if (abs(dragged) > dismissPx) onDismiss() },
+                        onVerticalDrag = { change, amount ->
+                            dragged += amount
+                            change.consume()
+                        },
+                    )
+                },
             contentAlignment = Alignment.Center,
         ) {
             PosterImage(
