@@ -371,7 +371,16 @@ class CaffeineMovieCache(
     // tuple so the prune below can identify "newly written this tick" by
     // slot reference rather than by cache key — keys can shift mid-tick
     // when a TMDB-stage rekey moves a row out from under us.
-    val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] = movies.map { cm =>
+    // Record in a deterministic (title, year) order regardless of the order the
+    // scraper handed movies over — several clients build their result from a
+    // `mutable.Map.toSeq` or a parallel detail-fetch whose iteration order
+    // varies run to run. That order leaks into which of two colliding title
+    // variants is recorded first and how cinema slots/showtimes merge, which
+    // made FilmScheduleEndToEndSpec's per-cinema counts + dub-slot assertions
+    // flaky. Sorting here makes the scrape→merge reproducible at no cost to
+    // production correctness.
+    val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] =
+      movies.sortBy(cm => (cm.movie.title, cm.movie.releaseYear.getOrElse(Int.MinValue))).map { cm =>
       // Lock per normalised title so a concurrent first-scrape from another
       // cinema can't create a duplicate row at a different `(title, year)`
       // key while we're between the redirect check and the put. Different
