@@ -539,25 +539,22 @@ internal fun posterGridColumns(landscape: Boolean, layoutWidthDp: Int): GridCell
     else GridCells.Adaptive(minSize = PosterGridMetrics.cardColumnDp(layoutWidthDp).dp)
 
 /**
- * Animate [state] back to the first item whenever [key] changes — so picking a
- * different day quickly scrolls the user up instead of stranding them mid-list
- * on the previous day's rows (and instead of snapping abruptly to the top).
+ * Snap [state] to the first item whenever [key] changes — so picking a different
+ * day (a date-pill tap, or the Kina section key) starts the new content at the
+ * top instead of stranding the user mid-list on the previous day's rows.
  *
- * Only fires when the first item is NOT already visible (the user has scrolled
- * down past it). When item 0 is on screen the column is "at the top" and is left
- * untouched — even a few px of offset is preserved, so a day-swipe at the top
- * doesn't snap that offset to 0, which reads as the column scrolling when it's
- * already at the top. The first composition is likewise a no-op.
+ * INSTANT (`scrollToItem`, not animate): a visible roll-to-top is exactly the
+ * "the column scrolls when I switch days" the user sees — the new day should
+ * simply BE at the top. From the exact top this is a no-op. The day-swipe
+ * carousel resets its own column on commit (see DayCarousel.commit), so this is
+ * the path for pill taps and the Kina grid. The first composition is a no-op,
+ * which also preserves a scroll position restored across a config change.
  */
 @Composable
 internal fun ScrollToTopOnChange(state: LazyGridState, key: Any?) {
     var seenFirst by remember { mutableStateOf(false) }
     LaunchedEffect(key) {
-        if (!seenFirst) {
-            seenFirst = true
-        } else if (state.firstVisibleItemIndex != 0) {
-            state.animateScrollToItem(0)
-        }
+        if (!seenFirst) seenFirst = true else state.scrollToItem(0)
     }
 }
 
