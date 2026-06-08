@@ -62,14 +62,30 @@ class UptimeController(cc: ControllerComponents, monitor: UptimeMonitor)(using m
     }
 
     def row(n: String) = ServiceRow(n, barsFor(n), monitor.averageMs1h(n), monitor.averageMsTotal(n))
+    val (cinemasByCity, services, other) = groupRows(active, row)
+    Ok(views.html.uptime(cinemasByCity, services, other))
+  }
+
+  /** Split the active services into the page's three sections. A cinema's
+   *  "<cinema>|enrichment" service (deferred-detail task health) is attached as
+   *  a sub-row of the cinema instead of floating in "Other". Package-private and
+   *  parameterised on `row` so the grouping is unit-testable without rendering or
+   *  a Materializer. */
+  private[controllers] def groupRows(active: Set[String], row: String => ServiceRow)
+      : (Seq[(String, Seq[ServiceRow])], Seq[ServiceRow], Seq[ServiceRow]) = {
+    def cinemaRow(displayName: String): ServiceRow = {
+      val enrichSvc = UptimeMonitor.enrichmentService(displayName)
+      row(displayName).copy(enrichment = Option.when(active.contains(enrichSvc))(row(enrichSvc)))
+    }
     val cinemasByCity = Cinema.byCity.flatMap { case (city, venues) =>
-      val rows = venues.map(_.displayName).filter(active.contains).map(row)
+      val rows = venues.map(_.displayName).filter(active.contains).map(cinemaRow)
       Option.when(rows.nonEmpty)(city -> rows)
     }
     val services = enrichmentNames.filter(active.contains).map(row)
-    val other    = (active -- cinemaNames.toSet -- enrichmentNames.toSet).toSeq.sorted.map(row)
-
-    Ok(views.html.uptime(cinemasByCity, services, other))
+    // Exclude the "<cinema>|enrichment" services — they render as cinema sub-rows.
+    val other = (active -- cinemaNames.toSet -- enrichmentNames.toSet)
+      .filterNot(UptimeMonitor.isEnrichmentService).toSeq.sorted.map(row)
+    (cinemasByCity, services, other)
   }
 
   def stream: Action[AnyContent] = Action {
@@ -151,4 +167,13 @@ object BarData {
   )
 }
 
-case class ServiceRow(name: String, bars: Seq[BarData], avg1hMs: Option[Long] = None, avgTotalMs: Option[Long] = None)
+case class ServiceRow(
+  name:       String,
+  bars:       Seq[BarData],
+  avg1hMs:    Option[Long]       = None,
+  avgTotalMs: Option[Long]       = None,
+  // The cinema's deferred-detail enrichment health, rendered as an indented
+  // sub-row beneath the scrape bar. None for non-cinema rows / cinemas with no
+  // deferred detail.
+  enrichment: Option[ServiceRow] = None
+)

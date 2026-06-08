@@ -42,6 +42,11 @@
     .bar.zero   { background: #f5f5f5; }
     .bar.empty  { background: #5a7560; }
     .bar:hover  { opacity: 0.7; }
+    /* A cinema's deferred-detail enrichment health, subordinate to its scrape row:
+       indented, muted, with shorter bars. Same colour classes as any bar. */
+    .enrichment-row { margin-top: -1px; margin-bottom: 6px; margin-left: 18px; }
+    .enrichment-row .name { width: 182px; color: #6f6f6f; font-size: 11px; }
+    .enrichment-row .bar { height: 16px; }
     .legend {
       display: flex; gap: 16px; margin-top: 32px; font-size: 11px; color: #666;
     }
@@ -90,7 +95,10 @@
     <h2>Cinemas</h2>
     @for((city, rows) <- cinemasByCity) {
       <h3>@city</h3>
-      @for(s <- rows) { @serviceRow(s) }
+      @for(s <- rows) {
+        @serviceRow(s)
+        @s.enrichment.map { e => @enrichmentRow(e) }
+      }
     }
   }
 
@@ -209,6 +217,23 @@
       }
     </div>
     <div class="latency" title="avg successful call latency — last 1h / all retained">
+      @s.avg1hMs.map(_ + "ms").getOrElse("—") <span class="lat-total">/ @s.avgTotalMs.map(_ + "ms").getOrElse("—")</span>
+    </div>
+  </div>
+}
+
+@*  A cinema's deferred-detail enrichment sub-row. data-service keeps the full
+    "<cinema>|enrichment" key so SSE live updates target it, but the visible
+    label is just "enrichment". Same bar markup/colours as serviceRow.  *@
+@enrichmentRow(s: ServiceRow) = {
+  <div class="row enrichment-row" data-service="@s.name">
+    <div class="name" title="@s.name">↳ enrichment</div>
+    <div class="bars">
+      @for(b <- s.bars) {
+        <div class="bar @b.status" data-ts="@b.bucketTs" data-info="@{Json.toJson(b)(BarData.writes).toString}"></div>
+      }
+    </div>
+    <div class="latency" title="avg successful detail-fetch latency — last 1h / all retained">
       @s.avg1hMs.map(_ + "ms").getOrElse("—") <span class="lat-total">/ @s.avgTotalMs.map(_ + "ms").getOrElse("—")</span>
     </div>
   </div>
