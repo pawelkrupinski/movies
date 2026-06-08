@@ -193,12 +193,15 @@ class WorkerWiring {
     ) else Nil
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore)
 
-  // The worker dispatches scrapes/enrichment onto the same sub-capped budget the
-  // old loop used, so a backlog can't peg the box.
+  // A fixed pool of workers, each fetching and running ONE task at a time — so
+  // the number of scrapes/enrichments in flight at once is hard-capped at the
+  // pool size and a backlog can't peg the box. (Replaces the old single batch
+  // poller that claimed up to 20 tasks per tick onto a shared-budget EC.)
+  def workerPoolSize: Int = Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)
   lazy val taskWorker = new TaskWorker(
     taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler) ++ ratingHandlers,
-    backgroundBudget.ec("task-worker", scrapeConcurrency),
-    pollInterval = scala.concurrent.duration.DurationInt(5).seconds
+    pollInterval = scala.concurrent.duration.DurationInt(5).seconds,
+    poolSize     = workerPoolSize
   )
   lazy val scrapeReaper = new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore)
 

@@ -6,7 +6,8 @@ import play.api.Logging
 
 import java.net.InetAddress
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
-import scala.concurrent.ExecutionContext
+import java.util.concurrent.atomic.AtomicBoolean
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -19,21 +20,28 @@ trait TaskHandler {
 }
 
 /**
- * Polls a [[TaskQueue]] and dispatches claimed tasks to per-type [[TaskHandler]]s.
+ * A fixed pool of `poolSize` workers draining a [[TaskQueue]], each fetching and
+ * running exactly **one task at a time**. Every worker is its own daemon thread
+ * running a tight loop: claim one waiting task, run its handler to completion,
+ * then claim the next. Total in-flight work is therefore hard-capped at
+ * `poolSize` — there's no batch claim and no separate dispatch pool, so the
+ * number of tasks in `worked_on` at once can never exceed the number of workers.
+ * Each worker claims under its own id (`host-pid-N`), so the tasks page shows up
+ * to `poolSize` distinct workers, each holding a single task.
  *
- * One daemon scheduler thread ticks every `pollInterval`: it first times out
- * stuck/dead leases, then claims up to `maxPerTick` tasks and runs each handler
- * on `ec` (so the scheduler thread never blocks on a network fetch). A handler
- * that finishes (`Done`/`Skipped`) tombstones the task; one that can't
- * (`Reschedule` or a thrown exception) returns it to waiting to retry.
+ * A worker only sleeps `pollInterval` when it found nothing to do, or when the
+ * task it ran went back to the queue (`Reschedule`/failure/no-handler) — so a
+ * backlog drains at full speed, but a lone perpetually-rescheduling task is
+ * retried at most once per interval per worker rather than hot-spinning.
  *
  * `processingTimeout` is the lease length: any task left in `worked_on` longer
  * than this — a crashed worker, a handler that hung, a fetch stuck past its own
- * timeout — is returned to waiting on the next tick by `reapExpiredLeases`, so a
- * task can never be stranded "being processed" forever. It's a safety net, not a
- * correctness boundary: if it fires on a task that's actually still running, the
- * duplicate run is harmless because every handler is freshness-gated and writes
- * idempotently (it finds the data fresh and returns `Skipped`). Keep it
+ * timeout — is returned to waiting by `reapExpiredLeases`, which a single shared
+ * reaper thread runs every `pollInterval` (independently of the workers, so a
+ * stuck lease is reaped even while all workers are busy). It's a safety net, not
+ * a correctness boundary: if it fires on a task that's actually still running,
+ * the duplicate run is harmless because every handler is freshness-gated and
+ * writes idempotently (it finds the data fresh and returns `Skipped`). Keep it
  * comfortably above the slowest handler's wall-clock; the default 5 min covers
  * the slowest scrape/detail fetch while still freeing a genuinely stuck task
  * quickly.
@@ -41,69 +49,90 @@ trait TaskHandler {
 class TaskWorker(
   queue:             TaskQueue,
   handlers:          Seq[TaskHandler],
-  ec:                ExecutionContext,
   processingTimeout: FiniteDuration = 5.minutes,
   pollInterval:      FiniteDuration = 2.seconds,
-  maxPerTick:        Int            = 20
+  poolSize:          Int            = 4
 ) extends Stoppable with Logging {
   import HandlerOutcome._
+  import TaskWorker._
 
   private val byType: Map[TaskType, TaskHandler] = handlers.map(h => h.taskType -> h).toMap
 
-  private val workerId: String = {
+  private val baseId: String = {
     val host = Try(InetAddress.getLocalHost.getHostName).getOrElse("unknown")
     s"$host-${ProcessHandle.current().pid()}"
   }
 
-  private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("task-worker")
+  private val running: AtomicBoolean          = new AtomicBoolean(false)
+  private val workers: mutable.Buffer[Thread] = mutable.Buffer.empty
+  // Reaping is global, so one shared thread does it for the whole pool — and it
+  // must keep ticking while every worker is busy, which a per-worker reap can't.
+  private val reaper: ScheduledExecutorService = DaemonExecutors.scheduler("task-reaper")
 
   def start(): Unit = {
-    scheduler.scheduleWithFixedDelay(
-      () => Try(poll()), pollInterval.toMillis, pollInterval.toMillis, TimeUnit.MILLISECONDS)
-    logger.info(s"TaskWorker started (workerId=$workerId, ${byType.size} handler(s), poll ${pollInterval.toSeconds}s).")
-  }
-
-  /** One tick: time out stuck leases, then claim and dispatch up to `maxPerTick`
-   *  tasks onto `ec`. Package-private so tests can drive it deterministically
-   *  with a same-thread EC. Returns how many tasks were dispatched. */
-  private[tasks] def poll(): Int = {
-    queue.reapExpiredLeases()
-    val seen     = scala.collection.mutable.Set.empty[String]
-    var continue = true
-    while (continue && seen.size < maxPerTick) {
-      queue.claim(workerId, processingTimeout) match {
-        case None => continue = false
-        // A task we already dispatched this tick came back: a synchronous
-        // handler released it (Reschedule / failure / no-handler) and it
-        // re-surfaced as waiting, so `claim` just leased it back to us. Release
-        // it again — don't strand it in worked_on — and stop; it retries on a
-        // later tick. (With the async prod EC the handler hasn't run yet within
-        // a tick, so a dispatched task stays worked_on and this never fires.)
-        case Some(task) if seen.contains(task.id) =>
-          queue.release(task.id, workerId)
-          continue = false
-        case Some(task) =>
-          seen += task.id
-          ec.execute(() => runHandler(task))
-      }
+    running.set(true)
+    reaper.scheduleWithFixedDelay(
+      () => Try(queue.reapExpiredLeases()), pollInterval.toMillis, pollInterval.toMillis, TimeUnit.MILLISECONDS)
+    (0 until poolSize).foreach { i =>
+      val id = s"$baseId-$i"
+      val t  = new Thread(() => runLoop(id), s"task-worker-$i")
+      t.setDaemon(true)
+      t.start()
+      workers += t
     }
-    seen.size
+    logger.info(s"TaskWorker started ($poolSize worker(s) $baseId-0..${poolSize - 1}, ${byType.size} handler(s), poll ${pollInterval.toSeconds}s).")
   }
 
-  private def runHandler(task: Task): Unit = byType.get(task.taskType) match {
+  /** One worker slot: claim a task, run it to completion, claim the next. Sleeps
+   *  `pollInterval` only when idle or when the task returned to the queue. */
+  private def runLoop(workerId: String): Unit =
+    while (running.get()) {
+      val result = Try(claimAndRun(workerId)).getOrElse(PollResult.Idle)
+      if (result != PollResult.Completed && running.get())
+        try Thread.sleep(pollInterval.toMillis)
+        catch { case _: InterruptedException => Thread.currentThread().interrupt() }
+    }
+
+  /** Claim a single waiting task for `workerId` and run its handler to
+   *  completion — one task, then return. Package-private so tests can drive a
+   *  worker deterministically without spinning up threads. */
+  private[tasks] def claimAndRun(workerId: String): PollResult =
+    queue.claim(workerId, processingTimeout) match {
+      case None       => PollResult.Idle
+      case Some(task) => runHandler(task, workerId)
+    }
+
+  private def runHandler(task: Task, workerId: String): PollResult = byType.get(task.taskType) match {
     case None =>
       // No handler wired (e.g. mid-deploy) — return it so a node that has the
       // handler can take it rather than tombstoning unfinished work.
       queue.release(task.id, workerId, Some(s"no handler for ${task.taskType.name}"))
+      PollResult.Returned
     case Some(h) =>
       Try(h.handle(task)) match {
-        case Success(Done) | Success(Skipped) => queue.complete(task.id, workerId)
-        case Success(Reschedule(err))         => queue.release(task.id, workerId, err)
+        case Success(Done) | Success(Skipped) => queue.complete(task.id, workerId); PollResult.Completed
+        case Success(Reschedule(err))         => queue.release(task.id, workerId, err); PollResult.Returned
         case Failure(ex) =>
           logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed: ${ex.getMessage}")
           queue.release(task.id, workerId, Some(ex.getMessage))
+          PollResult.Returned
       }
   }
 
-  override def stop(): Unit = { scheduler.shutdown(); () }
+  override def stop(): Unit = {
+    running.set(false)
+    reaper.shutdown()
+    workers.foreach(_.interrupt()) // break any in-flight pollInterval sleep
+    ()
+  }
+}
+
+object TaskWorker {
+  /** Why a worker slot's last claim ended — drives whether it backs off. */
+  private[tasks] sealed trait PollResult
+  private[tasks] object PollResult {
+    case object Idle      extends PollResult // nothing waiting to claim
+    case object Completed extends PollResult // handler finished (Done/Skipped) — claim the next immediately
+    case object Returned  extends PollResult // task went back to the queue — back off one poll interval
+  }
 }
