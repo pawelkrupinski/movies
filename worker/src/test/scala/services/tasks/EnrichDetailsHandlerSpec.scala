@@ -1,9 +1,9 @@
 package services.tasks
 
-import models.{Cinema, CinemaMovie, KinoApollo, Movie, Showtime}
+import models.{CinemaMovie, KinoApollo, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{DetailEnricher, FilmDetail}
+import services.cinemas.{DetailEnricher, FakeDetailEnricher, FilmDetail}
 import services.events.InProcessEventBus
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepo}
@@ -12,11 +12,6 @@ import java.time.LocalDateTime
 
 class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   import HandlerOutcome._
-
-  private class FakeEnricher(val cinema: Cinema, val detailGroup: String, detail: Option[FilmDetail]) extends DetailEnricher {
-    var calls = 0
-    override def fetchFilmDetail(ref: String): Option[FilmDetail] = { calls += 1; detail }
-  }
 
   /** A cache pre-seeded with one (KinoApollo, title) row whose slot carries
    *  showtimes but no detail — exactly what a bare scrape leaves behind. */
@@ -38,7 +33,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   "EnrichDetailsHandler" should "merge fetched detail into the cinema slot, preserving showtimes, and mark fresh" in {
     val cache    = seededCache("Dune")
     val fresh    = new InMemoryFreshnessStore
-    val enricher = new FakeEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("A great film"), cast = Seq("Zendaya"))))
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("A great film"), cast = Seq("Zendaya"))))
     val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
@@ -58,7 +53,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val fresh    = new InMemoryFreshnessStore
     val dupe     = Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book")) // same as the scrape's
     val fresher  = Showtime(LocalDateTime.of(2026, 6, 7, 20, 30), Some("https://book2"))
-    val enricher = new FakeEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(showtimes = Seq(fresher, dupe))))
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(showtimes = Seq(fresher, dupe))))
     val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh)
 
     h.handle(taskFor("kino-apollo", cache, "Dune", enricher)) shouldBe Done
@@ -69,7 +64,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   it should "skip without fetching when the detail is already fresh" in {
     val cache    = seededCache("Dune")
     val fresh    = new InMemoryFreshnessStore
-    val enricher = new FakeEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("x"))))
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("x"))))
     val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
     fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich)
@@ -81,14 +76,14 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   it should "drop a task whose detail group has no enricher" in {
     val cache = seededCache("Dune")
     val h     = new EnrichDetailsHandler(Map.empty, cache, new InMemoryFreshnessStore)
-    val task  = taskFor("gone", cache, "Dune", new FakeEnricher(KinoApollo, "gone", None))
+    val task  = taskFor("gone", cache, "Dune", new FakeDetailEnricher(KinoApollo, "gone", None))
     h.handle(task) shouldBe Done
   }
 
   it should "report Done but stay stale when the fetch yields nothing (so the next scrape retries)" in {
     val cache    = seededCache("Dune")
     val fresh    = new InMemoryFreshnessStore
-    val enricher = new FakeEnricher(KinoApollo, "kino-apollo", None) // fetch failed/absent
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", None) // fetch failed/absent
     val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh)
     val task     = taskFor("kino-apollo", cache, "Dune", enricher)
 
@@ -102,7 +97,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   "the queue" should "reject a duplicate EnrichDetails task for the same (group, film)" in {
     val cache    = seededCache("Dune")
     val queue    = new InMemoryTaskQueue
-    val enricher = new FakeEnricher(KinoApollo, "kino-apollo", Some(FilmDetail()))
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail()))
     val key      = cache.keyOf("Dune", None)
     val dk       = EnrichDetailsTasks.dedupKey("kino-apollo", key)
     queue.enqueue(TaskType.EnrichDetails, dk, EnrichDetailsTasks.payload(enricher, key, "http://ref")) shouldBe EnqueueResult.Added

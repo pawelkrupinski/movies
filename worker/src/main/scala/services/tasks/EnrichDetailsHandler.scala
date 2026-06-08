@@ -25,6 +25,18 @@ object EnrichDetailsTasks {
       TitleKey -> key.cleanTitle,
       YearKey  -> key.year.map(_.toString).getOrElse("")
     )
+
+  /** Enqueue a detail task for `(enricher's group, film)` unless it's already
+   *  detail-fresh. The freshness pre-check just avoids queue churn; the queue's
+   *  unique index is the real cross-server guarantee that a `(group, film)`
+   *  detail task can't be queued twice. Returns true iff newly enqueued. Shared
+   *  by every producer (the event enqueuer, the periodic reaper, the inline
+   *  scrape path) so the enqueue rule lives in exactly one place. */
+  def enqueueIfStale(queue: TaskQueue, freshness: FreshnessStore, enricher: DetailEnricher, key: CacheKey, ref: String): Boolean = {
+    val dk = dedupKey(enricher.detailGroup, key)
+    !freshness.isFresh(dk, FreshnessKind.DetailEnrich) &&
+      queue.enqueue(TaskType.EnrichDetails, dk, payload(enricher, key, ref)) == EnqueueResult.Added
+  }
 }
 
 /**

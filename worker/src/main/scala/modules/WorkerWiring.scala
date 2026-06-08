@@ -8,7 +8,7 @@ import services.enrichment._
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import services.movies.{CaffeineMovieCache, MongoMovieRepo, MovieRepo, MovieService, UnscreenedCleanup}
-import services.tasks.{EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker}
+import services.tasks.{DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoTaskQueue, RatingEnqueuer, RatingHandler, ScrapeCinemaHandler, ScrapeReaper, TaskQueue, TaskType, TaskWorker}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ScrapeCities, SharedExecutionBudget}
 
 /**
@@ -178,6 +178,13 @@ class WorkerWiring {
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore
   )
+  // Detail enqueue is event-driven: one enqueuer per deferred cinema fires the
+  // first detail fetch off CinemaMovieAdded; the reaper is the periodic
+  // refresh/retry backstop (CinemaMovieAdded fires only on first appearance).
+  // Both empty/no-op when !deferDetail, since detailEnrichers is then Nil.
+  lazy val detailEnqueuers: Seq[DetailTaskEnqueuer] =
+    detailEnrichers.map(de => new DetailTaskEnqueuer(de, movieCache, taskQueue, freshnessStore))
+  lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore)
 
   // Rating refresh as queue tasks (wired only when queueEnrichment). The handlers
   // reuse each *Ratings class's existing per-row refreshOneSync; the enqueuer
@@ -216,6 +223,8 @@ class WorkerWiring {
   eventBus.subscribe(movieService.onMovieRecordCreated)
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   eventBus.subscribe(kinoMuzaSynopsisRefresher.onCinemaMovieAdded)
+  // One detail enqueuer per deferred cinema (empty when !deferDetail).
+  detailEnqueuers.foreach(e => eventBus.subscribe(e.onCinemaMovieAdded))
   if (queueEnrichment) {
     // Rating subscribers ENQUEUE tasks; RatingHandlers + EnrichmentReaper fetch.
     eventBus.subscribe(ratingEnqueuer.onTmdbResolved)
@@ -253,6 +262,7 @@ class WorkerWiring {
     // deferred detail, and/or queue-driven rating enrichment.
     if (queueScraping || deferDetail || queueEnrichment) taskWorker.start()
     if (queueEnrichment) enrichmentReaper.start()
+    if (deferDetail) detailReaper.start()
     if (queueScraping) scrapeReaper.start() else showtimeCache.start()
   }
 
@@ -265,6 +275,7 @@ class WorkerWiring {
   def stop(): Unit = {
     if (queueScraping) scrapeReaper.stop() else showtimeCache.stop()
     if (queueEnrichment) enrichmentReaper.stop()
+    if (deferDetail) detailReaper.stop()
     if (queueScraping || deferDetail || queueEnrichment) {
       taskWorker.stop()
       taskQueue.close()

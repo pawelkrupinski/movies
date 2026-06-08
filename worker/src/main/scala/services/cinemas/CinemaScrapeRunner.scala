@@ -3,9 +3,9 @@ package services.cinemas
 import models.{Cinema, CinemaMovie}
 import play.api.Logging
 import services.events.{EventBus, MovieRecordCreated}
-import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
+import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.movies.{CacheKey, MovieCache}
-import services.tasks.{EnrichDetailsTasks, InMemoryTaskQueue, TaskQueue, TaskType}
+import services.tasks.{EnrichDetailsTasks, InMemoryTaskQueue, TaskQueue}
 
 /**
  * The per-cinema scrape core: fetch a cinema's current listings, write them
@@ -60,11 +60,7 @@ class CinemaScrapeRunner(
   private def enqueueDetailTasks(cinema: Cinema, touched: Seq[(CinemaMovie, CacheKey, Boolean)]): Unit =
     detailEnrichers.get(cinema.displayName).foreach { enricher =>
       touched.foreach { case (cm, key, _) =>
-        cm.filmUrl.foreach { ref =>
-          val dk = EnrichDetailsTasks.dedupKey(enricher.detailGroup, key)
-          if (!freshness.isFresh(dk, FreshnessKind.DetailEnrich))
-            queue.enqueue(TaskType.EnrichDetails, dk, EnrichDetailsTasks.payload(enricher, key, ref))
-        }
+        cm.filmUrl.foreach(ref => EnrichDetailsTasks.enqueueIfStale(queue, freshness, enricher, key, ref))
       }
     }
 }
