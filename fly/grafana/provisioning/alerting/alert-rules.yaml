@@ -1,0 +1,313 @@
+apiVersion: 1
+
+# Alert rules wired to the Fly managed Prometheus. Every expression below was
+# validated against the live endpoint (org `personal`) before being committed —
+# metric names and label shapes are real, not copied from docs (the docs'
+# `fly_instance_exit_oom` does NOT exist in this org; Fly's own email covers the
+# OOM kill, and rule "memory-pressure" below catches the pre-OOM condition).
+#
+# Each rule maps to a real past incident:
+#   - cpu-credit-exhausted / cpu-throttled  -> 2026-06-07 web 93% steal (shared
+#     vCPU credit exhaustion after the 5->19 city + zlib deploy)
+#   - memory-pressure                       -> 2026-06-06 Mongo OOM cascade
+#   - serving-app-down / http-5xx-high      -> the 502/503 web outage
+#   - http-p95-high                         -> "percentiles suddenly increasing"
+#
+# noDataState is OK for traffic/credit metrics (a quiet hobby app legitimately
+# has no HTTP series for minutes), EXCEPT serving-app-down where missing data IS
+# the alarm.
+groups:
+  - orgId: 1
+    name: fly-resources
+    folder: Fly Alerts
+    interval: 1m
+    rules:
+      # ---- CPU credit exhaustion (the 93%-steal root cause) -----------------
+      # Shared-cpu credit balance collapsing toward 0 on a serving app means it
+      # is about to run at baseline only = the latency/steal incident. Worker is
+      # excluded: it runs credit-starved by design (continuous scrape).
+      - uid: kinowo-cpu-credit-exhausted
+        title: CPU credit exhausted (serving app)
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.app }} shared-CPU credit balance is near zero'
+          description: 'fly_instance_cpu_balance < 500 for 10m on {{ $labels.app }} ({{ $labels.instance }}). The machine is throttled to baseline CPU — this is the shape of the 2026-06-07 web 93%-steal incident. Check what deploy preceded it (deploy annotations on the dashboard).'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'min by (app, instance) (fly_instance_cpu_balance{app=~"kinowo|kinowo-mongo"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [500] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- CPU actively throttled ------------------------------------------
+      - uid: kinowo-cpu-throttled
+        title: CPU throttled (serving app)
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} is being CPU-throttled'
+          description: 'rate(fly_instance_cpu_throttle) > 0.2 (throttled >20% of wall-clock) for 10m on {{ $labels.app }}. Serving latency will suffer.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo|kinowo-mongo"}[5m]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.2] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- CPU steal (host contention, secondary signal) -------------------
+      - uid: kinowo-cpu-steal-high
+        title: CPU steal high
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} CPU steal > 25%'
+          description: 'The hypervisor is stealing >25% of CPU from {{ $labels.app }} for 10m — noisy-neighbour or our own overcommit. Heap was fine in the 2026-06-07 incident; steal was the tell.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum by (app) (rate(fly_instance_cpu{mode="steal"}[5m])) / sum by (app) (rate(fly_instance_cpu[5m]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.25] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Memory pressure (pre-OOM, the Mongo-cascade precursor) -----------
+      - uid: kinowo-memory-pressure
+        title: Memory pressure (pre-OOM)
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} has < 8% memory available'
+          description: 'fly_instance_memory_mem_available/total < 0.08 for 15m on {{ $labels.app }} ({{ $labels.instance }}). This is the runway to an OOM kill — the 2026-06-06 Mongo OOM cascaded into a web outage. Fly also emails on the actual kill.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'min by (app, instance) (fly_instance_memory_mem_available / fly_instance_memory_mem_total)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [0.08] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+  - orgId: 1
+    name: fly-serving
+    folder: Fly Alerts
+    interval: 1m
+    rules:
+      # ---- HTTP 5xx rate ---------------------------------------------------
+      - uid: kinowo-http-5xx-high
+        title: HTTP 5xx rate high
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.app }} serving > 5% 5xx'
+          description: 'Over 5% of responses are 5xx for 5m on {{ $labels.app }} — the shape of the boot-crash-loop / Mongo-blocked-bind outage. Cross-check the latest deploy marker.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum by (app) (rate(fly_app_http_responses_count{status=~"5.."}[5m])) / sum by (app) (rate(fly_app_http_responses_count[5m]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.05] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- HTTP p95 latency ------------------------------------------------
+      - uid: kinowo-http-p95-high
+        title: HTTP p95 latency high
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} p95 latency > 2s'
+          description: 'p95 response time > 2s for 10m on {{ $labels.app }} ("percentiles suddenly increasing"). Often the first visible symptom of CPU-credit exhaustion before it trips the credit alarm.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'histogram_quantile(0.95, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [2] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Serving app down ------------------------------------------------
+      # The ONLY rule where missing data is the alarm: if kinowo stops reporting
+      # fly_instance_up (machine gone / wedged), or reports 0, page after 3m.
+      - uid: kinowo-serving-down
+        title: Serving app down
+        condition: C
+        for: 3m
+        noDataState: Alerting
+        execErrState: Alerting
+        labels:
+          severity: critical
+        annotations:
+          summary: 'kinowo (web) is down or not reporting'
+          description: 'fly_instance_up{app="kinowo"} is 0 or absent for 3m — the user-facing app is unreachable. Check `fly status -a kinowo` and Mongo (a Mongo hiccup blocks web boot).'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max (fly_instance_up{app="kinowo"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C

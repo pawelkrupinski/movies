@@ -1,0 +1,17 @@
+apiVersion: 1
+
+# Loads any dashboard JSON in this directory. fly-overview.json carries the
+# deploy-marker annotation query (tag: deploy) so the commit hashes CI posts
+# show as vertical lines across every panel — "this latency spike lines up with
+# that release" at a glance.
+providers:
+  - name: kinowo
+    orgId: 1
+    folder: Fly
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false

@@ -1,0 +1,27 @@
+name: Deploy Grafana
+
+# The self-hosted alerting Grafana redeploys ONLY when its own config changes —
+# not on every app commit. All alert rules / datasource / dashboard live under
+# fly/grafana/provisioning, so a rule tweak here ships them.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fly/grafana/**'
+      - '.github/workflows/deploy-grafana.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: fly-deploy-grafana
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy kinowo-grafana
+        run: flyctl deploy --remote-only -c fly/grafana/fly.toml -a kinowo-grafana
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

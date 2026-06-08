@@ -99,3 +99,37 @@ jobs:
               if: steps.guard.outputs.skip != 'true'
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+    # Drop a vertical marker on the self-hosted Grafana carrying this commit's
+    # SHA + subject, so a metric regression on the dashboard lines up visually
+    # with the release that caused it — the "I deploy X and a service degrades"
+    # loop, made legible. Runs once after BOTH app legs finish. No-ops (doesn't
+    # fail the deploy) until the Grafana secrets are set, so it's safe to land
+    # before kinowo-grafana exists.
+    annotate:
+        needs: deploy
+        if: ${{ !cancelled() && needs.deploy.result == 'success' }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Mark deploy in Grafana
+              env:
+                  GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+                  GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+                  SHA: ${{ github.sha }}
+                  MSG: ${{ github.event.head_commit.message }}
+              run: |
+                  if [ -z "${GRAFANA_URL:-}" ] || [ -z "${GRAFANA_ANNOTATION_TOKEN:-}" ]; then
+                      echo "Grafana annotation secrets unset — skipping deploy marker."
+                      exit 0
+                  fi
+                  short="${SHA:0:7}"
+                  subject="$(printf '%s' "$MSG" | head -1)"
+                  now="$(( $(date +%s) * 1000 ))"
+                  body="$(jq -n --argjson time "$now" \
+                      --arg text "deploy ${short} — ${subject} (${SHA})" \
+                      '{time: $time, tags: ["deploy", "main"], text: $text}')"
+                  curl -fsS -X POST "${GRAFANA_URL%/}/api/annotations" \
+                      -H "Authorization: Bearer ${GRAFANA_ANNOTATION_TOKEN}" \
+                      -H "Content-Type: application/json" \
+                      -d "$body"
+                  echo "Posted deploy marker for ${short}."

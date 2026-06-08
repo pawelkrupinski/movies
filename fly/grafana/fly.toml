@@ -1,0 +1,53 @@
+app = 'kinowo-grafana'
+# Same region as the apps it watches (kinowo / kinowo-worker / kinowo-mongo all
+# in `arn`) — not load-bearing for Grafana, but keeps it next to the org it
+# alerts on. This is the *alerting* Grafana: Fly's hosted fly-metrics.net Grafana
+# cannot run alert rules (confirmed, even on paid plans), so we self-host a tiny
+# one per Fly's own recommendation. Reads the same managed Prometheus.
+primary_region = 'arn'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  GF_SERVER_HTTP_PORT = '3000'
+  GF_SERVER_ROOT_URL = 'https://kinowo-grafana.fly.dev'
+  # Single-operator instance — no public signups, no anonymous access, no
+  # phone-home. Admin password + the Fly read token + Telegram creds all come
+  # from `fly secrets` (see README), never the image.
+  GF_USERS_ALLOW_SIGN_UP = 'false'
+  GF_AUTH_ANONYMOUS_ENABLED = 'false'
+  GF_ANALYTICS_REPORTING_ENABLED = 'false'
+  GF_ANALYTICS_CHECK_FOR_UPDATES = 'false'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # Keep one machine up so alert evaluation never pauses on a cold-start.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  # Grafana + unified alerting is comfortable in 512 MB; ~$3-4/mo. CPU is
+  # near-idle (it only fans a handful of PromQL queries every minute).
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[mounts]
+  # Grafana keeps its SQLite (alert state, silences, annotations posted by CI,
+  # the admin user) here. Without a volume every redeploy would reset alert
+  # state and drop the deploy-marker history.
+  source = 'grafana_data'
+  destination = '/var/lib/grafana'
+
+[checks]
+  [checks.health]
+    grace_period = '20s'
+    interval = '15s'
+    method = 'GET'
+    path = '/api/health'
+    port = 3000
+    timeout = '10s'
+    type = 'http'

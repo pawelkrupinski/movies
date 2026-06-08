@@ -1,0 +1,111 @@
+{
+  "uid": "fly-overview",
+  "title": "kinowo — Fly health",
+  "tags": ["fly", "kinowo"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-6h", "to": "now" },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": false,
+        "iconColor": "purple",
+        "name": "Deploys",
+        "tags": ["deploy"],
+        "type": "tags"
+      }
+    ]
+  },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "title": "CPU credit balance (serving apps — alarm < 500)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "min by (app) (fly_instance_cpu_balance)", "legendFormat": "{{app}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "CPU throttled (rate, fraction of wall-clock)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "max by (app) (rate(fly_instance_cpu_throttle[5m]))", "legendFormat": "{{app}}" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "CPU steal %",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{mode=\"steal\"}[5m])) / sum by (app) (rate(fly_instance_cpu[5m]))", "legendFormat": "{{app}}" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Memory available % (alarm < 8%)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "min by (app) (fly_instance_memory_mem_available / fly_instance_memory_mem_total)", "legendFormat": "{{app}}" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "HTTP p95 latency (s)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.95, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))", "legendFormat": "{{app}}" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "HTTP 5xx rate",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (app) (rate(fly_app_http_responses_count{status=~\"5..\"}[5m])) / sum by (app) (rate(fly_app_http_responses_count[5m]))", "legendFormat": "{{app}}" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Instance up",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 24 },
+      "fieldConfig": { "defaults": { "min": 0, "max": 1, "custom": { "drawStyle": "line", "fillOpacity": 20, "lineInterpolation": "stepAfter" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "max by (app) (fly_instance_up)", "legendFormat": "{{app}}" }
+      ]
+    }
+  ]
+}

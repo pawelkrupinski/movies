@@ -1,0 +1,30 @@
+apiVersion: 1
+
+# Fly.io's managed Prometheus (VictoriaMetrics under the hood). Same data the
+# hosted fly-metrics.net Grafana reads; we just point a self-hosted, alert-
+# capable Grafana at it.
+#
+# AUTH GOTCHA (verified against the live endpoint): the header is
+#   Authorization: FlyV1 <token>
+# NOT `Bearer <token>` — a Bearer header 401s with "resolving organization".
+# The token is a read-only org token: `fly tokens create readonly --org personal`.
+deleteDatasources:
+  - name: Fly Prometheus
+    orgId: 1
+
+datasources:
+  - name: Fly Prometheus
+    uid: fly-prometheus
+    orgId: 1
+    type: prometheus
+    access: proxy
+    url: https://api.fly.io/prometheus/personal
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      prometheusType: Prometheus
+      timeInterval: 15s
+      httpHeaderName1: Authorization
+    secureJsonData:
+      httpHeaderValue1: FlyV1 ${FLY_PROMETHEUS_TOKEN}

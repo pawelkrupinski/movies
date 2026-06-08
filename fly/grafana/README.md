@@ -1,0 +1,110 @@
+# kinowo alerting — self-hosted Grafana on Fly
+
+Host/runtime monitoring + alerting for `kinowo`, `kinowo-worker`, and
+`kinowo-mongo`, complementing the in-app `/uptime` page (which watches the
+external cinema scrape targets, not our own VMs).
+
+## Why this exists / why not X
+
+- **Why not just fly-metrics.net?** Fly's hosted Grafana shows the metrics but
+  **cannot run alert rules** (confirmed, even on paid plans). Fly's own
+  recommendation for alerting is a self-hosted Grafana in your org — that's this.
+- **Why not Datadog?** Per-host pricing (~$15/host/mo × 3 apps) for a hobby app
+  buys APM/tracing we don't need. Fly already emits the host metrics free.
+- **Why not Grafana Cloud?** Viable, but keeps config in their UI and depends on
+  an external account + series caps. Self-hosting keeps everything as code here.
+
+Everything is **config-as-code** under `provisioning/` — a fresh machine comes up
+fully wired (datasource, 7 alert rules, Telegram contact point, overview
+dashboard). No click-ops.
+
+## What it watches (each rule maps to a real past incident)
+
+| Rule | Fires when | Incident it would have caught |
+|------|-----------|-------------------------------|
+| CPU credit exhausted | `fly_instance_cpu_balance < 500` (web/mongo) 10m | 2026-06-07 web 93% steal |
+| CPU throttled | `rate(fly_instance_cpu_throttle) > 0.2` 10m | 2026-06-07 web 93% steal |
+| CPU steal high | steal share `> 25%` 10m | host contention |
+| Memory pressure | `mem_available/total < 8%` 15m | 2026-06-06 Mongo OOM cascade (pre-OOM) |
+| HTTP 5xx high | `> 5%` 5xx 5m | 502/503 boot-crash-loop outage |
+| HTTP p95 high | p95 `> 2s` 10m | "percentiles suddenly increasing" |
+| Serving app down | `fly_instance_up{app=kinowo}` 0/absent 3m | web outage |
+
+Notes grounded in the live metrics (verified against `api.fly.io/prometheus`):
+- `fly_instance_exit_oom` from the docs **does not exist** in this org — the OOM
+  *kill* is covered by Fly's free OOM email; the memory-pressure rule catches the
+  *runway* to it.
+- `kinowo-worker` runs credit-starved (balance ≈ 1) and CPU-throttled **by
+  design** (continuous scrape), so the CPU-credit/throttle rules scope to
+  `kinowo`/`kinowo-mongo` to avoid permanent false alarms.
+- Latency/5xx rules use `noDataState: OK` — a quiet hobby app legitimately has no
+  HTTP series for minutes. Only the down-detector treats missing data as the alarm.
+
+## One-time setup
+
+### 1. Telegram bot
+1. Message **@BotFather** → `/newbot` → copy the **bot token**.
+2. Get your **chat id**: message your new bot, then open
+   `https://api.telegram.org/bot<TOKEN>/getUpdates` and read `message.chat.id`.
+
+### 2. Fly read token for the Prometheus datasource
+```sh
+fly tokens create readonly --org personal --name grafana-prometheus-read --expiry 8760h
+```
+Copy the whole `FlyV1 …` value **without** the `FlyV1 ` prefix (the datasource
+config already prepends it — note: the header is `FlyV1 <token>`, **not**
+`Bearer`).
+
+### 3. Set your Telegram chat id (not a secret)
+Edit `provisioning/alerting/contact-points.yaml` and replace the `chatid:
+"0000000000"` placeholder with your chat id, **keeping the quotes**. It lives in
+the file (not `fly secrets`) on purpose: a chat id is useless without the bot
+token, and Grafana's `${VAR}` provisioning expansion mis-types a numeric chatid
+as a number, which fails — a quoted literal is the reliable form.
+
+### 4. Create the app, volume, and secrets
+```sh
+fly apps create kinowo-grafana --org personal
+fly volumes create grafana_data --app kinowo-grafana --region arn --size 1
+fly secrets set --app kinowo-grafana \
+  GF_SECURITY_ADMIN_PASSWORD='<pick-a-strong-password>' \
+  FLY_PROMETHEUS_TOKEN='<token-from-step-2-without-FlyV1-prefix>' \
+  TELEGRAM_BOT_TOKEN='<bot-token>'
+```
+
+### 5. Deploy
+```sh
+fly deploy --remote-only -c fly/grafana/fly.toml -a kinowo-grafana
+```
+Or push any change under `fly/grafana/**` to `main` — `.github/workflows/deploy-grafana.yml`
+deploys it. Log in at `https://kinowo-grafana.fly.dev` (admin + the password above).
+Confirm under **Alerting → Alert rules** that 7 rules are `Normal`, and open each
+rule's query in **Explore** to confirm it returns data.
+
+### 6. Deploy markers (commit hash on the timeline)
+`.github/workflows/deploy.yml` posts a Grafana annotation with the commit
+SHA + subject after every app deploy. Give it a path:
+1. In Grafana: **Administration → Service accounts → Add** (`ci-annotations`,
+   role *Editor*) → **Add token** → copy it.
+2. Add two GitHub Actions secrets:
+   - `GRAFANA_URL` = `https://kinowo-grafana.fly.dev`
+   - `GRAFANA_ANNOTATION_TOKEN` = the service-account token
+The markers render as vertical purple lines on the **kinowo — Fly health**
+dashboard (the `Deploys` annotation query). Until the secrets exist, the
+`annotate` job no-ops — deploys are never blocked.
+
+## Local validation
+
+```sh
+fly/grafana/smoke-test.sh      # needs Docker
+```
+Boots the real Grafana image with this provisioning and asserts the datasource,
+all 7 alert rules, the Telegram contact point and the dashboard load cleanly. No
+network to Fly needed (dummy token). Break any provisioning file and it fails —
+this is the test gate for changes here.
+
+## Tuning
+
+Thresholds live in `provisioning/alerting/alert-rules.yaml`. After a week of real
+data, adjust any rule that's too quiet/noisy (likely the memory 8% floor on the
+worker, which already runs hot). Re-run the smoke test, push, done.

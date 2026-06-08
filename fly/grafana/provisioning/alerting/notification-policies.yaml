@@ -1,0 +1,15 @@
+apiVersion: 1
+
+# Route everything to Telegram. Group by app so a multi-rule incident on one
+# machine (e.g. CPU-credit-exhausted + p95-high together) arrives as one
+# message thread rather than a burst.
+policies:
+  - orgId: 1
+    receiver: Telegram
+    group_by:
+      - alertname
+      - app
+    group_wait: 30s
+    group_interval: 5m
+    # Re-nag every 4h while an alert is still firing.
+    repeat_interval: 4h
