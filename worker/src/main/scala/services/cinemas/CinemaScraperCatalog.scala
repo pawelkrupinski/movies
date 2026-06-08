@@ -198,7 +198,10 @@ class CinemaScraperCatalog(
     new KinoIkmClient(http, KinoIkm),
     new KinoMuzeumGdanskClient(http, KinoMuzeumGdansk),
     new KinoZakClient(http, KinoZak),
-    new KinoPortClient(http, KinoPort, today),
+    // KinoPort (CSW Łaźnia, Gdańsk) dropped its stable gcsw.pl/kino/ programme
+    // alias in a 2026-06 site rebuild, so we read its seances off Filmweb's
+    // listing for the venue (Gdańsk id 1735) like the other small cinemas.
+    new FilmwebShowtimesClient(http, 1735, KinoPort, today = today),
     new Cinema1Client(http, Cinema1Gdansk, today),
     new GdynskieCentrumFilmoweClient(http, GdynskieCentrumFilmowe),
   )

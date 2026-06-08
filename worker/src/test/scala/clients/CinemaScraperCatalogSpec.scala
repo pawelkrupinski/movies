@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, Cinema, KinoKameralne}
+import models.{AdaKinoStudyjne, Cinema, KinoKameralne, KinoPort}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -46,6 +46,16 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val movies  = scraper.fetch()  // reads the ada-kino-studyjne fixture via bnFetch
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(AdaKinoStudyjne)
+  }
+
+  // KinoPort lost its gcsw.pl/kino/ programme alias in a 2026-06 site rebuild
+  // (the old KinoPortClient 404'd in prod), so it's now served off Filmweb's
+  // seances API for the Gdańsk venue. Guard the seam: it must read filmweb.pl,
+  // never the retired gcsw.pl host.
+  it should "scrape KinoPort off Filmweb, not the retired gcsw.pl alias" in {
+    val scraper = catalogWithBiletyna("kino-kameralne").all.find(_.cinema == KinoPort).value
+    scraper.scrapeHosts should contain ("www.filmweb.pl")
+    scraper.scrapeHosts should not contain "gcsw.pl"
   }
 
   // A `Cinema` that's modelled (so it shows on the web/in a city) but has no
