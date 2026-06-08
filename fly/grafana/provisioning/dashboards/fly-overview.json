@@ -76,16 +76,30 @@
     },
     {
       "id": 5,
-      "title": "HTTP latency (s)",
+      "title": "HTTP latency — web (s)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
       "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "histogram_quantile(0.99, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))", "legendFormat": "{{app}} p99" },
-        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))", "legendFormat": "{{app}} p95" },
-        { "refId": "C", "expr": "histogram_quantile(0.75, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))", "legendFormat": "{{app}} p75" },
-        { "refId": "D", "expr": "histogram_quantile(0.50, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket[5m])))", "legendFormat": "{{app}} p50" }
+        { "refId": "A", "expr": "histogram_quantile(0.99, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo\"}[5m])))", "legendFormat": "p99" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo\"}[5m])))", "legendFormat": "p95" },
+        { "refId": "C", "expr": "histogram_quantile(0.75, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo\"}[5m])))", "legendFormat": "p75" },
+        { "refId": "D", "expr": "histogram_quantile(0.50, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo\"}[5m])))", "legendFormat": "p50" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "HTTP latency — grafana (s)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.99, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo-grafana\"}[5m])))", "legendFormat": "p99" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo-grafana\"}[5m])))", "legendFormat": "p95" },
+        { "refId": "C", "expr": "histogram_quantile(0.75, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo-grafana\"}[5m])))", "legendFormat": "p75" },
+        { "refId": "D", "expr": "histogram_quantile(0.50, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo-grafana\"}[5m])))", "legendFormat": "p50" }
       ]
     },
     {
@@ -93,7 +107,7 @@
       "title": "HTTP 5xx rate",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "sum by (app) (rate(fly_app_http_responses_count{status=~\"5..\"}[5m])) / sum by (app) (rate(fly_app_http_responses_count[5m]))", "legendFormat": "{{app}}" }
@@ -104,7 +118,7 @@
       "title": "Instance up",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 24 },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 32 },
       "fieldConfig": { "defaults": { "min": 0, "max": 1, "custom": { "drawStyle": "line", "fillOpacity": 20, "lineInterpolation": "stepAfter" } }, "overrides": [] },
       "targets": [
         { "refId": "A", "expr": "max by (app) (fly_instance_up)", "legendFormat": "{{app}}" }
