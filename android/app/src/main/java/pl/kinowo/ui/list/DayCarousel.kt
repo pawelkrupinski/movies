@@ -100,10 +100,26 @@ fun DayCarousel(
     // Guards against starting a fresh drag while a commit/recentre is mid-flight
     // — interrupting a swap leaves the strip and the selected day out of sync.
     var isSettling by remember { mutableStateOf(false) }
+    // True only while a finger drag is in progress; gates the scroll mirror so it
+    // does NOT chase the post-commit scroll-to-top animation (which would fire a
+    // forceRemeasure from inside that animation's layout pass and crash).
+    var dragging by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    // The revealed neighbours stay at THEIR top (we never mirror the centre's
-    // scroll into them): a day-swipe should land the new day at the top, so the
-    // revealed day slides in at the top and stays there — no inherit-then-roll.
+
+    // Slave each neighbour to the centre's vertical scroll while the finger is
+    // down, so the revealed day shows the same rows the user was looking at.
+    // INSTANT (scrollToItem, not animate) to track the finger frame-for-frame;
+    // differing column heights are clamped silently by scrollToItem. Restricting
+    // to an active drag keeps it off the centre's own programmatic scrolls.
+    LaunchedEffect(sharedScroll, prevScroll, nextScroll) {
+        snapshotFlow {
+            Triple(dragging, sharedScroll.firstVisibleItemIndex, sharedScroll.firstVisibleItemScrollOffset)
+        }.collect { (active, index, offset) ->
+            if (!active) return@collect
+            prevScroll.scrollToItem(index, offset)
+            nextScroll.scrollToItem(index, offset)
+        }
+    }
 
     // Slide the strip to reveal [day] fully ([target] = ∓width), flip the
     // selected day, then recentre WITHOUT animating (the new current is now the
@@ -116,11 +132,6 @@ fun DayCarousel(
         onPreviewDay(day)
         scope.launch {
             dragOffset.animateTo(target, tween(SettleDurationMs))
-            // The new day takes over [sharedScroll] from the old centre — reset it
-            // to the top FIRST (the old centre is off-screen now, so this isn't
-            // visible) so the committed day appears at the top, not at wherever the
-            // previous day was scrolled.
-            sharedScroll.scrollToItem(0)
             onCommitDay(day)
             dragOffset.snapTo(0f)
             isSettling = false
@@ -183,6 +194,7 @@ fun DayCarousel(
                             if (abs(dx) <= abs(dy)) return@awaitEachGesture
                             // Horizontal-dominant → claim the day-swipe.
                             locked = true
+                            dragging = true
                             scope.launch { dragOffset.stop() }
                             change.consume()
                             drag(dx)
@@ -194,6 +206,7 @@ fun DayCarousel(
                     }
 
                     if (locked) {
+                        dragging = false
                         when {
                             dragOffset.value <= -width * CommitFraction -> commit(next, -width)
                             dragOffset.value >= width * CommitFraction -> commit(prev, width)

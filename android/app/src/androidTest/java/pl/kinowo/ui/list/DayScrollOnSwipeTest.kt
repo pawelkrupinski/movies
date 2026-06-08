@@ -41,11 +41,11 @@ import java.time.format.DateTimeFormatter
 
 /**
  * On-device test against the REAL [ListScreen] + a seeded view-model: a day-swipe
- * must land the new day at the TOP, whether you were at the top or scrolled down.
- * Data is Poznań-like (today 40 films, tomorrow a shorter overlapping day). We
- * read the topmost on-screen card's title + Y; "F-0" at the content-top band means
- * tomorrow's first film is at the top. Reproduces the screen-recording bug where
- * the new day inherited the previous day's scroll and appeared mid-list.
+ * lands the new day where the user was (the carousel mirror) and then rolls up to
+ * the top — so once it SETTLES, the new day is at the top, whether you swiped from
+ * the top or scrolled down. Data is Poznań-like (today 40 films, tomorrow a
+ * shorter overlapping day). We read the topmost on-screen card's title + Y; "F-0"
+ * at the content-top band means tomorrow's first film is at the top once settled.
  *
  * Real touch + LazyGrid scroll restoration only happen on a device, so this can't
  * live in the Robolectric suite. Run with `./gradlew app:connectedDebugAndroidTest`.
@@ -157,9 +157,9 @@ class DayScrollOnSwipeTest {
 
     @Test
     fun swipeWhileScrolledDownLandsAtTheTopOfTheNewDay() {
-        // The bug from the screen recording: scrolled down on today, swipe to
-        // tomorrow, and the new day inherited the scroll — it appeared mid-list
-        // (card bodies, posters off the top) instead of at the top.
+        // Scrolled down on today, swipe to tomorrow: the new day lands where you
+        // were (mirror) and then rolls to the top, so once settled it's at the top
+        // — not stranded mid-list on the previous day's scroll.
         mountSeeded()
         scrollCentreDown(3)
         swipeToNextDay()

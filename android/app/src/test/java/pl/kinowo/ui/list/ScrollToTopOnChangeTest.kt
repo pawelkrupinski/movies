@@ -66,13 +66,13 @@ class ScrollToTopOnChangeTest {
     }
 
     @Test
-    fun keyChangeWhileFirstItemPartlyScrolledSnapsToExactTop() {
+    fun keyChangeWhileFirstItemPartlyScrolledRollsToExactTop() {
         // The column shows item 0 but scrolled within it (its content partly off
-        // the top) — the state a day lands in when it inherits the previous day's
-        // scroll. firstVisibleItemIndex is 0 yet the user is NOT at the top. A day
-        // change must snap to the exact top (offset 0), not leave it parked
-        // mid-first-item — the earlier `firstVisibleItemIndex != 0` guard wrongly
-        // skipped this, so the new day "didn't scroll to top even when below it".
+        // the top) — the state a day lands in when the mirror carries the previous
+        // day's scroll. firstVisibleItemIndex is 0 yet the user is NOT at the top.
+        // A day change must roll to the exact top (offset 0), not leave it parked
+        // mid-first-item (a `firstVisibleItemIndex != 0` guard would wrongly skip
+        // this and leave the new day "not scrolled to top even when below it").
         var key by mutableStateOf("today")
         lateinit var state: LazyGridState
         compose.setContent {
