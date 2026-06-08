@@ -2,7 +2,7 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 
 import java.time.{Instant, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
@@ -17,9 +17,13 @@ import scala.util.Try
  * The per-film page adds the synopsis. The date comes from the `ut`, so the
  * replay is deterministic. Booking is the film page (no stable deep-link).
  */
-class UjazdowskiClient(http: HttpFetch) extends CinemaScraper {
+class UjazdowskiClient(http: HttpFetch, deferDetail: Boolean = false) extends CinemaScraper with DetailEnricher {
+
+  // Static film pages cached across passes; the listing/day pages stay live.
+  private val detailHttp = new CachingDetailFetch(http)
 
   val cinema: Cinema = Ujazdowski
+  override val detailGroup: String = "ujazdowski"
 
   private val BaseUrl    = "https://u-jazdowski.pl"
   private val ListingUrl = s"$BaseUrl/kino/repertuar"
@@ -31,7 +35,16 @@ class UjazdowskiClient(http: HttpFetch) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
+  // When deferDetail is on, fetch() returns BARE movies (showtimes + the
+  // listing-meta fields: runtime/year/countries/director/poster + the film-page
+  // URL); the synopsis + original title are filled later by an EnrichDetails task
+  // via `fetchFilmDetail`. Off, it enriches inline.
   def fetch(): Seq[CinemaMovie] = {
+    val bare = fetchBare()
+    if (deferDetail) bare else enrichInline(bare)
+  }
+
+  private def fetchBare(): Seq[CinemaMovie] = {
     val main = http.get(ListingUrl)
     val uts  = UtPat.findAllMatchIn(main).map(_.group(1)).toSeq.distinct
 
@@ -43,12 +56,7 @@ class UjazdowskiClient(http: HttpFetch) extends CinemaScraper {
       date.toSeq.flatMap(d => dayPages.getOrElse(ut, None).toSeq.flatMap(html => parseDay(html, d)))
     }
 
-    val bySlug  = slots.groupBy(_.slug)
-    val details = ParallelDetailFetch.keyed("ujazdowski-details", bySlug.keys.toSeq.filter(_.nonEmpty), 1.minute)(s => s"$BaseUrl/kino/repertuar/$s") { url =>
-      Try(http.get(url)).toOption.map(Jsoup.parse)
-    }
-
-    bySlug.toSeq.flatMap { case (slug, group) =>
+    slots.groupBy(_.slug).toSeq.flatMap { case (slug, group) =>
       val primary    = group.head
       val detailUrl  = s"$BaseUrl/kino/repertuar/$slug"
       val showtimes  = group.map(s => Showtime(s.dateTime, Some(detailUrl), None, Nil))
@@ -56,16 +64,13 @@ class UjazdowskiClient(http: HttpFetch) extends CinemaScraper {
       if (showtimes.isEmpty) None
       else {
         val meta = UjazdowskiClient.parseMeta(primary.meta.getOrElse(""))
-        val detail   = details.getOrElse(slug, None)
-        val synopsis = detail.flatMap(d => Option(d.selectFirst("div.body.max-w"))).map(_.text.trim).filter(_.length > 20)
-        val origTitle = detail.flatMap(UjazdowskiClient.originalTitleOf)
         Some(CinemaMovie(
           movie     = Movie(title = primary.title, runtimeMinutes = meta.runtime, releaseYear = meta.year,
-                            countries = meta.countries, originalTitle = origTitle),
+                            countries = meta.countries),
           cinema    = cinema,
           posterUrl = group.flatMap(_.poster).headOption,
           filmUrl   = Some(detailUrl),
-          synopsis  = synopsis,
+          synopsis  = None,
           cast      = Seq.empty,
           director  = meta.director,
           showtimes = showtimes
@@ -73,6 +78,29 @@ class UjazdowskiClient(http: HttpFetch) extends CinemaScraper {
       }
     }
   }
+
+  // Inline path: fetch each film's detail in parallel through the same
+  // `fetchFilmDetail` the deferred path uses, then merge non-destructively.
+  private def enrichInline(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+    val urls = movies.flatMap(_.filmUrl).distinct
+    if (urls.isEmpty) movies
+    else {
+      val metas = ParallelDetailFetch("ujazdowski-details", urls, 1.minute)(u => fetchFilmDetail(u))
+      movies.map(m => m.filmUrl.flatMap(metas.get).flatten.map(_.applyTo(m)).getOrElse(m))
+    }
+  }
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's film-page URL. Only the synopsis + bracketed original title come
+   *  from the detail page (the meta line on the listing supplies everything
+   *  else). None on fetch failure so the task stays stale and is retried. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map(Jsoup.parse).map { doc =>
+      FilmDetail(
+        synopsis      = Option(doc.selectFirst("div.body.max-w")).map(_.text.trim).filter(_.length > 20),
+        originalTitle = UjazdowskiClient.originalTitleOf(doc)
+      )
+    }
 
   private def parseDay(html: String, date: java.time.LocalDate): Seq[RawSlot] =
     Jsoup.parse(html).select("a.event-list-day-box").asScala.toSeq.flatMap { a =>
