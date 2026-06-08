@@ -149,11 +149,11 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // ── Festival/preview "decorated" titles resolve independently of siblings ──
   // "Opętanie | ŻUŁAWSKI. KINO EKSTAZY", "Ojczyzna (pokaz przedpremierowy)" and
   // the like don't match TMDB by their decorated title, so they used to resolve
-  // ONLY via `sisterRowMatch` — i.e. only if a plain-title sibling happened to
-  // resolve first. Under the parallel enrichment cascade that ordering is
-  // nondeterministic, which made whole-corpus snapshots flaky. The fix searches
-  // the cinema-provided original title + each side of the "X | Y" pipe + the
-  // de-parenthesised title, so the row resolves on its own.
+  // only by copying a tmdbId from a relative listing that happened to resolve
+  // first. Under the parallel enrichment cascade that ordering is
+  // nondeterministic, which made whole-corpus snapshots flaky. The row now
+  // resolves on its own: search the cinema-provided original title + each side
+  // of the "X | Y" pipe + the de-parenthesised title.
 
   "searchTitleCandidates" should "offer the original title, each pipe side, and the de-parenthesised title" in {
     MovieService.searchTitleCandidates("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some("Possession")) should
@@ -163,14 +163,14 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "also draw on the row's other reported titles (cinemaTitles + slot originals), de-decorated" in {
-    // The same signals sisterRowMatch links on — fed straight to the search.
+    // Every title the cinemas reported for the row becomes a search candidate.
     MovieService.searchTitleCandidates(
       title = "KINO SENIORA | Opętanie", originalTitle = None,
       extraTitles = Seq("Opętanie (pokaz)", "Possession")
     ) should contain allOf ("Opętanie", "Possession")
   }
 
-  "resolveTmdb" should "resolve a decorated title via its original-title search candidate, not only via a resolved sibling" in {
+  "resolveTmdb" should "resolve a decorated title from its own original-title search candidate (no sibling needed)" in {
     val repo  = new InMemoryMovieRepo()
     val cache = new CaffeineMovieCache(repo)
     val bus   = new InProcessEventBus()

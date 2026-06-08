@@ -421,29 +421,20 @@ class MovieService(
     originalTitle: Option[String] = None,
     director:      Option[String] = None
   ): Option[(TmdbClient.SearchResult, Option[String])] = {
-    // Sister-row inherits the cached imdbId (no fresh TMDB call needed); the
-    // other branches fetch /external_ids per resolved hit.
     def viaTmdb(hit: TmdbClient.SearchResult): (TmdbClient.SearchResult, Option[String]) =
       hit -> tmdb.imdbId(hit.id)
 
-    // sisterRowMatch reads the cache, which is keyed by `searchTitle`-form
-    // cleanTitle — `title` already has that shape. tmdb.search hits the
-    // external API; strip the accessibility-programme decoration so an
-    // "Kino bez barier: Freak Show (AD)" row queries TMDB as "Freak Show"
-    // and resolves to the right film instead of falling through to a
-    // director-walk false positive onto a different film by the same director.
-    // Resolve from the row's OWN reported titles instead of depending on a
-    // sibling. `sisterRowMatch` (below) can only copy a tmdbId from an *already
-    // resolved* relative, so a decorated festival/preview row whose own title
-    // ("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", "Ojczyzna (pokaz przedpremierowy)")
-    // doesn't match TMDB used to resolve ONLY if a relative happened to resolve
-    // first — an enrichment-order race that made whole-corpus snapshots flaky.
-    // Build search candidates from the SAME signals sisterRowMatch links on —
-    // every cinema-reported title + every slot's original (English) title — plus
+    // Resolve from the row's OWN reported titles. A decorated festival/preview
+    // row whose own title doesn't match TMDB ("Opętanie | ŻUŁAWSKI. KINO
+    // EKSTAZY", "Ojczyzna (pokaz przedpremierowy)") must still resolve on its
+    // own — depending on a relative resolving first was an enrichment-order race
+    // that made whole-corpus snapshots flaky. Build candidates from every
+    // cinema-reported title + every slot's original (English) title, plus
     // de-decorated forms (each side of a "X | Y" pipe, trailing "(…)" dropped),
-    // and try each (verifyByDirector-gated so extra terms can't mis-resolve onto
-    // a same-title different film). Whatever searchable title a relative would
-    // have resolved by, this row already holds it and searches it itself.
+    // and try each (verifyByDirector-gated, so extra terms can't mis-resolve
+    // onto a same-title different film). `apiQuery` additionally strips the
+    // accessibility-programme decoration ("Kino bez barier: Freak Show (AD)" →
+    // "Freak Show") before hitting TMDB.
     val rowRecord  = cache.get(cache.keyOf(title, year))
     val cinemaTitles  = rowRecord.map(_.cinemaTitles).getOrElse(Set.empty[String])
     val slotOriginals = rowRecord.map(_.data.values.flatMap(_.originalTitle).toSet).getOrElse(Set.empty[String])
@@ -454,8 +445,12 @@ class MovieService(
       .flatMap(q => verifyByDirector(tmdb.search(q, year), director))
       .nextOption()
 
-    sisterRowMatch(title, year, originalTitle)
-      .orElse(searchHit.map(viaTmdb))
+    // Resolve from this row's own titles only — no sister-row shortcut. Copying
+    // a tmdbId from an already-resolved relative was order-dependent (it could
+    // only borrow once the relative had resolved), which is what made
+    // whole-corpus snapshots flaky. Own-title search + director-walk are
+    // order-independent, so the row resolves to the same film every run.
+    searchHit.map(viaTmdb)
       .orElse(directorWalk(director, year).map(viaTmdb))
   }
 
@@ -507,67 +502,6 @@ class MovieService(
     }
   }
 
-  /** Walk the cache for already-resolved rows sharing any title alias with
-   *  this one (cleanTitle + cinema-provided originalTitle on the self side;
-   *  cleanTitle + TMDB-resolved originalTitle on the donor side). Excludes
-   *  the row being resolved (a stale self must not reinforce its own wrong
-   *  answer). Requires a unanimous `tmdbId` across all matching sister rows
-   *  — when two cached sisters disagree (e.g. cinema A is screening the
-   *  1985 cut and cinema B the 2026 remake of the same title), the ambiguity
-   *  defers to TMDB rather than picking blindly.
-   *
-   *  Matching aliases — not just `cleanTitle == cleanTitle` — picks up cases
-   *  where a long Polish-localised title carries the English original as its
-   *  `originalTitle` field. Example: cache row
-   *  `("Belle: smok i piegowata księżniczka", 2021, originalTitle="Belle")`
-   *  donates to a plain-`"Belle"` lookup. */
-  private def sisterRowMatch(
-    title:         String,
-    year:          Option[Int],
-    originalTitle: Option[String]
-  ): Option[(TmdbClient.SearchResult, Option[String])] = {
-    val selfKey     = cache.keyOf(title, year)
-    val selfAliases = titleAliases(selfKey.cleanTitle, originalTitle)
-    if (selfAliases.isEmpty) return None
-
-    val resolved = cache.entries.flatMap { case (k, e) =>
-      if (k == selfKey || e.tmdbId.isEmpty) None
-      else {
-        val donorAliases = titleAliases(k.cleanTitle, e.originalTitle)
-        if (selfAliases.exists(donorAliases.contains))
-          Some((e.tmdbId.get, e.imdbId, e.originalTitle))
-        else None
-      }
-    }
-    val tmdbIds = resolved.map(_._1).distinct
-    if (tmdbIds.size != 1) None
-    else {
-      val (tmdbId, imdbId, origTitle) = resolved.head
-      val hit = TmdbClient.SearchResult(
-        id            = tmdbId,
-        title         = origTitle.getOrElse(title),
-        originalTitle = origTitle,
-        releaseYear   = None,   // unused by runTmdbStageSync
-        popularity    = 0.0
-      )
-      logger.debug(s"Sister-row match: ${selfKey.cleanTitle} (${year.getOrElse("?")}) → tmdbId=$tmdbId imdbId=${imdbId.getOrElse("—")} via aliases=${selfAliases.mkString(",")}")
-      Some(hit -> imdbId)
-    }
-  }
-
-  /** Normalized alias set for a (cleanTitle, originalTitle) pair. Empty
-   *  components and duplicates collapse; both sides go through
-   *  `MovieService.normalize` so accent/case differences fold to the
-   *  same key. */
-  private def titleAliases(cleanTitle: String, originalTitle: Option[String]): Set[String] = {
-    val parts = Iterator(Option(cleanTitle), originalTitle)
-      .flatten
-      .map(_.trim)
-      .filter(_.nonEmpty)
-      .map(MovieService.normalize)
-      .filter(_.nonEmpty)
-    parts.toSet
-  }
 }
 
 object MovieService {
