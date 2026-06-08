@@ -6,6 +6,7 @@ import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFu
 import org.mongodb.scala.model.{Filters, Indexes, Updates}
 import org.mongodb.scala.bson.conversions.Bson
 import play.api.Logging
+import tools.RetryWithBackoff
 
 import java.util.concurrent.{ConcurrentHashMap, Executors, ScheduledExecutorService}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
@@ -290,8 +291,26 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
       listeners.forEach(f => Try(f(service, snap)))
     }
 
+  /** The hydrate only needs the buckets the /uptime page actually renders — the
+   *  most recent `MaxBuckets` slots. Bounding to that window (a) skips older docs
+   *  that linger inside the TTL margin but never display, and (b) rides the
+   *  `{bucket:1}` index instead of a full collection scan. */
+  private[services] def hydrateFilter(nowMs: Long): Bson =
+    Filters.gte("bucket", new java.util.Date(bucketTimestamp(nowMs) - MaxBuckets.toLong * BucketDurationMs))
+
+  /** Load the retained display window into the in-memory map at boot. The fetch
+   *  is wrapped in `RetryWithBackoff`: a single 10s timeout used to STRAND the
+   *  process with no history (the /uptime page then showed only the ~poll window,
+   *  not the full 24h) whenever Mongo was briefly slow at boot — e.g. during a
+   *  deploy storm. A transient slowdown must not be permanent, so retry with a
+   *  generous per-attempt timeout before giving up. Runs on a daemon thread, so
+   *  neither the timeout nor the backoff blocks app start, and records arriving
+   *  mid-hydrate merge additively. Only the FETCH retries — the merge runs once on
+   *  the materialised docs, so a retry can't double-count via `addAndGet`. */
   private def hydrate(c: MongoCollection[Document]): Unit = Try {
-    val docs = Await.result(c.find().toFuture(), 10.seconds)
+    val docs = RetryWithBackoff("Uptime hydrate", maxAttempts = HydrateMaxAttempts, initialBackoff = HydrateRetryBackoff) {
+      Await.result(c.find(hydrateFilter(System.currentTimeMillis())).toFuture(), HydrateTimeout)
+    }
     var count = 0
     docs.foreach { doc =>
       for {
@@ -313,7 +332,7 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
       }
     }
     if (count > 0) logger.info(s"Hydrated $count uptime bucket(s) from Mongo.")
-  }.recover { case ex => logger.warn(s"Uptime hydrate failed: ${ex.getMessage}") }
+  }.recover { case ex => logger.warn(s"Uptime hydrate failed after $HydrateMaxAttempts attempts: ${ex.getMessage}") }
 
   /** Merge a bucket post-image that originated in another process (the worker),
    *  read by the poller. The snapshot carries the CUMULATIVE totals for that
@@ -385,6 +404,14 @@ object UptimeMonitor {
   // growing with retention (and with the scraper/cinema count behind it). Stays a
   // multiple of the slot, so the per-poll bucket count is flat regardless of size.
   val PollLookbackMs: Long = 3 * BucketDurationMs
+  // Boot hydrate parameters. The fetch reads ~a full day of buckets in one go, so
+  // give each attempt a generous budget (the old flat 10s timed out under deploy-
+  // storm Mongo load, stranding the process with no history) and retry a few times
+  // before giving up. Runs on a daemon thread — neither the timeout nor the
+  // backoff blocks app start.
+  val HydrateTimeout: FiniteDuration = 30.seconds
+  val HydrateMaxAttempts: Int = 4
+  val HydrateRetryBackoff: FiniteDuration = 2.seconds
 
   def bucketTimestamp(epochMs: Long): Long = epochMs - (epochMs % BucketDurationMs)
 

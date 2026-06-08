@@ -1,8 +1,7 @@
-package clients.tools
+package tools
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.RetryWithBackoff
 
 import scala.collection.mutable
 import scala.concurrent.duration._

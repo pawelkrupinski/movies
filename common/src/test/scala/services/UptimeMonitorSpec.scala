@@ -225,6 +225,19 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     filterDoc.getDocument("bucket").getDateTime("$gte").getValue shouldBe (now - UptimeMonitor.PollLookbackMs)
   }
 
+  // Boot hydrate must load only the displayed window, not the whole collection
+  // via an unbounded find(). An unbounded scan with a tight timeout is what
+  // stranded the serving process with no history when Mongo was slow at boot.
+  "the hydrate query" should "bound to the displayed window, not scan the whole collection" in {
+    val monitor = new UptimeMonitor()
+    val now = 1700000000000L
+    val filterDoc = monitor.hydrateFilter(now).toBsonDocument()
+
+    filterDoc.isEmpty shouldBe false
+    filterDoc.getDocument("bucket").getDateTime("$gte").getValue shouldBe
+      (UptimeMonitor.bucketTimestamp(now) - UptimeMonitor.MaxBuckets.toLong * UptimeMonitor.BucketDurationMs)
+  }
+
   // Bucket granularity is 15 minutes: two records up to 14 min apart share a
   // bucket, and the retained window stays 24h (MaxBuckets * BucketDurationMs).
   "bucket granularity" should "span 15 minutes and keep a 24h retained window" in {
