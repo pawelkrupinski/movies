@@ -88,4 +88,15 @@ class InMemoryTaskQueue extends TaskQueue {
   override def countByState(): Map[String, Long] = lock.synchronized {
     rows.values.groupBy(_.state).map { case (s, rs) => s -> rs.size.toLong }
   }
+
+  override def monitor(activeLimit: Int): QueueSnapshot = lock.synchronized {
+    val counts = rows.values.groupBy(_.state).map { case (s, rs) => s -> rs.size.toLong }
+    val active = rows.values.toSeq
+      .filter(r => r.state == TaskState.Waiting || r.state == TaskState.WorkedOn)
+      .sortBy(_.submittedAt)
+      .take(activeLimit)
+      .map(r => TaskSummary(r.id, r.taskType.name, r.dedupKey, r.state, r.submittedAt,
+        r.attempts, r.workerId, r.leaseExpiresAt, None))
+    QueueSnapshot(counts, active)
+  }
 }

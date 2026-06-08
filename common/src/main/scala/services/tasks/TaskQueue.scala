@@ -105,5 +105,27 @@ trait TaskQueue {
   /** Count of tasks per state — for the debug view and tests. */
   def countByState(): Map[String, Long]
 
+  /** Read-only snapshot for the monitoring page: per-state counts plus the live
+   *  ACTIVE tasks (waiting + worked-on), oldest-first, capped at `activeLimit`.
+   *  Tombstones are counted but not listed. Index-backed + bounded so the web
+   *  can poll it cheaply. */
+  def monitor(activeLimit: Int = 200): QueueSnapshot
+
   def close(): Unit = ()
 }
+
+/** One active task as shown on the monitoring page. */
+case class TaskSummary(
+  id:             String,
+  taskType:       String,
+  dedupKey:       String,
+  state:          String,
+  submittedAt:    Instant,
+  attempts:       Int,
+  workerId:       Option[String],
+  leaseExpiresAt: Option[Instant],
+  lastError:      Option[String]
+)
+
+/** A point-in-time view of the queue for the monitoring page. */
+case class QueueSnapshot(counts: Map[String, Long], active: Seq[TaskSummary])

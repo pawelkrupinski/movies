@@ -68,6 +68,13 @@ GET     /uptime/stream              controllers.UptimeController.stream()
 + nocsrf
 POST    /uptime/img-event           controllers.UptimeController.imgEvent()
 
+# ── Task queue monitor ──────────────────────────────────────────────────────
+# Live operational view of the durable Mongo `tasks` queue. The page polls
+# /tasks/data every 5s (bounded, index-backed read) rather than a 24/7 change
+# stream — cost scales with viewers-while-open, not queue churn.
+GET     /tasks                      controllers.TasksController.index()
+GET     /tasks/data                 controllers.TasksController.data()
+
 # ── Legal ─────────────────────────────────────────────────────────────────────
 # Public privacy policy (Polish). Required by Meta/Facebook before the Login
 # app can leave Development mode; the URL goes in the dashboard's Privacy

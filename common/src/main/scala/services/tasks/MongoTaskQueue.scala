@@ -2,7 +2,7 @@ package services.tasks
 
 import com.mongodb.MongoWriteException
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObservableFuture, documentToUntypedDocument}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.model.{Filters, FindOneAndUpdateOptions, Indexes, ReturnDocument, Updates}
 
@@ -170,6 +170,36 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
           .filter(_ > 0).map(state -> _)
       }.toMap
   }
+
+  override def monitor(activeLimit: Int): QueueSnapshot = coll match {
+    case None => QueueSnapshot(Map.empty, Seq.empty)
+    case Some(c) =>
+      val active = Try {
+        Await.result(
+          c.find(Filters.in("state", TaskState.Waiting, TaskState.WorkedOn))
+            .sort(Indexes.ascending("submittedAt"))
+            .limit(activeLimit)
+            .toFuture(),
+          10.seconds).map(toSummary)
+      }.recover {
+        case ex: Throwable =>
+          logger.warn(s"TaskQueue.monitor failed: ${ex.getMessage}")
+          Seq.empty[TaskSummary]
+      }.getOrElse(Seq.empty)
+      QueueSnapshot(countByState(), active)
+  }
+
+  private def toSummary(doc: Document): TaskSummary = TaskSummary(
+    id             = doc.getString("_id"),
+    taskType       = doc.getString("taskType"),
+    dedupKey       = doc.getString("dedupKey"),
+    state          = doc.getString("state"),
+    submittedAt    = Instant.ofEpochMilli(doc.getDate("submittedAt").getTime),
+    attempts       = doc.getInteger("attempts", 0),
+    workerId       = Option(doc.getString("workerId")),
+    leaseExpiresAt = Option(doc.getDate("leaseExpiresAt")).map(d => Instant.ofEpochMilli(d.getTime)),
+    lastError      = Option(doc.getString("lastError"))
+  )
 
   private def payloadDoc(payload: Map[String, String]): org.mongodb.scala.bson.BsonDocument = {
     val bd = new org.mongodb.scala.bson.BsonDocument()

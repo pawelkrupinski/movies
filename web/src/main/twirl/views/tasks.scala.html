@@ -1,0 +1,176 @@
+@()
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tasks — Kinowo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 13px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    .sub { color: #666; font-size: 11px; margin-bottom: 20px; }
+    .sub .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+      background: #2ecc40; margin-right: 5px; vertical-align: middle; }
+    .sub.stale .dot { background: #c0392b; }
+
+    .counts { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+    .pill {
+      background: #161616; border: 1px solid #222; border-radius: 6px;
+      padding: 10px 16px; min-width: 110px;
+    }
+    .pill .n { font-size: 22px; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; }
+    .pill .l { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #777; margin-top: 2px; }
+    .pill.waiting .n   { color: #f0ad4e; }
+    .pill.worked_on .n { color: #4aa3df; }
+    .pill.deleted .n   { color: #6a9b78; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+      color: #666; font-weight: 600; padding: 6px 10px; border-bottom: 1px solid #1a1a1a;
+      position: sticky; top: 0; background: #0d0d0d;
+    }
+    td { padding: 5px 10px; border-bottom: 1px solid #141414; vertical-align: top; }
+    tr:hover td { background: #131313; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .mono { color: #ddd; }
+    .muted { color: #666; }
+    .badge {
+      display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px;
+      font-weight: 600;
+    }
+    .badge.waiting   { background: #3a2e12; color: #f0ad4e; }
+    .badge.worked_on { background: #12283a; color: #4aa3df; }
+    .ttype { color: #b89cd6; }
+    .key { color: #9bb3c9; word-break: break-all; }
+    .err { color: #e07a6a; font-size: 11px; word-break: break-word; }
+    .retry { color: #f0ad4e; }
+    .empty { color: #555; padding: 30px 10px; text-align: center; }
+    .age-warn { color: #f0ad4e; }
+    .age-bad  { color: #e07a6a; }
+  </style>
+</head>
+<body>
+  <h1>Task queue</h1>
+  <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span></div>
+
+  <div class="counts" id="counts"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>State</th>
+        <th>Type</th>
+        <th>Dedup key</th>
+        <th class="num">Age</th>
+        <th class="num">Tries</th>
+        <th>Worker</th>
+        <th class="num">Lease</th>
+        <th>Last error</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <script>
+    "use strict";
+    var POLL_MS = 5000;
+    var STATE_ORDER = ["waiting", "worked_on", "deleted"];
+    var timer = null;
+    var lastSnap = null;     // last payload from the server
+    var serverSkewMs = 0;    // (clientNow - serverNow) at last fetch, to tick ages locally
+
+    function esc(s) {
+      return String(s).replace(/[&<>"]/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+      });
+    }
+
+    function fmtAge(ms) {
+      if (ms < 0) ms = 0;
+      var s = Math.floor(ms / 1000);
+      if (s < 60) return s + "s";
+      var m = Math.floor(s / 60);
+      if (m < 60) return m + "m " + (s % 60) + "s";
+      var h = Math.floor(m / 60);
+      return h + "h " + (m % 60) + "m";
+    }
+
+    function ageClass(ms) {
+      if (ms > 6 * 60 * 60 * 1000) return "age-bad";   // older than the 6h detail TTL — likely stuck
+      if (ms > 15 * 60 * 1000) return "age-warn";       // past the 15min scrape window
+      return "";
+    }
+
+    function render() {
+      if (!lastSnap) return;
+      var now = Date.now() - serverSkewMs; // server clock, ticking
+      var counts = lastSnap.counts || {};
+
+      var cEl = document.getElementById("counts");
+      cEl.innerHTML = STATE_ORDER.map(function (st) {
+        var n = counts[st] || 0;
+        return '<div class="pill ' + st + '"><div class="n">' + n +
+          '</div><div class="l">' + st.replace("_", " ") + '</div></div>';
+      }).join("");
+
+      var rows = lastSnap.active || [];
+      var body = document.getElementById("rows");
+      if (rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="8" class="empty">No active tasks — queue drained.</td></tr>';
+      } else {
+        body.innerHTML = rows.map(function (t) {
+          var age = now - t.submittedAt;
+          var lease = t.leaseExpiresAt != null ? (t.leaseExpiresAt - now) : null;
+          var leaseTxt = lease == null ? '<span class="muted">—</span>'
+            : (lease < 0 ? '<span class="age-bad">expired</span>' : fmtAge(lease));
+          var tries = t.attempts > 1 ? '<span class="retry">' + t.attempts + '</span>' : t.attempts;
+          return '<tr>' +
+            '<td><span class="badge ' + esc(t.state) + '">' + esc(t.state.replace("_", " ")) + '</span></td>' +
+            '<td class="ttype">' + esc(t.taskType) + '</td>' +
+            '<td class="key">' + esc(t.dedupKey) + '</td>' +
+            '<td class="num ' + ageClass(age) + '">' + fmtAge(age) + '</td>' +
+            '<td class="num">' + tries + '</td>' +
+            '<td class="muted">' + (t.workerId ? esc(t.workerId) : '—') + '</td>' +
+            '<td class="num">' + leaseTxt + '</td>' +
+            '<td class="err">' + (t.lastError ? esc(t.lastError) : '') + '</td>' +
+          '</tr>';
+        }).join("");
+      }
+
+      var shown = lastSnap.shown || 0, limit = lastSnap.limit || 0;
+      var more = shown >= limit ? (" (showing first " + limit + ")") : "";
+      document.getElementById("status").textContent =
+        "live · " + (rows.length) + " active shown" + more + " · refreshed " +
+        new Date().toLocaleTimeString();
+      document.getElementById("sub").classList.remove("stale");
+    }
+
+    function poll() {
+      fetch("@routes.TasksController.data()", { headers: { "Accept": "application/json" } })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(function (snap) {
+          lastSnap = snap;
+          serverSkewMs = Date.now() - snap.now;
+          render();
+        })
+        .catch(function (e) {
+          document.getElementById("status").textContent = "disconnected (" + e.message + ") — retrying…";
+          document.getElementById("sub").classList.add("stale");
+        });
+    }
+
+    function start() { if (!timer) { poll(); timer = setInterval(poll, POLL_MS); } }
+    function stop()  { if (timer) { clearInterval(timer); timer = null; } }
+
+    // Pause polling when the tab is hidden so a backgrounded page costs the web nothing.
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) stop(); else start();
+    });
+    // Tick ages locally between polls so the page feels live without extra requests.
+    setInterval(function () { if (!document.hidden) render(); }, 1000);
+    start();
+  </script>
+</body>
+</html>
