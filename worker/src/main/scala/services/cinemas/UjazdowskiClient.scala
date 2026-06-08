@@ -35,7 +35,7 @@ class UjazdowskiClient(http: HttpFetch) extends CinemaScraper {
     val main = http.get(ListingUrl)
     val uts  = UtPat.findAllMatchIn(main).map(_.group(1)).toSeq.distinct
 
-    val dayPages = ParallelDetailFetch.keyed("ujazdowski-days", uts, 1.minute)(ut => s"$ListingUrl/week.ajax?ut=$ut") { url =>
+    val dayPages = ParallelDetailFetch.keyed("ujazdowski-days", uts, 1.minute, maxConcurrent = 1)(ut => s"$ListingUrl/week.ajax?ut=$ut") { url =>
       Try(http.get(url)).toOption
     }
     val slots = uts.flatMap { ut =>

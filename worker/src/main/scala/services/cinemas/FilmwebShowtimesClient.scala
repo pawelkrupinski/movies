@@ -59,7 +59,7 @@ class FilmwebShowtimesClient(
     // One seances page per date, fetched in parallel and tolerantly: a failed
     // or unparseable day yields no seances rather than killing the batch.
     val seancesByDate = ParallelDetailFetch.keyed(
-      "filmweb-seances", dates, 1.minute
+      "filmweb-seances", dates, 1.minute, maxConcurrent = 1
     )(d => seancesUrl(cinemaId, d)) { url =>
       Try(http.get(url)).toOption.toSeq.flatMap(body => parseSeancesForUrl(body, url))
     }

@@ -51,7 +51,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
 
   def fetch(): Seq[CinemaMovie] = {
     val days     = (0 until WindowDays).map(today.plusDays(_)).toList
-    val dayLists = ParallelDetailFetch.keyed("nowe-horyzonty-days", days, 1.minute)(dayUrl) { url =>
+    val dayLists = ParallelDetailFetch.keyed("nowe-horyzonty-days", days, 1.minute, maxConcurrent = 1)(dayUrl) { url =>
       Try(http.get(url)).toOption.flatMap(listaHtml)
     }
     val slots = days.flatMap(d => dayLists.getOrElse(d, None).toSeq.flatMap(parseDay(_, d)))

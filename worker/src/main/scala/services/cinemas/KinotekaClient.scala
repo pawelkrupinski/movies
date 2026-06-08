@@ -47,7 +47,7 @@ class KinotekaClient(http: HttpFetch, deferDetail: Boolean = false) extends Cine
   private def fetchBare(): Seq[CinemaMovie] = {
     val base  = http.get(ListingUrl)
     val dates = DatePat.findAllMatchIn(base).map(_.group(1)).toSeq.distinct
-    val dayPages = ParallelDetailFetch.keyed("kinoteka-days", dates, 1.minute)(d => s"$ListingUrl?date=$d") { url =>
+    val dayPages = ParallelDetailFetch.keyed("kinoteka-days", dates, 1.minute, maxConcurrent = 1)(d => s"$ListingUrl?date=$d") { url =>
       Try(http.get(url)).toOption
     }
     val slots = dates.flatMap(d => dayPages.getOrElse(d, None).toSeq.flatMap(parsePage))

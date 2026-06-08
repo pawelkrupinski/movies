@@ -45,6 +45,21 @@ class ParallelDetailFetchSpec extends AnyFlatSpec with Matchers {
     maxActive.get should be <= 2
   }
 
+  it should "run strictly serially at maxConcurrent = 1 (the day-axis setting)" in {
+    // The two-axis clients set maxConcurrent = 1 on their day/event fetch so days
+    // are fetched one at a time. Lock that 1 means truly serial — never two at
+    // once — since that's the guarantee those call sites now depend on.
+    val active    = new AtomicInteger(0)
+    val maxActive = new AtomicInteger(0)
+    ParallelDetailFetch("test-serial", (1 to 6).map(_.toString), 5.seconds, maxConcurrent = 1) { url =>
+      val cur = active.incrementAndGet()
+      maxActive.updateAndGet(m => math.max(m, cur))
+      try Thread.sleep(20) finally active.decrementAndGet()
+      url
+    }
+    maxActive.get shouldBe 1
+  }
+
   it should "propagate exceptions from the fetch function" in {
     an[Exception] should be thrownBy {
       ParallelDetailFetch("test-error", Seq("ok", "boom"), 5.seconds) { url =>

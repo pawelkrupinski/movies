@@ -33,7 +33,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
   def fetch(): Seq[CinemaMovie] = {
     val today = http.get(s"$CinemaUrl/repertuar.php")
     val dates = DatePat.findAllMatchIn(today).map(_.group(1)).toSeq.distinct
-    val dayPages = ParallelDetailFetch.keyed("nove-kino-days", dates, 1.minute)(d => s"$CinemaUrl/repertuar.php?data=$d") { url =>
+    val dayPages = ParallelDetailFetch.keyed("nove-kino-days", dates, 1.minute, maxConcurrent = 1)(d => s"$CinemaUrl/repertuar.php?data=$d") { url =>
       Try(http.get(url)).toOption
     }
     val htmls = today +: dates.flatMap(d => dayPages.getOrElse(d, None))

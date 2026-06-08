@@ -26,7 +26,7 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
         .flatMap(d => Try(LocalDate.parse(d)).toOption)
     }.getOrElse(Seq.empty)
 
-    val dayBodies = ParallelDetailFetch.keyed("cinema-city-days", dates, 1.minute)(date =>
+    val dayBodies = ParallelDetailFetch.keyed("cinema-city-days", dates, 1.minute, maxConcurrent = 1)(date =>
       s"$BaseApiUrl/film-events/in-cinema/$cinemaId/at-date/$date?attr=&lang=pl_PL") { url =>
       Try(http.get(url)).toOption
     }

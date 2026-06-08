@@ -79,7 +79,7 @@ class RialtoClient(http: HttpFetch, deferDetail: Boolean = false) extends Cinema
     val filmEntries = parseRepertoire(http.get(RepertoireUrl))
 
     val eventDataByUrl: Map[String, Option[EventData]] =
-      ParallelDetailFetch("rialto-events", filmEntries.map(_.eventUrl).distinct, 1.minute) { url =>
+      ParallelDetailFetch("rialto-events", filmEntries.map(_.eventUrl).distinct, 1.minute, maxConcurrent = 1) { url =>
         Try(http.get(url)).toOption.map(html => EventData(parseEventPage(html), parseGenres(html)))
       }
 
