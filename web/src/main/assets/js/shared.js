@@ -1575,7 +1575,16 @@
   const FLICK_VX          = 0.4;   // px/ms — a quick flick commits a shorter drag
   const FLICK_MIN_PX      = 24;    // ignore micro-flicks
   const SWIPE_DEADZONE_PX = 10;    // horizontal travel before we lock to a swipe
-  const SWIPE_ANIM_MS     = 220;   // slide-out / slide-in duration
+  const SWIPE_ANIM_MS     = 220;   // base slide-out / slide-in duration (touch/mobile)
+  // Desktop (fine pointer) takes a longer, more deliberate glide — 1.5× the base —
+  // while touch/mobile keeps the snappy base. A finger-flick wants an immediate
+  // response; a mouse-driven arrow / keyboard / dropdown step reads better slower.
+  const DESKTOP_ANIM_FACTOR = 1.5;
+  function swipeAnimMs() {
+    return matchMedia('(pointer: coarse)').matches
+      ? SWIPE_ANIM_MS
+      : Math.round(SWIPE_ANIM_MS * DESKTOP_ANIM_FACTOR);
+  }
   // Axis lock is biased toward HORIZONTAL so a swipe that starts with a little
   // vertical jitter isn't misread as a scroll and killed. We concede to vertical
   // scrolling only when it CLEARLY dominates.
@@ -1751,12 +1760,13 @@
     if (!track) { commitDay(targetValue); return; }
     const w   = pagerWidth();
     const end = dir > 0 ? -2 * w : 0;   // -200vw reveals next, 0 reveals prev
+    const ms  = swipeAnimMs();
     _animating = true;
     track.style.transition = 'none';
     setTrack(fromPx || 0);
     void track.offsetWidth;
     requestAnimationFrame(() => {
-      track.style.transition = 'transform ' + SWIPE_ANIM_MS + 'ms ease';
+      track.style.transition = 'transform ' + ms + 'ms ease';
       track.style.transform  = 'translateX(' + end + 'px)';
     });
     let done = false;
@@ -1767,7 +1777,7 @@
       commitDay(targetValue);
     };
     track.addEventListener('transitionend', finish);
-    setTimeout(finish, SWIPE_ANIM_MS + 60);   // fallback if transitionend is missed
+    setTimeout(finish, ms + 60);   // fallback if transitionend is missed
   }
 
   // THE single entry point every day change funnels through. `targetValue` is a
@@ -1829,7 +1839,8 @@
   function snapBack() {
     const track = dayTrack();
     if (!track) return;
-    track.style.transition = 'transform ' + SWIPE_ANIM_MS + 'ms ease';
+    const ms = swipeAnimMs();
+    track.style.transition = 'transform ' + ms + 'ms ease';
     setTrack(0);
     let done = false;
     const clear = () => {
@@ -1839,7 +1850,7 @@
       unmountNeighbors();
     };
     track.addEventListener('transitionend', clear);
-    setTimeout(clear, SWIPE_ANIM_MS + 60);
+    setTimeout(clear, ms + 60);
   }
 
   document.addEventListener('pointerdown', (e) => {

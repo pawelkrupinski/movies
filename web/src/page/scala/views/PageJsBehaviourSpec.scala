@@ -1348,6 +1348,33 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Desktop slides 1.5× slower than touch ────────────────────────────────────
+  //
+  // The day-change slide keeps its snappy 220 ms base on touch/mobile (a
+  // finger-flick wants an immediate response) but takes a longer 1.5× glide
+  // (330 ms) on a fine pointer, where a mouse-driven arrow / keyboard / dropdown
+  // step reads better slower. Both paths run the SAME `animateToDay` slide —
+  // only the duration differs, gated on `matchMedia('(pointer: coarse)')`.
+
+  it should "slide 1.5x slower on desktop (fine pointer) than on touch" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+
+      // A fresh tab has no touch emulation → the default fine (mouse) pointer,
+      // which takes the longer desktop glide.
+      page.evalBool("matchMedia('(pointer: coarse)').matches") shouldBe false
+      val desktopMs = slideDurationMs(page)
+
+      // Touch emulation flips the pointer to coarse → the snappy mobile base.
+      coarsePointer(page)
+      val touchMs = slideDurationMs(page)
+
+      touchMs shouldBe 220
+      desktopMs shouldBe 330
+      desktopMs shouldBe (touchMs * 1.5).round.toInt
+    }
+  }
+
   // ── Dropdown slide direction follows the option-list order, not wrap ─────────
   //
   // A dropdown pick is a LINEAR list choice: the target's position in the option
@@ -2371,6 +2398,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  escaping. */
   private def jsString(s: String): String =
     play.api.libs.json.JsString(s).toString
+
+  /** Run a single today → tomorrow animated slide and read the transition
+   *  duration the production code applies to `#day-track` while it's in flight,
+   *  in ms. The transition is set inside a `requestAnimationFrame`, so we wait
+   *  for it to land (computed `transitionDuration` leaves `0s`) before parsing
+   *  the seconds value into ms, then let the slide settle before returning. */
+  private def slideDurationMs(page: CdpPage): Int = {
+    page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+    page.eval("window.animateToDay('tomorrow')")
+    page.waitFor(
+      "getComputedStyle(document.getElementById('day-track')).transitionDuration !== '0s'",
+      timeoutMs = 1000
+    )
+    val ms = page.evalInt(
+      "Math.round(parseFloat(getComputedStyle(document.getElementById('day-track')).transitionDuration) * 1000)"
+    )
+    page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+    ms
+  }
 
   /** Force `prefers-reduced-motion: no-preference` so the carousel takes its
    *  animated slide path (not the reduced-motion instant-commit shortcut)
