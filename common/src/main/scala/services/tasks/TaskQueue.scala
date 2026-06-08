@@ -111,6 +111,15 @@ trait TaskQueue {
    *  can poll it cheaply. */
   def monitor(activeLimit: Int = 200): QueueSnapshot
 
+  /** Push: ring `onWaiting` whenever fresh work becomes claimable (a newly
+   *  enqueued task), so a worker pool can park on a signal instead of polling.
+   *  The push is a doorbell only — it carries no task, so workers still `claim`
+   *  the work atomically and a missed or duplicate ring is harmless (the pool's
+   *  idle backstop re-checks regardless). Returns a handle to stop watching, or
+   *  None when this queue can't push (then the backstop is the only wakeup).
+   *  Default no-op so a queue need only override it if it can push. */
+  def watchWaiting(onWaiting: () => Unit): Option[AutoCloseable] = None
+
   def close(): Unit = ()
 }
 

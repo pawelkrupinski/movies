@@ -21,27 +21,41 @@ trait TaskHandler {
 
 /**
  * A fixed pool of `poolSize` workers draining a [[TaskQueue]], each fetching and
- * running exactly **one task at a time**. Every worker is its own daemon thread
- * running a tight loop: claim one waiting task, run its handler to completion,
- * then claim the next. Total in-flight work is therefore hard-capped at
- * `poolSize` — there's no batch claim and no separate dispatch pool, so the
- * number of tasks in `worked_on` at once can never exceed the number of workers.
- * Each worker claims under its own id (`host-pid-N`), so the tasks page shows up
- * to `poolSize` distinct workers, each holding a single task.
+ * running exactly **one task at a time**. Every worker is its own daemon thread:
+ * claim one waiting task, run its handler to completion, then claim the next.
+ * Total in-flight work is therefore hard-capped at `poolSize` — there's no batch
+ * claim, no separate dispatch pool, and crucially no in-memory task buffer: the
+ * `worked_on` set can never exceed the number of workers. Each worker claims
+ * under its own id (`host-pid-N`), so the tasks page shows up to `poolSize`
+ * distinct workers, each holding a single task.
  *
- * A worker only sleeps `pollInterval` when it found nothing to do, or when the
- * task it ran went back to the queue (`Reschedule`/failure/no-handler) — so a
- * backlog drains at full speed, but a lone perpetually-rescheduling task is
- * retried at most once per interval per worker rather than hot-spinning.
+ * **Workers don't poll.** When nothing is waiting a worker *parks* on a
+ * [[TaskDoorbell]] rather than sleeping on a timer. The queue's
+ * [[TaskQueue.watchWaiting]] push — a Mongo change stream in production — rings
+ * the doorbell the instant a task is enqueued, so a parked worker wakes and
+ * `claim`s it with near-zero latency and zero idle Mongo traffic (that constant
+ * empty-claim floor is what denied the shared-cpu box the idle time to rebuild
+ * CPU credits). The ring is only a doorbell: it carries no task, so workers
+ * still claim atomically against Mongo and a spurious or missed ring is harmless
+ * — at worst it costs one extra cheap claim, or defers pickup to the backstop.
+ *
+ * `idleBackstop` bounds how long a worker stays parked without a ring: a safety
+ * net for a change-stream blip, a standalone (non-replica-set) Mongo that can't
+ * stream, or a lease another machine returned to waiting that this node didn't
+ * observe — not the normal wakeup path. `retryBackoff` is the pause after a task
+ * goes back to the queue (`Reschedule`/failure/no-handler) so a perpetually
+ * failing task retries at ~`retryBackoff` cadence rather than hot-spinning; that
+ * pause deliberately ignores the doorbell.
  *
  * `processingTimeout` is the lease length: any task left in `worked_on` longer
  * than this — a crashed worker, a handler that hung, a fetch stuck past its own
  * timeout — is returned to waiting by `reapExpiredLeases`, which a single shared
- * reaper thread runs every `pollInterval` (independently of the workers, so a
- * stuck lease is reaped even while all workers are busy). It's a safety net, not
- * a correctness boundary: if it fires on a task that's actually still running,
- * the duplicate run is harmless because every handler is freshness-gated and
- * writes idempotently (it finds the data fresh and returns `Skipped`). Keep it
+ * reaper thread runs every `reapInterval` (independently of the workers, so a
+ * stuck lease is reaped even while all workers are busy); a reap that frees work
+ * also rings the doorbell so it's picked up promptly. It's a safety net, not a
+ * correctness boundary: if it fires on a task that's actually still running, the
+ * duplicate run is harmless because every handler is freshness-gated and writes
+ * idempotently (it finds the data fresh and returns `Skipped`). Keep it
  * comfortably above the slowest handler's wall-clock; the default 5 min covers
  * the slowest scrape/detail fetch while still freeing a genuinely stuck task
  * quickly.
@@ -50,9 +64,9 @@ class TaskWorker(
   queue:             TaskQueue,
   handlers:          Seq[TaskHandler],
   processingTimeout: FiniteDuration = 5.minutes,
-  pollInterval:      FiniteDuration = 2.seconds,
+  retryBackoff:      FiniteDuration = 2.seconds,
+  idleBackstop:      FiniteDuration = 30.seconds,
   poolSize:          Int            = 4,
-  maxIdleInterval:   FiniteDuration = 30.seconds,
   reapInterval:      FiniteDuration = 30.seconds
 ) extends Stoppable with Logging {
   import HandlerOutcome._
@@ -65,19 +79,29 @@ class TaskWorker(
     s"$host-${ProcessHandle.current().pid()}"
   }
 
-  private val running: AtomicBoolean          = new AtomicBoolean(false)
-  private val workers: mutable.Buffer[Thread] = mutable.Buffer.empty
+  private val running:  AtomicBoolean          = new AtomicBoolean(false)
+  private val workers:  mutable.Buffer[Thread] = mutable.Buffer.empty
+  // Decouples the change-stream producer from the worker threads: producers ring,
+  // idle workers park on it. Carries no task — the claim is still the source of
+  // truth.
+  private val doorbell: TaskDoorbell           = new TaskDoorbell
+  // Handle to the queue's new-task push; closed on stop().
+  private var watchHandle: Option[AutoCloseable] = None
   // Reaping is global, so one shared thread does it for the whole pool — and it
   // must keep ticking while every worker is busy, which a per-worker reap can't.
   private val reaper: ScheduledExecutorService = DaemonExecutors.scheduler("task-reaper")
 
   def start(): Unit = {
     running.set(true)
+    // Push: ring the doorbell whenever the queue gains a fresh task, so a parked
+    // worker wakes and claims it immediately instead of waiting out the backstop.
+    watchHandle = queue.watchWaiting(() => doorbell.ring())
     // Leases run `processingTimeout` (5min), so reaping every `reapInterval`
-    // (30s) is ample — a far cheaper cadence than polling, and it keeps the
-    // every-tick `updateMany` off the shared Mongo's commit path most of the time.
+    // (30s) is ample. A reap returns crashed/stuck (and other nodes') leases to
+    // waiting; ring so the freed work is picked up now, not at the next backstop.
     reaper.scheduleWithFixedDelay(
-      () => Try(queue.reapExpiredLeases()), reapInterval.toMillis, reapInterval.toMillis, TimeUnit.MILLISECONDS)
+      () => Try { if (queue.reapExpiredLeases() > 0) doorbell.ring() },
+      reapInterval.toMillis, reapInterval.toMillis, TimeUnit.MILLISECONDS)
     (0 until poolSize).foreach { i =>
       val id = s"$baseId-$i"
       val t  = new Thread(() => runLoop(id), s"task-worker-$i")
@@ -85,41 +109,35 @@ class TaskWorker(
       t.start()
       workers += t
     }
-    logger.info(s"TaskWorker started ($poolSize worker(s) $baseId-0..${poolSize - 1}, ${byType.size} handler(s), poll ${pollInterval.toSeconds}s, reap ${reapInterval.toSeconds}s).")
+    logger.info(s"TaskWorker started ($poolSize worker(s) $baseId-0..${poolSize - 1}, ${byType.size} handler(s), push=${watchHandle.isDefined}, idle-backstop ${idleBackstop.toSeconds}s, reap ${reapInterval.toSeconds}s).")
   }
 
   /** One worker slot: claim a task, run it to completion, claim the next.
    *
-   *  When there's work it loops at full speed (claim → run → claim). When idle it
-   *  backs off exponentially from `pollInterval` up to `maxIdleInterval`, so a
-   *  quiet pool stops hammering the shared Mongo with empty `claim`s every few
-   *  seconds — that constant floor is what denied the shared-cpu box the idle
-   *  time to rebuild CPU credits. A returned (rescheduled/failed) task backs off
-   *  one `pollInterval`, not the full ramp, so a transient failure retries soon. */
-  private def runLoop(workerId: String): Unit = {
-    var idleStreak = 0
+   *  With work it loops at full speed (claim → run → claim). Idle, it parks on
+   *  the doorbell until a ring (a new task, or a reap that freed one) or the
+   *  `idleBackstop` elapses — so a quiet pool issues no empty claims at all. A
+   *  returned (rescheduled/failed/no-handler) task backs off `retryBackoff` and
+   *  ignores the doorbell, so a single perpetually-failing task can't hot-spin.
+   *
+   *  The generation is snapshotted *before* the claim, so a ring landing in the
+   *  gap between a failed claim and the park advances the counter past the
+   *  snapshot and the park returns at once — the lost-wakeup window is closed. */
+  private def runLoop(workerId: String): Unit =
     while (running.get()) {
+      val since = doorbell.generation
       Try(claimAndRun(workerId)).getOrElse(PollResult.Idle) match {
-        case PollResult.Completed => idleStreak = 0 // got work — claim the next immediately
-        case PollResult.Returned  => idleStreak = 0; sleepFor(pollInterval.toMillis)
-        case PollResult.Idle      => idleStreak += 1; sleepFor(backoffMillis(idleStreak))
+        case PollResult.Completed => ()                              // got work — claim the next immediately
+        case PollResult.Returned  => sleepFor(retryBackoff.toMillis) // bounded retry; ignore the doorbell
+        case PollResult.Idle      => doorbell.awaitSince(since, idleBackstop.toMillis)
       }
     }
-  }
 
   /** Sleep, honouring a stop interrupt. */
   private def sleepFor(ms: Long): Unit =
     if (running.get())
       try Thread.sleep(ms)
       catch { case _: InterruptedException => Thread.currentThread().interrupt() }
-
-  /** Idle back-off: `pollInterval` doubled per consecutive empty claim, capped at
-   *  `maxIdleInterval`. Pure + package-private so the ramp is unit-testable. */
-  private[tasks] def backoffMillis(idleStreak: Int): Long = {
-    val base  = pollInterval.toMillis
-    val shift = math.min(math.max(idleStreak - 1, 0), 30) // guard the bit-shift
-    math.min(base << shift, maxIdleInterval.toMillis)
-  }
 
   /** Claim a single waiting task for `workerId` and run its handler to
    *  completion — one task, then return. Package-private so tests can drive a
@@ -149,8 +167,10 @@ class TaskWorker(
 
   override def stop(): Unit = {
     running.set(false)
+    watchHandle.foreach(h => Try(h.close()))
     reaper.shutdown()
-    workers.foreach(_.interrupt()) // break any in-flight pollInterval sleep
+    doorbell.ring()                // wake every parked worker so it sees running=false
+    workers.foreach(_.interrupt()) // break any in-flight retryBackoff sleep
     ()
   }
 }
@@ -161,6 +181,40 @@ object TaskWorker {
   private[tasks] object PollResult {
     case object Idle      extends PollResult // nothing waiting to claim
     case object Completed extends PollResult // handler finished (Done/Skipped) — claim the next immediately
-    case object Returned  extends PollResult // task went back to the queue — back off one poll interval
+    case object Returned  extends PollResult // task went back to the queue — back off one retry interval
+  }
+}
+
+/**
+ * A monotone "new work might be waiting" doorbell decoupling the change-stream
+ * producer from the worker threads. `ring()` bumps a generation counter and
+ * wakes every parked worker; a worker parks with `awaitSince(gen, timeoutMs)`,
+ * having snapshotted `generation` *before* its failed claim — so a ring that
+ * lands in the gap between the claim and the park advances the counter past the
+ * snapshot and the park returns at once, closing the lost-wakeup window. The
+ * timeout is the pool's idle backstop. No task travels through it; it's purely a
+ * wakeup signal, so over- or under-ringing only ever costs an extra cheap claim.
+ */
+private[tasks] final class TaskDoorbell {
+  private val lock = new Object
+  private var gen  = 0L
+
+  /** The current ring count; snapshot it before a claim, pass to `awaitSince`. */
+  def generation: Long = lock.synchronized(gen)
+
+  /** Wake every parked worker and advance the generation. */
+  def ring(): Unit = lock.synchronized { gen += 1L; lock.notifyAll() }
+
+  /** Park until `generation` moves past `since`, or `timeoutMs` elapses
+   *  (whichever first). Interrupt-safe so `stop()` can break it. */
+  def awaitSince(since: Long, timeoutMs: Long): Unit = lock.synchronized {
+    val deadline  = System.nanoTime() + timeoutMs * 1000000L
+    var remaining = timeoutMs
+    try
+      while (gen <= since && remaining > 0L) {
+        lock.wait(remaining)
+        remaining = (deadline - System.nanoTime()) / 1000000L
+      }
+    catch { case _: InterruptedException => Thread.currentThread().interrupt() }
   }
 }

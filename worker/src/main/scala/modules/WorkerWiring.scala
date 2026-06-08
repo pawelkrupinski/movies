@@ -200,8 +200,7 @@ class WorkerWiring {
   def workerPoolSize: Int = Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)
   lazy val taskWorker = new TaskWorker(
     taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler) ++ ratingHandlers,
-    pollInterval = scala.concurrent.duration.DurationInt(5).seconds,
-    poolSize     = workerPoolSize
+    poolSize = workerPoolSize
   )
   lazy val scrapeReaper = new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore)
 

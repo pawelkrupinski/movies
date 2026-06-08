@@ -1,12 +1,15 @@
 package services.tasks
 
+import org.scalatest.concurrent.Eventually
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.time.{Millis, Seconds, Span}
 
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 
-class TaskWorkerSpec extends AnyFlatSpec with Matchers {
+class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
   import TaskType._
   import TaskWorker.PollResult
 
@@ -18,7 +21,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers {
   }
 
   private def worker(q: TaskQueue, hs: Seq[TaskHandler]) =
-    new TaskWorker(q, hs, processingTimeout = 5.minutes, pollInterval = 1.minute, poolSize = 4)
+    new TaskWorker(q, hs, processingTimeout = 5.minutes, poolSize = 4)
 
   "claimAndRun" should "claim a waiting task, run its handler, and tombstone it on Done" in {
     val q = new InMemoryTaskQueue
@@ -116,15 +119,68 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers {
     q.countByState().getOrElse(TaskState.WorkedOn, 0L) shouldBe 0L
   }
 
-  "backoffMillis" should "ramp exponentially from pollInterval and cap at maxIdleInterval" in {
-    // A quiet pool must stop polling the shared Mongo every few seconds; the idle
-    // sleep doubles per consecutive empty claim and caps, so the floor decays.
-    val w = new TaskWorker(new InMemoryTaskQueue, Seq.empty,
-      pollInterval = 5.seconds, maxIdleInterval = 30.seconds, poolSize = 1)
-    w.backoffMillis(1) shouldBe 5000L   // first idle → base
-    w.backoffMillis(2) shouldBe 10000L  // ×2
-    w.backoffMillis(3) shouldBe 20000L  // ×4
-    w.backoffMillis(4) shouldBe 30000L  // ×8 = 40s, capped at 30s
-    w.backoffMillis(50) shouldBe 30000L // stays capped, no overflow
+  "InMemoryTaskQueue.watchWaiting" should "ring on a fresh enqueue, not on a duplicate, and stop after close" in {
+    val q     = new InMemoryTaskQueue
+    val rings = new AtomicInteger(0)
+    val handle = q.watchWaiting(() => { rings.incrementAndGet(); () }).get
+
+    q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0) shouldBe EnqueueResult.Added
+    rings.get() shouldBe 1
+    q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0) shouldBe EnqueueResult.Duplicate
+    rings.get() shouldBe 1 // a no-op duplicate must not ring
+
+    handle.close()
+    q.enqueue(ImdbRating, "imdb|y", submittedAt = t0) shouldBe EnqueueResult.Added
+    rings.get() shouldBe 1 // unsubscribed — no more rings
+  }
+
+  "TaskDoorbell" should "return at once when a ring already moved the generation past the snapshot (no lost wakeup)" in {
+    val d     = new TaskDoorbell
+    val since = d.generation
+    d.ring() // ring lands in the gap between snapshot and park
+    val started = System.nanoTime()
+    d.awaitSince(since, 60000L) // must NOT block on the 60s timeout
+    ((System.nanoTime() - started) / 1000000L) should be < 1000L
+  }
+
+  it should "wake a parked waiter when rung" in {
+    val d     = new TaskDoorbell
+    val since = d.generation
+    @volatile var wokeAt = 0L
+    val parked = new Thread(() => { d.awaitSince(since, 60000L); wokeAt = System.nanoTime() })
+    parked.start()
+    Thread.sleep(50) // let it park
+    val rungAt = System.nanoTime()
+    d.ring()
+    parked.join(2000)
+    parked.isAlive shouldBe false
+    ((wokeAt - rungAt) / 1000000L) should be < 1000L
+  }
+
+  it should "time out and return when no ring arrives" in {
+    val d       = new TaskDoorbell
+    val started = System.nanoTime()
+    d.awaitSince(d.generation, 80L)
+    val elapsed = (System.nanoTime() - started) / 1000000L
+    elapsed should be >= 60L  // waited ~the timeout (allow scheduler slack)
+    elapsed should be < 2000L // but it did return
+  }
+
+  "a running pool" should "pick up a task pushed after start via the doorbell, without waiting out the idle backstop" in {
+    val q = new InMemoryTaskQueue
+    val h = new RecordingHandler(ScrapeCinema, HandlerOutcome.Done)
+    // idleBackstop a full minute: the ONLY way this task runs inside the
+    // assertion window is the watchWaiting doorbell ringing the parked worker.
+    val w = new TaskWorker(q, Seq(h), processingTimeout = 5.minutes,
+      retryBackoff = 1.second, idleBackstop = 1.minute, poolSize = 1)
+    w.start()
+    try {
+      Thread.sleep(100) // let the lone worker reach its idle park
+      q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
+      eventually(timeout(Span(3, Seconds)), interval(Span(20, Millis))) {
+        q.countByState().getOrElse(TaskState.Deleted, 0L) shouldBe 1L
+      }
+      h.seen.map(_.dedupKey) shouldBe List("scrape|x")
+    } finally w.stop()
   }
 }

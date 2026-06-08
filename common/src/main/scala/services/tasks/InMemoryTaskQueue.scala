@@ -2,7 +2,9 @@ package services.tasks
 
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters._
 
 /**
  * In-memory `TaskQueue` for tests and Mongo-less dev. Mirrors
@@ -26,20 +28,27 @@ class InMemoryTaskQueue extends TaskQueue {
 
   private val rows = scala.collection.mutable.LinkedHashMap.empty[String, Row]
   private val lock = new Object
+  private val waitingListeners = new CopyOnWriteArrayList[() => Unit]()
 
   override def enqueue(
     taskType:    TaskType,
     dedupKey:    String,
     payload:     Map[String, String],
     submittedAt: Instant
-  ): EnqueueResult = lock.synchronized {
-    val active = rows.values.exists(r => r.dedupKey == dedupKey && r.state != TaskState.Deleted)
-    if (active) EnqueueResult.Duplicate
-    else {
-      val id = UUID.randomUUID().toString
-      rows.put(id, Row(id, taskType, dedupKey, payload, TaskState.Waiting, submittedAt, 0, None, None))
-      EnqueueResult.Added
+  ): EnqueueResult = {
+    val result = lock.synchronized {
+      val active = rows.values.exists(r => r.dedupKey == dedupKey && r.state != TaskState.Deleted)
+      if (active) EnqueueResult.Duplicate
+      else {
+        val id = UUID.randomUUID().toString
+        rows.put(id, Row(id, taskType, dedupKey, payload, TaskState.Waiting, submittedAt, 0, None, None))
+        EnqueueResult.Added
+      }
     }
+    // Ring outside the lock, and only for genuinely new work — a duplicate is a
+    // no-op, exactly like MongoTaskQueue's insert-only change-stream signal.
+    if (result == EnqueueResult.Added) waitingListeners.asScala.foreach(_())
+    result
   }
 
   override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = lock.synchronized {
@@ -98,5 +107,12 @@ class InMemoryTaskQueue extends TaskQueue {
       .map(r => TaskSummary(r.id, r.taskType.name, r.dedupKey, r.state, r.submittedAt,
         r.attempts, r.workerId, r.leaseExpiresAt, None))
     QueueSnapshot(counts, active)
+  }
+
+  /** Push parity with [[MongoTaskQueue]] for Mongo-less dev/tests: fire
+   *  `onWaiting` whenever a fresh task is actually added (see `enqueue`). */
+  override def watchWaiting(onWaiting: () => Unit): Option[AutoCloseable] = {
+    waitingListeners.add(onWaiting)
+    Some(new AutoCloseable { override def close(): Unit = { waitingListeners.remove(onWaiting); () } })
   }
 }
